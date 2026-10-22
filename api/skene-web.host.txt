@@ -821,14 +821,14 @@ impl core::fmt::Debug for skene_web::Text
 pub fn skene_web::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_web::Text
 impl skene_foundation::spine::wraps::Wraps for skene_web::Text
-pub type skene_web::Text::Inner = skene_foundation::text::Text<skene_headless::Headless>
+pub type skene_web::Text::Inner = skene_foundation::text::view::Text<skene_headless::Headless>
 pub fn skene_web::Text::inner(&self) -> &Self::Inner
 pub fn skene_web::Text::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Text::into_inner(self) -> Self::Inner
 pub fn skene_web::Text::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_headless::Headless> for skene_web::Text
-impl skene_foundation::text::TextBase<skene_headless::Headless> for skene_web::Text
-impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Text where skene_foundation::text::Text<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::text::view::TextBase<skene_headless::Headless> for skene_web::Text
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Text where skene_foundation::text::view::Text<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C>(_)
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_web::Theme<S>
@@ -1370,14 +1370,14 @@ impl core::fmt::Debug for skene_web::Text
 pub fn skene_web::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_web::Text
 impl skene_foundation::spine::wraps::Wraps for skene_web::Text
-pub type skene_web::Text::Inner = skene_foundation::text::Text<skene_headless::Headless>
+pub type skene_web::Text::Inner = skene_foundation::text::view::Text<skene_headless::Headless>
 pub fn skene_web::Text::inner(&self) -> &Self::Inner
 pub fn skene_web::Text::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Text::into_inner(self) -> Self::Inner
 pub fn skene_web::Text::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_headless::Headless> for skene_web::Text
-impl skene_foundation::text::TextBase<skene_headless::Headless> for skene_web::Text
-impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Text where skene_foundation::text::Text<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::text::view::TextBase<skene_headless::Headless> for skene_web::Text
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_web::Text where skene_foundation::text::view::Text<skene_web::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>, C>(_)
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_web::Theme<S>

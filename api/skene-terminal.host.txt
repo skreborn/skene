@@ -801,14 +801,14 @@ impl core::fmt::Debug for skene_terminal::Text
 pub fn skene_terminal::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Text
 impl skene_foundation::spine::wraps::Wraps for skene_terminal::Text
-pub type skene_terminal::Text::Inner = skene_foundation::text::Text<skene_terminal::Terminal>
+pub type skene_terminal::Text::Inner = skene_foundation::text::view::Text<skene_terminal::Terminal>
 pub fn skene_terminal::Text::inner(&self) -> &Self::Inner
 pub fn skene_terminal::Text::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_terminal::Text::into_inner(self) -> Self::Inner
 pub fn skene_terminal::Text::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_terminal::Terminal> for skene_terminal::Text
-impl skene_foundation::text::TextBase<skene_terminal::Terminal> for skene_terminal::Text
-impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Text where skene_foundation::text::Text<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::text::view::TextBase<skene_terminal::Terminal> for skene_terminal::Text
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Text where skene_foundation::text::view::Text<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C>(_)
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_terminal::Theme<S>
@@ -1589,6 +1589,7 @@ pub fn skene_terminal::Terminal::destroy(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::Terminal::focus(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::Terminal::focus_visible() -> bool
 pub fn skene_terminal::Terminal::hide(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
+pub fn skene_terminal::Terminal::lay_out()
 pub fn skene_terminal::Terminal::localize_pointer(skene_foundation::spine::node::NodeId, &skene_foundation::spine::events::PointerEvent) -> skene_foundation::spine::events::PointerEvent
 pub fn skene_terminal::Terminal::media() -> skene_foundation::spine::props::MediaSignals<u32>
 pub fn skene_terminal::Terminal::observe_size(skene_foundation::spine::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<u32>)>) -> skene_foundation::spine::platform::Observation
@@ -1625,7 +1626,7 @@ impl skene_foundation::surface::MotionBase<skene_terminal::Terminal> for skene_t
 impl skene_foundation::surface::RunBase<skene_terminal::Terminal> for skene_terminal::Span
 impl skene_foundation::surface::RunBase<skene_terminal::Terminal> for skene_terminal::Text
 impl skene_foundation::suspense::SuspenseBase<skene_terminal::Terminal> for skene_terminal::Suspense
-impl skene_foundation::text::TextBase<skene_terminal::Terminal> for skene_terminal::Text
+impl skene_foundation::text::view::TextBase<skene_terminal::Terminal> for skene_terminal::Text
 impl skene_foundation::tooltip::TooltipBase<skene_terminal::Terminal> for skene_terminal::Tooltip
 impl skene_foundation::visibility::VisibilityBase<skene_terminal::Terminal> for skene_terminal::Visibility
 impl skene_terminal::CellPainter for skene_terminal::Terminal
@@ -1646,14 +1647,14 @@ impl core::fmt::Debug for skene_terminal::Text
 pub fn skene_terminal::Text::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Text
 impl skene_foundation::spine::wraps::Wraps for skene_terminal::Text
-pub type skene_terminal::Text::Inner = skene_foundation::text::Text<skene_terminal::Terminal>
+pub type skene_terminal::Text::Inner = skene_foundation::text::view::Text<skene_terminal::Terminal>
 pub fn skene_terminal::Text::inner(&self) -> &Self::Inner
 pub fn skene_terminal::Text::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_terminal::Text::into_inner(self) -> Self::Inner
 pub fn skene_terminal::Text::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_terminal::Terminal> for skene_terminal::Text
-impl skene_foundation::text::TextBase<skene_terminal::Terminal> for skene_terminal::Text
-impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Text where skene_foundation::text::Text<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl skene_foundation::text::view::TextBase<skene_terminal::Terminal> for skene_terminal::Text
+impl<__P: skene_foundation::spine::platform::Platform> skene_foundation::spine::view::View<__P> for skene_terminal::Text where skene_foundation::text::view::Text<skene_terminal::ActivePlatform>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_terminal::Text::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::Theme<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>, C>(_)
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_terminal::Theme<S>

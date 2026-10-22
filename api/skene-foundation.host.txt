@@ -1412,6 +1412,987 @@ impl core::marker::StructuralPartialEq for skene_foundation::terminal::Typograph
 impl<V> skene_foundation::TokenSet<V> for skene_foundation::terminal::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, u32>> + core::convert::From<skene_foundation::Definition<f32, u32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, u32>> + 'static
 pub fn skene_foundation::terminal::Typography::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 pub const skene_foundation::terminal::BOLD_WEIGHT: f32
+pub mod skene_foundation::text
+pub mod skene_foundation::text::editing
+pub enum skene_foundation::text::editing::Binding
+pub skene_foundation::text::editing::Binding::Command(skene_foundation::text::editing::Command)
+pub skene_foundation::text::editing::Binding::Paste
+impl skene_foundation::text::editing::Binding
+pub fn skene_foundation::text::editing::Binding::for_key(&skene_foundation::KeyEvent, bool) -> core::option::Option<Self>
+impl core::clone::Clone for skene_foundation::text::editing::Binding
+pub fn skene_foundation::text::editing::Binding::clone(&self) -> skene_foundation::text::editing::Binding
+impl core::cmp::Eq for skene_foundation::text::editing::Binding
+impl core::cmp::PartialEq for skene_foundation::text::editing::Binding
+pub fn skene_foundation::text::editing::Binding::eq(&self, &skene_foundation::text::editing::Binding) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Binding
+pub fn skene_foundation::text::editing::Binding::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Binding
+pub fn skene_foundation::text::editing::Binding::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Binding
+pub enum skene_foundation::text::editing::ClauseStyle
+pub skene_foundation::text::editing::ClauseStyle::Converted
+pub skene_foundation::text::editing::ClauseStyle::Raw
+pub skene_foundation::text::editing::ClauseStyle::Target
+impl core::clone::Clone for skene_foundation::text::editing::ClauseStyle
+pub fn skene_foundation::text::editing::ClauseStyle::clone(&self) -> skene_foundation::text::editing::ClauseStyle
+impl core::cmp::Eq for skene_foundation::text::editing::ClauseStyle
+impl core::cmp::PartialEq for skene_foundation::text::editing::ClauseStyle
+pub fn skene_foundation::text::editing::ClauseStyle::eq(&self, &skene_foundation::text::editing::ClauseStyle) -> bool
+impl core::default::Default for skene_foundation::text::editing::ClauseStyle
+pub fn skene_foundation::text::editing::ClauseStyle::default() -> skene_foundation::text::editing::ClauseStyle
+impl core::fmt::Debug for skene_foundation::text::editing::ClauseStyle
+pub fn skene_foundation::text::editing::ClauseStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::ClauseStyle
+pub fn skene_foundation::text::editing::ClauseStyle::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::ClauseStyle
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::ClauseStyle
+pub enum skene_foundation::text::editing::Command
+pub skene_foundation::text::editing::Command::Copy
+pub skene_foundation::text::editing::Command::Cut
+pub skene_foundation::text::editing::Command::Delete(skene_foundation::text::TextBoundary, skene_foundation::text::Direction)
+pub skene_foundation::text::editing::Command::Insert(alloc::string::String)
+pub skene_foundation::text::editing::Command::InsertNewline
+pub skene_foundation::text::editing::Command::Move
+pub skene_foundation::text::editing::Command::Move::extend: bool
+pub skene_foundation::text::editing::Command::Move::movement: skene_foundation::text::editing::Movement
+pub skene_foundation::text::editing::Command::Paste(alloc::string::String)
+pub skene_foundation::text::editing::Command::Redo
+pub skene_foundation::text::editing::Command::SelectAll
+pub skene_foundation::text::editing::Command::Transpose
+pub skene_foundation::text::editing::Command::Undo
+impl skene_foundation::text::editing::Command
+pub fn skene_foundation::text::editing::Command::masked(&self, char) -> alloc::string::String
+impl core::clone::Clone for skene_foundation::text::editing::Command
+pub fn skene_foundation::text::editing::Command::clone(&self) -> skene_foundation::text::editing::Command
+impl core::cmp::Eq for skene_foundation::text::editing::Command
+impl core::cmp::PartialEq for skene_foundation::text::editing::Command
+pub fn skene_foundation::text::editing::Command::eq(&self, &skene_foundation::text::editing::Command) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Command
+pub fn skene_foundation::text::editing::Command::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Command
+pub fn skene_foundation::text::editing::Command::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Command
+pub enum skene_foundation::text::editing::EditKind
+pub skene_foundation::text::editing::EditKind::Other
+pub skene_foundation::text::editing::EditKind::RemovedBackward
+pub skene_foundation::text::editing::EditKind::RemovedForward
+pub skene_foundation::text::editing::EditKind::Surrounding
+pub skene_foundation::text::editing::EditKind::Typed
+impl core::clone::Clone for skene_foundation::text::editing::EditKind
+pub fn skene_foundation::text::editing::EditKind::clone(&self) -> skene_foundation::text::editing::EditKind
+impl core::cmp::Eq for skene_foundation::text::editing::EditKind
+impl core::cmp::PartialEq for skene_foundation::text::editing::EditKind
+pub fn skene_foundation::text::editing::EditKind::eq(&self, &skene_foundation::text::editing::EditKind) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::EditKind
+pub fn skene_foundation::text::editing::EditKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::EditKind
+pub fn skene_foundation::text::editing::EditKind::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::EditKind
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::EditKind
+pub enum skene_foundation::text::editing::Movement
+pub skene_foundation::text::editing::Movement::Lines(isize)
+pub skene_foundation::text::editing::Movement::Logical(skene_foundation::text::TextBoundary, skene_foundation::text::Direction)
+pub skene_foundation::text::editing::Movement::Visual(skene_foundation::text::VisualMove)
+impl core::clone::Clone for skene_foundation::text::editing::Movement
+pub fn skene_foundation::text::editing::Movement::clone(&self) -> skene_foundation::text::editing::Movement
+impl core::cmp::Eq for skene_foundation::text::editing::Movement
+impl core::cmp::PartialEq for skene_foundation::text::editing::Movement
+pub fn skene_foundation::text::editing::Movement::eq(&self, &skene_foundation::text::editing::Movement) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Movement
+pub fn skene_foundation::text::editing::Movement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Movement
+pub fn skene_foundation::text::editing::Movement::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::Movement
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Movement
+pub enum skene_foundation::text::editing::Origin
+pub skene_foundation::text::editing::Origin::App
+pub skene_foundation::text::editing::Origin::Input
+pub skene_foundation::text::editing::Origin::Reader
+impl core::clone::Clone for skene_foundation::text::editing::Origin
+pub fn skene_foundation::text::editing::Origin::clone(&self) -> skene_foundation::text::editing::Origin
+impl core::cmp::Eq for skene_foundation::text::editing::Origin
+impl core::cmp::PartialEq for skene_foundation::text::editing::Origin
+pub fn skene_foundation::text::editing::Origin::eq(&self, &skene_foundation::text::editing::Origin) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Origin
+pub fn skene_foundation::text::editing::Origin::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Origin
+pub fn skene_foundation::text::editing::Origin::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::Origin
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Origin
+pub enum skene_foundation::text::editing::SelectionEnd
+pub skene_foundation::text::editing::SelectionEnd::End
+pub skene_foundation::text::editing::SelectionEnd::Start
+impl core::clone::Clone for skene_foundation::text::editing::SelectionEnd
+pub fn skene_foundation::text::editing::SelectionEnd::clone(&self) -> skene_foundation::text::editing::SelectionEnd
+impl core::cmp::Eq for skene_foundation::text::editing::SelectionEnd
+impl core::cmp::PartialEq for skene_foundation::text::editing::SelectionEnd
+pub fn skene_foundation::text::editing::SelectionEnd::eq(&self, &skene_foundation::text::editing::SelectionEnd) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::SelectionEnd
+pub fn skene_foundation::text::editing::SelectionEnd::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::SelectionEnd
+pub fn skene_foundation::text::editing::SelectionEnd::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::SelectionEnd
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::SelectionEnd
+pub struct skene_foundation::text::editing::Clause
+pub skene_foundation::text::editing::Clause::range: core::ops::range::Range<usize>
+pub skene_foundation::text::editing::Clause::style: skene_foundation::text::editing::ClauseStyle
+impl core::clone::Clone for skene_foundation::text::editing::Clause
+pub fn skene_foundation::text::editing::Clause::clone(&self) -> skene_foundation::text::editing::Clause
+impl core::cmp::Eq for skene_foundation::text::editing::Clause
+impl core::cmp::PartialEq for skene_foundation::text::editing::Clause
+pub fn skene_foundation::text::editing::Clause::eq(&self, &skene_foundation::text::editing::Clause) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Clause
+pub fn skene_foundation::text::editing::Clause::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Clause
+pub fn skene_foundation::text::editing::Clause::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Clause
+pub struct skene_foundation::text::editing::Composition
+pub skene_foundation::text::editing::Composition::clauses: alloc::vec::Vec<skene_foundation::text::editing::Clause>
+pub skene_foundation::text::editing::Composition::range: core::ops::range::Range<usize>
+impl core::clone::Clone for skene_foundation::text::editing::Composition
+pub fn skene_foundation::text::editing::Composition::clone(&self) -> skene_foundation::text::editing::Composition
+impl core::cmp::Eq for skene_foundation::text::editing::Composition
+impl core::cmp::PartialEq for skene_foundation::text::editing::Composition
+pub fn skene_foundation::text::editing::Composition::eq(&self, &skene_foundation::text::editing::Composition) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Composition
+pub fn skene_foundation::text::editing::Composition::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Composition
+pub struct skene_foundation::text::editing::ControlledText
+impl skene_foundation::text::editing::ControlledText
+pub fn skene_foundation::text::editing::ControlledText::new(impl core::ops::function::Fn() -> skene_foundation::Edit + 'static, impl core::ops::function::FnMut(skene_foundation::Edit) + 'static) -> Self
+impl core::fmt::Debug for skene_foundation::text::editing::ControlledText
+pub fn skene_foundation::text::editing::ControlledText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::text::editing::Arbiter for skene_foundation::text::editing::ControlledText
+pub fn skene_foundation::text::editing::ControlledText::propose(&mut self, &skene_foundation::Edit, bool, bool) -> skene_foundation::Verdict
+pub fn skene_foundation::text::editing::ControlledText::settle(&mut self) -> core::option::Option<skene_foundation::Edit>
+pub struct skene_foundation::text::editing::Editor<E: skene_foundation::text::TextEngine>
+impl<E: skene_foundation::text::TextEngine> skene_foundation::text::editing::Editor<E>
+pub const fn skene_foundation::text::editing::Editor<E>::anchor(&self) -> skene_foundation::text::Position
+pub fn skene_foundation::text::editing::Editor<E>::byte_at(&self, f32, f32) -> usize
+pub fn skene_foundation::text::editing::Editor<E>::caret_rect(&self) -> skene_foundation::Rect<f32>
+pub const fn skene_foundation::text::editing::Editor<E>::composition(&self) -> core::option::Option<&skene_foundation::text::editing::Composition>
+pub fn skene_foundation::text::editing::Editor<E>::count_in(&self, skene_foundation::Unit) -> usize
+pub fn skene_foundation::text::editing::Editor<E>::drag(&mut self, f32, f32) -> bool
+pub const fn skene_foundation::text::editing::Editor<E>::focus(&self) -> skene_foundation::text::Position
+pub const fn skene_foundation::text::editing::Editor<E>::index(&self) -> &skene_foundation::text::TextIndex
+pub fn skene_foundation::text::editing::Editor<E>::index_at(&self, f32, f32, skene_foundation::Unit) -> usize
+pub const fn skene_foundation::text::editing::Editor<E>::is_composing(&self) -> bool
+pub const fn skene_foundation::text::editing::Editor<E>::is_secure(&self) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::laid(&self) -> <<E as skene_foundation::text::TextEngine>::Paragraph as skene_foundation::text::Paragraph>::Laid
+pub fn skene_foundation::text::editing::Editor<E>::marked_range_in(&self, skene_foundation::Unit) -> core::option::Option<core::ops::range::Range<usize>>
+pub fn skene_foundation::text::editing::Editor<E>::move_selection_end(&mut self, skene_foundation::text::editing::SelectionEnd, f32, f32) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::new(E, skene_foundation::text::TextStyle, skene_foundation::text::ParagraphStyle) -> Self
+pub fn skene_foundation::text::editing::Editor<E>::perform(&mut self, skene_foundation::text::editing::Command) -> skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Editor<E>::perform_input(&mut self, skene_foundation::text::editing::Command) -> skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Editor<E>::press(&mut self, f32, f32, u8, bool) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::rect_for(&self, core::ops::range::Range<usize>, skene_foundation::Unit) -> skene_foundation::Rect<f32>
+pub fn skene_foundation::text::editing::Editor<E>::rect_for_bytes(&self, core::ops::range::Range<usize>) -> skene_foundation::Rect<f32>
+pub fn skene_foundation::text::editing::Editor<E>::relayout(&mut self)
+pub fn skene_foundation::text::editing::Editor<E>::replace(&mut self, core::option::Option<core::ops::range::Range<usize>>, &str, skene_foundation::Unit) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::replace_bytes(&mut self, core::option::Option<core::ops::range::Range<usize>>, &str) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::sanitized(&self, &str) -> alloc::string::String
+pub fn skene_foundation::text::editing::Editor<E>::select_bytes(&mut self, usize, usize) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::select_in(&mut self, usize, usize, skene_foundation::Unit) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::selected(&self) -> core::ops::range::Range<usize>
+pub fn skene_foundation::text::editing::Editor<E>::selection(&self) -> skene_foundation::TextSelection
+pub fn skene_foundation::text::editing::Editor<E>::selection_in(&self, skene_foundation::Unit) -> (usize, usize)
+pub fn skene_foundation::text::editing::Editor<E>::selection_rects(&self) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::editing::Editor<E>::set_arbiter(&mut self, impl skene_foundation::text::editing::Arbiter + 'static)
+pub fn skene_foundation::text::editing::Editor<E>::set_marked(&mut self, &str, alloc::vec::Vec<skene_foundation::text::editing::Clause>, core::ops::range::Range<usize>, core::option::Option<core::ops::range::Range<usize>>, skene_foundation::Unit) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::set_marked_bytes(&mut self, &str, alloc::vec::Vec<skene_foundation::text::editing::Clause>, core::ops::range::Range<usize>, core::option::Option<core::ops::range::Range<usize>>) -> bool
+pub const fn skene_foundation::text::editing::Editor<E>::set_multiline(&mut self, bool)
+pub fn skene_foundation::text::editing::Editor<E>::set_notifier(&mut self, impl core::ops::function::FnMut(skene_foundation::text::editing::Notice) + 'static)
+pub fn skene_foundation::text::editing::Editor<E>::set_paragraph_style(&mut self, skene_foundation::text::ParagraphStyle)
+pub const fn skene_foundation::text::editing::Editor<E>::set_read_only(&mut self, bool)
+pub fn skene_foundation::text::editing::Editor<E>::set_secure(&mut self, bool)
+pub fn skene_foundation::text::editing::Editor<E>::set_selection(&mut self, skene_foundation::TextSelection) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::set_style(&mut self, skene_foundation::text::TextStyle)
+pub fn skene_foundation::text::editing::Editor<E>::set_width(&mut self, core::option::Option<f32>)
+pub const fn skene_foundation::text::editing::Editor<E>::style(&self) -> &skene_foundation::text::TextStyle
+pub fn skene_foundation::text::editing::Editor<E>::text(&self) -> &str
+pub fn skene_foundation::text::editing::Editor<E>::text_in(&self, core::ops::range::Range<usize>, skene_foundation::Unit) -> alloc::string::String
+pub fn skene_foundation::text::editing::Editor<E>::unmark(&mut self) -> bool
+pub fn skene_foundation::text::editing::Editor<E>::write(&mut self, &skene_foundation::Edit) -> bool
+impl<E: skene_foundation::text::TextEngine + core::fmt::Debug> core::fmt::Debug for skene_foundation::text::editing::Editor<E>
+pub fn skene_foundation::text::editing::Editor<E>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::text::editing::History
+impl skene_foundation::text::editing::History
+pub const fn skene_foundation::text::editing::History::break_run(&mut self)
+pub fn skene_foundation::text::editing::History::is_empty(&self) -> bool
+pub fn skene_foundation::text::editing::History::push_redo(&mut self, skene_foundation::text::editing::Step)
+pub fn skene_foundation::text::editing::History::push_undo(&mut self, skene_foundation::text::editing::Step)
+pub fn skene_foundation::text::editing::History::record(&mut self, skene_foundation::text::editing::Step, skene_foundation::text::editing::EditKind)
+pub fn skene_foundation::text::editing::History::set_enabled(&mut self, bool)
+pub fn skene_foundation::text::editing::History::take_redo(&mut self) -> core::option::Option<skene_foundation::text::editing::Step>
+pub fn skene_foundation::text::editing::History::take_undo(&mut self) -> core::option::Option<skene_foundation::text::editing::Step>
+impl core::clone::Clone for skene_foundation::text::editing::History
+pub fn skene_foundation::text::editing::History::clone(&self) -> skene_foundation::text::editing::History
+impl core::default::Default for skene_foundation::text::editing::History
+pub fn skene_foundation::text::editing::History::default() -> skene_foundation::text::editing::History
+impl core::fmt::Debug for skene_foundation::text::editing::History
+pub fn skene_foundation::text::editing::History::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::text::editing::Notice
+pub skene_foundation::text::editing::Notice::marked: bool
+pub skene_foundation::text::editing::Notice::origin: skene_foundation::text::editing::Origin
+pub skene_foundation::text::editing::Notice::restart: bool
+pub skene_foundation::text::editing::Notice::selection: bool
+pub skene_foundation::text::editing::Notice::text: bool
+impl core::clone::Clone for skene_foundation::text::editing::Notice
+pub fn skene_foundation::text::editing::Notice::clone(&self) -> skene_foundation::text::editing::Notice
+impl core::cmp::Eq for skene_foundation::text::editing::Notice
+impl core::cmp::PartialEq for skene_foundation::text::editing::Notice
+pub fn skene_foundation::text::editing::Notice::eq(&self, &skene_foundation::text::editing::Notice) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Notice
+pub fn skene_foundation::text::editing::Notice::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Notice
+pub fn skene_foundation::text::editing::Notice::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::Notice
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Notice
+pub struct skene_foundation::text::editing::Outcome
+pub skene_foundation::text::editing::Outcome::clipboard: core::option::Option<alloc::string::String>
+pub skene_foundation::text::editing::Outcome::handled: bool
+impl skene_foundation::text::editing::Outcome
+pub const skene_foundation::text::editing::Outcome::HANDLED: Self
+pub const skene_foundation::text::editing::Outcome::IGNORED: Self
+pub const fn skene_foundation::text::editing::Outcome::handled(bool) -> Self
+impl core::clone::Clone for skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Outcome::clone(&self) -> skene_foundation::text::editing::Outcome
+impl core::cmp::Eq for skene_foundation::text::editing::Outcome
+impl core::cmp::PartialEq for skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Outcome::eq(&self, &skene_foundation::text::editing::Outcome) -> bool
+impl core::default::Default for skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Outcome::default() -> skene_foundation::text::editing::Outcome
+impl core::fmt::Debug for skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Outcome::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Outcome
+pub fn skene_foundation::text::editing::Outcome::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Outcome
+pub struct skene_foundation::text::editing::Step
+pub skene_foundation::text::editing::Step::anchor: skene_foundation::text::Position
+pub skene_foundation::text::editing::Step::focus: skene_foundation::text::Position
+pub skene_foundation::text::editing::Step::text: alloc::string::String
+impl core::clone::Clone for skene_foundation::text::editing::Step
+pub fn skene_foundation::text::editing::Step::clone(&self) -> skene_foundation::text::editing::Step
+impl core::cmp::Eq for skene_foundation::text::editing::Step
+impl core::cmp::PartialEq for skene_foundation::text::editing::Step
+pub fn skene_foundation::text::editing::Step::eq(&self, &skene_foundation::text::editing::Step) -> bool
+impl core::fmt::Debug for skene_foundation::text::editing::Step
+pub fn skene_foundation::text::editing::Step::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Step
+pub trait skene_foundation::text::editing::Arbiter
+pub fn skene_foundation::text::editing::Arbiter::propose(&mut self, &skene_foundation::Edit, bool, bool) -> skene_foundation::Verdict
+pub fn skene_foundation::text::editing::Arbiter::settle(&mut self) -> core::option::Option<skene_foundation::Edit>
+impl skene_foundation::text::editing::Arbiter for skene_foundation::text::editing::ControlledText
+pub fn skene_foundation::text::editing::ControlledText::propose(&mut self, &skene_foundation::Edit, bool, bool) -> skene_foundation::Verdict
+pub fn skene_foundation::text::editing::ControlledText::settle(&mut self) -> core::option::Option<skene_foundation::Edit>
+pub enum skene_foundation::text::Affinity
+pub skene_foundation::text::Affinity::Downstream
+pub skene_foundation::text::Affinity::Upstream
+impl core::clone::Clone for skene_foundation::text::Affinity
+pub fn skene_foundation::text::Affinity::clone(&self) -> skene_foundation::text::Affinity
+impl core::cmp::Eq for skene_foundation::text::Affinity
+impl core::cmp::PartialEq for skene_foundation::text::Affinity
+pub fn skene_foundation::text::Affinity::eq(&self, &skene_foundation::text::Affinity) -> bool
+impl core::default::Default for skene_foundation::text::Affinity
+pub fn skene_foundation::text::Affinity::default() -> skene_foundation::text::Affinity
+impl core::fmt::Debug for skene_foundation::text::Affinity
+pub fn skene_foundation::text::Affinity::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::Affinity
+pub fn skene_foundation::text::Affinity::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::Affinity
+impl core::marker::StructuralPartialEq for skene_foundation::text::Affinity
+pub enum skene_foundation::text::BaseDirection
+pub skene_foundation::text::BaseDirection::Auto
+pub skene_foundation::text::BaseDirection::LeftToRight
+pub skene_foundation::text::BaseDirection::RightToLeft
+impl core::clone::Clone for skene_foundation::text::BaseDirection
+pub fn skene_foundation::text::BaseDirection::clone(&self) -> skene_foundation::text::BaseDirection
+impl core::cmp::Eq for skene_foundation::text::BaseDirection
+impl core::cmp::PartialEq for skene_foundation::text::BaseDirection
+pub fn skene_foundation::text::BaseDirection::eq(&self, &skene_foundation::text::BaseDirection) -> bool
+impl core::default::Default for skene_foundation::text::BaseDirection
+pub fn skene_foundation::text::BaseDirection::default() -> skene_foundation::text::BaseDirection
+impl core::fmt::Debug for skene_foundation::text::BaseDirection
+pub fn skene_foundation::text::BaseDirection::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::BaseDirection
+pub fn skene_foundation::text::BaseDirection::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::BaseDirection
+impl core::marker::StructuralPartialEq for skene_foundation::text::BaseDirection
+pub enum skene_foundation::text::Direction
+pub skene_foundation::text::Direction::Backward
+pub skene_foundation::text::Direction::Forward
+impl core::clone::Clone for skene_foundation::text::Direction
+pub fn skene_foundation::text::Direction::clone(&self) -> skene_foundation::text::Direction
+impl core::cmp::Eq for skene_foundation::text::Direction
+impl core::cmp::PartialEq for skene_foundation::text::Direction
+pub fn skene_foundation::text::Direction::eq(&self, &skene_foundation::text::Direction) -> bool
+impl core::fmt::Debug for skene_foundation::text::Direction
+pub fn skene_foundation::text::Direction::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::Direction
+pub fn skene_foundation::text::Direction::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::Direction
+impl core::marker::StructuralPartialEq for skene_foundation::text::Direction
+pub enum skene_foundation::text::FontFamily
+pub skene_foundation::text::FontFamily::Monospace
+pub skene_foundation::text::FontFamily::Named(alloc::rc::Rc<str>)
+pub skene_foundation::text::FontFamily::System
+impl core::clone::Clone for skene_foundation::text::FontFamily
+pub fn skene_foundation::text::FontFamily::clone(&self) -> skene_foundation::text::FontFamily
+impl core::cmp::Eq for skene_foundation::text::FontFamily
+impl core::cmp::PartialEq for skene_foundation::text::FontFamily
+pub fn skene_foundation::text::FontFamily::eq(&self, &skene_foundation::text::FontFamily) -> bool
+impl core::default::Default for skene_foundation::text::FontFamily
+pub fn skene_foundation::text::FontFamily::default() -> skene_foundation::text::FontFamily
+impl core::fmt::Debug for skene_foundation::text::FontFamily
+pub fn skene_foundation::text::FontFamily::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::FontFamily
+pub fn skene_foundation::text::FontFamily::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::text::FontFamily
+pub enum skene_foundation::text::FontSlant
+pub skene_foundation::text::FontSlant::Italic
+pub skene_foundation::text::FontSlant::Upright
+impl core::clone::Clone for skene_foundation::text::FontSlant
+pub fn skene_foundation::text::FontSlant::clone(&self) -> skene_foundation::text::FontSlant
+impl core::cmp::Eq for skene_foundation::text::FontSlant
+impl core::cmp::PartialEq for skene_foundation::text::FontSlant
+pub fn skene_foundation::text::FontSlant::eq(&self, &skene_foundation::text::FontSlant) -> bool
+impl core::default::Default for skene_foundation::text::FontSlant
+pub fn skene_foundation::text::FontSlant::default() -> skene_foundation::text::FontSlant
+impl core::fmt::Debug for skene_foundation::text::FontSlant
+pub fn skene_foundation::text::FontSlant::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::FontSlant
+pub fn skene_foundation::text::FontSlant::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::FontSlant
+impl core::marker::StructuralPartialEq for skene_foundation::text::FontSlant
+pub enum skene_foundation::text::LineHeight
+pub skene_foundation::text::LineHeight::Absolute(f32)
+pub skene_foundation::text::LineHeight::Factor(f32)
+pub skene_foundation::text::LineHeight::Normal
+impl core::clone::Clone for skene_foundation::text::LineHeight
+pub fn skene_foundation::text::LineHeight::clone(&self) -> skene_foundation::text::LineHeight
+impl core::cmp::PartialEq for skene_foundation::text::LineHeight
+pub fn skene_foundation::text::LineHeight::eq(&self, &skene_foundation::text::LineHeight) -> bool
+impl core::default::Default for skene_foundation::text::LineHeight
+pub fn skene_foundation::text::LineHeight::default() -> skene_foundation::text::LineHeight
+impl core::fmt::Debug for skene_foundation::text::LineHeight
+pub fn skene_foundation::text::LineHeight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::LineHeight
+impl core::marker::StructuralPartialEq for skene_foundation::text::LineHeight
+pub enum skene_foundation::text::Round
+pub skene_foundation::text::Round::Down
+pub skene_foundation::text::Round::Up
+impl core::clone::Clone for skene_foundation::text::Round
+pub fn skene_foundation::text::Round::clone(&self) -> skene_foundation::text::Round
+impl core::cmp::Eq for skene_foundation::text::Round
+impl core::cmp::PartialEq for skene_foundation::text::Round
+pub fn skene_foundation::text::Round::eq(&self, &skene_foundation::text::Round) -> bool
+impl core::fmt::Debug for skene_foundation::text::Round
+pub fn skene_foundation::text::Round::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::Round
+pub fn skene_foundation::text::Round::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::Round
+impl core::marker::StructuralPartialEq for skene_foundation::text::Round
+pub enum skene_foundation::text::Space
+pub skene_foundation::text::Space::Definite(f32)
+pub skene_foundation::text::Space::MaxContent
+pub skene_foundation::text::Space::MinContent
+impl core::clone::Clone for skene_foundation::text::Space
+pub fn skene_foundation::text::Space::clone(&self) -> skene_foundation::text::Space
+impl core::cmp::PartialEq for skene_foundation::text::Space
+pub fn skene_foundation::text::Space::eq(&self, &skene_foundation::text::Space) -> bool
+impl core::fmt::Debug for skene_foundation::text::Space
+pub fn skene_foundation::text::Space::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::Space
+impl core::marker::StructuralPartialEq for skene_foundation::text::Space
+pub enum skene_foundation::text::TextAlignment
+pub skene_foundation::text::TextAlignment::Center
+pub skene_foundation::text::TextAlignment::End
+pub skene_foundation::text::TextAlignment::Left
+pub skene_foundation::text::TextAlignment::Right
+pub skene_foundation::text::TextAlignment::Start
+impl core::clone::Clone for skene_foundation::text::TextAlignment
+pub fn skene_foundation::text::TextAlignment::clone(&self) -> skene_foundation::text::TextAlignment
+impl core::cmp::Eq for skene_foundation::text::TextAlignment
+impl core::cmp::PartialEq for skene_foundation::text::TextAlignment
+pub fn skene_foundation::text::TextAlignment::eq(&self, &skene_foundation::text::TextAlignment) -> bool
+impl core::default::Default for skene_foundation::text::TextAlignment
+pub fn skene_foundation::text::TextAlignment::default() -> skene_foundation::text::TextAlignment
+impl core::fmt::Debug for skene_foundation::text::TextAlignment
+pub fn skene_foundation::text::TextAlignment::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::TextAlignment
+pub fn skene_foundation::text::TextAlignment::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::TextAlignment
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextAlignment
+pub enum skene_foundation::text::TextBoundary
+pub skene_foundation::text::TextBoundary::Grapheme
+pub skene_foundation::text::TextBoundary::Paragraph
+pub skene_foundation::text::TextBoundary::Text
+pub skene_foundation::text::TextBoundary::Word
+impl core::clone::Clone for skene_foundation::text::TextBoundary
+pub fn skene_foundation::text::TextBoundary::clone(&self) -> skene_foundation::text::TextBoundary
+impl core::cmp::Eq for skene_foundation::text::TextBoundary
+impl core::cmp::PartialEq for skene_foundation::text::TextBoundary
+pub fn skene_foundation::text::TextBoundary::eq(&self, &skene_foundation::text::TextBoundary) -> bool
+impl core::fmt::Debug for skene_foundation::text::TextBoundary
+pub fn skene_foundation::text::TextBoundary::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::TextBoundary
+pub fn skene_foundation::text::TextBoundary::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::TextBoundary
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextBoundary
+pub enum skene_foundation::text::TextWrap
+pub skene_foundation::text::TextWrap::None
+pub skene_foundation::text::TextWrap::Words
+impl core::clone::Clone for skene_foundation::text::TextWrap
+pub fn skene_foundation::text::TextWrap::clone(&self) -> skene_foundation::text::TextWrap
+impl core::cmp::Eq for skene_foundation::text::TextWrap
+impl core::cmp::PartialEq for skene_foundation::text::TextWrap
+pub fn skene_foundation::text::TextWrap::eq(&self, &skene_foundation::text::TextWrap) -> bool
+impl core::default::Default for skene_foundation::text::TextWrap
+pub fn skene_foundation::text::TextWrap::default() -> skene_foundation::text::TextWrap
+impl core::fmt::Debug for skene_foundation::text::TextWrap
+pub fn skene_foundation::text::TextWrap::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::TextWrap
+pub fn skene_foundation::text::TextWrap::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::TextWrap
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextWrap
+pub enum skene_foundation::text::VisualMove
+pub skene_foundation::text::VisualMove::Left
+pub skene_foundation::text::VisualMove::LineEnd
+pub skene_foundation::text::VisualMove::LineStart
+pub skene_foundation::text::VisualMove::Right
+pub skene_foundation::text::VisualMove::WordLeft
+pub skene_foundation::text::VisualMove::WordRight
+impl core::clone::Clone for skene_foundation::text::VisualMove
+pub fn skene_foundation::text::VisualMove::clone(&self) -> skene_foundation::text::VisualMove
+impl core::cmp::Eq for skene_foundation::text::VisualMove
+impl core::cmp::PartialEq for skene_foundation::text::VisualMove
+pub fn skene_foundation::text::VisualMove::eq(&self, &skene_foundation::text::VisualMove) -> bool
+impl core::fmt::Debug for skene_foundation::text::VisualMove
+pub fn skene_foundation::text::VisualMove::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::VisualMove
+pub fn skene_foundation::text::VisualMove::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::VisualMove
+impl core::marker::StructuralPartialEq for skene_foundation::text::VisualMove
+pub struct skene_foundation::text::AttributedText
+impl skene_foundation::text::AttributedText
+pub const fn skene_foundation::text::AttributedText::base(&self) -> &skene_foundation::text::TextStyle
+pub fn skene_foundation::text::AttributedText::boxes(&self) -> &[skene_foundation::text::InlineBox]
+pub fn skene_foundation::text::AttributedText::new(impl core::convert::Into<alloc::rc::Rc<str>>, skene_foundation::text::TextStyle, alloc::vec::Vec<skene_foundation::text::TextRun>) -> Self
+pub fn skene_foundation::text::AttributedText::plain(impl core::convert::Into<alloc::rc::Rc<str>>, skene_foundation::text::TextStyle) -> Self
+pub fn skene_foundation::text::AttributedText::runs(&self) -> &[skene_foundation::text::TextRun]
+pub fn skene_foundation::text::AttributedText::shared_value(&self) -> alloc::rc::Rc<str>
+pub fn skene_foundation::text::AttributedText::spans(&self) -> alloc::vec::Vec<(core::ops::range::Range<usize>, &skene_foundation::text::TextStyle)>
+pub fn skene_foundation::text::AttributedText::value(&self) -> &str
+pub fn skene_foundation::text::AttributedText::with_boxes(self, alloc::vec::Vec<skene_foundation::text::InlineBox>) -> Self
+impl core::clone::Clone for skene_foundation::text::AttributedText
+pub fn skene_foundation::text::AttributedText::clone(&self) -> skene_foundation::text::AttributedText
+impl core::cmp::PartialEq for skene_foundation::text::AttributedText
+pub fn skene_foundation::text::AttributedText::eq(&self, &skene_foundation::text::AttributedText) -> bool
+impl core::fmt::Debug for skene_foundation::text::AttributedText
+pub fn skene_foundation::text::AttributedText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::AttributedText
+pub struct skene_foundation::text::Caret
+pub skene_foundation::text::Caret::height: f32
+pub skene_foundation::text::Caret::right_to_left: bool
+pub skene_foundation::text::Caret::x: f32
+pub skene_foundation::text::Caret::y: f32
+impl skene_foundation::text::Caret
+pub const fn skene_foundation::text::Caret::rect(&self) -> skene_foundation::Rect<f32>
+impl core::clone::Clone for skene_foundation::text::Caret
+pub fn skene_foundation::text::Caret::clone(&self) -> skene_foundation::text::Caret
+impl core::cmp::PartialEq for skene_foundation::text::Caret
+pub fn skene_foundation::text::Caret::eq(&self, &skene_foundation::text::Caret) -> bool
+impl core::default::Default for skene_foundation::text::Caret
+pub fn skene_foundation::text::Caret::default() -> skene_foundation::text::Caret
+impl core::fmt::Debug for skene_foundation::text::Caret
+pub fn skene_foundation::text::Caret::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::Caret
+impl core::marker::StructuralPartialEq for skene_foundation::text::Caret
+pub struct skene_foundation::text::Carets
+pub skene_foundation::text::Carets::primary: skene_foundation::text::Caret
+pub skene_foundation::text::Carets::secondary: core::option::Option<skene_foundation::text::Caret>
+impl core::clone::Clone for skene_foundation::text::Carets
+pub fn skene_foundation::text::Carets::clone(&self) -> skene_foundation::text::Carets
+impl core::cmp::PartialEq for skene_foundation::text::Carets
+pub fn skene_foundation::text::Carets::eq(&self, &skene_foundation::text::Carets) -> bool
+impl core::default::Default for skene_foundation::text::Carets
+pub fn skene_foundation::text::Carets::default() -> skene_foundation::text::Carets
+impl core::fmt::Debug for skene_foundation::text::Carets
+pub fn skene_foundation::text::Carets::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::Carets
+impl core::marker::StructuralPartialEq for skene_foundation::text::Carets
+pub struct skene_foundation::text::DecorationLine
+pub skene_foundation::text::DecorationLine::color: skene_foundation::Color
+pub skene_foundation::text::DecorationLine::style: skene_foundation::TextDecorationStyle
+pub skene_foundation::text::DecorationLine::thickness: f32
+pub skene_foundation::text::DecorationLine::width: f32
+pub skene_foundation::text::DecorationLine::x: f32
+pub skene_foundation::text::DecorationLine::y: f32
+impl core::clone::Clone for skene_foundation::text::DecorationLine
+pub fn skene_foundation::text::DecorationLine::clone(&self) -> skene_foundation::text::DecorationLine
+impl core::cmp::PartialEq for skene_foundation::text::DecorationLine
+pub fn skene_foundation::text::DecorationLine::eq(&self, &skene_foundation::text::DecorationLine) -> bool
+impl core::fmt::Debug for skene_foundation::text::DecorationLine
+pub fn skene_foundation::text::DecorationLine::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::DecorationLine
+impl core::marker::StructuralPartialEq for skene_foundation::text::DecorationLine
+pub struct skene_foundation::text::FontWeight(pub f32)
+impl skene_foundation::text::FontWeight
+pub const skene_foundation::text::FontWeight::BOLD: Self
+pub const skene_foundation::text::FontWeight::MEDIUM: Self
+pub const skene_foundation::text::FontWeight::REGULAR: Self
+pub const skene_foundation::text::FontWeight::SEMIBOLD: Self
+impl core::clone::Clone for skene_foundation::text::FontWeight
+pub fn skene_foundation::text::FontWeight::clone(&self) -> skene_foundation::text::FontWeight
+impl core::cmp::PartialEq for skene_foundation::text::FontWeight
+pub fn skene_foundation::text::FontWeight::eq(&self, &skene_foundation::text::FontWeight) -> bool
+impl core::default::Default for skene_foundation::text::FontWeight
+pub fn skene_foundation::text::FontWeight::default() -> Self
+impl core::fmt::Debug for skene_foundation::text::FontWeight
+pub fn skene_foundation::text::FontWeight::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::FontWeight
+impl core::marker::StructuralPartialEq for skene_foundation::text::FontWeight
+pub struct skene_foundation::text::Hit
+pub skene_foundation::text::Hit::inside: bool
+pub skene_foundation::text::Hit::position: skene_foundation::text::Position
+impl core::clone::Clone for skene_foundation::text::Hit
+pub fn skene_foundation::text::Hit::clone(&self) -> skene_foundation::text::Hit
+impl core::cmp::Eq for skene_foundation::text::Hit
+impl core::cmp::PartialEq for skene_foundation::text::Hit
+pub fn skene_foundation::text::Hit::eq(&self, &skene_foundation::text::Hit) -> bool
+impl core::fmt::Debug for skene_foundation::text::Hit
+pub fn skene_foundation::text::Hit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::Hit
+pub fn skene_foundation::text::Hit::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::Hit
+impl core::marker::StructuralPartialEq for skene_foundation::text::Hit
+pub struct skene_foundation::text::InlineBox
+pub skene_foundation::text::InlineBox::height: f32
+pub skene_foundation::text::InlineBox::index: usize
+pub skene_foundation::text::InlineBox::width: f32
+impl skene_foundation::text::InlineBox
+pub const fn skene_foundation::text::InlineBox::new(usize, f32, f32) -> Self
+impl core::clone::Clone for skene_foundation::text::InlineBox
+pub fn skene_foundation::text::InlineBox::clone(&self) -> skene_foundation::text::InlineBox
+impl core::cmp::PartialEq for skene_foundation::text::InlineBox
+pub fn skene_foundation::text::InlineBox::eq(&self, &skene_foundation::text::InlineBox) -> bool
+impl core::fmt::Debug for skene_foundation::text::InlineBox
+pub fn skene_foundation::text::InlineBox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::InlineBox
+impl core::marker::StructuralPartialEq for skene_foundation::text::InlineBox
+pub struct skene_foundation::text::Intrinsic
+pub skene_foundation::text::Intrinsic::max: f32
+pub skene_foundation::text::Intrinsic::min: f32
+impl core::clone::Clone for skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::Intrinsic::clone(&self) -> skene_foundation::text::Intrinsic
+impl core::cmp::PartialEq for skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::Intrinsic::eq(&self, &skene_foundation::text::Intrinsic) -> bool
+impl core::default::Default for skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::Intrinsic::default() -> skene_foundation::text::Intrinsic
+impl core::fmt::Debug for skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::Intrinsic::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::Intrinsic
+impl core::marker::StructuralPartialEq for skene_foundation::text::Intrinsic
+pub struct skene_foundation::text::LeafMeasure
+pub skene_foundation::text::LeafMeasure::first_baseline: core::option::Option<f32>
+pub skene_foundation::text::LeafMeasure::height: f32
+pub skene_foundation::text::LeafMeasure::last_baseline: core::option::Option<f32>
+pub skene_foundation::text::LeafMeasure::width: f32
+impl core::clone::Clone for skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::LeafMeasure::clone(&self) -> skene_foundation::text::LeafMeasure
+impl core::cmp::PartialEq for skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::LeafMeasure::eq(&self, &skene_foundation::text::LeafMeasure) -> bool
+impl core::default::Default for skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::LeafMeasure::default() -> skene_foundation::text::LeafMeasure
+impl core::fmt::Debug for skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::LeafMeasure::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::LeafMeasure
+impl core::marker::StructuralPartialEq for skene_foundation::text::LeafMeasure
+pub struct skene_foundation::text::LineInfo
+pub skene_foundation::text::LineInfo::baseline: f32
+pub skene_foundation::text::LineInfo::hard_break: bool
+pub skene_foundation::text::LineInfo::height: f32
+pub skene_foundation::text::LineInfo::left: f32
+pub skene_foundation::text::LineInfo::range: core::ops::range::Range<usize>
+pub skene_foundation::text::LineInfo::top: f32
+pub skene_foundation::text::LineInfo::width: f32
+impl core::clone::Clone for skene_foundation::text::LineInfo
+pub fn skene_foundation::text::LineInfo::clone(&self) -> skene_foundation::text::LineInfo
+impl core::cmp::PartialEq for skene_foundation::text::LineInfo
+pub fn skene_foundation::text::LineInfo::eq(&self, &skene_foundation::text::LineInfo) -> bool
+impl core::default::Default for skene_foundation::text::LineInfo
+pub fn skene_foundation::text::LineInfo::default() -> skene_foundation::text::LineInfo
+impl core::fmt::Debug for skene_foundation::text::LineInfo
+pub fn skene_foundation::text::LineInfo::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::LineInfo
+pub struct skene_foundation::text::Made<P>
+pub skene_foundation::text::Made::paragraph: P
+pub skene_foundation::text::Made::style: skene_foundation::text::ParagraphStyle
+pub skene_foundation::text::Made::text: skene_foundation::text::AttributedText
+impl<P: core::fmt::Debug> core::fmt::Debug for skene_foundation::text::Made<P>
+pub fn skene_foundation::text::Made<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::text::MaskState
+impl skene_foundation::text::MaskState
+pub const fn skene_foundation::text::MaskState::is_masked(&self) -> bool
+pub const fn skene_foundation::text::MaskState::mark(&self) -> char
+pub const fn skene_foundation::text::MaskState::new(char) -> Self
+pub fn skene_foundation::text::MaskState::reveal(&self, core::option::Option<usize>)
+pub const fn skene_foundation::text::MaskState::revealed(&self) -> core::option::Option<usize>
+pub fn skene_foundation::text::MaskState::set_mark(&self, char)
+pub fn skene_foundation::text::MaskState::set_masked(&self, bool)
+pub fn skene_foundation::text::MaskState::shown(&self, &str) -> alloc::string::String
+impl core::fmt::Debug for skene_foundation::text::MaskState
+pub fn skene_foundation::text::MaskState::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::text::Substitute for skene_foundation::text::MaskState
+pub fn skene_foundation::text::MaskState::hides_words(&self) -> bool
+pub fn skene_foundation::text::MaskState::is_active(&self) -> bool
+pub fn skene_foundation::text::MaskState::substitute(&self, &str, usize) -> core::option::Option<char>
+pub struct skene_foundation::text::PaintStyle
+pub skene_foundation::text::PaintStyle::color: skene_foundation::Color
+pub skene_foundation::text::PaintStyle::decoration: skene_foundation::TextDecoration
+pub skene_foundation::text::PaintStyle::decoration_color: core::option::Option<skene_foundation::Color>
+pub skene_foundation::text::PaintStyle::decoration_style: skene_foundation::TextDecorationStyle
+impl skene_foundation::text::PaintStyle
+pub const fn skene_foundation::text::PaintStyle::line_color(&self) -> skene_foundation::Color
+pub const fn skene_foundation::text::PaintStyle::new(skene_foundation::Color) -> Self
+pub const fn skene_foundation::text::PaintStyle::with_decoration(self, skene_foundation::TextDecoration, skene_foundation::TextDecorationStyle) -> Self
+impl core::clone::Clone for skene_foundation::text::PaintStyle
+pub fn skene_foundation::text::PaintStyle::clone(&self) -> skene_foundation::text::PaintStyle
+impl core::cmp::PartialEq for skene_foundation::text::PaintStyle
+pub fn skene_foundation::text::PaintStyle::eq(&self, &skene_foundation::text::PaintStyle) -> bool
+impl core::default::Default for skene_foundation::text::PaintStyle
+pub fn skene_foundation::text::PaintStyle::default() -> Self
+impl core::fmt::Debug for skene_foundation::text::PaintStyle
+pub fn skene_foundation::text::PaintStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::PaintStyle
+pub fn skene_foundation::text::PaintStyle::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::PaintStyle
+impl core::marker::StructuralPartialEq for skene_foundation::text::PaintStyle
+pub struct skene_foundation::text::ParagraphStyle
+pub skene_foundation::text::ParagraphStyle::alignment: skene_foundation::text::TextAlignment
+pub skene_foundation::text::ParagraphStyle::direction: skene_foundation::text::BaseDirection
+pub skene_foundation::text::ParagraphStyle::ellipsis: bool
+pub skene_foundation::text::ParagraphStyle::line_height: skene_foundation::text::LineHeight
+pub skene_foundation::text::ParagraphStyle::max_lines: core::option::Option<u32>
+pub skene_foundation::text::ParagraphStyle::wrap: skene_foundation::text::TextWrap
+impl skene_foundation::text::ParagraphStyle
+pub const fn skene_foundation::text::ParagraphStyle::with_alignment(self, skene_foundation::text::TextAlignment) -> Self
+pub const fn skene_foundation::text::ParagraphStyle::with_direction(self, skene_foundation::text::BaseDirection) -> Self
+pub const fn skene_foundation::text::ParagraphStyle::with_line_height(self, skene_foundation::text::LineHeight) -> Self
+pub const fn skene_foundation::text::ParagraphStyle::with_max_lines(self, u32) -> Self
+pub const fn skene_foundation::text::ParagraphStyle::with_wrap(self, skene_foundation::text::TextWrap) -> Self
+impl core::clone::Clone for skene_foundation::text::ParagraphStyle
+pub fn skene_foundation::text::ParagraphStyle::clone(&self) -> skene_foundation::text::ParagraphStyle
+impl core::cmp::PartialEq for skene_foundation::text::ParagraphStyle
+pub fn skene_foundation::text::ParagraphStyle::eq(&self, &skene_foundation::text::ParagraphStyle) -> bool
+impl core::default::Default for skene_foundation::text::ParagraphStyle
+pub fn skene_foundation::text::ParagraphStyle::default() -> skene_foundation::text::ParagraphStyle
+impl core::fmt::Debug for skene_foundation::text::ParagraphStyle
+pub fn skene_foundation::text::ParagraphStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::ParagraphStyle
+impl core::marker::StructuralPartialEq for skene_foundation::text::ParagraphStyle
+pub struct skene_foundation::text::Position
+pub skene_foundation::text::Position::affinity: skene_foundation::text::Affinity
+pub skene_foundation::text::Position::index: usize
+impl skene_foundation::text::Position
+pub const fn skene_foundation::text::Position::new(usize) -> Self
+pub const fn skene_foundation::text::Position::with(usize, skene_foundation::text::Affinity) -> Self
+impl core::clone::Clone for skene_foundation::text::Position
+pub fn skene_foundation::text::Position::clone(&self) -> skene_foundation::text::Position
+impl core::cmp::Eq for skene_foundation::text::Position
+impl core::cmp::PartialEq for skene_foundation::text::Position
+pub fn skene_foundation::text::Position::eq(&self, &skene_foundation::text::Position) -> bool
+impl core::default::Default for skene_foundation::text::Position
+pub fn skene_foundation::text::Position::default() -> skene_foundation::text::Position
+impl core::fmt::Debug for skene_foundation::text::Position
+pub fn skene_foundation::text::Position::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::Position
+pub fn skene_foundation::text::Position::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::Position
+impl core::marker::StructuralPartialEq for skene_foundation::text::Position
+pub struct skene_foundation::text::RunExtent
+pub skene_foundation::text::RunExtent::ascent: f32
+pub skene_foundation::text::RunExtent::baseline: f32
+pub skene_foundation::text::RunExtent::descent: f32
+pub skene_foundation::text::RunExtent::line: usize
+pub skene_foundation::text::RunExtent::paint: skene_foundation::text::PaintStyle
+pub skene_foundation::text::RunExtent::range: core::ops::range::Range<usize>
+pub skene_foundation::text::RunExtent::strikethrough_offset: f32
+pub skene_foundation::text::RunExtent::strikethrough_thickness: f32
+pub skene_foundation::text::RunExtent::underline_offset: f32
+pub skene_foundation::text::RunExtent::underline_thickness: f32
+pub skene_foundation::text::RunExtent::width: f32
+pub skene_foundation::text::RunExtent::x: f32
+impl skene_foundation::text::RunExtent
+pub fn skene_foundation::text::RunExtent::decoration_lines(&self) -> alloc::vec::Vec<skene_foundation::text::DecorationLine>
+impl core::clone::Clone for skene_foundation::text::RunExtent
+pub fn skene_foundation::text::RunExtent::clone(&self) -> skene_foundation::text::RunExtent
+impl core::cmp::PartialEq for skene_foundation::text::RunExtent
+pub fn skene_foundation::text::RunExtent::eq(&self, &skene_foundation::text::RunExtent) -> bool
+impl core::fmt::Debug for skene_foundation::text::RunExtent
+pub fn skene_foundation::text::RunExtent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::RunExtent
+pub struct skene_foundation::text::Segments<'a>
+impl<'a> skene_foundation::text::Segments<'a>
+pub fn skene_foundation::text::Segments<'a>::boundary(self, &skene_foundation::text::TextIndex, usize, skene_foundation::text::TextBoundary, skene_foundation::text::Direction) -> usize
+pub const fn skene_foundation::text::Segments<'a>::new(&'a str) -> Self
+pub fn skene_foundation::text::Segments<'a>::paragraph_around(self, usize) -> core::ops::range::Range<usize>
+pub fn skene_foundation::text::Segments<'a>::word_after(self, usize) -> usize
+pub fn skene_foundation::text::Segments<'a>::word_around(self, usize) -> core::ops::range::Range<usize>
+pub fn skene_foundation::text::Segments<'a>::word_before(self, usize) -> usize
+impl<'a> core::clone::Clone for skene_foundation::text::Segments<'a>
+pub fn skene_foundation::text::Segments<'a>::clone(&self) -> skene_foundation::text::Segments<'a>
+impl<'a> core::fmt::Debug for skene_foundation::text::Segments<'a>
+pub fn skene_foundation::text::Segments<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<'a> core::marker::Copy for skene_foundation::text::Segments<'a>
+pub struct skene_foundation::text::Substituted<E, S>
+impl<E, S> skene_foundation::text::Substituted<E, S>
+pub const fn skene_foundation::text::Substituted<E, S>::inner(&self) -> &E
+pub const fn skene_foundation::text::Substituted<E, S>::new(E, S) -> Self
+pub const fn skene_foundation::text::Substituted<E, S>::substitute(&self) -> &S
+impl<E: core::clone::Clone, S: core::clone::Clone> core::clone::Clone for skene_foundation::text::Substituted<E, S>
+pub fn skene_foundation::text::Substituted<E, S>::clone(&self) -> skene_foundation::text::Substituted<E, S>
+impl<E: core::fmt::Debug, S: core::fmt::Debug> core::fmt::Debug for skene_foundation::text::Substituted<E, S>
+pub fn skene_foundation::text::Substituted<E, S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<E: skene_foundation::text::TextEngine, S: skene_foundation::text::Substitute> skene_foundation::text::TextEngine for skene_foundation::text::Substituted<E, S>
+pub type skene_foundation::text::Substituted<E, S>::Paragraph = skene_foundation::text::SubstitutedParagraph<<E as skene_foundation::text::TextEngine>::Paragraph>
+pub fn skene_foundation::text::Substituted<E, S>::paragraph(&self, &skene_foundation::text::AttributedText, &skene_foundation::text::ParagraphStyle) -> Self::Paragraph
+pub fn skene_foundation::text::Substituted<E, S>::paragraphs(&self, impl core::iter::traits::collect::IntoIterator<Item = (skene_foundation::text::AttributedText, skene_foundation::text::ParagraphStyle)>) -> alloc::vec::Vec<skene_foundation::text::Made<Self::Paragraph>>
+pub struct skene_foundation::text::SubstitutedLaid<L>
+impl<L> skene_foundation::text::SubstitutedLaid<L>
+pub const fn skene_foundation::text::SubstitutedLaid<L>::inner(&self) -> &L
+pub const fn skene_foundation::text::SubstitutedLaid<L>::is_substituted(&self) -> bool
+pub fn skene_foundation::text::SubstitutedLaid<L>::real_index(&self, usize) -> usize
+pub fn skene_foundation::text::SubstitutedLaid<L>::shown_index(&self, usize) -> usize
+impl<L: core::clone::Clone> core::clone::Clone for skene_foundation::text::SubstitutedLaid<L>
+pub fn skene_foundation::text::SubstitutedLaid<L>::clone(&self) -> skene_foundation::text::SubstitutedLaid<L>
+impl<L: core::fmt::Debug> core::fmt::Debug for skene_foundation::text::SubstitutedLaid<L>
+pub fn skene_foundation::text::SubstitutedLaid<L>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<L: skene_foundation::text::Laid> skene_foundation::text::Laid for skene_foundation::text::SubstitutedLaid<L>
+pub fn skene_foundation::text::SubstitutedLaid<L>::caret(&self, skene_foundation::text::Position) -> skene_foundation::text::Carets
+pub fn skene_foundation::text::SubstitutedLaid<L>::first_baseline(&self) -> f32
+pub fn skene_foundation::text::SubstitutedLaid<L>::hit_test(&self, f32, f32) -> skene_foundation::text::Hit
+pub fn skene_foundation::text::SubstitutedLaid<L>::inline_boxes(&self) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::SubstitutedLaid<L>::last_baseline(&self) -> f32
+pub fn skene_foundation::text::SubstitutedLaid<L>::line_count(&self) -> usize
+pub fn skene_foundation::text::SubstitutedLaid<L>::lines(&self) -> alloc::vec::Vec<skene_foundation::text::LineInfo>
+pub fn skene_foundation::text::SubstitutedLaid<L>::move_vertical(&self, skene_foundation::text::Position, isize, core::option::Option<f32>) -> (skene_foundation::text::Position, f32)
+pub fn skene_foundation::text::SubstitutedLaid<L>::move_visual(&self, skene_foundation::text::Position, skene_foundation::text::VisualMove) -> skene_foundation::text::Position
+pub fn skene_foundation::text::SubstitutedLaid<L>::range_rects(&self, core::ops::range::Range<usize>) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::SubstitutedLaid<L>::run_extents(&self) -> alloc::vec::Vec<skene_foundation::text::RunExtent>
+pub fn skene_foundation::text::SubstitutedLaid<L>::size(&self) -> skene_foundation::text::TextSize
+pub fn skene_foundation::text::SubstitutedLaid<L>::truncated(&self) -> bool
+pub struct skene_foundation::text::SubstitutedParagraph<P>
+impl<P: core::fmt::Debug> core::fmt::Debug for skene_foundation::text::SubstitutedParagraph<P>
+pub fn skene_foundation::text::SubstitutedParagraph<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::text::Paragraph> skene_foundation::text::Paragraph for skene_foundation::text::SubstitutedParagraph<P>
+pub type skene_foundation::text::SubstitutedParagraph<P>::Laid = skene_foundation::text::SubstitutedLaid<<P as skene_foundation::text::Paragraph>::Laid>
+pub fn skene_foundation::text::SubstitutedParagraph<P>::boundary(&self, usize, skene_foundation::text::TextBoundary, skene_foundation::text::Direction) -> usize
+pub fn skene_foundation::text::SubstitutedParagraph<P>::intrinsic(&self) -> skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::SubstitutedParagraph<P>::is_left_anchored(&self) -> bool
+pub fn skene_foundation::text::SubstitutedParagraph<P>::layout(&self, core::option::Option<f32>) -> Self::Laid
+pub fn skene_foundation::text::SubstitutedParagraph<P>::repaint(&mut self, core::ops::range::Range<usize>, &skene_foundation::text::PaintStyle) -> bool
+pub fn skene_foundation::text::SubstitutedParagraph<P>::text(&self) -> &str
+pub struct skene_foundation::text::Text<P: skene_foundation::Platform>
+impl<P: skene_foundation::Platform> skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_foundation::Text<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
+impl<P: skene_foundation::Platform> core::fmt::Debug for skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Platform> skene_foundation::AnyKind for skene_foundation::Text<P>
+impl<P: skene_foundation::Platform> skene_foundation::HasRun<P> for skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::map_run(self, impl core::ops::function::FnOnce(skene_foundation::Run<P>) -> skene_foundation::Run<P>) -> Self
+pub fn skene_foundation::Text<P>::run_style_mut(&mut self) -> &mut skene_foundation::DeclaredRunStyle<P>
+impl<P: skene_foundation::Platform> skene_foundation::RunBase<P> for skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
+pub fn skene_foundation::Text<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Platform>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
+pub fn skene_foundation::Text<P>::derive_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Text<P>::set_decoration(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecoration, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Text<P>::set_decoration_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Text<P>::set_decoration_style(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::TextDecorationStyle, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Text<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::Text<P>::set_selectable(self, bool) -> Self
+pub fn skene_foundation::Text<P>::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+pub fn skene_foundation::Text<P>::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>>) -> Self
+impl<P: skene_foundation::Platform> skene_foundation::View<P> for skene_foundation::Text<P>
+pub fn skene_foundation::Text<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::Text<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::Text<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::text::TextIndex
+impl skene_foundation::text::TextIndex
+pub fn skene_foundation::text::TextIndex::byte(&self, skene_foundation::Unit, usize, skene_foundation::text::Round) -> usize
+pub fn skene_foundation::text::TextIndex::byte_of_grapheme(&self, usize) -> usize
+pub fn skene_foundation::text::TextIndex::byte_range(&self, skene_foundation::Unit, core::ops::range::Range<usize>) -> core::ops::range::Range<usize>
+pub fn skene_foundation::text::TextIndex::char_range(&self, core::ops::range::Range<usize>) -> core::ops::range::Range<usize>
+pub fn skene_foundation::text::TextIndex::count(&self, skene_foundation::Unit) -> usize
+pub fn skene_foundation::text::TextIndex::grapheme_at_byte(&self, usize, skene_foundation::text::Round) -> usize
+pub const fn skene_foundation::text::TextIndex::grapheme_count(&self) -> usize
+pub fn skene_foundation::text::TextIndex::grapheme_of(&self, skene_foundation::Unit, usize, skene_foundation::text::Round) -> usize
+pub const fn skene_foundation::text::TextIndex::is_empty(&self) -> bool
+pub fn skene_foundation::text::TextIndex::is_grapheme_boundary(&self, usize) -> bool
+pub const fn skene_foundation::text::TextIndex::len(&self) -> usize
+pub fn skene_foundation::text::TextIndex::new(&str) -> Self
+pub fn skene_foundation::text::TextIndex::next_grapheme(&self, usize) -> usize
+pub fn skene_foundation::text::TextIndex::offset(&self, skene_foundation::Unit, usize) -> usize
+pub fn skene_foundation::text::TextIndex::offset_of_grapheme(&self, skene_foundation::Unit, usize) -> usize
+pub fn skene_foundation::text::TextIndex::previous_grapheme(&self, usize) -> usize
+pub fn skene_foundation::text::TextIndex::snap_to_char(&self, usize, skene_foundation::text::Round) -> usize
+pub fn skene_foundation::text::TextIndex::snap_to_grapheme(&self, usize, skene_foundation::text::Round) -> usize
+pub fn skene_foundation::text::TextIndex::unit_range(&self, skene_foundation::Unit, core::ops::range::Range<usize>) -> core::ops::range::Range<usize>
+impl core::clone::Clone for skene_foundation::text::TextIndex
+pub fn skene_foundation::text::TextIndex::clone(&self) -> skene_foundation::text::TextIndex
+impl core::cmp::Eq for skene_foundation::text::TextIndex
+impl core::cmp::PartialEq for skene_foundation::text::TextIndex
+pub fn skene_foundation::text::TextIndex::eq(&self, &skene_foundation::text::TextIndex) -> bool
+impl core::default::Default for skene_foundation::text::TextIndex
+pub fn skene_foundation::text::TextIndex::default() -> Self
+impl core::fmt::Debug for skene_foundation::text::TextIndex
+pub fn skene_foundation::text::TextIndex::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextIndex
+pub struct skene_foundation::text::TextLeaf<P: skene_foundation::text::Paragraph>
+impl<P: skene_foundation::text::Paragraph> skene_foundation::text::TextLeaf<P>
+pub const fn skene_foundation::text::TextLeaf<P>::epoch(&self) -> u64
+pub fn skene_foundation::text::TextLeaf<P>::intrinsic(&self) -> skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::TextLeaf<P>::laid(&self, core::option::Option<f32>) -> <P as skene_foundation::text::Paragraph>::Laid
+pub const fn skene_foundation::text::TextLeaf<P>::layouts(&self) -> u32
+pub fn skene_foundation::text::TextLeaf<P>::new(P) -> Self
+pub const fn skene_foundation::text::TextLeaf<P>::paragraph(&self) -> &P
+pub fn skene_foundation::text::TextLeaf<P>::repaint(&mut self, core::ops::range::Range<usize>, &skene_foundation::text::PaintStyle) -> bool
+pub fn skene_foundation::text::TextLeaf<P>::replace(&mut self, P)
+pub fn skene_foundation::text::TextLeaf<P>::sized(&self, core::option::Option<f32>) -> <P as skene_foundation::text::Paragraph>::Laid
+impl<P: skene_foundation::text::Paragraph> core::fmt::Debug for skene_foundation::text::TextLeaf<P>
+pub fn skene_foundation::text::TextLeaf<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::text::Paragraph> skene_foundation::text::MeasureText for skene_foundation::text::TextLeaf<P>
+pub fn skene_foundation::text::TextLeaf<P>::measure(&self, (core::option::Option<f32>, core::option::Option<f32>), (skene_foundation::text::Space, skene_foundation::text::Space)) -> skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::TextLeaf<P>::measure_width(&self, skene_foundation::text::Space) -> f32
+pub struct skene_foundation::text::TextRun
+pub skene_foundation::text::TextRun::range: core::ops::range::Range<usize>
+pub skene_foundation::text::TextRun::style: skene_foundation::text::TextStyle
+impl core::clone::Clone for skene_foundation::text::TextRun
+pub fn skene_foundation::text::TextRun::clone(&self) -> skene_foundation::text::TextRun
+impl core::cmp::PartialEq for skene_foundation::text::TextRun
+pub fn skene_foundation::text::TextRun::eq(&self, &skene_foundation::text::TextRun) -> bool
+impl core::fmt::Debug for skene_foundation::text::TextRun
+pub fn skene_foundation::text::TextRun::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextRun
+pub struct skene_foundation::text::TextSize
+pub skene_foundation::text::TextSize::height: f32
+pub skene_foundation::text::TextSize::width: f32
+impl core::clone::Clone for skene_foundation::text::TextSize
+pub fn skene_foundation::text::TextSize::clone(&self) -> skene_foundation::text::TextSize
+impl core::cmp::PartialEq for skene_foundation::text::TextSize
+pub fn skene_foundation::text::TextSize::eq(&self, &skene_foundation::text::TextSize) -> bool
+impl core::default::Default for skene_foundation::text::TextSize
+pub fn skene_foundation::text::TextSize::default() -> skene_foundation::text::TextSize
+impl core::fmt::Debug for skene_foundation::text::TextSize
+pub fn skene_foundation::text::TextSize::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::text::TextSize
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextSize
+pub struct skene_foundation::text::TextStyle
+pub skene_foundation::text::TextStyle::family: skene_foundation::text::FontFamily
+pub skene_foundation::text::TextStyle::letter_spacing: f32
+pub skene_foundation::text::TextStyle::line_height: core::option::Option<skene_foundation::text::LineHeight>
+pub skene_foundation::text::TextStyle::paint: skene_foundation::text::PaintStyle
+pub skene_foundation::text::TextStyle::size: f32
+pub skene_foundation::text::TextStyle::slant: skene_foundation::text::FontSlant
+pub skene_foundation::text::TextStyle::weight: skene_foundation::text::FontWeight
+impl skene_foundation::text::TextStyle
+pub const fn skene_foundation::text::TextStyle::new(f32) -> Self
+pub fn skene_foundation::text::TextStyle::resolved<X: skene_foundation::TypeMetrics>(&skene_foundation::RunStyle<skene_foundation::Plain, X>, f32) -> Self
+pub fn skene_foundation::text::TextStyle::shapes_like(&self, &Self) -> bool
+pub fn skene_foundation::text::TextStyle::with_family(self, skene_foundation::text::FontFamily) -> Self
+pub fn skene_foundation::text::TextStyle::with_letter_spacing(self, f32) -> Self
+pub fn skene_foundation::text::TextStyle::with_line_height(self, skene_foundation::text::LineHeight) -> Self
+pub fn skene_foundation::text::TextStyle::with_paint(self, skene_foundation::text::PaintStyle) -> Self
+pub fn skene_foundation::text::TextStyle::with_slant(self, skene_foundation::text::FontSlant) -> Self
+pub fn skene_foundation::text::TextStyle::with_weight(self, skene_foundation::text::FontWeight) -> Self
+impl core::clone::Clone for skene_foundation::text::TextStyle
+pub fn skene_foundation::text::TextStyle::clone(&self) -> skene_foundation::text::TextStyle
+impl core::cmp::PartialEq for skene_foundation::text::TextStyle
+pub fn skene_foundation::text::TextStyle::eq(&self, &skene_foundation::text::TextStyle) -> bool
+impl core::fmt::Debug for skene_foundation::text::TextStyle
+pub fn skene_foundation::text::TextStyle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::text::TextStyle
+pub trait skene_foundation::text::Laid: core::clone::Clone
+pub fn skene_foundation::text::Laid::caret(&self, skene_foundation::text::Position) -> skene_foundation::text::Carets
+pub fn skene_foundation::text::Laid::first_baseline(&self) -> f32
+pub fn skene_foundation::text::Laid::hit_test(&self, f32, f32) -> skene_foundation::text::Hit
+pub fn skene_foundation::text::Laid::inline_boxes(&self) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::Laid::last_baseline(&self) -> f32
+pub fn skene_foundation::text::Laid::line_count(&self) -> usize
+pub fn skene_foundation::text::Laid::lines(&self) -> alloc::vec::Vec<skene_foundation::text::LineInfo>
+pub fn skene_foundation::text::Laid::move_vertical(&self, skene_foundation::text::Position, isize, core::option::Option<f32>) -> (skene_foundation::text::Position, f32)
+pub fn skene_foundation::text::Laid::move_visual(&self, skene_foundation::text::Position, skene_foundation::text::VisualMove) -> skene_foundation::text::Position
+pub fn skene_foundation::text::Laid::range_rects(&self, core::ops::range::Range<usize>) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::Laid::run_extents(&self) -> alloc::vec::Vec<skene_foundation::text::RunExtent>
+pub fn skene_foundation::text::Laid::size(&self) -> skene_foundation::text::TextSize
+pub fn skene_foundation::text::Laid::truncated(&self) -> bool
+impl<L: skene_foundation::text::Laid> skene_foundation::text::Laid for skene_foundation::text::SubstitutedLaid<L>
+pub fn skene_foundation::text::SubstitutedLaid<L>::caret(&self, skene_foundation::text::Position) -> skene_foundation::text::Carets
+pub fn skene_foundation::text::SubstitutedLaid<L>::first_baseline(&self) -> f32
+pub fn skene_foundation::text::SubstitutedLaid<L>::hit_test(&self, f32, f32) -> skene_foundation::text::Hit
+pub fn skene_foundation::text::SubstitutedLaid<L>::inline_boxes(&self) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::SubstitutedLaid<L>::last_baseline(&self) -> f32
+pub fn skene_foundation::text::SubstitutedLaid<L>::line_count(&self) -> usize
+pub fn skene_foundation::text::SubstitutedLaid<L>::lines(&self) -> alloc::vec::Vec<skene_foundation::text::LineInfo>
+pub fn skene_foundation::text::SubstitutedLaid<L>::move_vertical(&self, skene_foundation::text::Position, isize, core::option::Option<f32>) -> (skene_foundation::text::Position, f32)
+pub fn skene_foundation::text::SubstitutedLaid<L>::move_visual(&self, skene_foundation::text::Position, skene_foundation::text::VisualMove) -> skene_foundation::text::Position
+pub fn skene_foundation::text::SubstitutedLaid<L>::range_rects(&self, core::ops::range::Range<usize>) -> alloc::vec::Vec<skene_foundation::Rect<f32>>
+pub fn skene_foundation::text::SubstitutedLaid<L>::run_extents(&self) -> alloc::vec::Vec<skene_foundation::text::RunExtent>
+pub fn skene_foundation::text::SubstitutedLaid<L>::size(&self) -> skene_foundation::text::TextSize
+pub fn skene_foundation::text::SubstitutedLaid<L>::truncated(&self) -> bool
+pub trait skene_foundation::text::MeasureText
+pub fn skene_foundation::text::MeasureText::measure(&self, (core::option::Option<f32>, core::option::Option<f32>), (skene_foundation::text::Space, skene_foundation::text::Space)) -> skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::MeasureText::measure_width(&self, skene_foundation::text::Space) -> f32
+impl<P: skene_foundation::text::Paragraph> skene_foundation::text::MeasureText for skene_foundation::text::TextLeaf<P>
+pub fn skene_foundation::text::TextLeaf<P>::measure(&self, (core::option::Option<f32>, core::option::Option<f32>), (skene_foundation::text::Space, skene_foundation::text::Space)) -> skene_foundation::text::LeafMeasure
+pub fn skene_foundation::text::TextLeaf<P>::measure_width(&self, skene_foundation::text::Space) -> f32
+pub trait skene_foundation::text::Paragraph
+pub type skene_foundation::text::Paragraph::Laid: skene_foundation::text::Laid
+pub fn skene_foundation::text::Paragraph::boundary(&self, usize, skene_foundation::text::TextBoundary, skene_foundation::text::Direction) -> usize
+pub fn skene_foundation::text::Paragraph::intrinsic(&self) -> skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::Paragraph::is_left_anchored(&self) -> bool
+pub fn skene_foundation::text::Paragraph::layout(&self, core::option::Option<f32>) -> Self::Laid
+pub fn skene_foundation::text::Paragraph::repaint(&mut self, core::ops::range::Range<usize>, &skene_foundation::text::PaintStyle) -> bool
+pub fn skene_foundation::text::Paragraph::text(&self) -> &str
+impl<P: skene_foundation::text::Paragraph> skene_foundation::text::Paragraph for skene_foundation::text::SubstitutedParagraph<P>
+pub type skene_foundation::text::SubstitutedParagraph<P>::Laid = skene_foundation::text::SubstitutedLaid<<P as skene_foundation::text::Paragraph>::Laid>
+pub fn skene_foundation::text::SubstitutedParagraph<P>::boundary(&self, usize, skene_foundation::text::TextBoundary, skene_foundation::text::Direction) -> usize
+pub fn skene_foundation::text::SubstitutedParagraph<P>::intrinsic(&self) -> skene_foundation::text::Intrinsic
+pub fn skene_foundation::text::SubstitutedParagraph<P>::is_left_anchored(&self) -> bool
+pub fn skene_foundation::text::SubstitutedParagraph<P>::layout(&self, core::option::Option<f32>) -> Self::Laid
+pub fn skene_foundation::text::SubstitutedParagraph<P>::repaint(&mut self, core::ops::range::Range<usize>, &skene_foundation::text::PaintStyle) -> bool
+pub fn skene_foundation::text::SubstitutedParagraph<P>::text(&self) -> &str
+pub trait skene_foundation::text::Substitute
+pub fn skene_foundation::text::Substitute::hides_words(&self) -> bool
+pub fn skene_foundation::text::Substitute::is_active(&self) -> bool
+pub fn skene_foundation::text::Substitute::substitute(&self, &str, usize) -> core::option::Option<char>
+impl skene_foundation::text::Substitute for skene_foundation::text::MaskState
+pub fn skene_foundation::text::MaskState::hides_words(&self) -> bool
+pub fn skene_foundation::text::MaskState::is_active(&self) -> bool
+pub fn skene_foundation::text::MaskState::substitute(&self, &str, usize) -> core::option::Option<char>
+impl<S: skene_foundation::text::Substitute + ?core::marker::Sized> skene_foundation::text::Substitute for alloc::rc::Rc<S>
+pub fn alloc::rc::Rc<S>::hides_words(&self) -> bool
+pub fn alloc::rc::Rc<S>::is_active(&self) -> bool
+pub fn alloc::rc::Rc<S>::substitute(&self, &str, usize) -> core::option::Option<char>
+pub trait skene_foundation::text::TextBase<P: skene_foundation::Platform>: skene_foundation::Wraps<Inner = skene_foundation::Text<P>>
+pub fn skene_foundation::text::TextBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_foundation::text::TextBase::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub trait skene_foundation::text::TextEngine
+pub type skene_foundation::text::TextEngine::Paragraph: skene_foundation::text::Paragraph
+pub fn skene_foundation::text::TextEngine::paragraph(&self, &skene_foundation::text::AttributedText, &skene_foundation::text::ParagraphStyle) -> Self::Paragraph
+pub fn skene_foundation::text::TextEngine::paragraphs(&self, impl core::iter::traits::collect::IntoIterator<Item = (skene_foundation::text::AttributedText, skene_foundation::text::ParagraphStyle)>) -> alloc::vec::Vec<skene_foundation::text::Made<Self::Paragraph>>
+impl<E: skene_foundation::text::TextEngine, S: skene_foundation::text::Substitute> skene_foundation::text::TextEngine for skene_foundation::text::Substituted<E, S>
+pub type skene_foundation::text::Substituted<E, S>::Paragraph = skene_foundation::text::SubstitutedParagraph<<E as skene_foundation::text::TextEngine>::Paragraph>
+pub fn skene_foundation::text::Substituted<E, S>::paragraph(&self, &skene_foundation::text::AttributedText, &skene_foundation::text::ParagraphStyle) -> Self::Paragraph
+pub fn skene_foundation::text::Substituted<E, S>::paragraphs(&self, impl core::iter::traits::collect::IntoIterator<Item = (skene_foundation::text::AttributedText, skene_foundation::text::ParagraphStyle)>) -> alloc::vec::Vec<skene_foundation::text::Made<Self::Paragraph>>
+pub type skene_foundation::text::Masked<E> = skene_foundation::text::Substituted<E, alloc::rc::Rc<skene_foundation::text::MaskState>>
 pub mod skene_foundation::typography
 pub const skene_foundation::typography::INK: skene_foundation::TokenRef<skene_foundation::Color>
 pub const skene_foundation::typography::LETTER_SPACING: skene_foundation::TokenRef<skene_foundation::Length>
@@ -2184,6 +3165,7 @@ pub skene_foundation::EventKind::Dismiss
 pub skene_foundation::EventKind::DoubleClick
 pub skene_foundation::EventKind::DragStart
 pub skene_foundation::EventKind::Drop
+pub skene_foundation::EventKind::Edit
 pub skene_foundation::EventKind::Focus
 pub skene_foundation::EventKind::KeyDown
 pub skene_foundation::EventKind::KeyUp
@@ -2368,6 +3350,7 @@ pub skene_foundation::Handler::Dismiss(alloc::rc::Rc<skene_foundation::PlainHand
 pub skene_foundation::Handler::DoubleClick(alloc::rc::Rc<skene_foundation::ClickHandler>)
 pub skene_foundation::Handler::DragStart(alloc::rc::Rc<skene_foundation::DragSource>)
 pub skene_foundation::Handler::Drop(alloc::rc::Rc<skene_foundation::DropHandler>)
+pub skene_foundation::Handler::Edit(alloc::rc::Rc<skene_foundation::EditHandler>)
 pub skene_foundation::Handler::Focus(alloc::rc::Rc<skene_foundation::PlainHandler>)
 pub skene_foundation::Handler::KeyDown(alloc::rc::Rc<skene_foundation::KeyHandler>)
 pub skene_foundation::Handler::KeyUp(alloc::rc::Rc<skene_foundation::KeyHandler>)
@@ -3200,6 +4183,38 @@ impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::TrackLimit<
 impl<T: skene_foundation::interpolate::Interpolate + core::cmp::PartialEq> skene_foundation::interpolate::Interpolate for skene_foundation::TrackLimit<T>
 pub fn skene_foundation::TrackLimit<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::TrackLimit<T>::interpolates_with(&self, &Self) -> bool
+pub enum skene_foundation::Unit
+pub skene_foundation::Unit::CodePoint
+pub skene_foundation::Unit::Utf16
+impl skene_foundation::Unit
+pub fn skene_foundation::Unit::byte(self, &str, usize) -> usize
+pub fn skene_foundation::Unit::count(self, &str) -> usize
+pub const fn skene_foundation::Unit::len_of(self, char) -> usize
+pub fn skene_foundation::Unit::offset(self, &str, usize) -> usize
+impl core::clone::Clone for skene_foundation::Unit
+pub fn skene_foundation::Unit::clone(&self) -> skene_foundation::Unit
+impl core::cmp::Eq for skene_foundation::Unit
+impl core::cmp::PartialEq for skene_foundation::Unit
+pub fn skene_foundation::Unit::eq(&self, &skene_foundation::Unit) -> bool
+impl core::fmt::Debug for skene_foundation::Unit
+pub fn skene_foundation::Unit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Unit
+pub fn skene_foundation::Unit::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Unit
+impl core::marker::StructuralPartialEq for skene_foundation::Unit
+pub enum skene_foundation::Verdict
+pub skene_foundation::Verdict::Accept
+pub skene_foundation::Verdict::Replace(skene_foundation::Edit)
+impl core::clone::Clone for skene_foundation::Verdict
+pub fn skene_foundation::Verdict::clone(&self) -> skene_foundation::Verdict
+impl core::cmp::Eq for skene_foundation::Verdict
+impl core::cmp::PartialEq for skene_foundation::Verdict
+pub fn skene_foundation::Verdict::eq(&self, &skene_foundation::Verdict) -> bool
+impl core::fmt::Debug for skene_foundation::Verdict
+pub fn skene_foundation::Verdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Verdict
+pub fn skene_foundation::Verdict::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::Verdict
 pub enum skene_foundation::WheelUnit
 pub skene_foundation::WheelUnit::Lengths
 pub skene_foundation::WheelUnit::Lines
@@ -3235,6 +4250,56 @@ pub fn skene_foundation::Wrap::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Wrap
 pub fn skene_foundation::Wrap::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::Wrap::into_box_value(self) -> skene_foundation::BoxValue<N, X>
+pub struct skene_foundation::AccessRun
+pub skene_foundation::AccessRun::bounds: skene_foundation::Rect<f32>
+pub skene_foundation::AccessRun::character_lengths: alloc::vec::Vec<u8>
+pub skene_foundation::AccessRun::character_positions: alloc::vec::Vec<f32>
+pub skene_foundation::AccessRun::character_widths: alloc::vec::Vec<f32>
+pub skene_foundation::AccessRun::right_to_left: bool
+pub skene_foundation::AccessRun::text: alloc::string::String
+pub skene_foundation::AccessRun::word_starts: alloc::vec::Vec<u8>
+impl core::clone::Clone for skene_foundation::AccessRun
+pub fn skene_foundation::AccessRun::clone(&self) -> skene_foundation::AccessRun
+impl core::cmp::PartialEq for skene_foundation::AccessRun
+pub fn skene_foundation::AccessRun::eq(&self, &skene_foundation::AccessRun) -> bool
+impl core::default::Default for skene_foundation::AccessRun
+pub fn skene_foundation::AccessRun::default() -> skene_foundation::AccessRun
+impl core::fmt::Debug for skene_foundation::AccessRun
+pub fn skene_foundation::AccessRun::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::AccessRun
+pub struct skene_foundation::AccessText
+pub skene_foundation::AccessText::anchor: skene_foundation::AccessTextPosition
+pub skene_foundation::AccessText::focus: skene_foundation::AccessTextPosition
+pub skene_foundation::AccessText::runs: alloc::vec::Vec<skene_foundation::AccessRun>
+impl skene_foundation::AccessText
+pub fn skene_foundation::AccessText::of<E: skene_foundation::text::TextEngine>(&skene_foundation::text::editing::Editor<E>) -> Self
+impl core::clone::Clone for skene_foundation::AccessText
+pub fn skene_foundation::AccessText::clone(&self) -> skene_foundation::AccessText
+impl core::cmp::PartialEq for skene_foundation::AccessText
+pub fn skene_foundation::AccessText::eq(&self, &skene_foundation::AccessText) -> bool
+impl core::default::Default for skene_foundation::AccessText
+pub fn skene_foundation::AccessText::default() -> skene_foundation::AccessText
+impl core::fmt::Debug for skene_foundation::AccessText
+pub fn skene_foundation::AccessText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::AccessText
+pub struct skene_foundation::AccessTextPosition
+pub skene_foundation::AccessTextPosition::character: usize
+pub skene_foundation::AccessTextPosition::line: u16
+impl skene_foundation::AccessTextPosition
+pub const fn skene_foundation::AccessTextPosition::new(u16, usize) -> Self
+impl core::clone::Clone for skene_foundation::AccessTextPosition
+pub fn skene_foundation::AccessTextPosition::clone(&self) -> skene_foundation::AccessTextPosition
+impl core::cmp::Eq for skene_foundation::AccessTextPosition
+impl core::cmp::PartialEq for skene_foundation::AccessTextPosition
+pub fn skene_foundation::AccessTextPosition::eq(&self, &skene_foundation::AccessTextPosition) -> bool
+impl core::default::Default for skene_foundation::AccessTextPosition
+pub fn skene_foundation::AccessTextPosition::default() -> skene_foundation::AccessTextPosition
+impl core::fmt::Debug for skene_foundation::AccessTextPosition
+pub fn skene_foundation::AccessTextPosition::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::AccessTextPosition
+pub fn skene_foundation::AccessTextPosition::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::AccessTextPosition
+impl core::marker::StructuralPartialEq for skene_foundation::AccessTextPosition
 pub struct skene_foundation::Activate
 impl skene_foundation::Activate
 pub const fn skene_foundation::Activate::new() -> Self
@@ -3247,6 +4312,7 @@ pub fn skene_foundation::Activate::access(&self) -> alloc::vec::Vec<skene_founda
 pub fn skene_foundation::Activate::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Activate::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Activate::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Activate::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Activate::lines(&self) -> u16
 pub fn skene_foundation::Activate::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -3255,6 +4321,7 @@ pub fn skene_foundation::Activate::native(&self) -> core::option::Option<skene_f
 pub fn skene_foundation::Activate::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Activate::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Activate::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -3626,6 +4693,7 @@ pub fn skene_foundation::Collection<C>::access(&self) -> alloc::vec::Vec<skene_f
 pub fn skene_foundation::Collection<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Collection<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Collection<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Collection<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Collection<C>::lines(&self) -> u16
 pub fn skene_foundation::Collection<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -3634,6 +4702,7 @@ pub fn skene_foundation::Collection<C>::native(&self) -> core::option::Option<sk
 pub fn skene_foundation::Collection<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Collection<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Collection<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -4197,6 +5266,26 @@ impl core::default::Default for skene_foundation::DragData
 pub fn skene_foundation::DragData::default() -> skene_foundation::DragData
 impl core::fmt::Debug for skene_foundation::DragData
 pub fn skene_foundation::DragData::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::Edit
+pub skene_foundation::Edit::selection: core::option::Option<skene_foundation::TextSelection>
+pub skene_foundation::Edit::text: alloc::rc::Rc<str>
+impl skene_foundation::Edit
+pub fn skene_foundation::Edit::holds(&self, &Self) -> bool
+pub const fn skene_foundation::Edit::map_through(usize, core::ops::range::Range<usize>, usize) -> usize
+pub fn skene_foundation::Edit::new(impl core::convert::Into<alloc::rc::Rc<str>>) -> Self
+pub fn skene_foundation::Edit::splice(&self, &str, skene_foundation::Unit) -> (core::ops::range::Range<usize>, &str)
+pub fn skene_foundation::Edit::splice_bytes(&self, &str) -> (core::ops::range::Range<usize>, &str)
+pub const fn skene_foundation::Edit::with_selection(self, skene_foundation::TextSelection) -> Self
+impl core::clone::Clone for skene_foundation::Edit
+pub fn skene_foundation::Edit::clone(&self) -> skene_foundation::Edit
+impl core::cmp::Eq for skene_foundation::Edit
+impl core::cmp::PartialEq for skene_foundation::Edit
+pub fn skene_foundation::Edit::eq(&self, &skene_foundation::Edit) -> bool
+impl core::fmt::Debug for skene_foundation::Edit
+pub fn skene_foundation::Edit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Edit
+pub fn skene_foundation::Edit::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::Edit
 pub struct skene_foundation::Enhance<P: skene_foundation::Platform, C>
 impl<P: skene_foundation::Platform> skene_foundation::Enhance<P>
 pub const fn skene_foundation::Enhance<P>::new(skene_reactive::signal::ReadSignal<bool>) -> Self
@@ -5058,6 +6147,7 @@ pub fn skene_foundation::Member<C>::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::Member<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Member<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Member<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Member<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Member<C>::lines(&self) -> u16
 pub fn skene_foundation::Member<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -5066,6 +6156,7 @@ pub fn skene_foundation::Member<C>::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::Member<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Member<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Member<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -5158,6 +6249,7 @@ pub skene_foundation::NameFacts::link: bool
 pub skene_foundation::NameFacts::placeholder: core::option::Option<alloc::string::String>
 pub skene_foundation::NameFacts::role: core::option::Option<accesskit::Role>
 pub skene_foundation::NameFacts::text: core::option::Option<alloc::string::String>
+pub skene_foundation::NameFacts::text_runs: core::option::Option<skene_foundation::AccessText>
 pub skene_foundation::NameFacts::value: core::option::Option<alloc::string::String>
 impl skene_foundation::NameFacts
 pub fn skene_foundation::NameFacts::of_box<P: skene_foundation::Platform>(&skene_foundation::BoxProps<P>, alloc::vec::Vec<skene_foundation::AccessProp>) -> Self
@@ -5186,6 +6278,7 @@ pub fn skene_foundation::NativePicker::access(&self) -> alloc::vec::Vec<skene_fo
 pub fn skene_foundation::NativePicker::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::NativePicker::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::NativePicker::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::NativePicker::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::NativePicker::lines(&self) -> u16
 pub fn skene_foundation::NativePicker::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -5194,6 +6287,7 @@ pub fn skene_foundation::NativePicker::native(&self) -> core::option::Option<ske
 pub fn skene_foundation::NativePicker::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::NativePicker::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::NativePicker::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -5236,6 +6330,7 @@ impl<P: skene_foundation::Platform> core::marker::Copy for skene_foundation::Nod
 pub struct skene_foundation::NodeId
 impl skene_foundation::NodeId
 pub const fn skene_foundation::NodeId::access_id(self) -> accesskit::NodeId
+pub const fn skene_foundation::NodeId::access_run_id(self, u16) -> accesskit::NodeId
 pub const fn skene_foundation::NodeId::generation(self) -> u32
 pub const fn skene_foundation::NodeId::index(self) -> u32
 impl core::clone::Clone for skene_foundation::NodeId
@@ -5599,6 +6694,7 @@ pub fn skene_foundation::Popup::access(&self) -> alloc::vec::Vec<skene_foundatio
 pub fn skene_foundation::Popup::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Popup::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Popup::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Popup::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Popup::lines(&self) -> u16
 pub fn skene_foundation::Popup::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -5607,6 +6703,7 @@ pub fn skene_foundation::Popup::native(&self) -> core::option::Option<skene_foun
 pub fn skene_foundation::Popup::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Popup::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Popup::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6105,6 +7202,7 @@ pub fn skene_foundation::Slider::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Slider::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Slider::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Slider::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Slider::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Slider::lines(&self) -> u16
 pub fn skene_foundation::Slider::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6113,6 +7211,7 @@ pub fn skene_foundation::Slider::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Slider::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Slider::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Slider::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6345,6 +7444,7 @@ pub fn skene_foundation::TextEntry::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::TextEntry::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::TextEntry::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::TextEntry::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::TextEntry::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::TextEntry::lines(&self) -> u16
 pub fn skene_foundation::TextEntry::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6353,6 +7453,7 @@ pub fn skene_foundation::TextEntry::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::TextEntry::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::TextEntry::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::TextEntry::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6448,6 +7549,7 @@ pub fn skene_foundation::Toggle::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Toggle::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Toggle::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Toggle::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Toggle::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Toggle::lines(&self) -> u16
 pub fn skene_foundation::Toggle::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6456,6 +7558,7 @@ pub fn skene_foundation::Toggle::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Toggle::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Toggle::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Toggle::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6759,6 +7862,7 @@ pub fn skene_foundation::Behavior::access(&self) -> alloc::vec::Vec<skene_founda
 pub fn skene_foundation::Behavior::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Behavior::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Behavior::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Behavior::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Behavior::lines(&self) -> u16
 pub fn skene_foundation::Behavior::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6767,6 +7871,7 @@ pub fn skene_foundation::Behavior::native(&self) -> core::option::Option<skene_f
 pub fn skene_foundation::Behavior::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Behavior::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Behavior::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Behavior::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Behavior::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6782,6 +7887,7 @@ pub fn skene_foundation::Collection<C>::access(&self) -> alloc::vec::Vec<skene_f
 pub fn skene_foundation::Collection<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Collection<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Collection<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Collection<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Collection<C>::lines(&self) -> u16
 pub fn skene_foundation::Collection<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6790,6 +7896,7 @@ pub fn skene_foundation::Collection<C>::native(&self) -> core::option::Option<sk
 pub fn skene_foundation::Collection<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Collection<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Collection<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6805,6 +7912,7 @@ pub fn skene_foundation::Member<C>::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::Member<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Member<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Member<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Member<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Member<C>::lines(&self) -> u16
 pub fn skene_foundation::Member<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6813,6 +7921,7 @@ pub fn skene_foundation::Member<C>::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::Member<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Member<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Member<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6828,6 +7937,7 @@ pub fn skene_foundation::Activate::access(&self) -> alloc::vec::Vec<skene_founda
 pub fn skene_foundation::Activate::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Activate::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Activate::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Activate::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Activate::lines(&self) -> u16
 pub fn skene_foundation::Activate::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6836,6 +7946,7 @@ pub fn skene_foundation::Activate::native(&self) -> core::option::Option<skene_f
 pub fn skene_foundation::Activate::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Activate::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Activate::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6851,6 +7962,7 @@ pub fn skene_foundation::NativePicker::access(&self) -> alloc::vec::Vec<skene_fo
 pub fn skene_foundation::NativePicker::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::NativePicker::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::NativePicker::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::NativePicker::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::NativePicker::lines(&self) -> u16
 pub fn skene_foundation::NativePicker::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6859,6 +7971,7 @@ pub fn skene_foundation::NativePicker::native(&self) -> core::option::Option<ske
 pub fn skene_foundation::NativePicker::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::NativePicker::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::NativePicker::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6874,6 +7987,7 @@ pub fn skene_foundation::Popup::access(&self) -> alloc::vec::Vec<skene_foundatio
 pub fn skene_foundation::Popup::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Popup::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Popup::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Popup::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Popup::lines(&self) -> u16
 pub fn skene_foundation::Popup::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6882,6 +7996,7 @@ pub fn skene_foundation::Popup::native(&self) -> core::option::Option<skene_foun
 pub fn skene_foundation::Popup::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Popup::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Popup::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6897,6 +8012,7 @@ pub fn skene_foundation::Slider::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Slider::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Slider::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Slider::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Slider::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Slider::lines(&self) -> u16
 pub fn skene_foundation::Slider::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6905,6 +8021,7 @@ pub fn skene_foundation::Slider::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Slider::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Slider::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Slider::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6920,6 +8037,7 @@ pub fn skene_foundation::TextEntry::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::TextEntry::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::TextEntry::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::TextEntry::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::TextEntry::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::TextEntry::lines(&self) -> u16
 pub fn skene_foundation::TextEntry::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6928,6 +8046,7 @@ pub fn skene_foundation::TextEntry::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::TextEntry::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::TextEntry::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::TextEntry::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -6943,6 +8062,7 @@ pub fn skene_foundation::Toggle::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Toggle::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Toggle::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Toggle::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Toggle::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Toggle::lines(&self) -> u16
 pub fn skene_foundation::Toggle::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6951,6 +8071,7 @@ pub fn skene_foundation::Toggle::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Toggle::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
+pub fn skene_foundation::Toggle::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Toggle::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
@@ -8259,6 +9380,7 @@ pub fn skene_foundation::Platform::focus(skene_foundation::NodeId)
 pub fn skene_foundation::Platform::focus_visible() -> bool
 pub fn skene_foundation::Platform::hide(skene_foundation::NodeId, skene_foundation::NodeId)
 pub fn skene_foundation::Platform::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
+pub fn skene_foundation::Platform::lay_out()
 pub fn skene_foundation::Platform::listen(skene_foundation::NodeId, skene_foundation::EventKind)
 pub fn skene_foundation::Platform::localize_pointer(skene_foundation::NodeId, &skene_foundation::PointerEvent) -> skene_foundation::PointerEvent
 pub fn skene_foundation::Platform::media() -> skene_foundation::MediaSignals<Self::Scalar>
@@ -8781,6 +9903,7 @@ pub fn skene_foundation::end_turn()
 pub fn skene_foundation::hold_flushes(impl core::ops::function::Fn() + 'static)
 pub fn skene_foundation::item_window(f32, f32, f32, usize, usize) -> skene_foundation::ItemWindow
 pub fn skene_foundation::item_window_over(f32, f32, &[f32], usize) -> skene_foundation::ItemWindow
+pub fn skene_foundation::lay_out<P: skene_foundation::Platform>()
 pub fn skene_foundation::move_drag<P: skene_foundation::Platform>(core::option::Option<skene_foundation::NodeId>) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::notify_change<P: skene_foundation::Platform>(skene_foundation::NodeId, &str)
 pub fn skene_foundation::notify_dismiss<P: skene_foundation::Platform>(skene_foundation::NodeId)
@@ -8791,6 +9914,7 @@ pub fn skene_foundation::notify_selection_change<P: skene_foundation::Platform>(
 pub fn skene_foundation::notify_toggle<P: skene_foundation::Platform>(skene_foundation::NodeId, bool)
 pub fn skene_foundation::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub fn skene_foundation::reconcile<P: skene_foundation::Platform, T, I, K>(skene_foundation::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
+pub fn skene_foundation::report_edit<P: skene_foundation::Platform>(skene_foundation::NodeId, &skene_foundation::Edit, bool) -> skene_foundation::Verdict
 pub fn skene_foundation::reset_thread<P: skene_foundation::Platform>()
 pub fn skene_foundation::start_drag<P: skene_foundation::Platform>(skene_foundation::NodeId) -> core::option::Option<(skene_foundation::NodeId, skene_foundation::DragData)>
 pub type skene_foundation::Annotated<P, T> = skene_foundation::Value<T, skene_foundation::Condition<<P as skene_foundation::Platform>::Scalar>>
@@ -8814,6 +9938,7 @@ pub type skene_foundation::DeclaredRunStyle<P> = skene_foundation::RunStyle<sken
 pub type skene_foundation::Definition<T, N> = skene_foundation::Conditional<skene_foundation::StaticLeaf<T>, skene_foundation::Media<N>>
 pub type skene_foundation::DragSource = dyn core::ops::function::Fn() -> skene_foundation::DragData
 pub type skene_foundation::DropHandler = dyn core::ops::function::Fn(&skene_foundation::DragData, skene_foundation::DropPhase) -> bool
+pub type skene_foundation::EditHandler = dyn core::ops::function::Fn(&skene_foundation::Edit, bool) -> skene_foundation::Verdict
 pub type skene_foundation::KeyHandler = dyn core::ops::function::Fn(&skene_foundation::KeyEvent) -> skene_foundation::Prevent
 pub type skene_foundation::Listbox = skene_foundation::Collection<skene_foundation::ListboxPolicy>
 pub type skene_foundation::ListboxContext = skene_foundation::CollectionContext<skene_foundation::ListboxPolicy>

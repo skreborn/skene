@@ -1,0 +1,100 @@
+pub mod skene_parley
+pub use skene_parley::TabSize
+pub mod skene_parley::render
+pub enum skene_parley::render::DecorationShape
+pub skene_parley::render::DecorationShape::Fill(kurbo::bezpath::BezPath)
+pub skene_parley::render::DecorationShape::Stroke(kurbo::bezpath::BezPath, kurbo::stroke::Stroke)
+impl skene_parley::render::DecorationShape
+pub fn skene_parley::render::DecorationShape::of(&skene_foundation::text::decoration::DecorationLine) -> Self
+impl core::clone::Clone for skene_parley::render::DecorationShape
+pub fn skene_parley::render::DecorationShape::clone(&self) -> skene_parley::render::DecorationShape
+impl core::fmt::Debug for skene_parley::render::DecorationShape
+pub fn skene_parley::render::DecorationShape::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn skene_parley::render::paint_decorations(&mut vello_cpu::render::RenderContext, &skene_parley::ParleyLaid)
+pub fn skene_parley::render::paint_outlines(&mut vello_cpu::render::RenderContext, &skene_parley::ParleyLaid, (f64, f64))
+pub struct skene_parley::GlyphRun
+pub skene_parley::GlyphRun::coords: alloc::vec::Vec<i16>
+pub skene_parley::GlyphRun::font: linebender_resource_handle::font::FontData
+pub skene_parley::GlyphRun::glyphs: alloc::vec::Vec<skene_parley::PositionedGlyph>
+pub skene_parley::GlyphRun::size: f32
+impl core::clone::Clone for skene_parley::GlyphRun
+pub fn skene_parley::GlyphRun::clone(&self) -> skene_parley::GlyphRun
+impl core::fmt::Debug for skene_parley::GlyphRun
+pub fn skene_parley::GlyphRun::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_parley::ParleyEngine
+impl skene_parley::ParleyEngine
+pub fn skene_parley::ParleyEngine::set_quantize(&self, bool)
+pub fn skene_parley::ParleyEngine::set_shape_cache(&self, usize)
+pub fn skene_parley::ParleyEngine::set_tab_size(&self, parley::style::TabSize)
+pub fn skene_parley::ParleyEngine::shape_cache_stats(&self) -> (u64, u64)
+pub fn skene_parley::ParleyEngine::with_typefaces(&[skene_parley::Typeface]) -> Self
+impl core::clone::Clone for skene_parley::ParleyEngine
+pub fn skene_parley::ParleyEngine::clone(&self) -> skene_parley::ParleyEngine
+impl core::fmt::Debug for skene_parley::ParleyEngine
+pub fn skene_parley::ParleyEngine::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::text::engine::TextEngine for skene_parley::ParleyEngine
+pub type skene_parley::ParleyEngine::Paragraph = skene_parley::ParleyParagraph
+pub fn skene_parley::ParleyEngine::paragraph(&self, &skene_foundation::text::model::AttributedText, &skene_foundation::text::model::ParagraphStyle) -> skene_parley::ParleyParagraph
+pub fn skene_parley::ParleyEngine::paragraphs(&self, impl core::iter::traits::collect::IntoIterator<Item = (skene_foundation::text::model::AttributedText, skene_foundation::text::model::ParagraphStyle)>) -> alloc::vec::Vec<skene_foundation::text::engine::Made<skene_parley::ParleyParagraph>>
+pub struct skene_parley::ParleyLaid
+impl skene_parley::ParleyLaid
+pub fn skene_parley::ParleyLaid::glyph_runs(&self) -> alloc::vec::Vec<skene_parley::GlyphRun>
+pub fn skene_parley::ParleyLaid::glyph_runs_in(&self, (f32, f32)) -> alloc::vec::Vec<skene_parley::GlyphRun>
+pub fn skene_parley::ParleyLaid::index(&self) -> &skene_foundation::text::index::TextIndex
+pub fn skene_parley::ParleyLaid::layout(&self) -> &parley::layout::layout::Layout<()>
+pub fn skene_parley::ParleyLaid::paint_at(&self, usize) -> skene_foundation::text::model::PaintStyle
+pub fn skene_parley::ParleyLaid::run_extents_in(&self, (f32, f32)) -> alloc::vec::Vec<skene_foundation::text::engine::RunExtent>
+impl core::clone::Clone for skene_parley::ParleyLaid
+pub fn skene_parley::ParleyLaid::clone(&self) -> skene_parley::ParleyLaid
+impl core::fmt::Debug for skene_parley::ParleyLaid
+pub fn skene_parley::ParleyLaid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::text::engine::Laid for skene_parley::ParleyLaid
+pub fn skene_parley::ParleyLaid::caret(&self, skene_foundation::text::engine::Position) -> skene_foundation::text::engine::Carets
+pub fn skene_parley::ParleyLaid::first_baseline(&self) -> f32
+pub fn skene_parley::ParleyLaid::hit_test(&self, f32, f32) -> skene_foundation::text::engine::Hit
+pub fn skene_parley::ParleyLaid::inline_boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::values::rect::Rect<f32>>
+pub fn skene_parley::ParleyLaid::last_baseline(&self) -> f32
+pub fn skene_parley::ParleyLaid::line_count(&self) -> usize
+pub fn skene_parley::ParleyLaid::lines(&self) -> alloc::vec::Vec<skene_foundation::text::engine::LineInfo>
+pub fn skene_parley::ParleyLaid::move_vertical(&self, skene_foundation::text::engine::Position, isize, core::option::Option<f32>) -> (skene_foundation::text::engine::Position, f32)
+pub fn skene_parley::ParleyLaid::move_visual(&self, skene_foundation::text::engine::Position, skene_foundation::text::engine::VisualMove) -> skene_foundation::text::engine::Position
+pub fn skene_parley::ParleyLaid::range_rects(&self, core::ops::range::Range<usize>) -> alloc::vec::Vec<skene_foundation::spine::values::rect::Rect<f32>>
+pub fn skene_parley::ParleyLaid::run_extents(&self) -> alloc::vec::Vec<skene_foundation::text::engine::RunExtent>
+pub fn skene_parley::ParleyLaid::size(&self) -> skene_foundation::text::engine::TextSize
+pub fn skene_parley::ParleyLaid::truncated(&self) -> bool
+pub struct skene_parley::ParleyParagraph
+impl core::fmt::Debug for skene_parley::ParleyParagraph
+pub fn skene_parley::ParleyParagraph::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::text::engine::Paragraph for skene_parley::ParleyParagraph
+pub type skene_parley::ParleyParagraph::Laid = skene_parley::ParleyLaid
+pub fn skene_parley::ParleyParagraph::boundary(&self, usize, skene_foundation::text::engine::TextBoundary, skene_foundation::text::engine::Direction) -> usize
+pub fn skene_parley::ParleyParagraph::intrinsic(&self) -> skene_foundation::text::engine::Intrinsic
+pub fn skene_parley::ParleyParagraph::is_left_anchored(&self) -> bool
+pub fn skene_parley::ParleyParagraph::layout(&self, core::option::Option<f32>) -> skene_parley::ParleyLaid
+pub fn skene_parley::ParleyParagraph::repaint(&mut self, core::ops::range::Range<usize>, &skene_foundation::text::model::PaintStyle) -> bool
+pub fn skene_parley::ParleyParagraph::text(&self) -> &str
+pub struct skene_parley::PositionedGlyph
+pub skene_parley::PositionedGlyph::at: usize
+pub skene_parley::PositionedGlyph::id: u32
+pub skene_parley::PositionedGlyph::x: f32
+pub skene_parley::PositionedGlyph::y: f32
+impl core::clone::Clone for skene_parley::PositionedGlyph
+pub fn skene_parley::PositionedGlyph::clone(&self) -> skene_parley::PositionedGlyph
+impl core::cmp::PartialEq for skene_parley::PositionedGlyph
+pub fn skene_parley::PositionedGlyph::eq(&self, &skene_parley::PositionedGlyph) -> bool
+impl core::fmt::Debug for skene_parley::PositionedGlyph
+pub fn skene_parley::PositionedGlyph::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_parley::PositionedGlyph
+impl core::marker::StructuralPartialEq for skene_parley::PositionedGlyph
+pub struct skene_parley::Typeface
+pub skene_parley::Typeface::data: &'static [u8]
+pub skene_parley::Typeface::family: &'static str
+impl skene_parley::Typeface
+pub const fn skene_parley::Typeface::new(&'static str, &'static [u8]) -> Self
+impl core::clone::Clone for skene_parley::Typeface
+pub fn skene_parley::Typeface::clone(&self) -> skene_parley::Typeface
+impl core::fmt::Debug for skene_parley::Typeface
+pub fn skene_parley::Typeface::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_parley::Typeface
+pub const skene_parley::PARALLEL: usize
+pub const skene_parley::SHAPE_CACHE: usize

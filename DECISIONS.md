@@ -8,6 +8,20 @@ supersedes.
 
 ## Decided against
 
+- **`Unit::Utf8`** (2026-10-22), a third unit beside `Unit::CodePoint` and
+  `Unit::Utf16` for the offsets a text crosses the seam in, since text-input-v3 and
+  AccessKit count in bytes: a byte is the editing core's own index, and the core's
+  input-client surface takes byte ranges directly (`select_bytes`, `replace_bytes`,
+  `set_marked_bytes`, `rect_for_bytes`, `byte_at`), so a protocol counting in bytes
+  reaches the core with no conversion and the seam names only the units that need one.
+  Revisit when a seam protocol must cross in UTF-8 rather than through the core's byte
+  surface.
+- **`Verdict::Ignore`** (2026-10-22), the prototype's answer to a proposal the truth
+  already holds, beside `Accept` and `Replace`: a truth holding the proposal accepts
+  it, so the answer is `Accept`, the handler is not asked, and the client applies
+  nothing it has not shown; a third answer meaning the same left every client a case
+  to handle that changes nothing. Revisit when a client must tell a proposal the truth
+  already held apart from one its handler accepted.
 - **A generic medium** (2026-10-15), views generic over the medium they run on (`impl
   View<P>` with `P: Within<Pixel>`), `Adaptive` value chains and the platform sets
   (`Pixel`, `Cell`, `Apple`, `Mobile`, `Desktop`): checking a view tree grew

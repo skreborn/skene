@@ -18,9 +18,11 @@ throughout—there is no separate "widget" concept.
 ## Crates
 
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
-bottom, `skene-foundation` on it, the platforms (`skene-web`, `skene-terminal`,
-`skene-headless`) and the Simple core on the foundation, each platform's Simple crate on
-its facade, and the macros, the transport and the CLI beside them.
+bottom, `skene-foundation` on it, the layout every platform but the web computes
+(`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
+platforms (`skene-web`, `skene-terminal`, `skene-headless`) on the foundation and, where
+they draw, on those two, the Simple core on the foundation, each platform's Simple crate
+on its facade, and the macros, the transport and the CLI beside them.
 
 **A facade per platform, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
@@ -98,7 +100,12 @@ the root, register event kinds, focus, set values, observe sizes, report media.
 `Painted` and embeds are deliberately outside it—their payloads never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
-functions in the platform crate, since it is not a shared contract.
+functions in the platform crate, since it is not a shared contract. One entry is
+synchronous by contract: `lay_out::<P>()` ends the turn (`end_turn`) and lays the scene
+out through `Platform::lay_out`, without painting, so a platform's text-input protocol,
+which asks its questions synchronously, reads geometry that is current; the terminal
+lays out through the settle loop its frame runs, and a platform whose layout is its
+toolkit's keeps the default, which does nothing.
 
 - **Why a trait and not name-resolved free functions.** A missing function is only an
   error on a path that names it, and those paths are target-gated; a trait makes a gap a
@@ -386,6 +393,23 @@ re-export.
   `Controlled<T>` that every shipped behavior, and a third party's, keeps its value in:
   `set`, `derive`, `handle` and `bind` for the behavior's own setters, `read` and `ask`
   for its logic.
+- **A drawn entry reports an edit whole and applies its verdict.** A text entry whose
+  platform edits it with Skene's editing core (the terminal's today) reports a reader's
+  edit as one `Edit`, its text and its selection together, with whether its toolkit
+  shows it already, through `report_edit::<P>(node, &edit, applied)`, and is answered
+  with a `Verdict`: `Accept`, or `Replace` with the truth, which it shows. The control
+  asks the behavior (`Behavior::on_edit`; while it is disabled the behavior's held truth,
+  `Behavior::held_edit`, answers), refreshes its state and does not reconcile, so the
+  verdict is the only write-back and a vetoed or transformed edit leaves no step in the
+  core's undo history; the bound value's own write arrives later through `set_value`,
+  which the core takes as nothing where it equals what is shown. `TextEntry` accepts an
+  edit the truth already holds (`Edit::holds`) without asking, asks the value and then
+  the selection otherwise, and accepts any edit of an entry whose value nothing derives.
+  The web's `<input>` and headless still report through `notify_change` and
+  `notify_selection_change`, reconciled after. A `TextSelection` counts grapheme
+  clusters; where a platform's protocol counts in code points or UTF-16 code units it
+  names its unit (`Unit::CodePoint`, `Unit::Utf16`) and converts through one index per
+  text (`TextIndex`), as the web does for its `<input>`.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,
@@ -470,6 +494,20 @@ re-export.
   AccessKit models it (`Scene::access_tree`): each node's role, name, value, states and
   relations under a window, focus on the focused node—what a native platform hands its
   screen reader, and, as indented text (`access_outline`), what a test asserts.
+- **A drawn entry reports its text as AccessKit reads an editable one.** A platform
+  whose entry runs on the editing core hands the scene its text runs
+  (`NameFacts::text_runs`, an `AccessText` built once above the engine from the entry's
+  editor by `AccessText::of`), and the tree gives the entry one `Role::TextRun` child
+  per laid line, ahead of its scene children, under an id `NodeId::access_run_id`
+  makes apart from every node's: the line's shown text (one `•` a cluster for a secure
+  entry, its word starts read from the marks), each character's byte length (a cluster
+  longer than 255 bytes reported as several characters), position, width and word
+  start, the line's bounds and its direction, in the units and coordinates of the
+  editor's layout with no window or scroll offset. The entry carries its text
+  selection over the runs and the actions its state allows: `SetValue`,
+  `SetTextSelection` and `ReplaceSelectedText`, a read-only entry the selection alone
+  and a disabled one none. The outline leaves the runs out, and an entry's value stays
+  its real text.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot
@@ -501,7 +539,12 @@ dashed, wavy) and its color, each a property of its own so the color takes a tok
 The web compiles them to the `text-decoration` longhands; the terminal writes the
 underline styles (SGR `4:3`, `4:4`, `4:5`) and color (SGR `58`) where a DECRQSS reply
 to a curly-underline probe proves the terminal keeps them, a plain underline
-elsewhere, and the overline and the line through as SGR `53` and `9`. A
+elsewhere, and the overline and the line through as SGR `53` and `9`. A platform that
+draws a decoration's lines itself takes them from one computation above its engine,
+over the metrics the engine reports per stretch of text (`RunExtent::decoration_lines`):
+none for an undecorated stretch, two solid lines for a double one, the second above
+an overline's first, and one otherwise, each at least a unit thick; headless draws
+them so. A
 visitor written once gives overlay, the static/derived split, CSS rendering and taffy
 application their iteration; what remains per property is the field, its CSS name and
 its taffy mapping. `CornerRadius` is the pattern for an optional capability: a style
@@ -567,20 +610,23 @@ Condition     = Media | State | And | Or
   measured at the size Chromium gives its native element (a field nineteen average
   characters and the width of the face's bounds wide, an editor twenty wide, each its
   lines tall), stretched where its layout stretches its items as an `<input>` is. There
-  a box whose children are all inline runs lays them out as one `Paragraph`, keeping
+  a box whose children are all inline runs lays them out as one text, a `TextFlow` of
+  their runs and inline boxes over the platform's text engine (Text, below), keeping
   their blanks and newlines as the reset's `white-space: pre-wrap` does and wrapping
   where the Unicode line breaking algorithm allows across them and around an inline box,
   laid out at its content's size first, a word too wide for a line of its own broken
   where the line fills as `overflow-wrap: break-word` breaks it, the blanks a line ends
   in hanging where it wraps and taking room up to its limit before a newline or at the
-  end, each run's line box on its line's baseline, a box's bottom on it, a span placed
-  in a rectangle per line it is on, and the paragraph trimmed to its first line's cap
-  height and its last line's baseline as the reset's `text-box-trim` trims a text box;
-  every run is shaped through Parley in the pinned face the conformance suite draws in,
-  Inter's regular (kerned, its letter spacing past each cluster, a line its font size
-  times its line height tall, each as the typography in force sets them), and where
-  Parley reads text as an editor does its reading stands: a tab advances to the next
-  stop eight blanks apart, as a browser's `tab-size` sets them, and a newline ending the
+  end, each run's line box on its line's baseline, a box's bottom on it, a run placed
+  in a rectangle per line it is on, clipped off any box beside it and off the blanks
+  hanging past the line's end, and, on headless, the text trimmed to its first line's
+  cap height and its last line's baseline as the reset's
+  `text-box-trim` trims a text box. Headless lays its text out through `skene-parley`
+  in the pinned face the conformance suite draws in, Inter's regular, its metrics
+  unrounded (kerned, its letter spacing past each cluster, a line its font size times
+  its line height tall, each as the typography in force sets them), and where Parley
+  reads text as an editor does its reading stands: a tab advances to the next stop
+  eight blanks apart, as a browser's `tab-size` sets them, and a newline ending the
   text opens a line. Headless reports each box's size to the
   observers bound to it and answers `layout_rect`, `visible_rect` and, through the
   frames' paint order, `node_at`,
@@ -589,11 +635,11 @@ Condition     = Media | State | And | Or
   padding box there and a box's scroll offsets, as `trigger_scroll` reports them,
   shifting it back, as in a browser. It draws the scene as a browser paints the page
   (`render_to_image`): each box's background and border, rounded by its corner radius,
-  what a clipping box holds clipped, each run's glyphs as Parley shaped them in the
-  pinned face with its decoration, a text entry's value (a field's line in its middle,
+  what a clipping box holds clipped, each run's glyphs as its layout placed them in the
+  pinned face with its decoration's lines, a text entry's value (a field's line in its middle,
   as a browser draws an `<input>`'s), each painted box's picture and the
-  open overlays above the rest, a border solid whatever its style and a decoration one
-  solid line; every page of the conformance suite is held to a golden of it, and the
+  open overlays above the rest, a border solid whatever its style and a decoration's
+  lines solid whatever theirs; every page of the conformance suite is held to a golden of it, and the
   golden to the browser's. `Dimension` is a fixed length,
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
@@ -693,6 +739,107 @@ token and slot registrations are one `StyleBook` both web leaves share, telling 
 leaf's `StyleSink` what to add and remove (the browser: one `<style>` element per
 class; the server: each rule collected as it is interned and emitted with the next
 flush, the document's `<style>` or a streamed chunk's delta).
+
+## Text
+
+Text is laid out and drawn by each platform's own engine and edited by one core of
+Skene's (`skene_foundation::text`). The foundation keeps what a text says and how it is
+styled; the engine shapes, breaks, measures and draws it; what acts on text—selection,
+editing, accessibility and the decorations an engine lacks—is written once above the
+engine, over the geometry it reports.
+
+- **The engine's contract.** A realization's engine implements `TextEngine`: it makes a
+  `Paragraph` of an `AttributedText` (a value, a base `TextStyle`, ordered runs of
+  other styles over byte ranges, and the `InlineBox`es standing in it, each a width and
+  a height at a byte) under a `ParagraphStyle` (alignment, base direction, wrap, line
+  height, a most-lines limit and its ellipsis), a batch at once where it can
+  (`paragraphs`). A paragraph reports its intrinsic minimum and maximum, lays itself
+  out at a width or unbounded as a `Laid`, repaints a range in place (`repaint`, false
+  where it must be made again) and answers boundaries: a grapheme cluster, a word
+  (blanks skipped, then one UAX #29 segment) and a paragraph. A `Laid` is immutable:
+  no later layout or repaint moves its geometry, while a repaint shows in every layout
+  of the paragraph already handed out. It reports its size, baselines, lines
+  (`LineInfo`) and truncation, hit tests, carets (two at a direction boundary), range
+  rectangles, the stretches painted alike with their decoration metrics (`RunExtent`)
+  and its inline boxes' frames, and moves a caret visually and between lines, past the
+  first or last line to the text's start or end, a line's end standing before the
+  blanks hanging past it. Every position is a byte of the text and an affinity. A run's
+  style is resolved from the style model (`TextStyle::resolved`): family, size, weight,
+  slant, letter spacing, line height (a run with none takes the paragraph's) and paint,
+  the color and the decoration, a change of paint alone repainting and any other
+  laying out again (`TextStyle::shapes_like`).
+- **The guaranteed core** is held by a test on every engine: blanks and newlines kept,
+  a word too wide for a line of its own broken where the line fills, an empty text laid
+  out as one line. The foundation holds it on a grid engine its tests alone build,
+  `skene-parley` on Inter, the terminal on its cell engine, and the web in the browser
+  tier (`text_keeps_the_guaranteed_core`), where a `Line` run with nothing in it takes
+  one line's block size (`:where(:empty)`, `min-block-size: var(--skene-line)`, the
+  reset's `--skene-line` being `1cap` where lines are trimmed and `1lh` elsewhere). A
+  newline ending a text opens a line on every engine but the browser's, which keeps
+  its own reading of it.
+- **Measuring.** `TextLeaf` is the layout engine's leaf over any paragraph, measured
+  through `MeasureText` as taffy asks: min-content its narrowest width, max-content its
+  widest, a definite width laying it out within that width and reporting the width it
+  uses, so a width under min-content breaks a word where the line fills. Its intrinsic
+  widths are measured once a paragraph (an epoch, which `replace` moves), its last
+  three layouts are kept by width, what measuring read at its last four widths is kept
+  apart so measuring again there lays nothing out, and a width at or past the widest
+  line shares the unbounded layout where only sizes and baselines are asked for or the
+  lines start at the left edge whatever the width (`Paragraph::is_left_anchored`).
+  `skene-layout`'s `TextFlow` is a box's runs and inline boxes as one leaf: it builds
+  the attributed text, a box's placeholder (U+FFFC in a platform's records) becoming an
+  `InlineBox` there alone, keeps its paragraph until a run's text or style or a box's
+  size changes, places each run and box from the layout's range rectangles and inline
+  box frames, and answers which run a point is on (`run_at`) and which is nearest
+  (`nearest`), with the byte a caret there stands before, for every client: hit
+  testing, links and the document's selection.
+- **Parley.** `skene-parley` is the engine over the patched Parley the workspace
+  carries (`vendor/parley` and `vendor/parley_engine` through `[patch.crates-io]`, each
+  change marked `Skene:` and listed in the crate's `SKENE.md`): a break never falls
+  inside a grapheme cluster, a wrapped bidirectional line places its trailing blanks by
+  UAX #9's rule L1, a soft hyphen's break draws a hyphen at its width, a tab advances
+  to stops a set number of blanks apart (eight unless the engine sets another, as a
+  browser's `tab-size`), stacked marks clear one another and words are shaped through
+  a cache; ICU4X's dictionaries for Thai, Lao, Khmer and Burmese are compiled in. It
+  loads the typefaces it is given and no system font (`ParleyEngine::with_typefaces`,
+  a run's families ending with the first of them); a paragraph is shaped once and
+  broken in place for its first layout, later layouts copying it; its paint is shared
+  by every layout of it, so a repaint shows in all; a batch of `PARALLEL` paragraphs or
+  more shapes on threads off the web; line metrics are rounded unless the engine is
+  told otherwise (`set_quantize`); and a laid text draws through vello as outlines,
+  with the decoration lines drawn above the engine (`render`).
+- **Index, segments and substitution.** `TextIndex` is one table per text between
+  bytes, code points, UTF-16 code units and grapheme clusters, keeping none for ASCII
+  text and rounding half a surrogate pair or the inside of a cluster as asked
+  (`Round`); `Segments` answers UAX #29 words and paragraphs. `Substituted<E, S>` lays
+  out a text in which a `Substitute` stands a character of its choosing in for some
+  clusters and maps everything back, so every position it reports and takes is a byte
+  of the real text and its inline boxes keep their places: the terminal's stand-ins
+  are one use, and a secure entry's marks (`Masked<E>` over a shared `MaskState`, its
+  word the whole text) the other, which no entry is yet.
+- **The editing core** (`text::editing`). `Editor<E>` runs Parley's cursor and
+  selection model over any engine: a position a byte and an affinity, a selection an
+  anchor and a focus, a vertical move keeping a horizontal goal. It performs
+  `Command`s (moves by cluster, word, line or the whole text, visual or logical,
+  deletion, insertion, transposition, select all, copy, cut and paste, undo and redo),
+  takes a press of one, two or three clicks and a drag after it (by cluster, word or
+  line), holds an input method's composition, and answers an input-client surface in
+  a `Unit` or in bytes (`select_in` and `select_bytes`, `replace`, `set_marked`,
+  `rect_for`, `index_at` and `byte_at`), its geometry laid out on demand, so a query
+  right after an edit answers synchronously. It cleans every value it shows as the
+  entry takes it (an editor's line breaks become LF, a field's are dropped), moves the
+  caret past a cluster an insertion ends inside, and keeps a history of 100 steps: a
+  run of typing or of removal is one, an input method's deletion joins the edit after
+  it, a value written from outside is one of its own unless it is an empty entry's
+  first, a write of what is shown is nothing, and a secure entry keeps none. A change
+  to the text is proposed to the editor's `Arbiter` (`ControlledText` over a truth and
+  a handler, or a platform's adapter onto `report_edit`), and an edit it refuses
+  leaves no step. `Binding::for_key` is the key table where Ctrl is the command key
+  (Linux, Windows and the terminal): select all; undo and redo (`Ctrl-Shift-Z`,
+  `Ctrl-Y`); copy, cut and paste (`Ctrl-Shift-V`, `Ctrl-Insert`, `Shift-Insert` and
+  `Shift-Delete` among them); deletion by cluster and by word; Home and End, the whole
+  text's under Ctrl; and the arrows, up and down in an editor alone, while a composing
+  key and `Ctrl-Shift-A` bind nothing and a key typing one cluster inserts it.
 
 ## State
 
@@ -879,8 +1026,9 @@ and on wasm proved the bits equal.
 ### Headless (`skene-headless`)
 
 The host platform: every `Platform` method writes into a record per node, keyed by its
-`NodeId`, while the structure stays the scene's alone; nothing lays out and no platform
-response fires. It is the web medium (`StyleExt = WebStyle`), so a corner radius or a
+`NodeId`, while the structure stays the scene's alone; it lays the scene out and draws
+it as the layout bullet of the style model says, its text through `skene-parley` in the
+pinned face, and no platform response fires. It is the web medium (`StyleExt = WebStyle`), so a corner radius or a
 run's font size resolves as set, as it would on the web. Beside the records it keeps what
 a test asks: the outline, read from the scene, the props a node was created with, the
 slot a render effect last wrote, a property resolved through the spine's `Resolver` under the
@@ -899,16 +1047,18 @@ handler suppressed it. A frame clock advances on request; an executor, installed
 One shell per OS—`skene-ios`, `skene-android`, `skene-windows`, `skene-macos` and
 `skene-linux`—each its own crate and facade, with a vocabulary for that OS's controls,
 structure and navigation. An app's shell depends on its OS's crate, which builds for that
-OS's triples alone, so no cfg names the platform. Every shell realizes the tree into the
-OS's own view hierarchy and composites it there: a box is a view with its layers, a text
-entry is the platform's own (`UITextField`, `EditText`, `GtkText`, a XAML `TextBox`), and
-only `Painted` draws, through vello into a layer-backed view. Native text entries, menus
-and clipboard, scroll views with their physics, and accessibility are the platform's on
-every OS, and no realization is a hybrid of painted content around embedded native
-controls, so no shell is drawn: Linux is GTK4. Layout is the platform's own containers
-beside taffy, behind a small library the platform's layout primitives call; the resolution
-cache tells a shell whether a layout-affecting value moved, so a palette write relays out
-only when it must. Off-thread work uses the engine's scheduler wired to the event-loop
+OS's triples alone, so no cfg names the platform. Where the OS composites views (iOS,
+Android, macOS) a shell realizes the tree into the OS's own view hierarchy, a box a view
+with its layers, and where it composites windows alone (Linux, Windows) it draws the
+whole window. Every text is laid out and drawn by the OS's own engine behind
+`TextEngine` (TextKit 2, `android.text` over Minikin, DirectWrite, and on Linux
+`skene-parley` over the system's fonts), and a text entry is Skene's own field over the
+editing core, speaking the OS's text-input protocol itself and reporting its text to
+AccessKit from the core; the OS's own controls stay reachable as its own. No
+realization is a hybrid of drawn content around a toolkit's controls inside a window
+Skene draws. Layout is taffy, the OS's measure its leaves; the resolution cache tells a
+shell whether a layout-affecting value moved, so a palette write relays out only when it
+must. Off-thread work uses the engine's scheduler wired to the event-loop
 proxy, and a loop-integrated timer is fair game there, the loop being the shell's. The
 plan, its prerequisites and its order are in `ROADMAP.md`.
 
@@ -958,31 +1108,43 @@ while the mode is confirmed. Launch queries synchronized output (DECRQM 2026) th
 way, and from a reply that says the mode can be toggled every frame is written between
 `CSI ? 2026 h` and `l`, so a redraw never tears; a terminal that does not know the mode
 gets plain frames. Grapheme clustering (mode 2027) is set and queried at launch the
-same way: text is measured in extended grapheme clusters (`unicode-segmentation`),
-each as wide as the terminal draws it (`unicode-width`)—the cluster's width where the
-terminal confirmed the mode, the sum of its code points' widths where it did not, so
-the layout's measure agrees with the terminal's either way—and wrapped through Parley
-by the shared `Paragraph`, in a typeface the build generates whose every code point is
-a glyph as many cells wide as it draws on its own (a cell an em, its ascent the whole
-cell, the dotted circle unmapped so no shaper inserts one), a stretch of one scale a run
-at that many cells and an inline box a box as many cells wide and rows tall as it, and
-under the mode a cluster whose code points sum to another width measured by a stand-in
-of its width, so a run wraps and keeps its blanks as headless does, a tab one blank
-cell at its run's scale, measured as the blank it shows as; a cell holds a cluster
-(`Glyph`: one code point, an interned cluster, or the continuation of a wide one, which
-paints nothing) while a field's caret, window and selection index clusters, the window
-of a single-line field settling by cells. A confirmation arriving after the first
-frame measures every entry again and lays the frame out afresh. Text sizing (kitty's
+same way: text is measured in extended grapheme clusters, each as wide as the terminal
+draws it (`unicode-width`)—the cluster's width where the terminal confirmed the mode,
+the sum of its code points' widths where it did not, so the layout agrees with the
+terminal either way. Text is laid out by the terminal's engine, `skene-parley` over a
+typeface the build generates whose every code point is a glyph as many cells wide as it
+draws on its own (a cell an em, its ascent the whole cell, the dotted circle unmapped
+so no shaper inserts one), a tab's stops a cell apart and a tab laid out as the one
+blank it shows as, at its run's scale; under the mode a cluster whose code points sum
+to another width is laid out as a stand-in of its width (U+2060, U+FF71 or U+4E00)
+through the foundation's substitution, so every position the engine reports is a byte
+of the real text. Each text leaf is one paragraph of its runs and inline boxes (a
+`TextFlow` over the engine), an inline box a box as many cells wide and rows tall as
+it, kept between frames and measured, painted, hit and selected from its one layout, a
+width floored to whole cells, at least one: a run wraps and keeps its blanks as
+headless does and draws cluster by cluster in the engine's visual order, and a point
+on a cell is probed just past its left edge, so a press lands at the nearer edge of
+the cluster drawn there, after a wide one on its second cell. So that a terminal
+reordering bidirectional text itself does not reorder it twice, launch asks for the
+BiDi mode (ECMA-48's BDSM, mode 8, through `CSI 8 $ p`) and switches it to explicit
+(`CSI 8 l`), and the hand-back restores the mode the reply reported, writing nothing
+where none came. A cell holds a cluster (`Glyph`: one code point, an interned cluster,
+or the continuation of a wide one, which paints nothing) while a text entry's caret
+and selection are reported in clusters and its window counts cells, settling by cells
+around the caret. A confirmation arriving after the first frame lays every text and
+entry out again and the frame afresh. Text sizing (kitty's
 OSC 66) is the same kind of enhancement: the terminal's `Typography` has a `size`
 token, `1.` by default, and `set_font_size` on a run is the shared type metric in
 the medium's unit, so `2.` is a heading two cells tall. A size rounds to a whole
 scale of one to seven, and a size
 below one is a fraction of a cell (`n/d`, `d` at most fifteen) drawn at the cell's
-foot. A scaled cluster takes a block of `scale` rows by `scale` times its columns:
-wrapping counts the scaled columns, a line is as tall as its tallest cluster and the
-smaller clusters sit on its bottom rows as on a baseline, a run measures to its
-lines' widths and the sum of their heights, and a hit at a cell finds the cluster
-whose block holds it, so selection, links and inline boxes follow. In the cell
+foot. A scale is the run's size in the engine, a whole scale of `n` a run of `n` rows
+a line and `n` cells a column and a fraction a run of one row, so a scaled cluster
+takes a block of `scale` rows by `scale` times its columns: wrapping counts the scaled
+columns, a line is as tall as its tallest cluster and the smaller clusters sit on its
+bottom rows as on a baseline, a run measures to its lines' widths and the sum of their
+heights, and a hit at a cell lands at the nearer edge of the block holding it, so
+selection, links and inline boxes follow. In the cell
 buffer the block's top-left cell holds the glyph and its scale and the rest are
 continuations, and the writer emits the top-left cell as
 `OSC 66 ; s=<scale> ; <cluster> ST` (`n=;d=;v=1` for a fraction), skips the cells
@@ -994,17 +1156,32 @@ while a reply at the first, or none, leaves every run at one cell, so a size cos
 nothing where the terminal cannot draw it. The loop handles every event already queued before it paints
 the next frame, and a run of pointer motion collapses to where it ends, as a browser
 coalesces `pointermove`, so a fast drag never falls behind the pointer. Selection is anchored in source space so it
-survives reflow; wheel gestures latch their target. A text entry's selection is its
-own—an anchor beside the caret over the value, reported to the app as a
-`TextSelection` in clusters after every move and written from its bound signal, each
-index clamped into the value—so keyboard focus selects a field's
+survives reflow; wheel gestures latch their target. A text entry is the editing core's
+first client: its `Editor` over the cell engine (a field one unwrapped line, an editor
+wrapped at its content width) is held apart from the records, so an operation on it—a
+key, a press or a drag, a paste, a write from the app—runs with none of them borrowed
+and what it changed (damage, restyle, the window, a moved selection to report) is
+settled after, an operation reaching an editor another holds (a handler that moves
+focus, say) waiting for that one to end. Its edits are reported through `report_edit`,
+never applied ahead of the verdict, which it shows; it takes its read-only state from
+the scene before each operation, and a key command lays the scene out first
+(`lay_out`). Its selection is the core's—an anchor beside the caret over the value,
+reported to the app as a `TextSelection` in clusters after every move and written from
+its bound signal, each index clamped into the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge
-scrolling the window on the frame clock, as a browser's does), an edit replaces it,
-`Ctrl-Z` and `Ctrl-Shift-Z`/`Ctrl-Y` undo and redo through a bounded ring of (value,
-caret, selection) states per entry, as an `<input>` keeps (a run of typed or of removed
-characters is one step, a caret move ends a run, and a value written from the signal is
-a step of its own, the initial one aside), and
-`Ctrl-C`/`X`/`V` and the standard context menu copy, cut and paste through the loop's OSC 52
+scrolling the window on the frame clock, as a browser's does, and a drag after a
+double press extending by words), an edit replaces it, and it is drawn cluster by
+cluster where the layout draws them. `Ctrl-Z` and `Ctrl-Shift-Z`/`Ctrl-Y` undo and redo
+through the core's history, as an `<input>` keeps one (a run of typed or of removed
+characters is one step, a caret move ends a run, a value written from the signal is a
+step of its own, the initial one aside, and an edit the handler rejects is none). An
+entry's keys go through the core's table (`Binding::for_key`) after the legacy `Ctrl-W`
+and `Ctrl-H`, which delete the word and the cluster before the caret, and its clipboard
+keys (`Ctrl-C`/`X`/`V`, `Ctrl-Insert`, `Shift-Insert`, `Shift-Delete`), outside an entry
+the document's copy, act only where the launch offers the operation, `Shift-Delete`
+deleting forward where cut is not offered; `Ctrl-Shift-C` and `Ctrl-Shift-X` do
+nothing and `Ctrl-Shift-V` pastes, as in Chromium. Those keys and the standard context
+menu copy, cut and paste through the loop's OSC 52
 write, the terminal's bracketed paste, and an OSC 52 read fired on demand. OSC 52 has no
 capability query, so which of those exist is the app's launch choice: `Launch`'s
 `Clipboard` names the operations offered (all by default; without `Copy` nothing in the
@@ -1050,8 +1227,8 @@ it closes, a popup closing with focus inside returns it the same way, and a pres
 the anchor a popup opened from is the anchor's click rather than a dismissal. An editor is a
 scroll target like a box: the wheel, its scrollbar and the page keys move its window
 over its wrapped rows without moving the caret, a caret scrolled out of view hides until
-focus or an edit reveals it, and the horizontal wheel moves a field's window along its
-value. A release ends a drag on the node the press captured wherever the pointer is. A
+focus or an edit reveals it, a caret at the end of a full row stands at the area's
+edge, and the horizontal wheel moves a field's window along its value. A release ends a drag on the node the press captured wherever the pointer is. A
 childless, borderless box paints to eighth cells from its parent's origin, unrounded:
 whole cells take its color, and a cell one of its edges crosses takes a block glyph
 carrying its color on the box's side and the color already there on the other, so a
@@ -1133,7 +1310,7 @@ hover change repaints without relayout. A frame paints over the previous one, re
 only the rows the changed nodes covered and cover—a node whose resolution, text, caret,
 scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
 then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
-text, and a view inside it flows as an inline box: laid out on its own, standing in the
+text through its `TextFlow`, and a view inside it flows as an inline box: laid out on its own, standing in the
 text as a placeholder of its width, painted and hit at the cells it flowed into. An
 edge whose border width is zero takes no cells and draws none, and a border whose color
 is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
@@ -1307,6 +1484,18 @@ sense apart where context does not.
   token, expression or derived closure at the bottom of a `Value`, conditions choosing
   among leaves. A web leaf: one of the platforms the web facade compiles to, the browser
   leaf and the server leaf, the headless platform standing in off their targets.
+  A layout's leaf: a node taffy measures through its platform rather than from
+  children (`skene_layout::Leaf`), a text's being a `TextLeaf`.
+- **Paragraph.** A text engine's paragraph (`text::Paragraph`): an attributed text
+  shaped under a paragraph style, laid out per width. A document's paragraph: a box
+  whose children are all inline runs (`RichText`), laid out as one `TextFlow`, one
+  engine paragraph.
+- **Layout.** The layout: taffy's placing of boxes (`skene-layout`'s `Tree`), or the
+  web's CSS. A text's layout (`text::Laid`): one paragraph laid out at one width, its
+  lines, carets and rectangles, immutable once made.
+- **Editing core.** Skene's one editor (`text::editing::Editor`) every drawn entry
+  runs on, over its platform's engine; a platform's own text field, where one exists,
+  is a platform control, and the web's entries are its `<input>` and `<textarea>`.
 - **Anchor.** A segment's anchors: the start and end markers a reactive subtree
   (`derived`, `Suspense`, `ErrorBoundary`, `Deferred`, `AsyncView`, `empty`) mounts
   between, a comment pair on the web. An overlay's anchor: the node a popup is placed

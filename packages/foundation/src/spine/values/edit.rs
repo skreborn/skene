@@ -45,16 +45,15 @@ impl Edit {
   #[must_use]
   pub fn splice(&self, old: &str, unit: Unit) -> (Range<usize>, &str) {
     let (replaced, inserted) = self.splice_bytes(old);
+    let units =
+      |text: &str| -> usize { text.chars().map(|character| unit.len_of(character)).sum() };
+    let start = units(&old[..replaced.start]);
 
-    (
-      unit.offset(old, replaced.start)..unit.offset(old, replaced.end),
-      inserted,
-    )
+    (start..start + units(&old[replaced]), inserted)
   }
 
   /// The smallest edit turning `old` into this edit's text, in bytes on character
-  /// boundaries: the range of `old` replaced and the text replacing it. It compares bytes,
-  /// so it costs a scan of the common prefix and suffix.
+  /// boundaries: the range of `old` replaced and the text replacing it.
   #[must_use]
   pub fn splice_bytes(&self, old: &str) -> (Range<usize>, &str) {
     let new = &*self.text;

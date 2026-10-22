@@ -108,6 +108,13 @@ impl Leaf for Measured {
       text.size_box(node, size);
     }
   }
+
+  fn repaint_as(&mut self, next: &Self) -> bool {
+    match (self, next) {
+      (Self::Text(text), Self::Text(next)) => text.repaint_as(next),
+      _ => false,
+    }
+  }
 }
 
 thread_local! {

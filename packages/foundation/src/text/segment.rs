@@ -21,17 +21,47 @@ impl<'a> Segments<'a> {
     Self { text }
   }
 
-  /// Each word segment's byte range, and whether it is blanks alone.
+  /// Each word segment's byte range, and whether it is blanks alone: UAX #29's, with a full
+  /// stop between two letters a segment of its own, as Chromium tailors the rules.
   fn words(self) -> impl Iterator<Item = (Range<usize>, bool)> + 'a {
-    self
-      .text
-      .split_word_bound_indices()
-      .map(|(start, segment)| {
-        (
-          start..start + segment.len(),
-          segment.chars().all(char::is_whitespace),
-        )
-      })
+    let text = self.text;
+    let mut segments = text.split_word_bound_indices();
+    let mut stop = None;
+    let mut rest = None;
+
+    let blank = move |range: Range<usize>| {
+      let blank = text[range.clone()].chars().all(char::is_whitespace);
+
+      (range, blank)
+    };
+
+    std::iter::from_fn(move || {
+      if let Some(stop) = stop.take() {
+        return Some(blank(stop));
+      }
+
+      let (start, segment): (usize, &str) = rest.take().or_else(|| segments.next())?;
+      let cut = segment
+        .char_indices()
+        .find(|&(at, character)| character == '.' && Self::between_letters(segment, at));
+      let Some((at, _)) = cut
+      else {
+        return Some(blank(start..start + segment.len()));
+      };
+
+      stop = Some(start + at..start + at + 1);
+      rest = Some((start + at + 1, &segment[at + 1..]));
+
+      Some(blank(start..start + at))
+    })
+  }
+
+  /// Whether byte `at` of `segment` lies between two letters.
+  fn between_letters(segment: &str, at: usize) -> bool {
+    let before = segment[..at].chars().next_back();
+    let after = segment[at..].chars().nth(1);
+
+    before.is_some_and(char::is_alphabetic) && after.is_some_and(char::is_alphabetic)
   }
 
   /// The start of the word before `byte`: blanks skipped, then one segment.
@@ -122,7 +152,7 @@ mod tests {
   use super::Segments;
 
   #[test]
-  fn word_removal_follows_unicode_word_boundaries() {
+  fn word_removal_follows_chromiums_word_boundaries() {
     let mut text = String::from("say don't foo.bar_baz(");
     let mut seen = Vec::new();
 
@@ -133,7 +163,37 @@ mod tests {
       seen.push(text.clone());
     }
 
-    assert_eq!(seen, ["say don't foo.bar_baz", "say don't ", "say ", ""]);
+    assert_eq!(
+      seen,
+      [
+        "say don't foo.bar_baz",
+        "say don't foo.",
+        "say don't foo",
+        "say don't ",
+        "say ",
+        ""
+      ]
+    );
+  }
+
+  #[test]
+  fn a_full_stop_between_letters_is_a_word_of_its_own() {
+    let segments = Segments::new("say foo.bar_baz end 3.14");
+
+    assert_eq!(segments.word_around(9), 8..15, "the word after the stop");
+    assert_eq!(segments.word_around(7), 7..8, "the stop");
+    assert_eq!(segments.word_around(5), 4..7, "the word before it");
+    assert_eq!(segments.word_around(21), 20..24, "a decimal stays one word");
+
+    let mut at = 0;
+    let mut stops = Vec::new();
+
+    while at < 19 {
+      at = segments.word_after(at);
+      stops.push(at);
+    }
+
+    assert_eq!(stops, [3, 7, 8, 15, 19]);
   }
 
   #[test]

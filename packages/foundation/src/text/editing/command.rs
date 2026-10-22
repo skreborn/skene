@@ -5,6 +5,7 @@ use crate::text::{Direction, TextBoundary, VisualMove};
 
 /// Where a caret moves.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum Movement {
   /// On screen: by cluster or word left or right, or to a visual line's ends.
   Visual(VisualMove),
@@ -17,6 +18,7 @@ pub enum Movement {
 
 /// A command over a text entry.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum Command {
   /// Moves the caret, extending the selection from its anchor where `extend`, collapsing it
   /// otherwise; a horizontal move without `extend` over a selection collapses it to the end

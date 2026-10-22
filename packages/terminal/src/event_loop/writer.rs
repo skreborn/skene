@@ -31,7 +31,7 @@ use crate::{
 
 thread_local! {
   /// Whether the terminal reported it reorders bidirectional text itself (BDSM set) before
-  /// setup switched it off; `None` until it reports.
+  /// setup switched it off; `None` until it reports, and again once it is handed back.
   static IMPLICIT_BIDI: Cell<Option<bool>> = const { Cell::new(None) };
 }
 
@@ -40,10 +40,15 @@ pub(super) const fn dec_mode(code: u16, on: bool) -> DecMode {
   DecMode { code, on }
 }
 
-/// Records the bidirectional support mode (BDSM) the terminal reported at launch, which
-/// the restoring controls hand back: implicit where `implicit`.
+/// Records the bidirectional support mode (BDSM) the terminal reported before setup changed
+/// it, which the restoring controls hand back: implicit where `implicit`. A report while one
+/// is recorded is of the mode setup set, and is ignored.
 pub(super) fn set_reported_bidi(implicit: bool) {
-  IMPLICIT_BIDI.with(|reported| reported.set(Some(implicit)));
+  IMPLICIT_BIDI.with(|reported| {
+    if reported.get().is_none() {
+      reported.set(Some(implicit));
+    }
+  });
 }
 
 /// Writes the controls that take the terminal over: the title saved, the alternate
@@ -160,9 +165,10 @@ pub(super) const SIZED_COLUMN: u16 = 2;
 /// notifications and grapheme clustering off, the bidirectional support mode the
 /// terminal reported at launch, autowrap on, the cursor shown in its default shape, the
 /// main screen, and the title restored. Idempotent but for the title, which pops what
-/// setup saved.
+/// setup saved, and the bidirectional support mode, handed back once until a setup's query
+/// reports it again.
 fn write_restore(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
-  if let Some(implicit) = IMPLICIT_BIDI.with(Cell::get) {
+  if let Some(implicit) = IMPLICIT_BIDI.with(Cell::take) {
     write!(
       out,
       "{}",
@@ -689,8 +695,23 @@ mod tests {
     set_reported_bidi(false);
 
     assert!(written(write_restore).starts_with("\x1b[8l"));
+    assert!(
+      !written(write_restore).contains("\x1b[8"),
+      "the mode is handed back once"
+    );
+  }
 
-    IMPLICIT_BIDI.with(|reported| reported.set(None));
+  /// A take-over again without a hand-back (the process stopped from outside and continued)
+  /// reports the mode this process set, which the restore does not hand back.
+  #[test]
+  fn a_second_take_over_keeps_the_mode_the_terminal_had() {
+    let mut restore = Vec::new();
+
+    set_reported_bidi(true);
+    set_reported_bidi(false);
+    write_restore(&mut restore).unwrap();
+
+    assert!(String::from_utf8(restore).unwrap().starts_with("\x1b[8h"));
   }
 
   /// The mouse modes are set together and reset together.

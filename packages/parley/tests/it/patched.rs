@@ -1,6 +1,7 @@
 //! The changes Skene carries in Parley (`vendor/parley`, `vendor/parley_engine`), each held
 //! against a case the pinned face can set: a soft hyphen's break, breaks between clusters,
-//! UAX #9's rule L1, tab stops, the per-word shape cache, and stacked acutes.
+//! UAX #9's rule L1, tab stops, the per-word shape cache, stacked acutes, and a full stop
+//! between letters a word of its own.
 
 use std::ops::Range;
 
@@ -12,9 +13,11 @@ use skene_foundation::text::{
   Laid as _,
   Paragraph as _,
   ParagraphStyle,
+  Position,
   TextEngine as _,
   TextRun,
   TextStyle,
+  VisualMove,
 };
 use skene_parley::{GlyphRun, ParleyEngine, ParleyLaid, TabSize};
 use skrifa::{
@@ -645,4 +648,27 @@ fn a_run_splits_where_its_font_does_nothing_across_its_spaces() {
 
   assert_eq!(shape("hello world"), (0, 2), "two words shaped");
   assert_eq!(shape("hello there"), (1, 1), "a word found, a word shaped");
+}
+
+#[test]
+fn a_word_move_stops_on_both_sides_of_a_full_stop_between_letters() {
+  let laid = crate::laid("say foo.bar_baz end", None);
+  let stops = |from: usize, movement: VisualMove| {
+    let mut at = Position::new(from);
+    let mut stops = Vec::new();
+
+    loop {
+      let next = laid.move_visual(at, movement);
+
+      if next.index == at.index {
+        return stops;
+      }
+
+      at = next;
+      stops.push(at.index);
+    }
+  };
+
+  assert_eq!(stops(0, VisualMove::WordRight), [3, 7, 8, 15, 19]);
+  assert_eq!(stops(19, VisualMove::WordLeft), [16, 8, 7, 4, 0]);
 }

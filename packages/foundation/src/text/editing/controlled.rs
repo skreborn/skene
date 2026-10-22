@@ -34,6 +34,7 @@ pub trait Arbiter {
 /// - A proposal the handler makes the truth is accepted.
 /// - A proposal it does not is replaced by the truth (vetoed, or transformed), at once outside a
 ///   composition, and at the composition's end inside one.
+#[must_use]
 pub struct ControlledText {
   truth: Box<dyn Fn() -> Edit>,
   handler: Box<dyn FnMut(Edit)>,

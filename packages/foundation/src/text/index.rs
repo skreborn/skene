@@ -365,17 +365,24 @@ mod tests {
       for offset in 0..=index.count(unit) {
         let byte = index.byte(unit, offset, Round::Down);
 
-        assert_eq!(byte, unit.byte(text, offset), "{unit:?} {offset}");
+        assert!(text.is_char_boundary(byte), "{unit:?} {offset}");
 
         if index.byte(unit, offset, Round::Up) == byte {
           assert_eq!(index.offset(unit, byte), offset, "{unit:?} {offset}");
         }
       }
 
-      for (byte, _) in text.char_indices() {
-        assert_eq!(index.offset(unit, byte), unit.offset(text, byte));
+      for (byte, _) in text.char_indices().chain([(text.len(), ' ')]) {
+        assert_eq!(
+          index.byte(unit, index.offset(unit, byte), Round::Down),
+          byte,
+          "{unit:?} at {byte}"
+        );
       }
     }
+
+    assert_eq!(index.count(Unit::CodePoint), 5);
+    assert_eq!(index.count(Unit::Utf16), 6);
 
     // Half the face's surrogate pair: UTF-16 offset 4 lies between its units.
     assert_eq!(index.byte(Unit::Utf16, 4, Round::Down), 4);

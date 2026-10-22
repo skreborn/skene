@@ -110,11 +110,11 @@ fn caret_jumps_and_deletes_by_word() {
   });
 }
 
-/// A word removal eats trailing whitespace, then one segment as Unicode word
-/// boundaries divide the text: a punctuation mark alone, or a whole word, an apostrophe
-/// or a dot between its letters and an underscore included.
+/// A word removal eats trailing whitespace, then one segment as Chromium's word
+/// boundaries divide the text: a punctuation mark alone, a full stop between letters
+/// included, or a whole word, an apostrophe between its letters and an underscore included.
 #[test]
-fn word_deletion_follows_unicode_word_boundaries() {
+fn word_deletion_follows_chromiums_word_boundaries() {
   with_platform(|| {
     let name = Signal::new(String::from("say don't foo.bar_baz("));
 
@@ -128,7 +128,14 @@ fn word_deletion_follows_unicode_word_boundaries() {
     testing::trigger_key("Tab");
     testing::trigger_key("End");
 
-    for expected in ["say don't foo.bar_baz", "say don't ", "say ", ""] {
+    for expected in [
+      "say don't foo.bar_baz",
+      "say don't foo.",
+      "say don't foo",
+      "say don't ",
+      "say ",
+      "",
+    ] {
       testing::trigger_key("Ctrl+Backspace");
 
       assert_eq!(name.get_untracked(), expected);

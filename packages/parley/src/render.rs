@@ -20,54 +20,74 @@ use vello_cpu::{
 
 use crate::ParleyLaid;
 
-/// Draws `laid`'s glyphs as vello outlines, its top left at `origin`, each stretch in its
-/// paint's color, then its decorations ([`paint_decorations`]); a glyph with no outline
-/// draws nothing.
-pub fn paint_outlines(context: &mut RenderContext, laid: &ParleyLaid, origin: (f64, f64)) {
-  context.set_transform(Affine::translate(origin));
+impl ParleyLaid {
+  /// Draws this paragraph's glyphs as vello outlines, its top left at `origin`, each stretch in its
+  /// paint's color, then its decorations ([`Self::paint_decorations`]); a glyph with no outline
+  /// draws nothing.
+  pub fn paint_outlines(&self, context: &mut RenderContext, origin: (f64, f64)) {
+    context.set_transform(Affine::translate(origin));
 
-  for run in laid.glyph_runs() {
-    let Ok(font) = FontRef::from_index(run.font.data.data(), run.font.index)
-    else {
-      continue;
-    };
-    let outlines = font.outline_glyphs();
-    let coords: Vec<NormalizedCoord> = run
-      .coords
-      .iter()
-      .map(|bits| F2Dot14::from_bits(*bits))
-      .collect();
-    let mut start = 0;
-
-    while start < run.glyphs.len() {
-      let paint = laid.paint_at(run.glyphs[start].at);
-      let end = run.glyphs[start..]
+    for run in self.glyph_runs() {
+      let Ok(font) = FontRef::from_index(run.font.data.data(), run.font.index)
+      else {
+        continue;
+      };
+      let outlines = font.outline_glyphs();
+      let coords: Vec<NormalizedCoord> = run
+        .coords
         .iter()
-        .position(|glyph| laid.paint_at(glyph.at) != paint)
-        .map_or(run.glyphs.len(), |offset| start + offset);
-      let mut pen = Pen::default();
+        .map(|bits| F2Dot14::from_bits(*bits))
+        .collect();
+      let mut start = 0;
 
-      for glyph in &run.glyphs[start..end] {
-        (pen.x, pen.y) = (glyph.x, glyph.y);
+      while start < run.glyphs.len() {
+        let paint = self.paint_at(run.glyphs[start].at);
+        let end = run.glyphs[start..]
+          .iter()
+          .position(|glyph| self.paint_at(glyph.at) != paint)
+          .map_or(run.glyphs.len(), |offset| start + offset);
+        let mut pen = Pen::default();
 
-        if let Some(outline) = outlines.get(GlyphId::new(glyph.id)) {
-          let _ = outline.draw(
-            DrawSettings::unhinted(FontSize::new(run.size), LocationRef::new(&coords)),
-            &mut pen,
-          );
+        for glyph in &run.glyphs[start..end] {
+          (pen.x, pen.y) = (glyph.x, glyph.y);
+
+          if let Some(outline) = outlines.get(GlyphId::new(glyph.id)) {
+            let _ = outline.draw(
+              DrawSettings::unhinted(FontSize::new(run.size), LocationRef::new(&coords)),
+              &mut pen,
+            );
+          }
         }
-      }
 
-      if !pen.path.elements().is_empty() {
-        context.set_paint(paint.color.to_alpha_color());
-        context.fill_path(&pen.path);
-      }
+        if !pen.path.elements().is_empty() {
+          context.set_paint(paint.color.to_alpha_color());
+          context.fill_path(&pen.path);
+        }
 
-      start = end;
+        start = end;
+      }
     }
+
+    self.paint_decorations(context);
   }
 
-  paint_decorations(context, laid);
+  /// Draws this paragraph's decorations (underline, line-through, overline, in their styles and
+  /// colors) through the shared painter's geometry, under the current transform.
+  pub fn paint_decorations(&self, context: &mut RenderContext) {
+    for extent in self.run_extents() {
+      for line in extent.decoration_lines() {
+        context.set_paint(line.color.to_alpha_color());
+
+        match DecorationShape::of(&line) {
+          DecorationShape::Fill(path) => context.fill_path(&path),
+          DecorationShape::Stroke(path, stroke) => {
+            context.set_stroke(stroke);
+            context.stroke_path(&path);
+          }
+        }
+      }
+    }
+  }
 }
 
 /// The outlines of a stretch of glyphs, each drawn at its pen position.
@@ -112,24 +132,6 @@ impl OutlinePen for Pen {
 
   fn close(&mut self) {
     self.path.close_path();
-  }
-}
-
-/// Draws `laid`'s decorations (underline, line-through, overline, in their styles and
-/// colors) through the shared painter's geometry, under the current transform.
-pub fn paint_decorations(context: &mut RenderContext, laid: &ParleyLaid) {
-  for extent in laid.run_extents() {
-    for line in extent.decoration_lines() {
-      context.set_paint(line.color.to_alpha_color());
-
-      match DecorationShape::of(&line) {
-        DecorationShape::Fill(path) => context.fill_path(&path),
-        DecorationShape::Stroke(path, stroke) => {
-          context.set_stroke(stroke);
-          context.stroke_path(&path);
-        }
-      }
-    }
   }
 }
 

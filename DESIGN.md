@@ -756,7 +756,8 @@ engine, over the geometry it reports.
   (`paragraphs`). A paragraph reports its intrinsic minimum and maximum, lays itself
   out at a width or unbounded as a `Laid`, repaints a range in place (`repaint`, false
   where it must be made again) and answers boundaries: a grapheme cluster, a word
-  (blanks skipped, then one UAX #29 segment) and a paragraph. A `Laid` is immutable:
+  (blanks skipped, then one UAX #29 segment, a full stop between letters one of its own,
+  as Chromium tailors the rules) and a paragraph. A `Laid` is immutable:
   no later layout or repaint moves its geometry, while a repaint shows in every layout
   of the paragraph already handed out. It reports its size, baselines, lines
   (`LineInfo`) and truncation, hit tests, carets (two at a direction boundary), range
@@ -789,7 +790,8 @@ engine, over the geometry it reports.
   `skene-layout`'s `TextFlow` is a box's runs and inline boxes as one leaf: it builds
   the attributed text, a box's placeholder (U+FFFC in a platform's records) becoming an
   `InlineBox` there alone, keeps its paragraph until a run's text or style or a box's
-  size changes, places each run and box from the layout's range rectangles and inline
+  size changes, a change of its runs' paint alone repainting the paragraph it keeps
+  without the leaf measured again (`Leaf::repaint_as`), places each run and box from the layout's range rectangles and inline
   box frames, and answers which run a point is on (`run_at`) and which is nearest
   (`nearest`), with the byte a caret there stands before, for every client: hit
   testing, links and the document's selection.
@@ -799,19 +801,20 @@ engine, over the geometry it reports.
   inside a grapheme cluster, a wrapped bidirectional line places its trailing blanks by
   UAX #9's rule L1, a soft hyphen's break draws a hyphen at its width, a tab advances
   to stops a set number of blanks apart (eight unless the engine sets another, as a
-  browser's `tab-size`), stacked marks clear one another and words are shaped through
-  a cache; ICU4X's dictionaries for Thai, Lao, Khmer and Burmese are compiled in. It
+  browser's `tab-size`), stacked marks clear one another, a full stop between letters
+  is a word of its own and words are shaped through a cache; ICU4X's dictionaries for Thai, Lao, Khmer and Burmese are compiled in. It
   loads the typefaces it is given and no system font (`ParleyEngine::with_typefaces`,
   a run's families ending with the first of them); a paragraph is shaped once and
   broken in place for its first layout, later layouts copying it; its paint is shared
   by every layout of it, so a repaint shows in all; a batch of `PARALLEL` paragraphs or
   more shapes on threads off the web; line metrics are rounded unless the engine is
   told otherwise (`set_quantize`); and a laid text draws through vello as outlines,
-  with the decoration lines drawn above the engine (`render`).
+  with the decoration lines drawn above the engine (`ParleyLaid::paint_outlines`).
 - **Index, segments and substitution.** `TextIndex` is one table per text between
   bytes, code points, UTF-16 code units and grapheme clusters, keeping none for ASCII
   text and rounding half a surrogate pair or the inside of a cluster as asked
-  (`Round`); `Segments` answers UAX #29 words and paragraphs. `Substituted<E, S>` lays
+  (`Round`); `Segments` answers words (UAX #29's, a full stop between letters a word of
+  its own as in Chromium, as the carried Parley's analysis has it too) and paragraphs. `Substituted<E, S>` lays
   out a text in which a `Substitute` stands a character of its choosing in for some
   clusters and maps everything back, so every position it reports and takes is a byte
   of the real text and its inline boxes keep their places: the terminal's stand-ins
@@ -829,9 +832,15 @@ engine, over the geometry it reports.
   right after an edit answers synchronously. It cleans every value it shows as the
   entry takes it (an editor's line breaks become LF, a field's are dropped), moves the
   caret past a cluster an insertion ends inside, and keeps a history of 100 steps: a
-  run of typing or of removal is one, an input method's deletion joins the edit after
-  it, a value written from outside is one of its own unless it is an empty entry's
-  first, a write of what is shown is nothing, and a secure entry keeps none. A change
+  run of typing or of removal is one, typing over a selection starting one, an input
+  method's deletion joins the edit after it, a composition is one where it changed the
+  text and none where it did not, a value written from outside is one of its own unless
+  it is an empty entry's first, a write of what is shown is nothing, and a secure entry
+  keeps none. A command that edits (an insertion, a deletion, a paste or a cut, a
+  transposition, an undo or a redo) ends a composition first, keeping its text.
+  Backspace removes the last code point of the cluster before the caret, as Chromium's
+  does, an emoji sequence, a keycap or a flag whole; a forward deletion removes the
+  cluster. A change
   to the text is proposed to the editor's `Arbiter` (`ControlledText` over a truth and
   a handler, or a platform's adapter onto `report_edit`), and an edit it refuses
   leaves no step. `Binding::for_key` is the key table where Ctrl is the command key
@@ -1127,8 +1136,9 @@ on a cell is probed just past its left edge, so a press lands at the nearer edge
 the cluster drawn there, after a wide one on its second cell. So that a terminal
 reordering bidirectional text itself does not reorder it twice, launch asks for the
 BiDi mode (ECMA-48's BDSM, mode 8, through `CSI 8 $ p`) and switches it to explicit
-(`CSI 8 l`), and the hand-back restores the mode the reply reported, writing nothing
-where none came. A cell holds a cluster (`Glyph`: one code point, an interned cluster,
+(`CSI 8 l`), and the hand-back restores the mode the first reply reported, writing
+nothing where none came: a reply while one is kept, as a take-over after a stop the
+process did not hand back for brings, is of the mode launch set. A cell holds a cluster (`Glyph`: one code point, an interned cluster,
 or the continuation of a wide one, which paints nothing) while a text entry's caret
 and selection are reported in clusters and its window counts cells, settling by cells
 around the caret. A confirmation arriving after the first frame lays every text and
@@ -1485,7 +1495,8 @@ sense apart where context does not.
   among leaves. A web leaf: one of the platforms the web facade compiles to, the browser
   leaf and the server leaf, the headless platform standing in off their targets.
   A layout's leaf: a node taffy measures through its platform rather than from
-  children (`skene_layout::Leaf`), a text's being a `TextLeaf`.
+  children (`skene_layout::Leaf`), a text's being a `TextFlow`, measured through the
+  foundation's `TextLeaf`.
 - **Paragraph.** A text engine's paragraph (`text::Paragraph`): an attributed text
   shaped under a paragraph style, laid out per width. A document's paragraph: a box
   whose children are all inline runs (`RichText`), laid out as one `TextFlow`, one

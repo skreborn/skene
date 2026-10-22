@@ -17,6 +17,7 @@ use crate::{
 
 /// What a key asks of a text entry.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum Binding {
   /// A command.
   Command(Command),

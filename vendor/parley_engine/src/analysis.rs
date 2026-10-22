@@ -783,6 +783,16 @@ pub(crate) fn analyze_text(
             is_word = true;
         }
 
+        // Skene: a full stop between two letters is a word of its own, a boundary before it and
+        // before the letter after it, as Chromium tailors UAX #29 (WB6 and WB7).
+        if !is_word {
+            let letter = |character: Option<char>| character.is_some_and(char::is_alphabetic);
+            let next_char = text[byte_pos + ch.len_utf8()..].chars().next();
+
+            is_word = (ch == '.' && letter(prev_char) && letter(next_char))
+                || (prev_char == Some('.') && ch.is_alphabetic() && letter(prev_prev_char));
+        }
+
         let is_icu_line = if let Some(&l) = lb_iter.peek()
             && *l == byte_pos
         {

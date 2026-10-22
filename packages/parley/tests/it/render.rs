@@ -16,7 +16,7 @@ use skene_foundation::{
     TextStyle,
   },
 };
-use skene_parley::{ParleyLaid, render::paint_outlines};
+use skene_parley::ParleyLaid;
 use vello_cpu::{Pixmap, RenderContext, Resources};
 
 use crate::{SIZE, inter};
@@ -30,7 +30,7 @@ fn draw(laid: &ParleyLaid, origin: (f64, f64)) -> Vec<[u8; 4]> {
   let mut context = RenderContext::new(SIDE, SIDE);
   let mut pixmap = Pixmap::new(SIDE, SIDE);
 
-  paint_outlines(&mut context, laid, origin);
+  laid.paint_outlines(&mut context, origin);
   context.flush();
   context.render(&mut pixmap, &mut Resources::new());
 

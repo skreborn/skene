@@ -82,9 +82,9 @@ fn text_is_measured_by_cells_not_characters() {
 }
 
 /// A field's caret, selection and edits index clusters: the caret sits after a wide
-/// cluster's cells, the arrows step over one, `Backspace` removes one whole, a mark
-/// typed after its base joins it, a click on a wide cluster's second cell lands
-/// after it, and the selection an app binds reads and writes cluster indices, clamped
+/// cluster's cells, the arrows step over one, `Backspace` removes a wide one whole and a
+/// combining mark alone, a mark typed after its base joins it, a click on a wide cluster's second
+/// cell lands after it, and the selection an app binds reads and writes cluster indices, clamped
 /// into the value.
 #[test]
 fn a_field_edits_and_places_its_caret_by_cluster() {
@@ -132,9 +132,13 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
 
     assert_eq!(
       value.get_untracked(),
-      "本x",
-      "a removal takes the whole cluster"
+      "本xe",
+      "a removal backward takes the mark alone, as Chromium's does"
     );
+
+    testing::trigger_key("Backspace");
+
+    assert_eq!(value.get_untracked(), "本x");
 
     testing::trigger_mouse_click(1, 0);
 

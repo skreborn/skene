@@ -4187,10 +4187,7 @@ pub enum skene_foundation::Unit
 pub skene_foundation::Unit::CodePoint
 pub skene_foundation::Unit::Utf16
 impl skene_foundation::Unit
-pub fn skene_foundation::Unit::byte(self, &str, usize) -> usize
-pub fn skene_foundation::Unit::count(self, &str) -> usize
 pub const fn skene_foundation::Unit::len_of(self, char) -> usize
-pub fn skene_foundation::Unit::offset(self, &str, usize) -> usize
 impl core::clone::Clone for skene_foundation::Unit
 pub fn skene_foundation::Unit::clone(&self) -> skene_foundation::Unit
 impl core::cmp::Eq for skene_foundation::Unit

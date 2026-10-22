@@ -138,6 +138,26 @@ impl<E: TextEngine, N: PartialEq> PartialEq for TextFlow<E, N> {
 }
 
 impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
+  /// Whether `held` and `next` lay text out alike: everything but their paint the same.
+  fn lays_out_alike(held: &TextStyle, next: &TextStyle) -> bool {
+    let TextStyle {
+      family,
+      size,
+      weight,
+      slant,
+      letter_spacing,
+      line_height,
+      paint: _,
+    } = held;
+
+    *family == next.family
+      && size.to_bits() == next.size.to_bits()
+      && *weight == next.weight
+      && *slant == next.slant
+      && letter_spacing.to_bits() == next.letter_spacing.to_bits()
+      && *line_height == next.line_height
+  }
+
   /// An empty flow laid out through `engine` in `style`, a line holding no run laid out in
   /// `base`.
   pub const fn new(engine: E, base: TextStyle, style: ParagraphStyle) -> Self {
@@ -561,6 +581,49 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
       }
     }
   }
+
+  fn repaint_as(&mut self, next: &Self) -> bool {
+    let alike = self.base == next.base
+      && self.style == next.style
+      && self.cap.map(f32::to_bits) == next.cap.map(f32::to_bits)
+      && self.text == next.text
+      && self.items.len() == next.items.len()
+      && self.items.iter().zip(&next.items).all(|pair| match pair {
+        (Item::Run(held), Item::Run(run)) => {
+          held.node == run.node
+            && held.groups == run.groups
+            && held.range == run.range
+            && Self::lays_out_alike(&held.style, &run.style)
+        }
+        (Item::Box(held), Item::Box(inline)) => held == inline,
+        _ => false,
+      });
+
+    if !alike {
+      return false;
+    }
+
+    for pair in self.items.iter_mut().zip(&next.items) {
+      let (Item::Run(held), Item::Run(run)) = pair
+      else {
+        continue;
+      };
+
+      if held.style.paint == run.style.paint {
+        continue;
+      }
+
+      if let Some(leaf) = self.leaf.get_mut()
+        && !leaf.repaint(run.range.clone(), &run.style.paint)
+      {
+        return false;
+      }
+
+      held.style.paint = run.style.paint;
+    }
+
+    true
+  }
 }
 
 #[cfg(test)]
@@ -643,6 +706,44 @@ mod tests {
     tree.set_children(parent, children.iter().map(|(child, _)| *child));
 
     tree
+  }
+
+  #[test]
+  fn a_change_of_paint_alone_repaints_without_laying_out_again() {
+    use skene_foundation::{Color, text::PaintStyle};
+
+    let (column, text) = (node(), node());
+    let mut tree = tree(column, Style::default(), &[(text, "alpha beta")]);
+    let space = taffy::geometry::Size {
+      width: AvailableSpace::MaxContent,
+      height: AvailableSpace::MaxContent,
+    };
+
+    tree.compute(column, space);
+
+    let laid = tree.context(text).expect("a flow").leaf().laid(None);
+    let red = PaintStyle::new(Color::oklch(0.6, 0.2, 30.));
+    let mut repainted = TextFlow::new(engine(), style(), ParagraphStyle::default());
+
+    repainted.add_run(text, &[], "alpha beta", style().with_paint(red));
+
+    assert!(
+      !tree.set_context(text, Some(repainted)),
+      "nothing it measures to changed"
+    );
+    assert!(!tree.is_dirty(text), "the leaf is not measured again");
+    assert_eq!(
+      laid.paint_at(0),
+      red,
+      "the layout handed out shows the paint"
+    );
+
+    let mut resized = TextFlow::new(engine(), style(), ParagraphStyle::default());
+
+    resized.add_run(text, &[], "alpha beta", TextStyle::new(20.).with_paint(red));
+
+    assert!(tree.set_context(text, Some(resized)));
+    assert!(tree.is_dirty(text), "a change of size lays out again");
   }
 
   #[test]

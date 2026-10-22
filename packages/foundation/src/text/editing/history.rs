@@ -21,6 +21,7 @@ pub struct Step {
 
 /// A kind of edit, the kinds whose consecutive occurrences make one undo step among them.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum EditKind {
   /// One cluster typed at a collapsed caret.
   Typed,

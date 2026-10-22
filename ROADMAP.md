@@ -289,7 +289,7 @@ in a code comment.
     break; the floor is unsettled.
 9. **The web and the terminal on the two facades.** `skene-web` becomes the web
     platform of `skene-gui` and `skene-terminal` becomes `skene-tui`, both taking item
-    2's shape; the bare name `skene` is the CLI's.
+    1's shape; the bare name `skene` is the CLI's.
     - The web: its browser and server leaves selected by the platform cfg, its
     progressive enhancement, hydration, interner contract and test tiers unchanged; its
     native form elements, styled by CSS, are its drawn controls, `EditContext` or a

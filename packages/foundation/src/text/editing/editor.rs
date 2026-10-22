@@ -39,6 +39,7 @@ use crate::{
 
 /// How an input method shows one clause of its composition.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[must_use]
 pub enum ClauseStyle {
   /// Not yet converted.
   #[default]
@@ -51,6 +52,7 @@ pub enum ClauseStyle {
 
 /// One clause of a composition: a byte range of the marked text and how it is shown.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub struct Clause {
   /// The bytes of the marked text it covers.
   pub range: Range<usize>,
@@ -60,6 +62,7 @@ pub struct Clause {
 
 /// The text an input method is composing, marked in the entry's text.
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[must_use]
 pub struct Composition {
   /// The marked bytes of the text.
   pub range: Range<usize>,
@@ -70,6 +73,7 @@ pub struct Composition {
 
 /// An end of the selection, as a touch selection handle moves it.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum SelectionEnd {
   /// Its start, in the text's order.
   Start,
@@ -79,6 +83,7 @@ pub enum SelectionEnd {
 
 /// Who made a change the notifier hears of.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[must_use]
 pub enum Origin {
   /// The platform's input protocol, through the input-client surface.
   Input,
@@ -138,6 +143,7 @@ struct Geometry<P: Paragraph> {
 /// protocol's [`Unit`] (`replace`, `select_in`) or in bytes where its protocol counts in
 /// those (`replace_bytes`, `select_bytes`), and the public selection names grapheme clusters
 /// ([`Editor::selection`]).
+#[must_use]
 pub struct Editor<E: TextEngine> {
   engine: E,
   style: TextStyle,
@@ -651,6 +657,22 @@ impl<E: TextEngine> Editor<E> {
   }
 
   fn perform_from(&mut self, command: Command, origin: Origin) -> Outcome {
+    let edits = matches!(
+      command,
+      Command::Delete(..)
+        | Command::Insert(_)
+        | Command::InsertNewline
+        | Command::Transpose
+        | Command::Cut
+        | Command::Paste(_)
+        | Command::Undo
+        | Command::Redo
+    );
+
+    if edits {
+      self.unmark();
+    }
+
     let selected = self.selected();
     let goal = self.goal.take();
 
@@ -678,13 +700,7 @@ impl<E: TextEngine> Editor<E> {
       Command::Delete(unit, direction) => self.delete(unit, direction, origin),
       Command::Insert(text) => {
         let text = self.sanitized(&text);
-        let typed = selected.is_empty() && TextIndex::new(&text).grapheme_count() == 1;
-        let kind = if typed {
-          EditKind::Typed
-        }
-        else {
-          EditKind::Other
-        };
+        let kind = self.typed_over(&selected, &text);
 
         Outcome::handled(self.replace_range(selected, &text, kind, origin))
       }
@@ -732,8 +748,52 @@ impl<E: TextEngine> Editor<E> {
     }
   }
 
+  /// The kind of `text` replacing `range`: one cluster is typed, and typed over a selection
+  /// it starts an undo step the clusters typed after it join.
+  fn typed_over(&mut self, range: &Range<usize>, text: &str) -> EditKind {
+    if TextIndex::new(text).grapheme_count() != 1 {
+      return EditKind::Other;
+    }
+
+    if !range.is_empty() {
+      self.history.break_run();
+    }
+
+    EditKind::Typed
+  }
+
+  /// Where a Backspace at the caret `at` starts removing: the last code point of the cluster
+  /// before it, or the whole cluster where it is an emoji sequence (a modifier, a joiner, a
+  /// variation selector or a tag inside it), a keycap or a flag.
+  fn backspace_start(&self, at: usize) -> usize {
+    let start = self.index.previous_grapheme(at);
+    let cluster = &self.text[start..at];
+    let whole = cluster.chars().any(|character| {
+      matches!(
+        character,
+        '\u{200D}'
+          | '\u{20E3}'
+          | '\u{FE00}'..='\u{FE0F}'
+          | '\u{1F1E6}'..='\u{1F1FF}'
+          | '\u{1F3FB}'..='\u{1F3FF}'
+          | '\u{E0020}'..='\u{E007F}'
+          | '\u{E0100}'..='\u{E01EF}'
+      )
+    });
+
+    if whole {
+      return start;
+    }
+
+    cluster
+      .char_indices()
+      .next_back()
+      .map_or(start, |(last, _)| start + last)
+  }
+
   /// Removes the selection, or the text from the caret to the boundary of `unit` in
-  /// `direction`.
+  /// `direction`: Backspace removes one code point of a cluster
+  /// ([`backspace_start`](Self::backspace_start)).
   fn delete(&mut self, unit: TextBoundary, direction: Direction, origin: Origin) -> Outcome {
     let selected = self.selected();
     let (range, kind) = if selected.is_empty() {
@@ -742,7 +802,7 @@ impl<E: TextEngine> Editor<E> {
       let single = unit == TextBoundary::Grapheme;
 
       match direction {
-        Direction::Backward if single => (to..at, EditKind::RemovedBackward),
+        Direction::Backward if single => (self.backspace_start(at)..at, EditKind::RemovedBackward),
         Direction::Forward if single => (at..to, EditKind::RemovedForward),
         Direction::Backward => (to..at, EditKind::Other),
         Direction::Forward => (at..to, EditKind::Other),
@@ -761,50 +821,59 @@ impl<E: TextEngine> Editor<E> {
 
   /// Undoes (`back`) or redoes one step: the state it returns to is proposed as any change
   /// is, and a refused one stays where it was.
+  ///
+  /// A step that returns to the text as it is changes nothing and is dropped for the one
+  /// before it.
   fn step(&mut self, back: bool, origin: Origin) -> bool {
-    let taken = if back {
-      self.history.take_undo()
-    }
-    else {
-      self.history.take_redo()
-    };
-    let Some(state) = taken
-    else {
-      return false;
-    };
-    let current = self.step_now();
-    let arbiter = self.arbiter.take();
-    let mut verdict = Verdict::Accept;
-
-    if let Some(mut arbiter) = arbiter {
-      let index = TextIndex::new(&state.text);
-      let edit = Self::edit_of(&state.text, &index, state.anchor.index, state.focus.index);
-
-      verdict = arbiter.propose(&edit, false, false);
-      self.arbiter = Some(arbiter);
-    }
-
-    let (text, anchor, focus) = match &verdict {
-      Verdict::Replace(truth) => {
-        let truth = self.taken(truth);
-        let (text, anchor, focus) =
-          Self::resolve(&truth, &state.text, state.anchor.index, state.focus.index);
-
-        (text, Position::new(anchor), Position::new(focus))
-      }
-      Verdict::Accept => (state.text.clone(), state.anchor, state.focus),
-    };
-
-    if text == self.text {
-      if back {
-        self.history.push_undo(state);
+    let (text, anchor, focus) = loop {
+      let taken = if back {
+        self.history.take_undo()
       }
       else {
-        self.history.push_redo(state);
+        self.history.take_redo()
+      };
+      let Some(state) = taken
+      else {
+        return false;
+      };
+      let arbiter = self.arbiter.take();
+      let mut verdict = Verdict::Accept;
+
+      if let Some(mut arbiter) = arbiter {
+        let index = TextIndex::new(&state.text);
+        let edit = Self::edit_of(&state.text, &index, state.anchor.index, state.focus.index);
+
+        verdict = arbiter.propose(&edit, false, false);
+        self.arbiter = Some(arbiter);
       }
 
-      return false;
-    }
+      let (text, anchor, focus) = match &verdict {
+        Verdict::Replace(truth) => {
+          let truth = self.taken(truth);
+          let (text, anchor, focus) =
+            Self::resolve(&truth, &state.text, state.anchor.index, state.focus.index);
+
+          (text, Position::new(anchor), Position::new(focus))
+        }
+        Verdict::Accept => (state.text.clone(), state.anchor, state.focus),
+      };
+
+      if text != self.text {
+        break (text, anchor, focus);
+      }
+
+      if let Verdict::Replace(_) = verdict {
+        if back {
+          self.history.push_undo(state);
+        }
+        else {
+          self.history.push_redo(state);
+        }
+
+        return false;
+      }
+    };
+    let current = self.step_now();
 
     if back {
       self.history.push_redo(current);
@@ -1134,24 +1203,22 @@ impl<E: TextEngine> Editor<E> {
       (None, Some(marked)) => marked.range.clone(),
       (None, None) => self.selected(),
     };
-    let typed = range.is_empty() && marked.is_none() && TextIndex::new(&text).grapheme_count() == 1;
     let surrounding = around && !range.is_empty() && marked.is_none() && text.is_empty();
-    let kind = if typed {
-      EditKind::Typed
-    }
-    else if surrounding {
+    let kind = if surrounding {
       EditKind::Surrounding
     }
-    else {
+    else if marked.is_some() || around && !range.is_empty() {
       EditKind::Other
+    }
+    else {
+      self.typed_over(&range, &text)
     };
 
     match marked {
       Some(marked) => {
-        let changed = self.replace_range(range, &text, kind, Origin::Input);
-
+        self.replace_range(range, &text, kind, Origin::Input);
         self.marked = None;
-        self.commit(marked, changed);
+        self.commit(marked);
 
         true
       }
@@ -1225,7 +1292,7 @@ impl<E: TextEngine> Editor<E> {
 
     if ended {
       if let Some(marked) = self.marked.take() {
-        self.commit(marked, changed);
+        self.commit(marked);
       }
     }
     else if self.marked.is_some() {
@@ -1246,7 +1313,7 @@ impl<E: TextEngine> Editor<E> {
   pub fn unmark(&mut self) -> bool {
     match self.marked.take() {
       Some(marked) => {
-        self.commit(marked, true);
+        self.commit(marked);
 
         true
       }
@@ -1256,10 +1323,10 @@ impl<E: TextEngine> Editor<E> {
 
   /// A composition ended: one undo step from the state before it, and the truth settled
   /// (what a change during it was held for, and a write held for its end).
-  fn commit(&mut self, marked: Composition, changed: bool) {
+  fn commit(&mut self, marked: Composition) {
     self.invalidate();
 
-    if changed || self.text != marked.before.text {
+    if self.text != marked.before.text {
       self.history.record(marked.before, EditKind::Other);
     }
 

@@ -46,6 +46,16 @@ pub trait Leaf {
   fn size_box(&mut self, node: NodeId, size: Size<f32>) {
     let _ = (node, size);
   }
+
+  /// Takes `next`'s paint in place, where `next` differs from this leaf in paint alone:
+  /// `true` where it did, every measurement and layout kept, `false` where `next` measures
+  /// or places differently or the leaf keeps no paint of its own to change; none by
+  /// default.
+  fn repaint_as(&mut self, next: &Self) -> bool {
+    let _ = next;
+
+    false
+  }
 }
 
 /// What a node is to the layout, with the platform's leaf context `C`.
@@ -354,7 +364,9 @@ impl<C: Leaf> Tree<C> {
   }
 
   /// Gives `node` the context its measure reads, or none; `true` where it differs from
-  /// the one it held, `false` where it is the same or `node` is outside the tree.
+  /// the one it held, `false` where it is the same, where it differs in paint alone, which
+  /// the held one takes in place ([`Leaf::repaint_as`]) without the node measured again,
+  /// or where `node` is outside the tree.
   pub fn set_context(&mut self, node: NodeId, context: Option<C>) -> bool
   where
     C: PartialEq,
@@ -368,7 +380,23 @@ impl<C: Leaf> Tree<C> {
       return false;
     }
 
+    if let (Some(held), Some(next)) = (self.taffy.get_node_context_mut(slot.taffy), &context)
+      && held.repaint_as(next)
+    {
+      return false;
+    }
+
     self.taffy.set_node_context(slot.taffy, context).is_ok()
+  }
+
+  /// Whether `node` is marked for the next [`compute`](Self::compute) to measure and lay
+  /// out again.
+  #[cfg(test)]
+  pub(crate) fn is_dirty(&self, node: NodeId) -> bool {
+    self
+      .nodes
+      .get(node)
+      .is_some_and(|slot| self.taffy.dirty(slot.taffy).unwrap_or(true))
   }
 
   /// The context `node`'s measure reads; `None` for a node outside the tree or without

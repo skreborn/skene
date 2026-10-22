@@ -162,7 +162,7 @@ fn a_click_lands_where_the_text_is_drawn() {
 }
 
 #[test]
-fn backspace_takes_an_arabic_letter_with_its_mark() {
+fn backspace_takes_an_arabic_mark_apart_from_its_letter() {
   // Beh with a kasra, then alef: two clusters.
   let mut editor = editor("\u{628}\u{650}\u{627}", ParagraphStyle::default());
   let _ = editor.perform(Command::Move {
@@ -172,6 +172,14 @@ fn backspace_takes_an_arabic_letter_with_its_mark() {
   let _ = editor.perform(Command::Delete(TextBoundary::Grapheme, Direction::Backward));
 
   assert_eq!(editor.text(), "\u{628}\u{650}");
+
+  let _ = editor.perform(Command::Delete(TextBoundary::Grapheme, Direction::Backward));
+
+  assert_eq!(
+    editor.text(),
+    "\u{628}",
+    "the kasra alone, as Chromium removes it"
+  );
 
   let _ = editor.perform(Command::Delete(TextBoundary::Grapheme, Direction::Backward));
 

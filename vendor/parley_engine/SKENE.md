@@ -17,6 +17,9 @@ Skene's changes, each marked `Skene:` in the source:
   holding a soft hyphen keeps the hyphen a break after it draws (`ShapedRun::hyphen`); both are
   mapped through the character map subtable HarfRust reads (`shape::nominal_glyph`) and scaled
   as HarfRust's advances are.
+- analysis.rs: a full stop (U+002E) between two letters is a word of its own, a word boundary
+  before it and before the letter after it, as Chromium tailors UAX #29's WB6 and WB7, where
+  ICU4X keeps `foo.bar` one word.
 - shape/stack.rs (new), called from shape/shaped_text.rs: combining marks the font's mark
   positioning leaves colliding are stacked clear of one another, a later mark moving away from
   its base by a sixteenth of the font size until it clears every earlier one on its side.

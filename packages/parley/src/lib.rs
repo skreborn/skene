@@ -11,7 +11,7 @@
 //! Off the web, a batch of [`PARALLEL`] paragraphs or more shapes on threads beside the
 //! engine's own, each over contexts of its own on the engine's fonts. A laid paragraph draws
 //! through vello as outlines with the shared decoration painter's lines
-//! ([`render::paint_outlines`]).
+//! ([`ParleyLaid::paint_outlines`]).
 
 mod engine;
 pub mod render;

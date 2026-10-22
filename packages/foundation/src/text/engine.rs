@@ -22,8 +22,9 @@ use crate::{
   text::{AttributedText, PaintStyle, ParagraphStyle},
 };
 
-/// A realization's text engine: Parley where Skene draws the text itself (over a cell typeface
-/// in the terminal), the platform's own elsewhere.
+/// A realization's text engine: Parley on Linux and in the terminal (over a cell typeface
+/// there), the platform's own engine everywhere else (`TextKit` 2, `android.text`,
+/// `DirectWrite`).
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a text engine",
   label = "text is laid out through an engine here",

@@ -111,12 +111,19 @@ fn caret_jumps_and_deletes_by_word() {
 }
 
 #[test]
-fn word_deletion_follows_unicode_word_boundaries() {
+fn word_deletion_follows_chromiums_word_boundaries() {
   let mut editor = editor("say don't foo.bar_baz(");
 
   key(&mut editor, "End");
 
-  for expected in ["say don't foo.bar_baz", "say don't ", "say ", ""] {
+  for expected in [
+    "say don't foo.bar_baz",
+    "say don't foo.",
+    "say don't foo",
+    "say don't ",
+    "say ",
+    "",
+  ] {
     key(&mut editor, "Ctrl+Backspace");
     assert_eq!(editor.text(), expected);
   }
@@ -731,4 +738,115 @@ fn a_command_logged_masked_shows_its_text_as_marks() {
   );
   assert_eq!(Command::Paste("ab".into()).masked('*'), "Paste(\"**\")");
   assert_eq!(Command::SelectAll.masked('•'), "SelectAll");
+}
+
+#[test]
+fn a_command_that_edits_during_a_composition_ends_it_first() {
+  use crate::text::{Direction, TextBoundary};
+
+  let commands = [
+    Command::Undo,
+    Command::Redo,
+    Command::Insert("\u{E9}".into()),
+    Command::InsertNewline,
+    Command::Paste("\u{E9}".into()),
+    Command::Cut,
+    Command::Delete(TextBoundary::Grapheme, Direction::Backward),
+    Command::Transpose,
+  ];
+
+  for command in commands {
+    let mut editor = editor("");
+
+    keys(&mut editor, &["a", "b", "c"]);
+    editor.set_marked("\u{D55C}\u{AE00}", Vec::new(), 0..0, None, Unit::Utf16);
+
+    let shown = format!("{command:?}");
+    let _ = editor.perform(command);
+
+    assert!(!editor.is_composing(), "{shown}");
+    assert_eq!(editor.marked_range_in(Unit::Utf16), None, "{shown}");
+
+    let _ = editor.laid();
+  }
+
+  let mut undone = editor("");
+
+  keys(&mut undone, &["a", "b", "c"]);
+  undone.set_marked("xyz", Vec::new(), 3..3, None, Unit::Utf16);
+  let _ = undone.perform(Command::Undo);
+  assert_eq!(undone.text(), "abc", "the composition is the step undone");
+
+  let mut deleting = editor("");
+
+  deleting.set_marked("\u{D55C}\u{AE00}", Vec::new(), 2..2, None, Unit::Utf16);
+  let _ = deleting.perform(Command::Delete(TextBoundary::Grapheme, Direction::Backward));
+  assert_eq!(deleting.text(), "\u{D55C}");
+}
+
+#[test]
+fn a_composition_that_changes_nothing_is_no_undo_step() {
+  let mut cancelled = editor("");
+
+  keys(&mut cancelled, &["a", "b"]);
+  cancelled.set_marked("xy", Vec::new(), 2..2, None, Unit::Utf16);
+  cancelled.set_marked("", Vec::new(), 0..0, None, Unit::Utf16);
+  key(&mut cancelled, "Ctrl+z");
+  assert_eq!(cancelled.text(), "", "a cancelled composition");
+
+  let mut committed = editor("");
+
+  keys(&mut committed, &["a", "b"]);
+  committed.set_marked("x", Vec::new(), 1..1, None, Unit::Utf16);
+  committed.replace(None, "", Unit::Utf16);
+  key(&mut committed, "Ctrl+z");
+  assert_eq!(committed.text(), "", "a composition committed as nothing");
+}
+
+#[test]
+fn backspace_removes_one_code_point_but_keeps_emoji_sequences_whole() {
+  let mut combining = editor("ae\u{301}");
+
+  key(&mut combining, "End");
+  key(&mut combining, "Backspace");
+  assert_eq!(combining.text(), "ae", "the combining acute alone");
+  key(&mut combining, "Backspace");
+  assert_eq!(combining.text(), "a");
+
+  for sequence in [
+    "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}",
+    "\u{1F44B}\u{1F3FD}",
+    "\u{2764}\u{FE0F}",
+    "1\u{FE0F}\u{20E3}",
+    "\u{1F1EB}\u{1F1EE}",
+  ] {
+    let mut sequenced = editor(&format!("a{sequence}"));
+
+    key(&mut sequenced, "End");
+    key(&mut sequenced, "Backspace");
+    assert_eq!(sequenced.text(), "a", "{sequence:?}");
+  }
+
+  let mut forward = editor("ae\u{301}b");
+
+  keys(&mut forward, &["End", "ArrowLeft", "Delete"]);
+  assert_eq!(
+    forward.text(),
+    "ae\u{301}",
+    "forward removes the whole cluster"
+  );
+  keys(&mut forward, &["ArrowLeft", "Delete"]);
+  assert_eq!(forward.text(), "a");
+}
+
+#[test]
+fn typing_over_a_selection_is_one_undo_step_with_what_follows() {
+  let mut editor = editor("hello");
+
+  keys(&mut editor, &["Ctrl+a", "x", "y", "z"]);
+  assert_eq!(editor.text(), "xyz");
+
+  key(&mut editor, "Ctrl+z");
+  assert_eq!(editor.text(), "hello");
+  assert_eq!(editor.selection(), selection(0, 5));
 }

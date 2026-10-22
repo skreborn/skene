@@ -10,8 +10,6 @@ impl core::clone::Clone for skene_parley::render::DecorationShape
 pub fn skene_parley::render::DecorationShape::clone(&self) -> skene_parley::render::DecorationShape
 impl core::fmt::Debug for skene_parley::render::DecorationShape
 pub fn skene_parley::render::DecorationShape::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn skene_parley::render::paint_decorations(&mut vello_cpu::render::RenderContext, &skene_parley::ParleyLaid)
-pub fn skene_parley::render::paint_outlines(&mut vello_cpu::render::RenderContext, &skene_parley::ParleyLaid, (f64, f64))
 pub struct skene_parley::GlyphRun
 pub skene_parley::GlyphRun::coords: alloc::vec::Vec<i16>
 pub skene_parley::GlyphRun::font: linebender_resource_handle::font::FontData
@@ -44,6 +42,9 @@ pub fn skene_parley::ParleyLaid::index(&self) -> &skene_foundation::text::index:
 pub fn skene_parley::ParleyLaid::layout(&self) -> &parley::layout::layout::Layout<()>
 pub fn skene_parley::ParleyLaid::paint_at(&self, usize) -> skene_foundation::text::model::PaintStyle
 pub fn skene_parley::ParleyLaid::run_extents_in(&self, (f32, f32)) -> alloc::vec::Vec<skene_foundation::text::engine::RunExtent>
+impl skene_parley::ParleyLaid
+pub fn skene_parley::ParleyLaid::paint_decorations(&self, &mut vello_cpu::render::RenderContext)
+pub fn skene_parley::ParleyLaid::paint_outlines(&self, &mut vello_cpu::render::RenderContext, (f64, f64))
 impl core::clone::Clone for skene_parley::ParleyLaid
 pub fn skene_parley::ParleyLaid::clone(&self) -> skene_parley::ParleyLaid
 impl core::fmt::Debug for skene_parley::ParleyLaid

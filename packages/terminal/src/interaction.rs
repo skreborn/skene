@@ -49,13 +49,14 @@ use skene_foundation::{
 use crate::{
   Terminal,
   layout::{
+    cell_point,
+    content,
     enclosing_paragraph,
-    inline_box_cells,
+    flow_of,
+    inline_boxes,
     is_inline_box,
     is_inline_run,
     is_paragraph,
-    paragraph_cluster_at,
-    paragraph_run_at,
   },
   paint::control_entry,
   records::{Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
@@ -291,8 +292,8 @@ impl Records {
     contains
   }
 
-  /// Hits the runs of the paragraph `handle`, at `origin`, under the point: the runs
-  /// holding the cluster drawn there join the path from the outermost group to the leaf,
+  /// Hits the runs of the paragraph `handle`, at `origin`, under the point: the run drawn
+  /// there and the groups around it join the path from the outermost group to the leaf,
   /// each at the paragraph's origin, and an inline box hits through its own layout.
   fn hit_paragraph(
     &self,
@@ -306,8 +307,34 @@ impl Records {
     else {
       return;
     };
-    let Some(leaf) = paragraph_cluster_at(self, handle, column, row)
-      .and_then(|offset| paragraph_run_at(self, handle, offset))
+    let Some(flow) = flow_of(self, handle)
+    else {
+      return;
+    };
+    let (width, _) = self.node_size(handle);
+    let (content, point) = (
+      content(usize::try_from(width).unwrap_or(1)),
+      cell_point(column, row),
+    );
+    let boxes = inline_boxes(self, handle);
+    let Some(leaf) = flow
+      .flow()
+      .run_at(content, point)
+      .map(|hit| hit.node)
+      .or_else(|| {
+        boxes
+          .iter()
+          .find(|(run, (cell_x, cell_y))| {
+            let (cells, rows) = self.node_size(*run);
+            let (column, row) = (
+              i64::try_from(column).unwrap_or(0),
+              i64::try_from(row).unwrap_or(0),
+            );
+
+            (*cell_x..cell_x + cells).contains(&column) && (*cell_y..cell_y + rows).contains(&row)
+          })
+          .map(|(run, _)| *run)
+      })
     else {
       return;
     };
@@ -333,10 +360,7 @@ impl Records {
       return;
     }
 
-    if let Some((_, (cell_x, cell_y))) = inline_box_cells(self, handle)
-      .into_iter()
-      .find(|(run, _)| *run == leaf)
-    {
+    if let Some((_, (cell_x, cell_y))) = boxes.into_iter().find(|(run, _)| *run == leaf) {
       let (location_x, location_y) = self.node_location(leaf);
 
       self.hit_walk(
@@ -372,15 +396,15 @@ impl Records {
   }
 
   /// A node's position within its layout parent: its laid-out location, or for a run
-  /// flowing in a paragraph, through any groups, the cell an inline box's placeholder
-  /// flowed into and the paragraph's origin for any other.
+  /// flowing in a paragraph, through any groups, the cell an inline box's frame lies at
+  /// and the paragraph's origin for any other.
   pub(crate) fn inline_location(&self, handle: Handle) -> (i64, i64) {
     let paragraph = is_inline_run(self, handle)
       .then(|| enclosing_paragraph(self, handle))
       .flatten();
 
     match paragraph {
-      Some(paragraph) => inline_box_cells(self, paragraph)
+      Some(paragraph) => inline_boxes(self, paragraph)
         .into_iter()
         .find(|(run, _)| *run == handle)
         .map_or((0, 0), |(_, cell)| cell),

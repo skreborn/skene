@@ -34,6 +34,7 @@ use self::{
     draw,
     emit_title,
     pointer_shape,
+    set_reported_bidi,
     sync_pointer_shape,
     write_color_queries,
     write_hand_back,
@@ -51,7 +52,7 @@ use crate::{
   frame,
   interaction::{self, WHEEL_STEP},
   paint,
-  parse::{ClipboardStatus, Event, KeyKind, Mouse, MouseKind, Parser},
+  parse::{ClipboardStatus, Event, KeyKind, ModeSetting, Mouse, MouseKind, Parser},
   platform::end_turn,
   text,
   tty::Tty,
@@ -594,6 +595,14 @@ where
           if changed {
             last_frame = None;
           }
+        }
+        // The bidirectional support mode the terminal had before setup made it explicit,
+        // which the hand-back restores; one it cannot change, or does not know, is left.
+        Event::AnsiMode {
+          mode: escape::BIDI_SUPPORT,
+          setting: setting @ (ModeSetting::Set | ModeSetting::Reset),
+        } => {
+          set_reported_bidi(setting == ModeSetting::Set);
         }
         // The probe answered `OK` proves the graphics protocol; every painted box then
         // renders and places its picture.

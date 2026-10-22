@@ -371,6 +371,15 @@ impl<C: Leaf> Tree<C> {
     self.taffy.set_node_context(slot.taffy, context).is_ok()
   }
 
+  /// The context `node`'s measure reads; `None` for a node outside the tree or without
+  /// one.
+  #[must_use]
+  pub fn context(&self, node: NodeId) -> Option<&C> {
+    let slot = self.nodes.get(node)?;
+
+    self.taffy.get_node_context(slot.taffy)
+  }
+
   /// The context `node`'s measure reads, to change in place; a change to what it
   /// measures to takes [`mark_dirty`](Self::mark_dirty) as well.
   pub fn context_mut(&mut self, node: NodeId) -> Option<&mut C> {

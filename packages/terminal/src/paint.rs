@@ -13,29 +13,20 @@ use skene_foundation::{
   Length,
   NativeElement,
   Scene,
-  Size,
   TextDecoration,
   TextDecorationStyle,
+  text::TextIndex,
 };
-use skene_layout::{Content, Inline, Paragraph};
 
 use crate::{
   BorderGlyphs,
   ScrollbarGlyphs,
   Terminal,
   cells::Cells,
-  layout::{
-    INLINE_BOX,
-    border_edges,
-    has_border,
-    inline_box_cells,
-    is_inline_box,
-    is_paragraph,
-    paragraph_runs,
-    paragraph_text,
-  },
+  engine::{Drawn, drawn},
+  layout::{Source, border_edges, flow_of, has_border, inline_boxes, is_inline_box, is_paragraph},
   records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records},
-  text::{self, CellScale, Extent, Glyph, Scales},
+  text::{self, CellScale, Glyph},
 };
 
 /// One terminal cell's paint state.
@@ -691,207 +682,6 @@ impl Buffer {
   }
 }
 
-/// Wraps text to `width` cells: a line ends where the Unicode line breaking algorithm
-/// allows, the furthest that fits, its trailing spaces hanging past it; a word longer
-/// than a full line breaks mid-word, a cluster too wide for a line takes one alone,
-/// and a newline always breaks. Yields at least one line, each paired with its start
-/// offset into the source, in clusters, newlines included.
-pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
-  wrap_sized(text, width, &Scales::default())
-    .into_iter()
-    .map(|line| (line.start, line.text))
-    .collect()
-}
-
-/// One wrapped line of sized text: where it starts in the source, in clusters, its
-/// text, and the rows it takes, those of its tallest cluster.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SizedLine {
-  pub(crate) start: usize,
-  pub(crate) text: String,
-  pub(crate) rows: usize,
-}
-
-impl SizedLine {
-  /// The cells each cluster of the line advances, at its scale.
-  pub(crate) fn advances<'a>(&'a self, scales: &'a Scales) -> impl Iterator<Item = usize> + 'a {
-    text::clusters(&self.text)
-      .enumerate()
-      .map(move |(index, (_, cluster))| scales.advance(self.start + index, cluster))
-  }
-
-  /// The cluster a hit at the cell `column` lands on: the one whose block holds it,
-  /// the count past the line.
-  pub(crate) fn cluster_at(&self, column: usize, scales: &Scales) -> Option<usize> {
-    let mut cell = 0;
-
-    for (index, advance) in self.advances(scales).enumerate() {
-      cell += advance;
-
-      if column < cell {
-        return Some(index);
-      }
-    }
-
-    None
-  }
-
-  /// The cluster a caret goes to for the cell `column`: the one whose first cell it
-  /// is, the next for a later cell of a block, and the count past the line.
-  pub(crate) fn index_at_column(&self, column: usize, scales: &Scales) -> usize {
-    let mut cell = 0;
-
-    for (index, advance) in self.advances(scales).enumerate() {
-      let next = cell + advance;
-
-      if column < next {
-        return if column == cell { index } else { index + 1 };
-      }
-
-      cell = next;
-    }
-
-    text::count(&self.text)
-  }
-}
-
-/// The wrapped lines of sized text, and the row each starts on.
-pub(crate) fn sized_rows(lines: &[SizedLine]) -> Vec<usize> {
-  let mut row = 0;
-
-  lines
-    .iter()
-    .map(|line| {
-      let start = row;
-
-      row += line.rows;
-
-      start
-    })
-    .collect()
-}
-
-/// The line whose rows hold the row `row` of the wrapped `lines`, if any.
-pub(crate) fn line_holding(lines: &[SizedLine], row: usize) -> Option<usize> {
-  sized_rows(lines)
-    .iter()
-    .zip(lines)
-    .position(|(start, line)| (*start..start + line.rows).contains(&row))
-}
-
-/// The line holding the row `row` of the wrapped `lines`, clamped into them.
-pub(crate) fn line_at_row(lines: &[SizedLine], row: usize) -> usize {
-  line_holding(lines, row).unwrap_or(if row == 0 {
-    0
-  }
-  else {
-    lines.len().saturating_sub(1)
-  })
-}
-
-/// The lines a run's text wraps into, as the shared [`Paragraph`] wraps it: those of
-/// [`wrap_spans`], with each cluster as wide as its scale makes it and each line as tall
-/// as its tallest run.
-pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
-  wrap_paragraph(text, &paragraph_of(text, scales), width)
-}
-
-/// The lines `paragraph`, laid out from `text`, wraps into at `width` cells, at least
-/// one.
-pub(crate) fn wrap_paragraph(
-  text: &str,
-  paragraph: &Paragraph<usize>,
-  width: usize,
-) -> Vec<SizedLine> {
-  paragraph
-    .lines_within(Some(cells_of(width.max(1))))
-    .into_iter()
-    .map(|line| SizedLine {
-      start: line.clusters.start,
-      text: text::slice(text, line.shown.start, line.shown.end).to_owned(),
-      rows: whole(line.height),
-    })
-    .collect()
-}
-
-/// The paragraph `text` lays out as at `scales`: a run of each stretch of one scale, each
-/// cluster measured as [`text::measured`] measures it, and an inline box's placeholder a
-/// box as many cells wide and rows tall as the box.
-pub(crate) fn paragraph_of(text: &str, scales: &Scales) -> Paragraph<usize> {
-  let mut runs: Vec<Inline<usize>> = Vec::new();
-  let mut extents: Vec<Extent> = Vec::new();
-
-  for (index, (_, cluster)) in text::clusters(text).enumerate() {
-    let extent = scales.extent(index);
-    let node = runs.len();
-
-    match (extent, runs.last_mut()) {
-      (Extent::Box { cells, rows }, _) => {
-        runs.push(Inline {
-          node,
-          groups: Vec::new(),
-          content: Content::Box(Size::new(cells_of(cells), cells_of(rows))),
-          style: CellScale::ONE.style(),
-        });
-        extents.push(extent);
-      }
-      (
-        Extent::Scaled(_),
-        Some(Inline {
-          content: Content::Text(stretch),
-          ..
-        }),
-      ) if extents.last() == Some(&extent) => stretch.push_str(text::measured(cluster)),
-      (Extent::Scaled(scale), _) => {
-        runs.push(Inline {
-          node,
-          groups: Vec::new(),
-          content: Content::Text(text::measured(cluster).to_owned()),
-          style: scale.style(),
-        });
-        extents.push(extent);
-      }
-    }
-  }
-
-  Paragraph::new(CellScale::ONE.style(), runs)
-}
-
-/// `count` cells or rows as the layout counts them.
-#[expect(
-  clippy::cast_precision_loss,
-  reason = "a count of cells stays far below the integers f32 holds exactly"
-)]
-pub(crate) const fn cells_of(count: usize) -> f32 {
-  count as f32
-}
-
-/// The whole cells or rows `length` spans, rounded.
-#[expect(
-  clippy::cast_possible_truncation,
-  clippy::cast_sign_loss,
-  reason = "a length in cells is non-negative and far below usize::MAX"
-)]
-pub(crate) const fn whole(length: f32) -> usize {
-  length.max(0.).round() as usize
-}
-
-/// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
-#[cfg(test)]
-pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
-  wrap_spans(text, width)
-    .into_iter()
-    .map(|(_, line)| line)
-    .collect()
-}
-
-/// The widest stretch between two places a line may end, its trailing spaces aside, in
-/// cells at its scales: the narrowest a wrap can go.
-#[cfg(test)]
-pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
-  whole(paragraph_of(text, scales).narrowest().width)
-}
-
 /// Paints the frame into `buffer`: the tree, then every open overlay, and mends the
 /// wide glyphs a later paint broke into; a picture an open overlay covers in part is
 /// left out.
@@ -1021,25 +811,33 @@ impl Emphasis {
   }
 }
 
-/// A run's selection highlight: the selected source range, each painted line's start
-/// offset in the source, and the ink and highlight colors, `None` for reverse video.
+/// An entry's selection highlight: the selected range of its value, in clusters, each
+/// visible row's first cluster in the value, and the ink and highlight colors, `None` for
+/// reverse video.
 struct SelectionPaint {
   range: (usize, usize),
   starts: Vec<usize>,
   colors: Option<SelectionColors>,
 }
 
+/// One cluster a text draws: where it draws, the span it belongs to, its scale, and
+/// whether it is selected.
+struct ClusterPaint {
+  drawn: Drawn,
+  span: u16,
+  scale: CellScale,
+  selected: bool,
+}
+
 /// What one node contributes to the frame.
 enum NodePaint {
   Paragraph {
-    /// Wrapped lines over the concatenated text, each cluster at its span's scale.
-    lines: Vec<SizedLine>,
-    /// Each concatenated cluster's span index.
-    attribution: Vec<u16>,
+    /// Each cluster the paragraph's layout draws, in visual order.
+    clusters: Vec<ClusterPaint>,
     spans: Vec<SpanPaint>,
-    scales: Scales,
     links: Vec<String>,
-    selection: Option<(usize, usize)>,
+    /// Each inline box, with the cell its frame's top left is in.
+    boxes: Vec<(Handle, (i64, i64))>,
   },
   Box {
     background: Option<(u8, u8, u8)>,
@@ -1047,22 +845,23 @@ enum NodePaint {
     shadow: Option<ShadowPaint>,
   },
   Text {
-    lines: Vec<SizedLine>,
+    /// Each cluster the run's layout draws, in visual order.
+    clusters: Vec<ClusterPaint>,
     foreground: Option<(u8, u8, u8)>,
     bold: bool,
-    scale: CellScale,
     decoration: CellDecoration,
     link: Option<String>,
     /// The emphasis of the link whose focus shows; `None` while the run is not it.
     focused: Option<Emphasis>,
-    selection: Option<SelectionPaint>,
+    /// The colors the run's selected cells paint in; reverse video when `None`.
+    selection: Option<SelectionColors>,
   },
   Field {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
     shadow: Option<ShadowPaint>,
-    /// The visible rows.
-    rows: Vec<String>,
+    /// The visible rows, each with its first cluster in the value.
+    rows: Vec<(usize, String)>,
     /// The value's ink, the terminal's own where `None`.
     foreground: Option<(u8, u8, u8)>,
     bold: bool,
@@ -1075,6 +874,41 @@ enum NodePaint {
     selection: Option<SelectionPaint>,
   },
   None,
+}
+
+/// Each cluster the text node `handle`, laid out `width` cells wide, draws, with its
+/// span (the index of its run among `source`'s), its run's scale and whether `selection`,
+/// a range of `source`'s clusters, holds it.
+fn cluster_paints(
+  records: &Records,
+  handle: Handle,
+  width: usize,
+  source: &Source,
+  selection: Option<(usize, usize)>,
+) -> Vec<ClusterPaint> {
+  let Some(flow) = flow_of(records, handle)
+  else {
+    return Vec::new();
+  };
+  let laid = flow.laid(width);
+  let text = flow.flow().text();
+  let runs: Vec<Handle> = source.runs().map(|(run, _)| run).collect();
+  let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();
+
+  drawn(&laid, text, &TextIndex::new(text))
+    .into_iter()
+    .filter_map(|drawn| {
+      let (run, cluster) = source.at_flow(drawn.at)?;
+      let span = runs.iter().position(|known| *known == run)?;
+
+      Some(ClusterPaint {
+        drawn,
+        span: u16::try_from(span).unwrap_or(0),
+        scale: scales[span],
+        selected: selection.is_some_and(|(from, to)| cluster >= from && cluster < to),
+      })
+    })
+    .collect()
 }
 
 /// The border paint of a resolved box style: in its color, the terminal's own ink where
@@ -1140,19 +974,13 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
 
   match &record.kind {
     Kind::Anchor | Kind::Scope => NodePaint::None,
-    Kind::Box(inner) if is_paragraph(records, handle) => {
-      let _ = inner;
-      let text = paragraph_text(records, handle);
-      let scales = paragraph_scales(records, handle);
-      let lines = wrap_sized(&text, width, &scales);
-      let runs = paragraph_runs(records, handle);
+    Kind::Box(_) if is_paragraph(records, handle) => {
+      let source = Source::of(records, handle);
       let mut destinations = Vec::new();
-      let mut ends = Vec::new();
-      let spans: Vec<SpanPaint> = runs
-        .iter()
-        .map(|run| {
-          let record = records.record(*run).expect("a live run");
-          let Kind::Run { props, cache, .. } = &record.kind
+      let spans: Vec<SpanPaint> = source
+        .runs()
+        .map(|(run, _)| {
+          let Some(Kind::Run { props, cache, .. }) = records.record(run).map(|record| &record.kind)
           else {
             unreachable!("paragraph runs are runs");
           };
@@ -1162,36 +990,29 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
             u16::try_from(destinations.len() - 1).unwrap_or(0)
           });
 
-          ends.push(ends.last().unwrap_or(&0) + record.text.len());
-
           SpanPaint {
             foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
             bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
             decoration: CellDecoration::of(style, link.is_some()),
             link,
-            focused: (link.is_some() && records.focus_shows(*run))
-              .then(|| link_focus_emphasis(records, *run)),
+            focused: (link.is_some() && records.focus_shows(run))
+              .then(|| link_focus_emphasis(records, run)),
             selection: style.and_then(selection_colors),
           }
         })
         .collect();
 
-      // Each cluster of the paragraph belongs to the run its first byte came from.
-      let attribution = text::clusters(&text)
-        .map(|(byte, _)| {
-          let index = ends.iter().position(|end| byte < *end).unwrap_or(0);
-
-          u16::try_from(index).unwrap_or(0)
-        })
-        .collect();
-
       NodePaint::Paragraph {
-        lines,
-        attribution,
+        clusters: cluster_paints(
+          records,
+          handle,
+          width,
+          &source,
+          records.selection_range(handle),
+        ),
         spans,
-        scales,
         links: destinations,
-        selection: records.selection_range(handle),
+        boxes: inline_boxes(records, handle),
       }
     }
     Kind::Box(inner) | Kind::Overlay { inner, .. } => {
@@ -1243,7 +1064,7 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
         background,
         border,
         shadow,
-        rows: rows.into_iter().map(|(_, row)| row).collect(),
+        rows,
         foreground: run.color.and_then(terminal_rgb),
         bold: run.ext.bold.unwrap_or(false),
         placeholder: field.value.is_empty(),
@@ -1255,28 +1076,25 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
     Kind::Run { .. } if is_inline_box(records, handle) => NodePaint::None,
     Kind::Run { props, cache, .. } => {
       let style = cache.as_ref().map(|cache| &cache.style);
-      let scale = run_scale(records, handle);
-      let lines = wrap_sized(&record.text, width, &Scales::uniform(scale));
       let selection = props
         .selectable
-        .then(|| {
-          records.selection_range(handle).map(|range| SelectionPaint {
-            range,
-            starts: lines.iter().map(|line| line.start).collect(),
-            colors: style.and_then(selection_colors),
-          })
-        })
+        .then(|| records.selection_range(handle))
         .flatten();
 
       NodePaint::Text {
-        lines,
+        clusters: cluster_paints(
+          records,
+          handle,
+          width,
+          &Source::of(records, handle),
+          selection,
+        ),
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
-        scale,
         decoration: CellDecoration::of(style, props.link.is_some()),
         link: props.link.clone(),
         focused: (props.link.is_some() && focused).then(|| link_focus_emphasis(records, handle)),
-        selection,
+        selection: style.and_then(selection_colors),
       }
     }
   }
@@ -1361,43 +1179,35 @@ fn paint_node(
 
     match node_paint(records, handle, width, focused) {
       NodePaint::Paragraph {
-        lines,
-        attribution,
+        clusters,
         spans,
-        scales,
         links,
-        selection,
+        boxes,
       } => {
         // The paragraph's links join the frame's.
         let links: Vec<u16> = links.iter().map(|link| buffer.link(link)).collect();
+        let text = flow_of(records, handle).map_or("", |flow| flow.flow().text());
 
-        for (line, row) in lines.iter().zip(sized_rows(&lines)) {
-          let mut column = 0;
+        for cluster in &clusters {
+          let Some(paint) = spans.get(usize::from(cluster.span))
+          else {
+            continue;
+          };
+          let Drawn {
+            at,
+            end,
+            column,
+            top,
+            advance,
+          } = cluster.drawn;
 
-          for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
-            let cell_x = x + isize::try_from(column).expect("fits");
-            let offset = line.start + index;
-            let advance = scales.advance(offset, cluster);
-            let scale = scales.at(offset);
-            // A smaller cluster sits on the line's bottom rows, as on a baseline.
-            let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
-
-            column += advance;
-
-            let Some(paint) = attribution
-              .get(offset)
-              .and_then(|index| spans.get(usize::from(*index)))
-            else {
-              continue;
-            };
-
-            if cluster.starts_with(INLINE_BOX) {
-              continue;
-            }
-
-            let selected = selection.is_some_and(|(from, to)| offset >= from && offset < to);
-
-            buffer.put_advancing(cell_x, row_y, cluster, advance, scale, |cell| {
+          buffer.put_advancing(
+            x + isize::try_from(column).expect("fits"),
+            y + isize::try_from(top).expect("fits"),
+            &text[at..end],
+            advance,
+            cluster.scale,
+            |cell| {
               if paint.foreground.is_some() {
                 cell.foreground = paint.foreground;
               }
@@ -1412,15 +1222,15 @@ fn paint_node(
                 select_cell(cell, emphasis.colors());
               }
 
-              if selected {
+              if cluster.selected {
                 select_cell(cell, paint.selection);
               }
-            });
-          }
+            },
+          );
         }
 
-        // An inline box paints its own layout at the cell its placeholder flowed into.
-        for (run, (cell_x, cell_y)) in inline_box_cells(records, handle) {
+        // An inline box paints its own layout at the cell its frame lies at.
+        for (run, (cell_x, cell_y)) in boxes {
           let (location_x, location_y) = records.node_location(run);
 
           paint_node(
@@ -1496,41 +1306,53 @@ fn paint_node(
         }
       }
       NodePaint::Text {
-        lines,
+        clusters,
         foreground,
         bold,
-        scale,
         decoration,
         link,
         focused,
         selection,
       } => {
         let link = link.map(|url| buffer.link(&url));
-        let scales = Scales::uniform(scale);
+        let text = flow_of(records, handle).map_or("", |flow| flow.flow().text());
 
-        for (line, row) in lines.iter().zip(sized_rows(&lines)) {
-          let row_y = y + isize::try_from(row).expect("fits");
+        for cluster in &clusters {
+          let Drawn {
+            at,
+            end,
+            column,
+            top,
+            advance,
+          } = cluster.drawn;
 
-          draw_sized(buffer, x, row_y, &line.text, scale, |cell| {
-            if foreground.is_some() {
-              cell.foreground = foreground;
-            }
-
-            cell.bold = bold;
-
-            if link.is_some() || decoration != CellDecoration::NONE {
-              cell.decoration = decoration;
-              cell.link = link;
-
-              if let Some(emphasis) = focused {
-                select_cell(cell, emphasis.colors());
+          buffer.put_advancing(
+            x + isize::try_from(column).expect("fits"),
+            y + isize::try_from(top).expect("fits"),
+            &text[at..end],
+            advance,
+            cluster.scale,
+            |cell| {
+              if foreground.is_some() {
+                cell.foreground = foreground;
               }
-            }
-          });
-        }
 
-        if let Some(selection) = selection {
-          draw_selection(buffer, x, y, &lines, &scales, &selection);
+              cell.bold = bold;
+
+              if link.is_some() || decoration != CellDecoration::NONE {
+                cell.decoration = decoration;
+                cell.link = link;
+
+                if let Some(emphasis) = focused {
+                  select_cell(cell, emphasis.colors());
+                }
+              }
+
+              if cluster.selected {
+                select_cell(cell, selection);
+              }
+            },
+          );
         }
       }
       NodePaint::Field {
@@ -1559,13 +1381,12 @@ fn paint_node(
           }
         }
 
-        for (row, text) in rows.iter().enumerate() {
-          draw_sized(
+        for (row, (_, text)) in rows.iter().enumerate() {
+          draw_row(
             buffer,
             x + inset.0,
             y + inset.1 + isize::try_from(row).expect("fits"),
             text,
-            CellScale::ONE,
             |cell| {
               cell.foreground = if placeholder {
                 Some(halfway(
@@ -1582,24 +1403,7 @@ fn paint_node(
         }
 
         if let Some(selection) = selection {
-          let lines: Vec<SizedLine> = rows
-            .iter()
-            .zip(&selection.starts)
-            .map(|(text, start)| SizedLine {
-              start: *start,
-              text: text.clone(),
-              rows: 1,
-            })
-            .collect();
-
-          draw_selection(
-            buffer,
-            x + inset.0,
-            y + inset.1,
-            &lines,
-            &Scales::default(),
-            &selection,
-          );
+          draw_row_selection(buffer, x + inset.0, y + inset.1, &rows, &selection);
         }
 
         // The caret: the terminal's own bar cursor at the cell, recorded only while the
@@ -2217,26 +2021,18 @@ fn draw_border(
   }
 }
 
-/// Draws one line of text at `scale`, `style` applied to every cell of each block.
-fn draw_sized(
-  buffer: &mut Buffer,
-  x: isize,
-  y: isize,
-  line: &str,
-  scale: CellScale,
-  style: impl Fn(&mut TerminalCell),
-) {
+/// Draws one row of an entry's text at one cell, `style` applied to every cell.
+fn draw_row(buffer: &mut Buffer, x: isize, y: isize, row: &str, style: impl Fn(&mut TerminalCell)) {
   let mut column = 0;
 
-  for (_, cluster) in text::clusters(line) {
-    let advance = text::width(cluster) * scale.rows();
+  for (_, cluster) in text::clusters(row) {
+    let advance = text::width(cluster);
 
-    buffer.put_advancing(
+    buffer.put_cluster(
       x + isize::try_from(column).expect("fits"),
       y,
       cluster,
       advance,
-      scale,
       &style,
     );
     column += advance;
@@ -2254,35 +2050,31 @@ const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
   }
 }
 
-/// Recolors a run's selected cells, every cell of a selected cluster's block.
-fn draw_selection(
+/// Recolors an entry's selected cells over its visible `rows`, each with its first
+/// cluster in the value.
+fn draw_row_selection(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
-  lines: &[SizedLine],
-  scales: &Scales,
+  rows: &[(usize, String)],
   selection: &SelectionPaint,
 ) {
   let (from, to) = selection.range;
 
-  for (line, row) in lines.iter().zip(sized_rows(lines)) {
+  for (row, ((_, text), start)) in rows.iter().zip(&selection.starts).enumerate() {
     let mut column = 0;
 
-    for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
-      let offset = line.start + index;
-      let scale = scales.at(offset);
-      let width = scales.advance(offset, cluster);
-      let top = row + line.rows - scale.rows();
+    for (index, (_, cluster)) in text::clusters(text).enumerate() {
+      let offset = start + index;
+      let width = text::width(cluster);
 
       if offset >= from && offset < to {
-        for block_row in top..top + scale.rows() {
-          for cell in column..column + width {
-            if let Some(cell) = buffer.cell_mut(
-              x + isize::try_from(cell).expect("fits"),
-              y + isize::try_from(block_row).expect("fits"),
-            ) {
-              select_cell(cell, selection.colors);
-            }
+        for cell in column..column + width {
+          if let Some(cell) = buffer.cell_mut(
+            x + isize::try_from(cell).expect("fits"),
+            y + isize::try_from(row).expect("fits"),
+          ) {
+            select_cell(cell, selection.colors);
           }
         }
       }
@@ -2305,31 +2097,6 @@ pub(crate) fn run_scale(records: &Records, handle: Handle) -> CellScale {
     }
     _ => CellScale::ONE,
   }
-}
-
-/// The extent of each run's stretch of the paragraph `handle`'s text: its scale, or an
-/// inline box's size.
-pub(crate) fn paragraph_scales(records: &Records, handle: Handle) -> Scales {
-  Scales::of(paragraph_runs(records, handle).into_iter().map(|run| {
-    let record = records.record(run);
-
-    match record.map(|record| &record.kind) {
-      Some(Kind::Run {
-        extent: Some((cells, rows)),
-        ..
-      }) => (
-        1,
-        Extent::Box {
-          cells: *cells,
-          rows: *rows,
-        },
-      ),
-      _ => (
-        record.map_or(0, |record| text::count(&record.text)),
-        Extent::Scaled(run_scale(records, run)),
-      ),
-    }
-  }))
 }
 
 /// How far a shadow falls down and right where its box sets no offset, in cells.
@@ -2562,7 +2329,56 @@ pub(crate) fn control_entry(records: &Records, handle: Handle) -> Option<bool> {
 
 #[cfg(test)]
 mod tests {
+  use skene_foundation::text::{AttributedText, Laid as _, Paragraph as _, TextEngine, TextRun};
+
   use super::*;
+  use crate::{
+    engine::{CellEngine, CellLaid, engine, paragraph_style, wrap_spans},
+    layout::cell_point,
+  };
+
+  /// Wraps text to `width` cells: each line's shown clusters.
+  fn wrap_text(text: &str, width: usize) -> Vec<String> {
+    wrap_spans(text, width)
+      .into_iter()
+      .map(|(_, line)| line)
+      .collect()
+  }
+
+  /// The paragraph of `text`, its stretches `scales`: each a byte length and the scale of
+  /// its clusters.
+  fn paragraph(text: &str, scales: &[(usize, CellScale)]) -> <CellEngine as TextEngine>::Paragraph {
+    let mut at = 0;
+    let runs = scales
+      .iter()
+      .map(|(length, scale)| {
+        let range = at..(at + length).min(text.len());
+
+        at = range.end;
+
+        TextRun {
+          range,
+          style: scale.style(),
+        }
+      })
+      .collect();
+
+    engine().paragraph(
+      &AttributedText::new(text, CellScale::ONE.style(), runs),
+      &paragraph_style(),
+    )
+  }
+
+  /// `text` laid out unbounded where `width` is `None`, its stretches `scales`.
+  fn sized(text: &str, scales: &[(usize, CellScale)], width: Option<f32>) -> CellLaid {
+    paragraph(text, scales).layout(width)
+  }
+
+  /// The widest stretch between two places a line may end, its trailing blanks aside, in
+  /// cells at its scales: the narrowest a wrap can go.
+  fn longest_word(text: &str, scales: &[(usize, CellScale)]) -> f32 {
+    paragraph(text, scales).intrinsic().min
+  }
 
   #[test]
   fn rows_diff_against_the_previous_frame() {
@@ -2685,7 +2501,7 @@ mod tests {
     assert_eq!(wrap_text("日本語", 4), ["日本", "語"]);
     assert_eq!(wrap_text("日本", 1), ["日", "本"]);
     assert_eq!(wrap_text("ae\u{301}b", 2), ["ae\u{301}", "b"]);
-    assert_eq!(longest_word("日本 ab", &Scales::default()), 2);
+    assert_eq!(longest_word("日本 ab", &[(9, CellScale::ONE)]), 2.);
   }
 
   /// A line ends where the Unicode line breaking algorithm allows: after a hyphen and
@@ -2697,7 +2513,7 @@ mod tests {
     assert_eq!(wrap_text("foo-bar", 5), ["foo-", "bar"]);
     assert_eq!(wrap_text("日本語テキスト", 6), ["日本語", "テキス", "ト"]);
     assert_eq!(wrap_text("one (two)", 6), ["one", "(two)"]);
-    assert_eq!(longest_word("foo-bar baz", &Scales::default()), 4);
+    assert_eq!(longest_word("foo-bar baz", &[(11, CellScale::ONE)]), 4.);
   }
 
   /// A scaled cluster wraps at its scaled width, a line is as tall as its tallest
@@ -2707,31 +2523,49 @@ mod tests {
   fn sized_text_wraps_and_hits_by_block() {
     text::reset();
 
-    let scales = Scales::of([(3, CellScale::Whole(2)), (10, CellScale::ONE)]);
-    let lines = wrap_sized("abc de", 8, &scales);
+    let scales = [(3, CellScale::Whole(2)), (10, CellScale::ONE)];
+    let laid = sized("abc de", &scales, Some(8.));
+    let lines = laid.lines();
+    let at = |column: usize, row: usize| {
+      let point = cell_point(column, row);
+      let hit = laid.hit_test(point.x, point.y);
+
+      (hit.position.index, hit.inside)
+    };
 
     assert_eq!(lines.len(), 2, "{lines:?}");
-    assert_eq!((lines[0].text.as_str(), lines[0].rows), ("abc", 2));
-    assert_eq!((lines[1].text.as_str(), lines[1].rows), ("de", 1));
-    assert_eq!(lines[0].advances(&scales).sum::<usize>(), 6);
-    assert_eq!(lines[0].cluster_at(3, &scales), Some(1));
-    assert_eq!(lines[0].cluster_at(6, &scales), None);
-    assert_eq!(lines[0].index_at_column(1, &scales), 1);
-    assert_eq!(lines[0].index_at_column(2, &scales), 1);
-    assert_eq!(lines[0].index_at_column(9, &scales), 3);
-    assert_eq!(sized_rows(&lines), [0, 2]);
-    assert_eq!(line_at_row(&lines, 1), 0);
-    assert_eq!(line_at_row(&lines, 2), 1);
-    assert_eq!(line_at_row(&lines, 7), 1);
-    assert_eq!(line_holding(&lines, 1), Some(0));
-    assert_eq!(line_holding(&lines, 3), None);
-    assert_eq!(longest_word("abc de", &scales), 6);
     assert_eq!(
-      wrap_sized("ab cd", 8, &Scales::uniform(CellScale::Whole(2)))[0].rows,
-      2
+      (lines[0].range.clone(), lines[0].height, lines[0].width),
+      (0..4, 2., 6.)
+    );
+    assert_eq!((lines[1].range.clone(), lines[1].height), (4..6, 1.));
+    assert_eq!(
+      at(3, 0),
+      (2, true),
+      "a hit on a block's later cell is on the text, a caret there after it"
+    );
+    assert!(!at(6, 0).1, "nothing is drawn past the line");
+    assert_eq!(
+      at(1, 0).0,
+      1,
+      "a later cell of a block places a caret after it"
     );
     assert_eq!(
-      wrap_sized("ab cd", 8, &Scales::uniform(CellScale::Whole(3))).len(),
+      at(2, 0).0,
+      1,
+      "a block's first cell places a caret before it"
+    );
+    assert_eq!((lines[0].top, lines[1].top), (0., 2.));
+    assert_eq!(at(0, 1).0, 0, "a block's lower row is its line's");
+    assert_eq!(at(0, 2).0, 4);
+    assert_eq!(at(0, 7).0, 4, "a hit below the text lands on its last line");
+    assert_eq!(longest_word("abc de", &scales), 6.);
+    assert_eq!(
+      sized("ab cd", &[(5, CellScale::Whole(2))], Some(8.)).lines()[0].height,
+      2.
+    );
+    assert_eq!(
+      sized("ab cd", &[(5, CellScale::Whole(3))], Some(8.)).line_count(),
       2,
       "at scale three two letters fill six of eight cells"
     );

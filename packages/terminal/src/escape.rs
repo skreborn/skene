@@ -1,4 +1,4 @@
-//! The control sequences the loop writes: DEC private modes, cursor controls,
+//! The control sequences the loop writes: ECMA-48 and DEC private modes, cursor controls,
 //! graphic renditions, the kitty keyboard flags, and the OSC strings for the title
 //! and the clipboard.
 //!
@@ -8,6 +8,11 @@ use std::fmt::{self, Display, Write as _};
 
 /// The string terminator, `ESC \`.
 pub(crate) const ST: &str = "\x1b\\";
+
+/// ECMA-48 mode 8, BDSM: set, the terminal reorders bidirectional text itself (implicit
+/// mode, the default the terminal-wg recommends); reset, it shows each line's cells in the
+/// order written (explicit mode).
+pub(crate) const BIDI_SUPPORT: u16 = 8;
 
 /// DECSET 7: whether text written at the right margin wraps to the next line.
 pub(crate) const AUTOWRAP: u16 = 7;
@@ -129,6 +134,29 @@ pub(crate) const REPORT_ALL_KEYS_AS_ESCAPE_CODES: u8 = 8;
 
 /// The kitty keyboard flag for the text a key typed, beside its code.
 pub(crate) const REPORT_ASSOCIATED_TEXT: u8 = 16;
+
+/// An ECMA-48 mode set (SM) or reset (RM).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AnsiMode {
+  pub(crate) code: u16,
+  pub(crate) on: bool,
+}
+
+impl Display for AnsiMode {
+  fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(out, "\x1b[{}{}", self.code, if self.on { 'h' } else { 'l' })
+  }
+}
+
+/// A DECRQM query for an ECMA-48 mode, answered by a mode report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct QueryAnsiMode(pub(crate) u16);
+
+impl Display for QueryAnsiMode {
+  fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(out, "\x1b[{}$p", self.0)
+  }
+}
 
 /// A DEC private mode set or reset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

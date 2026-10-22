@@ -27,6 +27,7 @@ mod cells;
 mod detect;
 mod dev;
 mod device;
+mod engine;
 mod escape;
 mod event_loop;
 mod field;

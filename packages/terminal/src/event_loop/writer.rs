@@ -2,6 +2,7 @@
 //! and each frame, its rows and its pictures.
 
 use std::{
+  cell::Cell,
   collections::HashMap,
   io::{self, Write},
   ops::Range,
@@ -11,21 +12,45 @@ use skene_foundation::{MouseCursor, TextDecorationStyle};
 
 use crate::{
   detect::{self, ColorDepth},
-  escape::{self, Color, CursorStyle, DecMode, MoveTo, QueryMode, Sgr, Underline},
+  escape::{
+    self,
+    AnsiMode,
+    Color,
+    CursorStyle,
+    DecMode,
+    MoveTo,
+    QueryAnsiMode,
+    QueryMode,
+    Sgr,
+    Underline,
+  },
   paint,
   text::{CellScale, Glyph},
   with_records,
 };
+
+thread_local! {
+  /// Whether the terminal reported it reorders bidirectional text itself (BDSM set) before
+  /// setup switched it off; `None` until it reports.
+  static IMPLICIT_BIDI: Cell<Option<bool>> = const { Cell::new(None) };
+}
 
 /// A DEC private mode set or reset, as one control.
 pub(super) const fn dec_mode(code: u16, on: bool) -> DecMode {
   DecMode { code, on }
 }
 
+/// Records the bidirectional support mode (BDSM) the terminal reported at launch, which
+/// the restoring controls hand back: implicit where `implicit`.
+pub(super) fn set_reported_bidi(implicit: bool) {
+  IMPLICIT_BIDI.with(|reported| reported.set(Some(implicit)));
+}
+
 /// Writes the controls that take the terminal over: the title saved, the alternate
 /// screen, mouse reporting when `mouse`, bracketed paste, scheme notifications,
-/// grapheme clustering, in-band resize notifications, autowrap off, and the cursor
-/// hidden.
+/// grapheme clustering, the bidirectional support mode queried and then made explicit,
+/// so the terminal shows each row's cells in the visual order the layout paints them in,
+/// in-band resize notifications, autowrap off, and the cursor hidden.
 pub(super) fn write_setup(out: &mut (impl Write + ?Sized), mouse: bool) -> io::Result<()> {
   write!(
     out,
@@ -40,10 +65,15 @@ pub(super) fn write_setup(out: &mut (impl Write + ?Sized), mouse: bool) -> io::R
 
   write!(
     out,
-    "{}{}{}{}{}{}",
+    "{}{}{}{}{}{}{}{}",
     dec_mode(escape::BRACKETED_PASTE, true),
     dec_mode(escape::THEME, true),
     dec_mode(escape::GRAPHEME_CLUSTERING, true),
+    QueryAnsiMode(escape::BIDI_SUPPORT),
+    AnsiMode {
+      code: escape::BIDI_SUPPORT,
+      on: false,
+    },
     dec_mode(escape::IN_BAND_RESIZE, true),
     dec_mode(escape::AUTOWRAP, false),
     dec_mode(escape::SHOW_CURSOR, false),
@@ -127,10 +157,22 @@ pub(super) const SIZED_COLUMN: u16 = 2;
 
 /// Writes the controls that hand the terminal back: the graphic rendition reset, the
 /// legacy key encoding, mouse reporting, bracketed paste, scheme and resize
-/// notifications and grapheme clustering off, autowrap on, the cursor shown in its
-/// default shape, the main screen, and the title restored. Idempotent but for the
-/// title, which pops what setup saved.
+/// notifications and grapheme clustering off, the bidirectional support mode the
+/// terminal reported at launch, autowrap on, the cursor shown in its default shape, the
+/// main screen, and the title restored. Idempotent but for the title, which pops what
+/// setup saved.
 fn write_restore(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
+  if let Some(implicit) = IMPLICIT_BIDI.with(Cell::get) {
+    write!(
+      out,
+      "{}",
+      AnsiMode {
+        code: escape::BIDI_SUPPORT,
+        on: implicit,
+      }
+    )?;
+  }
+
   write!(
     out,
     "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
@@ -619,6 +661,36 @@ mod tests {
     assert!(queries.contains("\x1b[?2048$p"));
     assert!(queries.contains("\x1b[?5522$p"));
     assert!(String::from_utf8(restore).unwrap().contains("\x1b[?2048l"));
+  }
+
+  /// Setup asks for the bidirectional support mode, then makes it explicit, the query
+  /// first so the report names the mode the terminal had; the hand-back restores what it
+  /// reported, and nothing where it reported nothing.
+  #[test]
+  fn the_bidi_mode_is_queried_made_explicit_and_restored() {
+    let written = |write: fn(&mut Vec<u8>) -> io::Result<()>| {
+      let mut out = Vec::new();
+
+      write(&mut out).unwrap();
+
+      String::from_utf8(out).unwrap()
+    };
+    let setup = written(|out| write_setup(out, false));
+    let query = setup.find("\x1b[8$p").expect("the mode is queried");
+    let explicit = setup.find("\x1b[8l").expect("the mode is made explicit");
+
+    assert!(query < explicit);
+    assert!(!written(write_restore).contains("\x1b[8"));
+
+    set_reported_bidi(true);
+
+    assert!(written(write_restore).starts_with("\x1b[8h"));
+
+    set_reported_bidi(false);
+
+    assert!(written(write_restore).starts_with("\x1b[8l"));
+
+    IMPLICIT_BIDI.with(|reported| reported.set(None));
   }
 
   /// The mouse modes are set together and reset together.

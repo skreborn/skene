@@ -2583,14 +2583,11 @@ dependencies = [
 name = "skene-layout"
 version = "0.1.0"
 dependencies = [
- "parley",
  "rustc-hash 2.1.3",
  "skene-foundation",
  "skene-headless",
  "skene-parley",
- "skrifa",
  "taffy",
- "unicode-segmentation",
 ]
 
 [[package]]
@@ -2662,6 +2659,7 @@ dependencies = [
  "libc",
  "memchr",
  "miniz_oxide 0.9.1",
+ "parley",
  "proptest",
  "rustc-hash 2.1.3",
  "rustix",
@@ -2670,6 +2668,7 @@ dependencies = [
  "skene-foundation",
  "skene-layout",
  "skene-macros",
+ "skene-parley",
  "skene-reactive",
  "skene-simple-terminal",
  "smallvec",

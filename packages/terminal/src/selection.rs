@@ -20,10 +20,18 @@ use skene_foundation::{ClipboardAction, RunPlacement, Scene};
 use crate::{
   Terminal,
   field::word_bounds,
-  layout::{is_inline_box, is_paragraph, paragraph_runs, paragraph_text},
-  paint::{line_at_row, line_holding, paragraph_scales, run_scale, wrap_sized},
+  layout::{
+    Source,
+    cell_point,
+    content,
+    flow_of,
+    is_inline_box,
+    is_paragraph,
+    paragraph_runs,
+    paragraph_text,
+  },
   records::{Drag, Handle, Kind, Records},
-  text::{self, Scales},
+  text,
 };
 
 /// One end of a selection: a run and a cluster offset into its source text.
@@ -93,31 +101,26 @@ impl Records {
     }
   }
 
-  /// The scales of the node's text: its runs' for a paragraph, its own for a run.
-  fn text_scales(&self, handle: Handle) -> Scales {
-    if is_paragraph(self, handle) {
-      paragraph_scales(self, handle)
-    }
-    else {
-      Scales::uniform(run_scale(self, handle))
-    }
-  }
-
-  /// The character offset within the node's source at the node-local cell, clamped
-  /// into the nearest wrapped line and its ends, against the last layout.
+  /// The cluster offset within the node's source a caret at the node-local cell would
+  /// take: the caret nearest it, clamped into the text's lines and their ends, against
+  /// the last layout.
   fn run_offset(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<usize> {
-    let text = self.selectable_text(handle)?;
-    let (width, _) = self.node_size(handle);
-    let scales = self.text_scales(handle);
-    let lines = wrap_sized(&text, usize::try_from(width).unwrap_or(1), &scales);
-    let row = usize::try_from(local_y.max(0)).unwrap_or(0);
-    let Some(line) = lines.get(line_at_row(&lines, row))
-    else {
-      return Some(0);
-    };
-    let column = usize::try_from(local_x.max(0)).unwrap_or(0);
+    self.selectable_text(handle)?;
 
-    Some(line.start + line.index_at_column(column, &scales))
+    let flow = flow_of(self, handle)?;
+    let (width, _) = self.node_size(handle);
+    let point = cell_point(
+      usize::try_from(local_x.max(0)).unwrap_or(0),
+      usize::try_from(local_y.max(0)).unwrap_or(0),
+    );
+
+    Some(
+      flow
+        .flow()
+        .nearest(content(usize::try_from(width).unwrap_or(1)), point)
+        .and_then(|hit| Source::of(self, handle).cluster_of(hit.node, hit.offset))
+        .unwrap_or(0),
+    )
   }
 
   /// The deepest text on `path`, with its origin: a paragraph, or a run that flows in
@@ -162,14 +165,16 @@ impl Records {
     }
 
     let (width, _) = self.node_size(node);
-    let record = self.record(node)?;
     let row = usize::try_from(i64::from(y) - origin_y).ok()?;
     let column = usize::try_from(i64::from(x) - origin_x).ok()?;
-    let scales = self.text_scales(node);
-    let lines = wrap_sized(&record.text, usize::try_from(width).unwrap_or(1), &scales);
-    let line = &lines[line_holding(&lines, row)?];
 
-    line.cluster_at(column, &scales).and_then(|_| link_of(node))
+    flow_of(self, node)?
+      .flow()
+      .run_at(
+        content(usize::try_from(width).unwrap_or(1)),
+        cell_point(column, row),
+      )
+      .and_then(|_| link_of(node))
   }
 
   /// The source position nearest the cell (`x`, `y`) over every selectable run—by
@@ -363,35 +368,27 @@ impl Records {
       return text::slice(text, from, to).to_owned();
     }
 
-    let mut source = String::new();
-    let mut cursor = 0;
+    let source = Source::of(self, node);
+    let (from, to) = (
+      source.index.byte_of_grapheme(from),
+      source.index.byte_of_grapheme(to),
+    );
+    let mut selected = String::new();
 
-    for run in paragraph_runs(self, node) {
-      let Some(record) = self.record(run)
-      else {
-        continue;
-      };
-      let (start, end) = (cursor, cursor + text::count(&record.text));
-
-      cursor = end;
-
-      if end <= from || start >= to {
+    for (run, range) in source.runs() {
+      if range.end <= from || range.start >= to {
         continue;
       }
 
       if is_inline_box(self, run) {
-        source.push_str(&self.inner_text(run));
+        selected.push_str(&self.inner_text(run));
       }
       else {
-        source.push_str(text::slice(
-          &record.text,
-          from.saturating_sub(start),
-          to.min(end) - start,
-        ));
+        selected.push_str(&source.text[from.max(range.start)..to.min(range.end)]);
       }
     }
 
-    source
+    selected
   }
 
   /// The text of every run beneath `handle`, in order.

@@ -118,6 +118,33 @@ fn text_wraps_at_the_container_width() {
   });
 }
 
+/// Right-to-left text paints in the engine's visual order, inside a left-to-right line as
+/// a browser's document reads it: its first character rightmost, a paragraph's spans
+/// reordered as their text is.
+#[test]
+fn right_to_left_text_paints_in_visual_order() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Text::new("ab \u{5d0}\u{5d1}\u{5d2} cd"),
+          RichText::new().add_spans([
+            Span::new("\u{5d0}\u{5d1} "),
+            Span::new("\u{5d2}\u{5d3}"),
+            Span::new(" ef"),
+          ]),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(12, 2),
+      "ab \u{5d2}\u{5d1}\u{5d0} cd\n\u{5d3}\u{5d2} \u{5d1}\u{5d0} ef\n"
+    );
+  });
+}
+
 /// A newline ending a run's text opens a line, and an empty text lays out one.
 #[test]
 fn a_final_newline_and_an_empty_text_open_a_line() {

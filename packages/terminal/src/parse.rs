@@ -59,6 +59,8 @@ pub(crate) enum Event {
   Continued,
   /// A DECRPM report of a DEC private mode.
   Mode { mode: u16, setting: ModeSetting },
+  /// A DECRPM report of an ECMA-48 mode.
+  AnsiMode { mode: u16, setting: ModeSetting },
   /// A color scheme report (mode 2031).
   Theme { dark: bool },
   /// A cursor position report, zero-based.
@@ -707,12 +709,17 @@ fn scan_csi(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
   }
 
   let event = match (parameters.as_bytes().first(), *last) {
-    (Some(b'?'), b'y') if intermediates == b"$" => parse_mode_report(&parameters[1..]),
+    (Some(b'?'), b'y') if intermediates == b"$" => {
+      parse_mode_report(&parameters[1..]).map(|(mode, setting)| Event::Mode { mode, setting })
+    }
     (Some(b'?'), b'n') => parse_theme(&parameters[1..]),
     (Some(b'?'), b'u') => parameters[1..].parse().ok().map(Event::KeyboardFlags),
     (Some(b'?'), b'c') => return Scan::Fence(consumed),
     (Some(b'<'), b'M' | b'm') => parse_sgr_mouse(&parameters[1..], *last == b'm'),
     (Some(b'?' | b'<' | b'=' | b'>'), _) => None,
+    (Some(b'0'..=b'9'), b'y') if intermediates == b"$" => {
+      parse_mode_report(parameters).map(|(mode, setting)| Event::AnsiMode { mode, setting })
+    }
     (_, b'R') if replying => parse_cursor_position(parameters),
     (_, b't') => parse_window_report(parameters),
     (_, b'u') => parse_kitty_key(parameters),
@@ -1021,8 +1028,9 @@ const fn mouse_button(byte: u8) -> Option<(MouseKind, Modifiers)> {
   ))
 }
 
-/// A DECRPM report, `CSI ? mode ; setting $ y`.
-fn parse_mode_report(parameters: &str) -> Option<Event> {
+/// A DECRPM report's mode and setting, `mode ; setting` of `CSI ? mode ; setting $ y` for a
+/// DEC private mode and of `CSI mode ; setting $ y` for an ECMA-48 one.
+fn parse_mode_report(parameters: &str) -> Option<(u16, ModeSetting)> {
   let (mode, setting) = parameters.split_once(';')?;
   let mode: u16 = mode.parse().ok()?;
   let setting = match setting.parse::<u8>().ok()? {
@@ -1034,7 +1042,7 @@ fn parse_mode_report(parameters: &str) -> Option<Event> {
     _ => return None,
   };
 
-  Some(Event::Mode { mode, setting })
+  Some((mode, setting))
 }
 
 /// A color scheme report, `CSI ? 997 ; 1 n` for dark and `2` for light.
@@ -1542,6 +1550,25 @@ mod tests {
 
     assert_eq!(parser.pop(), Some(Event::Paste("hello\x1b[A".to_owned())));
     assert_eq!(events(b"\x1b[200~\x1b[201~"), [Event::Paste(String::new())]);
+  }
+
+  /// A report of an ECMA-48 mode decodes apart from a DEC private mode's of the same
+  /// number.
+  #[test]
+  fn an_ecma_mode_report_decodes() {
+    assert_eq!(
+      events(b"\x1b[8;1$y\x1b[?8;2$y"),
+      [
+        Event::AnsiMode {
+          mode: 8,
+          setting: ModeSetting::Set
+        },
+        Event::Mode {
+          mode: 8,
+          setting: ModeSetting::Reset
+        }
+      ]
+    );
   }
 
   /// The replies the loop asks for decode: mode reports, the theme, the cursor

@@ -5,17 +5,26 @@
 //! style resolved for it differs from the one applied, so a keystroke relays out the
 //! changed subtree and a hover change repaints without a relayout.
 
-use std::cell::OnceCell;
+use std::{cell::OnceCell, ops::Range};
 
 use rustc_hash::FxHashSet;
-use skene_foundation::{Inset, Layout, RunPlacement, Scene, Size};
+use skene_foundation::{
+  Inset,
+  Layout,
+  Point,
+  Rect,
+  RunPlacement,
+  Scene,
+  Size,
+  text::{Round, TextIndex},
+};
 use skene_layout::{
   Borders,
   BoxLayout,
   Leaf,
-  Paragraph,
   Place,
   Revisit,
+  TextFlow,
   taffy::{
     self,
     prelude::{AvailableSpace, length},
@@ -25,92 +34,259 @@ use skene_layout::{
 
 use crate::{
   Terminal,
+  engine::{CellEngine, CellLaid, engine, paragraph_style},
   motion::{Clock, Presented},
-  paint::{
-    ShadowPaint,
-    cells_of,
-    line_holding,
-    paragraph_of,
-    paragraph_scales,
-    run_scale,
-    sized_rows,
-    wrap_sized,
-  },
+  paint::{ShadowPaint, run_scale},
   records::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
   resolve::Env,
-  text::{self, Scales},
+  text::{self, CellScale},
 };
 
 /// The character standing in for one cell of an inline box in its paragraph's text.
 pub(crate) const INLINE_BOX: char = '\u{fffc}';
 
+/// How far into its cell a point stands for the cell: just past its left edge, so a cell
+/// holding a cluster's start places a caret before it and any later cell of its block
+/// after it.
+const INTO_CELL: f32 = 1. / 16.;
+
 /// What one restyle of a node decided.
 struct Restyled {
   style: Style,
-  text: Option<Measured>,
+  text: Option<CellFlow>,
 }
 
-/// What the layout measures a text leaf by: its text, the scale of each stretch of it,
-/// and the paragraph they lay out as, made once a layout first asks.
-#[derive(Debug, Clone)]
-pub(crate) struct Measured {
-  pub(crate) text: String,
-  pub(crate) scales: Scales,
-  paragraph: OnceCell<Paragraph<usize>>,
+/// One item of a text leaf: a run, its node, where its text ends in the leaf's and its
+/// scale, or an inline box, its node and the cells and rows it laid out at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum FlowItem {
+  Run {
+    node: Handle,
+    end: usize,
+    scale: CellScale,
+  },
+  Box {
+    node: Handle,
+    size: (usize, usize),
+  },
 }
 
-impl Measured {
-  /// The measure of `text` at `scales`.
-  pub(crate) const fn new(text: String, scales: Scales) -> Self {
+/// What the layout measures a text leaf by: its runs and inline boxes laid out as one
+/// paragraph through the cell engine, made once a measure, a paint or a hit first asks
+/// and kept between frames. Two leaves are alike where their runs' texts and scales,
+/// their boxes' sizes and the terminal's clustering are.
+#[derive(Debug)]
+pub(crate) struct CellFlow {
+  text: String,
+  items: Vec<FlowItem>,
+  clustering: bool,
+  flow: OnceCell<TextFlow<CellEngine>>,
+}
+
+impl PartialEq for CellFlow {
+  fn eq(&self, other: &Self) -> bool {
+    self.clustering == other.clustering && self.items == other.items && self.text == other.text
+  }
+}
+
+impl CellFlow {
+  /// An empty leaf.
+  fn new() -> Self {
     Self {
-      text,
-      scales,
-      paragraph: OnceCell::new(),
+      text: String::new(),
+      items: Vec::new(),
+      clustering: text::clustering(),
+      flow: OnceCell::new(),
     }
   }
 
-  /// Forgets the paragraph made, after the terminal changed how it measures text.
-  pub(crate) fn forget_extents(&mut self) {
-    self.paragraph.take();
+  /// Adds the run `node` holding `text` at `scale`.
+  fn add_run(&mut self, node: Handle, text: &str, scale: CellScale) {
+    self.text.push_str(text);
+    self.items.push(FlowItem::Run {
+      node,
+      end: self.text.len(),
+      scale,
+    });
   }
 
-  /// The paragraph the text lays out as.
-  fn paragraph(&self) -> &Paragraph<usize> {
-    self
-      .paragraph
-      .get_or_init(|| paragraph_of(&self.text, &self.scales))
+  /// Adds the inline box `node` laid out `size` cells by rows.
+  fn add_box(&mut self, node: Handle, size: (usize, usize)) {
+    self.items.push(FlowItem::Box { node, size });
   }
 
-  /// The cells and rows the text takes wrapped at `limit` cells: at its widest where
-  /// that fits.
-  #[cfg(test)]
-  fn size_at(&self, limit: usize) -> (usize, usize) {
-    let size = self.paragraph().size_within(Some(cells_of(limit.max(1))));
+  /// The leaf's flow, made once.
+  pub(crate) fn flow(&self) -> &TextFlow<CellEngine> {
+    self.flow.get_or_init(|| {
+      let mut flow = TextFlow::new(engine(), CellScale::ONE.style(), paragraph_style());
+      let mut start = 0;
 
-    (
-      crate::paint::whole(size.width),
-      crate::paint::whole(size.height),
-    )
+      for item in &self.items {
+        match *item {
+          FlowItem::Run { node, end, scale } => {
+            flow.add_run(node, &[], &self.text[start..end], scale.style());
+            start = end;
+          }
+          FlowItem::Box {
+            node,
+            size: (cells, rows),
+          } => flow.add_box(node, &[], Size::new(cells_of(cells), cells_of(rows))),
+        }
+      }
+
+      flow
+    })
+  }
+
+  /// The flow laid out `width` cells wide.
+  pub(crate) fn laid(&self, width: usize) -> CellLaid {
+    self.flow().layout_in(content(width)).0
   }
 }
 
-impl Leaf for Measured {
+impl Leaf for CellFlow {
+  /// The flow measured with a width floored to whole cells, at least one, as the terminal
+  /// lays text out in cells.
   fn measure(
     &self,
     known: taffy::geometry::Size<Option<f32>>,
     available: taffy::geometry::Size<AvailableSpace>,
   ) -> Size<f32> {
-    measure_run(known, available, self)
+    let floor = |width: f32| width.max(0.).floor().max(1.);
+    let measured = self.flow().measure(
+      taffy::geometry::Size {
+        width: known.width.map(floor),
+        height: known.height,
+      },
+      taffy::geometry::Size {
+        width: match available.width {
+          AvailableSpace::Definite(width) => AvailableSpace::Definite(floor(width)),
+          space => space,
+        },
+        height: available.height,
+      },
+    );
+
+    Size::new(known.width.unwrap_or(measured.width), measured.height)
   }
 }
 
-impl PartialEq for Measured {
-  fn eq(&self, other: &Self) -> bool {
-    self.text == other.text && self.scales == other.scales
+/// The content box a text node lays its flow out in, `width` cells wide, from its origin.
+pub(crate) const fn content(width: usize) -> Rect<f32> {
+  Rect::new(Point::ZERO, Size::new(cells_of(width), 0.))
+}
+
+/// The point standing for the cell (`column`, `row`) of a text node's flow.
+pub(crate) fn cell_point(column: usize, row: usize) -> Point<f32> {
+  Point::new(cells_of(column) + INTO_CELL, cells_of(row) + 0.5)
+}
+
+/// `count` cells or rows as the layout counts them.
+#[expect(
+  clippy::cast_precision_loss,
+  reason = "a count of cells stays far below the integers f32 holds exactly"
+)]
+pub(crate) const fn cells_of(count: usize) -> f32 {
+  count as f32
+}
+
+/// One run of a text node's source: its node, the bytes of the source it holds, and the
+/// byte of the flow its text starts at, `None` for an inline box, which the flow holds
+/// as a box rather than as its placeholder.
+#[derive(Debug, Clone)]
+struct SourceRun {
+  node: Handle,
+  source: Range<usize>,
+  flow: Option<usize>,
+}
+
+/// A text node's source text as its runs hold it, an inline box its placeholder, its
+/// clusters, and where each run lies in it and in the flow the layout lays out: a
+/// paragraph's leaf runs, or a run flowing in none.
+#[derive(Debug)]
+pub(crate) struct Source {
+  pub(crate) text: String,
+  pub(crate) index: TextIndex,
+  runs: Vec<SourceRun>,
+}
+
+impl Source {
+  /// The source of the text node `handle`.
+  pub(crate) fn of(records: &Records, handle: Handle) -> Self {
+    let runs = if is_paragraph(records, handle) {
+      paragraph_runs(records, handle)
+    }
+    else {
+      vec![handle]
+    };
+    let mut text = String::new();
+    let mut flow = 0;
+    let mut source = Vec::new();
+
+    for run in runs {
+      let Some(record) = records.record(run)
+      else {
+        continue;
+      };
+      let at = text.len();
+      let boxed = is_inline_box(records, run);
+
+      text.push_str(&record.text);
+      source.push(SourceRun {
+        node: run,
+        source: at..text.len(),
+        flow: (!boxed).then_some(flow),
+      });
+
+      if !boxed {
+        flow += record.text.len();
+      }
+    }
+
+    Self {
+      index: TextIndex::new(&text),
+      text,
+      runs: source,
+    }
+  }
+
+  /// The source's runs in order: each node and the bytes of the source it holds.
+  pub(crate) fn runs(&self) -> impl Iterator<Item = (Handle, Range<usize>)> + '_ {
+    self.runs.iter().map(|run| (run.node, run.source.clone()))
+  }
+
+  /// The cluster of the source a caret before byte `offset` of `node`'s text stands
+  /// before; `None` for a node outside the source.
+  pub(crate) fn cluster_of(&self, node: Handle, offset: usize) -> Option<usize> {
+    let run = self.runs.iter().find(|run| run.node == node)?;
+    let byte = (run.source.start + offset).min(run.source.end);
+
+    Some(self.index.grapheme_at_byte(byte, Round::Down))
+  }
+
+  /// The run whose text holds byte `at` of the flow, and the cluster of the source it
+  /// lies in.
+  pub(crate) fn at_flow(&self, at: usize) -> Option<(Handle, usize)> {
+    self.runs.iter().find_map(|run| {
+      let start = run.flow?;
+      let length = run.source.len();
+
+      (start <= at && at < start + length).then(|| {
+        (
+          run.node,
+          self
+            .index
+            .grapheme_at_byte(run.source.start + at - start, Round::Down),
+        )
+      })
+    })
   }
 }
 
-impl Eq for Measured {}
+/// The flow the text node `handle` lays out as, when it holds one.
+pub(crate) fn flow_of(records: &Records, handle: Handle) -> Option<&CellFlow> {
+  records.tree.context(handle)
+}
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
 /// laid-out child is an inline text run or an inline box.
@@ -163,107 +339,40 @@ pub(crate) fn enclosing_paragraph(records: &Records, handle: Handle) -> Option<H
   Some(current)
 }
 
-/// The inline boxes of the paragraph `handle`, each with the cell its placeholder
-/// flowed into, relative to the paragraph's origin, against the last layout.
-pub(crate) fn inline_box_cells(records: &Records, handle: Handle) -> Vec<(Handle, (i64, i64))> {
-  let runs = paragraph_runs(records, handle);
-
-  if !runs.iter().any(|run| is_inline_box(records, *run)) {
+/// The inline boxes of the paragraph `handle`, each with the cell its frame's top left
+/// is in, relative to the paragraph's origin, against the last layout.
+pub(crate) fn inline_boxes(records: &Records, handle: Handle) -> Vec<(Handle, (i64, i64))> {
+  let Some(flow) = flow_of(records, handle)
+  else {
     return Vec::new();
+  };
+
+  if flow
+    .items
+    .iter()
+    .any(|item| matches!(item, FlowItem::Box { .. }))
+  {
+    let (width, _) = records.node_size(handle);
+
+    return flow
+      .flow()
+      .place(content(usize::try_from(width).unwrap_or(1)))
+      .into_iter()
+      .filter(|(node, _)| is_inline_box(records, *node))
+      .map(|(node, rect)| (node, (cell_of(rect.origin.x), cell_of(rect.origin.y))))
+      .collect();
   }
 
-  let (width, _) = records.node_size(handle);
-  let scales = paragraph_scales(records, handle);
-  let lines = wrap_sized(
-    &paragraph_text(records, handle),
-    usize::try_from(width).unwrap_or(1),
-    &scales,
-  );
-  let rows = sized_rows(&lines);
-  let mut offset = 0;
-  let mut cells = Vec::new();
-
-  for run in runs {
-    let Some(record) = records.record(run)
-    else {
-      continue;
-    };
-    let start = offset;
-
-    offset += text::count(&record.text);
-
-    if !is_inline_box(records, run) {
-      continue;
-    }
-
-    let Some((index, line)) = lines
-      .iter()
-      .enumerate()
-      .rev()
-      .find(|(_, line)| line.start <= start)
-    else {
-      continue;
-    };
-    // The box sits on the line's bottom rows, as a smaller cluster does; its line is at
-    // least as tall as it.
-    let column = line
-      .advances(&scales)
-      .take(start - line.start)
-      .sum::<usize>();
-    let row = rows[index] + line.rows.saturating_sub(scales.rows(start));
-
-    cells.push((
-      run,
-      (
-        i64::try_from(column).unwrap_or(0),
-        i64::try_from(row).unwrap_or(0),
-      ),
-    ));
-  }
-
-  cells
+  Vec::new()
 }
 
-/// The offset of the cluster of the paragraph `handle`'s text drawn at its local cell
-/// (`column`, `row`), against the last layout: exact hits only, a smaller cluster or an
-/// inline box held by the rows it draws on alone.
-pub(crate) fn paragraph_cluster_at(
-  records: &Records,
-  handle: Handle,
-  column: usize,
-  row: usize,
-) -> Option<usize> {
-  let (width, _) = records.node_size(handle);
-  let scales = paragraph_scales(records, handle);
-  let lines = wrap_sized(
-    &paragraph_text(records, handle),
-    usize::try_from(width).unwrap_or(1),
-    &scales,
-  );
-  let rows = sized_rows(&lines);
-  let index = line_holding(&lines, row)?;
-  let line = &lines[index];
-  let offset = line.start + line.cluster_at(column, &scales)?;
-  let top = rows[index] + line.rows.saturating_sub(scales.rows(offset));
-
-  (row >= top).then_some(offset)
-}
-
-/// The leaf run of the paragraph `handle` that holds the cluster at `offset` of its
-/// text.
-pub(crate) fn paragraph_run_at(records: &Records, handle: Handle, offset: usize) -> Option<Handle> {
-  let mut cursor = 0;
-
-  paragraph_runs(records, handle).into_iter().find(|run| {
-    let count = records
-      .record(*run)
-      .map_or(0, |record| text::count(&record.text));
-    let hit = (cursor..cursor + count).contains(&offset);
-
-    cursor += count;
-
-    hit
-  })
+/// The cell a layout coordinate of a flow falls in.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "a coordinate in cells stays far below i64::MAX"
+)]
+const fn cell_of(coordinate: f32) -> i64 {
+  coordinate.round() as i64
 }
 
 /// Lays every inline box out on its own and records its size, which its placeholder
@@ -729,10 +838,11 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         None
       }
       else {
-        Some(Measured::new(
-          record.text.clone(),
-          Scales::uniform(run_scale(records, handle)),
-        ))
+        let mut flow = CellFlow::new();
+
+        flow.add_run(handle, &record.text, run_scale(records, handle));
+
+        Some(flow)
       };
 
       place.apply(&mut style);
@@ -756,12 +866,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         style.flex_grow = 1.;
       }
 
-      let text = paragraph.then(|| {
-        Measured::new(
-          paragraph_text(records, handle),
-          paragraph_scales(records, handle),
-        )
-      });
+      let text = paragraph.then(|| paragraph_flow(records, handle));
 
       if paragraph {
         style.display = Display::Block;
@@ -813,6 +918,36 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       Restyled { style, text: None }
     }
   }
+}
+
+/// The flow the paragraph `handle` lays out as: each leaf run's text at its scale, and
+/// each inline box as large as it laid out on its own, one cell before it has.
+fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
+  let mut flow = CellFlow::new();
+
+  for run in paragraph_runs(records, handle) {
+    let Some(record) = records.record(run)
+    else {
+      continue;
+    };
+
+    if is_inline_box(records, run) {
+      let (cells, rows) = match &record.kind {
+        Kind::Run {
+          extent: Some(extent),
+          ..
+        } => *extent,
+        _ => (1, 1),
+      };
+
+      flow.add_box(run, (cells, rows));
+    }
+    else {
+      flow.add_run(run, &record.text, run_scale(records, run));
+    }
+  }
+
+  flow
 }
 
 /// Hands every laid-out node its flattened children, where the tree changed since the
@@ -884,33 +1019,6 @@ pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
   records.covers_stale = true;
 }
 
-/// Measures a text leaf: its text wrapped at the width constraint, in cells, each
-/// cluster at its scale and each line as tall as its tallest.
-fn measure_run(
-  known: taffy::geometry::Size<Option<f32>>,
-  available: taffy::geometry::Size<AvailableSpace>,
-  measured: &Measured,
-) -> Size<f32> {
-  let paragraph = measured.paragraph();
-  #[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a width is clamped non-negative and counts cells far below usize::MAX"
-  )]
-  let size = match (known.width, available.width) {
-    (Some(width), _) | (None, AvailableSpace::Definite(width)) => {
-      paragraph.size_within(Some(cells_of((width.max(0.) as usize).max(1))))
-    }
-    (None, AvailableSpace::MinContent) => paragraph.narrowest(),
-    (None, AvailableSpace::MaxContent) => paragraph.size_within(None),
-  };
-
-  Size::new(
-    known.width.unwrap_or(size.width),
-    known.height.unwrap_or(size.height),
-  )
-}
-
 /// The edges the resolved style draws its border on: each of a width above zero, which
 /// the terminal draws as one cell.
 #[inline(always)]
@@ -959,11 +1067,21 @@ pub(crate) const fn cell(value: u32) -> f32 {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod properties {
   use proptest::prelude::*;
+  use skene_foundation::{
+    NodeKind,
+    Scene,
+    text::{Laid as _, TextIndex},
+  };
+  use skene_layout::{
+    Leaf as _,
+    taffy::{geometry::Size, prelude::AvailableSpace},
+  };
 
-  use super::Measured;
+  use super::{CellFlow, cells_of};
   use crate::{
-    paint::{cells_of, paragraph_of, whole, wrap_sized},
-    text::{self, CellScale, Scales},
+    Terminal,
+    engine::{drawn, whole, wrap_spans},
+    text::{self, CellScale},
   };
 
   /// Text mostly of the clusters wrapping turns on: words, blanks, tabs, newlines, a
@@ -977,13 +1095,23 @@ mod properties {
       .prop_map(|pieces| pieces.concat())
   }
 
+  /// The flow of a run holding `text` at `scale`.
+  fn flow(text: &str, scale: CellScale) -> CellFlow {
+    let node = Scene::<Terminal>::with(|scene| scene.create(NodeKind::Run, None));
+    let mut flow = CellFlow::new();
+
+    flow.add_run(node, text, scale);
+
+    flow
+  }
+
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(2000))]
 
-    /// Any text at any width and scale measures as the lines it wraps into, whether
-    /// from its shape or from the extents a measure keeps: as tall as they are, and as
-    /// wide as the widest, or wider by blanks ending a line before a newline or at the
-    /// text's end that take their room up to the width.
+    /// Any text at any width and scale measures as the lines it lays out into: as tall as
+    /// they are, every cluster drawn on its line's rows, and as wide as the widest line
+    /// drawn, or wider by blanks ending a line before a newline or at the text's end that
+    /// take their room up to the width.
     #[test]
     fn a_measure_matches_its_wrapped_lines(
       text in arbitrary_text(),
@@ -992,49 +1120,33 @@ mod properties {
     ) {
       text::reset();
 
-      let scales = Scales::uniform(CellScale::Whole(scale));
-      let lines = wrap_sized(&text, width, &scales);
-      let wrapped = (
-        lines
-          .iter()
-          .map(|line| line.advances(&scales).sum::<usize>())
-          .max()
-          .unwrap_or(0),
-        lines.iter().map(|line| line.rows).sum::<usize>(),
+      let flow = flow(&text, CellScale::Whole(scale));
+      let measured = flow.measure(
+        Size { width: None, height: None },
+        Size {
+          width: AvailableSpace::Definite(cells_of(width)),
+          height: AvailableSpace::MaxContent,
+        },
       );
-      let measured = Measured::new(text.clone(), scales.clone());
+      let laid = flow.laid(width.max(1));
+      let lines = laid.lines();
+      let clusters = drawn(&laid, &text, &TextIndex::new(&text));
+      let widest = clusters
+        .iter()
+        .map(|cluster| cluster.column + cluster.advance)
+        .max()
+        .unwrap_or(0);
+      let rows: usize = lines.iter().map(|line| whole(line.height)).sum();
+      let (cells, height) = (whole(measured.width), whole(measured.height));
 
-      let size = paragraph_of(&text, &scales).size_within(Some(cells_of(width.max(1))));
-      let (cells, rows) = (whole(size.width), whole(size.height));
+      prop_assert_eq!(height, rows);
+      prop_assert_eq!(rows, whole(laid.size().height));
+      prop_assert!(cells == widest || (cells > widest && cells <= width.max(1)));
 
-      prop_assert_eq!(rows, wrapped.1);
-      prop_assert!(cells == wrapped.0 || (cells > wrapped.0 && cells <= width.max(1)));
-      prop_assert_eq!(measured.size_at(width), (cells, rows));
+      for cluster in &clusters {
+        prop_assert!(cluster.top + usize::from(scale) <= rows);
+      }
     }
-  }
-}
-
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod wrap_properties {
-  use proptest::prelude::*;
-
-  use crate::{
-    paint::wrap_sized,
-    text::{self, Scales},
-  };
-
-  /// Text mostly of the clusters wrapping turns on.
-  fn arbitrary_text() -> impl Strategy<Value = String> {
-    const PIECES: &[&str] = &[
-      "a", "bc", "word", " ", "  ", "\t", "\n", "-", "日", "本語", "e\u{301}", "(x)",
-    ];
-
-    proptest::collection::vec(proptest::sample::select(PIECES), 0..24)
-      .prop_map(|pieces| pieces.concat())
-  }
-
-  proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2000))]
 
     /// Any text wraps at any width into lines that fit, but for a lone cluster too wide
     /// for one, and that leave out nothing but the blanks a line ends in and the
@@ -1043,40 +1155,36 @@ mod wrap_properties {
     fn a_wrap_fits_and_keeps_the_text(text in arbitrary_text(), width in 1..30_usize) {
       text::reset();
 
-      let scales = Scales::default();
-      let lines = wrap_sized(&text, width, &scales);
+      let lines = wrap_spans(&text, width);
       let clusters: Vec<&str> = text::clusters(&text).map(|(_, cluster)| cluster).collect();
       let mut expected_start = 0;
 
       prop_assert!(!lines.is_empty());
 
-      for line in &lines {
-        let cells: usize = line.advances(&scales).sum();
-        let count = text::count(&line.text);
+      for (start, line) in &lines {
+        let cells = text::cells(line);
+        let count = text::count(line);
 
         prop_assert!(
           cells <= width || count == 1,
           "{:?} spans {} cells at width {}",
-          line.text,
+          line,
           cells,
           width
         );
 
-        prop_assert!(line.start >= expected_start);
+        prop_assert!(*start >= expected_start);
 
-        for skipped in &clusters[expected_start..line.start] {
+        for skipped in &clusters[expected_start..*start] {
           prop_assert!(
             matches!(*skipped, " " | "\t" | "\n" | "\r\n"),
             "{skipped:?} was left out"
           );
         }
 
-        prop_assert_eq!(
-          clusters[line.start..line.start + count].concat(),
-          line.text.clone()
-        );
+        prop_assert_eq!(&clusters[*start..start + count].concat(), line);
 
-        expected_start = line.start + count;
+        expected_start = start + count;
       }
 
       for skipped in &clusters[expected_start..] {

@@ -6,7 +6,7 @@ use std::{
   ops::Range,
 };
 
-use crate::text::{Intrinsic, Laid, PaintStyle, Paragraph};
+use crate::text::{Intrinsic, Laid, PaintStyle, Paragraph, TextSize};
 
 /// The space a leaf is measured in along one axis.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -57,6 +57,21 @@ pub trait MeasureText {
 /// The most layouts a leaf keeps, by width.
 const KEPT: usize = 3;
 
+/// The most measures a leaf keeps, by width.
+const MEASURED: usize = 4;
+
+/// What measuring read of the layouts at its last widths, the latest first, each by its
+/// width's bits, unbounded where `None`.
+type Measured = [Option<(Option<u32>, Measures)>; MEASURED];
+
+/// What measuring read of a layout: its size and its baselines.
+#[derive(Clone, Copy, Debug)]
+struct Measures {
+  size: TextSize,
+  first_baseline: f32,
+  last_baseline: f32,
+}
+
 /// A paragraph as a leaf of the layout engine.
 ///
 /// Min-content is the paragraph's narrowest width, max-content its widest; a definite width
@@ -65,13 +80,16 @@ const KEPT: usize = 3;
 /// widths are measured once a paragraph, and its last three layouts are kept by width. A
 /// width at or past its widest shares the unbounded layout wherever only sizes and baselines
 /// are asked for (measuring), and for a layout where the paragraph's lines start at the left
-/// edge whatever the width ([`Paragraph::is_left_anchored`]).
+/// edge whatever the width ([`Paragraph::is_left_anchored`]). What measuring reads of a
+/// layout, its size and baselines, is kept for its last four widths apart from the layouts,
+/// so measuring again at one of them lays nothing out and reads no layout.
 #[must_use]
 pub struct TextLeaf<P: Paragraph> {
   paragraph: P,
   epoch: u64,
   intrinsic: Cell<Option<Intrinsic>>,
   laid: RefCell<Vec<(Option<u32>, P::Laid)>>,
+  measured: Cell<Measured>,
   layouts: Cell<u32>,
 }
 
@@ -94,6 +112,7 @@ impl<P: Paragraph> TextLeaf<P> {
       epoch: 0,
       intrinsic: Cell::new(None),
       laid: RefCell::new(Vec::with_capacity(KEPT)),
+      measured: Cell::new([None; MEASURED]),
       layouts: Cell::new(0),
     }
   }
@@ -111,6 +130,7 @@ impl<P: Paragraph> TextLeaf<P> {
     self.epoch += 1;
     self.intrinsic.set(None);
     self.laid.borrow_mut().clear();
+    self.measured.set([None; MEASURED]);
   }
 
   /// Repaints `range` with `paint`, keeping every measurement and every layout, which show
@@ -159,12 +179,47 @@ impl<P: Paragraph> TextLeaf<P> {
     self.kept(width, true)
   }
 
+  /// The key of the layout within `width`, the unbounded one's standing for any width at or
+  /// past the widest where `shared`.
+  fn key(&self, width: Option<f32>, shared: bool) -> Option<u32> {
+    width
+      .filter(|width| !shared || *width < self.intrinsic().max)
+      .map(f32::to_bits)
+  }
+
+  /// The size and baselines of the layout within `width` as measuring lays it out, from
+  /// what is kept where it was read at that width.
+  fn measures(&self, width: Option<f32>) -> Measures {
+    let key = self.key(width, true);
+    let mut kept = self.measured.get();
+
+    if let Some((_, read)) = kept.iter().flatten().find(|(at, _)| *at == key) {
+      return *read;
+    }
+
+    let laid = self.laid_at(key);
+    let read = Measures {
+      size: laid.size(),
+      first_baseline: laid.first_baseline(),
+      last_baseline: laid.last_baseline(),
+    };
+
+    kept.rotate_right(1);
+    kept[0] = Some((key, read));
+    self.measured.set(kept);
+
+    read
+  }
+
   /// The layout within `width`, the unbounded one standing for any width at or past the
   /// widest where `shared`.
   fn kept(&self, width: Option<f32>, shared: bool) -> P::Laid {
-    let key = width
-      .filter(|width| !shared || *width < self.intrinsic().max)
-      .map(f32::to_bits);
+    self.laid_at(self.key(width, shared))
+  }
+
+  /// The layout under `key`, a width's bits, unbounded where `None`, from the cache where it
+  /// is kept.
+  fn laid_at(&self, key: Option<u32>) -> P::Laid {
     let mut kept = self.laid.borrow_mut();
 
     if let Some(at) = kept.iter().position(|(width, _)| *width == key) {
@@ -191,7 +246,7 @@ impl<P: Paragraph> MeasureText for TextLeaf<P> {
     match available {
       Space::MinContent => self.intrinsic().min,
       Space::MaxContent => self.intrinsic().max,
-      Space::Definite(width) => self.kept(Some(width), true).size().width,
+      Space::Definite(width) => self.measures(Some(width)).size.width,
     }
   }
 
@@ -202,8 +257,11 @@ impl<P: Paragraph> MeasureText for TextLeaf<P> {
       (None, Space::MinContent) => Some(intrinsic.min),
       (None, Space::MaxContent) => None,
     };
-    let laid = self.kept(within, true);
-    let size = laid.size();
+    let Measures {
+      size,
+      first_baseline,
+      last_baseline,
+    } = self.measures(within);
     let width = match (known.0, available.0) {
       (Some(width), _) => width,
       (None, Space::MinContent) => intrinsic.min,
@@ -214,8 +272,8 @@ impl<P: Paragraph> MeasureText for TextLeaf<P> {
     LeafMeasure {
       width,
       height: known.1.unwrap_or(size.height),
-      first_baseline: Some(laid.first_baseline()),
-      last_baseline: Some(laid.last_baseline()),
+      first_baseline: Some(first_baseline),
+      last_baseline: Some(last_baseline),
     }
   }
 }

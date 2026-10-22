@@ -7,8 +7,10 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_foundation::Length;
-use skene_layout::{TextStyle, Typeface};
+use skene_foundation::{
+  Length,
+  text::{LineHeight, TextStyle},
+};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -17,14 +19,6 @@ thread_local! {
   static SIZING: Cell<bool> = const { Cell::new(false) };
   static INTERNED: RefCell<Interned> = RefCell::new(Interned::default());
 }
-
-/// The typeface the terminal measures its text in, generated at build time: every code
-/// point as many cells wide as the terminal draws it on its own, zero, one or two, a
-/// cell an em and its ascent the whole cell.
-pub(crate) static CELLS: Typeface = Typeface::new(
-  "Skene Cells",
-  include_bytes!(concat!(env!("OUT_DIR"), "/cells.otf")),
-);
 
 /// The largest whole scale the text sizing protocol draws.
 const MAX_SCALE: u8 = 7;
@@ -106,12 +100,7 @@ impl CellScale {
       Self::Fraction(..) => 1.,
     };
 
-    TextStyle {
-      typeface: &CELLS,
-      size: rows,
-      line_height: rows,
-      letter_spacing: 0.,
-    }
+    TextStyle::new(rows).with_line_height(LineHeight::Absolute(rows))
   }
 }
 
@@ -139,79 +128,6 @@ pub(crate) fn scale_of(size: Option<Length>) -> CellScale {
   match size {
     Some(size) if sizing() => CellScale::of(size.0),
     _ => CellScale::ONE,
-  }
-}
-
-/// What one stretch of a text spans: its clusters at a scale, or an inline box's one
-/// placeholder cluster, as many cells wide and rows tall as the box.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Extent {
-  Scaled(CellScale),
-  Box { cells: usize, rows: usize },
-}
-
-impl From<CellScale> for Extent {
-  fn from(scale: CellScale) -> Self {
-    Self::Scaled(scale)
-  }
-}
-
-/// The extent of each stretch of a text: `(end, extent)` pairs in order, `end` the
-/// cluster index the stretch ends before; the last stretch reaches past the end.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub(crate) struct Scales(Vec<(usize, Extent)>);
-
-impl Scales {
-  /// One scale over the whole text.
-  pub(crate) fn uniform(scale: CellScale) -> Self {
-    Self(vec![(usize::MAX, Extent::Scaled(scale))])
-  }
-
-  /// Scales from the stretches `(count, extent)`, each `count` clusters long, in order.
-  pub(crate) fn of<E: Into<Extent>>(stretches: impl IntoIterator<Item = (usize, E)>) -> Self {
-    let mut end = 0;
-    let mut scales = Vec::new();
-
-    for (count, extent) in stretches {
-      end += count;
-      scales.push((end, extent.into()));
-    }
-
-    Self(scales)
-  }
-
-  /// The extent of the cluster at `index`; one cell past every stretch.
-  pub(crate) fn extent(&self, index: usize) -> Extent {
-    self
-      .0
-      .iter()
-      .find(|(end, _)| index < *end)
-      .map_or(Extent::Scaled(CellScale::ONE), |(_, extent)| *extent)
-  }
-
-  /// The scale the cluster at `index` draws at: one cell for an inline box's.
-  pub(crate) fn at(&self, index: usize) -> CellScale {
-    match self.extent(index) {
-      Extent::Scaled(scale) => scale,
-      Extent::Box { .. } => CellScale::ONE,
-    }
-  }
-
-  /// The cells the cluster at `index` advances: an inline box's placeholder the box's
-  /// cells, and anything else its width at its scale.
-  pub(crate) fn advance(&self, index: usize, cluster: &str) -> usize {
-    match self.extent(index) {
-      Extent::Scaled(scale) => width(cluster) * scale.rows(),
-      Extent::Box { cells, .. } => cells,
-    }
-  }
-
-  /// The rows the cluster at `index` spans.
-  pub(crate) fn rows(&self, index: usize) -> usize {
-    match self.extent(index) {
-      Extent::Scaled(scale) => scale.rows(),
-      Extent::Box { rows, .. } => rows,
-    }
   }
 }
 
@@ -268,25 +184,25 @@ fn drawn_alone(cluster: &str) -> usize {
     .sum()
 }
 
-/// The text the layout measures `cluster` by in the cells' typeface, which draws each
-/// code point on its own: a tab as the blank it shows as, one cell at its run's scale;
-/// else the cluster itself, or where the terminal clusters and draws it wider or
-/// narrower than its code points sum to, one cluster of its width that a line breaks
-/// around as it does around an ideograph.
-pub(crate) fn measured(cluster: &str) -> &str {
+/// What the cells' typeface, which draws each code point on its own, lays out in place
+/// of `cluster`: a tab as the blank it shows as, one cell at its run's scale; where the
+/// terminal clusters and draws a cluster wider or narrower than its code points sum to,
+/// one character of its width that a line breaks around as it does around an ideograph;
+/// `None` for any other, laid out as it is.
+pub(crate) fn stand_in(cluster: &str) -> Option<char> {
   if cluster == "\t" {
-    return " ";
+    return Some(' ');
   }
 
   if !clustering() || cluster.starts_with(char::is_control) {
-    return cluster;
+    return None;
   }
 
   match cluster.width() {
-    width if width == drawn_alone(cluster) => cluster,
-    0 => "\u{2060}",
-    1 => "\u{ff71}",
-    _ => "\u{4e00}",
+    width if width == drawn_alone(cluster) => None,
+    0 => Some('\u{2060}'),
+    1 => Some('\u{ff71}'),
+    _ => Some('\u{4e00}'),
   }
 }
 
@@ -581,7 +497,7 @@ mod tests {
 
   /// A control shows as one cell whether or not the terminal clusters: a tab or a
   /// carriage return as a space, any other as the replacement character; the layout
-  /// measures a tab as that space.
+  /// lays a tab out as that space.
   #[test]
   fn a_control_shows_as_one_cell() {
     reset();
@@ -594,7 +510,7 @@ mod tests {
       assert_eq!(cells("ab\tc"), 4);
       assert_eq!(index_at_column("ab\tc", 3), 3);
       assert_eq!(fit("ab\tc", 2), "ab");
-      assert_eq!(measured("\t"), " ");
+      assert_eq!(stand_in("\t"), Some(' '));
       assert_eq!(Glyph::of("\u{1b}").to_string(), "\u{fffd}");
       assert_eq!(Glyph::of("\t").to_string(), " ");
       assert_eq!(Glyph::of("\r\n").to_string(), " ");
@@ -646,26 +562,6 @@ mod tests {
     assert_eq!(CellScale::of(f32::NAN), CellScale::ONE);
     assert_eq!(CellScale::Fraction(1, 2).rows(), 1);
     assert_eq!(CellScale::Whole(3).rows(), 3);
-  }
-
-  /// Stretches map cluster indices to their scales, the last reaching past the end,
-  /// and a cluster's cells are its width times its scale.
-  #[test]
-  fn scales_run_in_stretches() {
-    reset();
-
-    let scales = Scales::of([(2, CellScale::Whole(2)), (1, CellScale::ONE)]);
-
-    assert_eq!(scales.at(0), CellScale::Whole(2));
-    assert_eq!(scales.at(1), CellScale::Whole(2));
-    assert_eq!(scales.at(2), CellScale::ONE);
-    assert_eq!(scales.at(9), CellScale::ONE);
-    assert_eq!(scales.advance(0, "日"), 4);
-    assert_eq!(
-      Scales::uniform(CellScale::Whole(3)).at(50),
-      CellScale::Whole(3)
-    );
-    assert_eq!(Scales::default().at(0), CellScale::ONE);
   }
 
   /// A window over wide clusters settles by cells: the caret's cell stays in view and

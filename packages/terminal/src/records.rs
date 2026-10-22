@@ -44,7 +44,7 @@ pub(crate) use self::{
     RunCache,
   },
 };
-use crate::{Clipboard, layout::Measured, paint::Buffer, selection::Selection};
+use crate::{Clipboard, layout::CellFlow, paint::Buffer, selection::Selection};
 
 /// The size the platform reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
@@ -67,9 +67,9 @@ pub(crate) type Handle = NodeId;
 pub(crate) struct Records {
   /// The records, by node.
   by_node: NodeMap<Record>,
-  /// The layout tree; a text run's leaf carries its text and scales as context,
-  /// wrapped by the layout's measure function.
-  pub(crate) tree: Tree<Measured>,
+  /// The layout tree; a text leaf carries its flow as context, which measures it and
+  /// which painting and hit testing read the text's layout from.
+  pub(crate) tree: Tree<CellFlow>,
   /// The root box, filling the screen.
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
@@ -304,8 +304,9 @@ impl Records {
     self.restyle.queue(handle);
   }
 
-  /// Measures every node's text again, after the terminal's clustering changed: each
-  /// entry's clusters, and each laid-out node's measurement.
+  /// Measures every node's text again, after the terminal's clustering or sizing
+  /// changed: each entry's clusters, and each laid-out node's flow, made afresh at its
+  /// next restyle.
   pub(crate) fn remeasure(&mut self) {
     self.restyle.revisit_every();
 
@@ -317,10 +318,6 @@ impl Records {
 
       if let Some(field) = record.kind.field_mut() {
         field.reflow();
-      }
-
-      if let Some(measured) = self.tree.context_mut(handle) {
-        measured.forget_extents();
       }
 
       self.tree.mark_dirty(handle);

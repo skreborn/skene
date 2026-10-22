@@ -13,7 +13,7 @@ use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
   Terminal,
-  paint::wrap_spans,
+  engine::wrap_spans,
   records::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Records},
   text,
   with_records,

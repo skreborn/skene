@@ -411,9 +411,8 @@ in a code comment.
     token and per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
-    -p skene-terminal --bench frame`); selection spans compute once per frame; paint, hit
-    tests and the selection wrap a run's text afresh where the layout's measure keeps
-    its shape; clusters re-segment around an edit, and undo stores range diffs.
+    -p skene-terminal --bench frame`); selection spans compute once per frame; clusters
+    re-segment around an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the generations every redefinition,
     structure change and environment change moves for every scope today, and interned
     names, so a palette change costs the number of tokens beyond the web too, in the
@@ -421,7 +420,10 @@ in a code comment.
     resolution reports the environment it read as it reports the interaction, so a
     resize restyles only what reads the viewport.
     - Constant factors: the lazy list reading a data source (a count and the item at an
-    index) through a Fenwick tree, and evicting measured extents; one constructable
+    index) through a Fenwick tree, and evicting measured extents; the terminal's text
+    leaves, each a paragraph of the cell engine, costing a 16k-row mount a quarter more
+    than the wrap they replaced (490 ms against 390) and a keyed row's relayout a fifth
+    more (72 ms against 60), taffy asking each leaf eleven measures a relayout; one constructable
     stylesheet with deferred collection and a set of adopted names; release web output
     precompressed, fingerprinted and preloaded, a split build's modules through wasm-opt
     as an unsplit bundle is, with one cached stylesheet shared by static pages instead

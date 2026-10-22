@@ -5,12 +5,10 @@
 //! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
 //! across layouts and written node by node or by a walk of the scene, each node's part
 //! classified by its platform ([`Tree`]), what moved since a platform last restyled its
-//! tree and so the nodes it revisits next ([`Restyle`]), a paragraph's runs and inline boxes
-//! laid out as one text through a realization's text engine ([`TextFlow`]), and a paragraph
-//! of inline runs shaped and laid out as one text through Parley, each in its platform's
-//! typeface ([`Paragraph`]). The web lays out through CSS and needs none of it.
+//! tree and so the nodes it revisits next ([`Restyle`]), and a paragraph's runs and inline
+//! boxes laid out as one text through a realization's text engine ([`TextFlow`]). The web
+//! lays out through CSS and needs none of it.
 
-mod paragraph;
 mod restyle;
 mod text;
 mod tree;
@@ -41,18 +39,6 @@ use taffy::{
 };
 
 pub use self::{
-  paragraph::{
-    Content,
-    Glyph,
-    GlyphRun,
-    Inline,
-    Paragraph,
-    Stroke,
-    TextItem,
-    TextStyle,
-    Typeface,
-    WrappedLine,
-  },
   restyle::{Restyle, Revisit},
   text::{RunHit, TextFlow},
   tree::{Frames, Leaf, Part, Tree},

@@ -5,8 +5,7 @@ use crate::Wraps;
 /// Applies an optional setting: `.apply(value, Type::set_<prop>)` calls the setter where
 /// there is a value and leaves the view as it is where there is none.
 ///
-/// Every facade's view takes it, so a chain carries a setting it may lack without
-/// breaking into an `if`.
+/// Every type deriving `Wraps` takes it, every facade's view among them.
 ///
 /// ```
 /// use skene_foundation::{Apply, Wraps};

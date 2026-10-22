@@ -45,11 +45,11 @@ in a code comment.
     its fraction); `derive_` setters stay, and tokens stay as they are.
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
-    on the web over the form element CSS styles; a platform's own
-    controls take Skene's names where the meaning matches, the toolkit's names in their
-    doc line and as doc aliases of the type and its members; a shared option is semantic (`Button::set_prominent`) rather than a
-    per-platform preset; `TextField::set_keyboard` and a shared `set_shortcut` join
-    them. A clickable `Container` is an activatable row
+    on the web over the form element CSS styles; a platform's own controls take Skene's
+    names where the meaning matches, the toolkit's names in their doc line and as doc
+    aliases of the type and its members; a shared option is semantic
+    (`Button::set_prominent`) rather than a per-platform preset; `TextField::set_keyboard`
+    and a shared `set_shortcut` join them. A clickable `Container` is an activatable row
     (focusable, `Enter` and `Space` activating it, holding controls that own their
     presses), focus order follows the scene's child order, and a window opens with
     nothing focused but a control set to `set_autofocus`. A choice's value is the app's

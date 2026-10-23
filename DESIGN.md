@@ -282,7 +282,9 @@ and its cost unjustified.
   style: in the class on the web, conditional, token-valued or derived like any other.
   A run carries it as its layout, its derived leaves slots numbered after the run's
   own, and a low-level node hands it to its platform through `Realization::apply_layout`,
-  which the web compiles into the element's class.
+  which the web compiles into the element's class. A wrapper holds its child boxed,
+  its setters before and after it alike; one without a child builds an empty segment,
+  which takes no room and annotates nothing.
 - **Owners** are created per reconciled item, per rebuild, per keyed view and where
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
   into `Owner::replacement()`, the same parent and step, so snapshot identity survives

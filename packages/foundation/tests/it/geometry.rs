@@ -151,6 +151,33 @@ fn a_column_lays_its_children_out_in_turn() {
   owner.dispose();
 }
 
+/// A wrapper without its child takes no room in its column and adds no spacing.
+#[test]
+fn a_wrapper_without_its_child_takes_no_room() {
+  reset();
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    Column::new()
+      .set_spacing(10.)
+      .set_children((
+        sized(100., 20.),
+        Flexible::new().set_flexibility(Flexibility::grow(1.)),
+        sized(50., 30.),
+      ))
+      .build()
+  });
+  let [first, second] = content(column)[..]
+  else {
+    panic!("two children");
+  };
+
+  assert_eq!(layout_rect(first), Some(rect(0., 0., 100., 20.)));
+  assert_eq!(layout_rect(second), Some(rect(0., 30., 50., 30.)));
+
+  owner.dispose();
+}
+
 /// A run measures by the platform's metrics, the pinned face at the font size, and
 /// wraps between words at its box's width.
 #[test]

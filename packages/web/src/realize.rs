@@ -193,11 +193,7 @@ pub(crate) enum Realized {
   /// An anchor.
   Anchor,
   /// A scope.
-  Scope {
-    /// The custom properties its definitions are written inline as, over its token
-    /// class.
-    inline: Vec<String>,
-  },
+  Scope,
 }
 
 /// One node's record beside the scene.
@@ -217,8 +213,11 @@ pub(crate) struct Record<S: Sink> {
   pub realized: Realized,
   /// The class of its compiled style.
   pub style_class: Option<Rc<str>>,
-  /// The class of a scope's token definitions.
+  /// The class of the node's token definitions.
   pub token_class: Option<Rc<str>>,
+  /// The custom properties the node's token definitions are written inline as, over
+  /// its token class.
+  pub inline_tokens: Vec<String>,
   /// The slots its class references.
   pub slots: Rc<[SlotBinding]>,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
@@ -318,6 +317,7 @@ impl<S: Sink> Realizer<S> {
         realized,
         style_class: None,
         token_class: None,
+        inline_tokens: Vec::new(),
         slots: Rc::from([]),
         scrolls: false,
         adopted,
@@ -507,7 +507,11 @@ impl<S: Sink> Realizer<S> {
 
     self.sink.set_attribute(&element, SCOPE_ATTRIBUTE, "");
     self.sink.set_property(&element, "display", "contents");
-    self.insert(node, element, "div", Realized::Scope { inline }, adopted);
+    self.insert(node, element, "div", Realized::Scope, adopted);
+
+    if let Some(record) = self.records.get_mut(node) {
+      record.inline_tokens = inline;
+    }
   }
 
   /// Writes the box slot `slot` of `node` as the custom property its class reads.
@@ -654,7 +658,7 @@ impl<S: Sink> Realizer<S> {
     self.sink.set_text(&record.element, text);
   }
 
-  /// Defines the scope `node`'s tokens: inline over its token class while every
+  /// Defines `node`'s tokens: inline over its token class while every
   /// definition is unconditional and the class exists, else as a fresh class.
   pub(crate) fn define_tokens(&mut self, node: NodeId, definitions: &Definitions<WebTokenValue>) {
     let Some(record) = self.records.get_mut(node)
@@ -894,24 +898,19 @@ impl<S: Sink> Realizer<S> {
     }
   }
 
-  /// Replaces a scope's inline definitions with `declarations`.
+  /// Replaces a node's inline definitions with `declarations`.
   fn write_inline_definitions(
     sink: &mut S,
     record: &mut Record<S>,
     declarations: Vec<(String, String)>,
   ) {
-    let Realized::Scope { inline } = &mut record.realized
-    else {
-      return;
-    };
-
-    for property in inline.drain(..) {
+    for property in record.inline_tokens.drain(..) {
       sink.remove_property(&record.element, &property);
     }
 
     for (property, value) in declarations {
       sink.set_property(&record.element, &property, &value);
-      inline.push(property);
+      record.inline_tokens.push(property);
     }
   }
 }

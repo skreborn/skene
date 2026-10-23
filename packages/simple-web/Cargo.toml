@@ -12,6 +12,22 @@ skene-foundation.workspace = true
 skene-simple.workspace = true
 skene-web.workspace = true
 
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test.workspace = true
+web-sys = { workspace = true, features = [
+  "css",
+  "CssStyleDeclaration",
+  "Document",
+  "DomRect",
+  "Element",
+  "HtmlCollection",
+  "HtmlElement",
+  "HtmlInputElement",
+  "KeyboardEvent",
+  "KeyboardEventInit",
+  "Window",
+] }
+
 [package.metadata.docs.rs]
 default-target = "wasm32-unknown-unknown"
 targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-gnu"]

@@ -11,8 +11,5 @@ repository.workspace = true
 skene-foundation.workspace = true
 skene-reactive.workspace = true
 
-[dev-dependencies]
-skene-headless = { path = "../headless" }
-
 [lints]
 workspace = true

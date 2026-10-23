@@ -2626,7 +2626,6 @@ name = "skene-simple"
 version = "0.1.0"
 dependencies = [
  "skene-foundation",
- "skene-headless",
  "skene-reactive",
 ]
 
@@ -2646,6 +2645,8 @@ dependencies = [
  "skene-foundation",
  "skene-simple",
  "skene-web",
+ "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

@@ -208,11 +208,13 @@ toolkit's keeps the default, which does nothing.
   host platform (`skene-headless`) realizes exactly what any real platform receives into an
   inspectable record store, resolves a property through the spine's `Resolver` (the scene's
   tokens, the expression evaluator and the environment), and runs tasks when a test
-  pumps them, giving the foundation's views and the Simple palette fast tests without
-  pretending to be a platform. A facade's views test on their platform alone, against its
-  real sinks: the web's in a browser DOM via `wasm-bindgen-test` and on the server leaf
-  natively under a byte-exact snapshot, never on the headless platform; native ones against
-  their toolkit. Only the spine's own unit tests run on a double, a `TestPlatform` recording
+  pumps them, giving the foundation's views fast tests without pretending to be a
+  platform. A facade's views test on their platform alone, against its real sinks: the
+  web's in a browser DOM via `wasm-bindgen-test` and on the server leaf natively under a
+  byte-exact snapshot, never on the headless platform; native ones against their toolkit.
+  A component library tests each facade's crate on its platform the same way: Simple's in
+  the browser through the styles the engine computes, and on the terminal through the cells
+  it paints, where the pointer can rest on a control. Only the spine's own unit tests run on a double, a `TestPlatform` recording
   the calls it receives.
 
 ## Composition
@@ -825,7 +827,9 @@ are an interned class on the scope element (with `@media` blocks and the scheme 
 emission where a definition conditions on the scheme) and each token kind registers its
 custom property with `@property`, so it interpolates and inherits as a typed value; a
 token set used with no theme above registers its default under `:root` once
-(`ThemedIn::current`/`watch`). `Typography` (all text inheritance on both facades) and
+(`ThemedIn::current`/`watch`). Any node defining tokens, a scope or a control defining
+its own look as a Simple button does, takes them as such a class, and a redefinition
+whose every token is unconditional writes them inline over it. `Typography` (all text inheritance on both facades) and
 the Simple library's `SimpleGlyphs` (its terminal marks, a set only a platform with text
 tokens over cells can theme) are token sets, so the framework has one inheritance
 mechanism.

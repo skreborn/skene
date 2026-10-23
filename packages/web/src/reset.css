@@ -88,11 +88,13 @@
     user-select: text;
   }
 
+  /* A control's border is stripped to no width but kept solid, as every other box's
+     is, so a width its style declares draws. */
   :where(button, input, select, textarea) {
     font: inherit;
     color: inherit;
     background: none;
-    border: none;
+    border: 0 solid;
     outline: none;
     appearance: none;
     -webkit-appearance: none;
@@ -158,9 +160,8 @@
     opacity: 1;
   }
 
-  /* The default toggle chrome, drawn in the inherited ink: a bordered box or circle
-     whose mark scales in while checked. The border itself rides in the controls' reset
-     class, which would otherwise strip it. */
+  /* The default toggle chrome, drawn in the inherited ink: a box or circle whose mark
+     scales in while checked. */
   :where(input[type="checkbox"], input[type="radio"]) {
     width: 16px;
     height: 16px;

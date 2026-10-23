@@ -355,6 +355,12 @@ in a code comment.
     - Interaction: a group run's state variants reach its spans, as a rule on the
     group's class redefining the ink where the state holds; the token definitions it
     redefines condition on media alone, so this waits on the styling direction.
+    - Interaction: on the web a state a control carries reaches the controls nested
+    inside it, its rule matching any enclosing control where the scene resolves a part
+    against its nearest one, so a focused picker face highlights every row of its list
+    (each row a control whose `Focused` is its highlight); the compiled rule stops at
+    the nearest control, and `browser_simple`'s picker test then reads the rows while
+    the face holds focus.
     - Hit testing: a run is hit-tested by its untrimmed line box, which overhangs the
     box `text-box-trim` trims its line to, so in both engines a press near the edge of
     one of a column's text boxes lands on the next box's run, at a row's vertical

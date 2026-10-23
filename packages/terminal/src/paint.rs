@@ -72,7 +72,7 @@ impl TerminalCell {
   };
 }
 
-/// The decoration lines one painted cell carries, for a headless test asserting paint.
+/// The decoration lines one painted cell carries, for an in-process test asserting paint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[must_use]
 pub struct CellDecoration {
@@ -182,7 +182,7 @@ const BACKDROP_Z: i32 = -1_073_741_824 - 1024;
 /// The id a box's backdrop image takes at the terminal: apart from its picture's.
 const BACKDROP_ID: u32 = 1 << 30;
 
-/// A painted box's picture as one frame places it, for a headless test asserting what
+/// A painted box's picture as one frame places it, for an in-process test asserting what
 /// a terminal with graphics shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]

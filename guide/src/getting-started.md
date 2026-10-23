@@ -46,8 +46,8 @@ fn app() -> impl View {
 ```
 
 `#[main]` expands to the entry the build has: in the browser it hydrates the page the
-server rendered, on the server it renders the requested path, and on the host it builds
-against the headless platform the tests run on.
+server rendered, on the server it renders the requested path, and on the host it only
+compiles, against a stand-in that runs nothing.
 
 ## Running it
 

@@ -225,8 +225,8 @@ pub use skene_foundation::{
   typography,
   web::{AsyncViewBase, DeferredBase},
 };
-/// The host platform's test seams (`trigger_` events, tree inspection), for headless
-/// view tests on the host.
+/// The host leaf, which the builds that only compile on the host build against; no test
+/// runs on it.
 #[cfg(skene_web_platform = "headless")]
 pub use skene_headless as headless;
 pub use skene_macros::{lazy, web_main as main};

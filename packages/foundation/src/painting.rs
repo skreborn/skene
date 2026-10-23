@@ -220,9 +220,9 @@ pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
 ///
 /// The bound a portable low-level view states: the view builds an ordinary box for
 /// its sizing and hands the platform a painter for it, which it runs whenever the
-/// box repaints. The browser leaf renders into a canvas, the headless platform to pixels
-/// a test reads, the terminal through its graphics protocol where the terminal proved
-/// one, and the server leaf as nothing, so a page renders the box empty.
+/// box repaints. The browser leaf renders into a canvas, the terminal through its
+/// graphics protocol where the terminal proved one, and the server leaf as nothing, so a
+/// page renders the box empty.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not paint",
   label = "a painted view is written against a platform implementing `Painting`"

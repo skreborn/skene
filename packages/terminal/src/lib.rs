@@ -8,7 +8,7 @@
 //! views (the border's glyphs, a shadow, scrollbars), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
 //! [`launch`] in a terminal—[`Launch`] configuring what the app takes from it, the
-//! clipboard operations and the mouse—and [`testing`] for a headless test.
+//! clipboard operations and the mouse—and [`testing`] for an in-process test.
 //!
 //! Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer. Interaction
 //! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors

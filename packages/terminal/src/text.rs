@@ -30,7 +30,7 @@ const MAX_DENOMINATOR: u8 = 15;
 ///
 /// A whole scale of `n` takes a block `n` rows tall and `n` times the cluster's
 /// columns wide; a fraction takes the cluster's own cells, its glyph drawn smaller at
-/// the cell's foot. For a headless test asserting paint.
+/// the cell's foot. For an in-process test asserting paint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum CellScale {

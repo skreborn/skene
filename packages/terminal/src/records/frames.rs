@@ -13,7 +13,7 @@ use crate::Terminal;
 pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_millis(16);
 
 /// The clock motion samples against, in seconds: the wall clock in a launched app, a
-/// hand-stepped one under a headless test.
+/// hand-stepped one under an in-process test.
 pub(crate) enum Clock {
   /// The wall clock since `Instant`.
   Real(Instant),

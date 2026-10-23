@@ -1,8 +1,8 @@
 # The web
 
 A web app is one crate for three builds. The browser build hydrates the page in place;
-the server build renders a requested path to markup; the host build runs the app against
-the headless platform the tests use. `skene` builds each from the same library.
+the server build renders a requested path to markup; the host build compiles the app's
+library and runs nothing. `skene` builds each from the same library.
 
 ## Rendering on the server
 

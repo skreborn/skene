@@ -341,8 +341,7 @@ in a code comment.
 11. **Testing on the real platforms.** No headless platform and no test double: each
     platform is tested on itself, through what its readers read and by the input its
     users give, Linux's harness (item 4) the model.
-    - `skene-headless` leaves, with its seams; what it tested moves to
-    the platform it stood for, and an app's shared logic is tested as plain Rust.
+    - `skene-headless` leaves with its seams (item 1's selection).
     - Conformance: one suite of scenarios, a page per facade in its own vocabulary, run
     through a `Driver` per platform over its accessibility layer and its real input, on
     the emulators, simulators and runners the gate reaches; goldens per platform, since
@@ -514,6 +513,10 @@ in a code comment.
     `README.md` for users; the guide's book built by `mdbook` in the gate, so a broken
     link or chapter fails it.
     - Doc comments: contracts alone, without rationale or narrated implementation.
+    - Exports: each facade re-exports every type its surface asks an app to name, which
+    today misses `MenuItemContent` (a context menu's item view's argument) and
+    `Boundary` on both; the seam's `define_tokens` names its node for what it is, any
+    node defining tokens, not a scope.
 18. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no
@@ -599,10 +602,14 @@ in a code comment.
     terminal draws it on the box's first row, now that a row stretching its items
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
-28. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+28. **A plain toggle draws its box on the web.** The reset's default chrome for an
+    `<input type="checkbox">` or `"radio"` no Skene control builds (one a `WebDom` view
+    makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
+    inherited ink, as the reset's comment describes.
+29. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-29. **Server rendering beyond the native binary.** The native server binary stays the
+30. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates

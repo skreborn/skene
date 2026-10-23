@@ -100,7 +100,7 @@ pub fn locate(frame: &str, needle: &str) -> (u16, u16) {
 }
 
 /// Simulates the terminal's report that it reports key releases (the kitty keyboard
-/// protocol's event types), or that it does not, for a test driving the loop headlessly.
+/// protocol's event types), or that it does not, for a test driving the loop in process.
 ///
 /// Until it does, a release follows every press at once.
 pub fn trigger_key_releases(confirmed: bool) {
@@ -108,7 +108,7 @@ pub fn trigger_key_releases(confirmed: bool) {
 }
 
 /// Simulates the terminal's report that its clipboard answers (mode 5522), or that it
-/// does not, for a test driving the loop headlessly.
+/// does not, for a test driving the loop in process.
 ///
 /// An answering clipboard offers every operation, whatever the launch chose.
 pub fn trigger_answering_clipboard(confirmed: bool) {
@@ -116,7 +116,7 @@ pub fn trigger_answering_clipboard(confirmed: bool) {
 }
 
 /// Simulates the terminal's report that grapheme clustering (mode 2027) is set, or
-/// that it is not, for a test driving the loop headlessly.
+/// that it is not, for a test driving the loop in process.
 pub fn trigger_grapheme_clustering(confirmed: bool) {
   trigger(|| {
     apply_clustering(confirmed);
@@ -124,7 +124,7 @@ pub fn trigger_grapheme_clustering(confirmed: bool) {
 }
 
 /// Simulates the terminal's reply that proves text sizing (OSC 66), or one that does
-/// not, for a test driving the loop headlessly.
+/// not, for a test driving the loop in process.
 pub fn trigger_text_sizing(confirmed: bool) {
   trigger(|| {
     apply_sizing(confirmed);
@@ -132,14 +132,14 @@ pub fn trigger_text_sizing(confirmed: bool) {
 }
 
 /// Simulates the terminal's reply that proves the graphics protocol, or its absence,
-/// for a test driving the loop headlessly.
+/// for a test driving the loop in process.
 pub fn trigger_graphics(confirmed: bool) {
   trigger(|| {
     apply_graphics(confirmed);
   });
 }
 
-/// Runs `event` as one turn of the loop, for a test driving it headlessly: what earlier
+/// Runs `event` as one turn of the loop, for a test driving it in process: what earlier
 /// writes scheduled takes effect first, and what the event's own writes schedule once
 /// it is handled.
 fn trigger(event: impl FnOnce()) {
@@ -149,7 +149,7 @@ fn trigger(event: impl FnOnce()) {
 }
 
 /// Simulates one key press by its portable W3C key value, for a test driving the loop
-/// headlessly.
+/// in process.
 ///
 /// The value is a key's name (`"a"`, `"Enter"`, `"Tab"`, `"Backspace"`, …), and
 /// `"Ctrl+"`, `"Alt+"`, and `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`,
@@ -165,7 +165,7 @@ pub fn trigger_key_event(event: &KeyEvent) {
   trigger(|| press(event));
 }
 
-/// Whether a key asked the app to quit, for a headless test.
+/// Whether a key asked the app to quit, for an in-process test.
 #[must_use]
 pub fn is_quit_requested() -> bool {
   end_turn();
@@ -173,7 +173,7 @@ pub fn is_quit_requested() -> bool {
 }
 
 /// Simulates one key release by its portable W3C key value, with the prefixes
-/// [`trigger_key`] reads, for a test driving the loop headlessly.
+/// [`trigger_key`] reads, for a test driving the loop in process.
 pub fn trigger_key_up(key: &str) {
   trigger(|| interaction::key_up(&key_event(key)));
 }
@@ -244,7 +244,7 @@ fn name_facts(node: NodeId) -> NameFacts {
 }
 
 /// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover
-/// headlessly. Hit-testing resolves against the last render's layout.
+/// in process. Hit-testing resolves against the last render's layout.
 pub fn trigger_mouse_move(x: u16, y: u16) {
   trigger(|| {
     with_records(|records| records.pointer_within = crate::records::CELL_CENTER);
@@ -253,14 +253,14 @@ pub fn trigger_mouse_move(x: u16, y: u16) {
 }
 
 /// Simulates a left click at the cell (`x`, `y`), for a test driving mouse interaction
-/// headlessly. Hit-testing resolves against the last render's layout.
+/// in process. Hit-testing resolves against the last render's layout.
 pub fn trigger_mouse_click(x: u16, y: u16) {
   trigger_mouse_press(x, y);
   trigger_mouse_release(x, y);
 }
 
 /// Simulates pressing the left button at (`x`, `y`) without releasing—the start of a
-/// drag—for a test driving drags headlessly.
+/// drag—for a test driving drags in process.
 pub fn trigger_mouse_press(x: u16, y: u16) {
   trigger(|| {
     with_records(|records| {
@@ -304,7 +304,7 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 }
 
 /// Simulates a right click at the cell (`x`, `y`)—the copy-menu gesture—for a test
-/// driving selection headlessly.
+/// driving selection in process.
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
   trigger(|| {
     with_records(|records| {
@@ -317,7 +317,7 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
   });
 }
 
-/// Simulates the mouse wheel at the cell (`x`, `y`), for a headless test driving
+/// Simulates the mouse wheel at the cell (`x`, `y`), for an in-process test driving
 /// scrolling.
 ///
 /// Positive deltas scroll right and down, one cell per unit; hit-testing resolves
@@ -326,14 +326,14 @@ pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64)
   trigger(|| interaction::wheel(x, y, delta_columns, delta_rows, Modifiers::NONE));
 }
 
-/// Takes the text the last `Copy` staged for the clipboard, for a headless test.
+/// Takes the text the last `Copy` staged for the clipboard, for an in-process test.
 #[must_use]
 pub fn take_copied() -> Option<String> {
   end_turn();
   with_records(|records| records.pending_copy.take())
 }
 
-/// Takes whether the last `Paste` staged a clipboard read, for a headless test.
+/// Takes whether the last `Paste` staged a clipboard read, for an in-process test.
 #[must_use]
 pub fn take_paste_requested() -> bool {
   end_turn();
@@ -341,39 +341,39 @@ pub fn take_paste_requested() -> bool {
 }
 
 /// Simulates the terminal pasting `text` by its own key—a bracketed paste—into the
-/// focused entry, for a headless test.
+/// focused entry, for an in-process test.
 pub fn trigger_paste(text: &str) {
   trigger(|| interaction::paste(text));
 }
 
-/// Simulates the terminal answering the last clipboard read with `text`, for a headless
+/// Simulates the terminal answering the last clipboard read with `text`, for an in-process
 /// test: it lands in the entry that asked, wherever focus has moved since.
 pub fn trigger_clipboard_reply(text: &str) {
   trigger(|| interaction::paste_reply(text));
 }
 
-/// Takes the link the last click staged for the system handler, for a headless test.
+/// Takes the link the last click staged for the system handler, for an in-process test.
 #[must_use]
 pub fn take_opened() -> Option<String> {
   end_turn();
   with_records(|records| records.pending_open.take())
 }
 
-/// The current terminal title, for a headless test.
+/// The current terminal title, for an in-process test.
 #[must_use]
 pub fn window_title() -> Option<String> {
   end_turn();
   with_records(|records| records.title.clone())
 }
 
-/// Simulates the terminal reporting `scheme` as its background, for a headless test
+/// Simulates the terminal reporting `scheme` as its background, for an in-process test
 /// driving the scheme conditions; the app's own choice still wins.
 pub fn trigger_color_scheme(scheme: ColorScheme) {
   trigger(|| set_detected_scheme(scheme == ColorScheme::Dark));
 }
 
 /// Simulates the terminal reporting its own `foreground` and `background` (OSC 10 and
-/// 11), for a headless test asserting what a paint mixes against; the scheme follows
+/// 11), for an in-process test asserting what a paint mixes against; the scheme follows
 /// the background's luminance.
 pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) {
   trigger(|| {
@@ -382,11 +382,11 @@ pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8
   });
 }
 
-/// Steps the motion clock forward by `elapsed`, for a headless test driving transitions,
+/// Steps the motion clock forward by `elapsed`, for an in-process test driving transitions,
 /// animations and a caret drag's autoscroll frame by frame; the next render samples
 /// them at the new reading.
 ///
-/// A headless platform's clock stands still otherwise, so a render shows a transition
+/// Under a test the clock stands still otherwise, so a render shows a transition
 /// at the point the last step left it.
 pub fn trigger_frame(elapsed: Duration) {
   trigger(|| {
@@ -398,7 +398,7 @@ pub fn trigger_frame(elapsed: Duration) {
   });
 }
 
-/// Simulates the reader's reduced-motion preference, for a headless test driving the
+/// Simulates the reader's reduced-motion preference, for an in-process test driving the
 /// reduced-motion condition and the motion that respects it.
 pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
@@ -419,13 +419,13 @@ pub fn trigger_reduced_motion(reduced: bool) {
   });
 }
 
-/// Simulates the terminal resizing to `columns` x `rows`, for a headless test driving
+/// Simulates the terminal resizing to `columns` x `rows`, for an in-process test driving
 /// the size conditions; the next render lays out at the size it is given.
 pub fn trigger_resize(columns: u16, rows: u16) {
   trigger(|| frame::resize(columns, rows));
 }
 
-/// The pointer shape the current hover resolves to, for a headless test.
+/// The pointer shape the current hover resolves to, for an in-process test.
 #[must_use]
 pub fn mouse_cursor() -> Option<MouseCursor> {
   end_turn();
@@ -481,7 +481,7 @@ pub fn repainted_rows() -> Vec<usize> {
 }
 
 /// Lays the mounted tree out at `width` x `height` cells and paints it to plain text:
-/// the headless render a test asserts against.
+/// the in-process render a test asserts against.
 #[must_use]
 pub fn render_to_text(width: u16, height: u16) -> String {
   frame::render(width, height).to_text()
@@ -499,14 +499,14 @@ pub fn render_to_styled(width: u16, height: u16) -> String {
 }
 
 /// The painted frame's caret cell at `width` x `height`—where the terminal's bar
-/// cursor shows—for a headless test asserting caret placement.
+/// cursor shows—for an in-process test asserting caret placement.
 #[must_use]
 pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
   frame::render(width, height).caret
 }
 
 /// The painted frame's colors at `width` x `height`: each cell's foreground and
-/// background, row-major, for a headless test asserting paint.
+/// background, row-major, for an in-process test asserting paint.
 #[must_use]
 #[expect(
   clippy::type_complexity,
@@ -523,7 +523,7 @@ pub fn render_to_colors(
     .collect()
 }
 
-/// The painted frame's bold cells at `width` x `height`, row-major, for a headless test
+/// The painted frame's bold cells at `width` x `height`, row-major, for an in-process test
 /// asserting a run's or an entry's weight.
 #[must_use]
 pub fn render_to_bold(width: u16, height: u16) -> Vec<bool> {
@@ -535,7 +535,7 @@ pub fn render_to_bold(width: u16, height: u16) -> Vec<bool> {
 }
 
 /// The painted frame's reverse-video cells at `width` x `height`, row-major, for a
-/// headless test asserting the emphasis a colorless selection or a colorless focused
+/// in-process test asserting the emphasis a colorless selection or a colorless focused
 /// link paints in.
 #[must_use]
 pub fn render_to_reverse(width: u16, height: u16) -> Vec<bool> {
@@ -547,7 +547,7 @@ pub fn render_to_reverse(width: u16, height: u16) -> Vec<bool> {
 }
 
 /// The painted frame's decoration lines at `width` x `height`, row-major, for a
-/// headless test asserting an underline's style and color, an overline or a line
+/// in-process test asserting an underline's style and color, an overline or a line
 /// through.
 #[must_use]
 pub fn render_to_decorations(width: u16, height: u16) -> Vec<CellDecoration> {
@@ -558,7 +558,7 @@ pub fn render_to_decorations(width: u16, height: u16) -> Vec<CellDecoration> {
     .collect()
 }
 
-/// The pictures the painted frame at `width` x `height` places, for a headless test
+/// The pictures the painted frame at `width` x `height` places, for an in-process test
 /// asserting what a terminal with graphics shows; none until `trigger_graphics`.
 #[must_use]
 pub fn render_to_pictures(width: u16, height: u16) -> Vec<Picture> {
@@ -569,7 +569,7 @@ pub fn render_to_pictures(width: u16, height: u16) -> Vec<Picture> {
     .collect()
 }
 
-/// The painted frame's text scales at `width` x `height`, row-major, for a headless
+/// The painted frame's text scales at `width` x `height`, row-major, for an in-process
 /// test asserting a run's size: a glyph's cell carries its scale, and the other cells
 /// of its block carry one.
 #[must_use]
@@ -582,7 +582,7 @@ pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
 }
 
 /// Polls every ready task as one turn, as the interactive loop does between events;
-/// `true` when any ran. For a headless test driving async work.
+/// `true` when any ran. For an in-process test driving async work.
 #[must_use]
 pub fn pump_tasks() -> bool {
   platform::end_turn();

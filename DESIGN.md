@@ -113,8 +113,8 @@ toolkit's keeps the default, which does nothing.
 
 - **Why a trait and not name-resolved free functions.** A missing function is only an
   error on a path that names it, and those paths are target-gated; a trait makes a gap a
-  hard error. That is what makes the host platform complete, so every view and `Resource`
-  are testable headlessly.
+  hard error. That is what makes every platform complete: a build that compiles has
+  every method a view can reach.
 - **Why the scene is in the spine.** The scene *calls* nothing: the spine mutates it and then
   calls the platform through the generic parameter. Every platform needs the structure; one
   implementation is smaller and has one reparent semantics.
@@ -187,8 +187,7 @@ toolkit's keeps the default, which does nothing.
   over wgpu where the page has WebGPU, one device shared by every painted box with a
   surface per canvas, asked for afresh when lost, and through vello's CPU renderer
   otherwise, in a fresh canvas where a canvas's GPU path failed or the browser lost
-  its 2D context; the headless platform renders it to pixels
-  (`headless::render_to_pixels`); the server leaf renders it empty; the terminal
+  its 2D context; the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind
   the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-foundation`, since
@@ -237,10 +236,10 @@ toolkit's keeps the default, which does nothing.
   events, a focused element moved or removed, a handler destroying the entry it edits). A
   facade's views test on their platform alone, against its real sinks: the web's in a
   browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
-  snapshot, never on the headless platform; native ones against their toolkit. A component
-  library tests each facade's crate on its platform the same way: Simple's in the browser
-  through the styles the engine computes, and on the terminal through the cells it paints,
-  where the pointer can rest on a control. The spine's algorithms are functions over
+  snapshot; native ones against their toolkit. A component library tests each facade's
+  crate on its platform the same way: Simple's in the browser through the styles the
+  engine computes, and on the terminal through the cells it paints, where the pointer can
+  rest on a control. The spine's algorithms are functions over
   plain data, unit-tested there with no scene: the tab order (`TabStop`), the open
   overlays a press dismisses and a modal keeps reachable (`OverlayStack`), the nearest
   definer of a token and its caches, the interaction held (`Held`), the keyed
@@ -301,15 +300,14 @@ and its cost unjustified.
   client, adopted element by element with no mismatch, and then rebuilt into the
   enhancement in place, as a `derived` rebuild is, under a replacement owner, so a
   signal bound beneath keeps its value and its snapshot identity; a mount that
-  hydrates nothing answers true from the start and never builds the baseline. The
-  headless platform answers hydrated until `trigger_hydrated` says otherwise; an
+  hydrates nothing answers true from the start and never builds the baseline. An
   enhancement's two forms are tested on the terminal over a signal of the test's own,
   and over the hydration signal in the browser. **Pixels** are `Painting`'s:
   `Painting::available()` is the signal a painted box waits on, false on the server
-  leaf, false on the browser leaf until it is live, false in the terminal until the
-  graphics probe is answered, and the headless platform's from `trigger_graphics`. Only
-  the branch in force is ever built, so an enhancement may touch the browser and a
-  baseline may be the whole view where the signal never turns. The seam is the
+  leaf, false on the browser leaf until it is live, and false in the terminal until the
+  graphics probe is answered. Only the branch in force is ever built, so an enhancement
+  may touch the browser and a baseline may be the whole view where the signal never
+  turns. The seam is the
   built-ins' own: `Painted` takes `set_fallback_builder`, the view drawn where no pixels
   show, so a painted box has a no-JS form on the web and a cell form in the terminal
   through the one mechanism, and the picker's prerendered `<select>` is the same swap
@@ -412,9 +410,9 @@ menu is requested: `Absent` hides it, `Disabled` lists it disabled, `Enabled` li
 live—outside a text entry only `Copy` exists, and only with a selection; inside one all
 three are listed, `Copy` and `Cut` disabled without a selection—and running it calls
 `Realization::clipboard` (OSC 52 in the terminal, the async Clipboard API on the web, where
-the items are absent without it and a paste is permission-gated and stays best effort;
-the headless platform records the action). A menu with nothing usable does not open but
-still prevents the platform's, which is what a right press on an empty spot did before.
+the items are absent without it and a paste is permission-gated and stays best effort).
+A menu with nothing usable does not open but still prevents the platform's, which is
+what a right press on an empty spot did before.
 Extending the standard menu is listing the standard items beside one's own; nothing
 merges implicitly. The list is a `Menu` control (`Role::Menu`) over `MenuOption`
 controls (`Role::MenuItem`), the behaviors a third party's menu bar reuses: the arrows
@@ -894,7 +892,7 @@ a subtree is not wanted.
 
 `media::viewport()`, `media::scheme()` and `media::reduced_motion()` are signals on every
 facade, backed by the platform: `MediaQueryList` and `resize` in the browser, the
-terminal's size and background, the headless store's settings. `media::watch(&media)`
+terminal's size and background, the host leaf's defaults. `media::watch(&media)`
 turns any declared condition into a memo rendered from the same query text the class
 compiler renders, so the signal and the stylesheet cannot disagree. A box's measured size
 reaches a view through `Realization::observe_size` (the lazy column's viewport, the slider's
@@ -1052,8 +1050,8 @@ lives.
 There are no view models in context. A screen's data is a `Store`, or a lens onto one,
 passed to the function that builds the screen, not an object a parent provides and a
 descendant looks up: an argument states what a view needs where it is called, costs a
-copy, and keeps the view testable headless with a store the test builds. Context stays
-for the genuinely ambient, which every layer between would otherwise have to thread.
+copy, and keeps the view testable with a store the test builds. Context stays for the
+genuinely ambient, which every layer between would otherwise have to thread.
 
 ## Reactive engine
 
@@ -1091,12 +1089,11 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   notifies is delivered once the build is whole. The terminal's turn is an event, a run of due
   timers, a task pump or a render's settling round; the browser's is an event, a
   mount, a hydration or a navigation, and the next microtask checkpoint for anything
-  else; the server's is its build and each round of task polls, as a batch. On the
-  headless platform and the terminal a test's trigger is a turn and a query ends the
-  pending one first, so a test sees what the loop does; `end_turn` on the headless
-  platform and the browser settles a direct write where a test observes it otherwise,
-  and `flush_sync` settles mid-turn where a turn needs it, as a key's default does
-  after its handlers.
+  else; the server's is its build and each round of task polls, as a batch. In the
+  terminal a test's trigger is a turn and a query ends the pending one first, so a test
+  sees what the loop does; `end_turn` in the browser settles a direct write where a test
+  observes it otherwise, and `flush_sync` settles mid-turn where a turn needs it, as a
+  key's default does after its handlers.
 - **Panic and borrow discipline.** `batch` and `Owner::enter` are guarded; no user code
   runs under a runtime borrow; an entity is moved out of its arena before its cleanups
   run. A read of a disposed signal panics and a write to one is dropped; a debug build
@@ -1163,7 +1160,7 @@ The public API speaks the ecosystem's standard reactive vocabulary:
 `Transition` and keyframe `Animation` are data. The web compiles them to CSS; every
 platform running motion on its own clock runs it through one runner,
 `skene_foundation::interpolate::Motion`: the terminal on its frame clock (quantized to cells and
-truecolor), the headless platform under a clock a test advances, native later. A
+truecolor), which a test advances by hand, native later. A
 platform hands the runner each property from the resolution point that reports a
 changed value—never through the reactive graph per frame—and it interpolates per value
 type, starting, reversing and cancelling transitions as CSS does: a change back to where
@@ -1227,22 +1224,17 @@ stylesheet, holding every rule the browser interns.
 
 ### Headless (`skene-headless`)
 
-The host platform: every `Realization` method writes into a record per node, keyed by its
-`NodeId`, while the structure stays the scene's alone; it lays the scene out and draws
-it as the layout bullet of the style model says, its text through `skene-parley` in the
-pinned face, and no platform response fires. It is the web medium (`StyleExt = WebStyle`), so a corner radius or a
-run's font size resolves as set, as it would on the web. Beside the records it keeps what
-a test asks: the outline, read from the scene, the props a node was created with, the
-slot a render effect last wrote, a property resolved through the spine's `Resolver` under the
-environment a test set (viewport, scheme, reduced motion, container sizes, hover and
-focus), control state and parts, overlay openness, focus order, bound painters, and any
-node's accessible name, with the queries over it. Events go through `trigger_*` into
-the spine's dispatch, and `user` composes them into a user's gestures in a browser's order: a
-click hovers, presses, moves focus to the nearest node taking it (or off the focused
-one), releases and clicks, and a key where focus is carries a text entry's edit where no
-handler suppressed it. A frame clock advances on request; an executor, installed by
-`spawn` and `Resource` alike, holds every spawned task until `pump_tasks`. It is what
-`skene-web` selects on a host target, so an app's `#[main]` compiles everywhere.
+The host leaf: the `Realization` `skene-web` selects off its targets, so the builds that
+only compile on the host have a platform to build against—the docs crates' doctests,
+the web examples' libraries, `#[main]`'s host arm and acme-map's, and the compile-fail
+suite. No test runs on it; each platform's tests run on the platform itself (Real
+platforms, not a mock platform). It is the web medium (`StyleExt = WebStyle`), so a
+view written for the web compiles against it unchanged. Every `Realization` method
+writes into a record per node, keyed by its `NodeId`, while the structure stays the
+scene's alone, and it lays the scene out and draws it as the layout bullet of the style
+model says, its text through `skene-parley` in the pinned face; no platform response
+fires. It leaves with the host leaf (`ROADMAP.md` item 1's selection), its `trigger_*`
+seams, `user` gestures, queries and task pump with it.
 
 ### Native (planned)
 
@@ -1326,8 +1318,8 @@ through the foundation's substitution, so every position the engine reports is a
 of the real text. Each text leaf is one paragraph of its runs and inline boxes (a
 `TextFlow` over the engine), an inline box a box as many cells wide and rows tall as
 it, kept between frames and measured, painted, hit and selected from its one layout, a
-width floored to whole cells, at least one: a run wraps and keeps its blanks as
-headless does and draws cluster by cluster in the engine's visual order, and a point
+width floored to whole cells, at least one: a run wraps and keeps its blanks as the
+guaranteed core says and draws cluster by cluster in the engine's visual order, and a point
 on a cell is probed just past its left edge, so a press lands at the nearer edge of
 the cluster drawn there, after a wide one on its second cell. So that a terminal
 reordering bidirectional text itself does not reorder it twice, launch asks for the
@@ -1431,7 +1423,7 @@ is `Key::Character` for the text a key types and `Key::Named` for every other ke
 `KeyboardEvent.code`, a value the crate does not know arriving as `Unidentified`, in
 the terminal the kitty protocol's base-layout alternate where it reports one and the
 key's own position on the US layout otherwise (`KeyEvent::code_of`, over the crate's
-WebDriver table, which the headless platform's key specs use too), and a shifted
+WebDriver table), and a shifted
 alternate the terminal applied restores `Shift` for any key, so `Shift-1` reaches an
 app as `!` with `Shift` held. A modal takes
 focus to its first tab stop as it opens and returns it to the node that held focus as
@@ -1527,7 +1519,7 @@ text as a placeholder of its width, painted and hit at the cells it flowed into.
 edge whose border width is zero takes no cells and draws none, and a border whose color
 is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
 through `launch`, or to plain text
-through `testing::render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
+through `testing::render_to_text` for in-process tests (`trigger_key`/`trigger_mouse_move`/
 `trigger_mouse_click`/`trigger_frame` in `testing` drive it without a terminal). Terminal detection is
 asynchronous; the loop starts immediately and the answers arrive as signal writes. The
 dev loop carries the snapshot across a swap through the launcher's control pipe. Terminal
@@ -1594,8 +1586,9 @@ sit on exactly the footing first-party ones would:
 
 - `spawn`—resume on the UI thread, scope-bound cancellation.
 - `Realization::schedule`—a one-shot action on the platform's clock, cancelled by the
-  `Timer` it returns: the window's timeout on the web, the loop's wait in the terminal, the
-  hand-stepped clock under the headless platform, and never on the server.
+  `Timer` it returns: the window's timeout on the web, the loop's wait in the terminal,
+  fired under a test from the hand-stepped clock the test advances, and never on the
+  server.
 - `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
   state that keeps the last value; the web facade's newtype adds hydration across the
   SSR boundary (`new` by order, `tagged` by tag, `client` opting out).
@@ -1610,9 +1603,8 @@ headers and its whole body, any status a response and only a failure on the way 
 error. The transport is the platform's, chosen by target: the browser's `fetch` on
 the web, and on every other host, a server render included, a thread around a plain
 client (`ureq`) whose completion wakes the platform's executor through the future's
-waker, so a terminal app's loop, a headless test's pump or a parked server render polls
-it on. Dropping the future
-abandons the exchange. An app drives it through the seams it already has:
+waker, so a terminal app's loop or a parked server render polls it on. Dropping the
+future abandons the exchange. An app drives it through the seams it already has:
 `Resource::client` for data a view shows, `spawn` for a task of its own. `skene_transport::ws`
 is the WebSocket sibling on the same seams: `connect` is a future resolving to a
 `WebSocket` once the connection stands, `send` writes a message at once, and
@@ -1684,8 +1676,8 @@ boundary's fallback standing until the module arrives.
 
 Framework and app code log through `tracing`. The web leaves install a subscriber at
 launch unless one is set, the browser's writing to the console and the server's to
-standard error; the terminal installs none, its screen being the app's, and headless
-leaves the choice to the test. The spine carries no subscriber.
+standard error; the terminal installs none, its screen being the app's, and neither
+does the host leaf. The spine carries no subscriber.
 
 ## Glossary
 

@@ -4,7 +4,7 @@
 //! turns any declared [`Media`] condition into a memo. In the browser they are live and
 //! a condition's memo is built from the same query text the stylesheet renders; on the
 //! server leaf they hold the client hints the render was given, else the documented
-//! defaults; on the host they hold what the headless platform's seams set.
+//! defaults; on the host leaf they hold its defaults.
 //!
 //! The scheme in force is the document's, not a theme's: [`set_scheme`] and
 //! [`derive_scheme`] tell the platform which scheme paints, touching no node, and `None`

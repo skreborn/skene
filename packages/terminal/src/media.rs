@@ -4,7 +4,7 @@
 //! turns any declared [`Media`] condition into a memo. The viewport follows the last
 //! rendered size, in cells; the scheme composes the app's choice with the background
 //! the terminal detected; the terminal reports no reduced-motion preference of its
-//! own, and a headless test sets one through `trigger_reduced_motion`.
+//! own, and an in-process test sets one through `trigger_reduced_motion`.
 //!
 //! The scheme in force is the terminal's, not a theme's: [`set_scheme`] and
 //! [`derive_scheme`] tell the platform which scheme paints, touching no node, and `None`

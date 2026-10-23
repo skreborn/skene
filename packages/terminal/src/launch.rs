@@ -127,7 +127,7 @@ impl Launch {
     self
   }
 
-  /// Installs the terminal platform under this configuration, for a headless test; see
+  /// Installs the terminal platform under this configuration, for an in-process test; see
   /// [`install`].
   ///
   /// # Panics
@@ -231,7 +231,7 @@ where
 }
 
 /// Installs the terminal platform for this thread under the default configuration, for
-/// a headless test: the reactive runtime, the host executor, the scene and the records.
+/// an in-process test: the reactive runtime, the host executor, the scene and the records.
 ///
 /// # Panics
 ///

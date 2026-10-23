@@ -40,15 +40,7 @@ use crate::{
   realize::Source,
 };
 
-/// The builder of a picker's face, given the chosen value.
-#[must_use]
-pub struct Face<P: Realization>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
-
-impl<P: Realization> std::fmt::Debug for Face<P> {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("Face").finish_non_exhaustive()
-  }
-}
+struct Face<P: Realization>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
 
 /// A choice among fixed options, drawn by the views it holds: the face draws the
 /// control closed, the options draw the list it opens.

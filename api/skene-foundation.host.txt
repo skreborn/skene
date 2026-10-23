@@ -5544,9 +5544,6 @@ impl core::fmt::Debug for skene_foundation::ExprEnv
 pub fn skene_foundation::ExprEnv::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::ExprEnv
 impl core::marker::StructuralPartialEq for skene_foundation::ExprEnv
-pub struct skene_foundation::Face<P: skene_foundation::Realization>(_)
-impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Face<P>
-pub fn skene_foundation::Face<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::FlexChild
 impl core::clone::Clone for skene_foundation::FlexChild
 pub fn skene_foundation::FlexChild::clone(&self) -> skene_foundation::FlexChild

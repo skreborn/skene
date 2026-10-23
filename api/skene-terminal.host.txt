@@ -1764,7 +1764,6 @@ pub type skene_terminal::ContainerQuery = skene_foundation::spine::condition::Co
 pub type skene_terminal::ControlHandle = skene_foundation::control::ControlHandle<skene_terminal::Active>
 pub type skene_terminal::Definition<T> = skene_foundation::spine::leaf::Definition<T, u32>
 pub type skene_terminal::Dimension = skene_foundation::spine::values::dimension::Dimension<u32>
-pub type skene_terminal::Face = skene_foundation::picker::Face<skene_terminal::Active>
 pub type skene_terminal::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_terminal::Keyed<V> = skene_foundation::spine::keyed::Keyed<skene_terminal::Active, V>
 pub type skene_terminal::Label = skene_foundation::control::Label<skene_terminal::Active>

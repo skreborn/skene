@@ -185,7 +185,7 @@ pub use crate::{
   overlay::{Overlay, OverlayBase},
   painted::{Painted, PaintedBase},
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
-  picker::{BasicPicker, BasicPickerBase, Face},
+  picker::{BasicPicker, BasicPickerBase},
   pinned::{Pinned, PinnedBase},
   realize::{ChildBuilder, LowLevel},
   run::Run,

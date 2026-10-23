@@ -312,7 +312,7 @@ fn a_radio_ring_follows_the_groups_choice() {
 }
 
 /// A radio group without its child builds an empty group, as a control without a body
-/// does: the group's node, named and reporting its role, holding no member.
+/// does: the group's node, named and reporting its role, holding its caption alone.
 #[test]
 fn a_radio_group_without_its_child_builds_an_empty_group() {
   reset();
@@ -329,10 +329,9 @@ fn a_radio_group_without_its_child_builds_an_empty_group() {
     Some(Role::RadioGroup)
   );
   assert_eq!(accessible_name(group).as_deref(), Some("Size"));
-  assert!(
-    children(group)
-      .into_iter()
-      .all(|child| part(child) == Some(Part::Label))
+  assert_eq!(
+    children(group).into_iter().map(part).collect::<Vec<_>>(),
+    [Some(Part::Label)]
   );
 
   owner.dispose();

@@ -75,8 +75,6 @@ macro_rules! facade {
     pub type ControlHandle = $crate::ControlHandle<$platform>;
     /// A control's label; see [`skene_foundation::Label`].
     pub type Label = $crate::Label<$platform>;
-    /// A picker's face; see [`skene_foundation::Face`].
-    pub type Face = $crate::Face<$platform>;
     /// A handle naming the node a view built; see [`skene_foundation::NodeHandle`].
     pub type NodeHandle = $crate::NodeHandle<$platform>;
     /// The closure building a view's child under the context the view provides; see

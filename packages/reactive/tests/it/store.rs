@@ -699,6 +699,38 @@ fn store_round_trips_through_a_snapshot() {
   assert_eq!(restored, 7);
 }
 
+/// A plain store starts afresh: a run records nothing of it, so the next run's holds
+/// its initial value even where a saved one beside it restores.
+#[test]
+fn a_plain_store_starts_afresh() {
+  let bytes = std::thread::spawn(|| {
+    skene_reactive::record_snapshots();
+
+    let plain = Store::new(vec![0u32; 3]);
+    let saved = Store::saved(vec![0u32; 3]);
+
+    plain.at(1).set(5);
+    saved.at(1).set(7);
+
+    skene_reactive::snapshot()
+  })
+  .join()
+  .expect("the first run");
+
+  let restored = std::thread::spawn(move || {
+    skene_reactive::restore(&bytes);
+
+    let plain = Store::new(vec![0u32; 3]);
+    let saved = Store::saved(vec![0u32; 3]);
+
+    (plain.at(1).get(), saved.at(1).get())
+  })
+  .join()
+  .expect("the next run");
+
+  assert_eq!(restored, (0, 7));
+}
+
 /// A tagged store snapshots under its tag, whatever its position.
 #[test]
 fn tagged_store_round_trips_through_a_snapshot() {

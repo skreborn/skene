@@ -55,6 +55,24 @@ fn positional_state_round_trips() {
   assert_eq!((count, name, flag), (41, "skene".to_owned(), true));
 }
 
+/// A plain signal starts afresh: a run records nothing of it, so the next run's holds
+/// its initial value even where a saved one beside it restores.
+#[test]
+fn a_plain_signal_starts_afresh() {
+  let (plain, saved) = across_runs(
+    || {
+      let plain = Signal::new(1u32);
+      let saved = Signal::saved(1u32);
+
+      plain.set(5);
+      saved.set(7);
+    },
+    || (Signal::new(1u32).get(), Signal::saved(1u32).get()),
+  );
+
+  assert_eq!((plain, saved), (1, 7));
+}
+
 /// A program edit that adds a signal before existing ones: tagged signals restore by
 /// tag, the new one takes its default, and the moved ones match by shape.
 #[test]

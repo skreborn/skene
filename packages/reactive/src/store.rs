@@ -448,8 +448,8 @@ impl StoreCore {
 /// Fine-grained reactive state over one plain value.
 ///
 /// Created with [`new`](Self::new), [`saved`](Self::saved) or
-/// [`tagged`](Self::tagged), each taking part in state snapshots exactly as the
-/// [`Signal`] constructor of the same name does. The store itself is the root
+/// [`tagged`](Self::tagged), each standing in state snapshots exactly as the [`Signal`]
+/// constructor of the same name does. The store itself is the root
 /// location—[`StoreField`] gives it and every lens the same read/write surface—and
 /// `#[derive(Store)]` on the value's type generates the per-field accessors that
 /// descend into it.
@@ -477,24 +477,6 @@ impl<T: 'static> fmt::Debug for Store<T> {
   }
 }
 
-impl<T: Snapshot> Store<T> {
-  /// Creates a store owned by the current [`Owner`]; the whole value is one saved
-  /// signal at the owner's next position, see [`Signal::saved`].
-  pub fn saved(value: T) -> Self {
-    Self::over(Signal::saved(value))
-  }
-
-  /// Creates a store whose `tag` names its position in state snapshots; see
-  /// [`Signal::tagged`].
-  ///
-  /// # Panics
-  ///
-  /// Panics if `tag` is already carried by a live tagged signal of the same owner.
-  pub fn tagged(tag: &'static str, value: T) -> Self {
-    Self::over(Signal::tagged(tag, value))
-  }
-}
-
 impl<T: 'static> Store<T> {
   /// Creates a store owned by the current [`Owner`] that takes no part in state
   /// snapshots; see [`Signal::new`].
@@ -507,6 +489,25 @@ impl<T: 'static> Store<T> {
       value,
       core: StoreCore::new(),
     }
+  }
+}
+
+impl<T: Snapshot> Store<T> {
+  /// Creates a store owned by the current [`Owner`]; the whole value is one saved
+  /// signal at the owner's next position, see [`Signal::saved`].
+  pub fn saved(value: T) -> Self {
+    Self::over(Signal::saved(value))
+  }
+
+  /// Creates a store whose `tag` names its position in state snapshots; see
+  /// [`Signal::tagged`].
+  ///
+  /// # Panics
+  ///
+  /// Panics, while snapshots are recorded, if `tag` is already carried by a live
+  /// tagged signal of the same owner.
+  pub fn tagged(tag: &'static str, value: T) -> Self {
+    Self::over(Signal::tagged(tag, value))
   }
 }
 

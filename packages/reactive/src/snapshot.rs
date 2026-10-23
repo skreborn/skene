@@ -3,12 +3,12 @@
 //! A snapshot signal is one made with [`Signal::saved`] or [`Signal::tagged`]; a plain
 //! [`Signal::new`] takes no part. Its identity across two runs is its position: the path
 //! of steps from the runtime's root owner to the owner it was created under, its index
-//! among that owner's snapshot signals, and its type. A step is a scope's position among its
-//! siblings, or the [`Key`](crate::Key) a keyed scope anchors that position with.
+//! among that owner's snapshot signals, and its type. A step is a scope's position among
+//! its siblings, or the [`Key`](crate::Key) a keyed scope anchors that position with.
 //! [`Signal::tagged`] names the position within its owner instead, so a tag anchors the
-//! match where a program edit would move it. [`snapshot`] serializes
-//! every live signal's current value grouped by owner; [`restore`] stages a prior
-//! snapshot so signals created afterwards adopt the staged value at their position.
+//! match where a program edit would move it. [`snapshot`] serializes every live snapshot
+//! signal's current value grouped by owner; [`restore`] stages a prior snapshot so
+//! snapshot signals created afterwards adopt the staged value at their position.
 //!
 //! Per owner, restoration aligns the live sequence with the staged one as the live
 //! side is created: a tagged signal takes the staged entry of its tag, whatever its

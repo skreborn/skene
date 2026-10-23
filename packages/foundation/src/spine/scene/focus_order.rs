@@ -215,37 +215,8 @@ mod tests {
   use crate::spine::{
     FocusOrder,
     NodeId,
-    Scene,
     scene::overlays::{OpenOverlay, OverlayStack},
-    testing::{TestBox, TestPlatform, TestScene},
   };
-
-  /// The node taking focus for a segment is in the segment's content.
-  #[test]
-  fn the_focus_holder_of_a_segment_is_in_its_content() {
-    TestPlatform::reset();
-
-    let parent = TestBox::node();
-    let (start, _) = Scene::<TestPlatform>::create_segment();
-    let plain = TestBox::node();
-    let focusable = TestBox::node();
-
-    TestScene::with(|scene| {
-      scene.attach(parent, start, None);
-      scene.insert_in_segment(start, plain, None);
-      scene.insert_in_segment(start, focusable, None);
-      scene.note_focus_order(focusable, Some(FocusOrder::Auto));
-    });
-
-    assert_eq!(
-      TestScene::with(|scene| scene.focus_holder_within(start)),
-      focusable
-    );
-    assert_eq!(
-      TestScene::with(|scene| scene.enclosing_segment(focusable)),
-      Some(start)
-    );
-  }
 
   /// The tab order puts positioned stops first by position, then the rest in document
   /// order, leaving out the stops that skip and those the last modal does not contain

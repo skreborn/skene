@@ -15,6 +15,7 @@ mod container;
 mod context_menu;
 mod controls;
 mod decoration;
+mod dispatch;
 mod enhance;
 mod entry_selection;
 mod incremental;

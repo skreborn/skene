@@ -8,6 +8,20 @@ supersedes.
 
 ## Decided against
 
+- **A fixture realization for the spine's own tests** (2026-10-23), a `TestPlatform`
+  logging the calls the scene mirrors, or a `#[cfg(test)]` realization realizing
+  nothing, kept so the spine's structure, dispatch and reconcile tests run without a
+  platform: it is a realization double by the letter of the 2026-10-15 entry, and a test
+  asserting the calls a double received says nothing of what a platform does with them.
+  The spine's algorithms are functions over plain data, unit-tested there, and what
+  needs a live scene runs over the terminal's, asserted as the frame and the reader's
+  tree show it. Revisit when a spine algorithm is one no plain-data function and no real
+  platform can reach.
+- **`Scene` storage generic over the medium rather than the realization** (2026-10-23),
+  the scene keyed by a medium's scalar and token value so a test could hold one with no
+  realization behind it: it redesigns the scene for testability alone, its mirrors and
+  its `with` reaching the one realization a build has either way. Revisit when a spine
+  algorithm is one no plain-data function and no real platform can reach.
 - **`f32` cells end to end, rounded at layout and paint** (2026-10-23), the terminal
   keeping every length fractional through resolution and layout and rounding where a
   cell is drawn: a fixed length lands on a whole cell at the setter

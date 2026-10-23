@@ -1,5 +1,5 @@
-//! What the render tests share: the platform install, and the probes reading a frame,
-//! a reader's tree and the scene back.
+//! What the render tests share: the platform install, the stage the scene's own tests
+//! build on, and the probes reading a frame, a reader's tree and the scene back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
 use skene_terminal::{Color, NodeId, Scene, Terminal, testing};
@@ -104,4 +104,33 @@ pub(crate) fn mount_nodes<const N: usize>(views: impl FnOnce() -> [NodeId; N]) -
   let _ = testing::render_to_text(40, 12);
 
   built.expect("the views built")
+}
+
+/// Mounts an empty column, the stage, and builds what `nodes` builds beside it, each
+/// left detached; returns the stage and the built nodes.
+pub(crate) fn stage<const N: usize>(nodes: impl FnOnce() -> [NodeId; N]) -> (NodeId, [NodeId; N]) {
+  use skene_terminal::prelude::*;
+
+  let mut built = None;
+  let stage = skene_terminal::mount(|| {
+    built = Some(nodes());
+
+    Column::new().build()
+  });
+
+  (stage, built.expect("the nodes built"))
+}
+
+/// A column holding nothing, detached.
+pub(crate) fn column() -> NodeId {
+  use skene_terminal::prelude::*;
+
+  Column::new().build()
+}
+
+/// A run reading `label`, detached.
+pub(crate) fn text(label: &'static str) -> NodeId {
+  use skene_terminal::prelude::*;
+
+  Text::new(label).build()
 }

@@ -344,47 +344,11 @@ impl<P: Realization> Scene<P> {
 #[cfg(test)]
 mod tests {
   use super::{OpenOverlay, OverlayStack};
-  use crate::spine::{
-    NodeId,
-    NodeKind,
-    Scene,
-    testing::{TestBox, TestPlatform, TestScene},
-  };
+  use crate::spine::NodeId;
 
   /// A node id for plain data, by its index.
   fn node(index: usize) -> NodeId {
     NodeId::new(u32::try_from(index).unwrap(), 0)
-  }
-
-  /// An overlay anchored on a segment or a scope is placed against the first node
-  /// inside it with a box of its own, an empty segment standing for none.
-  #[test]
-  fn a_segment_is_placed_against_its_first_box() {
-    TestPlatform::reset();
-
-    let (outer, _) = Scene::<TestPlatform>::create_segment();
-    let (empty, _) = Scene::<TestPlatform>::create_segment();
-    let scope = TestScene::with(|scene| scene.create(NodeKind::Scope, None));
-    let inside = TestBox::node();
-    let after = TestBox::node();
-
-    TestScene::with(|scene| {
-      scene.attach(scope, inside, None);
-      scene.insert_in_segment(outer, empty, None);
-      scene.insert_in_segment(outer, scope, None);
-      scene.insert_in_segment(outer, after, None);
-    });
-
-    assert_eq!(
-      TestScene::with(|scene| scene.placement(outer)),
-      Some(inside)
-    );
-    assert_eq!(
-      TestScene::with(|scene| scene.placement(scope)),
-      Some(inside)
-    );
-    assert_eq!(TestScene::with(|scene| scene.placement(empty)), None);
-    assert_eq!(TestScene::with(|scene| scene.placement(after)), Some(after));
   }
 
   /// A press dismisses, from the top down, each overlay it lands outside of, until one

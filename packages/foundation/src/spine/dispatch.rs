@@ -510,21 +510,10 @@ fn notify<P: Realization, H: ?Sized>(node: NodeId, pick: Pick<H>, run: impl Fn(&
 mod tests {
   use std::{cell::RefCell, rc::Rc};
 
-  use skene_reactive::{Owner, provide_context, use_context};
   use smallvec::SmallVec;
 
-  use super::{
-    Crossing,
-    HandlerSet,
-    Selected,
-    dispatch_click,
-    notify_dismiss,
-    notify_pointer_moved,
-    select_click,
-    select_observed_click,
-  };
+  use super::{Crossing, HandlerSet, Selected, select_click, select_observed_click};
   use crate::spine::{
-    Boundary,
     Bubbling,
     ClickEvent,
     ClickHandler,
@@ -535,28 +524,12 @@ mod tests {
     PointerEvent,
     Prevent,
     Prevented,
-    Scene,
     TextSelection,
     Verdict,
-    count_pending,
     scene::Held,
-    testing::{TestBox, TestPlatform},
   };
 
-  fn chain() -> (NodeId, NodeId, NodeId) {
-    let outer = TestBox::node();
-    let middle = TestBox::node();
-    let inner = TestBox::node();
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.attach(outer, middle, None);
-      scene.attach(middle, inner, None);
-    });
-    TestPlatform::take_log();
-
-    (outer, middle, inner)
-  }
-
+  /// A click handler noting `name` in `log`.
   fn record(log: &Rc<RefCell<Vec<&'static str>>>, name: &'static str) -> Rc<ClickHandler> {
     let log = Rc::clone(log);
 
@@ -565,202 +538,6 @@ mod tests {
 
       Prevent::None
     })
-  }
-
-  /// The climb follows the parents a node had when the dispatch began, whatever a
-  /// handler changes on the way.
-  #[test]
-  fn the_path_is_fixed_before_any_handler_runs() {
-    TestPlatform::reset();
-
-    let (outer, middle, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(
-        inner,
-        Handler::Click(Rc::new(move |_: &ClickEvent| {
-          Scene::<TestPlatform>::with(|scene| scene.detach(outer, middle));
-
-          Prevent::None
-        })),
-      );
-      scene.handle(outer, Handler::Click(record(&log, "outer")));
-    });
-
-    let _ = dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1));
-
-    assert_eq!(*log.borrow(), ["outer"]);
-  }
-
-  /// An event at a node mounted in a segment climbs through the start of each segment
-  /// it is mounted in, innermost first, before the parent; a node taken out of the
-  /// segment and attached on its own climbs past it.
-  #[test]
-  fn an_event_in_a_segment_climbs_through_its_start() {
-    TestPlatform::reset();
-
-    let parent = TestBox::node();
-    let (outer, _) = Scene::<TestPlatform>::create_segment();
-    let (inner, _) = Scene::<TestPlatform>::create_segment();
-    let leaf = TestBox::node();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.insert_in_segment(outer, inner, None);
-      scene.insert_in_segment(inner, leaf, None);
-      scene.attach(parent, outer, None);
-      scene.handle(parent, Handler::Click(record(&log, "parent")));
-      scene.handle(outer, Handler::Click(record(&log, "outer")));
-      scene.handle(inner, Handler::Click(record(&log, "inner")));
-      scene.handle(leaf, Handler::Click(record(&log, "leaf")));
-    });
-
-    let _ = dispatch_click::<TestPlatform>(leaf, &ClickEvent::new(1));
-
-    assert_eq!(
-      std::mem::take(&mut *log.borrow_mut()),
-      ["leaf", "inner", "outer", "parent"]
-    );
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.remove_from_segment(inner, leaf);
-      scene.attach(parent, leaf, None);
-    });
-
-    let _ = dispatch_click::<TestPlatform>(leaf, &ClickEvent::new(1));
-
-    assert_eq!(*log.borrow(), ["leaf", "parent"]);
-  }
-
-  /// The pointer reaching a segment's content enters the segment, and moving on to the
-  /// node around it leaves the segment.
-  #[test]
-  fn the_pointer_enters_a_segment_through_its_content() {
-    TestPlatform::reset();
-
-    let parent = TestBox::node();
-    let (start, _) = Scene::<TestPlatform>::create_segment();
-    let leaf = TestBox::node();
-    let log = Rc::new(RefCell::new(Vec::new()));
-    let note = |name: &'static str| -> Rc<dyn Fn()> {
-      let log = Rc::clone(&log);
-
-      Rc::new(move || log.borrow_mut().push(name))
-    };
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.attach(parent, start, None);
-      scene.insert_in_segment(start, leaf, None);
-      scene.handle(start, Handler::PointerEnter(note("enter")));
-      scene.handle(start, Handler::PointerLeave(note("leave")));
-    });
-
-    notify_pointer_moved::<TestPlatform>(Some(leaf));
-
-    assert_eq!(std::mem::take(&mut *log.borrow_mut()), ["enter"]);
-
-    notify_pointer_moved::<TestPlatform>(Some(parent));
-
-    assert_eq!(*log.borrow(), ["leave"]);
-  }
-
-  /// A handler runs as the owner that registered it, so it sees that owner's context
-  /// and what it creates ends with that owner.
-  #[test]
-  fn a_handler_runs_as_the_owner_that_registered_it() {
-    TestPlatform::reset();
-
-    let (_, _, inner) = chain();
-    let seen = Rc::new(RefCell::new(Vec::new()));
-    let owner = Owner::new();
-
-    owner.enter(|| {
-      provide_context(7u32);
-
-      let seen = Rc::clone(&seen);
-
-      Scene::<TestPlatform>::with(|scene| {
-        scene.handle(
-          inner,
-          Handler::Click(Rc::new(move |_: &ClickEvent| {
-            seen
-              .borrow_mut()
-              .push((use_context::<u32>(), Owner::current() == owner));
-
-            Prevent::None
-          })),
-        );
-      });
-    });
-
-    assert_eq!(
-      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
-      Prevented::default()
-    );
-    assert_eq!(*seen.borrow(), [(Some(7), true)]);
-  }
-
-  /// Work a handler starts is an action, counted toward no boundary.
-  #[test]
-  fn a_task_a_handler_starts_counts_toward_no_boundary() {
-    TestPlatform::reset();
-
-    let (_, _, inner) = chain();
-    let boundary = Boundary::new();
-    let owner = Owner::new();
-    let tasks = Rc::new(RefCell::new(Vec::new()));
-
-    owner.enter(|| {
-      provide_context(boundary);
-
-      let tasks = Rc::clone(&tasks);
-
-      Scene::<TestPlatform>::with(|scene| {
-        scene.handle(
-          inner,
-          Handler::Click(Rc::new(move |_: &ClickEvent| {
-            tasks.borrow_mut().push(count_pending(Box::new(())));
-
-            Prevent::None
-          })),
-        );
-      });
-    });
-
-    assert_eq!(
-      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
-      Prevented::default()
-    );
-    assert_eq!(tasks.borrow().len(), 1);
-    assert!(boundary.is_settled());
-  }
-
-  /// A notification runs the node's own handlers only.
-  #[test]
-  fn notifications_do_not_bubble() {
-    TestPlatform::reset();
-
-    let (outer, _, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      let outer_log = Rc::clone(&log);
-      let inner_log = Rc::clone(&log);
-
-      scene.handle(
-        outer,
-        Handler::Dismiss(Rc::new(move || outer_log.borrow_mut().push("outer"))),
-      );
-      scene.handle(
-        inner,
-        Handler::Dismiss(Rc::new(move || inner_log.borrow_mut().push("inner"))),
-      );
-    });
-
-    notify_dismiss::<TestPlatform>(inner);
-
-    assert_eq!(*log.borrow(), ["inner"]);
   }
 
   /// A plain node of a climb: its name, its handlers' names and verdicts in order, and

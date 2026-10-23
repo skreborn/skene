@@ -246,8 +246,15 @@ toolkit's keeps the default, which does nothing.
   definer of a token and its caches, the interaction held (`Held`), the keyed
   reconcile's plan (`KeyedItems`), the climb that folds a dispatch's verdicts, the
   subtrees a move crosses (`Crossing`), the arena's slots and an entry's accessibility
-  node. Only the spine's tests of a live scene still run on a double, a `TestPlatform`
-  recording the calls it receives.
+  node. What needs a live scene runs over the terminal's, its effect read where a reader
+  and the frame find it: attaching, detaching, relocating and destroying nodes and
+  segments (a property test holding the links whole and the cells and the reader's tree
+  to the order the scene places after every change), a hidden subtree's kept focus, a
+  caption kept beside, a segment's placement and focus holder, a derived subtree's anchors
+  and annotation, and dispatch from real input (the fixed path, the climb through a
+  segment's start, the pointer entering a segment, a handler's owner, a notification and
+  a reported edit reaching the node's own handlers alone). No realization double stands
+  in for a platform anywhere, the spine's own tests included.
 
 ## Composition
 

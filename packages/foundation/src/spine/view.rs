@@ -143,8 +143,8 @@ pub struct GridChild;
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a child this container accepts",
   label = "not a child this container accepts",
-  note = "a container accepts any view, and a wrapper of its own kind",
-  note = "a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it"
+  note = "every container accepts any view",
+  note = "a wrapper is accepted only by a container that understands it: `Flexible` by a row or a column, `GridCell` by a grid, `Pinned` by a stack"
 )]
 pub trait IntoChildOf<P: Realization, Kind> {
   /// Converts this value into the child's view.

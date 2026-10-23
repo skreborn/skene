@@ -19,6 +19,7 @@ use syn::{
   ItemFn,
   ItemStruct,
   Path as SynPath,
+  Stmt,
   UsePath,
   UseTree,
   Visibility,
@@ -405,10 +406,20 @@ fn applied_setter(call: &ExprMethodCall) -> Option<String> {
       .segments
       .last()
       .map(|segment| segment.ident.to_string()),
-    Expr::Closure(closure) => match &*closure.body {
-      Expr::MethodCall(body) => Some(body.method.to_string()),
+    Expr::Closure(closure) => called_method(&closure.body),
+    _ => None,
+  }
+}
+
+/// The method an expression calls last: its own, or its block's final expression's.
+fn called_method(body: &Expr) -> Option<String> {
+  match body {
+    Expr::MethodCall(call) => Some(call.method.to_string()),
+    Expr::Block(block) => match block.block.stmts.last()? {
+      Stmt::Expr(tail, None) => called_method(tail),
       _ => None,
     },
+    Expr::Paren(inner) => called_method(&inner.expr),
     _ => None,
   }
 }
@@ -601,9 +612,13 @@ mod tests {
     assert_eq!(
       findings(
         "fn app() { Column::new().add_child(a).apply(b, |column, b| column.add_child(b)); \
-         Column::new().apply(b, |column, b| column.add_child(b)).set_spacing(4.); }"
+         Column::new().apply(b, |column, b| column.add_child(b)).set_spacing(4.); \
+         Column::new().apply(b, |column, b| { column.add_child(b) }).set_spacing(4.); }"
       ),
-      ["test.rs:1: `set_spacing` follows `add_child`: a chain ends with the children"]
+      [
+        "test.rs:1: `set_spacing` follows `add_child`: a chain ends with the children",
+        "test.rs:1: `set_spacing` follows `add_child`: a chain ends with the children",
+      ]
     );
   }
 

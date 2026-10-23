@@ -63,9 +63,9 @@ impl<P: Realization> Sparkline<P> {
 
 impl<P: Realization> AnyKind for Sparkline<P> {}
 
-impl<P: Realization<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P> {
+impl<P: Realization<Scalar = i32> + CellPainter + Painting> View<P> for Sparkline<P> {
   fn build(self) -> NodeId {
-    let width = u32::try_from(self.values.len()).unwrap_or(u32::MAX);
+    let width = i32::try_from(self.values.len()).unwrap_or(i32::MAX);
     let node = Container::<P>::new().set_width(width).set_height(1).build();
     let levels = levels(&self.values);
     let pixel_levels = levels.clone();

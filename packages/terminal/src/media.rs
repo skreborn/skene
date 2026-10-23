@@ -63,7 +63,7 @@ pub fn hover() -> ReadSignal<bool> {
 
 /// The insets the display keeps clear of the viewport's edges; a terminal keeps none.
 #[inline(always)]
-pub fn safe_area() -> ReadSignal<Inset<u32>> {
+pub fn safe_area() -> ReadSignal<Inset<i32>> {
   skene_foundation::media::safe_area::<Active>()
 }
 

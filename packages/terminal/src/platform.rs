@@ -91,9 +91,9 @@ pub(crate) fn root_node() -> Option<NodeId> {
 impl Realization for Terminal {
   const FONT_SIZE: f32 = 1.;
 
-  type Scalar = u32;
+  type Scalar = i32;
   type StyleExt = TerminalStyle;
-  type TokenValue = skene_foundation::TokenValue<u32>;
+  type TokenValue = skene_foundation::TokenValue<i32>;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -103,7 +103,7 @@ impl Realization for Terminal {
     with_records(|records| records.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TerminalStyle>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<i32, TerminalStyle>>) {
     with_records(|records| {
       if let Some(record) = records.record_mut(node) {
         record.slots.insert(slot, leaf.clone().into());
@@ -351,7 +351,7 @@ impl Realization for Terminal {
 
   fn set_checked(_: NodeId, _: bool) {}
 
-  fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<u32>)>) -> Observation {
+  fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<i32>)>) -> Observation {
     let kept = Rc::clone(&report);
 
     with_records(|records| {
@@ -373,11 +373,11 @@ impl Realization for Terminal {
     })
   }
 
-  fn media() -> MediaSignals<u32> {
+  fn media() -> MediaSignals<i32> {
     with_records(|records| records.media().signals)
   }
 
-  fn watch_media(media: &Media<u32>) -> Memo<bool> {
+  fn watch_media(media: &Media<i32>) -> Memo<bool> {
     Self::media().watch(media)
   }
 

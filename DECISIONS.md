@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **`f32` cells end to end, rounded at layout and paint** (2026-10-23), the terminal
+  keeping every length fractional through resolution and layout and rounding where a
+  cell is drawn: one rounding at the setter (`Scalar::from_f32`) keeps the terminal's
+  lengths `i32` whole cells from the value onward, so layout places every box on a
+  cell and nothing between the setter and the frame rounds again, while a run's font
+  size keeps its fraction of a cell. Revisit when a terminal lays boxes out at sub-cell
+  positions.
 - **The prototype's record vocabulary** (2026-10-23), `spikes/linux`'s seam record: a
   `Prop` list of its own, its properties sorted into groups and its values into kinds
   of its own, compiled and resolved in its own `CompileCx`. The style record is the
@@ -647,3 +654,9 @@ supersedes.
   method composes; a value the server serialized and the reader changed before the
   bundle replays the same way. Revisit when a browser loses its undo history or a
   composition to `setRangeText` where it keeps them under a whole rewrite.
+- **Unsigned cells (`u32`) as the terminal's unit** (2026-10-23): a cell count cannot
+  hold `-4`, so a negative margin or inset had no length to be, and every expression
+  landing below zero clamped to it. The terminal measures in `i32` whole cells: a
+  margin and an inset keep their sign, and layout takes a negative size, padding,
+  border, spacing or track as zero, as a browser does. Not revisited while lengths are
+  signed.

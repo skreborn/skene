@@ -1033,10 +1033,24 @@ pub(crate) fn border_edges(style: &PlainBox) -> Inset<bool> {
   }
 }
 
+/// The cells the resolved style's padding takes on each edge, a negative edge none, as
+/// layout takes it.
+pub(crate) fn padding_cells(style: &PlainBox) -> Inset<u32> {
+  let padding = style.padding.unwrap_or_default();
+  let cells = |edge: i32| u32::try_from(edge).unwrap_or(0);
+
+  Inset {
+    top: cells(padding.top),
+    end: cells(padding.end),
+    bottom: cells(padding.bottom),
+    start: cells(padding.start),
+  }
+}
+
 /// The cells the resolved style's border and padding take on each edge.
 fn chrome(style: &PlainBox) -> Inset<u32> {
   let edges = border_edges(style);
-  let padding = style.padding.unwrap_or_default();
+  let padding = padding_cells(style);
 
   Inset {
     top: u32::from(edges.top) + padding.top,

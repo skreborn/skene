@@ -7,7 +7,7 @@ use skene_terminal::{self as terminal, Activate, kurbo::Rect, prelude::*, testin
 use crate::common::with_platform;
 
 /// A box filled red, `width` by `height` cells.
-fn red_box(width: u32, height: u32) -> Painted {
+fn red_box(width: i32, height: i32) -> Painted {
   Painted::new(|canvas, size| {
     canvas.fill(
       &Rect::new(0., 0., f64::from(size.width), f64::from(size.height)),

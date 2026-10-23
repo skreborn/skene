@@ -233,9 +233,9 @@ fn render_pictures(records: &mut Records) {
       continue;
     };
     let size = records.client_size(handle);
-    let width = u16::try_from(size.width.saturating_mul(u32::from(cell_width))).unwrap_or(u16::MAX);
+    let width = u16::try_from(size.width.saturating_mul(i32::from(cell_width))).unwrap_or(u16::MAX);
     let height =
-      u16::try_from(size.height.saturating_mul(u32::from(cell_height))).unwrap_or(u16::MAX);
+      u16::try_from(size.height.saturating_mul(i32::from(cell_height))).unwrap_or(u16::MAX);
 
     if width == 0 || height == 0 {
       continue;
@@ -552,7 +552,7 @@ pub(crate) fn resize(width: u16, height: u16) {
 /// style is stale and the container sizes signal moves.
 fn measure_containers() -> bool {
   let (changed, publish) = with_records(|records| {
-    let mut changed: Vec<(ContainerName, Size<u32>)> = Vec::new();
+    let mut changed: Vec<(ContainerName, Size<i32>)> = Vec::new();
 
     for handle in records.handles() {
       let Some(name) = records.record(handle).and_then(Record::container)
@@ -590,7 +590,7 @@ fn measure_containers() -> bool {
 }
 
 /// One observer with the size to report to it.
-type Report = (Rc<dyn Fn(Size<u32>)>, Size<u32>);
+type Report = (Rc<dyn Fn(Size<i32>)>, Size<i32>);
 
 /// Reports every observed node's size where it changed since the last report; `true`
 /// when any observer ran.

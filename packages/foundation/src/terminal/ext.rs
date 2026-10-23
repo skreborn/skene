@@ -461,7 +461,7 @@ mod tests {
   /// as the typed style does, in cells, the typography's tokens among its leaves.
   #[test]
   fn every_kind_crosses_the_record() {
-    Medium::<u32, TerminalStyle> {
+    Medium::<i32, TerminalStyle> {
       properties: TerminalProperty::samples(),
       values: vec![
         TerminalValue::BorderGlyphs(BorderGlyphs::LIGHT),

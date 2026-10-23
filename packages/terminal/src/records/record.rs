@@ -32,13 +32,13 @@ use crate::{
 };
 
 /// A box's style resolved against live state.
-pub(crate) type PlainBox = BoxStyle<u32, Plain, TerminalStyle>;
+pub(crate) type PlainBox = BoxStyle<i32, Plain, TerminalStyle>;
 
 /// A run's style resolved against live state.
 pub(crate) type PlainRun = RunStyle<Plain, TerminalStyle>;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_foundation::SlotLeaf`].
-pub(crate) type SlotLeaf = skene_foundation::SlotLeaf<u32, TerminalStyle>;
+pub(crate) type SlotLeaf = skene_foundation::SlotLeaf<i32, TerminalStyle>;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
@@ -228,9 +228,9 @@ pub(crate) struct Record {
   /// The node's slot values, as last written.
   pub(crate) slots: FxHashMap<Slot, SlotLeaf>,
   /// The reports of the box's size.
-  pub(crate) observers: Vec<Rc<dyn Fn(Size<u32>)>>,
+  pub(crate) observers: Vec<Rc<dyn Fn(Size<i32>)>>,
   /// The size last reported to the observers.
-  pub(crate) reported: Option<Size<u32>>,
+  pub(crate) reported: Option<Size<i32>>,
   /// The scroll offsets, in cells.
   pub(crate) scroll: (u32, u32),
   /// The screen rectangle the node covered at the last paint.

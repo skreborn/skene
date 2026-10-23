@@ -31,15 +31,15 @@ pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("simple-glyph-picke
 #[must_use]
 pub struct SimpleGlyphs {
   /// A checkbox's checked mark.
-  pub checkbox_checked: Token<String, u32>,
+  pub checkbox_checked: Token<String, i32>,
   /// A checkbox's unchecked mark.
-  pub checkbox_unchecked: Token<String, u32>,
+  pub checkbox_unchecked: Token<String, i32>,
   /// A radio's checked mark.
-  pub radio_checked: Token<String, u32>,
+  pub radio_checked: Token<String, i32>,
   /// A radio's unchecked mark.
-  pub radio_unchecked: Token<String, u32>,
+  pub radio_unchecked: Token<String, i32>,
   /// The indicator after a picker's chosen label.
-  pub picker_indicator: Token<String, u32>,
+  pub picker_indicator: Token<String, i32>,
 }
 
 impl SimpleGlyphs {
@@ -105,7 +105,7 @@ impl SimpleGlyphs {
 }
 
 /// The glyph a definition fixes; the setters admit nothing else.
-fn glyph(definition: &Definition<String, u32>) -> String {
+fn glyph(definition: &Definition<String, i32>) -> String {
   match definition.base() {
     StaticLeaf::Fixed(glyph) => glyph.clone(),
     StaticLeaf::Token(_) | StaticLeaf::Expr(_) => String::new(),
@@ -130,7 +130,7 @@ impl Default for SimpleGlyphs {
   }
 }
 
-impl<V: From<Definition<String, u32>> + 'static> TokenSet<V> for SimpleGlyphs {
+impl<V: From<Definition<String, i32>> + 'static> TokenSet<V> for SimpleGlyphs {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![
       self.checkbox_checked.define(),

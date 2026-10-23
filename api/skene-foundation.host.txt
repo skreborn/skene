@@ -688,6 +688,9 @@ pub fn bool::interpolates_with(&self, &Self) -> bool
 impl skene_foundation::interpolate::Interpolate for f32
 pub fn f32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn f32::interpolates_with(&self, &Self) -> bool
+impl skene_foundation::interpolate::Interpolate for i32
+pub fn i32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn i32::interpolates_with(&self, &Self) -> bool
 impl skene_foundation::interpolate::Interpolate for skene_foundation::AspectRatio
 pub fn skene_foundation::AspectRatio::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::AspectRatio::interpolates_with(&self, &Self) -> bool
@@ -697,9 +700,6 @@ pub fn skene_foundation::Color::interpolates_with(&self, &Self) -> bool
 impl skene_foundation::interpolate::Interpolate for skene_foundation::Length
 pub fn skene_foundation::Length::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::Length::interpolates_with(&self, &Self) -> bool
-impl skene_foundation::interpolate::Interpolate for u32
-pub fn u32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
-pub fn u32::interpolates_with(&self, &Self) -> bool
 impl<N: skene_foundation::Scalar + skene_foundation::interpolate::Interpolate, X: skene_foundation::StyleExtension> skene_foundation::interpolate::Interpolate for skene_foundation::BoxValue<N, X>
 pub fn skene_foundation::BoxValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::BoxValue<N, X>::interpolates_with(&self, &Self) -> bool
@@ -1385,23 +1385,23 @@ impl<N: skene_foundation::Scalar> skene_foundation::IntoBoxValue<N, skene_founda
 pub fn skene_foundation::terminal::ScrollbarGlyphs::from_box_value(skene_foundation::BoxValue<N, skene_foundation::terminal::TerminalStyle>) -> core::option::Option<Self>
 pub fn skene_foundation::terminal::ScrollbarGlyphs::into_box_value(self) -> skene_foundation::BoxValue<N, skene_foundation::terminal::TerminalStyle>
 pub struct skene_foundation::terminal::Typography
-pub skene_foundation::terminal::Typography::ink: skene_foundation::Token<skene_foundation::Color, u32>
-pub skene_foundation::terminal::Typography::link_focus_ink: skene_foundation::Token<skene_foundation::Color, u32>
-pub skene_foundation::terminal::Typography::link_focus_surface: skene_foundation::Token<skene_foundation::Color, u32>
-pub skene_foundation::terminal::Typography::link_ink: skene_foundation::Token<skene_foundation::Color, u32>
-pub skene_foundation::terminal::Typography::selection_ink: skene_foundation::Token<skene_foundation::Color, u32>
-pub skene_foundation::terminal::Typography::selection_surface: skene_foundation::Token<skene_foundation::Color, u32>
-pub skene_foundation::terminal::Typography::size: skene_foundation::Token<skene_foundation::Length, u32>
-pub skene_foundation::terminal::Typography::weight: skene_foundation::Token<f32, u32>
+pub skene_foundation::terminal::Typography::ink: skene_foundation::Token<skene_foundation::Color, i32>
+pub skene_foundation::terminal::Typography::link_focus_ink: skene_foundation::Token<skene_foundation::Color, i32>
+pub skene_foundation::terminal::Typography::link_focus_surface: skene_foundation::Token<skene_foundation::Color, i32>
+pub skene_foundation::terminal::Typography::link_ink: skene_foundation::Token<skene_foundation::Color, i32>
+pub skene_foundation::terminal::Typography::selection_ink: skene_foundation::Token<skene_foundation::Color, i32>
+pub skene_foundation::terminal::Typography::selection_surface: skene_foundation::Token<skene_foundation::Color, i32>
+pub skene_foundation::terminal::Typography::size: skene_foundation::Token<skene_foundation::Length, i32>
+pub skene_foundation::terminal::Typography::weight: skene_foundation::Token<f32, i32>
 impl skene_foundation::terminal::Typography
-pub fn skene_foundation::terminal::Typography::set_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_link_focus_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_link_focus_surface(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_link_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_selection_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_selection_surface(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_size(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Length, u32>>) -> Self
-pub fn skene_foundation::terminal::Typography::set_weight(self, impl core::convert::Into<skene_foundation::Definition<f32, u32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_link_focus_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_link_focus_surface(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_link_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_selection_ink(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_selection_surface(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Color, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_size(self, impl core::convert::Into<skene_foundation::Definition<skene_foundation::Length, i32>>) -> Self
+pub fn skene_foundation::terminal::Typography::set_weight(self, impl core::convert::Into<skene_foundation::Definition<f32, i32>>) -> Self
 impl core::clone::Clone for skene_foundation::terminal::Typography
 pub fn skene_foundation::terminal::Typography::clone(&self) -> skene_foundation::terminal::Typography
 impl core::cmp::PartialEq for skene_foundation::terminal::Typography
@@ -1411,7 +1411,7 @@ pub fn skene_foundation::terminal::Typography::default() -> Self
 impl core::fmt::Debug for skene_foundation::terminal::Typography
 pub fn skene_foundation::terminal::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_foundation::terminal::Typography
-impl<V> skene_foundation::TokenSet<V> for skene_foundation::terminal::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, u32>> + core::convert::From<skene_foundation::Definition<f32, u32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, u32>> + 'static
+impl<V> skene_foundation::TokenSet<V> for skene_foundation::terminal::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, i32>> + core::convert::From<skene_foundation::Definition<f32, i32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, i32>> + 'static
 pub fn skene_foundation::terminal::Typography::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 pub const skene_foundation::terminal::BOLD_WEIGHT: f32
 pub mod skene_foundation::text
@@ -9743,11 +9743,11 @@ pub const f32::ZERO: Self
 pub fn f32::from_f32(f32) -> Self
 pub fn f32::hash_bits(self) -> u64
 pub fn f32::to_f32(self) -> f32
-impl skene_foundation::Scalar for u32
-pub const u32::ZERO: Self
-pub fn u32::from_f32(f32) -> Self
-pub fn u32::hash_bits(self) -> u64
-pub fn u32::to_f32(self) -> f32
+impl skene_foundation::Scalar for i32
+pub const i32::ZERO: Self
+pub fn i32::from_f32(f32) -> Self
+pub fn i32::hash_bits(self) -> u64
+pub fn i32::to_f32(self) -> f32
 pub trait skene_foundation::Shape: core::marker::Copy + core::default::Default + core::cmp::PartialEq + core::fmt::Debug + 'static
 pub type skene_foundation::Shape::Of<T: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static>: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::default::Default
 impl skene_foundation::Shape for skene_foundation::Keyframe
@@ -9833,7 +9833,7 @@ pub fn S::define_root()
 pub fn S::watch() -> skene_reactive::memo::Memo<S>
 pub trait skene_foundation::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_foundation::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
-impl<V> skene_foundation::TokenSet<V> for skene_foundation::terminal::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, u32>> + core::convert::From<skene_foundation::Definition<f32, u32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, u32>> + 'static
+impl<V> skene_foundation::TokenSet<V> for skene_foundation::terminal::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, i32>> + core::convert::From<skene_foundation::Definition<f32, i32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, i32>> + 'static
 pub fn skene_foundation::terminal::Typography::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 impl<V> skene_foundation::TokenSet<V> for skene_foundation::web::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, f32>> + core::convert::From<skene_foundation::Definition<f32, f32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, f32>> + 'static
 pub fn skene_foundation::web::Typography::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>

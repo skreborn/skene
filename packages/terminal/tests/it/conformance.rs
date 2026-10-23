@@ -40,7 +40,7 @@ impl Drop for TerminalDriver {
 
 impl Driver for TerminalDriver {
   type Node = NodeId;
-  type Scalar = u32;
+  type Scalar = i32;
 
   fn open(&mut self, page: &str) {
     let page =
@@ -116,10 +116,10 @@ impl Driver for TerminalDriver {
     self.paint();
   }
 
-  fn resize(&mut self, size: Size<u32>) {
+  fn resize(&mut self, size: Size<i32>) {
     self.size = (
-      u16::try_from(size.width).unwrap_or(u16::MAX),
-      u16::try_from(size.height).unwrap_or(u16::MAX),
+      u16::try_from(size.width.max(0)).unwrap_or(u16::MAX),
+      u16::try_from(size.height.max(0)).unwrap_or(u16::MAX),
     );
     testing::trigger_resize(self.size.0, self.size.1);
     self.paint();

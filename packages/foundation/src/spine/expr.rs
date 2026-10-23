@@ -887,7 +887,7 @@ mod tests {
       Some(Dimension::Length(20.))
     );
     assert_eq!(
-      Expr::<Dimension<u32>>::from(expr.clone()).evaluate(&env(), &tokens),
+      Expr::<Dimension<i32>>::from(expr.clone()).evaluate(&env(), &tokens),
       Some(Dimension::Length(20))
     );
     assert_eq!(

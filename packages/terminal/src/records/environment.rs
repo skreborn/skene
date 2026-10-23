@@ -30,7 +30,7 @@ pub(crate) struct MediaState {
   /// The root owner the signals live under.
   pub(crate) owner: Owner,
   /// Writes the viewport.
-  pub(crate) set_viewport: WriteSignal<Size<u32>>,
+  pub(crate) set_viewport: WriteSignal<Size<i32>>,
   /// Writes the color scheme in force.
   pub(crate) set_scheme: WriteSignal<ColorScheme>,
   /// Writes whether the reader prefers reduced motion.
@@ -40,16 +40,16 @@ pub(crate) struct MediaState {
   /// Writes whether the terminal proved a graphics protocol.
   pub(crate) set_graphics: WriteSignal<bool>,
   /// The environment's signals.
-  pub(crate) signals: MediaSignals<u32>,
+  pub(crate) signals: MediaSignals<i32>,
 }
 
 impl ResolutionSource<Terminal> for Records {
   /// The terminal draws every size at one cell where it proves no text sizing.
-  fn environment(&self) -> Environment<u32> {
+  fn environment(&self) -> Environment<i32> {
     Self::environment(self)
   }
 
-  fn container_size(&self, name: ContainerName) -> Option<Size<u32>> {
+  fn container_size(&self, name: ContainerName) -> Option<Size<i32>> {
     self
       .media
       .as_ref()?
@@ -125,14 +125,14 @@ impl Records {
 
   /// The viewport as the last layout measured it.
   #[inline(always)]
-  pub(crate) fn viewport(&self) -> Size<u32> {
-    Size::new(u32::from(self.last_size.0), u32::from(self.last_size.1))
+  pub(crate) fn viewport(&self) -> Size<i32> {
+    Size::new(i32::from(self.last_size.0), i32::from(self.last_size.1))
   }
 
   /// The environment the terminal reports; it has no answer for reduced transparency
   /// or more contrast, which never hold, its pointer is the mouse, fine and hovering
   /// where the app takes it and absent where it does not, and it keeps no edge clear.
-  pub(crate) fn environment(&self) -> Environment<u32> {
+  pub(crate) fn environment(&self) -> Environment<i32> {
     Environment {
       viewport: self.viewport(),
       scheme: self.scheme(),

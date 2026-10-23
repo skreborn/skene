@@ -60,7 +60,7 @@ impl Borders {
     let edge = |width: N| match self {
       Self::Unit if width.to_f32() > 0. => 1.,
       Self::Unit => 0.,
-      Self::Width => width.to_f32(),
+      Self::Width => extent(width),
     };
 
     Inset {
@@ -191,10 +191,10 @@ impl<N: Scalar, X: StyleExtension> BoxLayout for BoxStyle<N, Plain, X> {
 
     if let Some(padding) = self.padding {
       out.padding = taffy::geometry::Rect {
-        left: length(padding.start.to_f32()),
-        right: length(padding.end.to_f32()),
-        top: length(padding.top.to_f32()),
-        bottom: length(padding.bottom.to_f32()),
+        left: length(extent(padding.start)),
+        right: length(extent(padding.end)),
+        top: length(extent(padding.top)),
+        bottom: length(extent(padding.bottom)),
       };
     }
 
@@ -222,8 +222,8 @@ impl<N: Scalar, X: StyleExtension> BoxLayout for BoxStyle<N, Plain, X> {
 
     if let Some(spacing) = self.spacing {
       out.gap = taffy::geometry::Size {
-        width: length(spacing.horizontal.to_f32()),
-        height: length(spacing.vertical.to_f32()),
+        width: length(extent(spacing.horizontal)),
+        height: length(extent(spacing.vertical)),
       };
     }
 
@@ -334,17 +334,32 @@ impl<N: Scalar, X: StyleExtension> BoxLayout for BoxStyle<N, Plain, X> {
   }
 }
 
-/// A [`Dimension`] as a taffy dimension.
+/// A length a size, padding, border, spacing or track takes: a negative one is zero, as
+/// a browser takes none of them below it.
+fn extent<N: Scalar>(units: N) -> f32 {
+  units.to_f32().max(0.)
+}
+
+/// A [`Dimension`] as a taffy size.
 fn dimension<N: Scalar>(value: Dimension<N>) -> taffy::style::Dimension {
   match value {
-    Dimension::Length(units) => length(units.to_f32()),
+    Dimension::Length(units) => length(extent(units)),
     Dimension::Fraction(value) => percent(value),
     Dimension::Auto => taffy::style::Dimension::AUTO,
   }
 }
 
-/// A [`Dimension`] as a taffy auto-capable length.
+/// A [`Dimension`] as a taffy auto-capable size.
 fn dimension_lpa<N: Scalar>(value: Dimension<N>) -> taffy::style::LengthPercentageAuto {
+  match value {
+    Dimension::Length(units) => length(extent(units)),
+    Dimension::Fraction(value) => percent(value),
+    Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
+  }
+}
+
+/// A [`Dimension`] as a taffy auto-capable offset, its sign kept.
+fn offset_lpa<N: Scalar>(value: Dimension<N>) -> taffy::style::LengthPercentageAuto {
   match value {
     Dimension::Length(units) => length(units.to_f32()),
     Dimension::Fraction(value) => percent(value),
@@ -352,22 +367,22 @@ fn dimension_lpa<N: Scalar>(value: Dimension<N>) -> taffy::style::LengthPercenta
   }
 }
 
-/// A dimension inset as a taffy rect.
+/// A margin or an inset as a taffy rect, each edge's sign kept.
 fn dimension_rect<N: Scalar>(
   inset: Inset<Dimension<N>>,
 ) -> taffy::geometry::Rect<taffy::style::LengthPercentageAuto> {
   taffy::geometry::Rect {
-    left: dimension_lpa(inset.start),
-    right: dimension_lpa(inset.end),
-    top: dimension_lpa(inset.top),
-    bottom: dimension_lpa(inset.bottom),
+    left: offset_lpa(inset.start),
+    right: offset_lpa(inset.end),
+    top: offset_lpa(inset.top),
+    bottom: offset_lpa(inset.bottom),
   }
 }
 
 /// One [`TrackLimit`] as a taffy min-track sizing function.
 fn min_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MinTrackSizingFunction {
   match limit {
-    TrackLimit::Length(units) => length(units.to_f32()),
+    TrackLimit::Length(units) => length(extent(units)),
     TrackLimit::Fraction(value) => percent(value),
     TrackLimit::Flex(_) | TrackLimit::Auto => taffy::style::MinTrackSizingFunction::AUTO,
     TrackLimit::MinContent => taffy::prelude::min_content(),
@@ -378,7 +393,7 @@ fn min_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MinTrackSizingFun
 /// One [`TrackLimit`] as a taffy max-track sizing function.
 fn max_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MaxTrackSizingFunction {
   match limit {
-    TrackLimit::Length(units) => length(units.to_f32()),
+    TrackLimit::Length(units) => length(extent(units)),
     TrackLimit::Fraction(value) => percent(value),
     TrackLimit::Flex(value) => fr(value),
     TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
@@ -391,13 +406,13 @@ fn max_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MaxTrackSizingFun
 /// which only a template holds.
 fn track<N: Scalar>(value: GridTrack<N>) -> Option<taffy::style::TrackSizingFunction> {
   Some(match value {
-    GridTrack::Length(units) => length(units.to_f32()),
+    GridTrack::Length(units) => length(extent(units)),
     GridTrack::Fraction(value) => percent(value),
     GridTrack::Flex(value) => fr(value),
     GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
     GridTrack::MinContent => taffy::prelude::min_content(),
     GridTrack::MaxContent => taffy::prelude::max_content(),
-    GridTrack::FitContent(units) => fit_content(length(units.to_f32())),
+    GridTrack::FitContent(units) => fit_content(length(extent(units))),
     GridTrack::Between(min, max) => minmax(min_track(min), max_track(max)),
     GridTrack::Adaptive(..) => return None,
   })
@@ -513,7 +528,17 @@ const fn item(value: ItemAlignment) -> taffy::style::AlignItems {
 
 #[cfg(test)]
 mod tests {
-  use skene_foundation::{Axis, BoxStyle, Dimension, Inset, Layout, Plain, Spacing};
+  use skene_foundation::{
+    Axis,
+    BoxStyle,
+    Dimension,
+    GridTemplate,
+    GridTrack,
+    Inset,
+    Layout,
+    Plain,
+    Spacing,
+  };
   use taffy::{
     prelude::{TaffyGridLine, length, percent},
     style::{Display, FlexDirection},
@@ -525,10 +550,10 @@ mod tests {
   /// it is lengths.
   #[test]
   fn a_border_takes_its_room_by_the_platforms_rule() {
-    let style = BoxStyle::<u32, Plain> {
+    let style = BoxStyle::<i32, Plain> {
       border_width: Some(Inset {
         top: 2,
-        end: 0,
+        end: -1,
         bottom: 1,
         start: 0,
       }),
@@ -588,6 +613,53 @@ mod tests {
     assert_eq!(
       taffy.grid_row.start,
       taffy::style::GridPlacement::from_line_index(1)
+    );
+  }
+
+  /// A negative size, padding, border, spacing or track takes no room, as a browser
+  /// takes none of them below zero, while a margin and an inset keep their sign.
+  #[test]
+  fn a_negative_length_is_zero_where_a_browser_takes_none() {
+    let style = BoxStyle::<i32, Plain> {
+      width: Some(Dimension::Length(-4)),
+      min_height: Some(Dimension::Length(-2)),
+      padding: Some(Inset::all(-1)),
+      border_width: Some(Inset::all(-3)),
+      spacing: Some(Spacing {
+        horizontal: -2,
+        vertical: 1,
+      }),
+      margin: Some(Inset::all(Dimension::Length(-4))),
+      offset: Some(Inset {
+        top: Dimension::Length(-1),
+        end: Dimension::Auto,
+        bottom: Dimension::Auto,
+        start: Dimension::Length(2),
+      }),
+      grid_columns: Some(GridTemplate::new().add_track(GridTrack::Length(-3))),
+      ..BoxStyle::default()
+    };
+    let taffy = style.taffy_style(
+      Layout::Grid,
+      Place {
+        in_stack: false,
+        borders: Borders::Width,
+      },
+    );
+
+    assert_eq!(taffy.size.width, length(0.));
+    assert_eq!(taffy.min_size.height, length(0.));
+    assert_eq!(taffy.padding.left, length(0.));
+    assert_eq!(taffy.border, taffy::geometry::Rect::zero());
+    assert_eq!(taffy.gap.width, length(0.));
+    assert_eq!(taffy.gap.height, length(1.));
+    assert_eq!(taffy.margin.left, length(-4.));
+    assert_eq!(taffy.margin.bottom, length(-4.));
+    assert_eq!(taffy.inset.top, length(-1.));
+    assert_eq!(taffy.inset.left, length(2.));
+    assert_eq!(
+      taffy.grid_template_columns,
+      vec![taffy::style::GridTemplateComponent::Single(length(0.))]
     );
   }
 }

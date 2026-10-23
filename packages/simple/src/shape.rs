@@ -88,7 +88,7 @@ pub struct SimpleShape<N> {
 /// A length unit the Simple views know their shape in.
 #[diagnostic::on_unimplemented(
   message = "the Simple views have no shape in `{Self}`",
-  label = "a Simple view is drawn in logical pixels (`f32`) or cells (`u32`)"
+  label = "a Simple view is drawn in logical pixels (`f32`) or cells (`i32`)"
 )]
 pub trait SimpleUnit: Scalar {
   /// The shape in this unit.
@@ -134,7 +134,7 @@ impl SimpleUnit for f32 {
   const MARKS: SimpleMarks = SimpleMarks::Drawn;
 }
 
-impl SimpleUnit for u32 {
+impl SimpleUnit for i32 {
   const SHAPE: SimpleShape<Self> = SimpleShape {
     control_inset: Inset::symmetric(1, 0),
     control_ring: 0,

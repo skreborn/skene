@@ -24,7 +24,16 @@ use crate::{
   Terminal,
   cells::Cells,
   engine::{Drawn, drawn},
-  layout::{Source, border_edges, flow_of, has_border, inline_boxes, is_inline_box, is_paragraph},
+  layout::{
+    Source,
+    border_edges,
+    flow_of,
+    has_border,
+    inline_boxes,
+    is_inline_box,
+    is_paragraph,
+    padding_cells,
+  },
   records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
   text::{self, CellScale, Glyph},
 };
@@ -1029,7 +1038,7 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
           shadow,
         };
       };
-      let padding = style.and_then(|style| style.padding).unwrap_or_default();
+      let padding = style.map(padding_cells).unwrap_or_default();
       let border_cells = usize::from(border.is_some());
       let inset = (
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.start).unwrap_or(0),

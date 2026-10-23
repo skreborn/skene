@@ -92,7 +92,7 @@ fn app() -> impl View {
 }
 ```
 
-Lengths are cells (`u32`), text is a color, a bold flag and a size in cells (a scale
+Lengths are whole cells (`i32`), text is a color, a bold flag and a size in cells (a scale
 the terminal draws where it sizes text, and one cell elsewhere) measured in grapheme
 clusters (a wide character takes two cells), a border is one cell of box-drawing
 glyphs, or a thin line in pixels beneath the text where the terminal shows graphics;
@@ -118,7 +118,7 @@ with the mouse off a plain drag is the terminal's.
 | `skene-parley` | `packages/parley` | The `TextEngine` over the patched Parley (`vendor/parley`), on the typefaces it is given and no system font: paragraphs shaped once and broken per width, on threads off the web for a batch, bidirectional carets and movement, ICU4X's dictionaries for complex-script breaking, and drawing through vello. |
 | `skene-headless` | `packages/headless` | The host `Realization`: records what any platform receives, resolves properties through tokens and conditions, lays the scene out through `skene-layout` on every frame, its text through `skene-parley`, and draws it in the pinned font (`render_to_image`), drives events through `trigger_*` seams and a user's gestures through `user`, finds nodes by role, name and text, runs tasks on `pump_tasks`. |
 | `skene-web` | `packages/web` | The web facade and platform: `f32`, `Active`, a type of its own for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; and `platform`, the web `Realization`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the `WebMarkup` and `WebDom` escape traits. |
-| `skene-terminal` | `packages/terminal` | The terminal facade and platform: `u32` cells, `Terminal`, the same views, its own decoration on them, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
+| `skene-terminal` | `packages/terminal` | The terminal facade and platform: `i32` cells, `Terminal`, the same views, its own decoration on them, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams. |
 | `skene-conformance-web` | `packages/conformance-web` | The conformance suite in real browsers: its pages served as one web app, acted on over WebDriver by trusted input. |
 | `skene-simple` | `packages/simple` | The Simple core: `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and the views, generic over the platform and hidden, their members in a `Simple*Base` trait each. |

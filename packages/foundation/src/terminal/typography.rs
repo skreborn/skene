@@ -3,9 +3,9 @@
 use crate::{Color, Length, Media, TokenName, TokenSet, typography};
 
 /// A token's definition in cells; see [`crate::Definition`].
-type Definition<T> = crate::Definition<T, u32>;
+type Definition<T> = crate::Definition<T, i32>;
 /// A token in cells; see [`crate::Token`].
-type Token<T> = crate::Token<T, u32>;
+type Token<T> = crate::Token<T, i32>;
 
 /// The text inheritance: the inks, the selection and focused-link colors, the size
 /// and the weight every run reads where it sets nothing of its own.

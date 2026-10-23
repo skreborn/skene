@@ -146,7 +146,7 @@ pub fn skene_terminal::media::hover() -> skene_reactive::signal::ReadSignal<bool
 pub fn skene_terminal::media::pointer() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::condition::PointerPrecision>
 pub fn skene_terminal::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_terminal::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_terminal::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::values::inset::Inset<u32>>
+pub fn skene_terminal::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::values::inset::Inset<i32>>
 pub fn skene_terminal::media::scheme() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::media::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_terminal::media::viewport() -> skene_reactive::signal::ReadSignal<skene_terminal::Size>
@@ -324,7 +324,7 @@ pub fn skene_terminal::prelude::media::hover() -> skene_reactive::signal::ReadSi
 pub fn skene_terminal::prelude::media::pointer() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::condition::PointerPrecision>
 pub fn skene_terminal::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_terminal::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_terminal::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::values::inset::Inset<u32>>
+pub fn skene_terminal::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::values::inset::Inset<i32>>
 pub fn skene_terminal::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::prelude::media::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_terminal::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_terminal::Size>
@@ -858,18 +858,18 @@ pub type skene_terminal::prelude::BasicRadioGroup = skene_terminal::Control<sken
 pub type skene_terminal::prelude::BasicSlider = skene_terminal::Control<skene_foundation::control::slider::Slider>
 pub type skene_terminal::prelude::BasicTextEditor = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_terminal::prelude::BasicTextField = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
-pub type skene_terminal::prelude::Condition = skene_foundation::spine::condition::Condition<u32>
-pub type skene_terminal::prelude::Definition<T> = skene_foundation::spine::leaf::Definition<T, u32>
-pub type skene_terminal::prelude::Dimension = skene_foundation::spine::values::dimension::Dimension<u32>
+pub type skene_terminal::prelude::Condition = skene_foundation::spine::condition::Condition<i32>
+pub type skene_terminal::prelude::Definition<T> = skene_foundation::spine::leaf::Definition<T, i32>
+pub type skene_terminal::prelude::Dimension = skene_foundation::spine::values::dimension::Dimension<i32>
 pub type skene_terminal::prelude::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_terminal::prelude::LayoutBox<Kind> = skene_foundation::layout_box::LayoutBox<skene_terminal::Active, Kind>
-pub type skene_terminal::prelude::Media = skene_foundation::spine::condition::Media<u32>
+pub type skene_terminal::prelude::Media = skene_foundation::spine::condition::Media<i32>
 pub type skene_terminal::prelude::NodeHandle = skene_foundation::node_handle::NodeHandle<skene_terminal::Active>
-pub type skene_terminal::prelude::Point = skene_foundation::spine::values::point::Point<u32>
-pub type skene_terminal::prelude::Rect = skene_foundation::spine::values::rect::Rect<u32>
-pub type skene_terminal::prelude::Size = skene_foundation::spine::values::size::Size<u32>
-pub type skene_terminal::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<u32>
-pub type skene_terminal::prelude::Token<T> = skene_foundation::spine::token::Token<T, u32>
+pub type skene_terminal::prelude::Point = skene_foundation::spine::values::point::Point<i32>
+pub type skene_terminal::prelude::Rect = skene_foundation::spine::values::rect::Rect<i32>
+pub type skene_terminal::prelude::Size = skene_foundation::spine::values::size::Size<i32>
+pub type skene_terminal::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<i32>
+pub type skene_terminal::prelude::Token<T> = skene_foundation::spine::token::Token<T, i32>
 pub type skene_terminal::prelude::Value<T> = skene_foundation::spine::leaf::Value<T, skene_terminal::Condition>
 pub mod skene_terminal::testing
 pub mod skene_terminal::testing::user
@@ -1514,9 +1514,9 @@ impl skene_foundation::pinned::PinnedBase<skene_terminal::Terminal> for skene_te
 impl skene_foundation::span::RichTextBase<skene_terminal::Terminal> for skene_terminal::RichText
 impl skene_foundation::span::SpanBase<skene_terminal::Terminal> for skene_terminal::Span
 impl skene_foundation::spine::realization::Realization for skene_terminal::Terminal
-pub type skene_terminal::Terminal::Scalar = u32
+pub type skene_terminal::Terminal::Scalar = i32
 pub type skene_terminal::Terminal::StyleExt = skene_foundation::terminal::ext::TerminalStyle
-pub type skene_terminal::Terminal::TokenValue = skene_foundation::spine::resolve::TokenValue<u32>
+pub type skene_terminal::Terminal::TokenValue = skene_foundation::spine::resolve::TokenValue<i32>
 pub const skene_terminal::Terminal::FONT_SIZE: f32
 pub fn skene_terminal::Terminal::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_terminal::Terminal::blur(skene_foundation::spine::node::NodeId)
@@ -1538,8 +1538,8 @@ pub fn skene_terminal::Terminal::focus_visible() -> bool
 pub fn skene_terminal::Terminal::hide(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::Terminal::lay_out()
 pub fn skene_terminal::Terminal::localize_pointer(skene_foundation::spine::node::NodeId, &skene_foundation::spine::events::PointerEvent) -> skene_foundation::spine::events::PointerEvent
-pub fn skene_terminal::Terminal::media() -> skene_foundation::spine::props::MediaSignals<u32>
-pub fn skene_terminal::Terminal::observe_size(skene_foundation::spine::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<u32>)>) -> skene_foundation::spine::realization::Observation
+pub fn skene_terminal::Terminal::media() -> skene_foundation::spine::props::MediaSignals<i32>
+pub fn skene_terminal::Terminal::observe_size(skene_foundation::spine::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<i32>)>) -> skene_foundation::spine::realization::Observation
 pub fn skene_terminal::Terminal::relocate(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_terminal::Terminal::remove(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::Terminal::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_foundation::spine::scene::Scene<Self>>>
@@ -1554,9 +1554,9 @@ pub fn skene_terminal::Terminal::set_selection(skene_foundation::spine::node::No
 pub fn skene_terminal::Terminal::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_terminal::Terminal::set_value(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_terminal::Terminal::set_window_title(core::option::Option<&str>)
-pub fn skene_terminal::Terminal::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<u32, skene_foundation::terminal::ext::TerminalStyle>>)
+pub fn skene_terminal::Terminal::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<i32, skene_foundation::terminal::ext::TerminalStyle>>)
 pub fn skene_terminal::Terminal::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::terminal::ext::TerminalStyle>>)
-pub fn skene_terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<i32>) -> skene_reactive::memo::Memo<bool>
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::Terminal, skene_foundation::spine::view::FlexChild> for skene_terminal::Flexible
 pub fn skene_terminal::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_terminal::Active>
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::Terminal, skene_foundation::spine::view::GridChild> for skene_terminal::GridCell
@@ -1718,21 +1718,21 @@ pub type skene_terminal::BasicRadioGroup = skene_terminal::Control<skene_foundat
 pub type skene_terminal::BasicSlider = skene_terminal::Control<skene_foundation::control::slider::Slider>
 pub type skene_terminal::BasicTextEditor = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_terminal::BasicTextField = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
-pub type skene_terminal::Condition = skene_foundation::spine::condition::Condition<u32>
-pub type skene_terminal::ContainerQuery = skene_foundation::spine::condition::ContainerQuery<u32>
+pub type skene_terminal::Condition = skene_foundation::spine::condition::Condition<i32>
+pub type skene_terminal::ContainerQuery = skene_foundation::spine::condition::ContainerQuery<i32>
 pub type skene_terminal::ControlHandle = skene_foundation::control::ControlHandle<skene_terminal::Active>
-pub type skene_terminal::Definition<T> = skene_foundation::spine::leaf::Definition<T, u32>
-pub type skene_terminal::Dimension = skene_foundation::spine::values::dimension::Dimension<u32>
+pub type skene_terminal::Definition<T> = skene_foundation::spine::leaf::Definition<T, i32>
+pub type skene_terminal::Dimension = skene_foundation::spine::values::dimension::Dimension<i32>
 pub type skene_terminal::Inset<T> = skene_foundation::spine::values::inset::Inset<T>
 pub type skene_terminal::Keyed<V> = skene_foundation::spine::keyed::Keyed<skene_terminal::Active, V>
 pub type skene_terminal::Label = skene_foundation::control::Label<skene_terminal::Active>
 pub type skene_terminal::LayoutBox<Kind> = skene_foundation::layout_box::LayoutBox<skene_terminal::Active, Kind>
-pub type skene_terminal::Media = skene_foundation::spine::condition::Media<u32>
+pub type skene_terminal::Media = skene_foundation::spine::condition::Media<i32>
 pub type skene_terminal::NodeHandle = skene_foundation::node_handle::NodeHandle<skene_terminal::Active>
-pub type skene_terminal::Point = skene_foundation::spine::values::point::Point<u32>
-pub type skene_terminal::Rect = skene_foundation::spine::values::rect::Rect<u32>
-pub type skene_terminal::Size = skene_foundation::spine::values::size::Size<u32>
-pub type skene_terminal::Spacing = skene_foundation::spine::values::flex::Spacing<u32>
-pub type skene_terminal::Token<T> = skene_foundation::spine::token::Token<T, u32>
+pub type skene_terminal::Point = skene_foundation::spine::values::point::Point<i32>
+pub type skene_terminal::Rect = skene_foundation::spine::values::rect::Rect<i32>
+pub type skene_terminal::Size = skene_foundation::spine::values::size::Size<i32>
+pub type skene_terminal::Spacing = skene_foundation::spine::values::flex::Spacing<i32>
+pub type skene_terminal::Token<T> = skene_foundation::spine::token::Token<T, i32>
 pub type skene_terminal::TokenValue = <skene_terminal::Active as skene_foundation::spine::realization::Realization>::TokenValue
 pub type skene_terminal::Value<T> = skene_foundation::spine::leaf::Value<T, skene_terminal::Condition>

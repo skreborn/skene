@@ -1,7 +1,7 @@
 //! # skene-terminal
 //!
 //! The terminal facade and its platform: a terminal app's single dependency, equal in
-//! standing to `skene-web`. It fixes the scalar (cells, `u32`), names the platform
+//! standing to `skene-web`. It fixes the scalar (cells, `i32`), names the platform
 //! ([`Active`]: [`Terminal`]) and aliases every built-in view to it, so app code names
 //! no platform. The medium's own contribution is
 //! [`Typography`], the [`media`] module, the terminal's decoration on its decorated
@@ -248,7 +248,7 @@ pub use crate::{
 /// The realization the build selected: the terminal's, on every host target.
 pub type Active = Terminal;
 
-skene_foundation::facade!(Active, u32, "cells");
+skene_foundation::facade!(Active, i32, "cells");
 
 /// Runs `future` as a task of the current scope until it finishes, the scope goes or
 /// the returned handle cancels it; once it ends it is never polled again.

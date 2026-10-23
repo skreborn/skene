@@ -15,7 +15,7 @@ fn highlight() -> Color {
 
 /// Mounts a single-line field bound to `value` under a typography painting selections
 /// in white on the highlight, at `width` cells, and focuses it by keyboard.
-fn mount_field(value: Signal<String>, width: u32) {
+fn mount_field(value: Signal<String>, width: i32) {
   let _ = terminal::mount(move || {
     Theme::new(
       Typography::default()

@@ -141,7 +141,7 @@ impl Interpolate for AspectRatio {
   }
 }
 
-impl Interpolate for u32 {
+impl Interpolate for i32 {
   #[inline(always)]
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(Self::from_f32(lerp(self.to_f32(), to.to_f32(), amount)))
@@ -705,7 +705,8 @@ mod tests {
   /// discrete.
   #[test]
   fn lengths_interpolate_per_kind() {
-    assert_eq!(0u32.interpolate(&10, 0.26), Some(3));
+    assert_eq!(0i32.interpolate(&10, 0.26), Some(3));
+    assert_eq!(0i32.interpolate(&-10, 0.26), Some(-3));
     assert_eq!(
       Dimension::Length(0f32).interpolate(&Dimension::Length(10.), 0.5),
       Some(Dimension::Length(5.))

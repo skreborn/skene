@@ -1706,6 +1706,6 @@ mod tests {
   #[test]
   fn every_kind_crosses_the_record() {
     Medium::<f32, ()>::shared().check();
-    Medium::<u32, ()>::shared().check();
+    Medium::<i32, ()>::shared().check();
   }
 }

@@ -72,7 +72,7 @@ fn a_hover_transition_steps_a_color_across_frames() {
 #[test]
 fn a_derived_length_transition_rounds_to_cells() {
   with_platform(|| {
-    let width = Signal::new(2u32);
+    let width = Signal::new(2i32);
     let _ = terminal::mount(move || {
       Container::new()
         .derive_width(move || Dimension::Length(width.get()))

@@ -174,5 +174,5 @@ pub fn skene_simple_terminal::SimpleTooltip::wrap(Self::Inner) -> Self
 impl skene_simple::tooltip::SimpleTooltipBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleTooltip
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleTooltip where skene_simple::tooltip::SimpleTooltip<skene_terminal::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_simple_terminal::SimpleTooltip::build(self) -> skene_foundation::spine::node::NodeId
-pub type skene_simple_terminal::SimpleLook = skene_simple::palette::SimpleLook<u32>
-pub type skene_simple_terminal::SimplePalette = skene_simple::palette::SimplePalette<u32>
+pub type skene_simple_terminal::SimpleLook = skene_simple::palette::SimpleLook<i32>
+pub type skene_simple_terminal::SimplePalette = skene_simple::palette::SimplePalette<i32>

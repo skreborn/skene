@@ -94,7 +94,7 @@ whether an entry takes edits (`Scene::is_editable`: neither disabled nor read-on
 the control state and reports it holds, which the platforms read rather than copy.
 
 **`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
-each facade's views: `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own
+each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts). Its methods are the
 portable vocabulary over node ids: realize and update boxes, controls, overlays and
 runs, realize anchors and scopes, mirror tree mutations, define tokens on a scope and at
@@ -1179,10 +1179,12 @@ plan, its prerequisites and its order are in `ROADMAP.md`.
 ### The terminal (`skene-terminal`)
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
-ones typed to the terminal: lengths are `u32` cells, text is a color plus a `bool` bold,
-a border is one cell of box-drawing characters on each edge its width names, in its own
-color, its conditions are cells and
-its own background. Nothing the medium lacks exists to call, so a terminal app is
+ones typed to the terminal: lengths are `i32` whole cells, a fraction rounding to the
+nearest cell where a length lands (`Scalar::from_f32`) and a negative size, padding,
+border or spacing laid out as zero, as a browser does, while a run's font size keeps its
+fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
+box-drawing characters on each edge its width names, in its own color, its conditions
+are cells and its own background. Nothing the medium lacks exists to call, so a terminal app is
 first-class at compile time rather than best-effort at run time.
 
 The loop runs on a `Device`: bytes in and out, the window's size, a wake, raw mode, and

@@ -136,13 +136,11 @@ impl Records {
   }
 
   /// A node's size inside its border, in cells: what its size observers hear.
-  pub(crate) fn client_size(&self, handle: Handle) -> Size<u32> {
+  pub(crate) fn client_size(&self, handle: Handle) -> Size<i32> {
     let (width, height) = self.node_size(handle);
     let (left, top, right, bottom) = self.node_border(handle);
+    let cells = |extent: i64| i32::try_from(extent.max(0)).unwrap_or(i32::MAX);
 
-    Size::new(
-      u32::try_from(width - left - right).unwrap_or(0),
-      u32::try_from(height - top - bottom).unwrap_or(0),
-    )
+    Size::new(cells(width - left - right), cells(height - top - bottom))
   }
 }

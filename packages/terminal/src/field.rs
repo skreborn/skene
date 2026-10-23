@@ -24,6 +24,7 @@ use skene_foundation::{
 
 use crate::{
   Terminal,
+  layout::padding_cells,
   records::{AUTOSCROLL_INTERVAL, Deferred, Drag, EntryEditor, Field, Handle, Records},
   with_records,
 };
@@ -61,7 +62,7 @@ impl Records {
     let padding = self
       .record(handle)
       .and_then(|record| record.kind.box_style())
-      .and_then(|style| style.padding)
+      .map(padding_cells)
       .unwrap_or_default();
 
     Area {
@@ -92,7 +93,7 @@ impl Records {
     let padding = self
       .record(handle)
       .and_then(|record| record.kind.box_style())
-      .and_then(|style| style.padding)
+      .map(padding_cells)
       .unwrap_or_default();
 
     (

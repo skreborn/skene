@@ -639,8 +639,8 @@ mod tests {
   /// Overlaying replaces exactly the properties the overlay sets.
   #[test]
   fn overlay_later_wins_per_set_field() {
-    let mut base = BoxStyle::<u32, Plain>::default();
-    let mut over = BoxStyle::<u32, Plain>::default();
+    let mut base = BoxStyle::<i32, Plain>::default();
+    let mut over = BoxStyle::<i32, Plain>::default();
 
     base.width = Some(Dimension::Length(4));
     base.background = Some(Color::srgb(1., 0., 0.));

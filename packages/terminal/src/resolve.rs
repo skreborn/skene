@@ -64,14 +64,14 @@ impl<'a> Env<'a> {
 
   /// Runs `operation` with the resolver of this environment, reading tokens where they
   /// are defined and slots through the records.
-  fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TerminalStyle>) -> R) -> R {
+  fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, i32, TerminalStyle>) -> R) -> R {
     self.context.with_resolver(operation)
   }
 
   /// A box keyframe with every leaf resolved at the node.
   pub(crate) fn resolve_box_keyframe(
     &self,
-    keyframe: &BoxStyle<u32, Keyframe, TerminalStyle>,
+    keyframe: &BoxStyle<i32, Keyframe, TerminalStyle>,
   ) -> PlainBox {
     self.with_resolver(|resolver| {
       record::held(
@@ -122,7 +122,7 @@ impl<'a> Env<'a> {
   pub(crate) fn resolve_box(&self) -> Option<PlainBox> {
     let record = self.records.record(self.handle)?;
     let props = &record.kind.box_record()?.props;
-    let source: &BoxStyle<u32, Static<Condition<u32>>, TerminalStyle> = &props.style;
+    let source: &BoxStyle<i32, Static<Condition<i32>>, TerminalStyle> = &props.style;
     let mut style = self.with_resolver(|resolver| {
       record::held(
         "box",
@@ -151,7 +151,7 @@ impl<'a> Env<'a> {
   /// entry, every property resolved.
   pub(crate) fn resolve_entry_run(&self) -> PlainRun {
     let token = |token| Some(Conditional::new(KeptLeaf::Static(StaticLeaf::from(token))));
-    let source = RunStyle::<Static<Condition<u32>>, TerminalStyle> {
+    let source = RunStyle::<Static<Condition<i32>>, TerminalStyle> {
       color: token(typography::INK),
       selection_color: token(typography::SELECTION_INK),
       selection_background: token(typography::SELECTION_SURFACE),
@@ -256,9 +256,9 @@ mod record {
   /// The record of a box's `style` and `dynamics`, its motion held to reading back as
   /// `dynamics`.
   pub(super) fn of_box(
-    style: &BoxStyle<u32, Static<Condition<u32>>, TerminalStyle>,
-    dynamics: &BoxDynamics<u32, TerminalStyle>,
-  ) -> Record<u32, TerminalStyle> {
+    style: &BoxStyle<i32, Static<Condition<i32>>, TerminalStyle>,
+    dynamics: &BoxDynamics<i32, TerminalStyle>,
+  ) -> Record<i32, TerminalStyle> {
     let mut record = Record::new();
 
     record.add_box(style);
@@ -284,9 +284,9 @@ mod record {
   /// The record of a run's `style` and `dynamics`, its motion held to reading back as
   /// `dynamics`.
   pub(super) fn of_run(
-    style: &RunStyle<Static<Condition<u32>>, TerminalStyle>,
+    style: &RunStyle<Static<Condition<i32>>, TerminalStyle>,
     dynamics: &RunDynamics<TerminalStyle>,
-  ) -> Record<u32, TerminalStyle> {
+  ) -> Record<i32, TerminalStyle> {
     let mut record = Record::new();
 
     record.add_run(style);
@@ -316,7 +316,7 @@ mod record {
   pub(super) fn held<T: Fingerprint + Debug>(
     kind: &str,
     source: &impl Debug,
-    resolver: &Resolver<'_, u32, TerminalStyle>,
+    resolver: &Resolver<'_, i32, TerminalStyle>,
     typed: impl FnOnce() -> T,
     record: impl FnOnce() -> T,
   ) -> T {

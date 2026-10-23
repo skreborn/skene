@@ -443,6 +443,35 @@ fn a_wrapper_without_its_child_takes_no_room() {
   });
 }
 
+/// A negative margin pulls a box back over its sibling, while a negative padding takes
+/// no room, as a browser takes none below zero.
+#[test]
+fn a_negative_margin_overlaps_and_a_negative_padding_takes_no_room() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Text::new("abc"),
+          Container::new()
+            .set_margin(Inset {
+              top: Dimension::Length(-1),
+              end: Dimension::Length(0),
+              bottom: Dimension::Length(0),
+              start: Dimension::Length(1),
+            })
+            .set_child(Text::new("x")),
+          Container::new()
+            .set_padding(Inset::all(-2))
+            .set_child(Text::new("p")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(4, 3), "axc\np\n\n");
+  });
+}
+
 /// A fraction width resolves against the parent's extent.
 #[test]
 fn fraction_width_resolves_against_parent() {
@@ -561,7 +590,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
       }
     }
 
-    fn set_spacing(mut self, spacing: u32) -> Self {
+    fn set_spacing(mut self, spacing: i32) -> Self {
       self.base = self.base.set_spacing(Spacing {
         horizontal: spacing,
         vertical: 0,

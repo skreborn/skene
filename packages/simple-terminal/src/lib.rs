@@ -49,9 +49,9 @@ pub use self::{
 };
 
 /// The Simple palette in the terminal's unit; see [`skene_simple::SimplePalette`].
-pub type SimplePalette = skene_simple::SimplePalette<u32>;
+pub type SimplePalette = skene_simple::SimplePalette<i32>;
 /// One emphasis variant's colors; see [`skene_simple::SimpleLook`].
-pub type SimpleLook = skene_simple::SimpleLook<u32>;
+pub type SimpleLook = skene_simple::SimpleLook<i32>;
 
 /// Everything above, for `use skene_simple_terminal::prelude::*` beside the
 /// facade's own prelude.

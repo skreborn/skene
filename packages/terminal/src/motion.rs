@@ -26,7 +26,7 @@ use crate::{
 /// What a box-like node runs: its properties' motion.
 #[derive(Default)]
 pub(crate) struct BoxMotion {
-  properties: Motion<TerminalProperty, BoxValue<u32, TerminalStyle>>,
+  properties: Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
 }
 
 /// What a run runs: its properties' motion.
@@ -58,7 +58,7 @@ impl BoxMotion {
     &mut self,
     previous: Option<&PlainBox>,
     target: PlainBox,
-    dynamics: &BoxDynamics<u32, TerminalStyle>,
+    dynamics: &BoxDynamics<i32, TerminalStyle>,
     keyframes: &[Animation<PlainBox>],
     clock: Clock,
   ) -> Presented<PlainBox> {
@@ -132,15 +132,15 @@ impl RunMotion {
 
 /// Retargets every box property whose target moved.
 struct RetargetBox<'a> {
-  motion: &'a mut Motion<TerminalProperty, BoxValue<u32, TerminalStyle>>,
+  motion: &'a mut Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
   previous: &'a PlainBox,
   target: &'a PlainBox,
   transitions: &'a [Transition<TerminalProperty>],
   clock: Clock,
 }
 
-impl BoxFieldVisitor<u32, TerminalStyle> for RetargetBox<'_> {
-  fn field<F: BoxField<u32, TerminalStyle>>(&mut self) {
+impl BoxFieldVisitor<i32, TerminalStyle> for RetargetBox<'_> {
+  fn field<F: BoxField<i32, TerminalStyle>>(&mut self) {
     let (previous, target) = (F::get(self.previous), F::get(self.target));
 
     if previous == target {
@@ -160,14 +160,14 @@ impl BoxFieldVisitor<u32, TerminalStyle> for RetargetBox<'_> {
 
 /// Writes every box property's running tween and animations over the target.
 struct PresentBox<'a> {
-  motion: &'a mut Motion<TerminalProperty, BoxValue<u32, TerminalStyle>>,
+  motion: &'a mut Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
   style: &'a mut PlainBox,
   keyframes: &'a [Animation<PlainBox>],
   clock: Clock,
 }
 
-impl BoxFieldVisitor<u32, TerminalStyle> for PresentBox<'_> {
-  fn field<F: BoxField<u32, TerminalStyle>>(&mut self) {
+impl BoxFieldVisitor<i32, TerminalStyle> for PresentBox<'_> {
+  fn field<F: BoxField<i32, TerminalStyle>>(&mut self) {
     let tweened = self.motion.sample(F::KEY, self.clock.now);
 
     if tweened.is_none() && self.keyframes.is_empty() {

@@ -8,7 +8,7 @@ use std::fmt::Debug;
 /// evaluates through `f32` and lands back in it.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a length unit",
-  label = "a facade measures lengths in `f32` (logical pixels) or `u32` (cells)"
+  label = "a facade measures lengths in `f32` (logical pixels) or `i32` (cells)"
 )]
 pub trait Scalar: Copy + PartialEq + PartialOrd + Debug + Default + 'static {
   /// Zero in this unit.
@@ -48,7 +48,7 @@ impl Scalar for f32 {
   }
 }
 
-impl Scalar for u32 {
+impl Scalar for i32 {
   const ZERO: Self = 0;
 
   #[inline(always)]
@@ -63,17 +63,19 @@ impl Scalar for u32 {
   #[inline(always)]
   #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    reason = "the value is rounded and clamped into the cell range first"
+    reason = "the value is rounded first, and the cast saturates at the cell range"
   )]
   fn from_f32(value: f32) -> Self {
-    value.round().clamp(0., Self::MAX as f32) as Self
+    value.round() as Self
   }
 
   #[inline(always)]
+  #[expect(
+    clippy::cast_sign_loss,
+    reason = "the bit pattern is the hash, its sign included"
+  )]
   fn hash_bits(self) -> u64 {
-    u64::from(self)
+    u64::from(self as u32)
   }
 }
 
@@ -81,13 +83,25 @@ impl Scalar for u32 {
 mod tests {
   use super::Scalar;
 
-  /// Cells round to the nearest whole and never go negative.
+  /// Cells round to the nearest whole, half away from zero, and clamp to the cell range.
   #[test]
   fn cells_round_and_clamp() {
-    assert_eq!(u32::from_f32(2.4), 2);
-    assert_eq!(u32::from_f32(2.5), 3);
-    assert_eq!(u32::from_f32(-3.), 0);
-    assert_eq!(u32::from_f32(1e12), u32::MAX);
+    assert_eq!(i32::from_f32(2.4), 2);
+    assert_eq!(i32::from_f32(2.5), 3);
+    assert_eq!(i32::from_f32(-2.5), -3);
+    assert_eq!(i32::from_f32(-3.4), -3);
+    assert_eq!(i32::from_f32(1e12), i32::MAX);
+    assert_eq!(i32::from_f32(-1e12), i32::MIN);
+    assert_eq!(i32::from_f32(f32::NAN), 0);
+  }
+
+  /// Negative cells keep their sign through `f32` and hash apart from their magnitude.
+  #[test]
+  fn negative_cells_round_trip() {
+    assert_eq!(i32::from_f32((-4).to_f32()), -4);
+    assert_eq!((-4i32).to_f32(), -4.);
+    assert_ne!((-4i32).hash_bits(), 4i32.hash_bits());
+    assert_eq!(0i32.hash_bits(), 0);
   }
 
   /// Both zeros hash alike, as they compare alike.

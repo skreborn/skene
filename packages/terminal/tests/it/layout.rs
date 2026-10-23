@@ -19,7 +19,7 @@ use skene_terminal::{
   testing,
 };
 
-use crate::common::{colors_at, locate, red, rgb, white, with_platform};
+use crate::common::{blue, colors_at, locate, red, rgb, white, with_platform};
 
 /// A column stacks its runs on successive rows.
 #[test]
@@ -575,8 +575,8 @@ fn grid_cell_annotates_the_content_of_a_derived_subtree() {
 }
 
 /// A flexible wrapper around a derived subtree lands its flexibility on the content box,
-/// on every rebuild, and not on the box inside it: the content grows to twice its
-/// sibling's share of the column.
+/// on every rebuild, and not on a box inside it: the content grows to twice its
+/// sibling's share of the column, and a box in a column inside it keeps its one row.
 #[test]
 fn flexible_annotates_the_content_of_a_derived_subtree() {
   with_platform(|| {
@@ -593,9 +593,11 @@ fn flexible_annotates_the_content_of_a_derived_subtree() {
               Flexible::new()
                 .set_flexibility(Flexibility::grow(2.))
                 .set_child(
-                  Container::new()
-                    .set_background(red())
-                    .set_child(Container::new().set_child(Text::new("x"))),
+                  Container::new().set_background(red()).set_child(
+                    Column::new().set_children((Container::new()
+                      .set_background(blue())
+                      .set_child(Text::new("x")),)),
+                  ),
                 )
             })
             .add_child(
@@ -612,7 +614,12 @@ fn flexible_annotates_the_content_of_a_derived_subtree() {
         .map(|row| colors_at(2, 6, 0, row).1)
         .collect::<Vec<_>>()
     };
-    let expected = [[Some(rgb(red())); 4].as_slice(), &[Some(rgb(white())); 2]].concat();
+    let expected = [
+      [Some(rgb(blue()))].as_slice(),
+      &[Some(rgb(red())); 3],
+      &[Some(rgb(white())); 2],
+    ]
+    .concat();
 
     assert_eq!(
       painted(),

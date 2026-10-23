@@ -2082,8 +2082,74 @@ fn a_length_reads_the_safe_area() {
   reported.remove();
 }
 
-/// A focus a handler asks for runs the engine's focus and blur events at once, and
-/// they reach the scene: the platform's call runs with the scene released.
+/// The focus events the engine fires anywhere in the document, each recorded with
+/// whether the scene was borrowed as it fired, until the recorder drops.
+struct FocusEvents {
+  /// Each event's type and whether the scene was borrowed as it fired, in order.
+  record: Rc<RefCell<Vec<(String, bool)>>>,
+  /// The capturing listener on the window, removed on drop.
+  listener: Closure<dyn Fn(web_sys::Event)>,
+}
+
+impl FocusEvents {
+  /// The kinds of focus event the engine fires.
+  const TYPES: [&str; 4] = ["focus", "blur", "focusin", "focusout"];
+
+  /// Starts recording.
+  fn new() -> Self {
+    let record = Rc::new(RefCell::new(Vec::new()));
+    let listener = Closure::<dyn Fn(web_sys::Event)>::new({
+      let record = Rc::clone(&record);
+
+      move |event: web_sys::Event| {
+        record
+          .borrow_mut()
+          .push((event.type_(), skene_foundation::Scene::<Web>::is_borrowed()));
+      }
+    });
+    let window = web_sys::window().expect("a window");
+
+    for name in Self::TYPES {
+      window
+        .add_event_listener_with_callback_and_bool(name, listener.as_ref().unchecked_ref(), true)
+        .expect("listen for a focus event");
+    }
+
+    Self { record, listener }
+  }
+
+  /// The events recorded so far.
+  fn events(&self) -> Vec<(String, bool)> {
+    self.record.borrow().clone()
+  }
+
+  /// Asserts that every event recorded so far fired with the scene released.
+  fn assert_released(&self) {
+    let events = self.events();
+
+    assert!(
+      events.iter().all(|(_, borrowed)| !borrowed),
+      "an engine's focus event fired with the scene borrowed: {events:?}"
+    );
+  }
+}
+
+impl Drop for FocusEvents {
+  fn drop(&mut self) {
+    if let Some(window) = web_sys::window() {
+      for name in Self::TYPES {
+        let _ = window.remove_event_listener_with_callback_and_bool(
+          name,
+          self.listener.as_ref().unchecked_ref(),
+          true,
+        );
+      }
+    }
+  }
+}
+
+/// A focus a handler asks for runs the engine's focus and blur events at once, each
+/// firing with the scene released, and they reach the scene.
 #[wasm_bindgen_test]
 fn a_focus_from_a_handler_fires_its_events_with_the_scene_released() {
   let (_guard, root) = fresh_root();
@@ -2123,10 +2189,16 @@ fn a_focus_from_a_handler_fires_its_events_with_the_scene_released() {
   });
 
   let boxes = elements(&only_child(&root));
+  let events = FocusEvents::new();
 
   html(&boxes[0]).focus().expect("focus the first box");
 
   assert_eq!(*log.borrow(), ["first focus", "first blur", "second focus"]);
+  assert!(
+    events.events().iter().any(|(kind, _)| kind == "focusin"),
+    "the engine fired its focus events"
+  );
+  events.assert_released();
   assert_eq!(document().active_element(), Some(boxes[1].clone()));
   assert_eq!(
     skene_foundation::Scene::<Web>::read(skene_foundation::Scene::focused),
@@ -2135,8 +2207,8 @@ fn a_focus_from_a_handler_fires_its_events_with_the_scene_released() {
 }
 
 /// Moving the focused element and removing it run with the scene released: whatever
-/// blur the engine fires on the way reaches the scene, the elements land in the list's
-/// order, and the removed node holds no focus.
+/// focus event the engine fires on the way fires with the scene released, the elements
+/// land in the list's order, and once the focused node is removed nothing holds focus.
 #[wasm_bindgen_test]
 fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
   let (_guard, root) = fresh_root();
@@ -2182,10 +2254,14 @@ fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
   };
 
   html(&element(3)).focus().expect("focus the last item");
+
+  let events = FocusEvents::new();
+
   order.set(vec![3, 1, 2]);
   platform::end_turn();
 
   assert_eq!(texts(), ["3", "1", "2"]);
+  events.assert_released();
 
   html(&element(1))
     .focus()
@@ -2193,19 +2269,29 @@ fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
 
   let removed = handles[0].node().expect("the first item");
 
+  assert_eq!(
+    skene_foundation::Scene::<Web>::read(skene_foundation::Scene::focused),
+    Some(removed)
+  );
+
   order.set(vec![3, 2]);
   platform::end_turn();
 
   assert_eq!(texts(), ["3", "2"]);
+  events.assert_released();
   assert!(
     log.borrow().iter().all(|item| [1, 3].contains(item)),
     "only the items that held focus blur: {:?}",
     log.borrow()
   );
   assert!(log.borrow().iter().filter(|item| **item == 1).count() <= 1);
-  assert_ne!(
+  assert!(!skene_foundation::Scene::<Web>::read(
+    |scene| scene.contains(removed)
+  ));
+  assert_eq!(
     skene_foundation::Scene::<Web>::read(skene_foundation::Scene::focused),
-    Some(removed)
+    None,
+    "the removed node held focus, and nothing holds it now"
   );
 
   html(&element(2)).focus().expect("focus a remaining item");

@@ -657,7 +657,7 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveEntries<'_, 
       .1
       .clone()
       .try_map(|leaf| leaf.try_map(SlotValue::read_box::<F::Value>))
-      .and_then(|value| self.resolver.box_value(&value))
+      .and_then(|value| self.resolver.box_value(F::KEY, &value))
       .map(|value| SlotValue::Box(value.into_box_value()));
   }
 }
@@ -705,7 +705,7 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveFrame<'_, '_
       .1
       .clone()
       .try_map(SlotValue::read_box::<F::Value>)
-      .and_then(|leaf| self.resolver.keyframe_box_value(&leaf))
+      .and_then(|leaf| self.resolver.keyframe_box_value(F::KEY, &leaf))
       .map(|value| SlotValue::Box(value.into_box_value()));
   }
 }

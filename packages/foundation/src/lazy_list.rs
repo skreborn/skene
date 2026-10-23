@@ -118,7 +118,8 @@ pub fn item_window_over(offset: f32, viewport: f32, edges: &[f32], overscan: usi
 /// The extent of every item of a lazy list along its axis, in the medium's unit.
 ///
 /// `set_item_height(32)` on a column and `set_item_width(32.5)` on a row take a plain
-/// number, an `i32` or an `f32`, as the fixed form.
+/// number, an `i32` or an `f32`, as the fixed form; either form lands in the unit at the
+/// setter, so a terminal's `1.5` is two cells.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub enum ItemExtent {
@@ -128,6 +129,18 @@ pub enum ItemExtent {
   /// assumed this long. An estimate off from the measure moves what follows by the
   /// difference when the item measures.
   Estimated(f32),
+}
+
+impl ItemExtent {
+  /// This extent landed in the unit `N`: a cell rounds an `f32` to the nearest.
+  pub fn in_unit<N: Scalar>(self) -> Self {
+    let land = |extent: f32| N::from_f32(extent).to_f32();
+
+    match self {
+      Self::Fixed(extent) => Self::Fixed(land(extent)),
+      Self::Estimated(extent) => Self::Estimated(land(extent)),
+    }
+  }
 }
 
 impl From<i32> for ItemExtent {
@@ -486,7 +499,7 @@ impl<P: Realization> LazyColumn<P> {
 
   /// Sets the height of every item, fixed or estimated, in the medium's unit.
   pub fn set_item_height(mut self, item_height: impl Into<ItemExtent>) -> Self {
-    self.0.extent = item_height.into();
+    self.0.extent = item_height.into().in_unit::<P::Scalar>();
 
     self
   }
@@ -559,7 +572,7 @@ impl<P: Realization> LazyRow<P> {
 
   /// Sets the width of every item, fixed or estimated, in the medium's unit.
   pub fn set_item_width(mut self, item_width: impl Into<ItemExtent>) -> Self {
-    self.0.extent = item_width.into();
+    self.0.extent = item_width.into().in_unit::<P::Scalar>();
 
     self
   }

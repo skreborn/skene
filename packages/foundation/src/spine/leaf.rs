@@ -738,6 +738,43 @@ mod tests {
     );
   }
 
+  /// A constructor measured in lengths places each number where its parameter names:
+  /// an inset's start, top, end and bottom in that order, a spacing's horizontal then
+  /// vertical, and a track's limits as its minimum then its maximum.
+  #[test]
+  fn length_constructors_place_each_number_by_name() {
+    assert_eq!(
+      Inset::<f32>::new(1, 2, 3, 4),
+      Inset {
+        start: 1.,
+        top: 2.,
+        end: 3.,
+        bottom: 4.,
+      }
+    );
+
+    let inset = Inset::<i32>::new(1.5, -4, 0, 2);
+
+    assert_eq!((inset.start, inset.top), (2, -4));
+    assert_eq!(
+      Spacing::<i32>::new(8, -4),
+      Spacing {
+        horizontal: 8,
+        vertical: -4,
+      }
+    );
+    assert_eq!(GridTrack::<f32>::length(16), GridTrack::Length(16.));
+    assert_eq!(GridTrack::<i32>::fit_content(2.5), GridTrack::FitContent(3));
+    assert_eq!(
+      GridTrack::<f32>::between(16, 1.5),
+      GridTrack::Between(TrackLimit::Length(16.), TrackLimit::Length(1.5))
+    );
+    assert_eq!(
+      GridTrack::<i32>::adaptive(4, TrackLimit::Flex(1.)),
+      GridTrack::Adaptive(TrackLimit::Length(4), TrackLimit::Flex(1.))
+    );
+  }
+
   /// A token reference conditions like a plain value, and a variant may be a token.
   #[test]
   fn tokens_condition_like_values() {

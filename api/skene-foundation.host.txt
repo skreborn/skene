@@ -2940,6 +2940,8 @@ pub skene_foundation::BoxValue::Spacing(skene_foundation::Spacing<N>)
 pub skene_foundation::BoxValue::Template(skene_foundation::GridTemplate<N>)
 pub skene_foundation::BoxValue::Tracks(alloc::vec::Vec<skene_foundation::GridTrack<N>>)
 pub skene_foundation::BoxValue::Wrap(skene_foundation::Wrap)
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxValue<N, X>
+pub fn skene_foundation::BoxValue<N, X>::in_range_of(self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> Self
 impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::BoxValue<N, X> where <X as skene_foundation::StyleExtension>::Value: core::clone::Clone
 pub fn skene_foundation::BoxValue<N, X>::clone(&self) -> skene_foundation::BoxValue<N, X>
 impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::cmp::PartialEq for skene_foundation::BoxValue<N, X> where <X as skene_foundation::StyleExtension>::Value: core::cmp::PartialEq
@@ -3341,6 +3343,13 @@ pub skene_foundation::GridTrack::Fraction(f32)
 pub skene_foundation::GridTrack::Length(T)
 pub skene_foundation::GridTrack::MaxContent
 pub skene_foundation::GridTrack::MinContent
+impl<N: skene_foundation::Scalar> skene_foundation::GridTrack<N>
+pub fn skene_foundation::GridTrack<N>::adaptive(impl core::convert::Into<skene_foundation::TrackLimit<N>>, impl core::convert::Into<skene_foundation::TrackLimit<N>>) -> Self
+pub fn skene_foundation::GridTrack<N>::between(impl core::convert::Into<skene_foundation::TrackLimit<N>>, impl core::convert::Into<skene_foundation::TrackLimit<N>>) -> Self
+pub fn skene_foundation::GridTrack<N>::fit_content(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::GridTrack<N>::is_below_zero(self) -> bool
+pub fn skene_foundation::GridTrack<N>::is_implicit(self) -> bool
+pub fn skene_foundation::GridTrack<N>::length(impl skene_foundation::IntoScalar<N>) -> Self
 impl<T: core::marker::Copy> skene_foundation::GridTrack<T>
 pub fn skene_foundation::GridTrack<T>::repeated(self, u16) -> impl core::iter::traits::iterator::Iterator<Item = Self>
 impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::GridTrack<N>
@@ -3415,6 +3424,8 @@ pub fn skene_foundation::ItemAlignment::into_box_value(self) -> skene_foundation
 pub enum skene_foundation::ItemExtent
 pub skene_foundation::ItemExtent::Estimated(f32)
 pub skene_foundation::ItemExtent::Fixed(f32)
+impl skene_foundation::ItemExtent
+pub fn skene_foundation::ItemExtent::in_unit<N: skene_foundation::Scalar>(self) -> Self
 impl core::clone::Clone for skene_foundation::ItemExtent
 pub fn skene_foundation::ItemExtent::clone(&self) -> skene_foundation::ItemExtent
 impl core::cmp::PartialEq for skene_foundation::ItemExtent
@@ -3913,6 +3924,7 @@ pub skene_foundation::Property::TextColor
 pub skene_foundation::Property::Width
 pub skene_foundation::Property::Wrap
 impl skene_foundation::Property
+pub const fn skene_foundation::Property::is_non_negative(self) -> bool
 pub const fn skene_foundation::Property::name(self) -> &'static str
 impl core::clone::Clone for skene_foundation::Property
 pub fn skene_foundation::Property::clone(&self) -> skene_foundation::Property
@@ -3938,6 +3950,8 @@ pub skene_foundation::PropertyKey::Extension(P)
 pub skene_foundation::PropertyKey::Shared(skene_foundation::Property)
 impl<P: skene_foundation::PropertyName> skene_foundation::PropertyKey<P>
 pub fn skene_foundation::PropertyKey<P>::name(self) -> &'static str
+impl<P> skene_foundation::PropertyKey<P>
+pub const fn skene_foundation::PropertyKey<P>::is_non_negative(&self) -> bool
 impl<P: core::clone::Clone> core::clone::Clone for skene_foundation::PropertyKey<P>
 pub fn skene_foundation::PropertyKey<P>::clone(&self) -> skene_foundation::PropertyKey<P>
 impl<P: core::cmp::Eq> core::cmp::Eq for skene_foundation::PropertyKey<P>
@@ -4254,6 +4268,9 @@ pub skene_foundation::TrackLimit::Fraction(f32)
 pub skene_foundation::TrackLimit::Length(T)
 pub skene_foundation::TrackLimit::MaxContent
 pub skene_foundation::TrackLimit::MinContent
+impl<N: skene_foundation::Scalar> skene_foundation::TrackLimit<N>
+pub fn skene_foundation::TrackLimit<N>::is_below_zero(self) -> bool
+pub const fn skene_foundation::TrackLimit<N>::is_fixed(self) -> bool
 impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::TrackLimit<N>
 pub fn skene_foundation::TrackLimit<N>::from(f32) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::TrackLimit<N>
@@ -5822,6 +5839,8 @@ impl core::marker::StructuralPartialEq for skene_foundation::GridName
 impl<C> core::convert::From<skene_foundation::GridName> for skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, C>
 pub fn skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, C>::from(skene_foundation::GridName) -> Self
 pub struct skene_foundation::GridTemplate<T>
+impl<N: skene_foundation::Scalar> skene_foundation::GridTemplate<N>
+pub fn skene_foundation::GridTemplate<N>::is_dropped(&self) -> bool
 impl<T: core::marker::Copy> skene_foundation::GridTemplate<T>
 pub fn skene_foundation::GridTemplate<T>::tracks(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::GridTrack<T>> + '_
 impl<T> skene_foundation::GridTemplate<T>
@@ -6972,13 +6991,13 @@ pub skene_foundation::Resolver::token: &'a dyn core::ops::function::Fn(skene_fou
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Resolver<'_, N, X>
 pub fn skene_foundation::Resolver<'_, N, X>::box_keyframe(&self, &skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>) -> skene_foundation::BoxStyle<N, skene_foundation::Plain, X>
 pub fn skene_foundation::Resolver<'_, N, X>::box_style(&self, &skene_foundation::BoxStyle<N, skene_foundation::Static<skene_foundation::Condition<N>>, X>) -> skene_foundation::BoxStyle<N, skene_foundation::Plain, X>
-pub fn skene_foundation::Resolver<'_, N, X>::box_value<T: skene_foundation::IntoBoxValue<N, X>>(&self, &skene_foundation::StaticValue<T, skene_foundation::Condition<N>>) -> core::option::Option<T>
+pub fn skene_foundation::Resolver<'_, N, X>::box_value<T: skene_foundation::IntoBoxValue<N, X>>(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, &skene_foundation::StaticValue<T, skene_foundation::Condition<N>>) -> core::option::Option<T>
 pub fn skene_foundation::Resolver<'_, N, X>::color_leaf(&self, &skene_foundation::StaticLeaf<skene_foundation::Color>) -> core::option::Option<skene_foundation::Color>
 pub fn skene_foundation::Resolver<'_, N, X>::container(&self, core::option::Option<skene_foundation::ContainerName>) -> core::option::Option<skene_foundation::Size<N>>
-pub fn skene_foundation::Resolver<'_, N, X>::declared_value<T: skene_foundation::IntoBoxValue<N, X>>(&self, &skene_foundation::Value<T, skene_foundation::Condition<N>>) -> core::option::Option<T>
+pub fn skene_foundation::Resolver<'_, N, X>::declared_value<T: skene_foundation::IntoBoxValue<N, X>>(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, &skene_foundation::Value<T, skene_foundation::Condition<N>>) -> core::option::Option<T>
 pub fn skene_foundation::Resolver<'_, N, X>::definition(&self, &skene_foundation::TokenValue<N>) -> core::option::Option<skene_foundation::Resolved<N>>
 pub fn skene_foundation::Resolver<'_, N, X>::expr(&self, &skene_foundation::ExprNode) -> core::option::Option<skene_foundation::Resolved<N>>
-pub fn skene_foundation::Resolver<'_, N, X>::keyframe_box_value<T: skene_foundation::IntoBoxValue<N, X>>(&self, &skene_foundation::StaticLeaf<T>) -> core::option::Option<T>
+pub fn skene_foundation::Resolver<'_, N, X>::keyframe_box_value<T: skene_foundation::IntoBoxValue<N, X>>(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, &skene_foundation::StaticLeaf<T>) -> core::option::Option<T>
 pub fn skene_foundation::Resolver<'_, N, X>::keyframe_run_value<T: skene_foundation::IntoRunValue<X>>(&self, &skene_foundation::StaticLeaf<T>) -> core::option::Option<T>
 pub fn skene_foundation::Resolver<'_, N, X>::leaf<T: core::clone::Clone + core::convert::Into<skene_foundation::Resolved<N>>>(&self, &skene_foundation::StaticLeaf<T>) -> core::option::Option<skene_foundation::Resolved<N>>
 pub fn skene_foundation::Resolver<'_, N, X>::nested<R>(impl core::ops::function::FnOnce() -> core::option::Option<R>) -> core::option::Option<R>

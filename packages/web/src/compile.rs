@@ -33,6 +33,7 @@ use skene_foundation::{
   Conditional,
   ControlProps,
   Definitions,
+  Dimension,
   Fingerprint,
   GridFlow,
   IntoBoxValue,
@@ -246,22 +247,34 @@ fn token_reference(name: TokenName) -> String {
 
 /// The CSS texts of a box property's erased value, one per property its target
 /// declares: an inset's block and inline halves, any other value whole.
+///
+/// A value below what its property takes renders as the platform that draws lays it
+/// out, never as a declaration CSS drops: a size below zero, and a track list CSS
+/// rejects, as `initial`; a padding's, a border's or a spacing's length below zero as
+/// none; a flexibility's basis below zero as `auto`.
 pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> Vec<String> {
+  let none = |length: f32| length.max(0.);
   let whole = match value {
     BoxValue::DimensionInset(inset) => return Declarations::render_dimension_inset(*inset).into(),
     BoxValue::Inset(inset) => {
       return vec![
-        format!("{}px {}px", inset.top, inset.bottom),
-        format!("{}px {}px", inset.start, inset.end),
+        format!("{}px {}px", none(inset.top), none(inset.bottom)),
+        format!("{}px {}px", none(inset.start), none(inset.end)),
       ];
     }
+    BoxValue::Dimension(Dimension::Length(value)) if *value < 0. => "initial".to_owned(),
+    BoxValue::Dimension(Dimension::Fraction(value)) if *value < 0. => "initial".to_owned(),
     BoxValue::Dimension(dimension) => Declarations::render_dimension(*dimension),
     BoxValue::Length(length) => format!("{}px", length.0),
     BoxValue::Number(value) | BoxValue::Extension(value) => value.to_string(),
     BoxValue::AspectRatio(ratio) => ratio.0.to_string(),
     BoxValue::Color(color) => Declarations::render_color(*color),
     BoxValue::Cursor(cursor) => Declarations::render_cursor(*cursor).to_owned(),
-    BoxValue::Spacing(spacing) => format!("{}px {}px", spacing.vertical, spacing.horizontal),
+    BoxValue::Spacing(spacing) => format!(
+      "{}px {}px",
+      none(spacing.vertical),
+      none(spacing.horizontal)
+    ),
     BoxValue::Wrap(wrap) => match wrap {
       Wrap::None => "nowrap",
       Wrap::Forward => "wrap",
@@ -272,13 +285,20 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> Vec<String> {
       "{} {} {}",
       flex.grow_factor,
       flex.shrink_factor,
-      Declarations::render_dimension(flex.initial),
+      match flex.initial {
+        Dimension::Length(value) | Dimension::Fraction(value) if value < 0. => "auto".to_owned(),
+        initial => Declarations::render_dimension(initial),
+      },
     ),
     BoxValue::Arrangement(arrangement) => Declarations::render_arrangement(*arrangement).to_owned(),
     BoxValue::ItemAlignment(alignment) => {
       Declarations::render_item_alignment(*alignment).to_owned()
     }
+    BoxValue::Tracks(tracks) if !tracks.iter().all(|track| track.is_implicit()) => {
+      "initial".to_owned()
+    }
     BoxValue::Tracks(tracks) => Declarations::render_tracks(tracks),
+    BoxValue::Template(template) if template.is_dropped() => "initial".to_owned(),
     BoxValue::Template(template) => Declarations::render_template(template),
     BoxValue::Areas(areas) => Declarations::render_areas(areas),
     BoxValue::GridFlow(flow) => match flow {

@@ -104,6 +104,54 @@ fn a_derived_length_transition_rounds_to_cells() {
   });
 }
 
+/// A width transition whose easing overshoots below zero holds the box at zero for
+/// those frames, as a browser holds an interpolated width, rather than laying it out
+/// at its stretched size.
+#[test]
+fn an_overshooting_width_transition_holds_at_zero() {
+  with_platform(|| {
+    let width = Signal::new(2i32);
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((Container::new()
+          .derive_width(move || Dimension::Length(width.get()))
+          .set_height(1)
+          .set_background(red())
+          .add_transition(
+            Transition::new(Property::Width, 1.).set_easing(Easing::CubicBezier(0.4, -2., 0.6, 1.)),
+          ),))
+        .into_any()
+        .build()
+    });
+    let painted = || {
+      testing::render_to_colors(12, 2)[..12]
+        .iter()
+        .filter(|colors| colors.1 == Some(rgb(red())))
+        .count()
+    };
+
+    assert_eq!(painted(), 2);
+
+    width.set(10);
+
+    let mut seen = Vec::new();
+
+    for _ in 0..10 {
+      testing::trigger_frame(Duration::from_millis(100));
+      seen.push(painted());
+    }
+
+    testing::trigger_frame(Duration::from_millis(100));
+
+    assert!(
+      seen.contains(&0),
+      "the easing overshoots below zero: {seen:?}"
+    );
+    assert!(seen.iter().all(|cells| *cells <= 10), "{seen:?}");
+    assert_eq!(painted(), 10, "{seen:?}");
+  });
+}
+
 /// Reduced motion cuts a transition that respects it and leaves one that opted out
 /// running.
 #[test]

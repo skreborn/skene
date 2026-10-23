@@ -76,6 +76,7 @@ use skene_web::{
   Deferred,
   DeferredBase,
   Definition,
+  Dimension,
   Flexible,
   Grid,
   GridCell,
@@ -110,6 +111,7 @@ use skene_web::{
   Typography,
   View,
   Visibility,
+  When,
   derived,
   empty,
   head,
@@ -1787,7 +1789,7 @@ fn text_keeps_the_guaranteed_core() {
         Text::new("a"),
         Text::new("a\nb"),
         Grid::new()
-          .set_columns(vec![GridTrack::Length(40.)])
+          .set_columns(vec![GridTrack::length(40)])
           .set_children((Text::new("unbreakable".repeat(4)),)),
         Text::new(""),
         Text::derive(move || shown.get()),
@@ -2092,7 +2094,7 @@ fn named_areas_and_adaptive_tracks_lay_out() {
       .set_children((
         Container::new().set_width(300).set_child(
           Grid::new()
-            .set_columns(vec![GridTrack::Length(100.), GridTrack::Flex(1.)])
+            .set_columns(vec![GridTrack::length(100), GridTrack::Flex(1.)])
             .set_areas(GridAreas::new(["head head", "nav main"]))
             .set_children((
               GridCell::new()
@@ -2139,6 +2141,59 @@ fn named_areas_and_adaptive_tracks_lay_out() {
 
   assert!((first.width() - 250. / 3.).abs() < 0.5);
   assert!(fourth.top() > first.top());
+}
+
+/// A size or a padding below zero under a condition that holds lays out as one below
+/// zero in the base does, as the terminal lays it out, never as a variant CSS drops
+/// for the base's: the box sizes to its content, and the padding's negative edge
+/// takes no room.
+#[wasm_bindgen_test]
+fn a_negative_variant_lays_out_as_a_negative_base() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Row::new()
+      .set_item_alignment(ItemAlignment::Start)
+      .set_children((
+        Container::new()
+          .set_width(Dimension::from(100).when(Media::min_width(1), -4))
+          .set_child(Text::new("ab")),
+        Container::new().set_child(Text::new("ab")),
+        Container::new()
+          .set_padding(Inset::<f32>::all(20).when(Media::min_width(1), Inset::new(-1, 0, 4, 0)))
+          .set_child(Text::new("p")),
+        Container::new().set_child(Text::new("p")),
+      ))
+      .build()
+  });
+
+  let row = only_child(&root);
+  let rect = |index| {
+    row
+      .children()
+      .item(index)
+      .expect("a child")
+      .get_bounding_client_rect()
+  };
+
+  assert!(
+    (rect(0).width() - rect(1).width()).abs() < 0.5,
+    "the negative width sizes the box to its content: {} against {}",
+    rect(0).width(),
+    rect(1).width(),
+  );
+  assert!(
+    (rect(2).width() - rect(3).width() - 4.).abs() < 0.5,
+    "the padding's start takes no room and its end four: {} against {}",
+    rect(2).width(),
+    rect(3).width(),
+  );
+  assert!(
+    (rect(2).height() - rect(3).height()).abs() < 0.5,
+    "the padding's top and bottom are the variant's: {} against {}",
+    rect(2).height(),
+    rect(3).height(),
+  );
 }
 
 /// A child placed between named lines lands on the tracks between them.

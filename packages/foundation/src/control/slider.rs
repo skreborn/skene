@@ -80,9 +80,10 @@ impl Slider {
     self
   }
 
-  /// Sets the extent of the thumb along the axis, a plain number in the medium's unit:
-  /// the thumb's center travels from half of it past the start to half of it short of
-  /// the end. Zero, the default, maps the pointer straight along the whole extent.
+  /// Sets the extent of the thumb along the axis, a plain number in the medium's unit,
+  /// landing in the unit as a length does (a terminal's `1.5` is two cells): the
+  /// thumb's center travels from half of it past the start to half of it short of the
+  /// end. Zero, the default, maps the pointer straight along the whole extent.
   #[inline(always)]
   pub fn set_thumb_extent(mut self, extent: impl Into<Length>) -> Self {
     self.thumb = extent.into().0;
@@ -164,7 +165,7 @@ impl Slider {
       .get()
       .map_or(*event, |track| P::localize_pointer(track, event));
     let extent = self.extent.get();
-    let thumb = self.thumb.clamp(0., extent);
+    let thumb = P::Scalar::from_f32(self.thumb).to_f32().clamp(0., extent);
     let travel = extent - thumb;
 
     if travel > 0. {

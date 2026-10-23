@@ -18,6 +18,17 @@ pub enum Dimension<T> {
   Auto,
 }
 
+impl<N: Scalar> Dimension<N> {
+  /// This dimension with a length or a fraction below zero raised to zero.
+  pub(in crate::spine) fn at_least_zero(self) -> Self {
+    match self {
+      Self::Length(units) if units.to_f32() < 0. => Self::Length(N::ZERO),
+      Self::Fraction(value) => Self::Fraction(value.max(0.)),
+      dimension => dimension,
+    }
+  }
+}
+
 impl<N: Scalar> From<i32> for Dimension<N> {
   /// A plain number as a fixed length.
   #[inline(always)]

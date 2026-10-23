@@ -1351,7 +1351,7 @@ impl<N: Scalar, X: StyleExtension> BoxVisitor<N, Static<Condition<N>>, X>
         leaf
           .clone()
           .try_map(SlotValue::read_box::<T>)
-          .and_then(|leaf| resolver.keyframe_box_value(&leaf))
+          .and_then(|leaf| resolver.keyframe_box_value(key, &leaf))
           .is_some()
       },
       |leaf| {

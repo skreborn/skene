@@ -407,34 +407,10 @@ fn max_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MaxTrackSizingFun
   }
 }
 
-/// Whether a track limit is a length or a fraction below zero, which CSS rejects.
-fn rejected_limit<N: Scalar>(limit: TrackLimit<N>) -> bool {
-  match limit {
-    TrackLimit::Length(units) => units.to_f32() < 0.,
-    TrackLimit::Fraction(value) => value < 0.,
-    TrackLimit::Flex(_) | TrackLimit::Auto | TrackLimit::MinContent | TrackLimit::MaxContent => {
-      false
-    }
-  }
-}
-
-/// Whether a track holds a length or a fraction below zero, for which CSS drops the
-/// whole track list.
-fn rejected<N: Scalar>(value: GridTrack<N>) -> bool {
-  match value {
-    GridTrack::Length(units) | GridTrack::FitContent(units) => units.to_f32() < 0.,
-    GridTrack::Fraction(value) => value < 0.,
-    GridTrack::Between(min, max) | GridTrack::Adaptive(min, max) => {
-      rejected_limit(min) || rejected_limit(max)
-    }
-    GridTrack::Flex(_) | GridTrack::Auto | GridTrack::MinContent | GridTrack::MaxContent => false,
-  }
-}
-
 /// One [`GridTrack`] as a taffy track sizing function; `None` for an adaptive track,
 /// which only a template holds, and for a track CSS rejects.
 fn track<N: Scalar>(value: GridTrack<N>) -> Option<taffy::style::TrackSizingFunction> {
-  if rejected(value) {
+  if value.is_below_zero() {
     return None;
   }
 
@@ -460,35 +436,23 @@ fn explicit<N: Scalar>(
   Vec<taffy::style::GridTemplateComponent<String>>,
   Vec<Vec<String>>,
 ) {
-  let fixed = |limit| matches!(limit, TrackLimit::Length(_) | TrackLimit::Fraction(_));
-  let adaptive = template
-    .tracks()
-    .filter(|entry| matches!(entry, GridTrack::Adaptive(..)))
-    .count();
-
-  if adaptive > 1 {
+  if template.is_dropped() {
     return (Vec::new(), Vec::new());
   }
 
-  let tracks: Option<Vec<_>> = template
+  let tracks = template
     .tracks()
-    .map(|entry| match entry {
-      GridTrack::Adaptive(min, max) => {
-        (!rejected(entry) && (fixed(min) || fixed(max))).then(|| {
-          taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
-            count: taffy::style::RepetitionCount::AutoFill,
-            tracks: vec![minmax(min_track(min), max_track(max))],
-            line_names: Vec::new(),
-          })
-        })
-      }
+    .filter_map(|entry| match entry {
+      GridTrack::Adaptive(min, max) => Some(taffy::style::GridTemplateComponent::Repeat(
+        taffy::style::GridTemplateRepetition {
+          count: taffy::style::RepetitionCount::AutoFill,
+          tracks: vec![minmax(min_track(min), max_track(max))],
+          line_names: Vec::new(),
+        },
+      )),
       entry => track(entry).map(taffy::style::GridTemplateComponent::Single),
     })
     .collect();
-  let Some(tracks) = tracks
-  else {
-    return (Vec::new(), Vec::new());
-  };
   let lines = template.line_names();
   let names = if lines.iter().any(|names| !names.is_empty()) {
     lines
@@ -511,11 +475,11 @@ fn explicit<N: Scalar>(
 /// A track list as taffy's implicit tracks; empty where CSS drops the list, an adaptive
 /// track or a track below zero in it.
 fn implicit<N: Scalar>(tracks: &[GridTrack<N>]) -> Vec<taffy::style::TrackSizingFunction> {
-  tracks
-    .iter()
-    .map(|entry| track(*entry))
-    .collect::<Option<_>>()
-    .unwrap_or_default()
+  if !tracks.iter().all(|entry| entry.is_implicit()) {
+    return Vec::new();
+  }
+
+  tracks.iter().filter_map(|entry| track(*entry)).collect()
 }
 
 /// One [`GridPlacement`] as taffy's: the first line a name finds is taffy's name with no

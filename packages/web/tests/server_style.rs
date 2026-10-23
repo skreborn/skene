@@ -453,10 +453,10 @@ fn grid_tracks_and_placements_render() {
   let rendered = render_to_string(|| {
     Grid::new()
       .set_columns(vec![
-        GridTrack::Length(100.),
+        GridTrack::length(100),
         GridTrack::Flex(1.),
-        GridTrack::Between(TrackLimit::Length(50.), TrackLimit::Flex(2.)),
-        GridTrack::FitContent(200.),
+        GridTrack::between(50, TrackLimit::Flex(2.)),
+        GridTrack::fit_content(200),
       ])
       .set_rows(GridTrack::Auto.repeated(2).collect::<Vec<_>>())
       .set_implicit_rows(vec![GridTrack::MinContent])
@@ -480,10 +480,7 @@ fn grid_tracks_and_placements_render() {
 #[test]
 fn adaptive_tracks_and_flexible_minimums_render() {
   let rendered = render_to_string(|| {
-    Grid::adaptive(120).set_rows(vec![GridTrack::Between(
-      TrackLimit::Flex(1.),
-      TrackLimit::Length(40.),
-    )])
+    Grid::adaptive(120).set_rows(vec![GridTrack::between(TrackLimit::Flex(1.), 40)])
   });
 
   let styles = rendered.styles();
@@ -496,6 +493,34 @@ fn adaptive_tracks_and_flexible_minimums_render() {
     styles.contains("grid-template-rows:minmax(auto, 40px);"),
     "{styles}"
   );
+}
+
+/// A value below what its property takes renders as the terminal lays it out, never as
+/// a declaration CSS would drop for the base's: a size below zero under a variant as
+/// `initial`, a padding's negative edge as none, and a track list holding a negative
+/// track as `initial`.
+#[test]
+fn a_negative_variant_renders_as_the_terminal_lays_it_out() {
+  let rendered = render_to_string(|| {
+    Grid::new()
+      .set_columns(vec![GridTrack::length(-4)])
+      .set_implicit_rows(vec![GridTrack::adaptive(40, TrackLimit::Flex(1.))])
+      .set_children((Container::new()
+        .set_width(Dimension::from(100).when(Media::min_width(1), -4))
+        .set_padding(Inset::<f32>::all(2).when(Media::min_width(1), Inset::new(-1, 0, 4, 0))),))
+  });
+
+  let styles = rendered.styles();
+
+  assert!(styles.contains("width:100px;"), "{styles}");
+  assert!(styles.contains("width:initial;"), "{styles}");
+  assert!(styles.contains("padding-inline:0px 4px;"), "{styles}");
+  assert!(
+    styles.contains("grid-template-columns:initial;"),
+    "{styles}"
+  );
+  assert!(styles.contains("grid-auto-rows:initial;"), "{styles}");
+  assert!(!styles.contains("-4px"), "{styles}");
 }
 
 /// Named areas render as a quoted row per grid row, and a child's placement by an area's

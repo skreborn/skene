@@ -274,6 +274,58 @@ fn lazy_column_windows_its_items() {
   });
 }
 
+/// A fractional item height rounds to a whole cell at the setter, so the window and the
+/// spacers count the cells the items take: scrolled six cells past items two cells
+/// tall, the column shows its fourth item at the top.
+#[test]
+fn a_fractional_item_height_keeps_items_on_their_spacers() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_height(6)
+        .set_child(
+          LazyColumn::new()
+            .set_item_height(1.5)
+            .set_overscan(0)
+            .derive_items(
+              || 0..100,
+              |index| *index,
+              |index| Text::new(format!("row {index}")),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let rows = || {
+      let frame = testing::render_to_text(12, 6);
+      let rows: Vec<String> = frame
+        .lines()
+        .take(3)
+        .map(|line| {
+          line
+            .chars()
+            .take(6)
+            .collect::<String>()
+            .trim_end()
+            .to_owned()
+        })
+        .collect();
+
+      (rows, frame)
+    };
+    let (first, frame) = rows();
+
+    assert_eq!(first, ["row 0", "", "row 1"], "{frame}");
+
+    testing::trigger_mouse_scroll(2, 1, 0, 6);
+
+    let (scrolled, frame) = rows();
+
+    assert_eq!(scrolled, ["row 3", "", "row 4"], "{frame}");
+  });
+}
+
 /// A scrollbar responds to the mouse: a press on the track jumps the thumb there,
 /// dragging follows the pointer, and a mid-scroll thumb paints in eighth-cell blocks.
 #[test]

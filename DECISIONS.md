@@ -10,11 +10,28 @@ supersedes.
 
 - **`f32` cells end to end, rounded at layout and paint** (2026-10-23), the terminal
   keeping every length fractional through resolution and layout and rounding where a
-  cell is drawn: one rounding at the setter (`Scalar::from_f32`) keeps the terminal's
-  lengths `i32` whole cells from the value onward, so layout places every box on a
-  cell and nothing between the setter and the frame rounds again, while a run's font
-  size keeps its fraction of a cell. Revisit when a terminal lays boxes out at sub-cell
-  positions.
+  cell is drawn: a fixed length lands on a whole cell at the setter
+  (`Scalar::from_f32`), and an expression's result and a motion sample land on one
+  where they are evaluated, so the terminal's lengths are `i32` cells from the value
+  onward. Layout still rounds what a fraction or a flexible share distributes and keeps
+  the unrounded rectangles a childless box's eighth-cell painting reads, and a run's
+  font size, a corner radius and a shadow keep their fractions of a cell. Revisit when
+  a terminal draws whole boxes, their children with them, at sub-cell offsets.
+- **Whole cells for every terminal length** (2026-10-23), the terminal's corner radius
+  and its shadow's offset and softening rounded to whole cells at the setter as every
+  other length is: the backdrop paints them in pixels where the terminal shows
+  graphics, so a quarter-cell radius or a half-cell shadow draws as given there, and
+  the cells take them in whole cells where they draw them, so they keep their
+  fractions beside a run's font size. Revisit when the terminal paints its decoration
+  in cells alone.
+- **A negative literal dropped as CSS's parser drops it** (2026-10-23), a variant
+  whose literal is a length below what its property takes falling back to the variant
+  beneath or the base, as a browser that drops the declaration at parse time does:
+  CSS answers the same value as initial when a token, a derived slot or the base
+  carries it, so the drop would make one value lay out two ways by its leaf, and the
+  web instead renders the literal as the drawing platforms lay it out (`initial`, or
+  none for a padding's, a border's or a spacing's edge). Revisit when a browser's
+  behavior for a negative variant is one an app is shown to need.
 - **The prototype's record vocabulary** (2026-10-23), `spikes/linux`'s seam record: a
   `Prop` list of its own, its properties sorted into groups and its values into kinds
   of its own, compiled and resolved in its own `CompileCx`. The style record is the

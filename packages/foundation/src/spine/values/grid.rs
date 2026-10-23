@@ -1,4 +1,4 @@
-use crate::spine::{Leaf, Scalar, StaticLeaf, Value, values::is_identifier};
+use crate::spine::{IntoScalar, Leaf, Scalar, StaticLeaf, Value, values::is_identifier};
 
 /// One grid track's size, in a template or an auto-track list.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,6 +33,69 @@ impl<T: Copy> GridTrack<T> {
   #[inline(always)]
   pub fn repeated(self, count: u16) -> impl Iterator<Item = Self> {
     std::iter::repeat_n(self, count as usize)
+  }
+}
+
+impl<N: Scalar> GridTrack<N> {
+  /// A fixed length, a plain number.
+  #[inline(always)]
+  pub fn length(length: impl IntoScalar<N>) -> Self {
+    Self::Length(length.into_scalar())
+  }
+
+  /// The content's maximum size, clamped to `limit`, a plain number.
+  #[inline(always)]
+  pub fn fit_content(limit: impl IntoScalar<N>) -> Self {
+    Self::FitContent(limit.into_scalar())
+  }
+
+  /// Sized between `min` and `max`, each a limit or a plain number for a fixed length.
+  #[inline(always)]
+  pub fn between(min: impl Into<TrackLimit<N>>, max: impl Into<TrackLimit<N>>) -> Self {
+    Self::Between(min.into(), max.into())
+  }
+
+  /// As many tracks as fit, each sized between `min` and `max`, each a limit or a plain
+  /// number for a fixed length.
+  #[inline(always)]
+  pub fn adaptive(min: impl Into<TrackLimit<N>>, max: impl Into<TrackLimit<N>>) -> Self {
+    Self::Adaptive(min.into(), max.into())
+  }
+
+  /// Whether the track holds a length or a fraction below zero, for which CSS drops
+  /// the whole track list.
+  #[must_use]
+  pub fn is_below_zero(self) -> bool {
+    match self {
+      Self::Length(units) | Self::FitContent(units) => units.to_f32() < 0.,
+      Self::Fraction(value) => value < 0.,
+      Self::Between(min, max) | Self::Adaptive(min, max) => {
+        min.is_below_zero() || max.is_below_zero()
+      }
+      Self::Flex(_) | Self::Auto | Self::MinContent | Self::MaxContent => false,
+    }
+  }
+
+  /// This track with every length, fraction and share below zero raised to zero.
+  pub(in crate::spine) fn at_least_zero(self) -> Self {
+    let zero = |units: N| if units.to_f32() < 0. { N::ZERO } else { units };
+
+    match self {
+      Self::Length(units) => Self::Length(zero(units)),
+      Self::FitContent(units) => Self::FitContent(zero(units)),
+      Self::Fraction(value) => Self::Fraction(value.max(0.)),
+      Self::Flex(value) => Self::Flex(value.max(0.)),
+      Self::Between(min, max) => Self::Between(min.at_least_zero(), max.at_least_zero()),
+      Self::Adaptive(min, max) => Self::Adaptive(min.at_least_zero(), max.at_least_zero()),
+      Self::Auto | Self::MinContent | Self::MaxContent => self,
+    }
+  }
+
+  /// Whether an implicit track list may hold the track: neither adaptive nor below
+  /// zero. CSS drops a list holding any other whole.
+  #[must_use]
+  pub fn is_implicit(self) -> bool {
+    !matches!(self, Self::Adaptive(..)) && !self.is_below_zero()
   }
 }
 
@@ -135,6 +198,39 @@ impl<T> GridTemplate<T> {
   }
 }
 
+impl<N: Scalar> GridTemplate<N> {
+  /// Whether CSS drops the template whole: it holds more than one adaptive track, an
+  /// adaptive track with neither limit a length or a fraction, or a track below zero.
+  #[must_use]
+  pub fn is_dropped(&self) -> bool {
+    let adaptive = self
+      .tracks()
+      .filter(|track| matches!(track, GridTrack::Adaptive(..)))
+      .count();
+
+    adaptive > 1
+      || self.tracks().any(|track| {
+        track.is_below_zero()
+          || matches!(track, GridTrack::Adaptive(min, max) if !min.is_fixed() && !max.is_fixed())
+      })
+  }
+
+  /// This template with every track's lengths, fractions and shares below zero raised
+  /// to zero, its line names kept.
+  pub(in crate::spine) fn at_least_zero(self) -> Self {
+    Self {
+      entries: self
+        .entries
+        .into_iter()
+        .map(|entry| match entry {
+          TemplateEntry::Track(track) => TemplateEntry::Track(track.at_least_zero()),
+          TemplateEntry::Line(name) => TemplateEntry::Line(name),
+        })
+        .collect(),
+    }
+  }
+}
+
 impl<T: Copy> GridTemplate<T> {
   /// The tracks, in order.
   #[inline(always)]
@@ -199,6 +295,36 @@ pub enum TrackLimit<T> {
   MinContent,
   /// The content's maximum size.
   MaxContent,
+}
+
+impl<N: Scalar> TrackLimit<N> {
+  /// Whether the limit is a length or a fraction below zero, which CSS rejects.
+  #[must_use]
+  pub fn is_below_zero(self) -> bool {
+    match self {
+      Self::Length(units) => units.to_f32() < 0.,
+      Self::Fraction(value) => value < 0.,
+      Self::Flex(_) | Self::Auto | Self::MinContent | Self::MaxContent => false,
+    }
+  }
+
+  /// This limit with a length, fraction or share below zero raised to zero.
+  pub(in crate::spine) fn at_least_zero(self) -> Self {
+    match self {
+      Self::Length(units) if units.to_f32() < 0. => Self::Length(N::ZERO),
+      Self::Fraction(value) => Self::Fraction(value.max(0.)),
+      Self::Flex(value) => Self::Flex(value.max(0.)),
+      limit => limit,
+    }
+  }
+
+  /// Whether the limit is a length or a fraction, from which an adaptive track's count
+  /// follows.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_fixed(self) -> bool {
+    matches!(self, Self::Length(_) | Self::Fraction(_))
+  }
 }
 
 impl<N: Scalar> From<i32> for TrackLimit<N> {

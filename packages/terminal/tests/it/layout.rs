@@ -261,7 +261,7 @@ fn grid_tracks_size_columns() {
     let _ = terminal::mount(|| {
       Grid::new()
         .set_columns(vec![
-          GridTrack::Length(4),
+          GridTrack::length(4),
           GridTrack::Flex(1.),
           GridTrack::Flex(1.),
         ])
@@ -300,7 +300,7 @@ fn an_adaptive_grid_fits_its_columns() {
 #[test]
 fn a_second_adaptive_track_drops_the_list() {
   with_platform(|| {
-    let adaptive = GridTrack::Adaptive(TrackLimit::Length(4), TrackLimit::Flex(1.));
+    let adaptive = GridTrack::adaptive(4, TrackLimit::Flex(1.));
     let _ = terminal::mount(move || {
       Grid::new()
         .set_columns(vec![adaptive, adaptive])
@@ -322,7 +322,7 @@ fn a_named_area_places_its_child() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       Grid::new()
-        .set_columns(vec![GridTrack::Length(4), GridTrack::Flex(1.)])
+        .set_columns(vec![GridTrack::length(4), GridTrack::Flex(1.)])
         .set_areas(GridAreas::new(["head head", "nav main"]))
         .set_children((
           GridCell::new()
@@ -353,12 +353,12 @@ fn named_lines_place_a_child() {
       Grid::new()
         .set_columns(
           GridTemplate::new()
-            .add_track(GridTrack::Length(2))
+            .add_track(2)
             .add_line(CONTENT)
-            .add_track(GridTrack::Length(3))
-            .add_track(GridTrack::Length(3))
+            .add_track(3)
+            .add_track(3)
             .add_line(END)
-            .add_track(GridTrack::Length(2)),
+            .add_track(2),
         )
         .set_children((GridCell::new()
           .set_column(Line {
@@ -504,6 +504,65 @@ fn a_negative_width_is_dropped() {
     assert!(lines[0].starts_with("abc"), "{frame}");
     assert_eq!(lines[1].find('|'), lines[2].find('|'), "{frame}");
     assert!(lines[1].find('|') > Some(2), "{frame}");
+  });
+}
+
+/// A width below zero under a condition that holds lays out as a width below zero
+/// does in the base, as the web renders it: the box sizes to its content, and a
+/// padding below zero under a condition takes no room.
+#[test]
+fn a_negative_variant_lays_out_as_a_negative_base() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Row::new().set_children((
+            Container::new()
+              .set_width(Dimension::from(6).when(Media::min_width(1), -4))
+              .set_child(Text::new("ab")),
+            Text::new("c"),
+          )),
+          Row::new().set_children((
+            Container::new()
+              .set_padding(Inset::<i32>::all(2).when(Media::min_width(1), Inset::new(-1, 0, 1, 0)))
+              .set_child(Text::new("p")),
+            Text::new("q"),
+          )),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(8, 2),
+      "abc
+p q
+"
+    );
+  });
+}
+
+/// A width expression that evaluates below zero lays out at zero, as CSS clamps a
+/// `calc()`, never as a dropped width the box would stretch to.
+#[test]
+fn a_negative_width_expression_lays_out_at_zero() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((Container::new()
+          .set_width(Expr::font_size(1.) - 5)
+          .set_height(1)
+          .set_background(red()),))
+        .into_any()
+        .build()
+    });
+
+    let painted = testing::render_to_colors(12, 2)[..12]
+      .iter()
+      .filter(|colors| colors.1 == Some(rgb(red())))
+      .count();
+
+    assert_eq!(painted, 0);
   });
 }
 

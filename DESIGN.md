@@ -634,9 +634,15 @@ Condition     = Media | State | And | Or
   `ContainerQuery::max_width(40)`, so code generic over the platform's scalar writes
   `Inset::all(4)` as an app does. `IntoScalar` lands a number in the unit through
   `Scalar::from_i32` and `Scalar::from_f32`: a pixel holds either exactly, and a cell
-  rounds an `f32` to the nearest at the setter, so layout sees whole cells, while a
-  `Length` (a font size, a corner radius, a letter spacing) keeps its fraction in every
-  unit. An inset of dimensions (a margin, an offset, a pinned edge) takes a plain
+  rounds an `f32` to the nearest at the setter, so a fixed length is a whole cell, as is
+  a lazy list's item extent and a slider's thumb extent; an expression's result and a
+  motion sample land on one where they are evaluated, and layout still rounds what a
+  fraction or a flexible share distributes. A `Length` keeps its fraction in every
+  unit: a font size, a letter spacing, and the terminal's corner radius and shadow
+  offset and softening, which its backdrop paints in pixels (`DECISIONS.md`). A grid
+  track takes a plain number through its constructors (`GridTrack::length`,
+  `fit_content`, `between`, `adaptive`, a limit's number a fixed length) and its own
+  `From`. An inset of dimensions (a margin, an offset, a pinned edge) takes a plain
   number as a fixed length beside a `Dimension`. Any other type is no length, and
   `IntoScalar`'s diagnostic states the rule.
 - Conditions ride the value: `value.when(condition, other)`. The composition machinery
@@ -712,7 +718,16 @@ Condition     = Media | State | And | Or
   drops it. A length below zero is laid out as CSS takes it: a size (a width, a height,
   a limit, a flexible basis) as auto, the declaration dropped, a track list holding one
   dropped whole, a padding, a border or a spacing as none, and a margin or an inset
-  with its sign. The framework invents no layout
+  with its sign. A variant is no exception: a negative length under a condition that
+  holds lays out as the same length in the base, whatever its leaf, so the web renders
+  a negative literal as the drawing platforms lay it out (`initial` for a size and a
+  rejected track list, none for a padding's, a border's or a spacing's edge, `auto` for
+  a basis) rather than as a declaration CSS drops for the base's, a divergence from
+  CSS's parsing recorded in `DECISIONS.md`. An expression and a motion sample are held
+  to the property's range where they are evaluated instead (`Property::is_non_negative`,
+  `BoxValue::in_range_of`), as CSS holds a `calc()` and an interpolated value: a size,
+  a padding, a spacing, a flexibility or a track list below zero is zero there, never
+  dropped. The framework invents no layout
   system.
 - **The record** (`Record<N, X>`) is a node's style as one list: every property its box
   and run styles set, keyed by its `PropertyKey` (each naming one box or run property)
@@ -1200,7 +1215,8 @@ A facade in its own right, not a platform of the web's vocabulary. Its views are
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
 nearest cell at the setter (`1.5` is two) and a margin or an inset keeping its sign,
 laid out as layout takes any length below zero, while a run's font size keeps its
-fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
+fraction of a cell, and so do a corner radius and a shadow's offset and softening,
+which the backdrop paints in pixels and the cells take in whole cells; text is a color plus a `bool` bold, a border is one cell of
 box-drawing characters on each edge its width names, in its own color, its conditions
 are cells and its own background. Nothing the medium lacks exists to call, so a
 terminal app is first-class at compile time rather than best-effort at run time.

@@ -138,6 +138,31 @@ impl Property {
       Self::DecorationColor => "decoration_color",
     }
   }
+
+  /// Whether the property takes no length, fraction or factor below zero, as CSS's
+  /// grammar for it states: a size, a padding, a border width, a spacing, a
+  /// flexibility and a track list. A margin and an offset keep their sign.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_non_negative(self) -> bool {
+    matches!(
+      self,
+      Self::Width
+        | Self::Height
+        | Self::MinWidth
+        | Self::MinHeight
+        | Self::MaxWidth
+        | Self::MaxHeight
+        | Self::Padding
+        | Self::BorderWidth
+        | Self::Spacing
+        | Self::Flex
+        | Self::GridColumns
+        | Self::GridRows
+        | Self::GridImplicitColumns
+        | Self::GridImplicitRows
+    )
+  }
 }
 
 /// A set of property names: the shared [`Property`], or a medium's own.
@@ -165,6 +190,19 @@ pub enum PropertyKey<P> {
   Shared(Property),
   /// A property the medium's style extension adds.
   Extension(P),
+}
+
+impl<P> PropertyKey<P> {
+  /// Whether the property takes nothing below zero ([`Property::is_non_negative`]); a
+  /// medium's own property keeps what it is given.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_non_negative(&self) -> bool {
+    match self {
+      Self::Shared(property) => property.is_non_negative(),
+      Self::Extension(_) => false,
+    }
+  }
 }
 
 impl<P: PropertyName> PropertyKey<P> {

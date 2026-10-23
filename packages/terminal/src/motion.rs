@@ -158,7 +158,8 @@ impl BoxFieldVisitor<i32, TerminalStyle> for RetargetBox<'_> {
   }
 }
 
-/// Writes every box property's running tween and animations over the target.
+/// Writes every box property's running tween and animations over the target, each
+/// sample held to its property's range as CSS holds an interpolated value.
 struct PresentBox<'a> {
   motion: &'a mut Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
   style: &'a mut PlainBox,
@@ -174,8 +175,10 @@ impl BoxFieldVisitor<i32, TerminalStyle> for PresentBox<'_> {
       return;
     }
 
-    let underlying =
-      tweened.or_else(|| F::get(self.style).clone().map(IntoBoxValue::into_box_value));
+    let target = F::get(self.style).clone().map(IntoBoxValue::into_box_value);
+    let underlying = tweened
+      .map(|sample| sample.in_range_of(F::KEY))
+      .or_else(|| target.clone());
     let value = self.motion.animate(
       self.keyframes,
       underlying,
@@ -183,6 +186,12 @@ impl BoxFieldVisitor<i32, TerminalStyle> for PresentBox<'_> {
       self.clock.now,
       self.clock.reduced,
     );
+    let value = if value == target {
+      value
+    }
+    else {
+      value.map(|sample| sample.in_range_of(F::KEY))
+    };
 
     *F::get_mut(self.style) = value.and_then(F::Value::from_box_value);
   }

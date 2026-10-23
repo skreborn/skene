@@ -170,6 +170,44 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   Extension(X::Value),
 }
 
+impl<N: Scalar, X: StyleExtension> BoxValue<N, X> {
+  /// This value held to the range of the property `key`, as CSS holds a computed
+  /// `calc()` and an interpolated value: every length, fraction and factor below zero
+  /// raised to zero where the property takes none below zero, any other value as it is.
+  pub fn in_range_of(self, key: PropertyKey<X::Property>) -> Self {
+    if !key.is_non_negative() {
+      return self;
+    }
+
+    let zero = |units: N| if units.to_f32() < 0. { N::ZERO } else { units };
+
+    match self {
+      Self::Dimension(dimension) => Self::Dimension(dimension.at_least_zero()),
+      Self::Length(Length(length)) => Self::Length(Length(length.max(0.))),
+      Self::Inset(inset) => Self::Inset(Inset {
+        start: zero(inset.start),
+        top: zero(inset.top),
+        end: zero(inset.end),
+        bottom: zero(inset.bottom),
+      }),
+      Self::Spacing(spacing) => Self::Spacing(Spacing {
+        horizontal: zero(spacing.horizontal),
+        vertical: zero(spacing.vertical),
+      }),
+      Self::Flexibility(flex) => Self::Flexibility(Flexibility {
+        initial: flex.initial.at_least_zero(),
+        grow_factor: flex.grow_factor.max(0.),
+        shrink_factor: flex.shrink_factor.max(0.),
+      }),
+      Self::Tracks(tracks) => {
+        Self::Tracks(tracks.into_iter().map(GridTrack::at_least_zero).collect())
+      }
+      Self::Template(template) => Self::Template(template.at_least_zero()),
+      value => value,
+    }
+  }
+}
+
 /// A type a box property holds, erasable into a [`BoxValue`].
 ///
 /// Every shared property type has it for every facade; a medium's own property types
@@ -547,16 +585,19 @@ mod tests {
     Condition,
     Declared,
     Dimension,
+    GridTrack,
     Inset,
     KeptLeaf,
     Leaf,
     Length,
     Media,
+    NoProperty,
     Plain,
     Property,
     PropertyKey,
     Shape,
     Slot,
+    Spacing,
     State,
     StaticLeaf,
     StyleExtension,
@@ -690,5 +731,40 @@ mod tests {
       <box_fields::Spacing as BoxField<f32, ()>>::KEY,
       PropertyKey::Shared(Property::Spacing)
     );
+  }
+
+  /// A value is held to its property's range: a size, a padding, a spacing and a track
+  /// list raise what falls below zero to zero, while a margin keeps its sign.
+  #[test]
+  fn a_value_is_held_to_its_property_range() {
+    type Erased = BoxValue<i32>;
+
+    let key = PropertyKey::<NoProperty>::Shared;
+
+    assert_eq!(
+      Erased::Dimension(Dimension::Length(-3)).in_range_of(key(Property::Width)),
+      Erased::Dimension(Dimension::Length(0))
+    );
+    assert_eq!(
+      Erased::Dimension(Dimension::Fraction(-0.5)).in_range_of(key(Property::MaxHeight)),
+      Erased::Dimension(Dimension::Fraction(0.))
+    );
+    assert_eq!(
+      Erased::Inset(Inset::new(-1, 2, -3, 4)).in_range_of(key(Property::Padding)),
+      Erased::Inset(Inset::new(0, 2, 0, 4))
+    );
+    assert_eq!(
+      Erased::Spacing(Spacing::new(-2, 1)).in_range_of(key(Property::Spacing)),
+      Erased::Spacing(Spacing::new(0, 1))
+    );
+    assert_eq!(
+      Erased::Tracks(vec![GridTrack::length(-2), GridTrack::between(-1, 3)])
+        .in_range_of(key(Property::GridImplicitRows)),
+      Erased::Tracks(vec![GridTrack::length(0), GridTrack::between(0, 3)])
+    );
+
+    let margin = Erased::DimensionInset(Inset::all(Dimension::Length(-2)));
+
+    assert_eq!(margin.clone().in_range_of(key(Property::Margin)), margin);
   }
 }

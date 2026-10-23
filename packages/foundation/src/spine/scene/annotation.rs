@@ -15,6 +15,8 @@ use crate::spine::{
   Line,
   NodeId,
   Plain,
+  Property,
+  PropertyKey,
   Realization,
   Resolver,
   Value,
@@ -63,27 +65,26 @@ impl<P: Realization> Annotation<P> {
       flex: self
         .flex
         .as_ref()
-        .and_then(|value| resolver.declared_value(value)),
-      self_alignment: self
-        .self_alignment
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value)),
-      self_horizontal_alignment: self
-        .self_horizontal_alignment
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value)),
+        .and_then(|value| resolver.declared_value(PropertyKey::Shared(Property::Flex), value)),
+      self_alignment: self.self_alignment.as_ref().and_then(|value| {
+        resolver.declared_value(PropertyKey::Shared(Property::SelfAlignment), value)
+      }),
+      self_horizontal_alignment: self.self_horizontal_alignment.as_ref().and_then(|value| {
+        resolver.declared_value(
+          PropertyKey::Shared(Property::SelfHorizontalAlignment),
+          value,
+        )
+      }),
       pinned: self
         .pinned
         .as_ref()
-        .and_then(|value| resolver.declared_value(value)),
-      grid_row_placement: self
-        .grid_row_placement
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value)),
-      grid_column_placement: self
-        .grid_column_placement
-        .as_ref()
-        .and_then(|value| resolver.declared_value(value)),
+        .and_then(|value| resolver.declared_value(PropertyKey::Shared(Property::Pinned), value)),
+      grid_row_placement: self.grid_row_placement.as_ref().and_then(|value| {
+        resolver.declared_value(PropertyKey::Shared(Property::GridRowPlacement), value)
+      }),
+      grid_column_placement: self.grid_column_placement.as_ref().and_then(|value| {
+        resolver.declared_value(PropertyKey::Shared(Property::GridColumnPlacement), value)
+      }),
       ..BoxStyle::default()
     }
   }

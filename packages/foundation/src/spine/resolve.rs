@@ -522,17 +522,19 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     self.leaf(leaf).and_then(Resolved::into_color)
   }
 
-  /// The winning leaf of a platform's box value, resolved to the property's type: a
-  /// static leaf through tokens and expressions, a slot through the leaf last written
-  /// into it.
+  /// The winning leaf of a platform's box value for the property `key`, resolved to
+  /// the property's type: a static leaf through tokens and expressions, a slot through
+  /// the leaf last written into it, and an expression held to the property's range
+  /// ([`BoxValue::in_range_of`]) as CSS holds a `calc()`.
   #[must_use]
   pub fn box_value<T: IntoBoxValue<N, X>>(
     &self,
+    key: PropertyKey<X::Property>,
     value: &StaticValue<T, Condition<N>>,
   ) -> Option<T> {
     match self.winning(value) {
-      KeptLeaf::Static(leaf) => self.keyframe_box_value(leaf),
-      KeptLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, SlotValue::read_box),
+      KeptLeaf::Static(leaf) => self.keyframe_box_value(key, leaf),
+      KeptLeaf::Slot(slot) => self.box_leaf(key, &(self.slot)(*slot)?, SlotValue::read_box),
     }
   }
 
@@ -547,10 +549,15 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     }
   }
 
-  /// A keyframe's box leaf, resolved to the property's type.
+  /// A keyframe's box leaf for the property `key`, resolved to the property's type, an
+  /// expression held to the property's range.
   #[must_use]
-  pub fn keyframe_box_value<T: IntoBoxValue<N, X>>(&self, leaf: &StaticLeaf<T>) -> Option<T> {
-    self.box_leaf(leaf, |fixed| Some(fixed))
+  pub fn keyframe_box_value<T: IntoBoxValue<N, X>>(
+    &self,
+    key: PropertyKey<X::Property>,
+    leaf: &StaticLeaf<T>,
+  ) -> Option<T> {
+    self.box_leaf(key, leaf, |fixed| Some(fixed))
   }
 
   /// A keyframe's run leaf, resolved to the property's type.
@@ -561,6 +568,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
 
   fn box_leaf<V: Clone, T: IntoBoxValue<N, X>>(
     &self,
+    key: PropertyKey<X::Property>,
     leaf: &StaticLeaf<V>,
     fixed: impl FnOnce(V) -> Option<T>,
   ) -> Option<T> {
@@ -573,6 +581,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
       StaticLeaf::Expr(expr) => self
         .expr(expr.node())
         .and_then(Resolved::into_box_value)
+        .map(|value| value.in_range_of(key))
         .and_then(T::from_box_value),
     }
   }
@@ -595,13 +604,18 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     }
   }
 
-  /// The winning leaf of a declared value, resolved to the property's type; a derived
-  /// leaf is read once, untracked.
+  /// The winning leaf of a declared value for the property `key`, resolved to the
+  /// property's type, an expression held to the property's range; a derived leaf is
+  /// read once, untracked.
   #[must_use]
-  pub fn declared_value<T: IntoBoxValue<N, X>>(&self, value: &Value<T, Condition<N>>) -> Option<T> {
+  pub fn declared_value<T: IntoBoxValue<N, X>>(
+    &self,
+    key: PropertyKey<X::Property>,
+    value: &Value<T, Condition<N>>,
+  ) -> Option<T> {
     match self.winning(value) {
-      Leaf::Static(leaf) => self.keyframe_box_value(leaf),
-      Leaf::Derived(compute) => self.keyframe_box_value(&untrack(|| compute())),
+      Leaf::Static(leaf) => self.keyframe_box_value(key, leaf),
+      Leaf::Derived(compute) => self.keyframe_box_value(key, &untrack(|| compute())),
     }
   }
 
@@ -668,7 +682,7 @@ struct ResolveBox<'a, 'r, N: Scalar, X: StyleExtension> {
 impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveBox<'_, '_, N, X> {
   fn field<F: BoxField<N, X>>(&mut self) {
     if let Some(value) = F::get(self.source) {
-      *F::get_mut(&mut self.target) = self.resolver.box_value(value);
+      *F::get_mut(&mut self.target) = self.resolver.box_value(F::KEY, value);
     }
   }
 }
@@ -683,7 +697,7 @@ struct ResolveBoxKeyframe<'a, 'r, N: Scalar, X: StyleExtension> {
 impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveBoxKeyframe<'_, '_, N, X> {
   fn field<F: BoxField<N, X>>(&mut self) {
     if let Some(leaf) = F::get(self.source) {
-      *F::get_mut(&mut self.target) = self.resolver.keyframe_box_value(leaf);
+      *F::get_mut(&mut self.target) = self.resolver.keyframe_box_value(F::KEY, leaf);
     }
   }
 }

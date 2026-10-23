@@ -69,6 +69,10 @@ in a code comment.
     - Behaviors name no realization, reaching the build's one realization through a
     table of plain functions filled from it once per build.
     - `#[inline(always)]` stays on tiny functions alone.
+    - The author amends `AGENTS.md`'s "a run's font size alone keeping its fraction of
+    a cell" to name beside it the terminal's corner radius and its shadow's offset and
+    softening, which keep their fractions where the backdrop paints them in pixels
+    (`DECISIONS.md`, 2026-10-23).
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.

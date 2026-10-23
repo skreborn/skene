@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **The web re-checking a radio group's chosen radio itself** (2026-10-23), the
+  browser realization writing a group's checked states back after the browser
+  unchecked the chosen radio for one whose choice the handler refused: the chosen
+  member is a fact of the collection in the shared half, so a toggle report on one
+  member re-reads every member's state there, every platform alike, and the web keeps
+  no copy of who is chosen. Revisit when re-reading a group's members on a report shows
+  in a profile.
 - **`Unit::Utf8`** (2026-10-22), a third unit beside `Unit::CodePoint` and
   `Unit::Utf16` for the offsets a text crosses the seam in, since text-input-v3 and
   AccessKit count in bytes: a byte is the editing core's own index, and the core's

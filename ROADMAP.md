@@ -57,7 +57,8 @@ in a code comment.
     strings, and the web's scriptless form names each option by a key of its own, the
     server leaf's and the browser's alike even for a value holding a slice of `usize` or
     `isize`, which `wide_of` hashes at the target's width; the group whose radios share
-    a `name` crosses in that content, replacing `ControlProps::group`. A text entry's
+    a `name` crosses in that content, replacing `ControlProps::group` and the re-read of
+    every member's state a toggle report on one sets off. A text entry's
     secure flag (`set_secure`), the web's `type=password` and every drawn field masked
     through the core's `Masked` engine, which has no client until then;
     `TextEntry::on_key` takes the core's `Binding` table once every field is drawn, the

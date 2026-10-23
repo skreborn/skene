@@ -678,6 +678,8 @@ fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
   // The server serializes its choice as the attribute.
   let _ = served_radios[0].set_attribute("checked", "");
 
+  assert!(served_radios[0].checked(), "the server's choice is checked");
+
   document()
     .body()
     .expect("a body")

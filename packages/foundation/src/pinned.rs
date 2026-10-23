@@ -10,7 +10,6 @@ use crate::{
   Inset,
   IntoChildOf,
   Leaf,
-  NoChild,
   Realization,
   Scene,
   StackChild,
@@ -18,6 +17,7 @@ use crate::{
   Value,
   View,
   Wraps,
+  empty,
 };
 
 /// Pins the child it wraps against the edges of a [`Stack`](crate::Stack), out of
@@ -26,16 +26,16 @@ use crate::{
 /// Creates no node: the edges become the `pinned` property of the child's own style,
 /// so they compile, condition and derive like any property. An edge left `Auto` puts
 /// the child where the stack's alignment does on that axis; every edge is `Auto` until
-/// [`set_edges`](Self::set_edges). Accepted only where a stack's children are; holds
-/// [`NoChild`] until `set_child` supplies the child.
+/// [`set_edges`](Self::set_edges). Accepted only where a stack's children are; a
+/// wrapper without its child renders nothing and takes no room.
 #[must_use]
-pub struct Pinned<P: Realization, C = NoChild> {
+pub struct Pinned<P: Realization> {
   edges: Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>,
-  child: C,
+  child: Option<AnyView<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for Pinned<P, C> {
+impl<P: Realization> std::fmt::Debug for Pinned<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Pinned").finish_non_exhaustive()
   }
@@ -54,7 +54,7 @@ impl<P: Realization> Pinned<P> {
   pub fn new() -> Self {
     Self {
       edges: Value::from(Inset::all(Dimension::Auto)),
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -83,24 +83,27 @@ impl<P: Realization> Pinned<P> {
   }
 
   /// Sets the child.
-  pub fn set_child(self, child: impl View<P>) -> Pinned<P, AnyView<P>> {
-    Pinned {
-      edges: self.edges,
-      child: child.into_any(),
-      platform: PhantomData,
-    }
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
   }
 }
 
-impl<P: Realization> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
+impl<P: Realization> IntoChildOf<P, StackChild> for Pinned<P> {
   fn into_child(self) -> AnyView<P> {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().into_any();
+    };
+
     AnyView::new(move || {
       let annotation = Annotation {
         pinned: Some(self.edges),
         ..Annotation::default()
       };
 
-      Scene::<P>::annotate(annotation, || self.child.build())
+      Scene::<P>::annotate(annotation, || child.build())
     })
   }
 }
@@ -130,5 +133,11 @@ pub trait PinnedBase<P: Realization>: Wraps<Inner = Pinned<P>> {
     edges: impl Fn() -> R + 'static,
   ) -> Self {
     Self::wrap(self.into_inner().derive_edges(edges))
+  }
+
+  /// Sets the child.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

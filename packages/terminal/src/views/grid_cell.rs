@@ -1,6 +1,6 @@
 //! The wrapper placing a grid child in the grid's tracks.
 
-use skene_foundation::{AnyView, GridCellBase, GridChild, IntoChildOf, NoChild, View, Wraps};
+use skene_foundation::{AnyView, GridCellBase, GridChild, IntoChildOf, Wraps};
 
 use crate::Active;
 
@@ -9,7 +9,7 @@ use crate::Active;
 /// Creates no node: the placements and the alignment become properties of the child's
 /// own style, so they compile, condition and derive like any property. The child is
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
-/// are; holds [`NoChild`] until `set_child` supplies the child.
+/// are; a wrapper without its child renders nothing and takes no room.
 ///
 /// ```
 /// use skene_terminal::prelude::*;
@@ -20,7 +20,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, Wraps)]
 #[must_use]
-pub struct GridCell<C = NoChild>(skene_foundation::GridCell<Active, C>);
+pub struct GridCell(skene_foundation::GridCell<Active>);
 
 impl Default for GridCell {
   #[inline(always)]
@@ -31,15 +31,7 @@ impl Default for GridCell {
 
 impl GridCellBase<Active> for GridCell {}
 
-impl GridCell {
-  /// Sets the child.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> GridCell<AnyView<Active>> {
-    GridCell(self.0.set_child(child))
-  }
-}
-
-impl IntoChildOf<Active, GridChild> for GridCell<AnyView<Active>> {
+impl IntoChildOf<Active, GridChild> for GridCell {
   #[inline(always)]
   fn into_child(self) -> AnyView<Active> {
     self.0.into_child()

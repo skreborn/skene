@@ -57,7 +57,7 @@ type BasicTextEditor = skene_foundation::BasicTextEditor<Headless>;
 type BasicTextField = skene_foundation::BasicTextField<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Container = skene_foundation::Container<Headless>;
-type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headless, C>;
+type Flexible = skene_foundation::Flexible<Headless>;
 type RichText = skene_foundation::RichText<Headless>;
 type Row = skene_foundation::Row<Headless>;
 type Span = skene_foundation::Span<Headless>;

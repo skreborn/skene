@@ -102,7 +102,7 @@ use skene_reactive::{
 type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Flexible<C = NoChild> = skene_foundation::Flexible<Headless, C>;
+type Flexible = skene_foundation::Flexible<Headless>;
 type Theme<S, C = NoChild> = skene_foundation::Theme<Headless, S, C>;
 
 const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);

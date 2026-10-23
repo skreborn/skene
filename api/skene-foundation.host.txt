@@ -5561,8 +5561,8 @@ impl core::fmt::Debug for skene_foundation::FlexChild
 pub fn skene_foundation::FlexChild::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::FlexChild
 impl core::marker::StructuralPartialEq for skene_foundation::FlexChild
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Flexible<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P>
+pub fn skene_foundation::Flexible<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub struct skene_foundation::Flexibility<T>
 pub skene_foundation::Flexibility::grow_factor: f32
 pub skene_foundation::Flexibility::initial: skene_foundation::Dimension<T>
@@ -5589,21 +5589,21 @@ pub fn skene_foundation::Flexibility<T>::fmt(&self, &mut core::fmt::Formatter<'_
 impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::Flexibility<T>
 impl<T> core::default::Default for skene_foundation::Flexibility<T>
 pub fn skene_foundation::Flexibility<T>::default() -> Self
-pub struct skene_foundation::Flexible<P: skene_foundation::Realization, C>
+pub struct skene_foundation::Flexible<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Flexible<P>
 pub fn skene_foundation::Flexible<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Flexible<P>::derive_flexibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Flexibility<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Flexible<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::Flexible<P>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
+pub fn skene_foundation::Flexible<P>::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::Flexible<P>::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::Flexible<P>
 pub fn skene_foundation::Flexible<P>::new() -> Self
-impl<P: skene_foundation::Realization, C> core::fmt::Debug for skene_foundation::Flexible<P, C>
-pub fn skene_foundation::Flexible<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization> core::default::Default for skene_foundation::Flexible<P>
 pub fn skene_foundation::Flexible<P>::default() -> Self
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Flexible<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Flexible<P>
+pub fn skene_foundation::Flexible<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P>
+pub fn skene_foundation::Flexible<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub struct skene_foundation::Frame<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Frame<N, X>
 pub fn skene_foundation::Frame<N, X>::box_keyframe(&self) -> skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>
@@ -5707,23 +5707,23 @@ pub fn skene_foundation::GridAreas::fingerprint<H: core::hash::Hasher>(&self, &m
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::GridAreas
 pub fn skene_foundation::GridAreas::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::GridAreas::into_box_value(self) -> skene_foundation::BoxValue<N, X>
-pub struct skene_foundation::GridCell<P: skene_foundation::Realization, C>
+pub struct skene_foundation::GridCell<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::GridCell<P>
 pub fn skene_foundation::GridCell<P>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::GridCell<P>::derive_column<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Line<skene_foundation::GridPlacement>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::GridCell<P>::derive_row<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Line<skene_foundation::GridPlacement>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::GridCell<P>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::GridCell<P>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::GridCell<P, skene_foundation::AnyView<P>>
+pub fn skene_foundation::GridCell<P>::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::GridCell<P>::set_column(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::GridCell<P>::set_row(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::GridCell<P>
 pub fn skene_foundation::GridCell<P>::new() -> Self
-impl<P: skene_foundation::Realization, C> core::fmt::Debug for skene_foundation::GridCell<P, C>
-pub fn skene_foundation::GridCell<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization> core::default::Default for skene_foundation::GridCell<P>
 pub fn skene_foundation::GridCell<P>::default() -> Self
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::GridChild> for skene_foundation::GridCell<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::GridCell<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::GridCell<P>
+pub fn skene_foundation::GridCell<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::GridChild> for skene_foundation::GridCell<P>
+pub fn skene_foundation::GridCell<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub struct skene_foundation::GridChild
 impl core::clone::Clone for skene_foundation::GridChild
 pub fn skene_foundation::GridChild::clone(&self) -> skene_foundation::GridChild
@@ -5736,8 +5736,8 @@ impl core::fmt::Debug for skene_foundation::GridChild
 pub fn skene_foundation::GridChild::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::GridChild
 impl core::marker::StructuralPartialEq for skene_foundation::GridChild
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::GridChild> for skene_foundation::GridCell<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::GridCell<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::GridChild> for skene_foundation::GridCell<P>
+pub fn skene_foundation::GridCell<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub struct skene_foundation::GridName(_)
 impl skene_foundation::GridName
 pub const fn skene_foundation::GridName::as_str(self) -> &'static str
@@ -6641,19 +6641,19 @@ impl core::fmt::Debug for skene_foundation::Piece
 pub fn skene_foundation::Piece::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::Piece
 impl core::marker::StructuralPartialEq for skene_foundation::Piece
-pub struct skene_foundation::Pinned<P: skene_foundation::Realization, C>
+pub struct skene_foundation::Pinned<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Pinned<P>
 pub fn skene_foundation::Pinned<P>::derive_edges<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::Pinned<P>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::Pinned<P, skene_foundation::AnyView<P>>
+pub fn skene_foundation::Pinned<P>::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::Pinned<P>::set_edges(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::Pinned<P>
 pub fn skene_foundation::Pinned<P>::new() -> Self
-impl<P: skene_foundation::Realization, C> core::fmt::Debug for skene_foundation::Pinned<P, C>
-pub fn skene_foundation::Pinned<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization> core::default::Default for skene_foundation::Pinned<P>
 pub fn skene_foundation::Pinned<P>::default() -> Self
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::StackChild> for skene_foundation::Pinned<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Pinned<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Pinned<P>
+pub fn skene_foundation::Pinned<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::StackChild> for skene_foundation::Pinned<P>
+pub fn skene_foundation::Pinned<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub struct skene_foundation::Plain
 impl core::clone::Clone for skene_foundation::Plain
 pub fn skene_foundation::Plain::clone(&self) -> skene_foundation::Plain
@@ -7490,8 +7490,8 @@ impl core::fmt::Debug for skene_foundation::StackChild
 pub fn skene_foundation::StackChild::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::StackChild
 impl core::marker::StructuralPartialEq for skene_foundation::StackChild
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::StackChild> for skene_foundation::Pinned<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Pinned<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::StackChild> for skene_foundation::Pinned<P>
+pub fn skene_foundation::Pinned<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub struct skene_foundation::Static<C>(_)
 impl<C: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> skene_foundation::Shape for skene_foundation::Static<C>
 pub type skene_foundation::Static<C>::Of<T: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> = core::option::Option<skene_foundation::Conditional<skene_foundation::KeptLeaf<T>, C>>
@@ -9059,6 +9059,7 @@ pub fn skene_foundation::FlexibleBase::derive_alignment<R: core::convert::Into<s
 pub fn skene_foundation::FlexibleBase::derive_flexibility<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Flexibility<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::FlexibleBase::new() -> Self
 pub fn skene_foundation::FlexibleBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::ItemAlignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::FlexibleBase::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::FlexibleBase::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub trait skene_foundation::GridBase<P: skene_foundation::Realization>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
 pub fn skene_foundation::GridBase::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
@@ -9118,6 +9119,7 @@ pub fn skene_foundation::GridCellBase::derive_column<R: core::convert::Into<sken
 pub fn skene_foundation::GridCellBase::derive_row<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Line<skene_foundation::GridPlacement>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::GridCellBase::new() -> Self
 pub fn skene_foundation::GridCellBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::GridCellBase::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::GridCellBase::set_column(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::GridCellBase::set_row(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Line<skene_foundation::GridPlacement>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub trait skene_foundation::HasBoxStyle<P: skene_foundation::Realization>
@@ -9346,12 +9348,12 @@ pub trait skene_foundation::IntoChildOf<P: skene_foundation::Realization, Kind>
 pub fn skene_foundation::IntoChildOf::into_child(self) -> skene_foundation::AnyView<P>
 impl<P: skene_foundation::Realization, Kind, V: skene_foundation::View<P>> skene_foundation::IntoChildOf<P, Kind> for V
 pub fn V::into_child(self) -> skene_foundation::AnyView<P>
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Flexible<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::GridChild> for skene_foundation::GridCell<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::GridCell<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
-impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::StackChild> for skene_foundation::Pinned<P, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Pinned<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P>
+pub fn skene_foundation::Flexible<P>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::GridChild> for skene_foundation::GridCell<P>
+pub fn skene_foundation::GridCell<P>::into_child(self) -> skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::StackChild> for skene_foundation::Pinned<P>
+pub fn skene_foundation::Pinned<P>::into_child(self) -> skene_foundation::AnyView<P>
 pub trait skene_foundation::IntoChildren<P: skene_foundation::Realization, Kind>
 pub fn skene_foundation::IntoChildren::into_children(self) -> alloc::vec::Vec<skene_foundation::AnyView<P>>
 impl<P: skene_foundation::Realization, Kind, A: skene_foundation::IntoChildOf<P, Kind>, B: skene_foundation::IntoChildOf<P, Kind>, C: skene_foundation::IntoChildOf<P, Kind>, D2: skene_foundation::IntoChildOf<P, Kind>, E: skene_foundation::IntoChildOf<P, Kind>, F: skene_foundation::IntoChildOf<P, Kind>, G: skene_foundation::IntoChildOf<P, Kind>, H: skene_foundation::IntoChildOf<P, Kind>, I: skene_foundation::IntoChildOf<P, Kind>, J: skene_foundation::IntoChildOf<P, Kind>, K: skene_foundation::IntoChildOf<P, Kind>, L: skene_foundation::IntoChildOf<P, Kind>> skene_foundation::IntoChildren<P, Kind> for (A, B, C, D2, E, F, G, H, I, J, K, L)
@@ -9508,6 +9510,7 @@ pub fn skene_foundation::Painting::paint(skene_foundation::NodeId, alloc::boxed:
 pub trait skene_foundation::PinnedBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::Pinned<P>>
 pub fn skene_foundation::PinnedBase::derive_edges<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::PinnedBase::new() -> Self
+pub fn skene_foundation::PinnedBase::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::PinnedBase::set_edges(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub trait skene_foundation::PropertyName: core::marker::Copy + core::cmp::Eq + core::hash::Hash + core::fmt::Debug + 'static
 pub fn skene_foundation::PropertyName::name(&self) -> &'static str

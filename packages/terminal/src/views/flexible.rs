@@ -1,6 +1,6 @@
 //! The wrapper giving a flex child its flexibility.
 
-use skene_foundation::{AnyView, FlexChild, FlexibleBase, IntoChildOf, NoChild, View, Wraps};
+use skene_foundation::{AnyView, FlexChild, FlexibleBase, IntoChildOf, Wraps};
 
 use crate::Active;
 
@@ -9,8 +9,8 @@ use crate::Active;
 ///
 /// Creates no node: the flexibility becomes the `flex` property of the child's own
 /// style, and the alignment its `self_alignment`, so they compile, condition and derive
-/// like any property. Accepted only where a flex container's children are; holds
-/// [`NoChild`] until `set_child` supplies the child.
+/// like any property. Accepted only where a flex container's children are; a wrapper
+/// without its child renders nothing and takes no room.
 ///
 /// ```
 /// use skene_terminal::prelude::*;
@@ -24,7 +24,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, Wraps)]
 #[must_use]
-pub struct Flexible<C = NoChild>(skene_foundation::Flexible<Active, C>);
+pub struct Flexible(skene_foundation::Flexible<Active>);
 
 impl Default for Flexible {
   #[inline(always)]
@@ -35,15 +35,7 @@ impl Default for Flexible {
 
 impl FlexibleBase<Active> for Flexible {}
 
-impl Flexible {
-  /// Sets the child.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Flexible<AnyView<Active>> {
-    Flexible(self.0.set_child(child))
-  }
-}
-
-impl IntoChildOf<Active, FlexChild> for Flexible<AnyView<Active>> {
+impl IntoChildOf<Active, FlexChild> for Flexible {
   #[inline(always)]
   fn into_child(self) -> AnyView<Active> {
     self.0.into_child()

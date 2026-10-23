@@ -320,12 +320,12 @@ pub fn skene_web::platform::Web::update_box(skene_foundation::spine::node::NodeI
 pub fn skene_web::platform::Web::update_focus_order(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::focus_order::FocusOrder>)
 pub fn skene_web::platform::Web::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::web::ext::WebStyle>>)
 pub fn skene_web::platform::Web::watch_media(&skene_foundation::spine::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible
+pub fn skene_web::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell
+pub fn skene_web::GridCell::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned
+pub fn skene_web::Pinned::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
 impl skene_foundation::stack::StackBase<skene_web::platform::Web> for skene_web::Stack
 impl skene_foundation::surface::DecorationBase<skene_web::platform::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::Web> for skene_web::ContextMenu
@@ -689,22 +689,20 @@ pub fn skene_web::ErrorBoundary<C>::inner(&self) -> &Self::Inner
 pub fn skene_web::ErrorBoundary<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::ErrorBoundary<C>::into_inner(self) -> Self::Inner
 pub fn skene_web::ErrorBoundary<C>::wrap(Self::Inner) -> Self
-pub struct skene_web::prelude::Flexible<C>(_)
-impl skene_web::Flexible
-pub fn skene_web::Flexible::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_web::prelude::Flexible(_)
 impl core::default::Default for skene_web::Flexible
 pub fn skene_web::Flexible::default() -> Self
+impl core::fmt::Debug for skene_web::Flexible
+pub fn skene_web::Flexible::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flexible::FlexibleBase<skene_web::platform::Web> for skene_web::Flexible
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Flexible<C>
-pub fn skene_web::Flexible<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Flexible<C>
-pub type skene_web::Flexible<C>::Inner = skene_foundation::flexible::Flexible<skene_web::platform::Web, C>
-pub fn skene_web::Flexible<C>::inner(&self) -> &Self::Inner
-pub fn skene_web::Flexible<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::Flexible<C>::into_inner(self) -> Self::Inner
-pub fn skene_web::Flexible<C>::wrap(Self::Inner) -> Self
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible
+pub fn skene_web::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::wraps::Wraps for skene_web::Flexible
+pub type skene_web::Flexible::Inner = skene_foundation::flexible::Flexible<skene_web::platform::Web>
+pub fn skene_web::Flexible::inner(&self) -> &Self::Inner
+pub fn skene_web::Flexible::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Flexible::into_inner(self) -> Self::Inner
+pub fn skene_web::Flexible::wrap(Self::Inner) -> Self
 pub struct skene_web::prelude::Grid(_)
 impl core::default::Default for skene_web::Grid
 pub fn skene_web::Grid::default() -> skene_web::Grid
@@ -720,22 +718,20 @@ pub fn skene_web::Grid::into_inner(self) -> Self::Inner
 pub fn skene_web::Grid::wrap(Self::Inner) -> Self
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Grid where skene_foundation::grid::Grid<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Grid::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::prelude::GridCell<C>(_)
-impl skene_web::GridCell
-pub fn skene_web::GridCell::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_web::prelude::GridCell(_)
 impl core::default::Default for skene_web::GridCell
 pub fn skene_web::GridCell::default() -> Self
+impl core::fmt::Debug for skene_web::GridCell
+pub fn skene_web::GridCell::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::grid_cell::GridCellBase<skene_web::platform::Web> for skene_web::GridCell
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::GridCell<C>
-pub fn skene_web::GridCell<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::wraps::Wraps for skene_web::GridCell<C>
-pub type skene_web::GridCell<C>::Inner = skene_foundation::grid_cell::GridCell<skene_web::platform::Web, C>
-pub fn skene_web::GridCell<C>::inner(&self) -> &Self::Inner
-pub fn skene_web::GridCell<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::GridCell<C>::into_inner(self) -> Self::Inner
-pub fn skene_web::GridCell<C>::wrap(Self::Inner) -> Self
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell
+pub fn skene_web::GridCell::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::wraps::Wraps for skene_web::GridCell
+pub type skene_web::GridCell::Inner = skene_foundation::grid_cell::GridCell<skene_web::platform::Web>
+pub fn skene_web::GridCell::inner(&self) -> &Self::Inner
+pub fn skene_web::GridCell::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::GridCell::into_inner(self) -> Self::Inner
+pub fn skene_web::GridCell::wrap(Self::Inner) -> Self
 pub struct skene_web::prelude::Keymap<C>(_)
 impl skene_web::Keymap
 pub fn skene_web::Keymap::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::Keymap<skene_foundation::spine::view::AnyView<skene_web::Active>>
@@ -865,22 +861,20 @@ pub fn skene_web::Painted::into_inner(self) -> Self::Inner
 pub fn skene_web::Painted::wrap(Self::Inner) -> Self
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Painted where skene_foundation::painted::Painted<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Painted::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::prelude::Pinned<C>(_)
-impl skene_web::Pinned
-pub fn skene_web::Pinned::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_web::prelude::Pinned(_)
 impl core::default::Default for skene_web::Pinned
 pub fn skene_web::Pinned::default() -> Self
+impl core::fmt::Debug for skene_web::Pinned
+pub fn skene_web::Pinned::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::pinned::PinnedBase<skene_web::platform::Web> for skene_web::Pinned
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Pinned<C>
-pub fn skene_web::Pinned<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Pinned<C>
-pub type skene_web::Pinned<C>::Inner = skene_foundation::pinned::Pinned<skene_web::platform::Web, C>
-pub fn skene_web::Pinned<C>::inner(&self) -> &Self::Inner
-pub fn skene_web::Pinned<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::Pinned<C>::into_inner(self) -> Self::Inner
-pub fn skene_web::Pinned<C>::wrap(Self::Inner) -> Self
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned
+pub fn skene_web::Pinned::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::wraps::Wraps for skene_web::Pinned
+pub type skene_web::Pinned::Inner = skene_foundation::pinned::Pinned<skene_web::platform::Web>
+pub fn skene_web::Pinned::inner(&self) -> &Self::Inner
+pub fn skene_web::Pinned::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Pinned::into_inner(self) -> Self::Inner
+pub fn skene_web::Pinned::wrap(Self::Inner) -> Self
 pub struct skene_web::prelude::RichText(_)
 impl core::default::Default for skene_web::RichText
 pub fn skene_web::RichText::default() -> skene_web::RichText
@@ -1264,22 +1258,20 @@ pub fn skene_web::ErrorBoundary<C>::inner(&self) -> &Self::Inner
 pub fn skene_web::ErrorBoundary<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::ErrorBoundary<C>::into_inner(self) -> Self::Inner
 pub fn skene_web::ErrorBoundary<C>::wrap(Self::Inner) -> Self
-pub struct skene_web::Flexible<C>(_)
-impl skene_web::Flexible
-pub fn skene_web::Flexible::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_web::Flexible(_)
 impl core::default::Default for skene_web::Flexible
 pub fn skene_web::Flexible::default() -> Self
+impl core::fmt::Debug for skene_web::Flexible
+pub fn skene_web::Flexible::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flexible::FlexibleBase<skene_web::platform::Web> for skene_web::Flexible
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::Flexible<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Flexible<C>
-pub fn skene_web::Flexible<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Flexible<C>
-pub type skene_web::Flexible<C>::Inner = skene_foundation::flexible::Flexible<skene_web::platform::Web, C>
-pub fn skene_web::Flexible<C>::inner(&self) -> &Self::Inner
-pub fn skene_web::Flexible<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::Flexible<C>::into_inner(self) -> Self::Inner
-pub fn skene_web::Flexible<C>::wrap(Self::Inner) -> Self
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible
+pub fn skene_web::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::wraps::Wraps for skene_web::Flexible
+pub type skene_web::Flexible::Inner = skene_foundation::flexible::Flexible<skene_web::platform::Web>
+pub fn skene_web::Flexible::inner(&self) -> &Self::Inner
+pub fn skene_web::Flexible::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Flexible::into_inner(self) -> Self::Inner
+pub fn skene_web::Flexible::wrap(Self::Inner) -> Self
 pub struct skene_web::Grid(_)
 impl core::default::Default for skene_web::Grid
 pub fn skene_web::Grid::default() -> skene_web::Grid
@@ -1295,22 +1287,20 @@ pub fn skene_web::Grid::into_inner(self) -> Self::Inner
 pub fn skene_web::Grid::wrap(Self::Inner) -> Self
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Grid where skene_foundation::grid::Grid<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Grid::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::GridCell<C>(_)
-impl skene_web::GridCell
-pub fn skene_web::GridCell::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_web::GridCell(_)
 impl core::default::Default for skene_web::GridCell
 pub fn skene_web::GridCell::default() -> Self
+impl core::fmt::Debug for skene_web::GridCell
+pub fn skene_web::GridCell::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::grid_cell::GridCellBase<skene_web::platform::Web> for skene_web::GridCell
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::GridCell<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::GridCell<C>
-pub fn skene_web::GridCell<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::wraps::Wraps for skene_web::GridCell<C>
-pub type skene_web::GridCell<C>::Inner = skene_foundation::grid_cell::GridCell<skene_web::platform::Web, C>
-pub fn skene_web::GridCell<C>::inner(&self) -> &Self::Inner
-pub fn skene_web::GridCell<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::GridCell<C>::into_inner(self) -> Self::Inner
-pub fn skene_web::GridCell<C>::wrap(Self::Inner) -> Self
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell
+pub fn skene_web::GridCell::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::wraps::Wraps for skene_web::GridCell
+pub type skene_web::GridCell::Inner = skene_foundation::grid_cell::GridCell<skene_web::platform::Web>
+pub fn skene_web::GridCell::inner(&self) -> &Self::Inner
+pub fn skene_web::GridCell::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::GridCell::into_inner(self) -> Self::Inner
+pub fn skene_web::GridCell::wrap(Self::Inner) -> Self
 pub struct skene_web::Keymap<C>(_)
 impl skene_web::Keymap
 pub fn skene_web::Keymap::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::Keymap<skene_foundation::spine::view::AnyView<skene_web::Active>>
@@ -1440,22 +1430,20 @@ pub fn skene_web::Painted::into_inner(self) -> Self::Inner
 pub fn skene_web::Painted::wrap(Self::Inner) -> Self
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Painted where skene_foundation::painted::Painted<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Painted::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::Pinned<C>(_)
-impl skene_web::Pinned
-pub fn skene_web::Pinned::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_web::Pinned(_)
 impl core::default::Default for skene_web::Pinned
 pub fn skene_web::Pinned::default() -> Self
+impl core::fmt::Debug for skene_web::Pinned
+pub fn skene_web::Pinned::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::pinned::PinnedBase<skene_web::platform::Web> for skene_web::Pinned
-impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>
-pub fn skene_web::Pinned<skene_foundation::spine::view::AnyView<skene_web::Active>>::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_web::Pinned<C>
-pub fn skene_web::Pinned<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::wraps::Wraps for skene_web::Pinned<C>
-pub type skene_web::Pinned<C>::Inner = skene_foundation::pinned::Pinned<skene_web::platform::Web, C>
-pub fn skene_web::Pinned<C>::inner(&self) -> &Self::Inner
-pub fn skene_web::Pinned<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::Pinned<C>::into_inner(self) -> Self::Inner
-pub fn skene_web::Pinned<C>::wrap(Self::Inner) -> Self
+impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned
+pub fn skene_web::Pinned::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
+impl skene_foundation::spine::wraps::Wraps for skene_web::Pinned
+pub type skene_web::Pinned::Inner = skene_foundation::pinned::Pinned<skene_web::platform::Web>
+pub fn skene_web::Pinned::inner(&self) -> &Self::Inner
+pub fn skene_web::Pinned::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Pinned::into_inner(self) -> Self::Inner
+pub fn skene_web::Pinned::wrap(Self::Inner) -> Self
 pub struct skene_web::RichText(_)
 impl core::default::Default for skene_web::RichText
 pub fn skene_web::RichText::default() -> skene_web::RichText

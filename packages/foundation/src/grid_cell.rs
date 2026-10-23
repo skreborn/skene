@@ -12,13 +12,13 @@ use crate::{
   IntoChildOf,
   Leaf,
   Line,
-  NoChild,
   Realization,
   Scene,
   StaticLeaf,
   Value,
   View,
   Wraps,
+  empty,
 };
 
 /// A placement value under the platform's conditions.
@@ -29,17 +29,17 @@ type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Realization>::Sca
 /// Creates no node: the placements and the alignment become properties of the child's
 /// own style, so they compile, condition and derive like any property. The child is
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
-/// are; holds [`NoChild`] until `set_child` supplies the child.
+/// are; a wrapper without its child renders nothing and takes no room.
 #[must_use]
-pub struct GridCell<P: Realization, C = NoChild> {
+pub struct GridCell<P: Realization> {
   row: Option<Placement<P>>,
   column: Option<Placement<P>>,
   alignment: Option<Value<Alignment, Condition<P::Scalar>>>,
-  child: C,
+  child: Option<AnyView<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for GridCell<P, C> {
+impl<P: Realization> std::fmt::Debug for GridCell<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("GridCell").finish_non_exhaustive()
   }
@@ -60,7 +60,7 @@ impl<P: Realization> GridCell<P> {
       row: None,
       column: None,
       alignment: None,
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -124,19 +124,20 @@ impl<P: Realization> GridCell<P> {
   }
 
   /// Sets the child.
-  pub fn set_child(self, child: impl View<P>) -> GridCell<P, AnyView<P>> {
-    GridCell {
-      row: self.row,
-      column: self.column,
-      alignment: self.alignment,
-      child: child.into_any(),
-      platform: PhantomData,
-    }
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
   }
 }
 
-impl<P: Realization> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
+impl<P: Realization> IntoChildOf<P, GridChild> for GridCell<P> {
   fn into_child(self) -> AnyView<P> {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().into_any();
+    };
+
     AnyView::new(move || {
       let (horizontal, vertical) = match self.alignment.as_ref().map(Value::split_axes) {
         Some((horizontal, vertical)) => (Some(horizontal), Some(vertical)),
@@ -151,7 +152,7 @@ impl<P: Realization> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
         ..Annotation::default()
       };
 
-      Scene::<P>::annotate(annotation, || self.child.build())
+      Scene::<P>::annotate(annotation, || child.build())
     })
   }
 }
@@ -210,5 +211,11 @@ pub trait GridCellBase<P: Realization>: Wraps<Inner = GridCell<P>> {
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
     Self::wrap(self.into_inner().derive_alignment(alignment))
+  }
+
+  /// Sets the child.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

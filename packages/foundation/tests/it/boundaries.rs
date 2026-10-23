@@ -9,7 +9,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 
 type Column = skene_foundation::Column<Headless>;
 type Container = skene_foundation::Container<Headless>;
-type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headless, C>;
+type Flexible = skene_foundation::Flexible<Headless>;
 type Text = skene_foundation::Text<Headless>;
 type Suspense<C = skene_foundation::NoChild> = skene_foundation::Suspense<Headless, C>;
 type ErrorBoundary<C = skene_foundation::NoChild> = skene_foundation::ErrorBoundary<Headless, C>;

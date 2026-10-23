@@ -3,6 +3,7 @@
 
 use skene_foundation::{
   Dimension,
+  Flexibility,
   GridPlacement,
   HasChild,
   HasChildren,
@@ -18,12 +19,14 @@ use skene_reactive::{Owner, Set, Track, signal};
 
 use crate::common::only_child;
 
+type Column = skene_foundation::Column<Headless>;
 type Container = skene_foundation::Container<Headless>;
+type Flexible = skene_foundation::Flexible<Headless>;
 type Grid = skene_foundation::Grid<Headless>;
 type Stack = skene_foundation::Stack<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Pinned<C = skene_foundation::NoChild> = skene_foundation::Pinned<Headless, C>;
-type GridCell<C = skene_foundation::NoChild> = skene_foundation::GridCell<Headless, C>;
+type Pinned = skene_foundation::Pinned<Headless>;
+type GridCell = skene_foundation::GridCell<Headless>;
 
 /// A pinned wrapper around a derived subtree lands its edges on the content box, on
 /// every rebuild, and on no other node.
@@ -150,9 +153,82 @@ fn a_wrapper_around_nothing_annotates_no_later_box() {
       ))
       .build()
   });
-  let later = *children(root).last().expect("the later box");
+  let later = children(root)
+    .into_iter()
+    .find_map(box_props)
+    .expect("the later box");
 
-  assert_eq!(box_props(later).and_then(|props| props.style.pinned), None);
+  assert_eq!(later.style.pinned, None);
+
+  owner.dispose();
+}
+
+/// A wrapper without its child renders nothing, so it takes no room in its container,
+/// and annotates no later box.
+#[test]
+fn a_wrapper_without_its_child_renders_nothing() {
+  reset();
+
+  let owner = Owner::new();
+  let (stack, column, grid) = owner.enter(|| {
+    let stack = Stack::new()
+      .set_children((
+        Pinned::new().set_edges(Inset::all(Dimension::Length(4.))),
+        Container::new(),
+      ))
+      .build();
+    let column = Column::new()
+      .set_children((
+        Flexible::new().set_flexibility(Flexibility::grow(1.)),
+        Container::new(),
+      ))
+      .build();
+    let grid = Grid::uniform(2)
+      .set_children((GridCell::new().set_row(Line::at(2)), Container::new()))
+      .build();
+
+    (stack, column, grid)
+  });
+
+  assert_eq!(outline(stack), "Box\n  Box\n");
+  assert_eq!(outline(column), "Box\n  Box\n");
+  assert_eq!(outline(grid), "Box\n  Box\n");
+
+  let later = |root: NodeId| {
+    let boxes: Vec<_> = children(root).into_iter().filter_map(box_props).collect();
+
+    assert_eq!(boxes.len(), 1);
+
+    boxes.into_iter().next().unwrap()
+  };
+
+  assert_eq!(later(stack).style.pinned, None);
+  assert_eq!(later(column).style.flex, None);
+  assert_eq!(later(grid).style.grid_row_placement, None);
+
+  owner.dispose();
+}
+
+/// A wrapper given its child takes its setters still.
+#[test]
+fn a_wrapper_given_its_child_takes_its_setters() {
+  reset();
+
+  let owner = Owner::new();
+  let edges = Inset::all(Dimension::Length(4.));
+  let root = owner.enter(|| {
+    let wrapper = Pinned::new().set_child(Container::new());
+
+    Stack::new()
+      .set_children((wrapper.set_edges(edges),))
+      .build()
+  });
+  let content = children(root)
+    .into_iter()
+    .find_map(box_props)
+    .expect("the content box");
+
+  assert_eq!(content.style.pinned, Some(StaticValue::from(edges)));
 
   owner.dispose();
 }

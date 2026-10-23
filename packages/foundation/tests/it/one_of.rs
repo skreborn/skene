@@ -10,7 +10,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Flexible<C = skene_foundation::NoChild> = skene_foundation::Flexible<Headless, C>;
+type Flexible = skene_foundation::Flexible<Headless>;
 type OneOf<K> = skene_foundation::OneOf<Headless, K>;
 
 /// Flipping away and back reattaches the same branch node with its signal intact, the

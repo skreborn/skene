@@ -11,13 +11,13 @@ use crate::{
   IntoChildOf,
   ItemAlignment,
   Leaf,
-  NoChild,
   Realization,
   Scene,
   StaticLeaf,
   Value,
   View,
   Wraps,
+  empty,
 };
 
 /// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
@@ -25,17 +25,17 @@ use crate::{
 ///
 /// Creates no node: the flexibility becomes the `flex` property of the child's own
 /// style, and the alignment its `self_alignment`, so they compile, condition and
-/// derive like any property. Accepted only where a flex container's children are;
-/// holds [`NoChild`] until `set_child` supplies the child.
+/// derive like any property. Accepted only where a flex container's children are; a
+/// wrapper without its child renders nothing and takes no room.
 #[must_use]
-pub struct Flexible<P: Realization, C = NoChild> {
+pub struct Flexible<P: Realization> {
   flexibility: Value<Flexibility<P::Scalar>, Condition<P::Scalar>>,
   alignment: Option<Value<ItemAlignment, Condition<P::Scalar>>>,
-  child: C,
+  child: Option<AnyView<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for Flexible<P, C> {
+impl<P: Realization> std::fmt::Debug for Flexible<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Flexible").finish_non_exhaustive()
   }
@@ -55,7 +55,7 @@ impl<P: Realization> Flexible<P> {
     Self {
       flexibility: Value::from(Flexibility::default()),
       alignment: None,
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -104,18 +104,20 @@ impl<P: Realization> Flexible<P> {
   }
 
   /// Sets the child.
-  pub fn set_child(self, child: impl View<P>) -> Flexible<P, AnyView<P>> {
-    Flexible {
-      flexibility: self.flexibility,
-      alignment: self.alignment,
-      child: child.into_any(),
-      platform: PhantomData,
-    }
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
   }
 }
 
-impl<P: Realization> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
+impl<P: Realization> IntoChildOf<P, FlexChild> for Flexible<P> {
   fn into_child(self) -> AnyView<P> {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().into_any();
+    };
+
     AnyView::new(move || {
       let annotation = Annotation {
         flex: Some(self.flexibility),
@@ -123,7 +125,7 @@ impl<P: Realization> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
         ..Annotation::default()
       };
 
-      Scene::<P>::annotate(annotation, || self.child.build())
+      Scene::<P>::annotate(annotation, || child.build())
     })
   }
 }
@@ -168,5 +170,11 @@ pub trait FlexibleBase<P: Realization>: Wraps<Inner = Flexible<P>> {
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
     Self::wrap(self.into_inner().derive_alignment(alignment))
+  }
+
+  /// Sets the child.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

@@ -1,7 +1,8 @@
 //! Overlays in cells: a modal following its signal without rebuilding, its scrim,
 //! blocking and dismissal, a dismiss as a request the app answers, a popup's anchoring,
 //! re-placing and light dismissal, focus trapped inside a modal, taken by it on open and
-//! returned on close, and a focus handle moving focus to the view it is bound to.
+//! returned on close, a closed overlay's tab stops passed over, and a focus handle moving
+//! focus to the view it is bound to.
 
 use std::{
   cell::{Cell, RefCell},
@@ -481,6 +482,69 @@ fn a_modal_traps_focus() {
     testing::trigger_key("Tab");
 
     assert_eq!(testing::focused_node(), outside.node());
+  });
+}
+
+/// A closed overlay's tab stops are passed over, and an open one's take their place in
+/// the order where the overlay stands.
+#[test]
+fn a_closed_overlays_tab_stops_are_passed_over() {
+  with_platform(|| {
+    let open = Signal::new(false);
+    let (before, inside, after) = (NodeHandle::new(), NodeHandle::new(), NodeHandle::new());
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new())
+            .set_label("before")
+            .bind_handle(before)
+            .into_any(),
+          Overlay::popup()
+            .bind_open(open)
+            .set_child(
+              BasicButton::new(Activate::new())
+                .set_label("inside")
+                .bind_handle(inside),
+            )
+            .into_any(),
+          BasicButton::new(Activate::new())
+            .set_label("after")
+            .bind_handle(after)
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(12, 4);
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), before.node());
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::focused_node(),
+      after.node(),
+      "the closed overlay's stop is passed over"
+    );
+
+    open.set(true);
+
+    let _ = testing::render_to_text(12, 4);
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), before.node(), "the order wraps");
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::focused_node(),
+      inside.node(),
+      "the open overlay's stop stands where it does"
+    );
   });
 }
 

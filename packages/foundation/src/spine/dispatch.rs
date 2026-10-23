@@ -340,6 +340,7 @@ type Selected<H> = SmallVec<[Registered<H>; 2]>;
 /// The nodes a move from one node to another crosses, read from their ancestries, a
 /// node and the nodes it stands in, itself first, as [`Scene::ancestry`] gives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[must_use]
 pub(in crate::spine) struct Crossing {
   /// The nodes whose subtree the move left, innermost first.
   pub(in crate::spine) left: SmallVec<[NodeId; 16]>,

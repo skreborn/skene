@@ -37,6 +37,7 @@ pub(in crate::spine) struct OpenOverlay {
 /// An ancestry is a node and the nodes it stands in, itself first, as
 /// [`Scene::ancestry`] gives it.
 #[derive(Debug, Clone)]
+#[must_use]
 pub(in crate::spine) struct OverlayStack {
   open: SmallVec<[OpenOverlay; 4]>,
 }

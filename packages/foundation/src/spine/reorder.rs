@@ -73,6 +73,7 @@ impl Reorder {
 /// hands back the gone ones, and [`place_displaced`](Self::place_displaced) names the
 /// items to re-insert, so a segment's content follows the items in order.
 #[derive(Debug)]
+#[must_use]
 pub(in crate::spine) struct KeyedItems<M> {
   mounted: Vec<(Key, M)>,
   old: FxHashMap<Key, VecDeque<(usize, M)>>,
@@ -207,13 +208,14 @@ mod tests {
 
   use super::{KeyedItems, Reorder};
 
-  /// A segment's content as a reconcile drives it, with what each owner was built under:
-  /// items are owners, plain ids.
+  /// A segment's content as a reconcile drives it, with what each owner was built under
+  /// and from which index of its list: items are owners, plain ids.
   #[derive(Default)]
   struct Model {
     items: KeyedItems<u32>,
     content: Vec<u32>,
     scopes: HashMap<u32, Key>,
+    built_at: HashMap<u32, usize>,
     next: u32,
   }
 
@@ -228,6 +230,7 @@ mod tests {
         assert_eq!(scope_of(&keys, index), scope);
         self.next += 1;
         self.scopes.insert(owner, scope);
+        self.built_at.insert(owner, index);
         built.push(owner);
 
         owner
@@ -460,9 +463,7 @@ mod tests {
         let (built, dropped) = model.run(&list);
 
         for owner in &built {
-          let index = model.content.iter().position(|placed| placed == owner).unwrap();
-
-          item_of.insert(*owner, list[index]);
+          item_of.insert(*owner, list[model.built_at[owner]]);
         }
 
         let items: Vec<u8> = model.content.iter().map(|owner| item_of[owner]).collect();

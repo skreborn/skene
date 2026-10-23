@@ -3,7 +3,8 @@
 //! items and disposes a removed one's owner; a switch keeps each branch it built, pauses
 //! a hidden one and annotates every branch its wrapper surrounds; a show builds its
 //! child the first time it shows, keeps it in place, and hides and shows the same node;
-//! a destroyed node holds no focus; and a view given its child still takes its setters.
+//! a destroyed node holds no focus and no press; and a view given its child still takes its
+//! setters.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -557,7 +558,8 @@ fn show_detaches_and_reattaches_the_same_node() {
   });
 }
 
-/// A focused node holds focus until it is destroyed, and holds none after.
+/// A focused node holds focus and a press until it is destroyed, and the scene holds
+/// neither after.
 #[test]
 fn a_destroyed_node_holds_no_focus() {
   with_platform(|| {
@@ -582,15 +584,23 @@ fn a_destroyed_node_holds_no_focus() {
     let _ = testing::render_to_text(4, 1);
     let node = handle.node().expect("the box built");
 
+    let held = || Scene::<Terminal>::read(|scene| (scene.focused(), scene.pressed()));
+
     handle.focus();
+    testing::trigger_mouse_press(0, 0);
 
     assert_eq!(testing::focused_node(), Some(node));
+    assert!(
+      matches!(held(), (Some(focused), Some(_)) if focused == node),
+      "the box holds focus and the press"
+    );
 
     alive.set(false);
 
     assert_eq!(testing::render_to_text(4, 1), "gone\n");
     assert!(!is_live(node));
     assert_eq!(testing::focused_node(), None);
+    assert_eq!(held(), (None, None), "the scene holds neither");
   });
 }
 

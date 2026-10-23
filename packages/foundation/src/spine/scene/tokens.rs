@@ -113,6 +113,7 @@ impl<N: Scalar> ResolvedTokens<N> {
 /// The definitions a scene holds apart from its nodes': the root's every node falls back
 /// to, the token sets laid over them, and a generation that moves whenever what a node
 /// resolves a token to may have changed.
+#[must_use]
 pub(super) struct TokenState<V> {
   root: Definitions<V>,
   root_sets: FxHashSet<TypeId>,

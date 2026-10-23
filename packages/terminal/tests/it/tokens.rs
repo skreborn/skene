@@ -2,8 +2,9 @@
 //! a definition naming another token reads it at the defining scope, and a scope
 //! beneath that redefines it changes nothing above. A token set read with no theme
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
-//! The nearest theme's palette answers, an expression or a derived leaf over a token
-//! resolves through it, and the token answers the scheme where it is read.
+//! The nearest theme's palette answers, as the tree stands after a box moves, an
+//! expression or a derived leaf over a token resolves through it, and the token answers
+//! the scheme where it is read.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -11,6 +12,7 @@ use skene_simple_terminal::{glyph, *};
 use skene_terminal::{
   self as terminal,
   Definition,
+  Definitions,
   Length,
   Scene,
   StaticLeaf,
@@ -320,6 +322,71 @@ fn nested_themes_resolve_the_nearest_palette() {
     );
     assert_eq!(colors_at(4, 2, 0, 1).1, Some(rgb(red())), "the inner card");
     assert_eq!(seen.take(), Some(Cards::with_card(red())));
+  });
+}
+
+/// A token resolves to its nearest definer as the tree stands now, whatever a node
+/// looked up before: a box taken out of its theme falls back to the root, put back it
+/// reads the theme again, and a scope defined between them answers in the theme's place.
+#[test]
+fn a_token_resolves_to_its_nearest_definer_as_the_tree_stands() {
+  with_platform(|| {
+    let theme = terminal::mount(|| {
+      Theme::new(Cards::with_card(red()))
+        .set_child_builder(|| {
+          Column::new().set_children((Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(CARD)
+            .into_any(),))
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())));
+
+    let color = |color: Color| Some(TokenValue::Color(Definition::from(color)));
+
+    Scene::<Terminal>::with(|scene| {
+      let column = scene.children(theme).next().expect("the themed column");
+      let leaf = scene.children(column).next().expect("the box");
+      let root = scene.root_definitions().get(CARD.name()).cloned();
+
+      assert_eq!(scene.resolve_token(leaf, CARD.name()), color(red()));
+
+      scene.detach(column, leaf);
+
+      assert_eq!(
+        scene.resolve_token(leaf, CARD.name()),
+        root,
+        "out of the theme"
+      );
+
+      scene.attach(column, leaf, None);
+
+      assert_eq!(
+        scene.resolve_token(leaf, CARD.name()),
+        color(red()),
+        "back under it"
+      );
+
+      scene.define_tokens(
+        column,
+        Definitions::from(vec![(
+          CARD.name(),
+          TokenValue::Color(Definition::from(blue())),
+        )]),
+      );
+
+      assert_eq!(
+        scene.resolve_token(leaf, CARD.name()),
+        color(blue()),
+        "under a nearer definer"
+      );
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(blue())));
   });
 }
 

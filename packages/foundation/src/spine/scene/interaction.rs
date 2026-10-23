@@ -24,6 +24,7 @@ use crate::spine::{
 /// What holds along a node's ancestors reads them through an `ancestry`, a node and the
 /// nodes it stands in, itself first, as [`Scene::ancestry`] gives it.
 #[derive(Debug, Clone)]
+#[must_use]
 pub(in crate::spine) struct Held {
   hovered: Option<NodeId>,
   pressed: Option<NodeId>,

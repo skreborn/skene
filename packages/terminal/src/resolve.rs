@@ -3,8 +3,10 @@
 //! into its own vocabulary.
 //!
 //! In a debug build every box, run and keyframe style also resolves through the node's
-//! [`Record`](skene_foundation::Record), held equal to the typed resolution, and to
-//! reading the node's interaction as it does, before the terminal's own fill-ins.
+//! [`Record`](skene_foundation::Record) compiled at
+//! [`Keep::Nothing`](skene_foundation::Keep::Nothing), held equal to the typed
+//! resolution, and to reading the node's interaction as it does, before the terminal's
+//! own fill-ins.
 
 use skene_foundation::{
   BoxStyle,
@@ -12,6 +14,7 @@ use skene_foundation::{
   Condition,
   Conditional,
   Frame,
+  Keeping,
   KeptLeaf,
   Keyframe,
   ResolutionContext,
@@ -76,7 +79,12 @@ impl<'a> Env<'a> {
         keyframe,
         resolver,
         || resolver.box_keyframe(keyframe),
-        || Frame::of_box(keyframe).resolve(resolver).boxed,
+        || {
+          Frame::of_box(keyframe)
+            .compile(Keeping::Nothing(resolver))
+            .resolved()
+            .boxed
+        },
       )
     })
   }
@@ -92,7 +100,12 @@ impl<'a> Env<'a> {
         keyframe,
         resolver,
         || resolver.run_keyframe(keyframe),
-        || Frame::of_run(keyframe).resolve(resolver).run,
+        || {
+          Frame::of_run(keyframe)
+            .compile(Keeping::Nothing(resolver))
+            .resolved()
+            .run
+        },
       )
     })
   }
@@ -118,7 +131,8 @@ impl<'a> Env<'a> {
         || resolver.box_style(source),
         || {
           record::of_box(source, &props.dynamics)
-            .resolve(resolver)
+            .compile(Keeping::Nothing(resolver))
+            .resolved()
             .boxed
         },
       )
@@ -151,7 +165,8 @@ impl<'a> Env<'a> {
         || resolver.run_style(&source),
         || {
           record::of_run(&source, &RunDynamics::default())
-            .resolve(resolver)
+            .compile(Keeping::Nothing(resolver))
+            .resolved()
             .run
         },
       );
@@ -192,7 +207,8 @@ impl<'a> Env<'a> {
         || resolver.run_style(&props.style),
         || {
           record::of_run(&props.style, &props.dynamics)
-            .resolve(resolver)
+            .compile(Keeping::Nothing(resolver))
+            .resolved()
             .run
         },
       );
@@ -247,6 +263,7 @@ mod record {
 
     record.add_box(style);
     record.add_box_dynamics(dynamics);
+
     hold(
       "box's motion",
       dynamics,
@@ -274,6 +291,7 @@ mod record {
 
     record.add_run(style);
     record.add_run_dynamics(dynamics);
+
     hold(
       "run's motion",
       dynamics,
@@ -292,8 +310,9 @@ mod record {
   }
 
   /// What a `kind` style `source` resolves to `typed` with `resolver`; in a debug build
-  /// it resolves through its `record` as well, held to resolving alike and to reading
-  /// the interaction alike, the interaction read as the typed resolution alone reads it.
+  /// it resolves through its `record`, compiled at
+  /// [`Keep::Nothing`](skene_foundation::Keep::Nothing), as well, held to resolving alike and to
+  /// reading the interaction alike, the interaction read as the typed resolution alone reads it.
   pub(super) fn held<T: Fingerprint + Debug>(
     kind: &str,
     source: &impl Debug,
@@ -312,6 +331,7 @@ mod record {
     let record_read = resolver.interaction_read.replace(read || typed_read);
 
     hold(kind, source, &typed, &record);
+
     debug_assert_eq!(
       record_read, typed_read,
       "the {kind} {source:?} reads the interaction through its record apart from typed"

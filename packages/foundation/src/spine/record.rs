@@ -1,5 +1,8 @@
 //! A node's style as one record: every property it sets under Skene's name for it, the
-//! value erased over the property, and its motion as data.
+//! value erased over the property, and its motion as data; and the record compiled to
+//! the level a realization keeps.
+
+use std::hash::{Hash, Hasher};
 
 use super::{
   Animation,
@@ -8,8 +11,10 @@ use super::{
   BoxFieldVisitor,
   BoxStyle,
   Condition,
+  Fingerprint,
   IntoBoxValue,
   IntoRunValue,
+  KeptLeaf,
   Keyframe,
   Plain,
   PropertyKey,
@@ -19,9 +24,11 @@ use super::{
   RunFieldVisitor,
   RunStyle,
   Scalar,
+  Slot,
   SlotLeaf,
   SlotValue,
   Static,
+  StaticLeaf,
   StaticValue,
   StyleExtension,
   Transition,
@@ -58,7 +65,7 @@ pub type FrameEntry<N, X = ()> = (PropertyKey<<X as StyleExtension>::Property>, 
 /// of another property's kind does not compile, and read erased, entry by entry in the
 /// order the styles' visitors give. [`box_style`](Self::box_style) and
 /// [`run_style`](Self::run_style) read the typed styles back, and
-/// [`resolve`](Self::resolve) resolves them through the one [`Resolver`].
+/// [`compile`](Self::compile) compiles it to the level a realization keeps.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Record<N: Scalar, X: StyleExtension = ()> {
@@ -73,6 +80,72 @@ pub struct Record<N: Scalar, X: StyleExtension = ()> {
 #[must_use]
 pub struct Frame<N: Scalar, X: StyleExtension = ()> {
   entries: Vec<FrameEntry<N, X>>,
+}
+
+/// What of a style a realization keeps unresolved, its toolkit resolving it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum Keep {
+  /// Nothing: the shared half resolves every value at the node, its tokens, expressions,
+  /// media and container conditions, states and slots, and each keyframe's leaves; the
+  /// transitions and the animations' timing cross as data.
+  Nothing,
+  /// Everything: a token by its name, which the realization keys by the theme scope
+  /// defining it, never by its definition's content; an expression as its tree; media,
+  /// container and state conditions as conditions; a derived leaf as the node's slot,
+  /// written apart from the static part.
+  Everything,
+}
+
+/// A [`Keep`] level with what the shared half resolves the rest through.
+#[derive(Debug, Clone, Copy)]
+pub enum Keeping<'a, 'r, N: Scalar, X: StyleExtension = ()> {
+  /// [`Keep::Nothing`], every value resolved by `resolver` at its node.
+  Nothing(&'a Resolver<'r, N, X>),
+  /// [`Keep::Everything`], which resolves nothing.
+  Everything,
+}
+
+impl<N: Scalar, X: StyleExtension> Keeping<'_, '_, N, X> {
+  /// The level.
+  #[inline(always)]
+  pub const fn keep(&self) -> Keep {
+    match self {
+      Self::Nothing(_) => Keep::Nothing,
+      Self::Everything => Keep::Everything,
+    }
+  }
+}
+
+/// A slot a [`CompiledStyle`]'s static part references: the property it belongs to and
+/// the leaf's position in the property's value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct SlotBinding<P> {
+  /// The slot.
+  pub slot: Slot,
+  /// The property the slot belongs to.
+  pub property: PropertyKey<P>,
+  /// The leaf's position: `0` the base, `i` the `i`-th variant.
+  pub position: usize,
+}
+
+/// A [`Record`] compiled to the level its realization keeps ([`Record::compile`]).
+///
+/// Its static part, the entries and the motion, is a function of the record and, at
+/// [`Keep::Nothing`], of what the resolver read; a derived leaf's value never reaches
+/// it, a slot standing in its place at [`Keep::Everything`]. Its
+/// [`address`](Self::address) is the static part's wide hash, a cache key alone: equal
+/// static parts share an address, and a realization names nothing by it.
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub struct CompiledStyle<N: Scalar, X: StyleExtension = ()> {
+  keep: Keep,
+  entries: Vec<RecordEntry<N, X>>,
+  transitions: Vec<Transition<X::Property>>,
+  animations: Vec<Animation<Frame<N, X>>>,
+  slots: Vec<SlotBinding<X::Property>>,
+  address: u128,
 }
 
 /// A style resolved at a node: the box's and the run's properties, each a plain value.
@@ -230,14 +303,46 @@ impl<N: Scalar, X: StyleExtension> Record<N, X> {
     visitor.target
   }
 
-  /// Every property the record sets, resolved at the node `resolver` reads: the typed
-  /// styles read back, resolved as [`Resolver::box_style`] and [`Resolver::run_style`]
-  /// resolve them.
-  pub fn resolve(&self, resolver: &Resolver<'_, N, X>) -> ResolvedStyle<N, X> {
-    ResolvedStyle {
-      boxed: resolver.box_style(&self.box_style()),
-      run: resolver.run_style(&self.run_style()),
-    }
+  /// The record compiled to the level `keeping` names, in the record's order.
+  ///
+  /// At [`Keep::Everything`] every entry and frame stays as the record holds it, and
+  /// each slot an entry references is bound to its property and position. At
+  /// [`Keep::Nothing`] each property is resolved as [`Resolver::box_value`] and
+  /// [`Resolver::run_value`] resolve it, a fixed leaf under no condition, and each frame
+  /// as [`Frame::compile`] resolves it; a property resolving to nothing is left out.
+  pub fn compile(&self, keeping: Keeping<'_, '_, N, X>) -> CompiledStyle<N, X> {
+    let entries = match keeping {
+      Keeping::Everything => self.entries.clone(),
+      Keeping::Nothing(resolver) => {
+        let mut resolve = ResolveEntries {
+          record: self,
+          resolver,
+          resolved: vec![None; self.entries.len()],
+        };
+
+        BoxStyle::<N, Static<Condition<N>>, X>::for_each_field(&mut resolve);
+        RunStyle::<Static<Condition<N>>, X>::for_each_field(&mut resolve);
+
+        self
+          .entries
+          .iter()
+          .zip(resolve.resolved)
+          .filter_map(|((key, _), value)| Some((*key, StaticValue::from(value?))))
+          .collect()
+      }
+    };
+    let animations = self
+      .animations
+      .iter()
+      .map(|animation| animation.map_keyframes(|frame| frame.compile(keeping)))
+      .collect();
+
+    CompiledStyle::new(
+      keeping.keep(),
+      entries,
+      self.transitions.clone(),
+      animations,
+    )
   }
 }
 
@@ -318,14 +423,329 @@ impl<N: Scalar, X: StyleExtension> Frame<N, X> {
     visitor.target
   }
 
-  /// Every leaf of the frame resolved at the node `resolver` reads: the typed keyframes
-  /// read back, resolved as [`Resolver::box_keyframe`] and [`Resolver::run_keyframe`]
-  /// resolve them.
-  pub fn resolve(&self, resolver: &Resolver<'_, N, X>) -> ResolvedStyle<N, X> {
-    ResolvedStyle {
-      boxed: resolver.box_keyframe(&self.box_keyframe()),
-      run: resolver.run_keyframe(&self.run_keyframe()),
+  /// The frame compiled to the level `keeping` names: as it is at
+  /// [`Keep::Everything`]; at [`Keep::Nothing`] each leaf resolved as
+  /// [`Resolver::keyframe_box_value`] and [`Resolver::keyframe_run_value`] resolve it, a
+  /// fixed leaf, one resolving to nothing left out.
+  pub fn compile(&self, keeping: Keeping<'_, '_, N, X>) -> Self {
+    let Keeping::Nothing(resolver) = keeping
+    else {
+      return self.clone();
+    };
+    let mut resolve = ResolveFrame {
+      frame: self,
+      resolver,
+      resolved: vec![None; self.entries.len()],
+    };
+
+    BoxStyle::<N, Keyframe, X>::for_each_field(&mut resolve);
+    RunStyle::<Keyframe, X>::for_each_field(&mut resolve);
+
+    Self {
+      entries: self
+        .entries
+        .iter()
+        .zip(resolve.resolved)
+        .filter_map(|((key, _), value)| Some((*key, StaticLeaf::Fixed(value?))))
+        .collect(),
     }
+  }
+
+  /// The frame's fixed leaves as plain values: every leaf of a frame compiled at
+  /// [`Keep::Nothing`].
+  pub fn resolved(&self) -> ResolvedStyle<N, X> {
+    let mut read = ReadResolved {
+      fixed: |key| match self.get(key)? {
+        StaticLeaf::Fixed(value) => Some(value.clone()),
+        StaticLeaf::Token(_) | StaticLeaf::Expr(_) => None,
+      },
+      target: ResolvedStyle::default(),
+    };
+
+    BoxStyle::<N, Plain, X>::for_each_field(&mut read);
+    RunStyle::<Plain, X>::for_each_field(&mut read);
+
+    read.target
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> Fingerprint for Frame<N, X> {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    state.write_usize(self.entries.len());
+
+    for (key, leaf) in &self.entries {
+      key.hash(state);
+      leaf.fingerprint(state);
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> CompiledStyle<N, X> {
+  /// The style of `entries` and its motion at `keep`, its slots bound and its static
+  /// part addressed.
+  fn new(
+    keep: Keep,
+    entries: Vec<RecordEntry<N, X>>,
+    transitions: Vec<Transition<X::Property>>,
+    animations: Vec<Animation<Frame<N, X>>>,
+  ) -> Self {
+    let slots = entries
+      .iter()
+      .flat_map(|(key, value)| {
+        value
+          .leaves()
+          .enumerate()
+          .filter_map(|(position, (_, leaf))| match leaf {
+            KeptLeaf::Slot(slot) => Some(SlotBinding {
+              slot: *slot,
+              property: *key,
+              position,
+            }),
+            KeptLeaf::Static(_) => None,
+          })
+      })
+      .collect();
+    let mut style = Self {
+      keep,
+      entries,
+      transitions,
+      animations,
+      slots,
+      address: 0,
+    };
+
+    style.address = skene_reactive::hash::wide_of(&Fed(&StaticPart(&style)));
+
+    style
+  }
+
+  /// The level the style was compiled at.
+  #[inline(always)]
+  pub const fn keep(&self) -> Keep {
+    self.keep
+  }
+
+  /// Every property the style sets with its value, in the record's order.
+  #[inline(always)]
+  #[must_use]
+  pub const fn entries(&self) -> &[RecordEntry<N, X>] {
+    self.entries.as_slice()
+  }
+
+  /// The value of the property `key`; `None` where the style leaves it unset.
+  #[must_use]
+  pub fn get(&self, key: PropertyKey<X::Property>) -> Option<&RecordValue<N, X>> {
+    self
+      .entries
+      .iter()
+      .find(|(entry, _)| *entry == key)
+      .map(|(_, value)| value)
+  }
+
+  /// Whether the style sets the property `key`.
+  #[must_use]
+  pub fn has(&self, key: PropertyKey<X::Property>) -> bool {
+    self.get(key).is_some()
+  }
+
+  /// The property transitions, in declaration order.
+  #[inline(always)]
+  #[must_use]
+  pub const fn transitions(&self) -> &[Transition<X::Property>] {
+    self.transitions.as_slice()
+  }
+
+  /// The keyframe animations, in declaration order, each frame compiled at the style's
+  /// level.
+  #[inline(always)]
+  #[must_use]
+  pub const fn animations(&self) -> &[Animation<Frame<N, X>>] {
+    self.animations.as_slice()
+  }
+
+  /// Each slot the entries reference, with its property and position, in the entries'
+  /// order and each value's base first; none at [`Keep::Nothing`].
+  #[inline(always)]
+  #[must_use]
+  pub const fn slots(&self) -> &[SlotBinding<X::Property>] {
+    self.slots.as_slice()
+  }
+
+  /// The static part's 128-bit xxh3: the level, the entries and the motion, the slots'
+  /// values apart.
+  #[inline(always)]
+  #[must_use]
+  pub const fn address(&self) -> u128 {
+    self.address
+  }
+
+  /// The properties whose value is one fixed leaf under no condition, as plain values:
+  /// every property of a style compiled at [`Keep::Nothing`].
+  pub fn resolved(&self) -> ResolvedStyle<N, X> {
+    let mut read = ReadResolved {
+      fixed: |key| {
+        let value = self.get(key)?;
+
+        match (value.base(), value.variants().is_empty()) {
+          (KeptLeaf::Static(StaticLeaf::Fixed(fixed)), true) => Some(fixed.clone()),
+          _ => None,
+        }
+      },
+      target: ResolvedStyle::default(),
+    };
+
+    BoxStyle::<N, Plain, X>::for_each_field(&mut read);
+    RunStyle::<Plain, X>::for_each_field(&mut read);
+
+    read.target
+  }
+}
+
+/// A compiled style's static part, as its address hashes it.
+struct StaticPart<'a, N: Scalar, X: StyleExtension>(&'a CompiledStyle<N, X>);
+
+impl<N: Scalar, X: StyleExtension> Fingerprint for StaticPart<'_, N, X> {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    let style = self.0;
+
+    style.keep.hash(state);
+    state.write_usize(style.entries.len());
+
+    for (key, value) in &style.entries {
+      key.hash(state);
+      value.fingerprint(state);
+    }
+
+    style.transitions.fingerprint(state);
+    style.animations.fingerprint(state);
+  }
+}
+
+/// A value's fingerprint fed to a hasher as its hash.
+struct Fed<'a, T>(&'a T);
+
+impl<T: Fingerprint> Hash for Fed<'_, T> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.0.fingerprint(state);
+  }
+}
+
+struct ResolveEntries<'a, 'r, N: Scalar, X: StyleExtension> {
+  record: &'a Record<N, X>,
+  resolver: &'a Resolver<'r, N, X>,
+  resolved: Vec<Option<SlotValue<N, X>>>,
+}
+
+impl<N: Scalar, X: StyleExtension> ResolveEntries<'_, '_, N, X> {
+  fn index(&self, key: PropertyKey<X::Property>) -> Option<usize> {
+    self
+      .record
+      .entries
+      .iter()
+      .position(|(entry, _)| *entry == key)
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveEntries<'_, '_, N, X> {
+  fn field<F: BoxField<N, X>>(&mut self) {
+    let Some(index) = self.index(F::KEY)
+    else {
+      return;
+    };
+
+    self.resolved[index] = self.record.entries[index]
+      .1
+      .clone()
+      .try_map(|leaf| leaf.try_map(SlotValue::read_box::<F::Value>))
+      .and_then(|value| self.resolver.box_value(&value))
+      .map(|value| SlotValue::Box(value.into_box_value()));
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ResolveEntries<'_, '_, N, X> {
+  fn field<F: RunField<X>>(&mut self) {
+    let Some(index) = self.index(F::KEY)
+    else {
+      return;
+    };
+
+    self.resolved[index] = self.record.entries[index]
+      .1
+      .clone()
+      .try_map(|leaf| leaf.try_map(SlotValue::read_run::<F::Value>))
+      .and_then(|value| self.resolver.run_value(&value))
+      .map(|value| SlotValue::Run(value.into_run_value()));
+  }
+}
+
+struct ResolveFrame<'a, 'r, N: Scalar, X: StyleExtension> {
+  frame: &'a Frame<N, X>,
+  resolver: &'a Resolver<'r, N, X>,
+  resolved: Vec<Option<SlotValue<N, X>>>,
+}
+
+impl<N: Scalar, X: StyleExtension> ResolveFrame<'_, '_, N, X> {
+  fn index(&self, key: PropertyKey<X::Property>) -> Option<usize> {
+    self
+      .frame
+      .entries
+      .iter()
+      .position(|(entry, _)| *entry == key)
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveFrame<'_, '_, N, X> {
+  fn field<F: BoxField<N, X>>(&mut self) {
+    let Some(index) = self.index(F::KEY)
+    else {
+      return;
+    };
+
+    self.resolved[index] = self.frame.entries[index]
+      .1
+      .clone()
+      .try_map(SlotValue::read_box::<F::Value>)
+      .and_then(|leaf| self.resolver.keyframe_box_value(&leaf))
+      .map(|value| SlotValue::Box(value.into_box_value()));
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ResolveFrame<'_, '_, N, X> {
+  fn field<F: RunField<X>>(&mut self) {
+    let Some(index) = self.index(F::KEY)
+    else {
+      return;
+    };
+
+    self.resolved[index] = self.frame.entries[index]
+      .1
+      .clone()
+      .try_map(SlotValue::read_run::<F::Value>)
+      .and_then(|leaf| self.resolver.keyframe_run_value(&leaf))
+      .map(|value| SlotValue::Run(value.into_run_value()));
+  }
+}
+
+struct ReadResolved<N: Scalar, X: StyleExtension, R> {
+  fixed: R,
+  target: ResolvedStyle<N, X>,
+}
+
+impl<N: Scalar, X: StyleExtension, R: Fn(PropertyKey<X::Property>) -> Option<SlotValue<N, X>>>
+  BoxFieldVisitor<N, X> for ReadResolved<N, X, R>
+{
+  fn field<F: BoxField<N, X>>(&mut self) {
+    *F::get_mut(&mut self.target.boxed) =
+      (self.fixed)(F::KEY).and_then(SlotValue::read_box::<F::Value>);
+  }
+}
+
+impl<N: Scalar, X: StyleExtension, R: Fn(PropertyKey<X::Property>) -> Option<SlotValue<N, X>>>
+  RunFieldVisitor<X> for ReadResolved<N, X, R>
+{
+  fn field<F: RunField<X>>(&mut self) {
+    *F::get_mut(&mut self.target.run) =
+      (self.fixed)(F::KEY).and_then(SlotValue::read_run::<F::Value>);
   }
 }
 
@@ -453,7 +873,7 @@ impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ReadRunFrame<'_, N, X>
 mod tests {
   use std::cell::Cell;
 
-  use super::{Frame, Record, coverage::Medium};
+  use super::{CompiledStyle, Frame, Keep, Keeping, Record, SlotBinding, coverage::Medium};
   use crate::spine::{
     Animation,
     BoxDynamics,
@@ -469,6 +889,7 @@ mod tests {
     Dimension,
     Environment,
     Expr,
+    Fingerprint,
     Flexibility,
     Inset,
     Interaction,
@@ -536,6 +957,15 @@ mod tests {
   enum ProbeValue {
     Tint(u16),
     Bold(bool),
+  }
+
+  impl Fingerprint for ProbeValue {
+    fn fingerprint<H: std::hash::Hasher>(&self, state: &mut H) {
+      match self {
+        Self::Tint(tint) => tint.fingerprint(state),
+        Self::Bold(bold) => bold.fingerprint(state),
+      }
+    }
   }
 
   #[derive(Debug, Clone, Default, PartialEq)]
@@ -959,8 +1389,9 @@ mod tests {
     );
   }
 
-  /// A record resolves as its typed styles do through the same resolver, slots and
-  /// tokens and expressions alike, and a frame as its keyframe does.
+  /// A record compiled at `Keep::Nothing` resolves as its typed styles do through the
+  /// same resolver, slots and tokens and expressions alike, and a frame as its keyframe
+  /// does.
   #[test]
   fn resolution_is_the_typed_styles_own() {
     let environment = Environment {
@@ -1021,7 +1452,7 @@ mod tests {
       record.add_box(&boxed);
       record.add_run(&run_style());
 
-      let style = record.resolve(&resolver);
+      let style = record.compile(Keeping::Nothing(&resolver)).resolved();
 
       assert_eq!(style.boxed, resolver.box_style(&boxed));
       assert_eq!(style.run, resolver.run_style(&run_style()));
@@ -1046,25 +1477,228 @@ mod tests {
       );
       assert_eq!(style.run.color, Some(Color::srgb(0., 1., 0.)));
 
-      let frame = Frame::of_box(&box_keyframe(8.));
-      let run_frame = Frame::of_run(&run_dynamics().animations[0].keyframes[0].1);
+      let frame = Frame::of_box(&box_keyframe(8.))
+        .compile(Keeping::Nothing(&resolver))
+        .resolved();
+      let run_frame = Frame::of_run(&run_dynamics().animations[0].keyframes[0].1)
+        .compile(Keeping::Nothing(&resolver))
+        .resolved();
 
+      assert_eq!(frame.boxed, resolver.box_keyframe(&box_keyframe(8.)));
+      assert_eq!(frame.boxed.padding, Some(Inset::all(100.)));
       assert_eq!(
-        frame.resolve(&resolver).boxed,
-        resolver.box_keyframe(&box_keyframe(8.))
-      );
-      assert_eq!(
-        frame.resolve(&resolver).boxed.padding,
-        Some(Inset::all(100.))
-      );
-      assert_eq!(
-        run_frame.resolve(&resolver).run,
+        run_frame.run,
         resolver.run_keyframe(&run_dynamics().animations[0].keyframes[0].1)
       );
-      assert_eq!(run_frame.resolve(&resolver).run.ext.bold, Some(true));
+      assert_eq!(run_frame.run.ext.bold, Some(true));
     }
 
     assert!(read.get());
+  }
+
+  /// The record of the tests' box and run styles over the probe medium, with their
+  /// motion.
+  fn probe_record() -> Record<f32, Probe> {
+    let mut boxed = box_style::<Probe>();
+
+    boxed.ext.tint = Some(fixed(7).when(Media::Light.into(), KeptLeaf::Slot(Slot(2))));
+
+    let mut record = Record::<f32, Probe>::new();
+
+    record.add_box(&boxed);
+    record.add_run(&run_style());
+    record.add_box_dynamics(&box_dynamics());
+    record.add_run_dynamics(&run_dynamics());
+
+    record
+  }
+
+  /// At `Keep::Everything` a compiled style keeps the record whole, binds each slot to
+  /// its property and position in the entries' order, and is addressed by its static
+  /// part alone.
+  #[test]
+  fn everything_keeps_the_record_and_binds_its_slots() {
+    let record = probe_record();
+    let compiled = record.compile(Keeping::Everything);
+
+    assert_eq!(compiled.keep(), Keep::Everything);
+    assert_eq!(compiled.entries(), record.entries());
+    assert_eq!(compiled.transitions(), record.transitions());
+    assert_eq!(compiled.animations(), record.animations());
+    assert_eq!(
+      compiled.slots(),
+      [
+        SlotBinding {
+          slot: Slot(0),
+          property: PropertyKey::Shared(Property::Background),
+          position: 0,
+        },
+        SlotBinding {
+          slot: Slot(2),
+          property: PropertyKey::Extension(ProbeProperty::Tint),
+          position: 1,
+        },
+        SlotBinding {
+          slot: Slot(1),
+          property: PropertyKey::Shared(Property::TextColor),
+          position: 1,
+        },
+      ]
+    );
+    assert_eq!(
+      compiled.resolved().boxed,
+      BoxStyle {
+        flex: Some(Flexibility::grow(1.)),
+        margin: Some(Inset::all(Dimension::Fraction(0.25))),
+        ..Default::default()
+      },
+      "only a fixed leaf under no condition reads as resolved"
+    );
+    assert_eq!(
+      compiled.address(),
+      probe_record().compile(Keeping::Everything).address()
+    );
+
+    let mut moved = probe_record();
+
+    moved.set_box::<box_fields::Width>(fixed(Dimension::Length(11.)));
+
+    let mut timed = probe_record();
+
+    timed.add_run_dynamics(&RunDynamics {
+      transitions: vec![Transition::new(Property::TextColor, 0.1)],
+      animations: Vec::new(),
+    });
+
+    let mut rebound = Record::<f32, Probe>::new();
+
+    rebound.set_run::<run_fields::TextColor>(
+      fixed(Color::TRANSPARENT).when(State::Hovered.into(), KeptLeaf::Slot(Slot(4))),
+    );
+
+    let mut bound = Record::<f32, Probe>::new();
+
+    bound.set_run::<run_fields::TextColor>(
+      fixed(Color::TRANSPARENT).when(State::Hovered.into(), KeptLeaf::Slot(Slot(5))),
+    );
+
+    let addresses = [
+      compiled.address(),
+      moved.compile(Keeping::Everything).address(),
+      timed.compile(Keeping::Everything).address(),
+      rebound.compile(Keeping::Everything).address(),
+      bound.compile(Keeping::Everything).address(),
+      Record::<f32, Probe>::new()
+        .compile(Keeping::Everything)
+        .address(),
+    ];
+
+    for (index, address) in addresses.iter().enumerate() {
+      assert!(
+        !addresses[..index].contains(address),
+        "a style differing in an entry, a slot or its motion has an address of its own"
+      );
+    }
+  }
+
+  /// At `Keep::Nothing` every entry is its resolved value, a fixed leaf under no
+  /// condition in the record's order, no slot is bound, every frame's leaves are fixed,
+  /// and the address follows the values resolved.
+  #[test]
+  fn nothing_resolves_every_entry_in_place() {
+    let environment = Environment {
+      viewport: Size {
+        width: 1000.,
+        height: 800.,
+      },
+      scheme: ColorScheme::Light,
+      reduced_motion: false,
+      reduced_transparency: false,
+      high_contrast: false,
+      pointer: PointerPrecision::Fine,
+      hover: true,
+      safe_area: Inset::all(0.),
+    };
+    let token = |name: TokenName| match name.as_str() {
+      "wide" => Some(Resolved::Dimension(Dimension::Length(640.))),
+      "gutter" => Some(Resolved::Length(12.)),
+      "ink" | "accent" => Some(Resolved::Color(Color::srgb(0., 1., 0.))),
+      _ => None,
+    };
+    let slot = |slot: Slot| match slot {
+      Slot(0) => Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Color(
+        Color::srgb(1., 1., 1.),
+      )))),
+      Slot(2) => Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Extension(
+        ProbeValue::Tint(4),
+      )))),
+      _ => None,
+    };
+    let read = Cell::new(false);
+    let compile = |hovered: bool| -> CompiledStyle<f32, Probe> {
+      let resolver = Resolver::<f32, Probe> {
+        environment,
+        interaction: Interaction {
+          hovered,
+          ..Default::default()
+        },
+        interaction_read: &read,
+        containers: &[],
+        font_size: 16.,
+        token: &token,
+        slot: &slot,
+      };
+
+      probe_record().compile(Keeping::Nothing(&resolver))
+    };
+    let idle = compile(false);
+
+    assert_eq!(idle.keep(), Keep::Nothing);
+    assert_eq!(idle.slots(), []);
+    assert!(read.get(), "the states were read");
+    assert_eq!(
+      idle
+        .entries()
+        .iter()
+        .map(|(key, _)| key.name())
+        .collect::<Vec<_>>(),
+      [
+        "width",
+        "margin",
+        "padding",
+        "background",
+        "flex",
+        "self_alignment",
+        "tint",
+        "text_color",
+        "decoration"
+      ],
+      "the ratio, of an undefined token, resolves to nothing and is left out"
+    );
+    assert!(idle.entries().iter().all(|(_, value)| {
+      value.variants().is_empty() && matches!(value.base(), KeptLeaf::Static(StaticLeaf::Fixed(_)))
+    }));
+    assert_eq!(idle.resolved().boxed.ext.tint, Some(4));
+    assert_eq!(idle.resolved().boxed.width, Some(Dimension::Length(640.)));
+    assert_eq!(idle.transitions(), probe_record().transitions());
+    assert!(idle.animations().iter().all(|animation| {
+      animation.keyframes.iter().all(|(_, frame)| {
+        frame
+          .entries()
+          .iter()
+          .all(|(_, leaf)| matches!(leaf, StaticLeaf::Fixed(_)))
+      })
+    }));
+    assert_eq!(
+      idle.animations()[0].keyframes[0].1.resolved().boxed.padding,
+      Some(Inset::all(100.))
+    );
+    assert_eq!(idle.address(), compile(false).address());
+    assert_ne!(idle.address(), compile(true).address());
+    assert_ne!(
+      idle.address(),
+      probe_record().compile(Keeping::Everything).address()
+    );
   }
 
   /// Every shared property, condition, expression and leaf kind crosses a record whole and

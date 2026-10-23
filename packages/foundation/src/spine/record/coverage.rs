@@ -1,9 +1,14 @@
 //! Samples of every property, condition, expression and leaf kind, and the check that a
 //! record holds a style made of them whole and resolves it as the typed style does.
 //!
+//! Compiled at [`Keep::Everything`] the record keeps the style whole, and compiled at
+//! [`Keep::Nothing`] it resolves as the typed style does.
+//!
 //! Each sampled enum is enumerated by a match naming every variant without a wildcard,
 //! each arm giving the sample that follows its own, so a variant added later fails to
-//! compile until it is sampled.
+//! compile until its arm is written. [`chain`] proves each variant is sampled once; that
+//! the chain reaches a variant is its arms' to say, except for the properties, which
+//! [`Medium::check`] holds to the visitors.
 
 use std::{cell::Cell, fmt::Debug, hash::Hasher, mem::discriminant};
 
@@ -53,6 +58,8 @@ use crate::spine::{
   IntoRunValue,
   ItemAlignment,
   Iterations,
+  Keep,
+  Keeping,
   KeptLeaf,
   Keyframe,
   Length,
@@ -110,9 +117,10 @@ const CARD: ContainerName = ContainerName("card");
 ///
 /// [`check`](Self::check) builds a style setting every property of the medium, each
 /// under variants of every condition kind with every leaf and expression kind among
-/// them, and its motion, and proves that a [`Record`] holds them whole and resolves
-/// them, under environments and interactions making every condition both hold and
-/// fail, as the typed styles resolve.
+/// them, and its motion, and proves that a [`Record`] holds them whole, that compiled
+/// at [`Keep::Everything`] it keeps them whole, and that compiled at [`Keep::Nothing`]
+/// it resolves them, under environments and interactions making every condition both
+/// hold and fail, as the typed styles resolve.
 #[derive(Debug)]
 #[must_use]
 pub struct Medium<N: Scalar, X: StyleExtension> {
@@ -135,7 +143,8 @@ impl<N: Scalar, X: StyleExtension> Medium<N, X> {
   }
 
   /// Proves that every property, condition, expression and leaf kind of the medium
-  /// crosses a record whole and resolves through it as through the typed style.
+  /// crosses a record whole, crosses it compiled at [`Keep::Everything`] whole, and
+  /// resolves through it compiled at [`Keep::Nothing`] as through the typed style.
   ///
   /// # Panics
   ///
@@ -167,6 +176,8 @@ impl<N: Scalar, X: StyleExtension> Medium<N, X> {
     let box_dynamics = sampler.box_dynamics(&keys.boxed);
     let run_dynamics = sampler.run_dynamics(&keys.run);
     let record = sampler.assert_crosses(&keys, &box_dynamics, &run_dynamics);
+
+    sampler.assert_kept(&record);
 
     sampler.assert_resolves(&record, &keys, &definitions, &box_dynamics, &run_dynamics);
   }
@@ -875,10 +886,60 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
     record
   }
 
-  /// Proves that `record`, holding the sampled styles and their motion, resolves as they
-  /// do in every reading, that every sampled condition both holds and fails among the
-  /// readings, and that every property, and every leaf of each, resolves to a value in
-  /// some reading.
+  /// Proves that `record`, holding the sampled styles and their motion, compiled at
+  /// [`Keep::Everything`], keeps every entry, transition and frame as the record holds
+  /// it, binds every slot its entries reference to its property and position, and is
+  /// addressed alike each time it is compiled.
+  fn assert_kept(&self, record: &Record<N, X>) {
+    let compiled = record.compile(Keeping::Everything);
+
+    assert_eq!(compiled.keep(), Keep::Everything);
+    assert_eq!(compiled.entries(), record.entries(), "every entry is kept");
+    assert_eq!(
+      compiled.transitions(),
+      record.transitions(),
+      "every transition is kept"
+    );
+    assert_eq!(
+      compiled.animations(),
+      record.animations(),
+      "every frame is kept"
+    );
+    assert_eq!(
+      compiled
+        .slots()
+        .iter()
+        .map(|binding| binding.slot)
+        .collect::<Vec<_>>(),
+      (0..self.slots.len())
+        .map(|slot| Slot(u16::try_from(slot).expect("the slots fit")))
+        .collect::<Vec<_>>(),
+      "every slot is bound, in the entries' order"
+    );
+
+    for binding in compiled.slots() {
+      let leaf = compiled
+        .get(binding.property)
+        .and_then(|value| value.leaves().nth(binding.position))
+        .map(|(_, leaf)| leaf);
+
+      assert!(
+        matches!(leaf, Some(KeptLeaf::Slot(slot)) if *slot == binding.slot),
+        "{binding:?} names its slot's place"
+      );
+    }
+
+    assert_eq!(
+      compiled.address(),
+      record.clone().compile(Keeping::Everything).address(),
+      "a style's address is its content's"
+    );
+  }
+
+  /// Proves that `record`, holding the sampled styles and their motion, compiled at
+  /// [`Keep::Nothing`] resolves as they do in every reading, that every sampled condition both
+  /// holds and fails among the readings, and that every property, and every leaf of each,
+  /// resolves to a value in some reading.
   fn assert_resolves(
     &self,
     record: &Record<N, X>,
@@ -887,8 +948,6 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
     box_dynamics: &BoxDynamics<N, X>,
     run_dynamics: &RunDynamics<X>,
   ) {
-    let (box_animations, run_animations) =
-      record.animations().split_at(box_dynamics.animations.len());
     let mut resolved_keys = Vec::new();
     let mut leaves = Vec::new();
     let mut fingerprints = Vec::new();
@@ -896,17 +955,28 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
 
     for scenario in Scenario::<N>::all() {
       scenario.with_resolver(definitions, &self.slots, |resolver: &Resolver<'_, N, X>| {
-        let resolved = record.resolve(resolver);
+        let compiled = record.compile(Keeping::Nothing(resolver));
+        let resolved = compiled.resolved();
         let boxed = resolver.box_style(&self.boxed);
         let run = resolver.run_style(&self.run);
 
         assert_same(&resolved.boxed, &boxed, "a box resolves as its typed style");
         assert_same(&resolved.run, &run, "a run resolves as its typed style");
+        assert_eq!(compiled.slots(), [], "no slot is left to bind");
+        assert_eq!(
+          compiled.transitions(),
+          record.transitions(),
+          "transitions cross as data"
+        );
+
+        let (box_animations, run_animations) = compiled
+          .animations()
+          .split_at(box_dynamics.animations.len());
 
         for (frames, animation) in box_animations.iter().zip(&box_dynamics.animations) {
           for ((_, frame), (_, keyframe)) in frames.keyframes.iter().zip(&animation.keyframes) {
             assert_same(
-              &frame.resolve(resolver).boxed,
+              &frame.resolved().boxed,
               &resolver.box_keyframe(keyframe),
               "a box keyframe resolves as its typed keyframe",
             );
@@ -916,7 +986,7 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
         for (frames, animation) in run_animations.iter().zip(&run_dynamics.animations) {
           for ((_, frame), (_, keyframe)) in frames.keyframes.iter().zip(&animation.keyframes) {
             assert_same(
-              &frame.resolve(resolver).run,
+              &frame.resolved().run,
               &resolver.run_keyframe(keyframe),
               "a run keyframe resolves as its typed keyframe",
             );

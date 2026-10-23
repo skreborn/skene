@@ -169,7 +169,18 @@ pub use props::{
 pub use realization::{Observation, Realization, Timer, Timers};
 #[cfg(test)]
 pub use record::coverage;
-pub use record::{Frame, FrameEntry, Record, RecordEntry, RecordValue, ResolvedStyle};
+pub use record::{
+  CompiledStyle,
+  Frame,
+  FrameEntry,
+  Keep,
+  Keeping,
+  Record,
+  RecordEntry,
+  RecordValue,
+  ResolvedStyle,
+  SlotBinding,
+};
 pub use reorder::Reorder;
 pub use resolve::{
   Focus,

@@ -2,7 +2,7 @@
 
 use std::fmt::Debug;
 
-use super::{BoxFieldVisitor, PropertyName, RunFieldVisitor, RunValue, Scalar, Shape};
+use super::{BoxFieldVisitor, Fingerprint, PropertyName, RunFieldVisitor, RunValue, Scalar, Shape};
 
 /// A medium's own properties, added to [`BoxStyle`](super::BoxStyle) and
 /// [`RunStyle`](super::RunStyle) beside the shared ones.
@@ -22,7 +22,7 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
   /// The names of the properties, each naming one property, of the box or of the run.
   type Property: PropertyName;
   /// An erased value of one of the properties, for a derived slot's update.
-  type Value: Clone + PartialEq + Debug + 'static;
+  type Value: Clone + PartialEq + Debug + Fingerprint + 'static;
 
   /// Visits every box field, in declaration order.
   fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V);
@@ -163,6 +163,12 @@ impl PropertyName for NoProperty {
 /// The erased value of an extension with no properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NoValue {}
+
+impl Fingerprint for NoValue {
+  fn fingerprint<H: std::hash::Hasher>(&self, _: &mut H) {
+    match *self {}
+  }
+}
 
 impl StyleExtension for () {
   type BoxFields<S: Shape> = ();

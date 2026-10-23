@@ -1191,6 +1191,8 @@ impl core::fmt::Debug for skene_foundation::terminal::TerminalValue
 pub fn skene_foundation::terminal::TerminalValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::terminal::TerminalValue
 impl core::marker::StructuralPartialEq for skene_foundation::terminal::TerminalValue
+impl skene_foundation::Fingerprint for skene_foundation::terminal::TerminalValue
+pub fn skene_foundation::terminal::TerminalValue::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::terminal::BorderGlyphs
 pub skene_foundation::terminal::BorderGlyphs::bottom_left: char
 pub skene_foundation::terminal::BorderGlyphs::bottom_right: char
@@ -2949,6 +2951,8 @@ pub fn skene_foundation::BoxValue<N, X>::fmt(&self, &mut core::fmt::Formatter<'_
 impl<N: skene_foundation::Scalar + skene_foundation::interpolate::Interpolate, X: skene_foundation::StyleExtension> skene_foundation::interpolate::Interpolate for skene_foundation::BoxValue<N, X>
 pub fn skene_foundation::BoxValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::BoxValue<N, X>::interpolates_with(&self, &Self) -> bool
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::BoxValue<N, X>
+pub fn skene_foundation::BoxValue<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub enum skene_foundation::Bubbling
 pub skene_foundation::Bubbling::Continue
 pub skene_foundation::Bubbling::Stop
@@ -3426,6 +3430,30 @@ impl core::marker::Copy for skene_foundation::Iterations
 impl core::marker::StructuralPartialEq for skene_foundation::Iterations
 impl skene_foundation::Fingerprint for skene_foundation::Iterations
 pub fn skene_foundation::Iterations::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub enum skene_foundation::Keep
+pub skene_foundation::Keep::Everything
+pub skene_foundation::Keep::Nothing
+impl core::clone::Clone for skene_foundation::Keep
+pub fn skene_foundation::Keep::clone(&self) -> skene_foundation::Keep
+impl core::cmp::Eq for skene_foundation::Keep
+impl core::cmp::PartialEq for skene_foundation::Keep
+pub fn skene_foundation::Keep::eq(&self, &skene_foundation::Keep) -> bool
+impl core::fmt::Debug for skene_foundation::Keep
+pub fn skene_foundation::Keep::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Keep
+pub fn skene_foundation::Keep::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Keep
+impl core::marker::StructuralPartialEq for skene_foundation::Keep
+pub enum skene_foundation::Keeping<'a, 'r, N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
+pub skene_foundation::Keeping::Everything
+pub skene_foundation::Keeping::Nothing(&'a skene_foundation::Resolver<'r, N, X>)
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Keeping<'_, '_, N, X>
+pub const fn skene_foundation::Keeping<'_, '_, N, X>::keep(&self) -> skene_foundation::Keep
+impl<'a, 'r, N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::Keeping<'a, 'r, N, X>
+pub fn skene_foundation::Keeping<'a, 'r, N, X>::clone(&self) -> skene_foundation::Keeping<'a, 'r, N, X>
+impl<'a, 'r, N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::Keeping<'a, 'r, N, X>
+pub fn skene_foundation::Keeping<'a, 'r, N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<'a, 'r, N: core::marker::Copy + skene_foundation::Scalar, X: core::marker::Copy + skene_foundation::StyleExtension> core::marker::Copy for skene_foundation::Keeping<'a, 'r, N, X>
 pub enum skene_foundation::KeptLeaf<T>
 pub skene_foundation::KeptLeaf::Slot(skene_foundation::Slot)
 pub skene_foundation::KeptLeaf::Static(skene_foundation::StaticLeaf<T>)
@@ -3659,6 +3687,8 @@ impl core::hash::Hash for skene_foundation::NoValue
 pub fn skene_foundation::NoValue::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_foundation::NoValue
 impl core::marker::StructuralPartialEq for skene_foundation::NoValue
+impl skene_foundation::Fingerprint for skene_foundation::NoValue
+pub fn skene_foundation::NoValue::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub enum skene_foundation::NodeKind
 pub skene_foundation::NodeKind::Anchor
 pub skene_foundation::NodeKind::Box
@@ -3942,6 +3972,8 @@ pub fn skene_foundation::RunValue<X>::eq(&self, &skene_foundation::RunValue<X>) 
 impl<X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::RunValue<X> where <X as skene_foundation::StyleExtension>::Value: core::cmp::PartialEq
 impl<X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::RunValue<X> where <X as skene_foundation::StyleExtension>::Value: core::fmt::Debug
 pub fn skene_foundation::RunValue<X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunValue<X>
+pub fn skene_foundation::RunValue<X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<X: skene_foundation::StyleExtension> skene_foundation::interpolate::Interpolate for skene_foundation::RunValue<X>
 pub fn skene_foundation::RunValue<X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::RunValue<X>::interpolates_with(&self, &Self) -> bool
@@ -3958,6 +3990,8 @@ pub fn skene_foundation::SlotValue<N, X>::fmt(&self, &mut core::fmt::Formatter<'
 impl<N: skene_foundation::Scalar + skene_foundation::interpolate::Interpolate, X: skene_foundation::StyleExtension> skene_foundation::interpolate::Interpolate for skene_foundation::SlotValue<N, X>
 pub fn skene_foundation::SlotValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::SlotValue<N, X>::interpolates_with(&self, &Self) -> bool
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::SlotValue<N, X>
+pub fn skene_foundation::SlotValue<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub enum skene_foundation::State
 pub skene_foundation::State::Checked
 pub skene_foundation::State::Disabled
@@ -4825,6 +4859,24 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::Column<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Column<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Column<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::CompiledStyle<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::CompiledStyle<N, X>
+pub const fn skene_foundation::CompiledStyle<N, X>::address(&self) -> u128
+pub const fn skene_foundation::CompiledStyle<N, X>::animations(&self) -> &[skene_foundation::Animation<skene_foundation::Frame<N, X>>]
+pub const fn skene_foundation::CompiledStyle<N, X>::entries(&self) -> &[skene_foundation::RecordEntry<N, X>]
+pub fn skene_foundation::CompiledStyle<N, X>::get(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> core::option::Option<&skene_foundation::RecordValue<N, X>>
+pub fn skene_foundation::CompiledStyle<N, X>::has(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> bool
+pub const fn skene_foundation::CompiledStyle<N, X>::keep(&self) -> skene_foundation::Keep
+pub fn skene_foundation::CompiledStyle<N, X>::resolved(&self) -> skene_foundation::ResolvedStyle<N, X>
+pub const fn skene_foundation::CompiledStyle<N, X>::slots(&self) -> &[skene_foundation::SlotBinding<<X as skene_foundation::StyleExtension>::Property>]
+pub const fn skene_foundation::CompiledStyle<N, X>::transitions(&self) -> &[skene_foundation::Transition<<X as skene_foundation::StyleExtension>::Property>]
+impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::CompiledStyle<N, X> where <X as skene_foundation::StyleExtension>::Property: core::clone::Clone
+pub fn skene_foundation::CompiledStyle<N, X>::clone(&self) -> skene_foundation::CompiledStyle<N, X>
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::cmp::PartialEq for skene_foundation::CompiledStyle<N, X> where <X as skene_foundation::StyleExtension>::Property: core::cmp::PartialEq
+pub fn skene_foundation::CompiledStyle<N, X>::eq(&self, &skene_foundation::CompiledStyle<N, X>) -> bool
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::CompiledStyle<N, X> where <X as skene_foundation::StyleExtension>::Property: core::cmp::PartialEq
+impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::CompiledStyle<N, X> where <X as skene_foundation::StyleExtension>::Property: core::fmt::Debug
+pub fn skene_foundation::CompiledStyle<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Conditional<L, C>
 impl<C: core::clone::Clone> skene_foundation::Conditional<skene_foundation::Leaf<skene_foundation::Alignment>, C>
 pub fn skene_foundation::Conditional<skene_foundation::Leaf<skene_foundation::Alignment>, C>::split_axes(&self) -> (skene_foundation::Value<skene_foundation::ItemAlignment, C>, skene_foundation::Value<skene_foundation::ItemAlignment, C>)
@@ -5555,10 +5607,11 @@ pub fn skene_foundation::Flexible<P, skene_foundation::AnyView<P>>::into_child(s
 pub struct skene_foundation::Frame<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Frame<N, X>
 pub fn skene_foundation::Frame<N, X>::box_keyframe(&self) -> skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>
+pub fn skene_foundation::Frame<N, X>::compile(&self, skene_foundation::Keeping<'_, '_, N, X>) -> Self
 pub const fn skene_foundation::Frame<N, X>::entries(&self) -> &[skene_foundation::FrameEntry<N, X>]
 pub fn skene_foundation::Frame<N, X>::of_box(&skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>) -> Self
 pub fn skene_foundation::Frame<N, X>::of_run(&skene_foundation::RunStyle<skene_foundation::Keyframe, X>) -> Self
-pub fn skene_foundation::Frame<N, X>::resolve(&self, &skene_foundation::Resolver<'_, N, X>) -> skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::Frame<N, X>::resolved(&self) -> skene_foundation::ResolvedStyle<N, X>
 pub fn skene_foundation::Frame<N, X>::run_keyframe(&self) -> skene_foundation::RunStyle<skene_foundation::Keyframe, X>
 impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::Frame<N, X>
 pub fn skene_foundation::Frame<N, X>::clone(&self) -> skene_foundation::Frame<N, X>
@@ -5567,6 +5620,8 @@ pub fn skene_foundation::Frame<N, X>::eq(&self, &skene_foundation::Frame<N, X>) 
 impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::Frame<N, X>
 impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::Frame<N, X>
 pub fn skene_foundation::Frame<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::Grid<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Grid<P>
 pub fn skene_foundation::Grid<P>::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self
@@ -6782,11 +6837,11 @@ pub fn skene_foundation::Record<N, X>::add_run(&mut self, &skene_foundation::Run
 pub fn skene_foundation::Record<N, X>::add_run_dynamics(&mut self, &skene_foundation::RunDynamics<X>)
 pub const fn skene_foundation::Record<N, X>::animations(&self) -> &[skene_foundation::Animation<skene_foundation::Frame<N, X>>]
 pub fn skene_foundation::Record<N, X>::box_style(&self) -> skene_foundation::BoxStyle<N, skene_foundation::Static<skene_foundation::Condition<N>>, X>
+pub fn skene_foundation::Record<N, X>::compile(&self, skene_foundation::Keeping<'_, '_, N, X>) -> skene_foundation::CompiledStyle<N, X>
 pub const fn skene_foundation::Record<N, X>::entries(&self) -> &[skene_foundation::RecordEntry<N, X>]
 pub fn skene_foundation::Record<N, X>::get(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> core::option::Option<&skene_foundation::RecordValue<N, X>>
 pub fn skene_foundation::Record<N, X>::has(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> bool
 pub const fn skene_foundation::Record<N, X>::new() -> Self
-pub fn skene_foundation::Record<N, X>::resolve(&self, &skene_foundation::Resolver<'_, N, X>) -> skene_foundation::ResolvedStyle<N, X>
 pub fn skene_foundation::Record<N, X>::run_style(&self) -> skene_foundation::RunStyle<skene_foundation::Static<skene_foundation::Condition<N>>, X>
 pub fn skene_foundation::Record<N, X>::set_box<F: skene_foundation::BoxField<N, X>>(&mut self, skene_foundation::StaticValue<<F as skene_foundation::BoxField>::Value, skene_foundation::Condition<N>>)
 pub fn skene_foundation::Record<N, X>::set_run<F: skene_foundation::RunField<X>>(&mut self, skene_foundation::StaticValue<<F as skene_foundation::RunField>::Value, skene_foundation::Condition<N>>)
@@ -7315,6 +7370,21 @@ impl core::hash::Hash for skene_foundation::Slot
 pub fn skene_foundation::Slot::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_foundation::Slot
 impl core::marker::StructuralPartialEq for skene_foundation::Slot
+pub struct skene_foundation::SlotBinding<P>
+pub skene_foundation::SlotBinding::position: usize
+pub skene_foundation::SlotBinding::property: skene_foundation::PropertyKey<P>
+pub skene_foundation::SlotBinding::slot: skene_foundation::Slot
+impl<P: core::clone::Clone> core::clone::Clone for skene_foundation::SlotBinding<P>
+pub fn skene_foundation::SlotBinding<P>::clone(&self) -> skene_foundation::SlotBinding<P>
+impl<P: core::cmp::Eq> core::cmp::Eq for skene_foundation::SlotBinding<P>
+impl<P: core::cmp::PartialEq> core::cmp::PartialEq for skene_foundation::SlotBinding<P>
+pub fn skene_foundation::SlotBinding<P>::eq(&self, &skene_foundation::SlotBinding<P>) -> bool
+impl<P: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_foundation::SlotBinding<P>
+impl<P: core::fmt::Debug> core::fmt::Debug for skene_foundation::SlotBinding<P>
+pub fn skene_foundation::SlotBinding<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: core::hash::Hash> core::hash::Hash for skene_foundation::SlotBinding<P>
+pub fn skene_foundation::SlotBinding<P>::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl<P: core::marker::Copy> core::marker::Copy for skene_foundation::SlotBinding<P>
 pub struct skene_foundation::Spacing<T>
 pub skene_foundation::Spacing::horizontal: T
 pub skene_foundation::Spacing::vertical: T
@@ -8865,6 +8935,8 @@ impl skene_foundation::Fingerprint for skene_foundation::Length
 pub fn skene_foundation::Length::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::MouseCursor
 pub fn skene_foundation::MouseCursor::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_foundation::Fingerprint for skene_foundation::NoValue
+pub fn skene_foundation::NoValue::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::Overflow
 pub fn skene_foundation::Overflow::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::TextDecoration
@@ -8877,6 +8949,8 @@ impl skene_foundation::Fingerprint for skene_foundation::terminal::BorderGlyphs
 pub fn skene_foundation::terminal::BorderGlyphs::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for skene_foundation::terminal::ScrollbarGlyphs
 pub fn skene_foundation::terminal::ScrollbarGlyphs::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_foundation::Fingerprint for skene_foundation::terminal::TerminalValue
+pub fn skene_foundation::terminal::TerminalValue::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_foundation::Fingerprint for u16
 pub fn u16::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<C: core::clone::Clone + core::cmp::PartialEq + core::hash::Hash + core::fmt::Debug + 'static, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunStyle<skene_foundation::Static<C>, X>
@@ -8891,6 +8965,12 @@ impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_fou
 pub fn skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::BoxStyle<N, skene_foundation::Plain, X>
 pub fn skene_foundation::BoxStyle<N, skene_foundation::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::BoxValue<N, X>
+pub fn skene_foundation::BoxValue<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::SlotValue<N, X>
+pub fn skene_foundation::SlotValue<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_foundation::Scalar> skene_foundation::Fingerprint for N
 pub fn N::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_foundation::Scalar> skene_foundation::Fingerprint for skene_foundation::Dimension<N>
@@ -8933,6 +9013,8 @@ impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for sken
 pub fn skene_foundation::RunStyle<skene_foundation::Keyframe, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunStyle<skene_foundation::Plain, X>
 pub fn skene_foundation::RunStyle<skene_foundation::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunValue<X>
+pub fn skene_foundation::RunValue<X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub trait skene_foundation::FlexBase<P: skene_foundation::Realization>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
 pub fn skene_foundation::FlexBase::derive_arrangement<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::FlexBase::derive_item_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -9712,7 +9794,7 @@ pub trait skene_foundation::StyleExtension: core::marker::Copy + core::default::
 pub type skene_foundation::StyleExtension::BoxFields<S: skene_foundation::Shape>: core::default::Default + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
 pub type skene_foundation::StyleExtension::Property: skene_foundation::PropertyName
 pub type skene_foundation::StyleExtension::RunFields<S: skene_foundation::Shape>: core::default::Default + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
-pub type skene_foundation::StyleExtension::Value: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static
+pub type skene_foundation::StyleExtension::Value: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + skene_foundation::Fingerprint + 'static
 pub fn skene_foundation::StyleExtension::for_each_box_field<N: skene_foundation::Scalar, V: skene_foundation::BoxFieldVisitor<N, Self>>(&mut V)
 pub fn skene_foundation::StyleExtension::for_each_run_field<V: skene_foundation::RunFieldVisitor<Self>>(&mut V)
 pub fn skene_foundation::StyleExtension::interpolate_value(&Self::Value, &Self::Value, f32) -> core::option::Option<Self::Value>

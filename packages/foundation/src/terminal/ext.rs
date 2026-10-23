@@ -269,6 +269,19 @@ pub enum TerminalValue {
   Number(f32),
 }
 
+impl Fingerprint for TerminalValue {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::BorderGlyphs(glyphs) => glyphs.fingerprint(state),
+      Self::ScrollbarGlyphs(glyphs) => glyphs.fingerprint(state),
+      Self::Bold(bold) => bold.fingerprint(state),
+      Self::Number(number) => number.fingerprint(state),
+    }
+  }
+}
+
 impl<N: Scalar> IntoBoxValue<N, TerminalStyle> for BorderGlyphs {
   #[inline(always)]
   fn into_box_value(self) -> BoxValue<N, TerminalStyle> {

@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use super::{
   BoxDynamics,
   BoxStyle,
+  BoxValue,
   BoxVisitor,
   Conditional,
   IntoBoxValue,
@@ -16,8 +17,10 @@ use super::{
   PropertyName,
   RunDynamics,
   RunStyle,
+  RunValue,
   RunVisitor,
   Scalar,
+  SlotValue,
   Static,
   StaticLeaf,
   StyleExtension,
@@ -316,6 +319,61 @@ impl<S: Fingerprint> Fingerprint for Animation<S> {
     self.iterations.fingerprint(state);
     self.respects_reduced_motion.fingerprint(state);
     self.alternate.fingerprint(state);
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> Fingerprint for BoxValue<N, X> {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::Dimension(dimension) => dimension.fingerprint(state),
+      Self::Length(length) => length.fingerprint(state),
+      Self::Number(number) => number.fingerprint(state),
+      Self::AspectRatio(ratio) => ratio.fingerprint(state),
+      Self::DimensionInset(inset) => inset.fingerprint(state),
+      Self::Inset(inset) => inset.fingerprint(state),
+      Self::Color(color) => color.fingerprint(state),
+      Self::Cursor(cursor) => cursor.fingerprint(state),
+      Self::Spacing(spacing) => spacing.fingerprint(state),
+      Self::Wrap(wrap) => wrap.fingerprint(state),
+      Self::Flexibility(flexibility) => flexibility.fingerprint(state),
+      Self::Arrangement(arrangement) => arrangement.fingerprint(state),
+      Self::ItemAlignment(alignment) => alignment.fingerprint(state),
+      Self::Tracks(tracks) => tracks.fingerprint(state),
+      Self::Template(template) => template.fingerprint(state),
+      Self::Areas(areas) => areas.fingerprint(state),
+      Self::GridFlow(flow) => flow.fingerprint(state),
+      Self::Placement(placement) => placement.fingerprint(state),
+      Self::Overflow(overflow) => overflow.fingerprint(state),
+      Self::Hidden(hidden) => hidden.fingerprint(state),
+      Self::Extension(value) => value.fingerprint(state),
+    }
+  }
+}
+
+impl<X: StyleExtension> Fingerprint for RunValue<X> {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::Color(color) => color.fingerprint(state),
+      Self::Length(length) => length.fingerprint(state),
+      Self::Decoration(decoration) => decoration.fingerprint(state),
+      Self::DecorationStyle(style) => style.fingerprint(state),
+      Self::Extension(value) => value.fingerprint(state),
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> Fingerprint for SlotValue<N, X> {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::Box(value) => value.fingerprint(state),
+      Self::Run(value) => value.fingerprint(state),
+    }
   }
 }
 

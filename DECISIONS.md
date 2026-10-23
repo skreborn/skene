@@ -12,10 +12,17 @@ supersedes.
   `Prop` list of its own, its properties sorted into groups and its values into kinds
   of its own, compiled and resolved in its own `CompileCx`. The style record is the
   erased projection of the one property model (`BoxStyle`, `RunStyle` and their motion,
-  keyed by `PropertyKey` in their visitors' order), and its resolution is the typed
-  readback through the one `Resolver`, so no second vocabulary or resolution can drift
-  from the model. Revisit when a realization needs a property or a grouping the
-  model's visitors cannot give.
+  keyed by `PropertyKey` in their visitors' order), and its compile at `Keep::Nothing`
+  resolves each entry through the one `Resolver` as the typed style resolves it, so no
+  second vocabulary or resolution can drift from the model. Revisit when a realization
+  needs a property or a grouping the model's visitors cannot give.
+- **A third `Keep` level, colors and states** (2026-10-23), the prototype's
+  `ColorsAndStates`: color tokens kept as display-wide named colors tagged by their
+  definition's content, state conditions kept, everything else resolved. `Keep` has the
+  two levels a realization uses, `Everything` for the web and `Nothing` for every
+  realization that draws, and no realization's toolkit keeps less than CSS and more
+  than nothing. Revisit when one does (a style language short of CSS's); its tokens are
+  then kept by name and keyed by their theme's scope, never tagged by content.
 - **A builder opting a signal in, `Signal::new(v).saved()`** (2026-10-23), one
   constructor and a method that registers the signal after it is made: the opt-in is a
   constructor, `Signal::saved` and `Store::saved` beside `tagged`, so a signal's place

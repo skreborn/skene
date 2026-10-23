@@ -50,6 +50,7 @@ use crate::{
     render_box_leaf,
     render_run_leaf,
     run_fingerprint,
+    slot_properties,
   },
   condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
   declarations::Declarations,
@@ -873,7 +874,7 @@ impl<S: Sink> Realizer<S> {
     };
 
     if let Some(binding) = record.slots.iter().find(|binding| binding.slot == slot) {
-      let properties = binding.custom_properties();
+      let properties = slot_properties(binding.property, binding.position);
 
       for (property, text) in properties.iter().zip(render(properties.len())) {
         self.sink.set_property(&record.element, property, &text);

@@ -693,16 +693,30 @@ Condition     = Media | State | And | Or
   a property at a time (`set_box::<F>`, `set_run::<F>`, keyed by a `BoxField` or a
   `RunField`, so a value of another property's kind does not compile) or a style at a
   time (`add_box`, `add_run`, `add_box_dynamics`, `add_run_dynamics`), and read erased
-  (`entries`, `get`, `has`). `box_style` and `run_style` read the typed styles back,
-  and its resolution (`Record::resolve`, `Frame::resolve`, a `ResolvedStyle`) is that
-  readback resolved through the one `Resolver`, so no second resolution exists to
-  drift from it. A coverage test holds it to the whole model for each medium (none,
-  `WebStyle` in pixels, `TerminalStyle` in cells): a style setting every property, each
-  under variants of every `Media`, container query, `State` and `Condition` kind with
-  every leaf and expression node kind among them, crosses whole, motion included, and
-  resolves as the typed style does under readings where every condition both holds and
-  fails. The seam does not carry it yet: a realization receives the typed styles in
-  `BoxProps` and `RunProps`.
+  (`entries`, `get`, `has`). `box_style` and `run_style` read the typed styles back.
+  `Record::compile` compiles it in the shared half to a `CompiledStyle` at a `Keep`
+  level, named with what resolves the rest (`Keeping`): at `Keep::Everything` every
+  entry and frame stays as the record holds it (a token by its name, which a
+  realization keys by the theme scope defining it and never by its definition's
+  content; an expression by its tree; every condition kept), and each slot an entry
+  references is bound to its property and the leaf's position (`SlotBinding`, `0` the
+  base), so a derived write reaches the slot and never the static part; at
+  `Keep::Nothing` each entry is resolved through the one `Resolver` as the typed style
+  resolves it (`box_value`, `run_value`, each frame's leaves as `keyframe_box_value`
+  and `keyframe_run_value` resolve them), a fixed leaf under no condition in the
+  record's order, one resolving to nothing left out, and `resolved` reads it back as a
+  `ResolvedStyle`; transitions and the animations' timing cross as data at both. Its
+  `address` is the 128-bit xxh3 of its static part (the level, the entries and the
+  motion), a cache key alone: equal static parts share one, and a realization names
+  nothing by it, the web's class names staying the hash of the template. A coverage
+  test holds it to the whole model for each medium (none, `WebStyle` in pixels,
+  `TerminalStyle` in cells): a style setting every property, each under variants of
+  every `Media`, container query, `State` and `Condition` kind with every leaf and
+  expression node kind among them, crosses whole, motion included, crosses compiled at
+  `Keep::Everything` whole, every slot bound where it stands, and compiled at
+  `Keep::Nothing` resolves as the typed style does under readings where every condition
+  both holds and fails. The seam does not carry it yet: a realization receives the
+  typed styles in `BoxProps` and `RunProps`.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.
@@ -710,11 +724,11 @@ Condition     = Media | State | And | Or
   `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
   `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
   therefore works in a static document with zero script. A template is compiled from
-  the node's typed styles and, in debug builds on both leaves, from its record as well
-  (its entries through the same `Rules`, its frames' leaves rendered as the typed
-  keyframes', a container's `size` containment read from whether it has a height), and
-  the two compiles are asserted equal, template and slot bindings, as is each derived
-  leaf's text.
+  the node's typed styles and, in debug builds on both leaves, from its record compiled
+  at `Keep::Everything` as well (its entries through the same `Rules`, its frames'
+  leaves rendered as the typed keyframes', a container's `size` containment read from
+  whether it has a height, its slot bindings the shared half's), and the two compiles
+  are asserted equal, template and slot bindings, as is each derived leaf's text.
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
@@ -728,7 +742,8 @@ Condition     = Media | State | And | Or
   token, the platform's `EM` where text takes no sizes) over a `ResolutionSource` giving
   what the scene does not hold: the environment, container sizes, slots and whether
   text is drawn at other sizes. In debug builds the terminal resolves every box, run,
-  text entry and keyframe style through the node's record as well, with the same
+  text entry and keyframe style through the node's record compiled at `Keep::Nothing`
+  as well, with the same
   resolver and before its own fill-ins (rounded border glyphs, the typography's size and
   weight, `bold`), and asserts the two resolutions equal by their `Fingerprint` and
   alike in whether they read the node's interaction, the flag kept as the typed

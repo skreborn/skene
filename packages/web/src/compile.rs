@@ -11,7 +11,9 @@
 //! conjunction, kept in each property's declaration order.
 //!
 //! A template is compiled from the node's typed styles and, in debug builds, from its
-//! [`Record`](skene_foundation::Record) as well, the two held equal.
+//! [`Record`](skene_foundation::Record) compiled at
+//! [`Keep::Everything`](skene_foundation::Keep::Everything) as well, its slots bound by
+//! the shared half, the two held equal.
 
 use std::{
   fmt::{Debug, Write as _},
@@ -52,7 +54,6 @@ use skene_foundation::{
   RunStyle,
   RunValue,
   RunVisitor,
-  Slot,
   Static,
   StaticBoxStyle,
   StaticLeaf,
@@ -95,28 +96,11 @@ pub(crate) struct Compiled {
 }
 
 /// The property and leaf position a slot writes.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[must_use]
-pub(crate) struct SlotBinding {
-  /// The slot.
-  pub slot: Slot,
-  /// The property the slot belongs to.
-  pub property: Key,
-  /// The leaf's position: `0` the base, `i` the `i`-th variant.
-  pub position: usize,
-}
-
-impl SlotBinding {
-  /// The custom properties the slot is written to, one per property its target declares.
-  #[must_use]
-  pub(crate) fn custom_properties(&self) -> Vec<String> {
-    slot_properties(self.property, self.position)
-  }
-}
+pub(crate) type SlotBinding = skene_foundation::SlotBinding<WebProperty>;
 
 /// The custom properties standing for the leaf at `position` of `key`, one per property
-/// its target declares.
-fn slot_properties(key: Key, position: usize) -> Vec<String> {
+/// its target declares: those a slot bound there is written to.
+pub(crate) fn slot_properties(key: Key, position: usize) -> Vec<String> {
   let name = key.name().replace('_', "-");
   let index = match position {
     0 => String::new(),
@@ -533,8 +517,9 @@ impl Rules {
   }
 
   /// Renders every rule after `prefix`: the base rules, the variants in order, then
-  /// `trailer`.
-  fn finish(self, mut out: String, trailer: &str) -> Compiled {
+  /// `trailer`; the slots are those `source` binds where it binds them, else those the
+  /// rules met.
+  fn finish(self, source: &impl Source, mut out: String, trailer: &str) -> Compiled {
     for group in self.base.iter().chain(&self.variants) {
       if group.declarations.is_empty() {
         continue;
@@ -549,7 +534,7 @@ impl Rules {
 
     Compiled {
       template: out,
-      slots: self.slots,
+      slots: source.slots().map_or(self.slots, <[SlotBinding]>::to_vec),
     }
   }
 }
@@ -744,10 +729,14 @@ fn layout_declarations(layout: Layout) -> Declarations {
   }
 }
 
-/// A node's style as the compiler reads it: its typed styles, or its record.
+/// A node's style as the compiler reads it: its typed styles, or its record compiled.
 trait Source {
   /// Whether the style sets the box's height.
   fn sets_height(&self) -> bool;
+
+  /// The slots the style binds itself; `None` where the rules bind them as they meet
+  /// them.
+  fn slots(&self) -> Option<&[SlotBinding]>;
 
   /// Folds the style's motion into `base` as [`motion`] does, appending its
   /// `@keyframes` blocks to `out`.
@@ -776,6 +765,10 @@ impl<'a> TypedBox<'a> {
 impl Source for TypedBox<'_> {
   fn sets_height(&self) -> bool {
     self.style.height.is_some()
+  }
+
+  fn slots(&self) -> Option<&[SlotBinding]> {
+    None
   }
 
   fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
@@ -816,6 +809,10 @@ impl Source for TypedRun<'_> {
     self.layout.is_some_and(|layout| layout.height.is_some())
   }
 
+  fn slots(&self) -> Option<&[SlotBinding]> {
+    None
+  }
+
   fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
     motion(
       out,
@@ -835,16 +832,19 @@ impl Source for TypedRun<'_> {
   }
 }
 
-/// The record path: a node's style read from its [`Record`](skene_foundation::Record),
-/// every compile held equal to the typed path's in debug builds.
+/// The record path: a node's style read from its [`Record`](skene_foundation::Record)
+/// compiled at [`Keep::Everything`](skene_foundation::Keep::Everything), every compile held equal
+/// to the typed path's in debug builds.
 mod record {
   use std::fmt::Debug;
 
   use skene_foundation::{
     BoxProps,
     BoxStyle,
+    CompiledStyle,
     Condition,
     Frame,
+    Keeping,
     Property,
     PropertyKey,
     Record,
@@ -860,6 +860,7 @@ mod record {
     Declarations,
     PixelRealization,
     Rules,
+    SlotBinding,
     Source,
     motion,
     render_box_value,
@@ -902,9 +903,13 @@ mod record {
       })
   }
 
-  impl Source for Record<f32, WebStyle> {
+  impl Source for CompiledStyle<f32, WebStyle> {
     fn sets_height(&self) -> bool {
       self.has(PropertyKey::Shared(Property::Height))
+    }
+
+    fn slots(&self) -> Option<&[SlotBinding]> {
+      Some(Self::slots(self))
     }
 
     fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
@@ -926,29 +931,32 @@ mod record {
     }
   }
 
-  /// The record of a box's style and its motion.
-  pub(super) fn of_box<P: PixelRealization>(props: &BoxProps<P>) -> Record<f32, WebStyle> {
+  /// The record of a box's style and its motion, compiled at
+  /// [`Keep::Everything`](skene_foundation::Keep::Everything).
+  pub(super) fn of_box<P: PixelRealization>(props: &BoxProps<P>) -> CompiledStyle<f32, WebStyle> {
     let mut record = Record::new();
 
     record.add_box(&props.style);
     record.add_box_dynamics(&props.dynamics);
 
-    record
+    record.compile(Keeping::Everything)
   }
 
-  /// The record of the per-child layout a wrapper gave a low-level node.
+  /// The record of the per-child layout a wrapper gave a low-level node, compiled at
+  /// [`Keep::Everything`](skene_foundation::Keep::Everything).
   pub(super) fn of_layout(
     layout: &BoxStyle<f32, Static<Condition<f32>>, WebStyle>,
-  ) -> Record<f32, WebStyle> {
+  ) -> CompiledStyle<f32, WebStyle> {
     let mut record = Record::new();
 
     record.add_box(layout);
 
-    record
+    record.compile(Keeping::Everything)
   }
 
-  /// The record of a run's style, then its layout's, and its motion.
-  pub(super) fn of_run<P: PixelRealization>(props: &RunProps<P>) -> Record<f32, WebStyle> {
+  /// The record of a run's style, then its layout's, and its motion, compiled at
+  /// [`Keep::Everything`](skene_foundation::Keep::Everything).
+  pub(super) fn of_run<P: PixelRealization>(props: &RunProps<P>) -> CompiledStyle<f32, WebStyle> {
     let mut record = Record::new();
 
     record.add_run(&props.style);
@@ -959,7 +967,7 @@ mod record {
 
     record.add_run_dynamics(&props.dynamics);
 
-    record
+    record.compile(Keeping::Everything)
   }
 
   /// Holds what a `kind` node of `props` compiled to from its record to what it compiled
@@ -1011,7 +1019,7 @@ fn compile_box_with(source: &impl Source, base: Declarations) -> Compiled {
 
   source.properties(&mut rules);
 
-  rules.finish(out, &trailer)
+  rules.finish(source, out, &trailer)
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
@@ -1072,7 +1080,7 @@ fn compile_layout_from(source: &impl Source) -> Compiled {
 
   source.properties(&mut rules);
 
-  rules.finish(String::new(), "")
+  rules.finish(source, String::new(), "")
 }
 
 /// The rule template of a control: its box's, over the control reset that strips the
@@ -1249,7 +1257,7 @@ fn compile_run_from<P: PixelRealization>(props: &RunProps<P>, source: &impl Sour
 
   source.properties(&mut rules);
 
-  rules.finish(out, &trailer)
+  rules.finish(source, out, &trailer)
 }
 
 /// The text of a token definition's leaf.

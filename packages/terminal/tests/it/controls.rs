@@ -1413,7 +1413,6 @@ fn a_radio_group_passes_over_its_disabled_members() {
 
     assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
 
-    chosen.set(None);
     second_disabled.set(true);
 
     assert_eq!(stop_after(before), Some(c));
@@ -1516,8 +1515,9 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
   });
 }
 
-/// A disabled control reports it, takes no focus and ignores activation, a key letting
-/// by where it holds focus; enabling it again restores all three.
+/// A disabled control reports it, takes no focus and ignores activation, a click on it
+/// climbing no further and a key letting by where it holds focus; enabling it again
+/// restores all three.
 #[test]
 fn a_disabled_control_reports_it_and_ignores_activation() {
   with_platform(|| {
@@ -1526,6 +1526,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
     let counted = Rc::clone(&clicks);
     let heard = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&heard);
+    let box_log = Rc::clone(&heard);
     let other = NodeHandle::new();
     let mut nodes = None;
 
@@ -1543,6 +1544,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
       nodes = Some((node, fixed));
 
       Container::new()
+        .handle_click(move || box_log.borrow_mut().push("click".to_owned()))
         .handle_key_down(move |event| log.borrow_mut().push(event.key.to_string()))
         .set_child(
           Column::new().set_children((
@@ -1566,9 +1568,11 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
 
     assert_eq!(testing::focused_node(), other.node(), "no disabled stop");
 
+    heard.borrow_mut().clear();
     user::click(node);
 
     assert_eq!(clicks.get(), 0);
+    assert!(heard.borrow().is_empty(), "the click climbs no further");
 
     disabled.set(false);
 

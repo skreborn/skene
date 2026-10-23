@@ -388,6 +388,43 @@ fn a_pickers_select_marks_its_disabled_options() {
   );
 }
 
+/// A picker's scriptless `<select>` is named by its caption, a `<label>` whose `for`
+/// is the select's id, and carries the picker's disabled setting.
+#[test]
+fn a_disabled_pickers_select_is_named_by_its_caption() {
+  use skene_web::{BasicPicker, reactive::Get};
+
+  let page = render_to_string(|| {
+    BasicPicker::new()
+      .set_label("Size")
+      .set_disabled(true)
+      .set_options(
+        ["a"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+  });
+  let body = page.body();
+  let target = body
+    .split(" for=\"")
+    .nth(1)
+    .and_then(|rest| rest.split('"').next())
+    .expect("the caption is a label for the select");
+  let label = body
+    .split("<label")
+    .nth(1)
+    .and_then(|rest| rest.split("</label>").next())
+    .expect("the caption's label");
+  let select = body
+    .split("<select")
+    .nth(1)
+    .and_then(|rest| rest.split('>').next())
+    .expect("the select");
+
+  assert!(label.contains(">Size<"), "{body}");
+  assert!(select.contains(&format!(" id=\"{target}\"")), "{body}");
+  assert!(select.contains(" disabled"), "{body}");
+}
+
 #[test]
 fn a_text_renders_to_a_styled_span() {
   let page = render_to_string(|| Text::new("Hello"));

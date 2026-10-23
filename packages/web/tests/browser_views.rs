@@ -883,9 +883,9 @@ fn input_of(root: &Element) -> HtmlInputElement {
     .expect("an input element")
 }
 
-/// A drawn entry's edit is answered with the truth: one its handler transforms is
-/// replaced by what the handler kept, the selection beside it, and one the truth holds
-/// stands.
+/// An `<input>`'s reported edit is answered with the truth: one its handler transforms
+/// is replaced by what the handler kept, the selection beside it, and the `<input>`
+/// shows the truth after the turn; one the truth holds stands.
 #[wasm_bindgen_test]
 fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
   let (_guard, root) = fresh_root();

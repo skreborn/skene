@@ -887,11 +887,12 @@ lives.
   (`todos.items()`, `todo.done().get()`), so a write re-runs exactly the reads of the
   location it touched, and a list built from a store's `Vec` follows its shape by key
   (`derive_entries(todos.items().keyed_by(|todo| todo.id), ..)`), building, moving or
-  destroying one row per change. The value stays plain data, so it snapshots as a unit
-  across a dev reload.
+  destroying one row per change. The value stays plain data, so a tagged or saved
+  store snapshots it as a unit across a dev reload.
 - **A local `Signal` for one view's state.** What one view owns and nothing else
   reads—a draft, a disclosure's openness—is a `Signal` the view makes as it builds,
-  under its owner, so it lives exactly as long as the view and goes with it.
+  under its owner, so it lives exactly as long as the view and goes with it; made with
+  `Signal::saved` or `Signal::tagged`, it also carries its value across a dev reload.
 - **Context for what a subtree sits inside.** Values a whole subtree reads without
   being handed them—a theme's palette (`ThemedIn::current`), the router, an async
   boundary—are provided once and read by any descendant built under that owner.
@@ -971,21 +972,25 @@ The public API speaks the ecosystem's standard reactive vocabulary:
   whose value changed while the keys keep their order, the shape and the moved
   positions where they do not—where a write through `update` wakes every element, since
   it could have moved any.
-- **Snapshot identity is positional, and a key anchors it.** Nothing registers until
-  something records: a platform calls `record_snapshots` at startup where a dev channel
-  is present, and `restore` implies it, so a production build creates every signal as
-  a transient one. A signal registers by the path of steps from the runtime's root
-  owner, its index among its owner's snapshot signals and the hash of its type name. A
+- **Reload state is opt-in, its identity positional, and a key anchors it.** A signal
+  takes part in a snapshot only where its maker says so: `Signal::saved` and
+  `Store::saved` by position, `Signal::tagged` and `Store::tagged` by name, each asking
+  its type for `Snapshot`, while `Signal::new`, `signal`, `Store::new` and `Default`
+  ask nothing of it and take no part. Nothing registers until something records: a
+  platform calls `record_snapshots` at startup where a dev channel is present, and
+  `restore` implies it, so a production build creates a saved or tagged signal as a
+  plain one. A signal registers by the path of steps from the runtime's root owner,
+  its index among its owner's saved and tagged signals and the hash of its type name. A
   step is an owner's position among its siblings, or the `Key` of a keyed owner: a keyed
   step takes no position, so keying a sibling shifts none of the positional ones, and a
   key is the hash of the value it was taken from (`wide_of`, which hashes a value alike
   on every target, an integer as its little-endian bytes and a `usize` as a `u64`, a
   slice of `usize` or `isize` alone hashing its elements at the target's width), so
   `reconcile`'s item key and a view's `set_key` are one concept and a key taken on the
-  server leaf is the browser's. `Signal::transient` occupies no position,
-  `Signal::tagged` is an anchor the diff aligns around within one owner. Restore aligns
-  per owner as the live side is created, and every mismatch defaults, so a stale
-  snapshot reaching an edited program is the ordinary case and never fails. A node
+  server leaf is the browser's. A plain signal occupies no position, and a tagged one
+  is an anchor the diff aligns around within one owner. Restore aligns per owner as
+  the live side is created, and every mismatch defaults, so a stale snapshot reaching
+  an edited program is the ordinary case and never fails. A node
   takes a `SnapshotPlace` from the same sequence when the scene creates it, and a
   platform carries what a node holds outside the graph—focus, a text control's
   selection or caret, scroll offsets—through `provide_extra`/`take_extra` by that

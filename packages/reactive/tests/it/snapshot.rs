@@ -28,25 +28,25 @@ fn across_runs<R: Send + 'static>(
   .expect("the second run")
 }
 
-/// Untagged signals restore by position: the same program adopts every value, and
-/// a transient signal neither serializes nor occupies a position.
+/// Saved signals restore by position: the same program adopts every value, and a plain
+/// signal asks nothing of its type, neither serializes nor occupies a position.
 #[test]
 fn positional_state_round_trips() {
   let (count, name, flag) = across_runs(
     || {
-      let count = Signal::new(1u32);
-      let _transient = Signal::transient(vec![Box::new(9u8)]);
-      let name = Signal::new(String::from("fresh"));
-      let flag = Signal::new(false);
+      let count = Signal::saved(1u32);
+      let _plain = Signal::new(std::rc::Rc::new(|| 9u8));
+      let name = Signal::saved(String::from("fresh"));
+      let flag = Signal::saved(false);
 
       count.set(41);
       name.set("skene".to_owned());
       flag.set(true);
     },
     || {
-      let count = Signal::new(1u32);
-      let name = Signal::new(String::from("fresh"));
-      let flag = Signal::new(false);
+      let count = Signal::saved(1u32);
+      let name = Signal::saved(String::from("fresh"));
+      let flag = Signal::saved(false);
 
       (count.get(), name.get(), flag.get())
     },
@@ -62,18 +62,18 @@ fn an_added_signal_shifts_nothing_it_can_be_told_apart_from() {
   let (added, tagged, moved, trailing) = across_runs(
     || {
       let tagged = Signal::tagged("chosen", 0u32);
-      let moved = Signal::new(String::new());
-      let trailing = Signal::new(0u64);
+      let moved = Signal::saved(String::new());
+      let trailing = Signal::saved(0u64);
 
       tagged.set(7);
       moved.set("moved".to_owned());
       trailing.set(99);
     },
     || {
-      let added = Signal::new(false);
+      let added = Signal::saved(false);
       let tagged = Signal::tagged("chosen", 0u32);
-      let moved = Signal::new(String::new());
-      let trailing = Signal::new(0u64);
+      let moved = Signal::saved(String::new());
+      let trailing = Signal::saved(0u64);
 
       (added.get(), tagged.get(), moved.get(), trailing.get())
     },
@@ -92,10 +92,10 @@ fn a_branch_flip_keeps_identity() {
   fn build(scope: Owner, dark: bool) -> Signal<u32> {
     scope.enter(|| {
       if dark {
-        let _other = Signal::new(String::from("dark"));
+        let _other = Signal::saved(String::from("dark"));
       }
 
-      Signal::new(0u32)
+      Signal::saved(0u32)
     })
   }
 
@@ -133,7 +133,7 @@ fn a_branch_flip_keeps_identity() {
 fn an_effect_rerun_keeps_positions() {
   let restored = across_runs(
     || {
-      let trigger = Signal::new(0u8);
+      let trigger = Signal::saved(0u8);
       let latest = std::rc::Rc::new(std::cell::Cell::new(None::<Signal<u32>>));
 
       Effect::new({
@@ -142,7 +142,7 @@ fn an_effect_rerun_keeps_positions() {
         move |_| {
           let _ = trigger.get();
 
-          latest.set(Some(Signal::new(0u32)));
+          latest.set(Some(Signal::saved(0u32)));
         }
       });
 
@@ -151,13 +151,13 @@ fn an_effect_rerun_keeps_positions() {
       latest.get().expect("the effect ran").set(23);
     },
     || {
-      let _trigger = Signal::new(0u8);
+      let _trigger = Signal::saved(0u8);
       let latest = std::rc::Rc::new(std::cell::Cell::new(None::<Signal<u32>>));
 
       Effect::new({
         let latest = std::rc::Rc::clone(&latest);
 
-        move |_| latest.set(Some(Signal::new(0u32)))
+        move |_| latest.set(Some(Signal::saved(0u32)))
       });
 
       latest.get().expect("the effect ran").get()
@@ -172,12 +172,12 @@ fn an_effect_rerun_keeps_positions() {
 fn changed_type_degrades_to_the_default() {
   let (positional, tagged) = across_runs(
     || {
-      Signal::new(0u32).set(300);
+      Signal::saved(0u32).set(300);
       Signal::tagged("value", 0u32).set(301);
     },
     || {
       (
-        Signal::new(String::from("fallback")).get(),
+        Signal::saved(String::from("fallback")).get(),
         Signal::tagged("value", String::from("fallback")).get(),
       )
     },
@@ -195,7 +195,7 @@ fn disposal_unregisters() {
       let scope = Owner::new();
 
       scope.enter(|| {
-        Signal::new(0u32).set(5);
+        Signal::saved(0u32).set(5);
         Signal::tagged("once", 0u32).set(6);
       });
       scope.dispose();
@@ -203,16 +203,25 @@ fn disposal_unregisters() {
       let scope = Owner::new();
 
       scope.enter(|| {
-        Signal::new(0u32).set(7);
+        Signal::saved(0u32).set(7);
         Signal::tagged("once", 0u32).set(8);
       });
     },
     || {
       let scope = Owner::new();
       let scope_two = Owner::new();
-      let first = scope.enter(|| (Signal::new(1u32).get(), Signal::tagged("once", 1u32).get()));
-      let second =
-        scope_two.enter(|| (Signal::new(1u32).get(), Signal::tagged("once", 1u32).get()));
+      let first = scope.enter(|| {
+        (
+          Signal::saved(1u32).get(),
+          Signal::tagged("once", 1u32).get(),
+        )
+      });
+      let second = scope_two.enter(|| {
+        (
+          Signal::saved(1u32).get(),
+          Signal::tagged("once", 1u32).get(),
+        )
+      });
 
       (first, second)
     },
@@ -250,7 +259,7 @@ fn corrupt_snapshot_stages_nothing() {
   let value = std::thread::spawn(|| {
     restore(b"not a snapshot");
 
-    Signal::new(3u16).get()
+    Signal::saved(3u16).get()
   })
   .join()
   .expect("the run");
@@ -295,7 +304,7 @@ fn a_keyed_scope_restores_by_key_across_a_reorder() {
       .map(|item| {
         parent
           .keyed_child(Key::of(item))
-          .enter(|| Signal::new(0u32))
+          .enter(|| Signal::saved(0u32))
       })
       .collect()
   }
@@ -329,19 +338,19 @@ fn a_keyed_child_takes_no_position() {
     || {
       let parent = Owner::new();
 
-      parent.child().enter(|| Signal::new(0u32)).set(5);
+      parent.child().enter(|| Signal::saved(0u32)).set(5);
       parent
         .keyed_child(Key::of(&"row"))
-        .enter(|| Signal::new(0u32))
+        .enter(|| Signal::saved(0u32))
         .set(6);
     },
     || {
       let parent = Owner::new();
       let keyed = parent
         .keyed_child(Key::of(&"row"))
-        .enter(|| Signal::new(0u32));
+        .enter(|| Signal::saved(0u32));
       let _added = parent.keyed_child(Key::of(&"added"));
-      let positional = parent.child().enter(|| Signal::new(0u32));
+      let positional = parent.child().enter(|| Signal::saved(0u32));
 
       (positional.get(), keyed.get())
     },
@@ -369,14 +378,14 @@ fn a_replacement_shifts_no_later_sibling() {
       let _ = third;
       let later = page.child();
 
-      later.enter(|| Signal::new(0u32)).set(42);
+      later.enter(|| Signal::saved(0u32)).set(42);
     },
     || {
       let page = Owner::new();
       let _first = page.child();
       let later = page.child();
 
-      later.enter(|| Signal::new(0u32)).get()
+      later.enter(|| Signal::saved(0u32)).get()
     },
   );
 

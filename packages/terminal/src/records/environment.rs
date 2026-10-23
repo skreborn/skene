@@ -186,7 +186,7 @@ impl Records {
           hover,
           safe_area: Inset::ZERO,
         });
-        let (graphics, set_graphics) = Signal::transient(graphics).split();
+        let (graphics, set_graphics) = Signal::new(graphics).split();
 
         MediaState {
           owner,

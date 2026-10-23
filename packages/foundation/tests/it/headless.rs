@@ -348,7 +348,7 @@ fn derived_entries_update_in_place_and_follow_a_reorder() {
   reset();
 
   let owner = Owner::new();
-  let rows = Store::transient(vec![
+  let rows = Store::new(vec![
     Row {
       id: 1,
       label: "a".to_owned(),
@@ -491,7 +491,7 @@ fn derived_theme_redefines_without_rebuilding() {
   reset();
 
   let owner = Owner::new();
-  let palette = Signal::transient(TestPalette::default());
+  let palette = Signal::new(TestPalette::default());
   let local = Rc::new(Cell::new(None::<Signal<i32>>));
   let root = owner.enter(|| {
     let local = Rc::clone(&local);

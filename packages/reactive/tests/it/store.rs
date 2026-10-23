@@ -210,7 +210,7 @@ fn a_keyed_reconcile_wakes_what_changed() {
     label: &'static str,
   }
 
-  let rows = Store::transient(vec![
+  let rows = Store::new(vec![
     Row { id: 1, label: "a" },
     Row { id: 2, label: "b" },
     Row { id: 3, label: "c" },
@@ -259,7 +259,7 @@ fn an_absent_key_wakes_when_a_shape_write_adds_it() {
     label: &'static str,
   }
 
-  let rows = Store::transient(vec![Row { id: 1, label: "a" }]);
+  let rows = Store::new(vec![Row { id: 1, label: "a" }]);
   let keyed = rows.keyed_by(|row| row.id);
   let seen = Rc::new(RefCell::new(Vec::new()));
 
@@ -346,7 +346,7 @@ fn colliding_key_hashes_never_alias() {
   entries.insert(Colliding(1), 1u32);
   entries.insert(Colliding(2), 2u32);
 
-  let store = Store::transient(entries);
+  let store = Store::new(entries);
   let first_runs = count_runs(move || {
     let _ = store.key(Colliding(1)).try_get();
   });
@@ -475,7 +475,7 @@ fn entries_follow_the_shape_and_each_lens_its_entry() {
   users.insert(1, User { score: 10 });
   users.insert(2, User { score: 20 });
 
-  let store = Store::transient(users);
+  let store = Store::new(users);
   let seen = Rc::new(RefCell::new(Vec::new()));
   let entries_runs = {
     let seen = Rc::clone(&seen);
@@ -517,7 +517,7 @@ fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
     label: &'static str,
   }
 
-  let rows = Store::transient(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let rows = Store::new(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
   let keyed = rows.keyed_by(|row| row.id);
   let order = keyed.memo(|rows| rows.iter().map(|row| row.id).collect::<Vec<_>>());
   let second_runs = count_runs(move || {
@@ -563,7 +563,7 @@ fn keyed_reads_follow_pushes_removals_and_changed_keys() {
     label: &'static str,
   }
 
-  let rows = Store::transient(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let rows = Store::new(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
   let keyed = rows.keyed_by(|row| row.id);
 
   assert_eq!(keyed.key(2).label().get(), "b");
@@ -596,7 +596,7 @@ fn a_keyed_element_and_its_position_are_one_location() {
     label: &'static str,
   }
 
-  let rows = Store::transient(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let rows = Store::new(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
   let keyed = rows.keyed_by(|row| row.id);
   let by_key_runs = count_runs(move || {
     let _ = keyed.key(2).label().get();
@@ -677,7 +677,7 @@ fn store_round_trips_through_a_snapshot() {
   let bytes = std::thread::spawn(|| {
     skene_reactive::record_snapshots();
 
-    let scores = Store::new(vec![0u32; 3]);
+    let scores = Store::saved(vec![0u32; 3]);
 
     scores.at(1).set(7);
 
@@ -689,7 +689,7 @@ fn store_round_trips_through_a_snapshot() {
   let restored = std::thread::spawn(move || {
     skene_reactive::restore(&bytes);
 
-    let scores = Store::new(Vec::<u32>::new());
+    let scores = Store::saved(Vec::<u32>::new());
 
     scores.at(1).get()
   })
@@ -717,7 +717,7 @@ fn tagged_store_round_trips_through_a_snapshot() {
   let restored = std::thread::spawn(move || {
     skene_reactive::restore(&bytes);
 
-    let _shift = Store::new(0u8);
+    let _shift = Store::saved(0u8);
     let scores = Store::tagged("store-scores", Vec::<u32>::new());
 
     scores.at(1).get()
@@ -743,7 +743,7 @@ fn a_row_edit_reruns_only_its_own_effect() {
   let runs = Rc::new(Cell::new(0usize));
   let scope = Owner::new();
   let store = scope.enter(|| {
-    let store = Store::transient(vec![Row::default(); ROWS]);
+    let store = Store::new(vec![Row::default(); ROWS]);
 
     for index in 0..ROWS {
       let label = Rc::clone(&runs);
@@ -862,7 +862,7 @@ mod staleness_properties {
     /// length or the whole has last seen what the store holds: no read is left stale.
     #[test]
     fn no_reader_is_left_stale(edits in proptest::collection::vec(arbitrary_edit(), 0..16)) {
-      let store = Store::transient(rows(&[(0, "a"), (1, "b")]));
+      let store = Store::new(rows(&[(0, "a"), (1, "b")]));
       let keyed = store.keyed_by(|row| row.id);
       let positions: Vec<Seen<Option<&'static str>>> = (0..6)
         .map(|index| {

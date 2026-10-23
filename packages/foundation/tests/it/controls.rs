@@ -695,7 +695,7 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
 
   let owner = Owner::new();
   let chosen: Signal<Option<String>> = Signal::new(None);
-  let items = Signal::transient(vec!["a", "b"]);
+  let items = Signal::new(vec!["a", "b"]);
   let group = owner.enter(|| {
     BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
       .set_child(Column::new().derive_children(

@@ -1,11 +1,11 @@
 //! Fine-grained reactive stores: one plain value, field- and key-level subscriptions.
 //!
-//! A [`Store`] owns a single value of a plain type—methods on it keep working, and the
-//! whole value snapshots as one unit. `#[derive(Store)]` on the type generates an
-//! accessor per field returning a lens into the store; reading through a lens
-//! subscribes the running effect to exactly that location, and a write notifies
-//! exactly the readers it can affect: the location itself, the locations containing
-//! it, and everything beneath it. `Vec` fields address elements by position
+//! A [`Store`] owns a single value of a plain type—methods on it keep working, and a
+//! saved or tagged store snapshots the whole value as one unit. `#[derive(Store)]` on
+//! the type generates an accessor per field returning a lens into the store; reading
+//! through a lens subscribes the running effect to exactly that location, and a write
+//! notifies exactly the readers it can affect: the location itself, the locations
+//! containing it, and everything beneath it. `Vec` fields address elements by position
 //! ([`IndexedField::at`]); keyed collections address entries by key
 //! ([`KeyedField::key`]).
 //!
@@ -234,8 +234,8 @@ pub struct StoreCore {
 impl StoreCore {
   fn new() -> Self {
     Self {
-      trie: Signal::transient(Trie::new()),
-      indexes: Signal::transient(Indexes::default()),
+      trie: Signal::new(Trie::new()),
+      indexes: Signal::new(Indexes::default()),
       owner: Owner::current(),
     }
   }
@@ -447,9 +447,9 @@ impl StoreCore {
 
 /// Fine-grained reactive state over one plain value.
 ///
-/// Created with [`new`](Self::new), [`tagged`](Self::tagged) or
-/// [`transient`](Self::transient), which take part in state snapshots exactly as the
-/// [`Signal`] constructors of the same names do. The store itself is the root
+/// Created with [`new`](Self::new), [`saved`](Self::saved) or
+/// [`tagged`](Self::tagged), each taking part in state snapshots exactly as the
+/// [`Signal`] constructor of the same name does. The store itself is the root
 /// location—[`StoreField`] gives it and every lens the same read/write surface—and
 /// `#[derive(Store)]` on the value's type generates the per-field accessors that
 /// descend into it.
@@ -478,10 +478,10 @@ impl<T: 'static> fmt::Debug for Store<T> {
 }
 
 impl<T: Snapshot> Store<T> {
-  /// Creates a store owned by the current [`Owner`]; the whole value is one snapshot
-  /// signal at the owner's next position, see [`Signal::new`].
-  pub fn new(value: T) -> Self {
-    Self::over(Signal::new(value))
+  /// Creates a store owned by the current [`Owner`]; the whole value is one saved
+  /// signal at the owner's next position, see [`Signal::saved`].
+  pub fn saved(value: T) -> Self {
+    Self::over(Signal::saved(value))
   }
 
   /// Creates a store whose `tag` names its position in state snapshots; see
@@ -497,9 +497,9 @@ impl<T: Snapshot> Store<T> {
 
 impl<T: 'static> Store<T> {
   /// Creates a store owned by the current [`Owner`] that takes no part in state
-  /// snapshots; see [`Signal::transient`].
-  pub fn transient(value: T) -> Self {
-    Self::over(Signal::transient(value))
+  /// snapshots; see [`Signal::new`].
+  pub fn new(value: T) -> Self {
+    Self::over(Signal::new(value))
   }
 
   fn over(value: Signal<T>) -> Self {

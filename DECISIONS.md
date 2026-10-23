@@ -8,6 +8,18 @@ supersedes.
 
 ## Decided against
 
+- **A builder opting a signal in, `Signal::new(v).saved()`** (2026-10-23), one
+  constructor and a method that registers the signal after it is made: the opt-in is a
+  constructor, `Signal::saved` and `Store::saved` beside `tagged`, so a signal's place
+  is taken where it is created, its type is asked for `Snapshot` there and nowhere else,
+  and no signal exists unsaved for a moment before it registers. Revisit when the
+  constructors multiply past what one opt-in method would replace.
+- **`tagged` as the only opt-in** (2026-10-23), every saved signal named: an untagged
+  `Signal::saved` matches by its place among its owner's saved and tagged signals, so
+  a view's local state opts in without a name unique in its owner, and `tagged` stays
+  the anchor where an edit around it would move the place. Revisit when the positional
+  opt-in misleads more than it helps, a saved signal restoring another's value after
+  an edit often enough that apps tag every one.
 - **The web re-checking a radio group's chosen radio itself** (2026-10-23), the
   browser realization writing a group's checked states back after the browser
   unchecked the chosen radio for one whose choice the handler refused: the chosen

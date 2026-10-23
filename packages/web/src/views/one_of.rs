@@ -22,7 +22,7 @@ use crate::Active;
 ///   Archive,
 /// }
 ///
-/// let tab = Signal::transient(Tab::Inbox);
+/// let tab = Signal::new(Tab::Inbox);
 /// let pane = OneOf::new()
 ///   .derive_key(move || tab.get())
 ///   .add_case(Tab::Inbox, || Text::new("Inbox"))

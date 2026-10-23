@@ -51,7 +51,7 @@ pub fn safe_area<P: Realization>() -> ReadSignal<Inset<P::Scalar>> {
 /// once it has finished, and true from the start on every platform whose tree is live
 /// from the start.
 pub fn hydrated<P: Realization>() -> ReadSignal<bool> {
-  P::hydration().unwrap_or_else(|| Signal::transient(true).read_only())
+  P::hydration().unwrap_or_else(|| Signal::new(true).read_only())
 }
 
 /// Whether `media` holds, as a memo following the environment.

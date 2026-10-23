@@ -49,7 +49,7 @@ fn keyed_card(name: &'static str, signals: &Rc<RefCell<Vec<Signal<u32>>>>) -> im
   let signals = Rc::clone(signals);
 
   Container::new().set_key(name).derive_child(move || {
-    let count = Signal::new(0u32);
+    let count = Signal::saved(0u32);
 
     signals.borrow_mut().push(count);
 
@@ -115,7 +115,7 @@ fn a_keyed_list_item_restores_by_its_key() {
           move || items.clone(),
           |item| *item,
           move |item| {
-            let count = Signal::new(0u32);
+            let count = Signal::saved(0u32);
 
             signals.borrow_mut().push(count);
 

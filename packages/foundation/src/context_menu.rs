@@ -457,10 +457,10 @@ impl<P: Realization, C> ContextMenu<P, C> {
       item_view,
       ..
     } = self;
-    let open = Signal::transient(false);
-    let position: Signal<Option<Point<f32>>> = Signal::transient(None);
+    let open = Signal::new(false);
+    let position: Signal<Option<Point<f32>>> = Signal::new(None);
     // Bumped at every request, so a standard item re-asks the platform as the menu opens.
-    let generation = Signal::transient(0u32);
+    let generation = Signal::new(0u32);
     let dress = RowDress {
       item_style,
       item_text_color,

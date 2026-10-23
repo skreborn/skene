@@ -21,9 +21,10 @@ count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 ```
 
 A signal write re-runs exactly the effects that depend on it, and each effect patches
-the node it owns—no virtual DOM, no tree diffing. Signals snapshot by default, so a
-dev-loop restart resumes where the last run stood; a keyed list item or a view given
-`set_key` keeps its state by key rather than by position.
+the node it owns—no virtual DOM, no tree diffing. A signal made with
+`Signal::saved` or `Signal::tagged` rides the state snapshot, so a dev-loop restart
+resumes where the last run stood; a keyed list item or a view given `set_key` keeps its
+state by key rather than by position.
 
 ## A web app
 

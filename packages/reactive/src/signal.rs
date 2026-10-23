@@ -107,24 +107,9 @@ impl<T> Signal<T> {
   }
 }
 
-impl<T: Default + Snapshot> Default for Signal<T> {
+impl<T: Default + 'static> Default for Signal<T> {
   fn default() -> Self {
     Self::new(T::default())
-  }
-}
-
-impl<T: Snapshot> Signal<T> {
-  /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner).
-  ///
-  /// The signal takes part in state snapshots: its identity is its position—the
-  /// owner's path and the signal's index among the owner's snapshot signals, plus its
-  /// type—so a [`restore`](crate::restore)d run adopts the value a prior run held at
-  /// that position, when one was staged and decodes as `T`, and `value` otherwise.
-  /// [`tagged`](Self::tagged) names the position instead; [`transient`](Self::transient)
-  /// stays out of snapshots and needs no [`Snapshot`].
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn new(value: T) -> Self {
-    Self::snapshotted(None, value)
   }
 }
 
@@ -132,11 +117,11 @@ impl<T: 'static> Signal<T> {
   /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner),
   /// that takes no part in state snapshots.
   ///
-  /// For a value that cannot or should not round-trip: a closure, a handle, platform
-  /// state the platform owns. It occupies no snapshot position, so adding or removing
-  /// one shifts nothing around it.
+  /// It asks nothing of its type and occupies no snapshot position, so adding or
+  /// removing one shifts nothing around it; [`saved`](Self::saved) and
+  /// [`tagged`](Self::tagged) carry a value across a reload.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub fn transient(value: T) -> Self {
+  pub fn new(value: T) -> Self {
     let id = SignalState::create(value);
 
     Runtime::adopt_current(id);
@@ -145,9 +130,23 @@ impl<T: 'static> Signal<T> {
   }
 }
 
+impl<T: Snapshot> Signal<T> {
+  /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner),
+  /// that takes part in state snapshots.
+  ///
+  /// Its identity is its position—the owner's path and the signal's index among the
+  /// owner's saved signals, plus its type—so a [`restore`](crate::restore)d run adopts
+  /// the value a prior run held at that position, when one was staged and decodes as
+  /// `T`, and `value` otherwise. [`tagged`](Self::tagged) names the position instead.
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub fn saved(value: T) -> Self {
+    Self::snapshotted(None, value)
+  }
+}
+
 /// Creates a signal holding `value` and returns its two halves; see [`Signal::new`].
 #[cfg_attr(debug_assertions, track_caller)]
-pub fn signal<T: Snapshot>(value: T) -> (ReadSignal<T>, WriteSignal<T>) {
+pub fn signal<T: 'static>(value: T) -> (ReadSignal<T>, WriteSignal<T>) {
   let signal = Signal::new(value);
 
   signal.split()

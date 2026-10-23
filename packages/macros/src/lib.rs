@@ -261,8 +261,8 @@ pub fn derive_store(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives [`Snapshot`](../skene_reactive/trait.Snapshot.html), so a signal holding the
-/// type takes part in state snapshots.
+/// Derives [`Snapshot`](../skene_reactive/trait.Snapshot.html), so a saved or tagged
+/// signal can hold the type and carry it across state snapshots.
 ///
 /// A struct records its fields by key and an enum its variant by key with the value it
 /// carries.

@@ -34,9 +34,9 @@ impl<P: Realization> NodeHandle<P> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      node: Signal::transient(None),
-      size: Signal::transient(None),
-      measuring: Signal::transient(Measuring::Not),
+      node: Signal::new(None),
+      size: Signal::new(None),
+      measuring: Signal::new(Measuring::Not),
     }
   }
 

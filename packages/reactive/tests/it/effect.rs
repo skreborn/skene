@@ -7,7 +7,7 @@ use skene_reactive::{Effect, Get, Read, Set, Signal, Track, Write, batch};
 
 #[test]
 fn batch_simple() {
-  let name = Signal::transient("John");
+  let name = Signal::new("John");
   let age = Signal::new(20);
 
   let count = Rc::new(Cell::new(0));
@@ -43,7 +43,7 @@ fn batch_simple() {
 
 #[test]
 fn batch_batch() {
-  let name = Signal::transient("John");
+  let name = Signal::new("John");
   let age = Signal::new(20);
 
   let count = Rc::new(Cell::new(0));

@@ -518,7 +518,7 @@ fn build_drawn<P: Realization>(
 
     Memo::new(move |_| chosen().unwrap_or_default())
   };
-  let open = Signal::transient(false);
+  let open = Signal::new(false);
   let face_handle = NodeHandle::<P>::new();
   let listbox = Listbox::new().set_roster(shared.roster.clone());
   let choose = {

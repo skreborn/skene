@@ -101,9 +101,9 @@ impl<R: Route> Router<R> {
   /// Creates a router at `initial`.
   pub fn new(initial: R) -> Self {
     Self {
-      current: Signal::transient(initial),
-      sink: Signal::transient(None),
-      commit: Signal::transient(None),
+      current: Signal::new(initial),
+      sink: Signal::new(None),
+      commit: Signal::new(None),
     }
   }
 

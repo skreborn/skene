@@ -28,8 +28,8 @@ use std::{
 /// is gone.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` cannot take part in state snapshots",
-  label = "a snapshot signal's value implements `Snapshot`",
-  note = "derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`"
+  label = "a saved or tagged signal's value implements `Snapshot`",
+  note = "derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::new`"
 )]
 pub trait Snapshot: Sized + 'static {
   /// Records this value.

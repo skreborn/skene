@@ -1,9 +1,10 @@
 //! State snapshots: every snapshot signal records its value and restores on creation.
 //!
-//! A signal's identity across two runs is its position: the path of steps from the
-//! runtime's root owner to the owner it was created under, its index among that owner's
-//! snapshot signals, and its type. A step is a scope's position among its siblings, or
-//! the [`Key`](crate::Key) a keyed scope anchors that position with.
+//! A snapshot signal is one made with [`Signal::saved`] or [`Signal::tagged`]; a plain
+//! [`Signal::new`] takes no part. Its identity across two runs is its position: the path
+//! of steps from the runtime's root owner to the owner it was created under, its index
+//! among that owner's snapshot signals, and its type. A step is a scope's position among its
+//! siblings, or the [`Key`](crate::Key) a keyed scope anchors that position with.
 //! [`Signal::tagged`] names the position within its owner instead, so a tag anchors the
 //! match where a program edit would move it. [`snapshot`] serializes
 //! every live signal's current value grouped by owner; [`restore`] stages a prior
@@ -144,8 +145,8 @@ thread_local! {
 /// [`snapshot`] records it.
 ///
 /// A platform calls it at startup where a dev channel is present, before the app
-/// builds; [`restore`] implies it. Until then a snapshot signal is a transient one: it
-/// takes no place and nothing records it.
+/// builds; [`restore`] implies it. Until then a saved or tagged signal is a plain one:
+/// it takes no place and nothing records it.
 pub fn record_snapshots() {
   RECORDING.set(true);
 }
@@ -168,7 +169,7 @@ fn type_hash<T: 'static>() -> u64 {
 impl<T: Snapshot> Signal<T> {
   /// Creates a signal whose `tag` names its position in state snapshots.
   ///
-  /// A tag anchors the match where the positional identity of [`new`](Self::new)
+  /// A tag anchors the match where the positional identity of [`saved`](Self::saved)
   /// would move: the signal adopts the value staged under its tag in its owner,
   /// whatever its index, and a program edit around it shifts nothing. Tags must be
   /// unique among the live tagged signals of one owner.
@@ -183,11 +184,11 @@ impl<T: Snapshot> Signal<T> {
   }
 
   /// Creates a snapshot signal at the current owner's next position, adopting the
-  /// staged value there when one matches; a transient one while nothing records.
+  /// staged value there when one matches; a plain one while nothing records.
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn snapshotted(tag: Option<&'static str>, value: T) -> Self {
     if !recording() {
-      return Self::transient(value);
+      return Self::new(value);
     }
 
     let owner = RUNTIME.with(|runtime| runtime.current_owner.get());
@@ -196,7 +197,7 @@ impl<T: Snapshot> Signal<T> {
     let value = take_staged(&path, ty, tag)
       .and_then(|bytes| decode::<T>(&bytes))
       .unwrap_or(value);
-    let signal = Self::transient(value);
+    let signal = Self::new(value);
 
     with_graph(|graph| graph.mark_snapshotted(signal.id));
     register(signal.id, owner, path, index, ty, tag, Self::serialize);

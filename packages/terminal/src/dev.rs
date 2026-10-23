@@ -118,7 +118,7 @@ pub(crate) fn install(wake: Arc<dyn Fn() + Send + Sync>) -> Option<()> {
 
   CHANNEL.with(|channel| {
     *channel.borrow_mut() = Some(Channel {
-      notice: Signal::transient(None),
+      notice: Signal::new(None),
       state,
       control,
     });

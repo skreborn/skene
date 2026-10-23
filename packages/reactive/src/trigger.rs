@@ -18,7 +18,7 @@ impl Trigger {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      signal: Signal::transient(()),
+      signal: Signal::new(()),
     }
   }
 

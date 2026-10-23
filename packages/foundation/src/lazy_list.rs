@@ -360,10 +360,10 @@ impl<P: Realization> LazyList<P> {
       overscan,
       items,
     } = self;
-    let offset = Signal::transient(0.);
-    let viewport = Signal::transient(0.);
+    let offset = Signal::new(0.);
+    let viewport = Signal::new(0.);
     let measures = Rc::new(Measures {
-      version: Signal::transient(0),
+      version: Signal::new(0),
       axis,
     });
     let (count, edges, install) = match items {

@@ -336,8 +336,8 @@ impl Records {
           hover,
           safe_area,
         });
-        let (hydrated, set_hydrated) = Signal::transient(hydrated).split();
-        let (graphics, set_graphics) = Signal::transient(graphics).split();
+        let (hydrated, set_hydrated) = Signal::new(hydrated).split();
+        let (graphics, set_graphics) = Signal::new(graphics).split();
 
         MediaState {
           owner,

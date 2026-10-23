@@ -103,9 +103,25 @@ destroys one.
 
 ## Across a reload
 
-A dev reload carries every signal's value into the rebuilt app. Each is matched by its
-place among the signals of its owner; `Signal::tagged` anchors one by its tag, and a
-keyed child's owner by its key, so state stays with its item wherever the item moves. A
+A dev reload carries the signals an app opts in into the rebuilt app. `Signal::saved`
+and `Store::saved` opt in by place: each is matched by its place among the saved and
+tagged signals of its owner. `Signal::tagged` and `Store::tagged` opt in by name,
+anchoring one by its tag, so one added before it shifts nothing; and a keyed child's
+owner is matched by its key, so state stays with its item wherever the item moves. A
 value restores through `Snapshot`, which the built-in types implement and a type of the
-app derives. A signal whose type cannot be restored is made with `Signal::transient` and
-starts afresh after a reload. None of this costs a release build anything.
+app derives. A plain `Signal::new` asks nothing of its type, takes no place and starts
+afresh after a reload. None of this costs a release build anything.
+
+```rust
+use skene_reactive::{Signal, Snapshot};
+
+#[derive(Snapshot, Default)]
+struct Filter {
+  query: String,
+  done_only: bool,
+}
+
+let filter = Signal::saved(Filter::default());
+let draft = Signal::tagged("draft", String::new());
+let hovered = Signal::new(None::<u32>);
+```

@@ -358,9 +358,9 @@ pub fn skene_reactive::Seq<'a>::next(&mut self) -> core::option::Option<skene_re
 impl<'a> core::marker::Copy for skene_reactive::Seq<'a>
 pub struct skene_reactive::Signal<T>
 impl<T: 'static> skene_reactive::Signal<T>
-pub fn skene_reactive::Signal<T>::transient(T) -> Self
-impl<T: skene_reactive::Snapshot> skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::new(T) -> Self
+impl<T: skene_reactive::Snapshot> skene_reactive::Signal<T>
+pub fn skene_reactive::Signal<T>::saved(T) -> Self
 impl<T: skene_reactive::Snapshot> skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::tagged(&'static str, T) -> Self
 impl<T> skene_reactive::Signal<T>
@@ -375,7 +375,7 @@ pub fn skene_reactive::Signal<T>::get_untracked(&self) -> T where T: 'static
 pub fn skene_reactive::Signal<T>::id(&self) -> skene_reactive::ReactiveId
 pub fn skene_reactive::Signal<T>::try_get(&self) -> core::option::Option<T> where T: 'static
 pub fn skene_reactive::Signal<T>::try_get_untracked(&self) -> core::option::Option<T> where T: 'static
-impl<T: core::default::Default + skene_reactive::Snapshot> core::default::Default for skene_reactive::Signal<T>
+impl<T: core::default::Default + 'static> core::default::Default for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::default() -> Self
 impl<T> core::clone::Clone for skene_reactive::Signal<T>
 pub fn skene_reactive::Signal<T>::clone(&self) -> Self
@@ -433,9 +433,9 @@ pub fn skene_reactive::SnapshotPlace::restore(skene_reactive::Value<'_>) -> core
 pub fn skene_reactive::SnapshotPlace::restore_slice(skene_reactive::Value<'_>) -> core::option::Option<alloc::vec::Vec<Self>>
 pub struct skene_reactive::Store<T: 'static>
 impl<T: 'static> skene_reactive::Store<T>
-pub fn skene_reactive::Store<T>::transient(T) -> Self
-impl<T: skene_reactive::Snapshot> skene_reactive::Store<T>
 pub fn skene_reactive::Store<T>::new(T) -> Self
+impl<T: skene_reactive::Snapshot> skene_reactive::Store<T>
+pub fn skene_reactive::Store<T>::saved(T) -> Self
 pub fn skene_reactive::Store<T>::tagged(&'static str, T) -> Self
 impl<T: 'static> core::clone::Clone for skene_reactive::Store<T>
 pub fn skene_reactive::Store<T>::clone(&self) -> Self
@@ -1080,7 +1080,7 @@ pub fn skene_reactive::provide_extra(&'static str, impl core::ops::function::Fn(
 pub fn skene_reactive::record_snapshots()
 pub fn skene_reactive::restore(&[u8])
 pub fn skene_reactive::set_spawner(impl core::ops::function::Fn(skene_reactive::Task) -> skene_reactive::TaskGuard + 'static)
-pub fn skene_reactive::signal<T: skene_reactive::Snapshot>(T) -> (skene_reactive::ReadSignal<T>, skene_reactive::WriteSignal<T>)
+pub fn skene_reactive::signal<T: 'static>(T) -> (skene_reactive::ReadSignal<T>, skene_reactive::WriteSignal<T>)
 pub fn skene_reactive::snapshot() -> alloc::vec::Vec<u8>
 pub fn skene_reactive::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::TaskHandle
 pub fn skene_reactive::take_extra(&str) -> core::option::Option<alloc::vec::Vec<u8>>

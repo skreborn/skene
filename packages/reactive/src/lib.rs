@@ -8,9 +8,10 @@
 //! Entities are per thread: every handle stays on the thread that made it, and work on
 //! other threads reaches it through a task that wakes there.
 //!
-//! Every serializable signal takes part in state snapshots by position
-//! ([`snapshot`]/[`restore`]); a [`Key`] anchors a scope's position against edits and
-//! reordering around it, and [`Signal::transient`] opts out. A [`struct@Store`] adds
+//! A signal made with [`Signal::saved`] takes part in state snapshots by position
+//! ([`snapshot`]/[`restore`]) and one made with [`Signal::tagged`] by name; a [`Key`]
+//! anchors a scope's position against edits and reordering around it, and a plain
+//! [`Signal::new`] takes no part. A [`struct@Store`] adds
 //! field-level subscriptions over one value, and a [`Resource`] loads a value through
 //! the executor a platform installs ([`set_spawner`]).
 

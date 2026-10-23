@@ -780,7 +780,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   };
   let (markup, styles) = {
     let (_guard, root) = fresh_root();
-    let palette = Signal::transient(Palette::with_card(white()));
+    let palette = Signal::new(Palette::with_card(white()));
 
     let _ = platform::mount(move || app(palette)().build());
 
@@ -796,7 +796,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   let root = connected_root();
 
   root.set_inner_html(&markup);
-  platform::hydrate(root.clone(), "", app(Signal::transient(Palette::default())));
+  platform::hydrate(root.clone(), "", app(Signal::new(Palette::default())));
 
   let _guard = Installed::on(root.clone());
   let scope = html(&only_child(&root));

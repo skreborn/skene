@@ -32,7 +32,7 @@ enum Fetch {
 #[must_use]
 pub fn app(url: Option<String>) -> impl View {
   let url = url.unwrap_or_else(|| DEFAULT_URL.to_owned());
-  let fetch = Signal::transient(Fetch::Pending);
+  let fetch = Signal::new(Fetch::Pending);
 
   spawn({
     let url = url.clone();

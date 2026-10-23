@@ -73,8 +73,7 @@ in a code comment.
     write applied or not.
     - Behaviors name no realization, reaching the build's one realization through a
     table of plain functions filled from it once per build.
-    - Reload state is opt-in (`Signal::saved`, `Store::saved`), and `#[inline(always)]`
-    stays on tiny functions alone.
+    - `#[inline(always)]` stays on tiny functions alone.
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.
@@ -144,9 +143,8 @@ in a code comment.
     2048 pixels or in another format paints nothing; and no hardware adapter has been
     measured, so the CPU floor, which misses 60 Hz at 4K, is not yet called sufficient.
     - Lists: sticky headers and sections as readers see them, a row's state kept when it
-    leaves the window (item 1's opt-in reload state), `derive_entries` (the store's
-    port), the picker's open list windowed, and type-ahead over names that come from
-    content.
+    leaves the window, `derive_entries` (the store's port), the picker's open list
+    windowed, and type-ahead over names that come from content.
     - The scroll bar and right to left: the Linux realization lays nothing out right to
     left, so the bar cannot move to the leading edge; a held track press pages once; and
     the bar's parts show `Pressed` for any press inside the box.
@@ -414,8 +412,8 @@ in a code comment.
     pages instead of inlined into each; a bundle budget the gate holds, a release
     `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15
     and 2026-10-02, `skene-web` and `skene-foundation` most of it.
-15. **The dev reload costs production nothing.** The saved tier is no second API: reload
-    state is opt-in, Android's process death writes the same snapshot of it (item 6),
+15. **The dev reload costs production nothing.** The saved tier is no second API:
+    Android's process death writes the same snapshot of the state an app saves (item 6),
     and the web and the desktops keep none beyond the dev reload.
     - Identity: typed owner steps aligned per parent, so a `Visibility` inserted before a
     component stops resetting everything after it; keyed roots for detached owners and `root_owner`; a
@@ -424,7 +422,7 @@ in a code comment.
     apart from signal positions; in debug, call-site hints aligned first and every
     restore decision logged; the bookkeeping in a side table off the owner records.
     - Encoding: a header (magic, format, app and build id); a bridge crate that
-    snapshots a foreign type through serde instead of forcing it `transient`.
+    snapshots a foreign type through serde instead of leaving it unsaved.
     - One serialization for state crossing a boundary: hydration carries through
     `Snapshot` and serde_json leaves the web leaf, or `DESIGN.md` states that network
     data is serde's.

@@ -194,7 +194,7 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
 
   let owner = Owner::new();
   let palette = SimplePalette::default();
-  let variant = Signal::transient(SimpleVariant::Primary);
+  let variant = Signal::new(SimpleVariant::Primary);
   let button = themed(owner, move || {
     SimpleButton::new("Go").derive_variant(move || variant.get())
   });

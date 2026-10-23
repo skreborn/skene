@@ -280,7 +280,7 @@ fn inputs() -> impl View {
 }
 
 fn layouts() -> impl View {
-  let open = Signal::new(false);
+  let open = Signal::saved(false);
 
   section(
     "Grid, Stack & Overlay",

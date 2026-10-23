@@ -68,9 +68,9 @@ skene run terminal
 skene attach <id>
 ```
 
-A reload keeps the app's state: the rebuilt app finds each signal's old value by the
-signal's place among those of its owner, and `Signal::tagged` anchors a signal by its
-tag, so one added before it shifts nothing.
+A reload keeps the state the app opts in: `Signal::tagged` finds a signal's old value
+by its tag, so one added before it shifts nothing, and `Signal::saved` by its place
+among the saved and tagged signals of its owner. A plain `Signal::new` starts afresh.
 
 ## Building it
 

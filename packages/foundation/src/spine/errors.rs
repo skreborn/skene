@@ -25,7 +25,7 @@ impl Errors {
   /// A fresh handle holding no errors.
   pub fn new() -> Self {
     Self {
-      errors: Signal::transient(Vec::new()),
+      errors: Signal::new(Vec::new()),
     }
   }
 

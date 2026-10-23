@@ -105,7 +105,7 @@ fn a_palette_flip_keeps_the_nodes_and_their_state() {
   reset();
 
   let owner = Owner::new();
-  let palette = Signal::transient(SimplePalette::default());
+  let palette = Signal::new(SimplePalette::default());
   let root = owner.enter(|| {
     Theme::derive(move || palette.get())
       .set_child_builder(|| {

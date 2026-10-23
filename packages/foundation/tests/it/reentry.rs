@@ -302,7 +302,7 @@ impl TokenSet<Erased> for Palette {
 #[test]
 fn every_mirrored_call_runs_with_the_scene_released() {
   let owner = Owner::new();
-  let palette = Signal::transient(Palette::default());
+  let palette = Signal::new(Palette::default());
   let label = Signal::new("one".to_owned());
   let checked = Signal::new(false);
   let focus = NodeHandle::<Reentrant>::new();

@@ -2,14 +2,14 @@ error[E0277]: `Opaque` cannot take part in state snapshots
  --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:7:10
   |
 7 | #[derive(Snapshot)]
-  |          ^^^^^^^^ a snapshot signal's value implements `Snapshot`
+  |          ^^^^^^^^ a saved or tagged signal's value implements `Snapshot`
   |
 help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
  --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:5:1
   |
 5 | struct Opaque;
   | ^^^^^^^^^^^^^
-  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::new`
   = help: the following other types implement trait `skene_reactive::Snapshot`:
             ()
             (A,)
@@ -31,14 +31,14 @@ error[E0277]: `Opaque` cannot take part in state snapshots
  --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:9:11
   |
 9 |   opaque: Opaque,
-  |           ^^^^^^ a snapshot signal's value implements `Snapshot`
+  |           ^^^^^^ a saved or tagged signal's value implements `Snapshot`
   |
 help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
  --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:5:1
   |
 5 | struct Opaque;
   | ^^^^^^^^^^^^^
-  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::new`
   = help: the following other types implement trait `skene_reactive::Snapshot`:
             ()
             (A,)
@@ -54,14 +54,14 @@ error[E0277]: `Opaque` cannot take part in state snapshots
  --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:7:10
   |
 7 | #[derive(Snapshot)]
-  |          ^^^^^^^^ a snapshot signal's value implements `Snapshot`
+  |          ^^^^^^^^ a saved or tagged signal's value implements `Snapshot`
   |
 help: the trait `skene_reactive::Snapshot` is not implemented for `Opaque`
  --> tests/compile_fail/a_snapshot_field_without_snapshot.rs:5:1
   |
 5 | struct Opaque;
   | ^^^^^^^^^^^^^
-  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::transient`
+  = note: derive it with `#[derive(Snapshot)]`, or keep the value out of snapshots with `Signal::new`
   = help: the following other types implement trait `skene_reactive::Snapshot`:
             ()
             (A,)

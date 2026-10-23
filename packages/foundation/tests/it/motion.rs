@@ -90,7 +90,7 @@ fn a_palette_flip_transitions_and_reduced_motion_cuts() {
   reset();
 
   let owner = Owner::new();
-  let palette = Signal::transient(TestPalette::with_card(red()));
+  let palette = Signal::new(TestPalette::with_card(red()));
   let root = owner.enter(|| {
     Theme::<Headless, TestPalette>::derive(move || palette.get())
       .set_child_builder(|| {

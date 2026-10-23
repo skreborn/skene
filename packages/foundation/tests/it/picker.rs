@@ -46,9 +46,8 @@ use skene_headless::{
 use skene_reactive::{Get, Owner, Set, Signal};
 
 type Text = skene_foundation::Text<Headless>;
-type BasicPicker<F = skene_foundation::NoChild> = skene_foundation::BasicPicker<Headless, F>;
-type BasicListboxOption<C = skene_foundation::NoChild> =
-  skene_foundation::BasicListboxOption<Headless, C>;
+type BasicPicker = skene_foundation::BasicPicker<Headless>;
+type BasicListboxOption = skene_foundation::BasicListboxOption<Headless>;
 
 const CONSUMED: Prevented = Prevented {
   platform: true,
@@ -194,6 +193,57 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   assert_eq!(text(parts.shown), Some("c".to_owned()));
   assert_eq!(parts.selected(1), Some(false));
   assert_eq!(parts.selected(2), Some(true));
+
+  owner.dispose();
+}
+
+/// A picker without its face renders nothing: no face, no list, no option, and no
+/// node among its parent's children.
+#[test]
+fn a_picker_without_its_face_renders_nothing() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    BasicPicker::new()
+      .set_label("Size")
+      .set_options((BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),))
+      .build()
+  });
+
+  let nodes = skene_foundation::Scene::<Headless>::with(|scene| scene.segment_nodes(start));
+
+  assert_eq!(nodes, Vec::<NodeId>::new());
+  assert!(box_props(start).is_none());
+
+  owner.dispose();
+}
+
+/// A picker given its face takes its setters still: the label, the value and the
+/// options set after the face reach the face and the list.
+#[test]
+fn a_picker_given_its_face_takes_its_setters() {
+  reset();
+
+  let owner = Owner::new();
+  let value = Signal::new("b".to_owned());
+  let start = owner.enter(move || {
+    let picker = BasicPicker::new().set_face(|shown| Text::derive(move || shown.get()));
+
+    picker
+      .bind_chosen(value)
+      .set_label("Size")
+      .set_options(
+        ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
+      .build()
+  });
+  let parts = Parts::of(form(start));
+
+  assert_eq!(accessible_name(parts.face), Some("Size".to_owned()));
+  assert_eq!(text(parts.shown), Some("b".to_owned()));
+  assert_eq!(parts.options.len(), 2);
+  assert_eq!(parts.selected(1), Some(true));
 
   owner.dispose();
 }

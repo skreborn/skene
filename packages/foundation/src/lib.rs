@@ -131,7 +131,6 @@ pub use crate::{
     CollectionPolicy,
     Control,
     ControlBase,
-    ControlChild,
     ControlHandle,
     Controlled,
     Label,

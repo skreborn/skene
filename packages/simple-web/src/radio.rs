@@ -1,6 +1,6 @@
 //! A ready-made radio group and its members, in the Simple design language.
 
-use skene_foundation::{AnyView, NoChild, View, Wraps};
+use skene_foundation::{View, Wraps};
 use skene_simple::{SimpleRadioBase, SimpleRadioGroupBase};
 use skene_web::Active;
 
@@ -8,8 +8,8 @@ use skene_web::Active;
 /// arrow keys move between them, and exactly one is chosen.
 ///
 /// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
-/// or interleaved with anything. The chosen value flows both ways. Holds [`NoChild`]
-/// until [`set_child`](Self::set_child) supplies the view holding the members.
+/// or interleaved with anything. The chosen value flows both ways. Without the view
+/// [`set_child`](Self::set_child) supplies, it builds an empty group.
 ///
 /// ```
 /// use skene_simple_web::prelude::*;
@@ -25,7 +25,7 @@ use skene_web::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleRadioGroup<C = NoChild>(skene_simple::SimpleRadioGroup<Active, C>);
+pub struct SimpleRadioGroup(skene_simple::SimpleRadioGroup<Active>);
 
 impl Default for SimpleRadioGroup {
   #[inline(always)]
@@ -35,14 +35,6 @@ impl Default for SimpleRadioGroup {
 }
 
 impl SimpleRadioGroupBase<Active> for SimpleRadioGroup {}
-
-impl SimpleRadioGroup {
-  /// Sets the view holding the members.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> SimpleRadioGroup<AnyView<Active>> {
-    SimpleRadioGroup(self.0.set_child(child))
-  }
-}
 
 /// A ready-made radio button: a ring on the card surface whose dot appears while
 /// chosen and which rings while focused, beside its caption.

@@ -2,7 +2,6 @@
 
 use skene_foundation::{
   Activate,
-  AnyView,
   Behavior,
   ControlBase,
   DecorationBase,
@@ -11,7 +10,6 @@ use skene_foundation::{
   Menu,
   MenuOption,
   MotionBase,
-  NoChild,
   Radio,
   RadioGroup,
   Slider,
@@ -30,8 +28,8 @@ use crate::Active;
 /// verdict; every `handle_` here observes. The control is controlled: it reports, and
 /// the signal its behavior is bound to is the truth. Its parts and its child resolve
 /// the control-scoped conditions (`Checked`, `Disabled`, …) and their focus against it.
-/// Holds [`NoChild`] until [`set_child`](Self::set_child) or
-/// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
+/// Its drawn body, which [`set_child`](Self::set_child) or
+/// [`set_child_builder`](Self::set_child_builder) supplies, is optional: a control
 /// with a label or parts alone builds without one. Its parts, its body and its label
 /// sit in one row half an em apart, centered on the cross axis, the label where the
 /// behavior places it ([`Behavior::label_placement`](skene_foundation::Behavior::label_placement)):
@@ -47,7 +45,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Control<B: Behavior<Active>, C = NoChild>(skene_foundation::Control<Active, B, C>);
+pub struct Control<B: Behavior<Active>>(skene_foundation::Control<Active, B>);
 
 impl<B: Behavior<Active> + Default> Default for Control<B> {
   #[inline(always)]
@@ -62,42 +60,25 @@ impl<B: Behavior<Active>> DecorationBase<Active> for Control<B> {}
 
 impl<B: Behavior<Active>> MotionBase<Active> for Control<B> {}
 
-impl<B: Behavior<Active>> Control<B> {
-  /// Sets the drawn body.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Control<B, AnyView<Active>> {
-    Control(self.0.set_child(child))
-  }
-
-  /// Sets the drawn body, built by `child` under the control.
-  #[inline(always)]
-  pub fn set_child_builder<V: View<Active>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Control<B, AnyView<Active>> {
-    Control(self.0.set_child_builder(child))
-  }
-}
-
 /// A button: a control over [`Activate`].
-pub type BasicButton<C = NoChild> = Control<Activate, C>;
+pub type BasicButton = Control<Activate>;
 /// A checkbox: a control over [`Toggle`].
-pub type BasicCheckbox<C = NoChild> = Control<Toggle, C>;
+pub type BasicCheckbox = Control<Toggle>;
 /// A slider: a control over [`Slider`].
-pub type BasicSlider<C = NoChild> = Control<Slider, C>;
+pub type BasicSlider = Control<Slider>;
 /// A radio group: a control over [`RadioGroup`].
-pub type BasicRadioGroup<C = NoChild> = Control<RadioGroup, C>;
+pub type BasicRadioGroup = Control<RadioGroup>;
 /// A radio inside a group: a control over [`Radio`].
-pub type BasicRadio<C = NoChild> = Control<Radio, C>;
+pub type BasicRadio = Control<Radio>;
 /// A single-line text entry: a control over [`TextEntry`].
-pub type BasicTextField<C = NoChild> = Control<TextEntry, C>;
+pub type BasicTextField = Control<TextEntry>;
 /// A multi-line text entry: a control over [`TextEntry`].
-pub type BasicTextEditor<C = NoChild> = Control<TextEntry, C>;
+pub type BasicTextEditor = Control<TextEntry>;
 /// A listbox: a control over [`Listbox`].
-pub type BasicListbox<C = NoChild> = Control<Listbox, C>;
+pub type BasicListbox = Control<Listbox>;
 /// An option inside a listbox or a picker: a control over [`ListboxOption`].
-pub type BasicListboxOption<C = NoChild> = Control<ListboxOption, C>;
+pub type BasicListboxOption = Control<ListboxOption>;
 /// A menu: a control over [`Menu`].
-pub type BasicMenu<C = NoChild> = Control<Menu, C>;
+pub type BasicMenu = Control<Menu>;
 /// An item inside a menu: a control over [`MenuOption`].
-pub type BasicMenuItem<C = NoChild> = Control<MenuOption, C>;
+pub type BasicMenuItem = Control<MenuOption>;

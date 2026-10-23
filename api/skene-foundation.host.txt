@@ -4436,8 +4436,6 @@ pub const fn skene_foundation::AnyView<P>::node(skene_foundation::NodeId) -> Sel
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::AnyView<P>
 pub fn skene_foundation::AnyView<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::AnyView<P>
-impl<P: skene_foundation::Realization> skene_foundation::ControlChild<P> for skene_foundation::AnyView<P>
-pub fn skene_foundation::AnyView<P>::build_body(self) -> core::option::Option<skene_foundation::NodeId>
 impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::AnyView<P>
 pub fn skene_foundation::AnyView<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::AnyView<P>::into_any(self) -> Self
@@ -4493,65 +4491,65 @@ pub fn skene_foundation::Axes<T>::from(T) -> Self
 impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::Axes<T>
 impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_foundation::Axes<T>
 pub fn skene_foundation::Axes<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-pub struct skene_foundation::BasicPicker<P: skene_foundation::Realization, F>
-impl<P: skene_foundation::Realization, F> skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_options<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, skene_foundation::PlainChild>
-pub fn skene_foundation::BasicPicker<P, F>::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_disabled(self, bool) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
-pub const fn skene_foundation::BasicPicker<P, F>::set_placement(self, skene_foundation::Placement) -> Self
+pub struct skene_foundation::BasicPicker<P: skene_foundation::Realization>
+impl<P: skene_foundation::Realization> skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_options<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, skene_foundation::PlainChild>
+pub fn skene_foundation::BasicPicker<P>::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_disabled(self, bool) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
+pub const fn skene_foundation::BasicPicker<P>::set_placement(self, skene_foundation::Placement) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::BasicPicker<P>
 pub fn skene_foundation::BasicPicker<P>::new() -> Self
-pub fn skene_foundation::BasicPicker<P>::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_foundation::BasicPicker<P, skene_foundation::Face<P>>
-impl<P: skene_foundation::Realization, F> core::fmt::Debug for skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_foundation::Realization, F> skene_foundation::AnyKind for skene_foundation::BasicPicker<P, F>
-impl<P: skene_foundation::Realization, F> skene_foundation::DecorationBase<P> for skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-impl<P: skene_foundation::Realization, F> skene_foundation::HasBoxStyle<P> for skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Realization> core::default::Default for skene_foundation::BasicPicker<P>
 pub fn skene_foundation::BasicPicker<P>::default() -> Self
-impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::BasicPicker<P, skene_foundation::Face<P>>
-pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::build(self) -> skene_foundation::NodeId
-pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
-pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::BasicPicker<P>
+impl<P: skene_foundation::Realization> skene_foundation::DecorationBase<P> for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+impl<P: skene_foundation::Realization> skene_foundation::HasBoxStyle<P> for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::BasicPicker<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::BasicPicker<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Boundary
 impl skene_foundation::task::Boundary
 pub fn skene_foundation::task::Boundary::current() -> core::option::Option<Self>
@@ -5105,9 +5103,9 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::ContextMenu<P, skene_foundation::AnyView<P>>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::ContextMenu<P, skene_foundation::AnyView<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::ContextMenu<P, skene_foundation::AnyView<P>>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-pub struct skene_foundation::Control<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C>
-impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C> skene_foundation::Control<P, B, C>
-pub const fn skene_foundation::Control<P, B, C>::behavior(&self) -> &B
+pub struct skene_foundation::Control<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>>
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::Control<P, B>
+pub const fn skene_foundation::Control<P, B>::behavior(&self) -> &B
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
 pub fn skene_foundation::Control<P, B>::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -5135,6 +5133,8 @@ pub fn skene_foundation::Control<P, B>::handle_wheel(self, impl core::ops::funct
 pub fn skene_foundation::Control<P, B>::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Control<P, B>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_axis(self, skene_foundation::Axis) -> Self
+pub fn skene_foundation::Control<P, B>::set_child(self, impl skene_foundation::View<P>) -> Self
+pub fn skene_foundation::Control<P, B>::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::set_container_name(self, skene_foundation::ContainerName) -> Self
 pub const fn skene_foundation::Control<P, B>::set_described_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::Control<P, B>::set_disabled(self, bool) -> Self
@@ -5149,17 +5149,11 @@ pub fn skene_foundation::Control<P, B>::set_required(self, bool) -> Self
 pub fn skene_foundation::Control<P, B>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::new(B) -> Self
-pub fn skene_foundation::Control<P, B>::set_child(self, impl skene_foundation::View<P>) -> skene_foundation::Control<P, B, skene_foundation::AnyView<P>>
-pub fn skene_foundation::Control<P, B>::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_foundation::Control<P, B, skene_foundation::AnyView<P>>
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P> + core::default::Default> core::default::Default for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::default() -> Self
-impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C: skene_foundation::ControlChild<P>> skene_foundation::View<P> for skene_foundation::Control<P, B, C>
-pub fn skene_foundation::Control<P, B, C>::build(self) -> skene_foundation::NodeId
-pub fn skene_foundation::Control<P, B, C>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
-pub fn skene_foundation::Control<P, B, C>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C> core::fmt::Debug for skene_foundation::Control<P, B, C>
-pub fn skene_foundation::Control<P, B, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C> skene_foundation::AnyKind for skene_foundation::Control<P, B, C>
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> core::fmt::Debug for skene_foundation::Control<P, B>
+pub fn skene_foundation::Control<P, B>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::AnyKind for skene_foundation::Control<P, B>
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::DecorationBase<P> for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -5202,6 +5196,10 @@ impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_f
 pub fn skene_foundation::Control<P, B>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
 pub fn skene_foundation::Control<P, B>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Control<P, B>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::View<P> for skene_foundation::Control<P, B>
+pub fn skene_foundation::Control<P, B>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::Control<P, B>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::Control<P, B>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::ControlHandle<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::ControlHandle<P>
 pub fn skene_foundation::ControlHandle<P>::click(&self, &skene_foundation::ClickEvent) -> skene_foundation::Prevented
@@ -6383,8 +6381,6 @@ impl core::fmt::Debug for skene_foundation::NoChild
 pub fn skene_foundation::NoChild::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::NoChild
 impl core::marker::StructuralPartialEq for skene_foundation::NoChild
-impl<P: skene_foundation::Realization> skene_foundation::ControlChild<P> for skene_foundation::NoChild
-pub fn skene_foundation::NoChild::build_body(self) -> core::option::Option<skene_foundation::NodeId>
 pub struct skene_foundation::NodeHandle<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::NodeHandle<P>
 pub fn skene_foundation::NodeHandle<P>::assign(self, skene_foundation::NodeId)
@@ -7949,7 +7945,7 @@ pub const skene_foundation::TYPE_AHEAD_RESET: core::time::Duration
 pub trait skene_foundation::AnyKind
 impl skene_foundation::AnyKind for skene_foundation::NodeId
 impl<P: skene_foundation::Painting> skene_foundation::AnyKind for skene_foundation::Painted<P>
-impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C> skene_foundation::AnyKind for skene_foundation::Control<P, B, C>
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::AnyKind for skene_foundation::Control<P, B>
 impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_foundation::ContextMenu<P, C>
 impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_foundation::Enhance<P, C>
 impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_foundation::ErrorBoundary<P, C>
@@ -7958,13 +7954,13 @@ impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_fo
 impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_foundation::Suspense<P, C>
 impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_foundation::Tooltip<P, C>
 impl<P: skene_foundation::Realization, C> skene_foundation::AnyKind for skene_foundation::Visibility<P, C>
-impl<P: skene_foundation::Realization, F> skene_foundation::AnyKind for skene_foundation::BasicPicker<P, F>
 impl<P: skene_foundation::Realization, K> skene_foundation::AnyKind for skene_foundation::OneOf<P, K>
 impl<P: skene_foundation::Realization, Kind: 'static> skene_foundation::AnyKind for skene_foundation::LayoutBox<P, Kind>
 impl<P: skene_foundation::Realization, R: skene_foundation::routing::Route> skene_foundation::AnyKind for skene_foundation::Link<P, R, skene_foundation::AnyView<P>>
 impl<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>, C> skene_foundation::AnyKind for skene_foundation::Theme<P, S, C>
 impl<P: skene_foundation::Realization, V> skene_foundation::AnyKind for skene_foundation::Keyed<P, V>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::AnyView<P>
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::BasicPicker<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Column<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Container<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Grid<P>
@@ -7981,7 +7977,7 @@ pub trait skene_foundation::Apply: core::marker::Sized
 pub fn skene_foundation::Apply::apply<T>(self, core::option::Option<T>, impl core::ops::function::FnOnce(Self, T) -> Self) -> Self
 impl<T: skene_foundation::Wraps> skene_foundation::Apply for T
 pub fn T::apply<T>(self, core::option::Option<T>, impl core::ops::function::FnOnce(Self, T) -> Self) -> Self
-pub trait skene_foundation::BasicPickerBase<P: skene_foundation::Realization, F>: skene_foundation::Wraps<Inner = skene_foundation::BasicPicker<P, F>>
+pub trait skene_foundation::BasicPickerBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::BasicPicker<P>>
 pub fn skene_foundation::BasicPickerBase::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPickerBase::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::BasicPickerBase::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
@@ -7989,6 +7985,7 @@ pub fn skene_foundation::BasicPickerBase::derive_options<T, I, K, V>(self, impl 
 pub fn skene_foundation::BasicPickerBase::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
 pub fn skene_foundation::BasicPickerBase::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_disabled(self, bool) -> Self
+pub fn skene_foundation::BasicPickerBase::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> Self
 pub fn skene_foundation::BasicPickerBase::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_placement(self, skene_foundation::Placement) -> Self
@@ -8620,6 +8617,8 @@ pub fn skene_foundation::ControlBase::new(B) -> Self
 pub fn skene_foundation::ControlBase::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::ControlBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::ControlBase::set_axis(self, skene_foundation::Axis) -> Self
+pub fn skene_foundation::ControlBase::set_child(self, impl skene_foundation::View<P>) -> Self
+pub fn skene_foundation::ControlBase::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_foundation::ControlBase::set_container_name(self, skene_foundation::ContainerName) -> Self
 pub fn skene_foundation::ControlBase::set_described_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::ControlBase::set_disabled(self, bool) -> Self
@@ -8632,12 +8631,6 @@ pub fn skene_foundation::ControlBase::set_part(self, skene_foundation::Part, imp
 pub fn skene_foundation::ControlBase::set_read_only(self, bool) -> Self
 pub fn skene_foundation::ControlBase::set_required(self, bool) -> Self
 pub fn skene_foundation::ControlBase::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub trait skene_foundation::ControlChild<P: skene_foundation::Realization>: 'static
-pub fn skene_foundation::ControlChild::build_body(self) -> core::option::Option<skene_foundation::NodeId>
-impl<P: skene_foundation::Realization> skene_foundation::ControlChild<P> for skene_foundation::AnyView<P>
-pub fn skene_foundation::AnyView<P>::build_body(self) -> core::option::Option<skene_foundation::NodeId>
-impl<P: skene_foundation::Realization> skene_foundation::ControlChild<P> for skene_foundation::NoChild
-pub fn skene_foundation::NoChild::build_body(self) -> core::option::Option<skene_foundation::NodeId>
 pub trait skene_foundation::CornerRadius: skene_foundation::StyleExtension
 pub fn skene_foundation::CornerRadius::set_corner_radius<S: skene_foundation::Shape>(&mut Self::BoxFields, <S as skene_foundation::Shape>::Of)
 impl skene_foundation::CornerRadius for ()
@@ -8712,39 +8705,39 @@ pub fn skene_foundation::Control<P, B>::set_offset(self, impl core::convert::Int
 pub fn skene_foundation::Control<P, B>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::Control<P, B>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-impl<P: skene_foundation::Realization, F> skene_foundation::DecorationBase<P> for skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub fn skene_foundation::BasicPicker<P, F>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+impl<P: skene_foundation::Realization> skene_foundation::DecorationBase<P> for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_border_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_border_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_cursor<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_hidden<R: core::convert::Into<skene_foundation::StaticLeaf<bool>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_margin<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_max_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_max_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_min_height<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_min_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_offset<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_overflow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Axes<skene_foundation::Overflow>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_padding<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::derive_width<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_aspect_ratio(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::AspectRatio, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_border_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_border_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_cursor(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::MouseCursor, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_hidden(self, impl core::convert::Into<skene_foundation::Value<bool, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_margin(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_max_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_max_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_min_height(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_min_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_offset(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_overflow(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Axes<skene_foundation::Overflow>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::BasicPicker<P>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::DecorationBase<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -9128,10 +9121,10 @@ impl<P: skene_foundation::Painting> skene_foundation::HasBoxStyle<P> for skene_f
 pub fn skene_foundation::Painted<P>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::HasBoxStyle<P> for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
-impl<P: skene_foundation::Realization, F> skene_foundation::HasBoxStyle<P> for skene_foundation::BasicPicker<P, F>
-pub fn skene_foundation::BasicPicker<P, F>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Realization, T: skene_foundation::Wraps<Innerskene_foundation::HasBoxStyle<P>>> skene_foundation::HasBoxStyle<P> for T
 pub fn T::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
+impl<P: skene_foundation::Realization> skene_foundation::HasBoxStyle<P> for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Realization> skene_foundation::HasBoxStyle<P> for skene_foundation::Column<P>
 pub fn skene_foundation::Column<P>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Realization> skene_foundation::HasBoxStyle<P> for skene_foundation::Container<P>
@@ -9910,10 +9903,10 @@ impl<P: skene_foundation::Painting> skene_foundation::View<P> for skene_foundati
 pub fn skene_foundation::Painted<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Painted<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Painted<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>, C: skene_foundation::ControlChild<P>> skene_foundation::View<P> for skene_foundation::Control<P, B, C>
-pub fn skene_foundation::Control<P, B, C>::build(self) -> skene_foundation::NodeId
-pub fn skene_foundation::Control<P, B, C>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
-pub fn skene_foundation::Control<P, B, C>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_foundation::View<P> for skene_foundation::Control<P, B>
+pub fn skene_foundation::Control<P, B>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::Control<P, B>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::Control<P, B>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Realization, K: core::cmp::PartialEq + 'static> skene_foundation::View<P> for skene_foundation::OneOf<P, K>
 pub fn skene_foundation::OneOf<P, K>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::OneOf<P, K>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -9938,10 +9931,10 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::AnyView<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::AnyView<P>::into_any(self) -> Self
 pub fn skene_foundation::AnyView<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::BasicPicker<P, skene_foundation::Face<P>>
-pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::build(self) -> skene_foundation::NodeId
-pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
-pub fn skene_foundation::BasicPicker<P, skene_foundation::Face<P>>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::BasicPicker<P>
+pub fn skene_foundation::BasicPicker<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::BasicPicker<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::BasicPicker<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::Column<P>
 pub fn skene_foundation::Column<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Column<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -10077,17 +10070,17 @@ pub fn skene_foundation::report_edit<P: skene_foundation::Realization>(skene_fou
 pub fn skene_foundation::reset_thread<P: skene_foundation::Realization>()
 pub fn skene_foundation::start_drag<P: skene_foundation::Realization>(skene_foundation::NodeId) -> core::option::Option<(skene_foundation::NodeId, skene_foundation::DragData)>
 pub type skene_foundation::Annotated<P, T> = skene_foundation::Value<T, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>
-pub type skene_foundation::BasicButton<P, C> = skene_foundation::Control<P, skene_foundation::Activate, C>
-pub type skene_foundation::BasicCheckbox<P, C> = skene_foundation::Control<P, skene_foundation::Toggle, C>
-pub type skene_foundation::BasicListbox<P, C> = skene_foundation::Control<P, skene_foundation::Listbox, C>
-pub type skene_foundation::BasicListboxOption<P, C> = skene_foundation::Control<P, skene_foundation::ListboxOption, C>
-pub type skene_foundation::BasicMenu<P, C> = skene_foundation::Control<P, skene_foundation::Menu, C>
-pub type skene_foundation::BasicMenuItem<P, C> = skene_foundation::Control<P, skene_foundation::MenuOption, C>
-pub type skene_foundation::BasicRadio<P, C> = skene_foundation::Control<P, skene_foundation::Radio, C>
-pub type skene_foundation::BasicRadioGroup<P, C> = skene_foundation::Control<P, skene_foundation::RadioGroup, C>
-pub type skene_foundation::BasicSlider<P, C> = skene_foundation::Control<P, skene_foundation::Slider, C>
-pub type skene_foundation::BasicTextEditor<P, C> = skene_foundation::Control<P, skene_foundation::TextEntry, C>
-pub type skene_foundation::BasicTextField<P, C> = skene_foundation::Control<P, skene_foundation::TextEntry, C>
+pub type skene_foundation::BasicButton<P> = skene_foundation::Control<P, skene_foundation::Activate>
+pub type skene_foundation::BasicCheckbox<P> = skene_foundation::Control<P, skene_foundation::Toggle>
+pub type skene_foundation::BasicListbox<P> = skene_foundation::Control<P, skene_foundation::Listbox>
+pub type skene_foundation::BasicListboxOption<P> = skene_foundation::Control<P, skene_foundation::ListboxOption>
+pub type skene_foundation::BasicMenu<P> = skene_foundation::Control<P, skene_foundation::Menu>
+pub type skene_foundation::BasicMenuItem<P> = skene_foundation::Control<P, skene_foundation::MenuOption>
+pub type skene_foundation::BasicRadio<P> = skene_foundation::Control<P, skene_foundation::Radio>
+pub type skene_foundation::BasicRadioGroup<P> = skene_foundation::Control<P, skene_foundation::RadioGroup>
+pub type skene_foundation::BasicSlider<P> = skene_foundation::Control<P, skene_foundation::Slider>
+pub type skene_foundation::BasicTextEditor<P> = skene_foundation::Control<P, skene_foundation::TextEntry>
+pub type skene_foundation::BasicTextField<P> = skene_foundation::Control<P, skene_foundation::TextEntry>
 pub type skene_foundation::BoxKeyframe<P> = skene_foundation::BoxStyle<<P as skene_foundation::Realization>::Scalar, skene_foundation::Keyframe, <P as skene_foundation::Realization>::StyleExt>
 pub type skene_foundation::BoxSlot<N, X> = skene_foundation::DerivedSlot<skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::BoxValue<N, X>>
 pub type skene_foundation::ChangeHandler = dyn core::ops::function::Fn(&str)

@@ -102,7 +102,7 @@ use crate::common::{COLOR, blue, green, only_child, red};
 type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Control<B, C = skene_foundation::NoChild> = skene_foundation::Control<Headless, B, C>;
+type Control<B> = skene_foundation::Control<Headless, B>;
 type BasicButton = skene_foundation::BasicButton<Headless>;
 type BasicCheckbox = skene_foundation::BasicCheckbox<Headless>;
 type BasicSlider = skene_foundation::BasicSlider<Headless>;
@@ -1100,6 +1100,36 @@ fn a_caption_placed_anywhere_names_a_control() {
     box_props(field).map(|props| props.access)
   );
   assert_eq!(accessible_name(field).as_deref(), Some("Work Email"));
+
+  owner.dispose();
+}
+
+/// A control given its body takes its setters still: a caption and a handler set after
+/// the body name the control and hear its activation, the body mounted before the
+/// trailing caption.
+#[test]
+fn a_control_given_its_body_takes_its_setters() {
+  reset();
+
+  let owner = Owner::new();
+  let log = Rc::new(RefCell::new(Vec::new()));
+  let button = owner.enter(|| {
+    let button = BasicButton::new(Activate::new())
+      .set_child(Container::new().set_width(Dimension::Length(4.)));
+
+    button
+      .set_label("Save")
+      .handle_activate(note(&log, "save"))
+      .build()
+  });
+  let contents = children(button);
+
+  assert_eq!(contents.len(), 2);
+  assert!(box_props(contents[0]).is_some_and(|props| props.style.width.is_some()));
+  assert_eq!(part(contents[1]), Some(Part::Label));
+  assert_eq!(accessible_name(button).as_deref(), Some("Save"));
+  assert_eq!(trigger_click(button), KEPT);
+  assert_eq!(*log.borrow(), ["save"]);
 
   owner.dispose();
 }

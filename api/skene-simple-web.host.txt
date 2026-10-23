@@ -101,23 +101,21 @@ pub fn skene_simple_web::SimpleRadio::wrap(Self::Inner) -> Self
 impl skene_simple::radio::SimpleRadioBase<skene_headless::Headless> for skene_simple_web::SimpleRadio
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleRadio where skene_simple::radio::SimpleRadio<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_simple_web::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_simple_web::SimpleRadioGroup<C>(_)
-impl skene_simple_web::SimpleRadioGroup
-pub fn skene_simple_web::SimpleRadioGroup::set_child(self, impl skene_foundation::spine::view::View<skene_web::Active>) -> skene_simple_web::SimpleRadioGroup<skene_foundation::spine::view::AnyView<skene_web::Active>>
+pub struct skene_simple_web::SimpleRadioGroup(_)
 impl core::default::Default for skene_simple_web::SimpleRadioGroup
 pub fn skene_simple_web::SimpleRadioGroup::default() -> Self
+impl core::fmt::Debug for skene_simple_web::SimpleRadioGroup
+pub fn skene_simple_web::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleRadioGroup
+impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleRadioGroup
+pub type skene_simple_web::SimpleRadioGroup::Inner = skene_simple::radio::SimpleRadioGroup<skene_headless::Headless>
+pub fn skene_simple_web::SimpleRadioGroup::inner(&self) -> &Self::Inner
+pub fn skene_simple_web::SimpleRadioGroup::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_web::SimpleRadioGroup::into_inner(self) -> Self::Inner
+pub fn skene_simple_web::SimpleRadioGroup::wrap(Self::Inner) -> Self
 impl skene_simple::radio::SimpleRadioGroupBase<skene_headless::Headless> for skene_simple_web::SimpleRadioGroup
-impl<C, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleRadioGroup<C> where skene_simple::radio::SimpleRadioGroup<skene_web::Active, C>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleRadioGroup<C>::build(self) -> skene_foundation::spine::node::NodeId
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_simple_web::SimpleRadioGroup<C>
-pub fn skene_simple_web::SimpleRadioGroup<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleRadioGroup<C>
-impl<C> skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleRadioGroup<C>
-pub type skene_simple_web::SimpleRadioGroup<C>::Inner = skene_simple::radio::SimpleRadioGroup<skene_headless::Headless, C>
-pub fn skene_simple_web::SimpleRadioGroup<C>::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleRadioGroup<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleRadioGroup<C>::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleRadioGroup<C>::wrap(Self::Inner) -> Self
+impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleRadioGroup where skene_simple::radio::SimpleRadioGroup<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_web::SimpleRadioGroup::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleSlider(_)
 impl core::default::Default for skene_simple_web::SimpleSlider
 pub fn skene_simple_web::SimpleSlider::default() -> skene_simple_web::SimpleSlider

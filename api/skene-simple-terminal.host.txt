@@ -103,23 +103,21 @@ pub fn skene_simple_terminal::SimpleRadio::wrap(Self::Inner) -> Self
 impl skene_simple::radio::SimpleRadioBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleRadio
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleRadio where skene_simple::radio::SimpleRadio<skene_terminal::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_simple_terminal::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_simple_terminal::SimpleRadioGroup<C>(_)
-impl skene_simple_terminal::SimpleRadioGroup
-pub fn skene_simple_terminal::SimpleRadioGroup::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::Active>) -> skene_simple_terminal::SimpleRadioGroup<skene_foundation::spine::view::AnyView<skene_terminal::Active>>
+pub struct skene_simple_terminal::SimpleRadioGroup(_)
 impl core::default::Default for skene_simple_terminal::SimpleRadioGroup
 pub fn skene_simple_terminal::SimpleRadioGroup::default() -> Self
+impl core::fmt::Debug for skene_simple_terminal::SimpleRadioGroup
+pub fn skene_simple_terminal::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleRadioGroup
+impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleRadioGroup
+pub type skene_simple_terminal::SimpleRadioGroup::Inner = skene_simple::radio::SimpleRadioGroup<skene_terminal::platform::Terminal>
+pub fn skene_simple_terminal::SimpleRadioGroup::inner(&self) -> &Self::Inner
+pub fn skene_simple_terminal::SimpleRadioGroup::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_simple_terminal::SimpleRadioGroup::into_inner(self) -> Self::Inner
+pub fn skene_simple_terminal::SimpleRadioGroup::wrap(Self::Inner) -> Self
 impl skene_simple::radio::SimpleRadioGroupBase<skene_terminal::platform::Terminal> for skene_simple_terminal::SimpleRadioGroup
-impl<C, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleRadioGroup<C> where skene_simple::radio::SimpleRadioGroup<skene_terminal::Active, C>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_terminal::SimpleRadioGroup<C>::build(self) -> skene_foundation::spine::node::NodeId
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_simple_terminal::SimpleRadioGroup<C>
-pub fn skene_simple_terminal::SimpleRadioGroup<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<C> skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleRadioGroup<C>
-impl<C> skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleRadioGroup<C>
-pub type skene_simple_terminal::SimpleRadioGroup<C>::Inner = skene_simple::radio::SimpleRadioGroup<skene_terminal::platform::Terminal, C>
-pub fn skene_simple_terminal::SimpleRadioGroup<C>::inner(&self) -> &Self::Inner
-pub fn skene_simple_terminal::SimpleRadioGroup<C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_terminal::SimpleRadioGroup<C>::into_inner(self) -> Self::Inner
-pub fn skene_simple_terminal::SimpleRadioGroup<C>::wrap(Self::Inner) -> Self
+impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_terminal::SimpleRadioGroup where skene_simple::radio::SimpleRadioGroup<skene_terminal::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_simple_terminal::SimpleRadioGroup::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_terminal::SimpleSlider(_)
 impl core::default::Default for skene_simple_terminal::SimpleSlider
 pub fn skene_simple_terminal::SimpleSlider::default() -> skene_simple_terminal::SimpleSlider

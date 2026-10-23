@@ -24,7 +24,6 @@ use crate::{
   Listbox,
   ListboxContext,
   NativePicker,
-  NoChild,
   NodeHandle,
   NodeId,
   Overlay,
@@ -37,6 +36,7 @@ use crate::{
   TypeAhead,
   View,
   Wraps,
+  empty,
   realize::Source,
 };
 
@@ -64,12 +64,13 @@ impl<P: Realization> std::fmt::Debug for Face<P> {
 ///
 /// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads, and
 /// a choice only calls [`handle_choose`](Self::handle_choose) with the value asked for;
-/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. Holds [`NoChild`] until
-/// [`set_face`](Self::set_face) supplies the face; the options come from
-/// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
-/// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
+/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. The face comes from
+/// [`set_face`](Self::set_face), and a picker without one renders nothing; the options
+/// come from [`set_options`](Self::set_options) and
+/// [`derive_options`](Self::derive_options), each a
+/// [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
 #[must_use]
-pub struct BasicPicker<P: Realization, F = NoChild> {
+pub struct BasicPicker<P: Realization> {
   face_style: Box<DeclaredBoxStyle<P>>,
   label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
@@ -77,10 +78,10 @@ pub struct BasicPicker<P: Realization, F = NoChild> {
   list: LayoutBox<P, PlainChild>,
   value: Option<Source<String>>,
   on_change: Option<Rc<dyn Fn(String)>>,
-  face: F,
+  face: Option<Face<P>>,
 }
 
-impl<P: Realization, F> std::fmt::Debug for BasicPicker<P, F> {
+impl<P: Realization> std::fmt::Debug for BasicPicker<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("BasicPicker")
@@ -103,24 +104,7 @@ impl<P: Realization> BasicPicker<P> {
       }),
       value: None,
       on_change: None,
-      face: NoChild,
-    }
-  }
-
-  /// Sets the view drawing the control closed, built from the chosen value.
-  pub fn set_face<V: View<P>>(
-    self,
-    face: impl FnOnce(Memo<String>) -> V + 'static,
-  ) -> BasicPicker<P, Face<P>> {
-    BasicPicker {
-      face_style: self.face_style,
-      label: self.label,
-      disabled: self.disabled,
-      placement: self.placement,
-      list: self.list,
-      value: self.value,
-      on_change: self.on_change,
-      face: Face(Box::new(move |value| face(value).into_any())),
+      face: None,
     }
   }
 }
@@ -132,7 +116,7 @@ impl<P: Realization> Default for BasicPicker<P> {
   }
 }
 
-impl<P: Realization, F> BasicPicker<P, F> {
+impl<P: Realization> BasicPicker<P> {
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[inline(always)]
   pub const fn set_placement(mut self, placement: Placement) -> Self {
@@ -217,23 +201,30 @@ impl<P: Realization, F> BasicPicker<P, F> {
 
     self
   }
+
+  /// Sets the view drawing the control closed, built from the chosen value.
+  pub fn set_face<V: View<P>>(mut self, face: impl FnOnce(Memo<String>) -> V + 'static) -> Self {
+    self.face = Some(Face(Box::new(move |value| face(value).into_any())));
+
+    self
+  }
 }
 
-impl<P: Realization, F> HasBoxStyle<P> for BasicPicker<P, F> {
+impl<P: Realization> HasBoxStyle<P> for BasicPicker<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.face_style
   }
 }
 
-impl<P: Realization, F> DecorationBase<P> for BasicPicker<P, F> {}
+impl<P: Realization> DecorationBase<P> for BasicPicker<P> {}
 
-impl<P: Realization, F> AnyKind for BasicPicker<P, F> {}
+impl<P: Realization> AnyKind for BasicPicker<P> {}
 
 /// What a facade's [`BasicPicker`] carries beyond the face's decoration.
 ///
-/// Its list, its value and its caption.
-pub trait BasicPickerBase<P: Realization, F>: Wraps<Inner = BasicPicker<P, F>> {
+/// Its list, its value, its caption and its face.
+pub trait BasicPickerBase<P: Realization>: Wraps<Inner = BasicPicker<P>> {
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[must_use]
   fn set_placement(self, placement: Placement) -> Self {
@@ -306,6 +297,12 @@ pub trait BasicPickerBase<P: Realization, F>: Wraps<Inner = BasicPicker<P, F>> {
   {
     Self::wrap(self.into_inner().derive_options(items, key, view))
   }
+
+  /// Sets the view drawing the control closed, built from the chosen value.
+  #[must_use]
+  fn set_face<V: View<P>>(self, face: impl FnOnce(Memo<String>) -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_face(face))
+  }
 }
 
 /// What the picker's two forms take: the decoration, what each form's control carries,
@@ -358,7 +355,7 @@ struct Shared<P: Realization> {
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization> View<P> for BasicPicker<P, Face<P>> {
+impl<P: Realization> View<P> for BasicPicker<P> {
   fn build(self) -> NodeId {
     let Self {
       face_style,
@@ -368,8 +365,12 @@ impl<P: Realization> View<P> for BasicPicker<P, Face<P>> {
       list,
       value,
       on_change,
-      face: Face(face),
+      face,
     } = self;
+    let Some(Face(face)) = face
+    else {
+      return empty::<P>().build();
+    };
     let chosen: Rc<dyn Fn() -> Option<String>> = match value {
       None => Rc::new(|| None),
       Some(Source::Fixed(value)) => Rc::new(move || Some(value.clone())),

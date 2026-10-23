@@ -72,7 +72,6 @@ use crate::{
   LayoutBox,
   MotionBase,
   NativeElement,
-  NoChild,
   NodeHandle,
   NodeId,
   NodeKind,
@@ -440,30 +439,6 @@ impl<P: Realization> From<&str> for Label<P> {
   }
 }
 
-/// The drawn body a control holds: nothing yet, or one view.
-#[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a control's body",
-  label = "a control holds `NoChild` or the one view `set_child` gave it"
-)]
-pub trait ControlChild<P: Realization>: 'static {
-  /// Builds the body, if there is one.
-  fn build_body(self) -> Option<NodeId>;
-}
-
-impl<P: Realization> ControlChild<P> for NoChild {
-  #[inline(always)]
-  fn build_body(self) -> Option<NodeId> {
-    None
-  }
-}
-
-impl<P: Realization> ControlChild<P> for AnyView<P> {
-  #[inline(always)]
-  fn build_body(self) -> Option<NodeId> {
-    Some(self.build())
-  }
-}
-
 /// A control: focus, events, decoration, a label, parts and accessibility once, over
 /// the [`Behavior`] that says what the interaction is.
 ///
@@ -471,14 +446,14 @@ impl<P: Realization> ControlChild<P> for AnyView<P> {
 /// verdict; every `handle_` here observes. The control is controlled: it reports, and
 /// the signal its behavior is bound to is the truth. Its parts and its child resolve
 /// the control-scoped conditions (`Checked`, `Disabled`, …) and their focus against it.
-/// Holds [`NoChild`] until [`set_child`](Self::set_child) or
-/// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
-/// with a label or parts alone builds without one. Its parts, its body and its label
+/// Its drawn body, which [`set_child`](Self::set_child) or
+/// [`set_child_builder`](Self::set_child_builder) supplies, is optional: a control with
+/// a label or parts alone builds without one. Its parts, its body and its label
 /// sit in one row half an em apart, centered on the cross axis, the label where the
 /// behavior places it ([`Behavior::label_placement`]): leading or trailing in the row,
 /// or beside the box, before it among its siblings.
 #[must_use]
-pub struct Control<P: Realization, B: Behavior<P>, C = NoChild> {
+pub struct Control<P: Realization, B: Behavior<P>> {
   behavior: B,
   inner: LayoutBox<P, PlainChild>,
   label: Option<Label<P>>,
@@ -492,10 +467,10 @@ pub struct Control<P: Realization, B: Behavior<P>, C = NoChild> {
   focus_order: Option<Source<FocusOrder>>,
   parts: Vec<(Part, AnyView<P>)>,
   observers: Vec<Handler>,
-  child: C,
+  child: Option<AnyView<P>>,
 }
 
-impl<P: Realization, B: Behavior<P>, C> std::fmt::Debug for Control<P, B, C> {
+impl<P: Realization, B: Behavior<P>> std::fmt::Debug for Control<P, B> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Control").finish_non_exhaustive()
   }
@@ -527,39 +502,7 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
       focus_order: None,
       parts: Vec::new(),
       observers: Vec::new(),
-      child: NoChild,
-    }
-  }
-
-  /// Sets the drawn body.
-  pub fn set_child(self, child: impl View<P>) -> Control<P, B, AnyView<P>> {
-    self.with_child(child.into_any())
-  }
-
-  /// Sets the drawn body, built by `child` under the control.
-  pub fn set_child_builder<V: View<P>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Control<P, B, AnyView<P>> {
-    self.with_child(AnyView::new(move || child().build()))
-  }
-
-  fn with_child(self, child: AnyView<P>) -> Control<P, B, AnyView<P>> {
-    Control {
-      behavior: self.behavior,
-      inner: self.inner,
-      label: self.label,
-      disabled: self.disabled,
-      required: self.required,
-      read_only: self.read_only,
-      invalid: self.invalid,
-      described_by: self.described_by,
-      labelled_by: self.labelled_by,
-      accessible_name: self.accessible_name,
-      focus_order: self.focus_order,
-      parts: self.parts,
-      observers: self.observers,
-      child,
+      child: None,
     }
   }
 }
@@ -733,6 +676,20 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
     self
   }
 
+  /// Sets the drawn body.
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
+  }
+
+  /// Sets the drawn body, built by `child` under the control.
+  pub fn set_child_builder<V: View<P>>(mut self, child: impl FnOnce() -> V + 'static) -> Self {
+    self.child = Some(AnyView::new(move || child().build()));
+
+    self
+  }
+
   /// Runs `action` after the behavior has acted on an activation: a click, or a key the
   /// behavior activates on.
   pub fn handle_activate(mut self, action: impl Fn() + 'static) -> Self {
@@ -837,7 +794,7 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
   }
 }
 
-impl<P: Realization, B: Behavior<P>, C> Control<P, B, C> {
+impl<P: Realization, B: Behavior<P>> Control<P, B> {
   /// The behavior driving the control.
   #[inline(always)]
   pub const fn behavior(&self) -> &B {
@@ -845,9 +802,9 @@ impl<P: Realization, B: Behavior<P>, C> Control<P, B, C> {
   }
 }
 
-impl<P: Realization, B: Behavior<P>, C> AnyKind for Control<P, B, C> {}
+impl<P: Realization, B: Behavior<P>> AnyKind for Control<P, B> {}
 
-impl<P: Realization, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, C> {
+impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
   fn build(self) -> NodeId {
     let Self {
       behavior,
@@ -954,7 +911,7 @@ impl<P: Realization, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, 
         placement,
         label.map(|(part, _)| part),
         parts,
-        child.build_body(),
+        child.map(View::build),
       );
       behavior.mounted(&handle);
 
@@ -1344,28 +1301,28 @@ fn observe<E: ?Sized + 'static>(action: impl Fn(&E) + 'static) -> Rc<Acting<E>> 
 }
 
 /// A button: [`Control`] over [`Activate`].
-pub type BasicButton<P, C = NoChild> = Control<P, Activate, C>;
+pub type BasicButton<P> = Control<P, Activate>;
 /// A checkbox: [`Control`] over [`Toggle`].
-pub type BasicCheckbox<P, C = NoChild> = Control<P, Toggle, C>;
+pub type BasicCheckbox<P> = Control<P, Toggle>;
 /// A slider: [`Control`] over [`Slider`].
-pub type BasicSlider<P, C = NoChild> = Control<P, Slider, C>;
+pub type BasicSlider<P> = Control<P, Slider>;
 /// A radio group: [`Control`] over [`RadioGroup`].
-pub type BasicRadioGroup<P, C = NoChild> = Control<P, RadioGroup, C>;
+pub type BasicRadioGroup<P> = Control<P, RadioGroup>;
 /// One radio choice: [`Control`] over [`Radio`].
-pub type BasicRadio<P, C = NoChild> = Control<P, Radio, C>;
+pub type BasicRadio<P> = Control<P, Radio>;
 /// A single-line text field: [`Control`] over [`TextEntry`].
-pub type BasicTextField<P, C = NoChild> = Control<P, TextEntry, C>;
+pub type BasicTextField<P> = Control<P, TextEntry>;
 /// A multi-line text editor: [`Control`] over [`TextEntry`] with
 /// [`set_lines`](TextEntry::set_lines) above one.
-pub type BasicTextEditor<P, C = NoChild> = Control<P, TextEntry, C>;
+pub type BasicTextEditor<P> = Control<P, TextEntry>;
 /// A listbox: [`Control`] over [`Listbox`].
-pub type BasicListbox<P, C = NoChild> = Control<P, Listbox, C>;
+pub type BasicListbox<P> = Control<P, Listbox>;
 /// One option within a listbox: [`Control`] over [`ListboxOption`].
-pub type BasicListboxOption<P, C = NoChild> = Control<P, ListboxOption, C>;
+pub type BasicListboxOption<P> = Control<P, ListboxOption>;
 /// A menu: [`Control`] over [`Menu`].
-pub type BasicMenu<P, C = NoChild> = Control<P, Menu, C>;
+pub type BasicMenu<P> = Control<P, Menu>;
 /// One item within a menu: [`Control`] over [`MenuOption`].
-pub type BasicMenuItem<P, C = NoChild> = Control<P, MenuOption, C>;
+pub type BasicMenuItem<P> = Control<P, MenuOption>;
 
 impl<P: Realization, B: Behavior<P>> HasBoxStyle<P> for Control<P, B> {
   #[inline(always)]
@@ -1591,6 +1548,18 @@ pub trait ControlBase<P: Realization, B: Behavior<P>>: Wraps<Inner = Control<P, 
   #[must_use]
   fn set_part(self, part: Part, view: impl View<P>) -> Self {
     Self::wrap(self.into_inner().set_part(part, view))
+  }
+
+  /// Sets the drawn body.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
+  }
+
+  /// Sets the drawn body, built by `child` under the control.
+  #[must_use]
+  fn set_child_builder<V: View<P>>(self, child: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_child_builder(child))
   }
 
   /// Runs `action` after the behavior has acted on an activation: a click, or a key the

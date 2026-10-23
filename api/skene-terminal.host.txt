@@ -18,7 +18,6 @@ pub use skene_terminal::ContainerName
 pub use skene_terminal::ContextMenuBase
 pub use skene_terminal::ContextMenuWithCornerRadius
 pub use skene_terminal::ControlBase
-pub use skene_terminal::ControlChild
 pub use skene_terminal::ControlState
 pub use skene_terminal::CornerRadius
 pub use skene_terminal::DecorationBase
@@ -335,25 +334,24 @@ pub fn skene_terminal::prelude::media::watch(&skene_terminal::Media) -> skene_re
 pub mod skene_terminal::prelude::window
 pub fn skene_terminal::prelude::window::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_terminal::prelude::window::set_title(impl core::convert::Into<alloc::string::String>)
-pub struct skene_terminal::prelude::BasicPicker<F>(_)
+pub struct skene_terminal::prelude::BasicPicker(_)
 impl skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::new() -> Self
-pub fn skene_terminal::BasicPicker::set_face<V: skene_foundation::spine::view::View<skene_terminal::Active>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_terminal::BasicPicker<skene_foundation::picker::Face<skene_terminal::Active>>
 impl core::default::Default for skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::default() -> Self
-impl<F, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::BasicPicker<F> where skene_foundation::picker::BasicPicker<skene_terminal::Active, F>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_terminal::BasicPicker<F>::build(self) -> skene_foundation::spine::node::NodeId
-impl<F: core::fmt::Debug> core::fmt::Debug for skene_terminal::BasicPicker<F>
-pub fn skene_terminal::BasicPicker<F>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<F> skene_foundation::picker::BasicPickerBase<skene_terminal::Terminal, F> for skene_terminal::BasicPicker<F>
-impl<F> skene_foundation::spine::view::AnyKind for skene_terminal::BasicPicker<F>
-impl<F> skene_foundation::spine::wraps::Wraps for skene_terminal::BasicPicker<F>
-pub type skene_terminal::BasicPicker<F>::Inner = skene_foundation::picker::BasicPicker<skene_terminal::Terminal, F>
-pub fn skene_terminal::BasicPicker<F>::inner(&self) -> &Self::Inner
-pub fn skene_terminal::BasicPicker<F>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_terminal::BasicPicker<F>::into_inner(self) -> Self::Inner
-pub fn skene_terminal::BasicPicker<F>::wrap(Self::Inner) -> Self
-impl<F> skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::BasicPicker<F>
+impl core::fmt::Debug for skene_terminal::BasicPicker
+pub fn skene_terminal::BasicPicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::picker::BasicPickerBase<skene_terminal::Terminal> for skene_terminal::BasicPicker
+impl skene_foundation::spine::view::AnyKind for skene_terminal::BasicPicker
+impl skene_foundation::spine::wraps::Wraps for skene_terminal::BasicPicker
+pub type skene_terminal::BasicPicker::Inner = skene_foundation::picker::BasicPicker<skene_terminal::Terminal>
+pub fn skene_terminal::BasicPicker::inner(&self) -> &Self::Inner
+pub fn skene_terminal::BasicPicker::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_terminal::BasicPicker::into_inner(self) -> Self::Inner
+pub fn skene_terminal::BasicPicker::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::BasicPicker
+impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::BasicPicker where skene_foundation::picker::BasicPicker<skene_terminal::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_terminal::BasicPicker::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::prelude::Clipboard
 pub skene_terminal::prelude::Clipboard::copy: bool
 pub skene_terminal::prelude::Clipboard::paste: bool
@@ -441,7 +439,7 @@ pub fn skene_terminal::ContextMenu<C>::inner(&self) -> &Self::Inner
 pub fn skene_terminal::ContextMenu<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_terminal::ContextMenu<C>::into_inner(self) -> Self::Inner
 pub fn skene_terminal::ContextMenu<C>::wrap(Self::Inner) -> Self
-pub struct skene_terminal::prelude::Control<B: skene_foundation::control::Behavior<skene_terminal::Active>, C>(_)
+pub struct skene_terminal::prelude::Control<B: skene_foundation::control::Behavior<skene_terminal::Active>>(_)
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_terminal::Control<B>
 pub fn skene_terminal::Control<B>::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Control<B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -457,23 +455,20 @@ pub fn skene_terminal::Control<B>::set_scrollbar_track(self, impl core::convert:
 pub fn skene_terminal::Control<B>::set_shadow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Control<B>::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Control<B>::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_terminal::Control<B>
-pub fn skene_terminal::Control<B>::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::Active>) -> skene_terminal::Control<B, skene_foundation::spine::view::AnyView<skene_terminal::Active>>
-pub fn skene_terminal::Control<B>::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::Active>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Control<B, skene_foundation::spine::view::AnyView<skene_terminal::Active>>
-impl<B: core::fmt::Debug + skene_foundation::control::Behavior<skene_terminal::Active>, C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Control<B, C>
-pub fn skene_terminal::Control<B, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<B: core::fmt::Debug + skene_foundation::control::Behavior<skene_terminal::Active>> core::fmt::Debug for skene_terminal::Control<B>
+pub fn skene_terminal::Control<B>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active> + core::default::Default> core::default::Default for skene_terminal::Control<B>
 pub fn skene_terminal::Control<B>::default() -> Self
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, C, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::Control<B, C> where skene_foundation::control::Control<skene_terminal::Active, B, C>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_terminal::Control<B, C>::build(self) -> skene_foundation::spine::node::NodeId
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Control<B, C>
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, C> skene_foundation::spine::wraps::Wraps for skene_terminal::Control<B, C>
-pub type skene_terminal::Control<B, C>::Inner = skene_foundation::control::Control<skene_terminal::Terminal, B, C>
-pub fn skene_terminal::Control<B, C>::inner(&self) -> &Self::Inner
-pub fn skene_terminal::Control<B, C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_terminal::Control<B, C>::into_inner(self) -> Self::Inner
-pub fn skene_terminal::Control<B, C>::wrap(Self::Inner) -> Self
+impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_terminal::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::control::ControlBase<skene_terminal::Terminal, B> for skene_terminal::Control<B>
+impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::spine::view::AnyKind for skene_terminal::Control<B>
+impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::spine::wraps::Wraps for skene_terminal::Control<B>
+pub type skene_terminal::Control<B>::Inner = skene_foundation::control::Control<skene_terminal::Terminal, B>
+pub fn skene_terminal::Control<B>::inner(&self) -> &Self::Inner
+pub fn skene_terminal::Control<B>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_terminal::Control<B>::into_inner(self) -> Self::Inner
+pub fn skene_terminal::Control<B>::wrap(Self::Inner) -> Self
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::surface::MotionBase<skene_terminal::Terminal> for skene_terminal::Control<B>
 pub struct skene_terminal::prelude::Enhance<C>(_)
@@ -874,16 +869,16 @@ pub fn skene_terminal::prelude::launch<V, F>(F) where F: core::ops::function::Fn
 pub fn skene_terminal::prelude::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_terminal::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub type skene_terminal::prelude::AnyView = skene_foundation::spine::view::AnyView<skene_terminal::Active>
-pub type skene_terminal::prelude::BasicButton<C> = skene_terminal::Control<skene_foundation::control::activate::Activate, C>
-pub type skene_terminal::prelude::BasicCheckbox<C> = skene_terminal::Control<skene_foundation::control::toggle::Toggle, C>
-pub type skene_terminal::prelude::BasicListboxOption<C> = skene_terminal::Control<skene_foundation::control::collection::ListboxOption, C>
-pub type skene_terminal::prelude::BasicMenu<C> = skene_terminal::Control<skene_foundation::control::collection::Menu, C>
-pub type skene_terminal::prelude::BasicMenuItem<C> = skene_terminal::Control<skene_foundation::control::collection::MenuOption, C>
-pub type skene_terminal::prelude::BasicRadio<C> = skene_terminal::Control<skene_foundation::control::collection::Radio, C>
-pub type skene_terminal::prelude::BasicRadioGroup<C> = skene_terminal::Control<skene_foundation::control::collection::RadioGroup, C>
-pub type skene_terminal::prelude::BasicSlider<C> = skene_terminal::Control<skene_foundation::control::slider::Slider, C>
-pub type skene_terminal::prelude::BasicTextEditor<C> = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry, C>
-pub type skene_terminal::prelude::BasicTextField<C> = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry, C>
+pub type skene_terminal::prelude::BasicButton = skene_terminal::Control<skene_foundation::control::activate::Activate>
+pub type skene_terminal::prelude::BasicCheckbox = skene_terminal::Control<skene_foundation::control::toggle::Toggle>
+pub type skene_terminal::prelude::BasicListboxOption = skene_terminal::Control<skene_foundation::control::collection::ListboxOption>
+pub type skene_terminal::prelude::BasicMenu = skene_terminal::Control<skene_foundation::control::collection::Menu>
+pub type skene_terminal::prelude::BasicMenuItem = skene_terminal::Control<skene_foundation::control::collection::MenuOption>
+pub type skene_terminal::prelude::BasicRadio = skene_terminal::Control<skene_foundation::control::collection::Radio>
+pub type skene_terminal::prelude::BasicRadioGroup = skene_terminal::Control<skene_foundation::control::collection::RadioGroup>
+pub type skene_terminal::prelude::BasicSlider = skene_terminal::Control<skene_foundation::control::slider::Slider>
+pub type skene_terminal::prelude::BasicTextEditor = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
+pub type skene_terminal::prelude::BasicTextField = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_terminal::prelude::Condition = skene_foundation::spine::condition::Condition<u32>
 pub type skene_terminal::prelude::Definition<T> = skene_foundation::spine::leaf::Definition<T, u32>
 pub type skene_terminal::prelude::Dimension = skene_foundation::spine::values::dimension::Dimension<u32>
@@ -1021,25 +1016,24 @@ impl core::fmt::Debug for skene_terminal::Note
 pub fn skene_terminal::Note::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_terminal::Note
 impl core::marker::StructuralPartialEq for skene_terminal::Note
-pub struct skene_terminal::BasicPicker<F>(_)
+pub struct skene_terminal::BasicPicker(_)
 impl skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::new() -> Self
-pub fn skene_terminal::BasicPicker::set_face<V: skene_foundation::spine::view::View<skene_terminal::Active>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<alloc::string::String>) -> V + 'static) -> skene_terminal::BasicPicker<skene_foundation::picker::Face<skene_terminal::Active>>
 impl core::default::Default for skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::default() -> Self
-impl<F, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::BasicPicker<F> where skene_foundation::picker::BasicPicker<skene_terminal::Active, F>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_terminal::BasicPicker<F>::build(self) -> skene_foundation::spine::node::NodeId
-impl<F: core::fmt::Debug> core::fmt::Debug for skene_terminal::BasicPicker<F>
-pub fn skene_terminal::BasicPicker<F>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<F> skene_foundation::picker::BasicPickerBase<skene_terminal::Terminal, F> for skene_terminal::BasicPicker<F>
-impl<F> skene_foundation::spine::view::AnyKind for skene_terminal::BasicPicker<F>
-impl<F> skene_foundation::spine::wraps::Wraps for skene_terminal::BasicPicker<F>
-pub type skene_terminal::BasicPicker<F>::Inner = skene_foundation::picker::BasicPicker<skene_terminal::Terminal, F>
-pub fn skene_terminal::BasicPicker<F>::inner(&self) -> &Self::Inner
-pub fn skene_terminal::BasicPicker<F>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_terminal::BasicPicker<F>::into_inner(self) -> Self::Inner
-pub fn skene_terminal::BasicPicker<F>::wrap(Self::Inner) -> Self
-impl<F> skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::BasicPicker<F>
+impl core::fmt::Debug for skene_terminal::BasicPicker
+pub fn skene_terminal::BasicPicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::picker::BasicPickerBase<skene_terminal::Terminal> for skene_terminal::BasicPicker
+impl skene_foundation::spine::view::AnyKind for skene_terminal::BasicPicker
+impl skene_foundation::spine::wraps::Wraps for skene_terminal::BasicPicker
+pub type skene_terminal::BasicPicker::Inner = skene_foundation::picker::BasicPicker<skene_terminal::Terminal>
+pub fn skene_terminal::BasicPicker::inner(&self) -> &Self::Inner
+pub fn skene_terminal::BasicPicker::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_terminal::BasicPicker::into_inner(self) -> Self::Inner
+pub fn skene_terminal::BasicPicker::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::BasicPicker
+impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::BasicPicker where skene_foundation::picker::BasicPicker<skene_terminal::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_terminal::BasicPicker::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_terminal::CellDecoration
 pub skene_terminal::CellDecoration::line_through: bool
 pub skene_terminal::CellDecoration::overline: bool
@@ -1154,7 +1148,7 @@ pub fn skene_terminal::ContextMenu<C>::inner(&self) -> &Self::Inner
 pub fn skene_terminal::ContextMenu<C>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_terminal::ContextMenu<C>::into_inner(self) -> Self::Inner
 pub fn skene_terminal::ContextMenu<C>::wrap(Self::Inner) -> Self
-pub struct skene_terminal::Control<B: skene_foundation::control::Behavior<skene_terminal::Active>, C>(_)
+pub struct skene_terminal::Control<B: skene_foundation::control::Behavior<skene_terminal::Active>>(_)
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_terminal::Control<B>
 pub fn skene_terminal::Control<B>::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Control<B>::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1170,23 +1164,20 @@ pub fn skene_terminal::Control<B>::set_scrollbar_track(self, impl core::convert:
 pub fn skene_terminal::Control<B>::set_shadow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Control<B>::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Control<B>::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_terminal::Control<B>
-pub fn skene_terminal::Control<B>::set_child(self, impl skene_foundation::spine::view::View<skene_terminal::Active>) -> skene_terminal::Control<B, skene_foundation::spine::view::AnyView<skene_terminal::Active>>
-pub fn skene_terminal::Control<B>::set_child_builder<V: skene_foundation::spine::view::View<skene_terminal::Active>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> skene_terminal::Control<B, skene_foundation::spine::view::AnyView<skene_terminal::Active>>
-impl<B: core::fmt::Debug + skene_foundation::control::Behavior<skene_terminal::Active>, C: core::fmt::Debug> core::fmt::Debug for skene_terminal::Control<B, C>
-pub fn skene_terminal::Control<B, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<B: core::fmt::Debug + skene_foundation::control::Behavior<skene_terminal::Active>> core::fmt::Debug for skene_terminal::Control<B>
+pub fn skene_terminal::Control<B>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active> + core::default::Default> core::default::Default for skene_terminal::Control<B>
 pub fn skene_terminal::Control<B>::default() -> Self
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, C, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::Control<B, C> where skene_foundation::control::Control<skene_terminal::Active, B, C>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_terminal::Control<B, C>::build(self) -> skene_foundation::spine::node::NodeId
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, C> skene_foundation::spine::view::AnyKind for skene_terminal::Control<B, C>
-impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, C> skene_foundation::spine::wraps::Wraps for skene_terminal::Control<B, C>
-pub type skene_terminal::Control<B, C>::Inner = skene_foundation::control::Control<skene_terminal::Terminal, B, C>
-pub fn skene_terminal::Control<B, C>::inner(&self) -> &Self::Inner
-pub fn skene_terminal::Control<B, C>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_terminal::Control<B, C>::into_inner(self) -> Self::Inner
-pub fn skene_terminal::Control<B, C>::wrap(Self::Inner) -> Self
+impl<B: skene_foundation::control::Behavior<skene_terminal::Active>, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_terminal::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::control::ControlBase<skene_terminal::Terminal, B> for skene_terminal::Control<B>
+impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::spine::view::AnyKind for skene_terminal::Control<B>
+impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::spine::wraps::Wraps for skene_terminal::Control<B>
+pub type skene_terminal::Control<B>::Inner = skene_foundation::control::Control<skene_terminal::Terminal, B>
+pub fn skene_terminal::Control<B>::inner(&self) -> &Self::Inner
+pub fn skene_terminal::Control<B>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_terminal::Control<B>::into_inner(self) -> Self::Inner
+pub fn skene_terminal::Control<B>::wrap(Self::Inner) -> Self
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::surface::MotionBase<skene_terminal::Terminal> for skene_terminal::Control<B>
 pub struct skene_terminal::Enhance<C>(_)
@@ -1552,6 +1543,7 @@ impl skene_foundation::painted::PaintedBase<skene_terminal::Terminal> for skene_
 impl skene_foundation::painting::Painting for skene_terminal::Terminal
 pub fn skene_terminal::Terminal::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<skene_foundation::painting::Painter>)
+impl skene_foundation::picker::BasicPickerBase<skene_terminal::Terminal> for skene_terminal::BasicPicker
 impl skene_foundation::pinned::PinnedBase<skene_terminal::Terminal> for skene_terminal::Pinned
 impl skene_foundation::span::RichTextBase<skene_terminal::Terminal> for skene_terminal::RichText
 impl skene_foundation::span::SpanBase<skene_terminal::Terminal> for skene_terminal::Span
@@ -1606,6 +1598,7 @@ pub fn skene_terminal::GridCell::into_child(self) -> skene_foundation::spine::vi
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::Terminal, skene_foundation::spine::view::StackChild> for skene_terminal::Pinned
 pub fn skene_terminal::Pinned::into_child(self) -> skene_foundation::spine::view::AnyView<skene_terminal::Active>
 impl skene_foundation::stack::StackBase<skene_terminal::Terminal> for skene_terminal::Stack
+impl skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::BasicPicker
 impl skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::Container
 impl skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::ContextMenu
 impl skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::Overlay
@@ -1623,8 +1616,6 @@ pub fn skene_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, al
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::control::ControlBase<skene_terminal::Terminal, B> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_terminal::Active>> skene_foundation::surface::MotionBase<skene_terminal::Terminal> for skene_terminal::Control<B>
-impl<F> skene_foundation::picker::BasicPickerBase<skene_terminal::Terminal, F> for skene_terminal::BasicPicker<F>
-impl<F> skene_foundation::surface::DecorationBase<skene_terminal::Terminal> for skene_terminal::BasicPicker<F>
 impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<skene_terminal::Terminal, K> for skene_terminal::OneOf<K>
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_terminal::Terminal, R> for skene_terminal::Link<R>
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::theme::ThemeBase<skene_terminal::Terminal, S> for skene_terminal::Theme<S>
@@ -1756,17 +1747,17 @@ pub fn skene_terminal::spawn(impl core::future::future::Future<Output = ()> + 's
 pub fn skene_terminal::uninstall()
 pub type skene_terminal::Active = skene_terminal::Terminal
 pub type skene_terminal::AnyView = skene_foundation::spine::view::AnyView<skene_terminal::Active>
-pub type skene_terminal::BasicButton<C> = skene_terminal::Control<skene_foundation::control::activate::Activate, C>
-pub type skene_terminal::BasicCheckbox<C> = skene_terminal::Control<skene_foundation::control::toggle::Toggle, C>
-pub type skene_terminal::BasicListbox<C> = skene_terminal::Control<skene_foundation::control::collection::Listbox, C>
-pub type skene_terminal::BasicListboxOption<C> = skene_terminal::Control<skene_foundation::control::collection::ListboxOption, C>
-pub type skene_terminal::BasicMenu<C> = skene_terminal::Control<skene_foundation::control::collection::Menu, C>
-pub type skene_terminal::BasicMenuItem<C> = skene_terminal::Control<skene_foundation::control::collection::MenuOption, C>
-pub type skene_terminal::BasicRadio<C> = skene_terminal::Control<skene_foundation::control::collection::Radio, C>
-pub type skene_terminal::BasicRadioGroup<C> = skene_terminal::Control<skene_foundation::control::collection::RadioGroup, C>
-pub type skene_terminal::BasicSlider<C> = skene_terminal::Control<skene_foundation::control::slider::Slider, C>
-pub type skene_terminal::BasicTextEditor<C> = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry, C>
-pub type skene_terminal::BasicTextField<C> = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry, C>
+pub type skene_terminal::BasicButton = skene_terminal::Control<skene_foundation::control::activate::Activate>
+pub type skene_terminal::BasicCheckbox = skene_terminal::Control<skene_foundation::control::toggle::Toggle>
+pub type skene_terminal::BasicListbox = skene_terminal::Control<skene_foundation::control::collection::Listbox>
+pub type skene_terminal::BasicListboxOption = skene_terminal::Control<skene_foundation::control::collection::ListboxOption>
+pub type skene_terminal::BasicMenu = skene_terminal::Control<skene_foundation::control::collection::Menu>
+pub type skene_terminal::BasicMenuItem = skene_terminal::Control<skene_foundation::control::collection::MenuOption>
+pub type skene_terminal::BasicRadio = skene_terminal::Control<skene_foundation::control::collection::Radio>
+pub type skene_terminal::BasicRadioGroup = skene_terminal::Control<skene_foundation::control::collection::RadioGroup>
+pub type skene_terminal::BasicSlider = skene_terminal::Control<skene_foundation::control::slider::Slider>
+pub type skene_terminal::BasicTextEditor = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
+pub type skene_terminal::BasicTextField = skene_terminal::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_terminal::ChildBuilder = skene_foundation::realize::ChildBuilder<skene_terminal::Active>
 pub type skene_terminal::Condition = skene_foundation::spine::condition::Condition<u32>
 pub type skene_terminal::ContainerQuery = skene_foundation::spine::condition::ContainerQuery<u32>

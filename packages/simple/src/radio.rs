@@ -17,7 +17,6 @@ use skene_foundation::{
   Dimension,
   HasChild,
   Inset,
-  NoChild,
   NodeId,
   Part,
   Radio,
@@ -44,15 +43,15 @@ use super::{
 /// arrow keys move between them, and exactly one is chosen.
 ///
 /// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
-/// or interleaved with anything. The chosen value flows both ways. Holds [`NoChild`]
-/// until [`set_child`](Self::set_child) supplies the view holding the members.
+/// or interleaved with anything. The chosen value flows both ways. Without the view
+/// [`set_child`](Self::set_child) supplies, it builds an empty group.
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleRadioGroup<P: Realization, C = NoChild> {
+pub struct SimpleRadioGroup<P: Realization> {
   behavior: RadioGroup,
   label: Option<String>,
-  child: C,
+  child: Option<AnyView<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
@@ -63,7 +62,7 @@ impl<P: Realization> SimpleRadioGroup<P> {
     Self {
       behavior: RadioGroup::new(),
       label: None,
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -114,19 +113,16 @@ impl<P: Realization> SimpleRadioGroup<P> {
   }
 
   /// Sets the view holding the members.
-  pub fn set_child(self, child: impl View<P>) -> SimpleRadioGroup<P, AnyView<P>> {
-    SimpleRadioGroup {
-      behavior: self.behavior,
-      label: self.label,
-      child: child.into_any(),
-      platform: PhantomData,
-    }
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
   }
 }
 
-impl<P: Realization, C> AnyKind for SimpleRadioGroup<P, C> {}
+impl<P: Realization> AnyKind for SimpleRadioGroup<P> {}
 
-impl<P: Realization> View<P> for SimpleRadioGroup<P, AnyView<P>> {
+impl<P: Realization> View<P> for SimpleRadioGroup<P> {
   fn build(self) -> NodeId {
     let mut group = BasicRadioGroup::new(self.behavior);
 
@@ -134,7 +130,11 @@ impl<P: Realization> View<P> for SimpleRadioGroup<P, AnyView<P>> {
       group = group.set_label(label);
     }
 
-    group.set_child(self.child).build()
+    if let Some(child) = self.child {
+      group = group.set_child(child);
+    }
+
+    group.build()
   }
 }
 
@@ -284,6 +284,12 @@ pub trait SimpleRadioGroupBase<P: Realization>: Wraps<Inner = SimpleRadioGroup<P
   #[must_use]
   fn set_label(self, label: impl Into<String>) -> Self {
     Self::wrap(self.into_inner().set_label(label))
+  }
+
+  /// Sets the view holding the members.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }
 

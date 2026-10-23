@@ -1,14 +1,6 @@
 //! A picker: a popup face, an overlay and a listbox.
 
-use skene_foundation::{
-  BasicPickerBase,
-  DecorationBase,
-  Face,
-  NoChild,
-  View,
-  Wraps,
-  reactive::Memo,
-};
+use skene_foundation::{BasicPickerBase, DecorationBase, View, Wraps};
 
 use crate::Active;
 
@@ -26,10 +18,11 @@ use crate::Active;
 ///
 /// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads, and
 /// a choice only calls [`handle_choose`](Self::handle_choose) with the value asked for;
-/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. Holds [`NoChild`] until
-/// [`set_face`](Self::set_face) supplies the face; the options come from
-/// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
-/// each a [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
+/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. The face comes from
+/// [`set_face`](Self::set_face), and a picker without one renders nothing; the options
+/// come from [`set_options`](Self::set_options) and
+/// [`derive_options`](Self::derive_options), each a
+/// [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
 ///
 /// ```
 /// use skene_terminal::{ListboxOption, prelude::*};
@@ -45,7 +38,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct BasicPicker<F = NoChild>(skene_foundation::BasicPicker<Active, F>);
+pub struct BasicPicker(skene_foundation::BasicPicker<Active>);
 
 impl Default for BasicPicker {
   #[inline(always)]
@@ -54,23 +47,14 @@ impl Default for BasicPicker {
   }
 }
 
-impl<F> BasicPickerBase<Active, F> for BasicPicker<F> {}
+impl BasicPickerBase<Active> for BasicPicker {}
 
-impl<F> DecorationBase<Active> for BasicPicker<F> {}
+impl DecorationBase<Active> for BasicPicker {}
 
 impl BasicPicker {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
     Self(skene_foundation::BasicPicker::new())
-  }
-
-  /// Sets the view drawing the control closed, built from the chosen value.
-  #[inline(always)]
-  pub fn set_face<V: View<Active>>(
-    self,
-    face: impl FnOnce(Memo<String>) -> V + 'static,
-  ) -> BasicPicker<Face<Active>> {
-    BasicPicker(self.0.set_face(face))
   }
 }

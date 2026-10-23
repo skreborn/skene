@@ -315,8 +315,10 @@ a `Realization::schedule` timer, and `Roster::typed` matches them against the me
 names (`Label::set_name`, the value standing in), one character cycling through the
 names starting with it and more matching a prefix; the listbox moves focus to the
 match, and the closed face chooses it outright through `Popup::set_key_fallback`, the
-behavior's hook for the keys it does not act on itself. A box or a control a press's
-pointer drags declares the axes it drags along (`Container::set_drag_axes`,
+behavior's hook for the keys it does not act on itself. A control's drawn body
+(`set_child`, `set_child_builder`) is optional and its setters come before or after it
+alike: one with a label or parts alone still realizes its node, while a picker without
+its face (`set_face`) renders nothing. A box or a control a press's pointer drags declares the axes it drags along (`Container::set_drag_axes`,
 `Behavior::drag_axes`, a slider's its own axis): a primary press keeps the pointer with
 the nearest such node until the release—the web captures the pointer, the terminal
 routes the press's moves and its release to the node—and a touch pans only along the

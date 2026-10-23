@@ -17,6 +17,7 @@ use skene_foundation::{
   Part,
   Property,
   PropertyKey,
+  Role,
   RunBase,
   SliderRange,
   Slot,
@@ -34,6 +35,7 @@ use skene_headless::{
   SlotValue,
   TokenValue,
   accessible_name,
+  box_props,
   children,
   control_props,
   is_focused,
@@ -305,6 +307,33 @@ fn a_radio_ring_follows_the_groups_choice() {
     Some(light(&palette.primary.surface))
   );
   assert_eq!(resolve_color(dot(0), COLOR), Some(Color::TRANSPARENT));
+
+  owner.dispose();
+}
+
+/// A radio group without its child builds an empty group, as a control without a body
+/// does: the group's node, named and reporting its role, holding no member.
+#[test]
+fn a_radio_group_without_its_child_builds_an_empty_group() {
+  reset();
+
+  let owner = Owner::new();
+  let group = themed(owner, || {
+    SimpleRadioGroup::new()
+      .set_label("Size")
+      .bind_chosen(Signal::new(None))
+  });
+
+  assert_eq!(
+    box_props(group).and_then(|props| props.role),
+    Some(Role::RadioGroup)
+  );
+  assert_eq!(accessible_name(group).as_deref(), Some("Size"));
+  assert!(
+    children(group)
+      .into_iter()
+      .all(|child| part(child) == Some(Part::Label))
+  );
 
   owner.dispose();
 }

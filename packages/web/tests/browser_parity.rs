@@ -46,7 +46,6 @@ use skene_foundation::{
   Edge,
   Environment,
   Expr,
-  Frame,
   HasBoxStyle,
   HasChild,
   HasChildren,
@@ -70,6 +69,7 @@ use skene_foundation::{
   Record,
   ResolutionContext,
   ResolutionSource,
+  ResolvedStyle,
   RunBase,
   RunDynamics,
   RunValue,
@@ -198,6 +198,10 @@ impl Realized {
 /// A case's read box: a low-level view over the public [`LayoutBox`], laid out as a
 /// [`Container`] is, that keeps the style the platform realizes it with in
 /// [`READ_BOX`].
+///
+/// Its derived leaves are lifted from the style it declares, so it sits inside no
+/// wrapper, whose annotation would fold in leaves of its own.
+#[must_use]
 struct ReadBox {
   inner: LayoutBox<Web>,
 }
@@ -1029,27 +1033,12 @@ impl Read {
   }
 }
 
-/// The value `style` compiled at [`Keeping::Nothing`] gives the property `key`.
-fn compiled_value(
-  style: &CompiledStyle<f32, WebStyle>,
+/// The value `resolved`, a style or a frame compiled at [`Keeping::Nothing`], gives the
+/// property `key`.
+fn resolved_value(
+  resolved: &ResolvedStyle<f32, WebStyle>,
   key: PropertyKey<WebProperty>,
 ) -> Option<SlotValue<f32, WebStyle>> {
-  let resolved = style.resolved();
-
-  resolved
-    .boxed
-    .value(key)
-    .map(SlotValue::Box)
-    .or_else(|| resolved.run.value(key).map(SlotValue::Run))
-}
-
-/// The value `frame` compiled at [`Keeping::Nothing`] gives the property `key`.
-fn frame_value(
-  frame: &Frame<f32, WebStyle>,
-  key: PropertyKey<WebProperty>,
-) -> Option<SlotValue<f32, WebStyle>> {
-  let resolved = frame.resolved();
-
   resolved
     .boxed
     .value(key)
@@ -1092,8 +1081,8 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
       for key in keys {
         motion.retarget(
           *key,
-          compiled_value(&style, *key).as_ref(),
-          compiled_value(&next, *key).as_ref(),
+          resolved_value(&style.resolved(), *key).as_ref(),
+          resolved_value(&next.resolved(), *key).as_ref(),
           next.transitions(),
           now,
           reduced,
@@ -1115,7 +1104,7 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
   let presented: Vec<_> = keys
     .iter()
     .map(|key| {
-      let target = compiled_value(&style, *key);
+      let target = resolved_value(&style.resolved(), *key);
       let underlying = motion
         .sample(*key, now)
         .map(|sample| in_range(sample, *key))
@@ -1123,7 +1112,7 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
       let value = motion.animate(
         style.animations(),
         underlying,
-        |frame| frame_value(frame, *key),
+        |frame| resolved_value(&frame.resolved(), *key),
         now,
         reduced,
       );

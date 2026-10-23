@@ -46,6 +46,9 @@ pub type FrameEntry<N, X = ()> = (PropertyKey<<X as StyleExtension>::Property>, 
 /// A node's style as one record: each property it sets, keyed by its [`PropertyKey`] and
 /// erased over the property, with the transitions and keyframe animations it declares.
 ///
+/// A key names one property, of the box or of the run, so a box's and a run's entries
+/// share the record without meeting.
+///
 /// It is written typed, by a property's [`set_box`](Self::set_box) or
 /// [`set_run`](Self::set_run) or a whole style's projection
 /// ([`add_box`](Self::add_box), [`add_run`](Self::add_run) and their dynamics), so a value
@@ -323,26 +326,6 @@ impl<N: Scalar, X: StyleExtension> Frame<N, X> {
   }
 }
 
-/// A box value's reading of an erased one.
-fn box_reading<N: Scalar, X: StyleExtension, T: IntoBoxValue<N, X>>(
-  value: SlotValue<N, X>,
-) -> Option<T> {
-  match value {
-    SlotValue::Box(value) => T::from_box_value(value),
-    SlotValue::Run(_) => None,
-  }
-}
-
-/// A run value's reading of an erased one.
-fn run_reading<N: Scalar, X: StyleExtension, T: IntoRunValue<X>>(
-  value: SlotValue<N, X>,
-) -> Option<T> {
-  match value {
-    SlotValue::Run(value) => T::from_run_value(value),
-    SlotValue::Box(_) => None,
-  }
-}
-
 struct AddBox<'a, N: Scalar, X: StyleExtension> {
   record: &'a mut Record<N, X>,
   style: &'a BoxStyle<N, Static<Condition<N>>, X>,
@@ -379,7 +362,7 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ReadBox<'_, N, X> {
     *F::get_mut(&mut self.target) = self.record.get(F::KEY).and_then(|value| {
       value
         .clone()
-        .try_map(|leaf| leaf.try_map(box_reading::<N, X, F::Value>))
+        .try_map(|leaf| leaf.try_map(SlotValue::read_box::<F::Value>))
     });
   }
 }
@@ -394,7 +377,7 @@ impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ReadRun<'_, N, X> {
     *F::get_mut(&mut self.target) = self.record.get(F::KEY).and_then(|value| {
       value
         .clone()
-        .try_map(|leaf| leaf.try_map(run_reading::<N, X, F::Value>))
+        .try_map(|leaf| leaf.try_map(SlotValue::read_run::<F::Value>))
     });
   }
 }
@@ -445,7 +428,7 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ReadBoxFrame<'_, N,
     *F::get_mut(&mut self.target) = self
       .frame
       .get(F::KEY)
-      .and_then(|leaf| leaf.clone().try_map(box_reading::<N, X, F::Value>));
+      .and_then(|leaf| leaf.clone().try_map(SlotValue::read_box::<F::Value>));
   }
 }
 
@@ -459,7 +442,7 @@ impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ReadRunFrame<'_, N, X>
     *F::get_mut(&mut self.target) = self
       .frame
       .get(F::KEY)
-      .and_then(|leaf| leaf.clone().try_map(run_reading::<N, X, F::Value>));
+      .and_then(|leaf| leaf.clone().try_map(SlotValue::read_run::<F::Value>));
   }
 }
 
@@ -504,6 +487,7 @@ mod tests {
     RunFieldVisitor,
     RunStyle,
     RunValue,
+    RunVisitor,
     Scalar,
     Shape,
     Size,
@@ -521,6 +505,7 @@ mod tests {
     TokenRef,
     Transition,
     box_fields,
+    run_fields,
   };
 
   type Pixel = Condition<f32>;
@@ -701,7 +686,7 @@ mod tests {
     }
   }
 
-  impl<X: StyleExtension> crate::spine::RunVisitor<Static<Pixel>, X> for SetKeys<X::Property> {
+  impl<X: StyleExtension> RunVisitor<Static<Pixel>, X> for SetKeys<X::Property> {
     fn value<T: IntoRunValue<X>>(
       &mut self,
       key: PropertyKey<X::Property>,
@@ -749,37 +734,74 @@ mod tests {
     );
   }
 
-  /// Entries follow the order the styles' visitors give, the medium's own last.
+  /// Entries follow the order the styles' visitors give, the declaration order, the
+  /// medium's own last.
   #[test]
   fn entries_follow_the_visitors_order() {
-    let mut style = box_style::<Probe>();
+    let mut boxed = box_style::<Probe>();
+    let mut run = run_style::<Probe>();
 
-    style.ext.tint = Some(fixed(3));
+    boxed.ext.tint = Some(fixed(3));
+    run.ext.bold = Some(fixed(true));
+    run.selection_color = Some(fixed(Color::srgb(0., 0., 0.)));
 
-    let mut record = Record::<f32, Probe>::new();
-    let mut keys = SetKeys(Vec::new());
+    let mut box_record = Record::<f32, Probe>::new();
+    let mut run_record = Record::<f32, Probe>::new();
+    let mut box_keys = SetKeys(Vec::new());
+    let mut run_keys = SetKeys(Vec::new());
 
-    record.add_box(&style);
-    style.visit(&mut keys);
+    box_record.add_box(&boxed);
+    run_record.add_run(&run);
+    boxed.visit(&mut box_keys);
+    run.visit(&mut run_keys);
+
+    let names = |record: &Record<f32, Probe>| {
+      record
+        .entries()
+        .iter()
+        .map(|(key, _)| key.name())
+        .collect::<Vec<_>>()
+    };
 
     assert_eq!(
-      record
+      box_record
         .entries()
         .iter()
         .map(|(key, _)| *key)
         .collect::<Vec<_>>(),
-      keys.0
+      box_keys.0
     );
     assert_eq!(
-      keys.0.last(),
-      Some(&PropertyKey::Extension(ProbeProperty::Tint))
+      run_record
+        .entries()
+        .iter()
+        .map(|(key, _)| *key)
+        .collect::<Vec<_>>(),
+      run_keys.0
     );
-    assert!(!record.has(PropertyKey::Shared(Property::Height)));
+    assert_eq!(
+      names(&box_record),
+      [
+        "width",
+        "aspect_ratio",
+        "margin",
+        "padding",
+        "background",
+        "flex",
+        "self_alignment",
+        "tint"
+      ]
+    );
+    assert_eq!(
+      names(&run_record),
+      ["text_color", "selection_color", "decoration", "bold"]
+    );
+    assert!(!box_record.has(PropertyKey::Shared(Property::Height)));
   }
 
   /// A typed write replaces its property's entry where it stands and appends a new one.
   #[test]
-  fn set_box_replaces_in_place() {
+  fn typed_writes_replace_in_place() {
     let mut record = Record::<f32>::new();
 
     record.set_box::<box_fields::Width>(fixed(Dimension::Length(4.)));
@@ -798,6 +820,30 @@ mod tests {
       ]
     );
     assert_eq!(record.box_style().width, Some(fixed(Dimension::Auto)));
+
+    let mut record = Record::<f32>::new();
+
+    record.set_run::<run_fields::TextColor>(fixed(Color::srgb(1., 0., 0.)));
+    record.set_run::<run_fields::Decoration>(fixed(TextDecoration::Underline));
+    record.set_run::<run_fields::TextColor>(
+      fixed(Color::srgb(0., 1., 0.)).when(State::Hovered.into(), KeptLeaf::Slot(Slot(3))),
+    );
+
+    assert_eq!(
+      record
+        .entries()
+        .iter()
+        .map(|(key, _)| *key)
+        .collect::<Vec<_>>(),
+      [
+        PropertyKey::Shared(Property::TextColor),
+        PropertyKey::Shared(Property::Decoration)
+      ]
+    );
+    assert_eq!(
+      record.run_style().color,
+      Some(fixed(Color::srgb(0., 1., 0.)).when(State::Hovered.into(), KeptLeaf::Slot(Slot(3))))
+    );
   }
 
   /// A run's layout lands after the run's own entries, as a run is compiled.
@@ -980,13 +1026,39 @@ mod tests {
         style.boxed.padding,
         Some(Inset::all(if interaction.hovered { 10. } else { 12. }))
       );
+      assert_eq!(style.boxed.width, Some(Dimension::Length(640.)));
+      assert_eq!(style.boxed.aspect_ratio.map(|ratio| ratio.0), Some(3.));
+      assert_eq!(
+        style.boxed.background,
+        Some(if interaction.pressed {
+          Color::srgb(0., 0., 1.)
+        }
+        else {
+          Color::srgb(1., 1., 1.)
+        })
+      );
+      assert_eq!(
+        style.boxed.ext.tint,
+        Some(if interaction.hovered { 4 } else { 1 })
+      );
+      assert_eq!(style.run.color, Some(Color::srgb(0., 1., 0.)));
 
       let frame = Frame::of_box(&box_keyframe(8.));
+      let run_frame = Frame::of_run(&run_dynamics().animations[0].keyframes[0].1);
 
       assert_eq!(
         frame.resolve(&resolver).boxed,
         resolver.box_keyframe(&box_keyframe(8.))
       );
+      assert_eq!(
+        frame.resolve(&resolver).boxed.padding,
+        Some(Inset::all(100.))
+      );
+      assert_eq!(
+        run_frame.resolve(&resolver).run,
+        resolver.run_keyframe(&run_dynamics().animations[0].keyframes[0].1)
+      );
+      assert_eq!(run_frame.resolve(&resolver).run.ext.bold, Some(true));
     }
 
     assert!(read.get());

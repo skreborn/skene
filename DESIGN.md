@@ -682,8 +682,9 @@ Condition     = Media | State | And | Or
   drops it. The framework invents no layout
   system.
 - **The record** (`Record<N, X>`) is a node's style as one list: every property its box
-  and run styles set, keyed by its `PropertyKey` in the order the styles' visitors give
-  (a run's own before its layout's), each value a `RecordValue` erased over the
+  and run styles set, keyed by its `PropertyKey` (each naming one box or run property)
+  in the order written, each style's in the order its visitor gives (a run's own before
+  its layout's, as the web compiles a run), each value a `RecordValue` erased over the
   property (a `StaticValue` of `SlotValue`s: a fixed value erased, a token kept by its
   name, an expression by its tree, a derived leaf as its `KeptLeaf::Slot`), with its
   transitions as data and each animation's keyframes as `Frame`s. It is written typed,

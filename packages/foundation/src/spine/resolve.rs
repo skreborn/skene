@@ -130,6 +130,26 @@ pub enum SlotValue<N: Scalar, X: StyleExtension = ()> {
   Run(RunValue<X>),
 }
 
+impl<N: Scalar, X: StyleExtension> SlotValue<N, X> {
+  /// The box property's value this erases, read as a `T`; `None` for a run property's
+  /// or one of another type.
+  pub(in crate::spine) fn read_box<T: IntoBoxValue<N, X>>(self) -> Option<T> {
+    match self {
+      Self::Box(value) => T::from_box_value(value),
+      Self::Run(_) => None,
+    }
+  }
+
+  /// The run property's value this erases, read as a `T`; `None` for a box property's
+  /// or one of another type.
+  pub(in crate::spine) fn read_run<T: IntoRunValue<X>>(self) -> Option<T> {
+    match self {
+      Self::Run(value) => T::from_run_value(value),
+      Self::Box(_) => None,
+    }
+  }
+}
+
 /// What a derived leaf last wrote into a node's slot: a value, or a token or
 /// expression resolved where the slot is read.
 pub type SlotLeaf<N, X = ()> = StaticLeaf<SlotValue<N, X>>;
@@ -512,10 +532,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   ) -> Option<T> {
     match self.winning(value) {
       KeptLeaf::Static(leaf) => self.keyframe_box_value(leaf),
-      KeptLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, |value| match value {
-        SlotValue::Box(value) => T::from_box_value(value),
-        SlotValue::Run(_) => None,
-      }),
+      KeptLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, SlotValue::read_box),
     }
   }
 
@@ -526,10 +543,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   pub fn run_value<T: IntoRunValue<X>>(&self, value: &StaticValue<T, Condition<N>>) -> Option<T> {
     match self.winning(value) {
       KeptLeaf::Static(leaf) => self.keyframe_run_value(leaf),
-      KeptLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, |value| match value {
-        SlotValue::Run(value) => T::from_run_value(value),
-        SlotValue::Box(_) => None,
-      }),
+      KeptLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, SlotValue::read_run),
     }
   }
 

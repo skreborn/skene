@@ -19,7 +19,7 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
   type BoxFields<S: Shape>: Default + Clone + PartialEq + Debug;
   /// The run properties, one field per property in shape `S`.
   type RunFields<S: Shape>: Default + Clone + PartialEq + Debug;
-  /// The names of the properties.
+  /// The names of the properties, each naming one property, of the box or of the run.
   type Property: PropertyName;
   /// An erased value of one of the properties, for a derived slot's update.
   type Value: Clone + PartialEq + Debug + 'static;

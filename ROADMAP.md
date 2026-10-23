@@ -382,11 +382,12 @@ in a code comment.
     sibling and server output keeping comment pairs only where streaming needs a
     marker.
     - The web's hydration: the server tier writes real pages that the browser tier
-    hydrates with zero mismatches, where the browser tests fake the served markup today;
-    structural hydration keys per scope replace the one global counter, so async
-    rebuilds and nested lazy content keep their markers and their server markup; where
-    `appearance: base-select` is supported, the picker is a styled native `<select>` and
-    the hydration swap goes, the drawn face remaining elsewhere.
+    hydrates with zero mismatches, where every browser test but one representative
+    tree fakes the served markup today; structural hydration keys per scope replace the
+    one global counter, so async rebuilds and nested lazy content keep their markers and
+    their server markup; where `appearance: base-select` is supported, the picker is a
+    styled native `<select>` and the hydration swap goes, the drawn face remaining
+    elsewhere.
 14. **The quadratic hot paths.**
     - The terminal: a structure change, a token's redefinition and a container's resize
     still restyle every node, and a structure change hands every node its layout

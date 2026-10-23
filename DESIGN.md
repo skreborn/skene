@@ -1060,7 +1060,12 @@ server and generator. The two builds must agree on every byte they both produce,
 hydration adopts the server's class names: a `Color` converts through the pure-Rust
 `libm` on every target rather than the host's math library, which differs by an ulp in
 `powf`, `cbrt` and `atan2`, and a probe over thousands of colors rendered on the host
-and on wasm proved the bits equal.
+and on wasm proved the bits equal. One representative tree holds the two builds to it:
+`server_snapshot` holds the server leaf's style block, body and state script for it byte
+for byte, and `browser_hydrate`'s `the_server_leafs_bytes_hydrate_in_place` hydrates
+those same bytes in Firefox and Chromium, every served element adopted with the class
+the server gave it and the server's block the one stylesheet, holding every rule the
+browser interns.
 
 ### Headless (`skene-headless`)
 

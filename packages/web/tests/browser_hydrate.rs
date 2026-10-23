@@ -2,7 +2,8 @@
 //!
 //! The server's markup is hand-written here with the `data-h` markers and anchor
 //! comments a real `render_to_string` emits, so the client can match each node it
-//! builds to the server node carrying its marker.
+//! builds to the server node carrying its marker; one representative tree hydrates the
+//! bytes the server leaf renders for it, which `server_snapshot` holds.
 //!
 //! Run in a headless browser:
 //! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_hydrate`.
@@ -45,6 +46,11 @@ use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Element, HtmlElement};
 
 wasm_bindgen_test_configure!(run_in_browser);
+
+/// The representative tree and the bytes the server leaf renders for it.
+mod representative {
+  include!("fixtures/representative.rs");
+}
 
 /// A detached root holding `markup` as its server-rendered DOM.
 fn server_root(markup: &str) -> Element {
@@ -975,6 +981,97 @@ fn hydrate_removes_the_servers_title_from_a_tooltips_child() {
       .expect("query")
       .expect("the bubble")
       .get_attribute("id")
+  );
+
+  platform::uninstall();
+  root.remove();
+}
+
+/// The bytes the server leaf renders for the representative tree hydrate in place:
+/// every served element adopted with the class the server gave it, under the server's
+/// style block alone.
+#[wasm_bindgen_test]
+fn the_server_leafs_bytes_hydrate_in_place() {
+  let head = document().head().expect("a head");
+  let holder = document().create_element("div").expect("a holder");
+
+  holder.set_inner_html(representative::STYLES);
+
+  let block = holder.first_element_child().expect("the style block");
+
+  head.append_child(&block).expect("append the block");
+
+  let served_rules = block.text_content().expect("the block's rules");
+  let root = server_root(&format!(
+    "{}{}",
+    representative::BODY,
+    representative::STATE_SCRIPT
+  ));
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  let state = root
+    .query_selector("#skene-state")
+    .expect("query")
+    .and_then(|script| script.text_content())
+    .expect("the state script");
+  let elements = |root: &Element| -> Vec<Element> {
+    let list = root.query_selector_all("*").expect("query the elements");
+
+    (0..list.length())
+      .filter_map(|index| list.item(index))
+      .filter_map(|node| node.dyn_into::<Element>().ok())
+      .collect()
+  };
+  let served = elements(&root);
+  let classes: Vec<_> = served
+    .iter()
+    .map(|element| element.get_attribute("class"))
+    .collect();
+
+  assert!(served.len() > 20, "the representative tree is served whole");
+
+  hydrate(root.clone(), &state, representative::tree);
+
+  let hydrated = elements(&root);
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(hydrated.len(), served.len(), "{}", root.inner_html());
+
+  for (index, (served, hydrated)) in served.iter().zip(&hydrated).enumerate() {
+    assert!(served == hydrated, "element {index} was adopted");
+    assert_eq!(
+      hydrated.get_attribute("class"),
+      classes[index],
+      "element {index} keeps the server's class",
+    );
+  }
+
+  assert!(
+    root.query_selector("[data-h]").expect("query").is_none(),
+    "{}",
+    root.inner_html(),
+  );
+
+  let styles = document().query_selector_all("style").expect("the styles");
+
+  assert_eq!(
+    styles.length(),
+    1,
+    "the server's block is the one stylesheet"
+  );
+  assert!(
+    styles.item(0) == Some(block.clone().into()),
+    "the server's block was adopted",
+  );
+  assert_eq!(
+    block.text_content().as_deref(),
+    Some(served_rules.as_str()),
+    "the server's block holds every rule the browser interned",
   );
 
   platform::uninstall();

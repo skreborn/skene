@@ -38,6 +38,7 @@ const RUNS: &[Run] = &[
       ("browser_platform", 16),
       ("browser_resource", 5),
       ("browser_task", 4),
+      ("browser_views", 17),
     ],
   },
   Run {

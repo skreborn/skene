@@ -238,3 +238,63 @@ pub trait Painting: Realization {
   /// [`Painted::set_fallback_builder`](crate::Painted::set_fallback_builder) waits on.
   fn available() -> ReadSignal<bool>;
 }
+
+#[cfg(test)]
+mod tests {
+  use super::{Canvas, Renderer, kurbo, peniko};
+  use crate::Color;
+
+  /// A renderer that logs each step it takes.
+  #[derive(Default)]
+  struct Log(Vec<String>);
+
+  impl Renderer for Log {
+    fn set_transform(&mut self, transform: kurbo::Affine) {
+      self
+        .0
+        .push(format!("transform {}", transform.as_coeffs()[0]));
+    }
+
+    fn fill(&mut self, path: &kurbo::BezPath, brush: &peniko::Brush) {
+      self.0.push(format!(
+        "fill {} {}",
+        path.elements().len(),
+        matches!(brush, peniko::Brush::Solid(_))
+      ));
+    }
+
+    fn stroke(&mut self, _: &kurbo::BezPath, stroke: &kurbo::Stroke, _: &peniko::Brush) {
+      self.0.push(format!("stroke {}", stroke.width));
+    }
+
+    fn push_clip(&mut self, _: &kurbo::BezPath) {
+      self.0.push("clip".into());
+    }
+
+    fn pop(&mut self) {
+      self.0.push("pop".into());
+    }
+  }
+
+  /// A platform's renderer takes the canvas's steps in the order they were drawn.
+  #[test]
+  fn a_canvas_replays_its_scene_into_a_renderer() {
+    let mut canvas = Canvas::new(4, 4);
+    let rect = kurbo::Rect::new(0., 0., 4., 4.);
+
+    canvas.set_transform(kurbo::Affine::scale(2.));
+    canvas.push_clip(&rect);
+    canvas.fill(&rect, Color::srgb(1., 0., 0.));
+    canvas.stroke(&rect, &kurbo::Stroke::new(3.), Color::srgb(0., 1., 0.));
+    canvas.pop();
+
+    let mut log = Log::default();
+
+    canvas.replay(&mut log);
+
+    assert_eq!(
+      log.0,
+      ["transform 2", "clip", "fill 5 true", "stroke 3", "pop"]
+    );
+  }
+}

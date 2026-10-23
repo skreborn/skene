@@ -94,7 +94,6 @@ rustix = { features = ["stdio"], version = "1" }
 skene-simple-web = { path = "../simple-web" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-skene-headless = { path = "../headless" }
 trybuild.workspace = true
 
 [package.metadata.cargo-shear]

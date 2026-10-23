@@ -208,11 +208,12 @@ toolkit's keeps the default, which does nothing.
   host platform (`skene-headless`) realizes exactly what any real platform receives into an
   inspectable record store, resolves a property through the spine's `Resolver` (the scene's
   tokens, the expression evaluator and the environment), and runs tasks when a test
-  pumps them, giving
-  view logic fast headless tests without pretending to be a platform. Platforms test against
-  their real sinks (web: a browser DOM via `wasm-bindgen-test`; the server leaf
-  natively under a byte-exact snapshot; native: its toolkit). Only the spine's own unit tests
-  run on a double, a `TestPlatform` recording the calls it receives.
+  pumps them, giving the foundation's views and the Simple palette fast tests without
+  pretending to be a platform. A facade's views test on their platform alone, against its
+  real sinks: the web's in a browser DOM via `wasm-bindgen-test` and on the server leaf
+  natively under a byte-exact snapshot, never on the headless platform; native ones against
+  their toolkit. Only the spine's own unit tests run on a double, a `TestPlatform` recording
+  the calls it receives.
 
 ## Composition
 

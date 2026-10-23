@@ -1,0 +1,865 @@
+//! The web facade's views realized in a real browser: the elements they build, the
+//! styles the engine computes for them, the events that reach them, and the signals
+//! their bindings write.
+//!
+//! Run in a headless browser:
+//! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_views`.
+#![cfg(skene_web_platform = "browser")]
+
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
+
+use skene_foundation::{
+  Axis,
+  ColorScheme,
+  ColumnBase,
+  ContainerBase,
+  ControlBase,
+  DecorationBase,
+  FlexBase,
+  FlexChild,
+  Layout,
+  Media,
+  OverlayBase,
+  PaintedBase,
+  RowBase,
+  Size,
+  StaticLeaf,
+  TextBase,
+  ThemeBase,
+};
+use skene_simple_web::prelude::*;
+use skene_web::{
+  AsyncView,
+  AsyncViewBase,
+  BasicRadio,
+  BasicRadioGroup,
+  BasicTextField,
+  Bubbling,
+  Color,
+  Column,
+  Container,
+  HasChild,
+  HasChildren,
+  LayoutBox,
+  Link,
+  LinkBase,
+  NodeHandle,
+  NodeId,
+  Overlay,
+  Painted,
+  Radio,
+  RadioGroup,
+  Role,
+  Row,
+  Text,
+  TextEntry,
+  Theme,
+  ThemedIn,
+  Typography,
+  View,
+  head,
+  install_router,
+  media,
+  platform::{self, Declarations, mount},
+  reactive::{Effect, Get, Owner, Set, Signal},
+  testing::{computed, dispatch, document, frames_until, fresh_root, only_child, tick},
+  wasm_bindgen::JsCast,
+  window,
+};
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+use web_sys::{
+  Element,
+  HtmlElement,
+  HtmlInputElement,
+  KeyboardEvent,
+  KeyboardEventInit,
+  MouseEvent,
+  MouseEventInit,
+};
+
+wasm_bindgen_test_configure!(run_in_browser);
+
+/// The element children of `parent`, in order.
+fn elements(parent: &Element) -> Vec<Element> {
+  let children = parent.children();
+
+  (0..children.length())
+    .filter_map(|index| children.item(index))
+    .collect()
+}
+
+/// The computed color a `<div>` under `parent` gets from `color: <value>`, so colors
+/// compare as the engine serializes them.
+fn probe(parent: &Element, color: Color) -> String {
+  let element = document().create_element("div").expect("a probe");
+
+  let _ = element.set_attribute(
+    "style",
+    &format!("color:{}", Declarations::render_color(color)),
+  );
+  let _ = parent.append_child(&element);
+
+  let color = computed(&element, "color");
+
+  element.remove();
+
+  color
+}
+
+/// The computed background of `element`, serialized as [`probe`] serializes a color.
+fn background(element: &Element) -> String {
+  computed(element, "background-color")
+}
+
+/// Dispatches a cancelable, bubbling click at `target` with `ctrl` held and a click
+/// count of `detail`; whether a handler prevented its default.
+fn click(target: &Element, ctrl: bool, detail: i32) -> bool {
+  let init = MouseEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_ctrl_key(ctrl);
+  init.set_detail(detail);
+
+  let event = MouseEvent::new_with_mouse_event_init_dict("click", &init).expect("a click");
+  let _ = target.dispatch_event(&event);
+
+  event.default_prevented()
+}
+
+/// Dispatches a cancelable, bubbling `keydown` of `key` at `target`; whether a handler
+/// prevented its default.
+fn key_down(target: &Element, key: &str) -> bool {
+  let init = KeyboardEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_key(key);
+
+  let event = KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+  let _ = target.dispatch_event(&event);
+
+  event.default_prevented()
+}
+
+/// The scheme an app put in force, returned to following the platform when dropped.
+struct Scheme;
+
+impl Scheme {
+  fn choose(scheme: ColorScheme) -> Self {
+    media::set_scheme(Some(scheme));
+    platform::end_turn();
+
+    Self
+  }
+}
+
+impl Drop for Scheme {
+  fn drop(&mut self) {
+    media::set_scheme(None);
+    platform::end_turn();
+  }
+}
+
+fn fixed(leaf: &StaticLeaf<Color>) -> Color {
+  match leaf {
+    StaticLeaf::Fixed(color) => *color,
+    _ => panic!("a fixed color"),
+  }
+}
+
+/// The default palette's card color under the light scheme.
+fn card_light() -> Color {
+  fixed(SimplePalette::default().card.definition().base())
+}
+
+/// The default palette's card color under the dark scheme.
+fn card_dark() -> Color {
+  let palette = SimplePalette::default();
+  let (condition, leaf) = &palette.card.definition().variants()[0];
+
+  assert_eq!(*condition, Media::Dark);
+
+  fixed(leaf)
+}
+
+/// The computed background a `<div>` under `parent` gets from `background-color:
+/// <color>`.
+fn probe_background(parent: &Element, color: Color) -> String {
+  let element = document().create_element("div").expect("a probe");
+
+  let _ = element.set_attribute(
+    "style",
+    &format!("background-color:{}", Declarations::render_color(color)),
+  );
+  let _ = parent.append_child(&element);
+
+  let color = background(&element);
+
+  element.remove();
+
+  color
+}
+
+/// A static tree realizes its elements in order, a role as its semantic element, and a
+/// layout view's anchors as no element of their own.
+#[wasm_bindgen_test]
+fn nested_views_realize_their_tree_in_order() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Container::new()
+      .set_role(Role::Navigation)
+      .set_child(Column::new().set_children((
+        Text::new("first"),
+        Row::new().set_children((Text::new("second"),)),
+      )))
+      .build()
+  });
+
+  let navigation = only_child(&root);
+
+  assert_eq!(navigation.tag_name(), "NAV");
+  assert_eq!(elements(&navigation).len(), 1);
+
+  let column = only_child(&navigation);
+  let content = elements(&column);
+
+  assert_eq!(
+    content.len(),
+    2,
+    "the column's two children and nothing else"
+  );
+  assert_eq!(content[0].tag_name(), "SPAN");
+  assert_eq!(content[0].text_content().as_deref(), Some("first"));
+  assert_eq!(content[1].tag_name(), "DIV");
+
+  let row = elements(&content[1]);
+
+  assert_eq!(row.len(), 1);
+  assert_eq!(row[0].tag_name(), "SPAN");
+  assert_eq!(row[0].text_content().as_deref(), Some("second"));
+}
+
+/// A click runs the handlers deepest first; a box that stops bubbling keeps the event
+/// from its ancestors, and no box prevents the browser's default.
+#[wasm_bindgen_test]
+fn a_click_climbs_until_a_box_stops_it() {
+  let (_guard, root) = fresh_root();
+  let log = Rc::new(RefCell::new(Vec::new()));
+  let note = |name: &'static str| {
+    let log = Rc::clone(&log);
+
+    move || {
+      log.borrow_mut().push(name);
+    }
+  };
+
+  let _ = mount({
+    let outer = note("outer");
+    let middle = note("middle");
+    let inner = note("inner");
+
+    move || {
+      Container::new()
+        .handle_click(outer)
+        .set_child(
+          Container::new()
+            .handle_click(move || {
+              middle();
+
+              Bubbling::Stop
+            })
+            .set_child(Container::new().handle_click(inner)),
+        )
+        .build()
+    }
+  });
+
+  let inner = only_child(&only_child(&only_child(&root)));
+  let prevented = click(&inner, false, 1);
+
+  assert_eq!(*log.borrow(), ["inner", "middle"]);
+  assert!(!prevented, "no box states anything about the browser");
+}
+
+/// An edit of a text field's `<input>` commits the value into its binding.
+#[wasm_bindgen_test]
+fn an_edit_commits_into_the_binding() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(String::new());
+
+  let _ = mount(move || BasicTextField::new(TextEntry::new().bind_value(value)).build());
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  input.set_value("typed");
+  dispatch(&input, "input");
+
+  assert_eq!(value.get(), "typed");
+}
+
+/// A modal's `<dialog>` opens and closes with its bound signal, and a `cancel` asks the
+/// binding to close it rather than closing on its own.
+#[wasm_bindgen_test]
+fn an_overlay_follows_its_signal_and_a_cancel_asks_it_to_close() {
+  let (_guard, root) = fresh_root();
+  let open = Signal::new(false);
+
+  let _ = mount(move || {
+    Container::new()
+      .set_child(
+        Overlay::modal()
+          .bind_open(open)
+          .set_child(Text::new("dialog")),
+      )
+      .build()
+  });
+
+  let dialog = root
+    .query_selector("dialog")
+    .expect("a valid selector")
+    .expect("the modal");
+
+  assert!(!dialog.has_attribute("open"));
+
+  open.set(true);
+  platform::end_turn();
+
+  assert!(dialog.has_attribute("open"));
+
+  let init = web_sys::EventInit::new();
+
+  init.set_cancelable(true);
+
+  let cancel = web_sys::Event::new_with_event_init_dict("cancel", &init).expect("an event");
+  let _ = dialog.dispatch_event(&cancel);
+
+  platform::end_turn();
+
+  assert!(!open.get(), "the dismiss wrote the binding");
+  assert!(!dialog.has_attribute("open"));
+}
+
+/// Keyed children keep the elements whose keys stay and move them, dropping only the
+/// removed one.
+#[wasm_bindgen_test]
+fn keyed_children_keep_their_elements_through_a_removal_and_a_reorder() {
+  let (_guard, root) = fresh_root();
+  let items = Signal::new(vec![1, 2, 3]);
+
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        |item| Text::new(item.to_string()),
+      )
+      .build()
+  });
+
+  let column = only_child(&root);
+  let before = elements(&column);
+
+  assert_eq!(before.len(), 3);
+
+  items.set(vec![3, 1]);
+  platform::end_turn();
+
+  let after = elements(&column);
+
+  assert_eq!(after.len(), 2);
+  assert_eq!(after[0], before[2], "the kept element moved, not rebuilt");
+  assert_eq!(after[1], before[0]);
+  assert_eq!(after[0].text_content().as_deref(), Some("3"));
+  assert!(!before[1].is_connected(), "the removed one is gone");
+}
+
+/// A radio group's one tab stop follows the choice, and with nothing chosen it is the
+/// first member in the tree, a member inserted first included.
+#[wasm_bindgen_test]
+fn a_radio_groups_tab_stop_follows_the_choice_in_tree_order() {
+  let (_guard, root) = fresh_root();
+  let chosen: Signal<Option<String>> = Signal::new(None);
+  let items = Signal::new(vec!["a", "b"]);
+
+  let _ = mount(move || {
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
+      .set_child(Column::new().derive_children(
+        move || items.get(),
+        |item| *item,
+        |item| BasicRadio::new(Radio::new(item)).set_label(item),
+      ))
+      .build()
+  });
+
+  let inputs = || {
+    let found = root
+      .query_selector_all("input[type=radio]")
+      .expect("a valid selector");
+
+    (0..found.length())
+      .filter_map(|index| found.item(index))
+      .map(|node| node.dyn_into::<HtmlInputElement>().expect("an input"))
+      .collect::<Vec<_>>()
+  };
+  let stops = || {
+    inputs()
+      .iter()
+      .map(|input| input.tab_index() >= 0)
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(stops(), [true, false]);
+
+  inputs()[1].click();
+  platform::end_turn();
+
+  assert_eq!(chosen.get().as_deref(), Some("b"));
+  assert_eq!(stops(), [false, true]);
+
+  chosen.set(None);
+  items.set(vec!["z", "a", "b"]);
+  platform::end_turn();
+
+  assert_eq!(stops(), [true, false, false]);
+}
+
+/// The equal-footing gate: a layout view written outside the facade, against its
+/// public API alone, realizes the same element the built-in it parallels does.
+#[wasm_bindgen_test]
+fn a_third_party_layout_view_matches_the_built_in() {
+  #[must_use]
+  struct Toolbar {
+    base: LayoutBox<FlexChild>,
+  }
+
+  impl Toolbar {
+    fn new() -> Self {
+      Self {
+        base: LayoutBox::new(Layout::Flex {
+          axis: Axis::Horizontal,
+          reversed: false,
+        }),
+      }
+    }
+
+    fn set_spacing(mut self, spacing: impl Into<skene_web::Spacing>) -> Self {
+      self.base.style_mut().spacing = Some(spacing.into().into());
+
+      self
+    }
+  }
+
+  impl skene_web::AnyKind for Toolbar {}
+
+  impl skene_foundation::View<skene_web::Active> for Toolbar {
+    fn build(self) -> NodeId {
+      View::build(self.base)
+    }
+  }
+
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((Toolbar::new().set_spacing(8), Row::new().set_spacing(8)))
+      .build()
+  });
+
+  let both = elements(&only_child(&root));
+  let (toolbar, row) = (&both[0], &both[1]);
+
+  assert_eq!(toolbar.tag_name(), row.tag_name());
+  assert_eq!(toolbar.get_attribute("class"), row.get_attribute("class"));
+
+  for property in ["display", "flex-direction", "column-gap", "row-gap"] {
+    assert_eq!(
+      computed(toolbar, property),
+      computed(row, property),
+      "{property}"
+    );
+  }
+}
+
+/// A page's routes, for the link test.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Page {
+  Home,
+  About,
+}
+
+impl skene_web::router::Route for Page {
+  fn parse(path: &str) -> Option<Self> {
+    match path {
+      "/" => Some(Self::Home),
+      "/about" => Some(Self::About),
+      _ => None,
+    }
+  }
+
+  fn to_path(&self) -> String {
+    match self {
+      Self::Home => "/".to_owned(),
+      Self::About => "/about".to_owned(),
+    }
+  }
+}
+
+/// A link is an anchor carrying its route's path, and a tab stop; a plain click or
+/// `Enter` navigates the router and keeps the browser from navigating, and a modified
+/// click, from a pointer or a key, leaves both to the browser.
+#[wasm_bindgen_test]
+fn a_link_carries_its_destination_and_navigates_the_router() {
+  let (_guard, root) = fresh_root();
+  let path = web_sys::window()
+    .expect("a window")
+    .location()
+    .pathname()
+    .expect("a path");
+  let router = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let router = Rc::clone(&router);
+
+    move || {
+      router.set(Some(install_router(Page::Home)));
+
+      Link::new(Page::About).set_child(Text::new("about")).build()
+    }
+  });
+
+  let router = router.get().expect("a router");
+  let link = only_child(&root);
+
+  assert_eq!(link.tag_name(), "A");
+  assert_eq!(link.get_attribute("href").as_deref(), Some("/about"));
+  assert_eq!(link.text_content().as_deref(), Some("about"));
+  assert!(
+    link
+      .clone()
+      .dyn_into::<HtmlElement>()
+      .expect("an HTML element")
+      .tab_index()
+      >= 0
+  );
+  assert!(click(&link, false, 1), "a plain click is the router's");
+  assert_eq!(router.route(), Page::About);
+
+  router.navigate(Page::Home);
+
+  for detail in [1, 0] {
+    assert!(
+      !click(&link, true, detail),
+      "a modified click is the browser's"
+    );
+    assert_eq!(router.route(), Page::Home);
+  }
+
+  assert!(key_down(&link, "Enter"), "Enter on a link is the router's");
+  assert_eq!(router.route(), Page::About);
+
+  platform::push_path(&path);
+}
+
+/// A lazy subtree mounts its content once its future completes.
+#[wasm_bindgen_test]
+async fn a_lazy_subtree_mounts_once_its_future_completes() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Container::new()
+      .set_child(AsyncView::new().set_child_loader(|| async { Text::new("loaded") }))
+      .build()
+  });
+
+  let container = only_child(&root);
+
+  assert!(elements(&container).is_empty(), "nothing before it loads");
+
+  for _ in 0..4 {
+    tick().await;
+  }
+
+  let content = elements(&container);
+
+  assert_eq!(content.len(), 1);
+  assert_eq!(content[0].text_content().as_deref(), Some("loaded"));
+}
+
+/// A derived title follows its signal into the document, and a stylesheet two owners
+/// register is one element that stays while either lives.
+#[wasm_bindgen_test]
+fn a_derived_title_follows_its_signal_and_a_shared_stylesheet_stays_with_either_owner() {
+  const HREF: &str = "data:text/css,";
+
+  let (_guard, _root) = fresh_root();
+  let first = Owner::new();
+  let second = Owner::new();
+  let title = Signal::new("Home".to_owned());
+  let stylesheets = || {
+    document()
+      .head()
+      .expect("a head")
+      .query_selector_all(&format!("link[rel=stylesheet][href=\"{HREF}\"]"))
+      .expect("a valid selector")
+      .length()
+  };
+
+  first.enter(|| {
+    window::derive_title(move || format!("{} — skene", title.get()));
+    head::add_stylesheet(HREF);
+  });
+  second.enter(|| head::add_stylesheet(HREF));
+
+  assert_eq!(document().title(), "Home — skene");
+  assert_eq!(stylesheets(), 1);
+
+  title.set("About".to_owned());
+  platform::end_turn();
+
+  assert_eq!(document().title(), "About — skene");
+
+  first.dispose();
+
+  assert_eq!(stylesheets(), 1, "the second owner keeps it");
+
+  second.dispose();
+
+  assert_eq!(stylesheets(), 0);
+}
+
+/// A handle asked for its size only after its box built measures the box from then.
+#[wasm_bindgen_test]
+async fn a_handle_asked_for_its_size_late_measures_from_then() {
+  let (_guard, _root) = fresh_root();
+  let handle = NodeHandle::new();
+  let node = mount(move || {
+    Container::new()
+      .set_width(64)
+      .set_height(32)
+      .bind_handle(handle)
+      .build()
+  });
+
+  assert_eq!(handle.node(), Some(node));
+  assert!(
+    frames_until(|| handle.size() == Some(Size::new(64., 32.))).await,
+    "measured as {:?}",
+    handle.size()
+  );
+}
+
+/// A handle bound to a box reports the box's measured size, tracked, and nothing
+/// before the first measurement.
+#[wasm_bindgen_test]
+async fn a_size_handle_reports_the_measured_size() {
+  let (_guard, _root) = fresh_root();
+  let handle = NodeHandle::new();
+  let seen = Rc::new(Cell::new(0));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Effect::new(move |_: Option<()>| {
+        let _ = handle.size();
+
+        seen.set(seen.get() + 1);
+      });
+
+      Container::new()
+        .set_width(320)
+        .set_height(200)
+        .bind_handle(handle)
+        .build()
+    }
+  });
+
+  assert_eq!(handle.size(), None);
+  assert_eq!(seen.get(), 1);
+  assert!(
+    frames_until(|| handle.size() == Some(Size::new(320., 200.))).await,
+    "measured as {:?}",
+    handle.size()
+  );
+  assert_eq!(seen.get(), 2, "the measurement notified the effect");
+}
+
+/// A painted box with a fallback is the painted box once the page is live: its canvas
+/// stands where the fallback would.
+#[wasm_bindgen_test]
+async fn a_painted_box_takes_its_fallbacks_place_once_live() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Painted::new(|_, _| {})
+      .set_width(8)
+      .set_height(4)
+      .set_fallback_builder(|| Text::new("a red box"))
+      .build()
+  });
+
+  assert!(
+    frames_until(|| {
+      root
+        .query_selector("canvas")
+        .expect("a valid selector")
+        .is_some()
+    })
+    .await,
+    "the painted box's canvas"
+  );
+  assert!(
+    !root
+      .text_content()
+      .unwrap_or_default()
+      .contains("a red box"),
+    "the fallback is not shown"
+  );
+}
+
+/// A nested theme replaces the palette beneath it and leaves the one above alone; each
+/// consumer is inked by the nearest definition.
+#[wasm_bindgen_test]
+fn a_nested_theme_replaces_the_palette_beneath_it() {
+  let (_guard, root) = fresh_root();
+  let _scheme = Scheme::choose(ColorScheme::Light);
+  let ink = Color::srgb(0.1, 0.9, 0.4);
+
+  let _ = mount(move || {
+    Theme::new(SimplePalette::default())
+      .set_child_builder(move || {
+        Column::new().set_children((
+          Container::new().set_background(SimplePalette::current().card),
+          Theme::new(SimplePalette::default().set_card(ink))
+            .set_child_builder(|| Container::new().set_background(SimplePalette::CARD)),
+        ))
+      })
+      .build()
+  });
+
+  let column = only_child(&only_child(&root));
+  let content = elements(&column);
+  let inner = only_child(&content[1]);
+
+  assert_eq!(
+    background(&content[0]),
+    probe_background(&root, card_light())
+  );
+  assert_eq!(background(&inner), probe_background(&root, ink));
+}
+
+/// The scheme in force is the document's: `media::set_scheme` picks which value a
+/// conditional token takes, the signal follows, and the element is re-inked in place.
+#[wasm_bindgen_test]
+fn the_scheme_follows_the_media_choice() {
+  let (_guard, root) = fresh_root();
+  let scheme = Scheme::choose(ColorScheme::Light);
+
+  let _ = mount(|| {
+    Theme::new(SimplePalette::default())
+      .set_child_builder(|| Container::new().set_background(SimplePalette::CARD))
+      .build()
+  });
+
+  let card = only_child(&only_child(&root));
+
+  assert_eq!(media::scheme().get(), ColorScheme::Light);
+  assert_eq!(background(&card), probe_background(&root, card_light()));
+
+  media::set_scheme(Some(ColorScheme::Dark));
+  platform::end_turn();
+
+  assert_eq!(media::scheme().get(), ColorScheme::Dark);
+  assert_eq!(media::chosen_scheme(), Some(ColorScheme::Dark));
+  assert_eq!(
+    document()
+      .document_element()
+      .and_then(|html| html.get_attribute("data-skene-scheme"))
+      .as_deref(),
+    Some("dark")
+  );
+  assert_eq!(background(&card), probe_background(&root, card_dark()));
+  assert_eq!(
+    only_child(&only_child(&root)),
+    card,
+    "re-inked, not rebuilt"
+  );
+
+  drop(scheme);
+
+  assert_eq!(media::chosen_scheme(), None);
+}
+
+/// A derived scheme follows its signal the same way, and a `Media::Dark` watch agrees
+/// with it.
+#[wasm_bindgen_test]
+fn a_derived_scheme_re_inks_without_a_rebuild() {
+  let (_guard, root) = fresh_root();
+  let _restore = Scheme::choose(ColorScheme::Light);
+  let scheme = Signal::new(Some(ColorScheme::Light));
+  let owner = Owner::new();
+  let dark = owner.enter(|| media::watch(&Media::Dark));
+
+  let _ = mount(move || {
+    media::derive_scheme(move || scheme.get());
+
+    Theme::new(SimplePalette::default())
+      .set_child_builder(|| Container::new().set_background(SimplePalette::CARD))
+      .build()
+  });
+
+  let card = only_child(&only_child(&root));
+
+  assert!(!dark.get());
+  assert_eq!(background(&card), probe_background(&root, card_light()));
+
+  scheme.set(Some(ColorScheme::Dark));
+  platform::end_turn();
+
+  assert!(dark.get());
+  assert_eq!(background(&card), probe_background(&root, card_dark()));
+  assert_eq!(
+    only_child(&only_child(&root)),
+    card,
+    "re-inked, not rebuilt"
+  );
+
+  scheme.set(None);
+  platform::end_turn();
+  owner.dispose();
+}
+
+/// The facade's typography inks the runs: a text under no theme in the default ink,
+/// and a text under the Simple theme in the palette's foreground.
+#[wasm_bindgen_test]
+fn typography_inks_the_runs() {
+  let (_guard, root) = fresh_root();
+  let _scheme = Scheme::choose(ColorScheme::Light);
+
+  let _ = mount(|| {
+    assert_eq!(Typography::current(), Typography::default());
+
+    Column::new()
+      .set_children((
+        Text::new("bare"),
+        Theme::new(SimplePalette::default()).set_child_builder(|| Text::new("themed")),
+      ))
+      .build()
+  });
+
+  let content = elements(&only_child(&root));
+  let bare = &content[0];
+  let themed = only_child(&content[1]);
+  let ink = fixed(Typography::default().ink.definition().base());
+  let foreground = fixed(SimplePalette::default().foreground.definition().base());
+
+  assert_eq!(computed(bare, "color"), probe(&root, ink));
+  assert_eq!(computed(&themed, "color"), probe(&root, foreground));
+}

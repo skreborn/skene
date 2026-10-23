@@ -658,7 +658,20 @@ mod tests {
   };
 
   use super::{Conditional, Definition, KeptLeaf, Leaf, Slot, StaticLeaf, Value, When};
-  use crate::spine::{Color, Expr, Media, State, TokenRef};
+  use crate::spine::{
+    Color,
+    Dimension,
+    Expr,
+    Flexibility,
+    GridTrack,
+    Inset,
+    Length,
+    Media,
+    Spacing,
+    State,
+    TokenRef,
+    TrackLimit,
+  };
 
   /// A plain value conditioned once is a base and one fixed variant.
   #[test]
@@ -670,6 +683,58 @@ mod tests {
     assert_eq!(
       value.variants(),
       &[(State::Hovered, Leaf::from(Color::srgb(1., 0., 0.)))]
+    );
+  }
+
+  /// A plain number stands for a length of every kind wherever one is taken: in whole
+  /// cells an `f32` rounds to the nearest, an `i32` is exact in either unit, and a
+  /// `Length` keeps its fraction in both.
+  #[test]
+  fn plain_numbers_stand_for_every_length() {
+    let width: Value<Dimension<i32>, State> = Value::from(1.5).when(State::Hovered, -4);
+
+    assert_eq!(width.base(), &Leaf::from(Dimension::Length(2)));
+    assert_eq!(
+      width.variants(),
+      &[(State::Hovered, Leaf::from(Dimension::Length(-4)))]
+    );
+    assert_eq!(
+      Value::<Spacing<f32>, State>::from(8).base(),
+      &Leaf::from(Spacing::all(8.))
+    );
+    assert_eq!(
+      Value::<Inset<Dimension<i32>>, State>::from(-1.4).base(),
+      &Leaf::from(Inset::all(Dimension::Length(-1)))
+    );
+    assert_eq!(
+      Value::<Length, State>::from(1.5).base(),
+      &Leaf::from(Length(1.5))
+    );
+    assert_eq!(
+      Definition::<Length, i32>::from(8).base(),
+      &StaticLeaf::Fixed(Length(8.))
+    );
+    assert_eq!(
+      Definition::<Inset<i32>, i32>::from(2.5).base(),
+      &StaticLeaf::Fixed(Inset::all(3))
+    );
+
+    let Leaf::Derived(derived) = Leaf::<Dimension<i32>>::derive(|| 2.5)
+    else {
+      panic!("a derived leaf");
+    };
+
+    assert_eq!(derived(), StaticLeaf::Fixed(Dimension::Length(3)));
+    assert_eq!(GridTrack::<i32>::from(2.5), GridTrack::Length(3));
+    assert_eq!(TrackLimit::<f32>::from(16), TrackLimit::Length(16.));
+    assert_eq!(
+      Flexibility::<i32>::new(4, 1., 0.).initial,
+      Dimension::Length(4)
+    );
+    assert_eq!(
+      Media::<i32>::min_width(89.5),
+      Media::MinWidth(90),
+      "a condition's length rounds as a setter's does"
     );
   }
 

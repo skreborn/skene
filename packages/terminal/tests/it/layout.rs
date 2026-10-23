@@ -507,6 +507,29 @@ fn a_negative_width_is_dropped() {
   });
 }
 
+/// A length written as an `f32` rounds to the nearest cell at the setter: a width of
+/// 2.5 takes three cells, a padding of 0.6 one and a spacing of 1.4 one.
+#[test]
+fn a_fractional_length_rounds_to_the_nearest_cell() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Row::new()
+        .set_spacing(1.4)
+        .set_children((
+          Container::new().set_width(2.5).set_child(Text::new("a")),
+          Container::new()
+            .set_padding(Inset::horizontal(0.6))
+            .set_child(Text::new("b")),
+          Text::new("c"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(12, 1), "a    b  c\n");
+  });
+}
+
 /// A fraction width resolves against the parent's extent.
 #[test]
 fn fraction_width_resolves_against_parent() {

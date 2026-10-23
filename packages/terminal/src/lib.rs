@@ -17,9 +17,9 @@
 //! quits. Every dispatch runs inside a reactive batch.
 //!
 //! A length is a plain number of cells, an `i32` or an `f32`, wherever one is taken: a
-//! setter, a condition's variant, a token's definition and every constructor measured
-//! in lengths ([`IntoScalar`]). An `f32` rounds to the nearest cell at the setter, and a
-//! run's font size keeps its fraction of a cell.
+//! setter, a derived value, a condition's variant, a token's definition and every
+//! constructor measured in lengths ([`IntoScalar`]). An `f32` rounds to the nearest cell
+//! at the setter, and a run's font size keeps its fraction of a cell.
 //!
 //! ```
 //! use skene_terminal::{Length, prelude::*};
@@ -36,6 +36,9 @@
 //!     Container::new()
 //!       .set_width(16.5)
 //!       .set_child(Text::new("Rounded")),
+//!     Container::new()
+//!       .derive_width(|| 16)
+//!       .set_child(Text::new("Derived")),
 //!   ));
 //!
 //! assert_eq!(Spacing::all(1.5), Spacing::all(2));

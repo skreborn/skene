@@ -42,7 +42,6 @@ use crate::{
   Realization,
   Row,
   RunBase,
-  Scalar,
   Scene,
   Shortcut,
   Spacing,
@@ -670,12 +669,8 @@ struct RowDress<P: Realization> {
 impl<P: Realization> RowDress<P> {
   /// A rule between groups of items.
   fn separator(&self) -> AnyView<P> {
-    let mut rule = Container::<P>::new().set_height(
-      self
-        .separator_thickness
-        .clone()
-        .unwrap_or_else(|| Dimension::Length(P::Scalar::from_f32(1.)).into()),
-    );
+    let mut rule = Container::<P>::new()
+      .set_height(self.separator_thickness.clone().unwrap_or_else(|| 1.into()));
 
     if let Some(color) = self.separator_color.clone() {
       rule = rule.set_background(color);

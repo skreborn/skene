@@ -195,7 +195,7 @@ impl<N: Scalar, X: StyleExtension> Medium<N, X> {
       (
         GUTTER,
         Definition::<Length, N>::from(Length(12.))
-          .when(Media::MinWidth(N::from_f32(500.)), Length(16.))
+          .when(Media::min_width(500), Length(16.))
           .into(),
       ),
       (
@@ -206,13 +206,13 @@ impl<N: Scalar, X: StyleExtension> Medium<N, X> {
       ),
       (
         WIDE,
-        Definition::<Dimension<N>, N>::from(Dimension::Length(N::from_f32(640.)))
+        Definition::<Dimension<N>, N>::from(640)
           .when(
             Media::Container {
               name: None,
-              query: ContainerQuery::MaxWidth(N::from_f32(200.)),
+              query: ContainerQuery::max_width(200),
             },
-            Dimension::Length(N::from_f32(80.)),
+            80,
           )
           .into(),
       ),
@@ -363,7 +363,7 @@ impl<N: Scalar> Condition<N> {
     chain(Self::Media(Media::Dark), |condition| match condition {
       Self::Media(_) => Some(Self::State(State::Hovered)),
       Self::State(_) => Some(Self::and([
-        Media::MinWidth(N::from_f32(500.)).into(),
+        Media::min_width(500).into(),
         State::Pressed.into(),
       ])),
       Self::And(_) => Some(Self::or([Media::Light.into(), State::Indeterminate.into()])),

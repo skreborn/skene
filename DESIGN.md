@@ -1197,11 +1197,12 @@ plan, its prerequisites and its order are in `ROADMAP.md`.
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
-nearest cell at the setter (`1.5` is two) and a margin or an inset keeping its sign, laid out as layout takes any length below zero, while a run's font size keeps
-its fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
+nearest cell at the setter (`1.5` is two) and a margin or an inset keeping its sign,
+laid out as layout takes any length below zero, while a run's font size keeps its
+fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
 box-drawing characters on each edge its width names, in its own color, its conditions
-are cells and its own background. Nothing the medium lacks exists to call, so a terminal app is
-first-class at compile time rather than best-effort at run time.
+are cells and its own background. Nothing the medium lacks exists to call, so a
+terminal app is first-class at compile time rather than best-effort at run time.
 
 The loop runs on a `Device`: bytes in and out, the window's size, a wake, raw mode, and
 notes for what the device learns besides input (a request to end, a job control stop

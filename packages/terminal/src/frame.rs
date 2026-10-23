@@ -7,7 +7,6 @@ use skene_foundation::{
   Canvas,
   Color,
   ContainerName,
-  Inset,
   Size,
   kurbo::{Rect, RoundedRect, Stroke},
 };
@@ -433,14 +432,7 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
     );
     let edges = key.border_edges;
 
-    if edges
-      == (Inset {
-        start: true,
-        top: true,
-        end: true,
-        bottom: true,
-      })
-    {
+    if edges.start && edges.top && edges.end && edges.bottom {
       canvas.stroke(
         &RoundedRect::new(
           line / 2.,

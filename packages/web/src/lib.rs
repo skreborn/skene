@@ -11,8 +11,8 @@
 //! markup.
 //!
 //! A length is a plain number of logical pixels, an `i32` or an `f32`, wherever one is
-//! taken: a setter, a condition's variant, a token's definition and every constructor
-//! measured in lengths ([`IntoScalar`]).
+//! taken: a setter, a derived value, a condition's variant, a token's definition and
+//! every constructor measured in lengths ([`IntoScalar`]).
 //!
 //! ```
 //! use skene_web::{Length, prelude::*};
@@ -29,6 +29,9 @@
 //!     Container::new()
 //!       .set_width(16.5)
 //!       .set_child(Text::new("Fractional")),
+//!     Container::new()
+//!       .derive_width(|| 16)
+//!       .set_child(Text::new("Derived")),
 //!   ));
 //! ```
 

@@ -2567,9 +2567,7 @@ name = "skene-headless"
 version = "0.1.0"
 dependencies = [
  "fearless_simd",
- "png",
  "rustc-hash 2.1.3",
- "skene-conformance",
  "skene-foundation",
  "skene-layout",
  "skene-parley",

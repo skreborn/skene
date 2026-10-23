@@ -510,10 +510,9 @@ re-export.
   scenario out over a WebDriver session in Firefox and Chromium by trusted input, an
   event a page dispatches to itself running no browser default, finding what it acts
   on by the role and the name the browser computes, and holds every page to a
-  screenshot golden that a pinned Firefox draws in a pinned font, to which headless's
-  golden of the page is held in turn, both blurred by three pixels. A behavior every
-  platform must share is a scenario, and a divergence the suite finds is fixed in the
-  platform, never excused in the suite. The
+  screenshot golden that a pinned Firefox draws in a pinned font, pixel for pixel. A
+  behavior every platform must share is a scenario, and a divergence the suite finds is
+  fixed in the platform, never excused in the suite. The
   rules those scenarios exercise that a platform realizing its own overlays would
   otherwise copy live in the spine: an overlay's role
   (`OverlayProps::role`: a hint's tooltip, a modal's dialog) and the focus a closing

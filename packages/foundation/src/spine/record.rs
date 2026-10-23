@@ -1458,7 +1458,7 @@ mod tests {
       assert_eq!(style.run, resolver.run_style(&run_style()));
       assert_eq!(
         style.boxed.padding,
-        Some(Inset::all(if interaction.hovered { 10. } else { 12. }))
+        Some(Inset::all(if interaction.hovered { 10 } else { 12 }))
       );
       assert_eq!(style.boxed.width, Some(Dimension::Length(640.)));
       assert_eq!(style.boxed.aspect_ratio.map(|ratio| ratio.0), Some(3.));

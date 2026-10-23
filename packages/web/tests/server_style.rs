@@ -480,7 +480,7 @@ fn grid_tracks_and_placements_render() {
 #[test]
 fn adaptive_tracks_and_flexible_minimums_render() {
   let rendered = render_to_string(|| {
-    Grid::adaptive(120.).set_rows(vec![GridTrack::Between(
+    Grid::adaptive(120).set_rows(vec![GridTrack::Between(
       TrackLimit::Flex(1.),
       TrackLimit::Length(40.),
     )])

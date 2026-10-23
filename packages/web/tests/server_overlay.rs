@@ -28,7 +28,7 @@ fn modal_serializes_as_a_closed_dialog() {
   let rendered = render_to_string(|| {
     Overlay::modal()
       .set_backdrop(Some(Color::srgb(0., 0., 0.)))
-      .set_padding(Inset::all(16.))
+      .set_padding(Inset::all(16))
       .set_child(Text::new("dialog content"))
   });
 

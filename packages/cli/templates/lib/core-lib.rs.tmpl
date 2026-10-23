@@ -89,23 +89,33 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for {Type}Palette<N> 
 /// A length unit the {name} views know their sizes in.
 #[diagnostic::on_unimplemented(
   message = "the {name} views have no sizes in `{Self}`",
-  label = "a {name} view is drawn in logical pixels (`f32`) or cells (`u32`)"
+  label = "a {name} view is drawn in logical pixels (`f32`) or cells (`i32`)"
 )]
 pub trait {Type}Unit: Scalar {
   /// The inset between a badge's edge and its label.
-  const BADGE_INSET: Inset<Self>;
+  fn badge_inset() -> Inset<Self>;
   /// The corner radius of a badge.
-  const BADGE_RADIUS: Length;
+  fn badge_radius() -> Length;
 }
 
 impl {Type}Unit for f32 {
-  const BADGE_INSET: Inset<Self> = Inset::symmetric(8., 2.);
-  const BADGE_RADIUS: Length = Length(6.);
+  fn badge_inset() -> Inset<Self> {
+    Inset::symmetric(8, 2)
+  }
+
+  fn badge_radius() -> Length {
+    Length::from(6)
+  }
 }
 
-impl {Type}Unit for u32 {
-  const BADGE_INSET: Inset<Self> = Inset::symmetric(1, 0);
-  const BADGE_RADIUS: Length = Length(0.5);
+impl {Type}Unit for i32 {
+  fn badge_inset() -> Inset<Self> {
+    Inset::symmetric(1, 0)
+  }
+
+  fn badge_radius() -> Length {
+    Length(0.5)
+  }
 }
 
 /// A badge: a short label on a rounded, tinted surface.
@@ -143,9 +153,9 @@ where
     <{Type}Palette<P::Scalar> as ThemedIn<P>>::define_root();
 
     Container::new()
-      .set_padding(<P::Scalar as {Type}Unit>::BADGE_INSET)
+      .set_padding(<P::Scalar as {Type}Unit>::badge_inset())
       .set_background({Type}Palette::<P::Scalar>::BADGE)
-      .set_corner_radius(<P::Scalar as {Type}Unit>::BADGE_RADIUS)
+      .set_corner_radius(<P::Scalar as {Type}Unit>::badge_radius())
       .set_child(
         self
           .label

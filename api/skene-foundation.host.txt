@@ -5680,7 +5680,7 @@ impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_fou
 pub fn skene_foundation::Frame<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::Grid<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Grid<P>
-pub fn skene_foundation::Grid<P>::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self
+pub fn skene_foundation::Grid<P>::adaptive(impl skene_foundation::IntoScalar<<P as skene_foundation::Realization>::Scalar>) -> Self
 pub fn skene_foundation::Grid<P>::new() -> Self
 pub fn skene_foundation::Grid<P>::uniform(u16) -> Self
 impl<P: core::fmt::Debug + skene_foundation::Realization> core::fmt::Debug for skene_foundation::Grid<P>
@@ -5689,7 +5689,7 @@ impl<P: skene_foundation::Realization> core::default::Default for skene_foundati
 pub fn skene_foundation::Grid<P>::default() -> Self
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Grid<P>
 impl<P: skene_foundation::Realization> skene_foundation::GridBase<P> for skene_foundation::Grid<P>
-pub fn skene_foundation::Grid<P>::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
+pub fn skene_foundation::Grid<P>::adaptive(impl skene_foundation::IntoScalar<<P as skene_foundation::Realization>::Scalar>) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
 pub fn skene_foundation::Grid<P>::derive_areas<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridAreas>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Grid<P>::derive_column_arrangement<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Grid<P>::derive_columns<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridTemplate<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -9114,7 +9114,7 @@ pub fn skene_foundation::FlexibleBase::set_alignment(self, impl core::convert::I
 pub fn skene_foundation::FlexibleBase::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::FlexibleBase::set_flexibility(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Flexibility<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub trait skene_foundation::GridBase<P: skene_foundation::Realization>: skene_foundation::HasBoxStyle<P> + core::marker::Sized
-pub fn skene_foundation::GridBase::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
+pub fn skene_foundation::GridBase::adaptive(impl skene_foundation::IntoScalar<<P as skene_foundation::Realization>::Scalar>) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
 pub fn skene_foundation::GridBase::derive_areas<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridAreas>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::GridBase::derive_column_arrangement<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::GridBase::derive_columns<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridTemplate<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -9140,7 +9140,7 @@ pub fn skene_foundation::GridBase::set_rows(self, impl core::convert::Into<skene
 pub fn skene_foundation::GridBase::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::GridBase::uniform(u16) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
 impl<P: skene_foundation::Realization> skene_foundation::GridBase<P> for skene_foundation::Grid<P>
-pub fn skene_foundation::Grid<P>::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
+pub fn skene_foundation::Grid<P>::adaptive(impl skene_foundation::IntoScalar<<P as skene_foundation::Realization>::Scalar>) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Grid<P>>
 pub fn skene_foundation::Grid<P>::derive_areas<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridAreas>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Grid<P>::derive_column_arrangement<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Grid<P>::derive_columns<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridTemplate<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self

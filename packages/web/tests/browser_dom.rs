@@ -2107,7 +2107,7 @@ fn named_areas_and_adaptive_tracks_lay_out() {
         ),
         Container::new()
           .set_width(250)
-          .set_child(Grid::adaptive(80.).set_children((cell(), cell(), cell(), cell()))),
+          .set_child(Grid::adaptive(80).set_children((cell(), cell(), cell(), cell()))),
       ))
       .build()
   });

@@ -150,11 +150,8 @@ impl Default for ParityPalette {
         Definition::from(Color::srgb(0.9, 0.1, 0.1))
           .when(Media::min_width(1), Color::srgb(0.1, 0.7, 0.3)),
       ),
-      wide: Token::new(
-        Self::WIDE.name().as_str(),
-        Definition::from(Dimension::Length(90.)),
-      ),
-      gap: Token::new(Self::GAP.name().as_str(), Length(14.)),
+      wide: Token::new(Self::WIDE.name().as_str(), 90),
+      gap: Token::new(Self::GAP.name().as_str(), 14),
       shade: Token::new(
         Self::SHADE.name().as_str(),
         Expr::from(Self::SURFACE).lighter(0.2),

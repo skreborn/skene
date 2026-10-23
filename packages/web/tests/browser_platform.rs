@@ -23,6 +23,7 @@ use skene_foundation::{
   HasChild,
   HasChildren,
   Leaf,
+  Length,
   LowLevel,
   Media,
   NodeId,
@@ -66,7 +67,7 @@ type Box_ = Container<Web>;
 #[derive(Debug, Clone, PartialEq)]
 struct Palette {
   card: Token<Color, f32>,
-  gutter: Token<f32, f32>,
+  gutter: Token<Length, f32>,
 }
 
 impl Palette {
@@ -84,7 +85,7 @@ impl Default for Palette {
   fn default() -> Self {
     Self {
       card: Token::new("test-card", white()).define_when(Media::Dark, black()),
-      gutter: Token::new("test-gutter", 8.),
+      gutter: Token::new("test-gutter", 8),
     }
   }
 }

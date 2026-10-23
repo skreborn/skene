@@ -15,6 +15,7 @@ use crate::{
   HasBoxStyle,
   HasChildren,
   Inset,
+  IntoScalar,
   Layout,
   LayoutBox,
   Leaf,
@@ -64,9 +65,9 @@ impl<P: Realization> Grid<P> {
 
   /// A grid with as many columns as fit, each at least `minimum` wide, sharing what
   /// width remains equally.
-  pub fn adaptive(minimum: P::Scalar) -> Self {
+  pub fn adaptive(minimum: impl IntoScalar<P::Scalar>) -> Self {
     Self::new().set_columns(vec![GridTrack::Adaptive(
-      TrackLimit::Length(minimum),
+      TrackLimit::Length(minimum.into_scalar()),
       TrackLimit::Flex(1.),
     )])
   }
@@ -126,7 +127,7 @@ pub trait GridBase<P: Realization>: HasBoxStyle<P> + Sized {
   /// A grid with as many columns as fit, each at least `minimum` wide, sharing what width
   /// remains equally.
   #[must_use]
-  fn adaptive(minimum: P::Scalar) -> Self
+  fn adaptive(minimum: impl IntoScalar<P::Scalar>) -> Self
   where
     Self: Wraps<Inner = Grid<P>>,
   {

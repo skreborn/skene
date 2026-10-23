@@ -60,7 +60,9 @@ in a code comment.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), a preset a constructor per variant and a `derive_variant`
     re-inking its built-in, and the native door, `platform::<p>::NativeView` with its
-    `ControlSink`, for a native view no built-in covers.
+    `ControlSink`, for a native view no built-in covers. `skene new`'s app and library
+    scaffolds take that shape, and the gate compiles what they write on every platform
+    they name, so a scaffold cannot fall behind the surface it teaches.
     - The seam: a realization receives properties under Skene's own names as one generic
     record, at the `Keep` level it declares, contents typed and atomic, and reports each
     write applied or not.

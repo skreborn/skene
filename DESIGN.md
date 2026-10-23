@@ -628,9 +628,9 @@ Condition     = Media | State | And | Or
   length-valued property's value, leaf and definition converts from both, so
   `set_width(16)`, `set_width(16.5)`, `when(.., 16)`, a token defined as `8`, a lazy
   list's `set_item_height(32)` and a slider's `set_thumb_extent(16)` are the ordinary
-  spelling, and every constructor measured in lengths takes
-  `impl IntoScalar<N>`: `Spacing::new(8, -4)`, `Inset::new(0, 8, 0, 8)` in its fields'
-  order (start, top, end, bottom), `Inset::all`, `Media::min_width(900)` and
+  spelling, and every constructor measured in lengths takes `impl IntoScalar<N>`:
+  `Spacing::new(8, -4)`, `Inset::new(0, 8, 0, 8)` in its fields' order (start, top,
+  end, bottom), `Inset::all`, `Grid::adaptive(120)`, `Media::min_width(900)` and
   `ContainerQuery::max_width(40)`, so code generic over the platform's scalar writes
   `Inset::all(4)` as an app does. `IntoScalar` lands a number in the unit through
   `Scalar::from_i32` and `Scalar::from_f32`: a pixel holds either exactly, and a cell

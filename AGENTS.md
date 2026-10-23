@@ -765,8 +765,9 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   length is a plain number, an `i32` beside an `f32`, everywhere a length is taken, the
   value and condition constructors included (`Spacing::new(8, -4)`,
   `Inset::new(0, 8, 0, 8)`, `Media::min_width(900)`). The terminal's lengths are whole
-  cells, an `f32` rounding to the nearest at the setter and a run's font size alone
-  keeping its fraction of a cell.
+  cells, an `f32` rounding to the nearest at the setter, but for a run's font size and
+  what the backdrop paints in pixels (a corner radius, a shadow's offset and
+  softening), which keep their fraction of a cell.
 - A type is named for the crate or module it belongs to, not the medium: `TerminalStyle`
   and `WebStyle` with their properties, fields and traits, `SimpleGlyphs` and every
   other `Simple*` item, and a platform's own items in its `platform::<p>` module. A bare

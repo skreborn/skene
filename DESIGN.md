@@ -730,9 +730,10 @@ Condition     = Media | State | And | Or
   text is drawn at other sizes. In debug builds the terminal resolves every box, run,
   text entry and keyframe style through the node's record as well, with the same
   resolver and before its own fill-ins (rounded border glyphs, the typography's size and
-  weight, `bold`), and asserts the two resolutions equal by their `Fingerprint`, as it
-  does the record's motion against the dynamics it was built from; a wrapper's
-  annotation resolves typed alone.
+  weight, `bold`), and asserts the two resolutions equal by their `Fingerprint` and
+  alike in whether they read the node's interaction, the flag kept as the typed
+  resolution alone sets it, as it asserts the record's motion equal to the dynamics it
+  was built from; a wrapper's annotation resolves typed alone.
 
 ### Tokens and themes
 

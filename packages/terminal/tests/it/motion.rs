@@ -22,6 +22,16 @@ fn frame(color: impl Into<skene_terminal::StaticLeaf<Color>>) -> BoxKeyframe<ter
   }
 }
 
+/// A run keyframe of one text color.
+fn ink_frame(
+  color: impl Into<skene_terminal::StaticLeaf<Color>>,
+) -> RunKeyframe<terminal::Terminal> {
+  RunKeyframe::<terminal::Terminal> {
+    color: Some(color.into()),
+    ..Default::default()
+  }
+}
+
 /// A hover flipping a color under a transition paints the start color on the frame of
 /// the flip, the Oklab midpoint half a second in, and the end color once settled.
 #[test]
@@ -219,20 +229,15 @@ fn a_keyframe_animation_samples_its_frames() {
 #[test]
 fn a_runs_keyframe_animation_samples_its_frames() {
   with_platform(|| {
-    let ink = |color: skene_terminal::StaticLeaf<Color>| RunKeyframe::<terminal::Terminal> {
-      color: Some(color),
-      ..Default::default()
-    };
-
-    let _ = terminal::mount(move || {
+    let _ = terminal::mount(|| {
       Theme::new(SimplePalette::default().set_card(blue()))
-        .set_child_builder(move || {
+        .set_child_builder(|| {
           Text::new("ink").set_color(red()).add_animation(
             Animation::new(
               1.,
               [
-                (0., ink(red().into())),
-                (100., ink(SimplePalette::CARD.into())),
+                (0., ink_frame(red())),
+                (100., ink_frame(SimplePalette::CARD)),
               ],
             )
             .set_easing(Easing::Linear),
@@ -244,9 +249,20 @@ fn a_runs_keyframe_animation_samples_its_frames() {
 
     assert_eq!(colors_at(6, 2, 0, 0).0, Some(rgb(red())));
 
+    let resolved = testing::style_resolutions();
+
     testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).0, Some(rgb(red().mix(blue(), 0.5))));
+
+    testing::trigger_frame(Duration::from_millis(500));
+
+    assert_eq!(colors_at(6, 2, 0, 0).0, Some(rgb(blue())));
+    assert_eq!(
+      testing::style_resolutions(),
+      resolved,
+      "a running animation samples its resolved keyframes, resolving nothing per frame"
+    );
 
     testing::trigger_frame(Duration::from_secs(2));
 

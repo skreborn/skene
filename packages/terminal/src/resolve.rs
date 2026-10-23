@@ -3,8 +3,8 @@
 //! into its own vocabulary.
 //!
 //! In a debug build every box, run and keyframe style also resolves through the node's
-//! [`Record`](skene_foundation::Record), held equal to the typed resolution before the
-//! terminal's own fill-ins.
+//! [`Record`](skene_foundation::Record), held equal to the typed resolution, and to
+//! reading the node's interaction as it does, before the terminal's own fill-ins.
 
 use skene_foundation::{
   BoxStyle,
@@ -71,18 +71,13 @@ impl<'a> Env<'a> {
     keyframe: &BoxStyle<u32, Keyframe, TerminalStyle>,
   ) -> PlainBox {
     self.with_resolver(|resolver| {
-      let style = resolver.box_keyframe(keyframe);
-
-      if cfg!(debug_assertions) {
-        record::hold(
-          "box keyframe",
-          keyframe,
-          &style,
-          &Frame::of_box(keyframe).resolve(resolver).boxed,
-        );
-      }
-
-      style
+      record::held(
+        "box keyframe",
+        keyframe,
+        resolver,
+        || resolver.box_keyframe(keyframe),
+        || Frame::of_box(keyframe).resolve(resolver).boxed,
+      )
     })
   }
 
@@ -92,18 +87,13 @@ impl<'a> Env<'a> {
     keyframe: &RunStyle<Keyframe, TerminalStyle>,
   ) -> PlainRun {
     self.with_resolver(|resolver| {
-      let style = resolver.run_keyframe(keyframe);
-
-      if cfg!(debug_assertions) {
-        record::hold(
-          "run keyframe",
-          keyframe,
-          &style,
-          &Frame::of_run(keyframe).resolve(resolver).run,
-        );
-      }
-
-      style
+      record::held(
+        "run keyframe",
+        keyframe,
+        resolver,
+        || resolver.run_keyframe(keyframe),
+        || Frame::of_run(keyframe).resolve(resolver).run,
+      )
     })
   }
 
@@ -121,20 +111,17 @@ impl<'a> Env<'a> {
     let props = &record.kind.box_record()?.props;
     let source: &BoxStyle<u32, Static<Condition<u32>>, TerminalStyle> = &props.style;
     let mut style = self.with_resolver(|resolver| {
-      let style = resolver.box_style(source);
-
-      if cfg!(debug_assertions) {
-        record::hold(
-          "box",
-          source,
-          &style,
-          &record::of_box(source, &props.dynamics)
+      record::held(
+        "box",
+        source,
+        resolver,
+        || resolver.box_style(source),
+        || {
+          record::of_box(source, &props.dynamics)
             .resolve(resolver)
-            .boxed,
-        );
-      }
-
-      style
+            .boxed
+        },
+      )
     });
 
     if style.ext.border_glyphs.is_none()
@@ -157,18 +144,17 @@ impl<'a> Env<'a> {
       ..RunStyle::default()
     };
     let mut style = self.with_resolver(|resolver| {
-      let mut style = resolver.run_style(&source);
-
-      if cfg!(debug_assertions) {
-        record::hold(
-          "entry run",
-          &source,
-          &style,
-          &record::of_run(&source, &RunDynamics::default())
+      let mut style = record::held(
+        "entry run",
+        &source,
+        resolver,
+        || resolver.run_style(&source),
+        || {
+          record::of_run(&source, &RunDynamics::default())
             .resolve(resolver)
-            .run,
-        );
-      }
+            .run
+        },
+      );
 
       style.ext.weight = resolver.keyframe_run_value(&StaticLeaf::from(typography::WEIGHT));
 
@@ -199,18 +185,17 @@ impl<'a> Env<'a> {
       return None;
     };
     let mut style = self.with_resolver(|resolver| {
-      let mut style = resolver.run_style(&props.style);
-
-      if cfg!(debug_assertions) {
-        record::hold(
-          "run",
-          &props.style,
-          &style,
-          &record::of_run(&props.style, &props.dynamics)
+      let mut style = record::held(
+        "run",
+        &props.style,
+        resolver,
+        || resolver.run_style(&props.style),
+        || {
+          record::of_run(&props.style, &props.dynamics)
             .resolve(resolver)
-            .run,
-        );
-      }
+            .run
+        },
+      );
 
       // A size or weight the run leaves unset is the typography's.
       if style.ext.size.is_none() {
@@ -244,6 +229,7 @@ mod record {
     Fingerprint,
     Frame,
     Record,
+    Resolver,
     RunDynamics,
     RunStyle,
     Static,
@@ -305,14 +291,38 @@ mod record {
     record
   }
 
-  /// Holds what a `kind` style `source` resolved to through its record to what it
-  /// resolved to typed, by their fingerprints, which compare lengths by their bits.
-  pub(super) fn hold<T: Fingerprint + Debug>(
+  /// What a `kind` style `source` resolves to `typed` with `resolver`; in a debug build
+  /// it resolves through its `record` as well, held to resolving alike and to reading
+  /// the interaction alike, the interaction read as the typed resolution alone reads it.
+  pub(super) fn held<T: Fingerprint + Debug>(
     kind: &str,
     source: &impl Debug,
-    typed: &T,
-    record: &T,
-  ) {
+    resolver: &Resolver<'_, u32, TerminalStyle>,
+    typed: impl FnOnce() -> T,
+    record: impl FnOnce() -> T,
+  ) -> T {
+    if !cfg!(debug_assertions) {
+      return typed();
+    }
+
+    let read = resolver.interaction_read.replace(false);
+    let typed = typed();
+    let typed_read = resolver.interaction_read.replace(false);
+    let record = record();
+    let record_read = resolver.interaction_read.replace(read || typed_read);
+
+    hold(kind, source, &typed, &record);
+    debug_assert_eq!(
+      record_read, typed_read,
+      "the {kind} {source:?} reads the interaction through its record apart from typed"
+    );
+
+    typed
+  }
+
+  /// Holds what a `kind` style `source` resolved to through its record to what it
+  /// resolved to typed, by their fingerprints, which compare lengths by their bits.
+  fn hold<T: Fingerprint + Debug>(kind: &str, source: &impl Debug, typed: &T, record: &T) {
     debug_assert_eq!(
       fingerprint(record),
       fingerprint(typed),

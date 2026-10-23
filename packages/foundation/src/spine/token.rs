@@ -369,7 +369,8 @@ mod tests {
     }
   }
 
-  /// Redefining keeps the name; conditioning layers a variant over the definition.
+  /// Redefining keeps the name, conditioning layers a variant over the definition, and
+  /// the token's reference names it.
   #[test]
   fn redefine_keeps_the_name() {
     let card = Palette::default().card;
@@ -380,12 +381,13 @@ mod tests {
     assert_eq!(redefined.name(), card.name());
     assert_eq!(redefined.reference(), card.reference());
     assert_eq!(redefined.definition().variants(), &[]);
-    assert_eq!(card.definition().variants().len(), 1);
     assert_eq!(
-      card.definition().base(),
-      &StaticLeaf::Fixed(Color::srgb(1., 1., 1.))
+      card.definition(),
+      &Definition::from(Color::srgb(1., 1., 1.))
+        .when(Media::Dark, StaticLeaf::Fixed(Color::srgb(0., 0., 0.)))
     );
     assert_eq!(card.name().to_string(), "card");
+    assert_eq!(card.reference().name(), card.name());
   }
 
   /// A set erases each token through the facade's `From`, and a lookup finds it by name.

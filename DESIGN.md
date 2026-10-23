@@ -206,31 +206,36 @@ toolkit's keeps the default, which does nothing.
   the vocabulary moves the medium decision (CSS text, native styles) into the platform crate
   while realization is written once above it.
 
-  **Headless tests, not a mock platform.** Because the vocabulary carries typed data, the
-  host platform (`skene-headless`) realizes exactly what any real platform receives into
-  an inspectable record store, resolves a property through the spine's `Resolver` (the
-  scene's tokens, the expression evaluator and the environment), and runs tasks when a
-  test pumps them, giving the foundation's views fast tests without pretending to be a
-  platform. The controls, the overlays and the reactive structure test on the platforms
-  that realize them instead: their behaviors, names and keys, a modal's and a popup's
-  dismissal, a tooltip's timing, a context menu's items, a lazy list's window, a
-  boundary's, a switch's, a show's and an enhancement's swap, a wrapper's annotation and
-  a key's restoration in the terminal's in-process tier, through real input, the
-  hand-stepped clock and what a reader finds, and their web form (the native element, a
-  reported edit's verdict, the hydrated swap, a popup's anchoring, a tooltip's
-  `aria-describedby`, a childless view's absence from the DOM) in the browser; what a
-  behavior declares it listens to is a unit test of its own. So do the styles: a
-  transition's and a keyframe's motion, a token set's root defaults, a run's inks, a
-  box's handlers, hover, tab order and drag in the cells the terminal paints, and the
-  layout properties, a media condition against the window's width, a token border and a
-  scheme-conditioned run in the styles the browser computes; a view's size on the stack
-  is a compile-time assertion in each facade. So does the geometry: the layout engine's
-  boxes and text flows (a paragraph's spans, its wrapping, an inline box, the guaranteed
-  core) are `skene-layout`'s unit tests over canned trees and the real Parley engine,
-  and what needs a live platform (a hit, a frame's measured size, a change resolving
-  only what it touched, a text entry's native size) is the terminal's, in cells; the
-  drawing is held by the pinned browser's goldens and the cells the terminal paints.
-  A facade's views test on their platform alone, against its real sinks: the web's in a
+  **Real platforms, not a mock platform.** Because the vocabulary carries typed data, a
+  real platform receives exactly what the views declare, so the foundation's views test
+  where a platform realizes them and none on the host platform (`skene-headless`), which
+  stays only as what the host builds compile against. The controls, the overlays and the
+  reactive structure test on the platforms that realize them: their behaviors, names and
+  keys, a modal's and a popup's dismissal, a tooltip's timing, a context menu's items, a
+  lazy list's window, a boundary's, a switch's, a show's and an enhancement's swap, a
+  wrapper's annotation and a key's restoration in the terminal's in-process tier, through
+  real input, the hand-stepped clock and what a reader finds, and their web form (the
+  native element, a reported edit's verdict, the hydrated swap, a popup's anchoring, a
+  tooltip's `aria-describedby`, a childless view's absence from the DOM) in the browser;
+  what a behavior declares it listens to is a unit test of its own. So do the styles: a
+  transition's and a keyframe's motion, a token set's root defaults, a run's inks, a box's
+  handlers, hover, tab order and drag in the cells the terminal paints, and the layout
+  properties, a media condition against the window's width, a token border and a
+  scheme-conditioned run in the styles the browser computes; a view's size on the stack is
+  a compile-time assertion in each facade. So does the geometry: the layout engine's boxes
+  and text flows (a paragraph's spans, its wrapping, an inline box, the guaranteed core)
+  are `skene-layout`'s unit tests over canned trees and the real Parley engine, and what
+  needs a live platform (a hit, a frame's measured size, a change resolving only what it
+  touched, a text entry's native size) is the terminal's, in cells; the drawing is held by
+  the pinned browser's goldens and the cells the terminal paints. So do the rest: a
+  derived child, text and list, nested and derived themes, expressions over tokens and the
+  environment, a container condition and a derived slot under a hover variant in the
+  terminal's cells; the environment's answers in the media signals and conditions the
+  browser reports through its own `matchMedia`, and in the terminal's pointer, which is
+  the mouse the launch takes; and the rule that a platform's call runs with the scene
+  released through the synchronous responses real platforms make (a scripted focus's
+  events, a focused element moved or removed, a handler destroying the entry it edits). A
+  facade's views test on their platform alone, against its real sinks: the web's in a
   browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
   snapshot, never on the headless platform; native ones against their toolkit. A component
   library tests each facade's crate on its platform the same way: Simple's in the browser
@@ -1177,7 +1182,8 @@ adds only what is its own:
 
 - **browser** (`skene_web_platform = "browser"`)—the browser. DOM sink, the stylesheet
   sink, root-level event delegation with a stamped node id (one listener per event type,
-  `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
+  `scroll` and enter/leave included, an event a handler causes, as the `focusin` of a
+  focus it moves, delivered at once inside it), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted
   rather than duplicated, text typed in an entry before the client arrived replayed as
   an applied edit and repaired in place, any other live input value that differs from

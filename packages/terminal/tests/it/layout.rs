@@ -1,13 +1,17 @@
 //! Layout and paint in cells: the layout views, the wrappers, sizing, wrapping, and a
 //! third-party layout view on the built-ins' footing.
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
 use skene_foundation::{AnyKind, Children, FlexChild, Seal};
 use skene_terminal::{
   self as terminal,
   Definition,
   Length,
+  Realization,
   TextEntry,
   Token,
   TokenName,
@@ -567,6 +571,62 @@ fn grid_cell_annotates_the_content_of_a_derived_subtree() {
     version.set(1);
 
     assert_eq!(testing::render_to_text(8, 4), "t\n\n      c1\n\n");
+  });
+}
+
+/// A flexible wrapper around a derived subtree lands its flexibility on the content box,
+/// on every rebuild, and not on the box inside it: the content grows to twice its
+/// sibling's share of the column.
+#[test]
+fn flexible_annotates_the_content_of_a_derived_subtree() {
+  with_platform(|| {
+    let version = Signal::new(0);
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_height(6)
+        .set_child(
+          Column::new()
+            .derive_child(move || {
+              let _ = version.get();
+
+              Flexible::new()
+                .set_flexibility(Flexibility::grow(2.))
+                .set_child(
+                  Container::new()
+                    .set_background(red())
+                    .set_child(Container::new().set_child(Text::new("x"))),
+                )
+            })
+            .add_child(
+              Flexible::new()
+                .set_flexibility(Flexibility::grow(1.))
+                .set_child(Container::new().set_background(white())),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+    let painted = || {
+      (0..6)
+        .map(|row| colors_at(2, 6, 0, row).1)
+        .collect::<Vec<_>>()
+    };
+    let expected = [[Some(rgb(red())); 4].as_slice(), &[Some(rgb(white())); 2]].concat();
+
+    assert_eq!(
+      painted(),
+      expected,
+      "the content takes two thirds of the room"
+    );
+
+    version.set(1);
+
+    assert_eq!(
+      painted(),
+      expected,
+      "and so does the content a rebuild builds"
+    );
   });
 }
 
@@ -1343,6 +1403,48 @@ fn a_frame_reports_the_laid_out_size() {
     let _ = testing::render_to_text(30, 10);
 
     assert_eq!(handle.size(), Some(skene_foundation::Size::new(15, 4)));
+  });
+}
+
+/// A size observation hears each laid-out size until it is stopped, and nothing after.
+#[test]
+fn a_stopped_size_observation_hears_nothing_more() {
+  with_platform(|| {
+    let handle = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((Container::new()
+          .set_width(Dimension::Fraction(0.5))
+          .set_height(4)
+          .bind_handle(handle),))
+        .into_any()
+        .build()
+    });
+
+    let heard = Rc::new(RefCell::new(Vec::new()));
+    let observation = {
+      let heard = Rc::clone(&heard);
+
+      terminal::Terminal::observe_size(
+        handle.node().expect("the box built"),
+        Rc::new(move |size| heard.borrow_mut().push(size)),
+      )
+    };
+    let _ = testing::render_to_text(20, 10);
+
+    assert_eq!(*heard.borrow(), [skene_foundation::Size::new(10, 4)]);
+
+    observation.stop();
+    testing::trigger_resize(30, 10);
+
+    let _ = testing::render_to_text(30, 10);
+
+    assert_eq!(
+      *heard.borrow(),
+      [skene_foundation::Size::new(10, 4)],
+      "a stopped observation hears nothing"
+    );
   });
 }
 

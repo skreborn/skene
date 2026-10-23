@@ -1,10 +1,12 @@
 //! Text entry in cells: the value bound both ways, the caret and its keys, the window
-//! over a long value or an editor's rows, the wheel over an editor, and the terminal's
-//! own cursor.
+//! over a long value or an editor's rows, the wheel over an editor, the terminal's own
+//! cursor, and a handler that moves focus or changes the tree while an edit is decided.
+
+use std::{cell::RefCell, rc::Rc};
 
 use skene_terminal::{self as terminal, TextEntry, prelude::*, testing};
 
-use crate::common::{colors_at, red, rgb, rows, white, with_platform};
+use crate::common::{colors_at, is_live, red, rgb, rows, white, with_platform};
 
 /// Typing into a focused field flows through `bind_value` into the signal and back onto
 /// the frame; the placeholder shows while the value is empty.
@@ -940,6 +942,75 @@ fn a_handler_that_focuses_another_node_does_not_panic() {
       "the keys reach the entry focused from the script, its caret where it was"
     );
     assert_eq!(name.get_untracked(), "abc");
+  });
+}
+
+/// A change handler that destroys the entry it runs for and relocates another, then
+/// focuses the one it moved, runs while the edit is decided: the focused entry goes
+/// with its focus, the moved one keeps its place in the order the list now has, focus
+/// lands on it, and the keys reach it.
+#[test]
+fn a_handler_that_destroys_and_relocates_nodes_does_not_panic() {
+  with_platform(|| {
+    let order = Signal::new(vec!["a", "b", "c"]);
+    let (first, last) = (NodeHandle::new(), NodeHandle::new());
+    let log = Rc::new(RefCell::new(Vec::new()));
+
+    let _ = terminal::mount({
+      let log = Rc::clone(&log);
+
+      move || {
+        Column::new()
+          .derive_children(
+            move || order.get(),
+            |key| *key,
+            move |key| {
+              let value = Signal::new(key.to_owned());
+              let (focused, blurred) = (Rc::clone(&log), Rc::clone(&log));
+              let field = BasicTextField::new(TextEntry::new().bind_value(value).handle_change(
+                move |text| {
+                  value.set(text.to_owned());
+
+                  if key == "a" {
+                    order.set(vec!["c", "b"]);
+                    last.focus();
+                  }
+                },
+              ))
+              .handle_focus(move || focused.borrow_mut().push(format!("{key} focus")))
+              .handle_blur(move || blurred.borrow_mut().push(format!("{key} blur")));
+
+              match key {
+                "a" => field.bind_handle(first),
+                "c" => field.bind_handle(last),
+                _ => field,
+              }
+            },
+          )
+          .into_any()
+          .build()
+      }
+    });
+
+    assert_eq!(rows(&testing::render_to_text(10, 3)), "a\nb\nc\n");
+
+    let destroyed = first.node().expect("the first entry");
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("x");
+
+    assert_eq!(rows(&testing::render_to_text(10, 3)), "c\nb\n\n");
+    assert!(!is_live(destroyed), "the edited entry went");
+    assert_eq!(testing::focused_node(), last.node(), "focus moved on");
+    assert_eq!(*log.borrow(), ["a focus", "a blur", "c focus"]);
+
+    testing::trigger_key("y");
+
+    assert_eq!(
+      rows(&testing::render_to_text(10, 3)),
+      "yc\nb\n\n",
+      "the keys reach the moved entry"
+    );
   });
 }
 

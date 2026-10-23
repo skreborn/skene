@@ -349,10 +349,6 @@ in a code comment.
     each lays its text out its own way.
     - The browser tier and the server's byte-exact snapshot stay, and the terminal keeps
     its tier.
-    - A slider press dispatched in `browser_views` never slides in Chromium, as though
-    the slider were never measured, where the same test passes in Firefox and in
-    `browser_dom` in both engines (`a_cancelled_press_stops_sliding` lives there for
-    it): something an earlier `browser_views` test leaves behind in Chromium, unfound.
 12. **The border's constructor.** Whether a border is a `Border::new(width)` value with
     its color a property of its own, `set_border_color`, as the GTK prototype's fixes
     split it, or the split is reverted: unanswered.

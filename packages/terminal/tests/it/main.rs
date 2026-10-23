@@ -7,6 +7,7 @@ mod common;
 
 mod r#async;
 mod backdrop;
+mod clock;
 mod clusters;
 mod conditions;
 mod conformance;

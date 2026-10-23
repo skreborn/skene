@@ -22,6 +22,8 @@ use skene_foundation::{
   ContainerBase,
   ControlBase,
   DecorationBase,
+  DecorationWithCornerRadius,
+  Edge,
   Edit,
   EventKind,
   FlexBase,
@@ -36,10 +38,12 @@ use skene_foundation::{
   NativeElement,
   OverlayBase,
   Placement,
+  PointerPrecision,
   Property,
   RichTextBase,
   RowBase,
   RunBase,
+  RunWithTypeMetrics,
   Size,
   Spacing,
   SpanBase,
@@ -114,7 +118,7 @@ use skene_web::{
   platform::{self, Declarations, Web, mount},
   reactive::{Effect, Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, only_child, tick},
-  wasm_bindgen::JsCast,
+  wasm_bindgen::{JsCast, closure::Closure},
   window,
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
@@ -176,6 +180,34 @@ fn click(target: &Element, ctrl: bool, detail: i32) -> bool {
   let _ = target.dispatch_event(&event);
 
   event.default_prevented()
+}
+
+/// Dispatches a click as [`click`] does with `Ctrl` held; whether it reached the window
+/// with its default left to the browser, which the window then takes from it, so the
+/// click opens no tab.
+fn modified_click(target: &Element, detail: i32) -> bool {
+  let reached = Rc::new(Cell::new(false));
+  let keep = Closure::<dyn Fn(web_sys::Event)>::new({
+    let reached = Rc::clone(&reached);
+
+    move |event: web_sys::Event| {
+      reached.set(!event.default_prevented());
+      event.prevent_default();
+    }
+  });
+  let window = web_sys::window().expect("a window");
+
+  window
+    .add_event_listener_with_callback("click", keep.as_ref().unchecked_ref())
+    .expect("listen for the click");
+
+  let _ = click(target, true, detail);
+
+  window
+    .remove_event_listener_with_callback("click", keep.as_ref().unchecked_ref())
+    .expect("stop listening");
+
+  reached.get()
 }
 
 /// Dispatches a cancelable, bubbling `keydown` of `key` at `target`; whether a handler
@@ -808,7 +840,7 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
 
   for detail in [1, 0] {
     assert!(
-      !click(&link, true, detail),
+      modified_click(&link, detail),
       "a modified click is the browser's"
     );
     assert_eq!(router.route(), Page::Home);
@@ -1846,5 +1878,341 @@ fn a_controls_description_and_a_tooltips_fold_into_one_list() {
     texts(),
     ["Required", "Saves"],
     "through the control's rewrite"
+  );
+}
+
+/// Whether the engine's own `matchMedia` matches `query`.
+fn matches(query: &str) -> bool {
+  web_sys::window()
+    .expect("a window")
+    .match_media(query)
+    .ok()
+    .flatten()
+    .is_some_and(|list| list.matches())
+}
+
+/// Asserts that `signal` answers as the engine reports `on`, and that where the engine
+/// reports `off`, the other answer, the signal holds false.
+fn answers(signal: bool, on: &str, off: &str) {
+  assert_eq!(signal, matches(on), "{on}");
+
+  if matches(off) {
+    assert!(!signal, "{off}");
+  }
+}
+
+/// The web medium's own properties reach the engine: a box's corner radius and a run's
+/// font size compute as set.
+#[wasm_bindgen_test]
+fn the_pixel_properties_reach_the_engine() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Container::new()
+      .set_corner_radius(8)
+      .set_child(Text::new("big").set_font_size(24.))
+      .build()
+  });
+
+  let container = only_child(&root);
+
+  assert_eq!(computed(&container, "border-top-left-radius"), "8px");
+  assert_eq!(computed(&only_child(&container), "font-size"), "24px");
+}
+
+/// Reduced transparency and more contrast answer as the engine reports them: the
+/// signals, a watch and a property's condition alike.
+#[wasm_bindgen_test]
+fn the_transparency_and_contrast_preferences_answer_as_the_engine_reports() {
+  let (_guard, root) = fresh_root();
+  let (red, green, blue) = (
+    Color::srgb(1., 0., 0.),
+    Color::srgb(0., 1., 0.),
+    Color::srgb(0., 0., 1.),
+  );
+  let watched = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let watched = Rc::clone(&watched);
+
+    move || {
+      watched.set(Some(media::watch(&Media::HighContrast)));
+
+      Container::new()
+        .set_background(
+          Value::from(red)
+            .when(Condition::from(Media::ReducedTransparency), green)
+            .when(Condition::from(Media::HighContrast), blue),
+        )
+        .build()
+    }
+  });
+
+  let transparency = media::reduced_transparency().get();
+  let contrast = media::high_contrast().get();
+
+  answers(
+    transparency,
+    "(prefers-reduced-transparency: reduce)",
+    "(prefers-reduced-transparency: no-preference)",
+  );
+  answers(
+    contrast,
+    "(prefers-contrast: more)",
+    "(prefers-contrast: no-preference)",
+  );
+  assert_eq!(watched.get().expect("the watch").get(), contrast);
+
+  let expected = if contrast {
+    blue
+  }
+  else if transparency {
+    green
+  }
+  else {
+    red
+  };
+
+  assert_eq!(
+    background(&only_child(&root)),
+    probe(&root, "background-color", expected)
+  );
+}
+
+/// The primary pointer's precision and whether it hovers answer as the engine reports
+/// them: the signals, a watch and a property's condition alike.
+#[wasm_bindgen_test]
+fn the_pointer_precision_and_hover_answer_as_the_engine_reports() {
+  let (_guard, root) = fresh_root();
+  let (red, green, blue) = (
+    Color::srgb(1., 0., 0.),
+    Color::srgb(0., 1., 0.),
+    Color::srgb(0., 0., 1.),
+  );
+  let watched = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let watched = Rc::clone(&watched);
+
+    move || {
+      watched.set(Some(media::watch(&Media::Hover)));
+
+      Container::new()
+        .set_background(
+          Value::from(red)
+            .when(
+              Condition::from(Media::Pointer(PointerPrecision::Coarse)),
+              green,
+            )
+            .when(
+              Condition::from(Media::Pointer(PointerPrecision::Absent)),
+              blue,
+            ),
+        )
+        .build()
+    }
+  });
+
+  let pointer = media::pointer().get();
+  let hover = media::hover().get();
+
+  assert_eq!(
+    pointer == PointerPrecision::Fine,
+    matches("(pointer: fine)")
+  );
+  assert_eq!(
+    pointer == PointerPrecision::Coarse,
+    matches("(pointer: coarse)")
+  );
+
+  if matches("(pointer: none)") {
+    assert_eq!(pointer, PointerPrecision::Absent);
+  }
+
+  answers(hover, "(hover: hover)", "(hover: none)");
+  assert_eq!(watched.get().expect("the watch").get(), hover);
+
+  let expected = match pointer {
+    PointerPrecision::Fine => red,
+    PointerPrecision::Coarse => green,
+    PointerPrecision::Absent => blue,
+  };
+
+  assert_eq!(
+    background(&only_child(&root)),
+    probe(&root, "background-color", expected)
+  );
+}
+
+/// A length reading the safe area computes from the insets the engine reports, as the
+/// signal does.
+#[wasm_bindgen_test]
+fn a_length_reads_the_safe_area() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Container::new()
+      .set_padding(Expr::<Length>::safe_area(Edge::Top) + 4)
+      .build()
+  });
+
+  let reported = document().create_element("div").expect("a probe");
+
+  let _ = reported.set_attribute(
+    "style",
+    "padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)",
+  );
+  let _ = root.append_child(&reported);
+
+  let inset = media::safe_area().get();
+
+  assert_eq!(
+    computed(&reported, "padding-top"),
+    format!("{}px", inset.top)
+  );
+  assert_eq!(
+    computed(&reported, "padding-bottom"),
+    format!("{}px", inset.bottom)
+  );
+  assert_eq!(
+    computed(&only_child(&root), "padding-top"),
+    format!("{}px", inset.top + 4.)
+  );
+
+  reported.remove();
+}
+
+/// A focus a handler asks for runs the engine's focus and blur events at once, and
+/// they reach the scene: the platform's call runs with the scene released.
+#[wasm_bindgen_test]
+fn a_focus_from_a_handler_fires_its_events_with_the_scene_released() {
+  let (_guard, root) = fresh_root();
+  let log = Rc::new(RefCell::new(Vec::new()));
+  let (first, second) = (NodeHandle::new(), NodeHandle::new());
+  let note = |name: &'static str| {
+    let log = Rc::clone(&log);
+
+    move || log.borrow_mut().push(name)
+  };
+
+  let _ = mount({
+    let (focused, blurred, reached) = (
+      note("first focus"),
+      note("first blur"),
+      note("second focus"),
+    );
+
+    move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .bind_handle(first)
+            .handle_focus(move || {
+              focused();
+              second.focus();
+            })
+            .handle_blur(blurred),
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .bind_handle(second)
+            .handle_focus(reached),
+        ))
+        .build()
+    }
+  });
+
+  let boxes = elements(&only_child(&root));
+
+  html(&boxes[0]).focus().expect("focus the first box");
+
+  assert_eq!(*log.borrow(), ["first focus", "first blur", "second focus"]);
+  assert_eq!(document().active_element(), Some(boxes[1].clone()));
+  assert_eq!(
+    skene_foundation::Scene::<Web>::read(skene_foundation::Scene::focused),
+    second.node()
+  );
+}
+
+/// Moving the focused element and removing it run with the scene released: whatever
+/// blur the engine fires on the way reaches the scene, the elements land in the list's
+/// order, and the removed node holds no focus.
+#[wasm_bindgen_test]
+fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
+  let (_guard, root) = fresh_root();
+  let order = Signal::new(vec![1, 2, 3]);
+  let handles = [NodeHandle::new(), NodeHandle::new(), NodeHandle::new()];
+  let log = Rc::new(RefCell::new(Vec::new()));
+
+  let _ = mount({
+    let log = Rc::clone(&log);
+
+    move || {
+      Column::new()
+        .derive_children(
+          move || order.get(),
+          |item: &usize| *item,
+          move |item| {
+            let log = Rc::clone(&log);
+
+            Container::new()
+              .set_focus_order(FocusOrder::Auto)
+              .bind_handle(handles[item - 1])
+              .handle_blur(move || log.borrow_mut().push(item))
+              .set_child(Text::new(item.to_string()))
+          },
+        )
+        .build()
+    }
+  });
+
+  let column = only_child(&root);
+  let texts = || {
+    elements(&column)
+      .iter()
+      .map(|element| element.text_content().unwrap_or_default())
+      .collect::<Vec<_>>()
+  };
+  let element = |item: usize| {
+    elements(&column)[texts()
+      .iter()
+      .position(|text| *text == item.to_string())
+      .expect("the item")]
+    .clone()
+  };
+
+  html(&element(3)).focus().expect("focus the last item");
+  order.set(vec![3, 1, 2]);
+  platform::end_turn();
+
+  assert_eq!(texts(), ["3", "1", "2"]);
+
+  html(&element(1))
+    .focus()
+    .expect("focus the moved-past item");
+
+  let removed = handles[0].node().expect("the first item");
+
+  order.set(vec![3, 2]);
+  platform::end_turn();
+
+  assert_eq!(texts(), ["3", "2"]);
+  assert!(
+    log.borrow().iter().all(|item| [1, 3].contains(item)),
+    "only the items that held focus blur: {:?}",
+    log.borrow()
+  );
+  assert!(log.borrow().iter().filter(|item| **item == 1).count() <= 1);
+  assert_ne!(
+    skene_foundation::Scene::<Web>::read(skene_foundation::Scene::focused),
+    Some(removed)
+  );
+
+  html(&element(2)).focus().expect("focus a remaining item");
+
+  assert_eq!(
+    skene_foundation::Scene::<Web>::read(skene_foundation::Scene::focused),
+    handles[1].node(),
+    "focus still reaches the scene"
   );
 }

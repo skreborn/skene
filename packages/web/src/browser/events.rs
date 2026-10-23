@@ -95,16 +95,17 @@ pub(super) struct Listener {
   target: Option<EventTarget>,
   name: &'static str,
   capture: bool,
-  closure: Option<Closure<dyn FnMut(web_sys::Event)>>,
+  closure: Option<Closure<dyn Fn(web_sys::Event)>>,
 }
 
 impl Listener {
   /// Listens for `name` on `target`, running `handler` with each event as one turn.
   ///
-  /// An event arriving while the scene or the leaf's own state is borrowed, as a
-  /// focus change made under that borrow dispatches, is delivered from a microtask
-  /// instead, once the borrow is released; its verdict then no longer reaches the
-  /// platform's default.
+  /// An event a handler causes as it runs, as a focus it moves fires the next `focusin`,
+  /// is delivered at once, inside it. An event arriving while the scene or the leaf's
+  /// own state is borrowed, as a focus change made under that borrow dispatches, is
+  /// delivered from a microtask instead, once the borrow is released; its verdict then
+  /// no longer reaches the platform's default.
   pub(super) fn new(
     target: EventTarget,
     name: &'static str,
@@ -126,7 +127,7 @@ impl Listener {
 
       handler(&event);
       end_turn();
-    }) as Box<dyn FnMut(web_sys::Event)>);
+    }) as Box<dyn Fn(web_sys::Event)>);
 
     // Not passive, so a wheel's verdict can keep the scroll from happening.
     let options = AddEventListenerOptions::new();

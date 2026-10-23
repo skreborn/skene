@@ -2,6 +2,10 @@
 //! a definition naming another token reads it at the defining scope, and a scope
 //! beneath that redefines it changes nothing above. A token set read with no theme
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
+//! The nearest theme's palette answers, an expression or a derived leaf over a token
+//! resolves through it, and the token answers the scheme where it is read.
+
+use std::{cell::Cell, rc::Rc};
 
 use skene_simple_terminal::{glyph, *};
 use skene_terminal::{
@@ -9,6 +13,7 @@ use skene_terminal::{
   Definition,
   Length,
   Scene,
+  StaticLeaf,
   Terminal,
   Token,
   TokenName,
@@ -272,5 +277,209 @@ fn a_theme_redefines_the_glyph_tokens() {
       unchecked,
       Some(TokenValue::Text(Definition::from("O".to_owned())))
     );
+  });
+}
+
+/// A box under a nested theme paints the inner palette's token, one under the outer
+/// theme alone the outer's, and a read under the nested theme is the inner palette.
+#[test]
+fn nested_themes_resolve_the_nearest_palette() {
+  with_platform(|| {
+    let seen = Rc::new(Cell::new(None::<Cards>));
+
+    let _ = terminal::mount({
+      let seen = Rc::clone(&seen);
+
+      move || {
+        Theme::new(Cards::default())
+          .set_child_builder(move || {
+            Column::new().set_children((
+              Container::new()
+                .set_width(2)
+                .set_height(1)
+                .set_background(CARD),
+              Theme::new(Cards::with_card(red())).set_child_builder(move || {
+                seen.set(Some(Cards::current()));
+
+                Container::new()
+                  .set_width(2)
+                  .set_height(1)
+                  .set_background(CARD)
+              }),
+            ))
+          })
+          .into_any()
+          .build()
+      }
+    });
+
+    assert_eq!(
+      colors_at(4, 2, 0, 0).1,
+      Some(rgb(green())),
+      "the outer card"
+    );
+    assert_eq!(colors_at(4, 2, 0, 1).1, Some(rgb(red())), "the inner card");
+    assert_eq!(seen.take(), Some(Cards::with_card(red())));
+  });
+}
+
+/// An expression over a token resolves through the token's definition, and a length
+/// expression over the viewport follows the terminal's size, as the signal does.
+#[test]
+fn expressions_resolve_over_tokens_and_the_environment() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Theme::new(Cards::with_card(blue()))
+        .set_child_builder(|| {
+          Column::new().set_children((
+            Container::new()
+              .set_width(Expr::<Length>::viewport_width(0.5))
+              .set_height(1)
+              .set_background(Expr::from(CARD).mix(red(), 0.5)),
+            Container::new()
+              .set_width(2)
+              .set_height(1)
+              .set_background(Expr::from(blue()).mix(red(), 0.5)),
+          ))
+        })
+        .into_any()
+        .build()
+    });
+    let colors = testing::render_to_colors(20, 2);
+
+    assert_eq!(colors[0].1, colors[20].1, "the card, mixed");
+    assert_ne!(colors[0].1, Some(rgb(blue())));
+    assert_eq!(colors[9].1, colors[0].1, "half the terminal's width");
+    assert_eq!(colors[10].1, None);
+
+    testing::trigger_resize(10, 2);
+
+    let colors = testing::render_to_colors(10, 2);
+
+    assert_eq!(colors[4].1, colors[10].1);
+    assert_eq!(colors[5].1, None, "half the narrower terminal's width");
+    assert_eq!(
+      terminal::media::viewport().get(),
+      skene_foundation::Size::new(10, 2)
+    );
+  });
+}
+
+/// A derived leaf may name a token or an expression over one: the box paints what the
+/// leaf names through the theme in force, a write switches between them, and the
+/// token answers the scheme where the leaf is read.
+#[test]
+fn a_derived_leaf_names_a_token_or_an_expression_through_the_theme() {
+  with_platform(|| {
+    let muted = Signal::new(false);
+
+    testing::trigger_color_scheme(ColorScheme::Light);
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Theme::new(Cards {
+            card: Token::new(CARD.name().as_str(), green()).define_when(Media::Dark, red()),
+            ..Cards::default()
+          })
+          .set_child_builder(move || {
+            Container::new()
+              .set_width(2)
+              .set_height(1)
+              .derive_background(move || {
+                if muted.get() {
+                  StaticLeaf::from(Expr::from(CARD).mix(blue(), 0.5))
+                }
+                else {
+                  StaticLeaf::from(CARD)
+                }
+              })
+          }),
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(Expr::from(green()).mix(blue(), 0.5)),
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(Expr::from(red()).mix(blue(), 0.5)),
+        ))
+        .into_any()
+        .build()
+    });
+    let cell = |row: usize| colors_at(2, 3, 0, row).1;
+
+    assert_eq!(cell(0), Some(rgb(green())), "the token");
+
+    muted.set(true);
+
+    assert_eq!(cell(0), cell(1), "the expression over it");
+
+    testing::trigger_color_scheme(ColorScheme::Dark);
+
+    assert_eq!(cell(0), cell(2), "the token's dark definition, mixed");
+  });
+}
+
+/// A run's color resolves like a box's, tokens included: the run inks its glyphs in the
+/// palette's card and lays no background of its own.
+#[test]
+fn a_runs_color_resolves_through_the_theme() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Theme::new(Cards::with_card(green()))
+        .set_child_builder(|| Text::new("t").set_color(CARD))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0), (Some(rgb(green())), None));
+  });
+}
+
+/// A palette that checks, as it is read for its definitions, that the scene is free.
+#[derive(Debug, Clone, PartialEq)]
+struct Watchful {
+  /// The card's surface.
+  card: Token<Color>,
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Watchful {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    assert!(
+      !Scene::<Terminal>::is_borrowed(),
+      "a token set is read with the scene released"
+    );
+
+    vec![self.card.define()]
+  }
+}
+
+/// A theme reads its palette's definitions with the scene released, on its first
+/// definition and on every redefinition, so a palette may reach the scene.
+#[test]
+fn a_theme_reads_its_definitions_with_the_scene_released() {
+  with_platform(|| {
+    let card = Signal::new(green());
+
+    let _ = terminal::mount(move || {
+      Theme::derive(move || Watchful {
+        card: Token::new(CARD.name().as_str(), card.get()),
+      })
+      .set_child_builder(|| {
+        Container::new()
+          .set_width(2)
+          .set_height(1)
+          .set_background(CARD)
+      })
+      .into_any()
+      .build()
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(green())));
+
+    card.set(red());
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())));
   });
 }

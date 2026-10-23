@@ -1,12 +1,20 @@
-//! Conditions in cells: the terminal's size and background as media, a node's state,
-//! and a chosen scheme resolving through tokens without a rebuild.
+//! Conditions in cells: the terminal's size, background and pointer as media, a named
+//! container's size, a node's state over a derived slot, and a chosen scheme resolving
+//! through tokens without a rebuild.
 
 use std::{cell::Cell, rc::Rc};
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, StaticLeaf, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  ContainerName,
+  ContainerQuery,
+  StaticLeaf,
+  prelude::*,
+  testing,
+};
 
-use crate::common::{blue, colors_at, red, rgb, white, with_platform};
+use crate::common::{blue, colors_at, green, red, rgb, white, with_launch, with_platform};
 
 /// A `MaxWidth` variant applies at narrow terminal sizes and not at wide ones.
 #[test]
@@ -214,5 +222,146 @@ fn a_derived_scheme_repaints_without_rebuilding() {
     set_scheme(None);
 
     assert_eq!(terminal::chosen_scheme(), None);
+  });
+}
+
+/// A derived slot is rewritten when its signal changes, and a hover variant on the same
+/// property still wins over it while the node is hovered, whatever the slot then holds.
+#[test]
+fn a_derived_slot_updates_and_a_hover_variant_still_wins() {
+  with_platform(|| {
+    let color = Signal::new(red());
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_width(4)
+        .set_height(1)
+        .set_background(
+          Value::new(Leaf::derive(move || color.get()))
+            .when(Condition::from(State::Hovered), blue()),
+        )
+        .into_any()
+        .build()
+    });
+    let cell = || colors_at(6, 1, 0, 0).1;
+
+    assert_eq!(cell(), Some(rgb(red())));
+
+    color.set(green());
+
+    assert_eq!(cell(), Some(rgb(green())));
+
+    testing::trigger_mouse_move(1, 0);
+
+    assert_eq!(cell(), Some(rgb(blue())), "the hover variant wins");
+
+    color.set(red());
+
+    assert_eq!(
+      cell(),
+      Some(rgb(blue())),
+      "over a slot written while hovered"
+    );
+
+    testing::trigger_mouse_move(5, 0);
+
+    assert_eq!(
+      cell(),
+      Some(rgb(red())),
+      "the slot's value once the pointer leaves"
+    );
+  });
+}
+
+/// A container condition resolves against the named container's size, not the
+/// terminal's: the box inside follows the container as its width changes in a terminal
+/// of one width.
+#[test]
+fn a_container_condition_resolves_against_the_named_containers_size() {
+  const SIDEBAR: ContainerName = ContainerName("sidebar");
+
+  with_platform(|| {
+    let width = Signal::new(20);
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_container_name(SIDEBAR)
+        .derive_width(move || width.get())
+        .set_height(1)
+        .set_child(
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(white().when(
+              Media::Container {
+                name: Some(SIDEBAR),
+                query: ContainerQuery::min_width(30),
+              },
+              red(),
+            )),
+        )
+        .into_any()
+        .build()
+    });
+    let cell = || colors_at(80, 1, 0, 0).1;
+
+    assert_eq!(
+      cell(),
+      Some(rgb(white())),
+      "a sidebar narrower than the query"
+    );
+
+    width.set(40);
+
+    assert_eq!(cell(), Some(rgb(red())), "one as wide");
+
+    width.set(20);
+
+    assert_eq!(cell(), Some(rgb(white())));
+  });
+}
+
+/// The terminal's pointer is the mouse where the app takes it, fine and hovering, and
+/// absent where the launch hands the mouse back: the signals, a watch and a property's
+/// condition answer alike.
+#[test]
+fn the_pointer_answers_whether_the_app_takes_the_mouse() {
+  fn mount() -> Memo<bool> {
+    let hovers = Rc::new(Cell::new(None));
+
+    let _ = terminal::mount({
+      let hovers = Rc::clone(&hovers);
+
+      move || {
+        hovers.set(Some(terminal::media::watch(&Media::Hover)));
+
+        Container::new()
+          .set_width(2)
+          .set_height(1)
+          .set_background(red().when(Media::Pointer(PointerPrecision::Absent), blue()))
+          .into_any()
+          .build()
+      }
+    });
+
+    hovers.get().expect("the watch")
+  }
+
+  with_platform(|| {
+    let hovers = mount();
+
+    assert_eq!(terminal::media::pointer().get(), PointerPrecision::Fine);
+    assert!(terminal::media::hover().get());
+    assert!(hovers.get());
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())));
+  });
+
+  with_launch(terminal::Launch::new().set_mouse(false), || {
+    let hovers = mount();
+
+    assert_eq!(terminal::media::pointer().get(), PointerPrecision::Absent);
+    assert!(!terminal::media::hover().get());
+    assert!(!hovers.get());
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(blue())));
   });
 }

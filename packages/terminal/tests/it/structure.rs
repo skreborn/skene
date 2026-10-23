@@ -1,11 +1,22 @@
-//! Reactive structure in cells: a switch keeps each branch it built, pauses a hidden one
-//! and annotates every branch its wrapper surrounds; a show builds its child the first
-//! time it shows, keeps it in place, and hides and shows the same node; and a view
-//! given its child still takes its setters.
+//! Reactive structure in cells: a derived child mounts only its content between its
+//! anchors, a derived text rewrites its run in place, and a derived list keeps its kept
+//! items and disposes a removed one's owner; a switch keeps each branch it built, pauses
+//! a hidden one and annotates every branch its wrapper surrounds; a show builds its
+//! child the first time it shows, keeps it in place, and hides and shows the same node;
+//! a destroyed node holds no focus; and a view given its child still takes its setters.
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_terminal::{self as terminal, NodeId, TOOLTIP_DELAY, prelude::*, testing};
+use skene_foundation::{NodeKind, NodeRecord};
+use skene_terminal::{
+  self as terminal,
+  NodeId,
+  Scene,
+  TOOLTIP_DELAY,
+  Terminal,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{colors_at, is_live, red, rgb, rows, with_platform};
 
@@ -17,6 +28,187 @@ fn is_read(node: NodeId) -> bool {
     .nodes
     .iter()
     .any(|(held, _)| *held == id)
+}
+
+/// The kinds of the nodes attached under `node`, in order.
+fn child_kinds(node: NodeId) -> Vec<NodeKind> {
+  Scene::<Terminal>::read(|scene| {
+    scene
+      .children(node)
+      .filter_map(|child| scene.record(child).map(NodeRecord::kind))
+      .collect()
+  })
+}
+
+/// The run a reader finds reading `text`.
+fn run(text: &str) -> NodeId {
+  testing::find_by_text(text).unwrap_or_else(|| panic!("no run reads {text:?}"))
+}
+
+/// A container with a derived child holds its run between the derived segment's anchors
+/// and nothing else, and a change builds a new run in place of the old one, which goes.
+#[test]
+fn a_derived_child_mounts_only_its_content_between_its_anchors() {
+  with_platform(|| {
+    let label = Signal::new("one".to_owned());
+    let root = terminal::mount(move || {
+      Container::new()
+        .derive_child(move || Text::new(label.get()))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(4, 1), "one\n");
+    assert_eq!(
+      child_kinds(root),
+      [
+        NodeKind::Anchor,
+        NodeKind::Anchor,
+        NodeKind::Run,
+        NodeKind::Anchor,
+        NodeKind::Anchor
+      ],
+      "the run alone between the anchors, which take no room"
+    );
+
+    let first = run("one");
+
+    label.set("two".to_owned());
+
+    assert_eq!(testing::render_to_text(4, 1), "two\n");
+    assert_ne!(run("two"), first);
+    assert!(!is_live(first), "the old run went");
+    assert_eq!(child_kinds(root)[2], NodeKind::Run);
+  });
+}
+
+/// A derived text rewrites its run's text without replacing the run.
+#[test]
+fn a_derived_text_rewrites_its_run_in_place() {
+  with_platform(|| {
+    let label = Signal::new("one".to_owned());
+
+    let _ = terminal::mount(move || Text::derive(move || label.get()).into_any().build());
+
+    assert_eq!(testing::render_to_text(4, 1), "one\n");
+
+    let node = run("one");
+
+    label.set("two".to_owned());
+
+    assert_eq!(testing::render_to_text(4, 1), "two\n");
+    assert_eq!(run("two"), node);
+  });
+}
+
+/// A keyed item that leaves has its owner disposed, so a signal created while building
+/// it is dead, and its run goes; kept items keep their runs, which follow the reorder.
+#[test]
+fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {
+  with_platform(|| {
+    let items = Signal::new(vec![1, 2, 3]);
+    let inner = Rc::new(Cell::new(None::<Signal<i32>>));
+
+    let _ = terminal::mount({
+      let inner = Rc::clone(&inner);
+
+      move || {
+        Column::new()
+          .derive_children(
+            move || items.get(),
+            |item| *item,
+            move |item| {
+              if item == 2 {
+                inner.set(Some(Signal::new(item)));
+              }
+
+              Text::new(item.to_string())
+            },
+          )
+          .into_any()
+          .build()
+      }
+    });
+
+    assert_eq!(rows(&testing::render_to_text(2, 3)), "1\n2\n3\n");
+
+    let (one, two, three) = (run("1"), run("2"), run("3"));
+    let inner = inner.get().expect("the second item built");
+
+    assert_eq!(inner.try_get(), Some(2));
+
+    items.set(vec![3, 1]);
+
+    assert_eq!(rows(&testing::render_to_text(2, 3)), "3\n1\n\n");
+    assert_eq!(
+      (run("3"), run("1")),
+      (three, one),
+      "the kept runs, reordered"
+    );
+    assert_eq!(
+      inner.try_get(),
+      None,
+      "the removed item's owner is disposed"
+    );
+    assert!(!is_live(two));
+  });
+}
+
+/// A list derived from a store's entries updates an item in place when its entry is
+/// written, and follows a reorder and a removal of the `Vec` by the elements' keys.
+#[test]
+fn derived_entries_update_in_place_and_follow_a_reorder() {
+  #[derive(Store, Clone)]
+  struct Entry {
+    id: u32,
+    label: String,
+  }
+
+  with_platform(|| {
+    let entries = Store::new(vec![
+      Entry {
+        id: 1,
+        label: "a".to_owned(),
+      },
+      Entry {
+        id: 2,
+        label: "b".to_owned(),
+      },
+    ]);
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .derive_entries(entries.keyed_by(|row| row.id), |row| {
+          Text::derive(move || row.label().get())
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(rows(&testing::render_to_text(2, 2)), "a\nb\n");
+
+    let (a, b) = (run("a"), run("b"));
+
+    entries
+      .keyed_by(|row| row.id)
+      .key(1)
+      .label()
+      .set("A".to_owned());
+
+    assert_eq!(rows(&testing::render_to_text(2, 2)), "A\nb\n");
+    assert_eq!(run("A"), a, "the entry's run, rewritten in place");
+
+    entries.update(|list| list.swap(0, 1));
+
+    assert_eq!(rows(&testing::render_to_text(2, 2)), "b\nA\n");
+    assert_eq!((run("b"), run("A")), (b, a));
+
+    entries.update(|list| list.retain(|row| row.id != 1));
+
+    assert_eq!(rows(&testing::render_to_text(2, 2)), "b\n\n");
+    assert_eq!(run("b"), b);
+    assert!(!is_live(a));
+  });
 }
 
 /// Flipping away and back reattaches the same branch node with its signal intact, the
@@ -362,6 +554,43 @@ fn show_detaches_and_reattaches_the_same_node() {
     assert_eq!(testing::render_to_text(6, 3), "gone\n\n\n");
     assert!(!is_live(child));
     assert_eq!(local.try_get(), None);
+  });
+}
+
+/// A focused node holds focus until it is destroyed, and holds none after.
+#[test]
+fn a_destroyed_node_holds_no_focus() {
+  with_platform(|| {
+    let alive = Signal::new(true);
+    let handle = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      derived(move || {
+        if alive.get() {
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .bind_handle(handle)
+            .set_child(Text::new("box"))
+            .into_any()
+            .build()
+        }
+        else {
+          Text::new("gone").build()
+        }
+      })
+    });
+    let _ = testing::render_to_text(4, 1);
+    let node = handle.node().expect("the box built");
+
+    handle.focus();
+
+    assert_eq!(testing::focused_node(), Some(node));
+
+    alive.set(false);
+
+    assert_eq!(testing::render_to_text(4, 1), "gone\n");
+    assert!(!is_live(node));
+    assert_eq!(testing::focused_node(), None);
   });
 }
 

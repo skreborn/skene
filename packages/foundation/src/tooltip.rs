@@ -16,7 +16,6 @@ use crate::{
   Handler,
   HasBoxStyle,
   MotionBase,
-  NoChild,
   NodeHandle,
   NodeId,
   Overlay,
@@ -32,6 +31,7 @@ use crate::{
   Value,
   View,
   Wraps,
+  empty,
   realize::{Source, describe},
 };
 
@@ -58,19 +58,19 @@ enum Content<P: Realization> {
 /// description of the node that takes focus within the described view, the view itself
 /// where it does; a view tooltip is reported as describing that node. The bubble is the
 /// [`Part::Bubble`] of the described view, decorated through the setters here, and sits where an
-/// anchored overlay's [placement](Self::set_placement) puts it. Holds [`NoChild`] until
-/// [`set_child`](Self::set_child) supplies the view it describes.
+/// anchored overlay's [placement](Self::set_placement) puts it. Without the view
+/// [`set_child`](Self::set_child) supplies, it renders nothing.
 #[must_use]
-pub struct Tooltip<P: Realization, C = NoChild> {
+pub struct Tooltip<P: Realization> {
   content: Content<P>,
   text_color: Option<Value<Color, Condition<P::Scalar>>>,
   placement: Placement,
   delay: Duration,
   bubble: Overlay<P>,
-  child: C,
+  child: Option<AnyView<P>>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for Tooltip<P, C> {
+impl<P: Realization> std::fmt::Debug for Tooltip<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Tooltip").finish_non_exhaustive()
   }
@@ -84,7 +84,7 @@ impl<P: Realization> Tooltip<P> {
       placement: Placement::Top,
       delay: TOOLTIP_DELAY,
       bubble: Overlay::hint(),
-      child: NoChild,
+      child: None,
     }
   }
 
@@ -101,18 +101,6 @@ impl<P: Realization> Tooltip<P> {
   /// A tooltip showing `content`, a view of any kind.
   pub fn view(content: impl View<P>) -> Self {
     Self::with(Content::View(content.into_any()))
-  }
-
-  /// Sets the view the tooltip describes.
-  pub fn set_child(self, child: impl View<P>) -> Tooltip<P, AnyView<P>> {
-    Tooltip {
-      content: self.content,
-      text_color: self.text_color,
-      placement: self.placement,
-      delay: self.delay,
-      bubble: self.bubble,
-      child: child.into_any(),
-    }
   }
 }
 
@@ -153,6 +141,13 @@ impl<P: Realization> Tooltip<P> {
 
     self
   }
+
+  /// Sets the view the tooltip describes.
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
+  }
 }
 
 impl<P: Realization> HasBoxStyle<P> for Tooltip<P> {
@@ -164,7 +159,7 @@ impl<P: Realization> HasBoxStyle<P> for Tooltip<P> {
 
 impl<P: Realization> DecorationBase<P> for Tooltip<P> {}
 
-impl<P: Realization, C> AnyKind for Tooltip<P, C> {}
+impl<P: Realization> AnyKind for Tooltip<P> {}
 
 /// Registers what opens and closes `bubble`, describing `node`: a pointer resting on
 /// the node for `delay` or focus that shows reaching it writes `open`; the pointer
@@ -242,7 +237,7 @@ fn bind_triggers<P: Realization>(
   });
 }
 
-impl<P: Realization> View<P> for Tooltip<P, AnyView<P>> {
+impl<P: Realization> View<P> for Tooltip<P> {
   fn build(self) -> NodeId {
     let Self {
       content,
@@ -252,6 +247,10 @@ impl<P: Realization> View<P> for Tooltip<P, AnyView<P>> {
       bubble,
       child,
     } = self;
+    let Some(child) = child
+    else {
+      return empty::<P>().build();
+    };
     let (start, _) = Scene::<P>::create_segment();
     let node = child.build();
     let open = Signal::new(false);
@@ -351,7 +350,8 @@ fn bind_description<P: Realization>(node: NodeId, bubble: NodeId, text: Option<S
 
 /// What a facade's [`Tooltip`] carries beyond its bubble's decoration.
 ///
-/// Its constructors, its text color, its motion, its placement and its delay.
+/// Its constructors, its text color, its motion, its placement, its delay and the view
+/// it describes.
 pub trait TooltipBase<P: Realization>: Wraps<Inner = Tooltip<P>> {
   /// A tooltip showing `text`.
   #[must_use]
@@ -399,5 +399,11 @@ pub trait TooltipBase<P: Realization>: Wraps<Inner = Tooltip<P>> {
   #[must_use]
   fn set_delay(self, delay: std::time::Duration) -> Self {
     Self::wrap(self.into_inner().set_delay(delay))
+  }
+
+  /// Sets the view the tooltip describes.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

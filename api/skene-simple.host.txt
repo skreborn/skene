@@ -245,6 +245,7 @@ pub fn skene_simple::SimpleCheckboxBase::set_label(self, impl core::convert::Int
 pub trait skene_simple::SimpleContextMenuBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleContextMenu<P>>
 pub fn skene_simple::SimpleContextMenuBase::new() -> Self
 pub fn skene_simple::SimpleContextMenuBase::serve(self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId where <P as skene_foundation::spine::realization::Realization>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::realization::Realization>::StyleExt: skene_foundation::corner_radius::CornerRadius
+pub fn skene_simple::SimpleContextMenuBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
 pub fn skene_simple::SimpleContextMenuBase::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::context_menu::MenuEntry>) -> Self
 pub trait skene_simple::SimplePickerBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimplePicker<P>>
 pub fn skene_simple::SimplePickerBase::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
@@ -296,6 +297,7 @@ pub fn skene_simple::SimpleTextFieldBase::set_value(self, impl core::convert::In
 pub trait skene_simple::SimpleTooltipBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleTooltip<P>>
 pub fn skene_simple::SimpleTooltipBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTooltipBase::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple::SimpleTooltipBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
 pub fn skene_simple::SimpleTooltipBase::set_delay(self, core::time::Duration) -> Self
 pub fn skene_simple::SimpleTooltipBase::set_placement(self, skene_foundation::spine::values::placement::Placement) -> Self
 pub fn skene_simple::SimpleTooltipBase::view(impl skene_foundation::spine::view::View<P>) -> Self

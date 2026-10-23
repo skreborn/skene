@@ -41,7 +41,7 @@ use crate::common::{COLOR, blue, only_child, red};
 type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Overlay<C = skene_foundation::NoChild> = skene_foundation::Overlay<Headless, C>;
+type Overlay = skene_foundation::Overlay<Headless>;
 type BasicButton = skene_foundation::BasicButton<Headless>;
 type NodeHandle = skene_foundation::NodeHandle<Headless>;
 

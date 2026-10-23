@@ -1,6 +1,6 @@
 //! A child shown or hidden by a condition.
 
-use skene_foundation::{AnyView, NoChild, View, VisibilityBase, Wraps};
+use skene_foundation::{View, VisibilityBase, Wraps};
 
 use crate::Active;
 
@@ -10,7 +10,7 @@ use crate::Active;
 /// pair of anchors when the condition changes, and left where it stands while it
 /// holds. While hidden its effects pause, catching up once it shows again.
 ///
-/// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
+/// Without the child [`set_child`](Self::set_child) supplies, it renders nothing.
 ///
 /// ```
 /// use skene_terminal::prelude::*;
@@ -22,7 +22,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Visibility<C = NoChild>(skene_foundation::Visibility<Active, C>);
+pub struct Visibility(skene_foundation::Visibility<Active>);
 
 impl Default for Visibility {
   #[inline(always)]
@@ -32,11 +32,3 @@ impl Default for Visibility {
 }
 
 impl VisibilityBase<Active> for Visibility {}
-
-impl Visibility {
-  /// Sets the child.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Visibility<AnyView<Active>> {
-    Visibility(self.0.set_child(child))
-  }
-}

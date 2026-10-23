@@ -16,7 +16,7 @@ use skene_reactive::{Get, Owner};
 use crate::common::{COLOR, PADDING, TestPalette, TestTypography, WHITE, black, red};
 
 type Container = skene_foundation::Container<Headless>;
-type Theme<P, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, P, C>;
+type Theme<P> = skene_foundation::Theme<Headless, P>;
 
 /// A miss registers the set's defaults at the root once, a second set lays its own
 /// beside them, and a box below no theme resolves both.

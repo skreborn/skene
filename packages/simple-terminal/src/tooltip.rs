@@ -1,6 +1,6 @@
 //! A ready-made tooltip in the Simple design language.
 
-use skene_foundation::{AnyView, NoChild, View, Wraps};
+use skene_foundation::{View, Wraps};
 use skene_simple::SimpleTooltipBase;
 use skene_terminal::Active;
 
@@ -21,14 +21,6 @@ use skene_terminal::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleTooltip<C = NoChild>(skene_simple::SimpleTooltip<Active, C>);
+pub struct SimpleTooltip(skene_simple::SimpleTooltip<Active>);
 
 impl SimpleTooltipBase<Active> for SimpleTooltip {}
-
-impl SimpleTooltip {
-  /// Sets the view the tooltip describes.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> SimpleTooltip<AnyView<Active>> {
-    SimpleTooltip(self.0.set_child(child))
-  }
-}

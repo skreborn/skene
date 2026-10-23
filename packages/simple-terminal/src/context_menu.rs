@@ -1,6 +1,6 @@
 //! A ready-made context menu in the Simple design language.
 
-use skene_foundation::{AnyView, NoChild, View, Wraps};
+use skene_foundation::{View, Wraps};
 use skene_simple::SimpleContextMenuBase;
 use skene_terminal::Active;
 
@@ -25,7 +25,7 @@ use skene_terminal::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleContextMenu<C = NoChild>(skene_simple::SimpleContextMenu<Active, C>);
+pub struct SimpleContextMenu(skene_simple::SimpleContextMenu<Active>);
 
 impl Default for SimpleContextMenu {
   #[inline(always)]
@@ -35,11 +35,3 @@ impl Default for SimpleContextMenu {
 }
 
 impl SimpleContextMenuBase<Active> for SimpleContextMenu {}
-
-impl SimpleContextMenu {
-  /// Sets the view the menu serves.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> SimpleContextMenu<AnyView<Active>> {
-    SimpleContextMenu(self.0.set_child(child))
-  }
-}

@@ -2,7 +2,6 @@
 
 use skene_foundation::{
   AnyKind,
-  AnyView,
   Color,
   ContextMenu,
   CornerRadius,
@@ -10,7 +9,6 @@ use skene_foundation::{
   DecorationWithCornerRadius,
   MenuEntry,
   MouseCursor,
-  NoChild,
   NodeId,
   Realization,
   State,
@@ -37,8 +35,8 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleContextMenu<P: Realization, C = NoChild> {
-  raw: ContextMenu<P, C>,
+pub struct SimpleContextMenu<P: Realization> {
+  raw: ContextMenu<P>,
 }
 
 impl<P: Realization> SimpleContextMenu<P> {
@@ -58,17 +56,14 @@ impl<P: Realization> SimpleContextMenu<P> {
   }
 
   /// Sets the view the menu serves.
-  pub fn set_child(self, child: impl View<P>) -> SimpleContextMenu<P, AnyView<P>>
-  where
-    P::Scalar: SimpleUnit,
-    P::StyleExt: CornerRadius,
-  {
-    SimpleContextMenu {
-      raw: dress(self.raw).set_child(child),
-    }
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.raw = self.raw.set_child(child);
+
+    self
   }
 
   /// Attaches the menu to `node`, a view that already exists; returns the list's node.
+  /// A view [`set_child`](Self::set_child) supplied is not built.
   #[inline(always)]
   pub fn serve(self, node: NodeId) -> NodeId
   where
@@ -86,7 +81,7 @@ impl<P: Realization> Default for SimpleContextMenu<P> {
   }
 }
 
-impl<P: Realization, C> AnyKind for SimpleContextMenu<P, C> {}
+impl<P: Realization> AnyKind for SimpleContextMenu<P> {}
 
 /// Decorates `menu` in the Simple language.
 fn dress<P: Realization>(menu: ContextMenu<P>) -> ContextMenu<P>
@@ -127,13 +122,13 @@ where
     .set_item_corner_radius(shape.mark_radius)
 }
 
-impl<P: Realization> View<P> for SimpleContextMenu<P, AnyView<P>>
+impl<P: Realization> View<P> for SimpleContextMenu<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    self.raw.build()
+    dress(self.raw).build()
   }
 }
 
@@ -151,7 +146,14 @@ pub trait SimpleContextMenuBase<P: Realization>: Wraps<Inner = SimpleContextMenu
     Self::wrap(self.into_inner().set_items(items))
   }
 
+  /// Sets the view the menu serves.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
+  }
+
   /// Attaches the menu to `node`, a view that already exists; returns the list's node.
+  /// A view [`set_child`](Self::set_child) supplied is not built.
   fn serve(self, node: NodeId) -> NodeId
   where
     P::Scalar: SimpleUnit,

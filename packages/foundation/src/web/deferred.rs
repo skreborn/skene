@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use skene_reactive::{Owner, provide_context};
 
 use super::WebHydration;
-use crate::{AnyKind, Boundary, NoChild, NodeId, Scene, View, Wraps, realize::ChildBuilder};
+use crate::{AnyKind, Boundary, NodeId, Scene, View, Wraps, empty, realize::ChildBuilder};
 
 /// A subtree whose async work the server settles apart from the shell's and streams
 /// in place once it does.
@@ -15,15 +15,15 @@ use crate::{AnyKind, Boundary, NoChild, NodeId, Scene, View, Wraps, realize::Chi
 /// emits everything up to the boundary, blocks until that work settles, then streams
 /// the content in document order; a whole render settles through it and serializes it
 /// in place. On the client the content builds directly, and hydration adopts the
-/// server's already-settled markup. Holds [`NoChild`] until
-/// [`set_child_builder`](Self::set_child_builder) supplies the content.
+/// server's already-settled markup. Without the content
+/// [`set_child_builder`](Self::set_child_builder) supplies, it renders nothing.
 #[must_use]
-pub struct Deferred<P: WebHydration, C = NoChild> {
-  content: C,
+pub struct Deferred<P: WebHydration> {
+  content: Option<ChildBuilder<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: WebHydration, C> std::fmt::Debug for Deferred<P, C> {
+impl<P: WebHydration> std::fmt::Debug for Deferred<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Deferred").finish_non_exhaustive()
   }
@@ -41,30 +41,26 @@ impl<P: WebHydration> Deferred<P> {
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
-      content: NoChild,
+      content: None,
       platform: PhantomData,
     }
   }
 
   /// Sets the content, built by `content`: its async work reports to a boundary of its
   /// own, and a streaming render flushes the surrounding page before it settles.
-  pub fn set_child_builder<V: View<P>>(
-    self,
-    content: impl FnOnce() -> V + 'static,
-  ) -> Deferred<P, ChildBuilder<P>> {
-    Deferred {
-      content: ChildBuilder::new(content),
-      platform: PhantomData,
-    }
+  pub fn set_child_builder<V: View<P>>(mut self, content: impl FnOnce() -> V + 'static) -> Self {
+    self.content = Some(ChildBuilder::new(content));
+
+    self
   }
 }
 
-impl<P: WebHydration> Deferred<P, ChildBuilder<P>> {
-  /// Builds the content, under a boundary of its own registered for the segment `start`
+impl<P: WebHydration> Deferred<P> {
+  /// Builds `content`, under a boundary of its own registered for the segment `start`
   /// begins where the platform renders on a server.
-  fn build_content(self, start: NodeId) -> NodeId {
+  fn build_content(content: ChildBuilder<P>, start: NodeId) -> NodeId {
     if !P::is_server() {
-      return self.content.build();
+      return content.build();
     }
 
     let boundary = Boundary::new();
@@ -74,7 +70,7 @@ impl<P: WebHydration> Deferred<P, ChildBuilder<P>> {
     let content = scope.enter(|| {
       provide_context(boundary);
 
-      self.content.build()
+      content.build()
     });
 
     P::register_boundary(start, Box::new(move || boundary.is_settled()));
@@ -83,12 +79,16 @@ impl<P: WebHydration> Deferred<P, ChildBuilder<P>> {
   }
 }
 
-impl<P: WebHydration> AnyKind for Deferred<P, ChildBuilder<P>> {}
+impl<P: WebHydration> AnyKind for Deferred<P> {}
 
-impl<P: WebHydration> View<P> for Deferred<P, ChildBuilder<P>> {
+impl<P: WebHydration> View<P> for Deferred<P> {
   fn build(self) -> NodeId {
+    let Some(content) = self.content
+    else {
+      return empty::<P>().build();
+    };
     let (start, _) = Scene::<P>::create_segment();
-    let content = self.build_content(start);
+    let content = Self::build_content(content, start);
 
     Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
 
@@ -96,11 +96,18 @@ impl<P: WebHydration> View<P> for Deferred<P, ChildBuilder<P>> {
   }
 }
 
-/// What a facade's [`Deferred`] carries: its constructor.
+/// What a facade's [`Deferred`] carries: its constructor and its content.
 pub trait DeferredBase<P: WebHydration>: Wraps<Inner = Deferred<P>> {
   /// A boundary with no content yet.
   #[must_use]
   fn new() -> Self {
     Self::wrap(Deferred::new())
+  }
+
+  /// Sets the content, built by `content`: its async work reports to a boundary of its
+  /// own, and a streaming render flushes the surrounding page before it settles.
+  #[must_use]
+  fn set_child_builder<V: View<P>>(self, content: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_child_builder(content))
   }
 }

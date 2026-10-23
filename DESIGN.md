@@ -284,7 +284,12 @@ and its cost unjustified.
   own, and a low-level node hands it to its platform through `Realization::apply_layout`,
   which the web compiles into the element's class. A wrapper holds its child boxed,
   its setters before and after it alike; one without a child builds an empty segment,
-  which takes no room and annotates nothing.
+  which takes no room and annotates nothing. Every other view around one child holds it
+  the same way, boxed (`Overlay`, `Tooltip`, `ContextMenu`, `Visibility`, `Keymap`,
+  `Link`) or as a builder closure (`Theme`, `Enhance`, `Suspense`, `ErrorBoundary`,
+  `Deferred`, and `AsyncView`'s loader), and without it builds the same empty segment:
+  a theme realizes no scope, an overlay no overlay, a boundary not even its fallback,
+  and an enhancement keeps its fallback until it turns live, empty after.
 - **Owners** are created per reconciled item, per rebuild, per keyed view and where
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
   into `Owner::replacement()`, the same parent and step, so snapshot identity survives

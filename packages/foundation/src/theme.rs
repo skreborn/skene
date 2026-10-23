@@ -8,7 +8,6 @@ use skene_reactive::{Effect, Get, Memo, Owner, With, provide_context, use_contex
 use crate::{
   AnyKind,
   Definitions,
-  NoChild,
   NodeId,
   NodeKind,
   Realization,
@@ -16,6 +15,7 @@ use crate::{
   TokenSet,
   View,
   Wraps,
+  empty,
   realize::{ChildBuilder, Source},
 };
 
@@ -24,17 +24,17 @@ use crate::{
 /// Realizes one layout-invisible scope node, provides `Memo<S>` through context so
 /// [`ThemedIn::current`] and [`ThemedIn::watch`] read it, and rewrites the scope's
 /// definitions when the palette changes: no consumer is touched and nothing rebuilds.
-/// Nesting a theme redefines beneath it. Holds [`NoChild`] until
-/// [`set_child_builder`](Self::set_child_builder) supplies the child as a builder
-/// closure, built under the owner the context is provided on.
+/// Nesting a theme redefines beneath it. The child is a builder closure
+/// [`set_child_builder`](Self::set_child_builder) supplies, built under the owner the
+/// context is provided on; without it the theme realizes no scope and renders nothing.
 #[must_use]
-pub struct Theme<P: Realization, S: TokenSet<P::TokenValue>, C = NoChild> {
+pub struct Theme<P: Realization, S: TokenSet<P::TokenValue>> {
   palette: Source<S>,
-  child: C,
+  child: Option<ChildBuilder<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization, S: TokenSet<P::TokenValue>, C> std::fmt::Debug for Theme<P, S, C> {
+impl<P: Realization, S: TokenSet<P::TokenValue>> std::fmt::Debug for Theme<P, S> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Theme").finish_non_exhaustive()
   }
@@ -46,7 +46,7 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
   pub fn new(palette: S) -> Self {
     Self {
       palette: Source::Fixed(palette),
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -56,7 +56,7 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
   pub fn derive(palette: impl Fn() -> S + 'static) -> Self {
     Self {
       palette: Source::derive(palette),
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -64,28 +64,26 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
 
 impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// Sets the child, built by `child` under the theme.
-  pub fn set_child_builder<V: View<P>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Theme<P, S, ChildBuilder<P>> {
-    Theme {
-      palette: self.palette,
-      child: ChildBuilder::new(child),
-      platform: PhantomData,
-    }
+  pub fn set_child_builder<V: View<P>>(mut self, child: impl FnOnce() -> V + 'static) -> Self {
+    self.child = Some(ChildBuilder::new(child));
+
+    self
   }
 }
 
-impl<P: Realization, S: TokenSet<P::TokenValue>, C> AnyKind for Theme<P, S, C> {}
+impl<P: Realization, S: TokenSet<P::TokenValue>> AnyKind for Theme<P, S> {}
 
-impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S, ChildBuilder<P>> {
+impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S> {
   fn build(self) -> NodeId {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().build();
+    };
     let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope, None));
 
     P::create_scope(scope);
 
     let owner = Owner::current().child();
-    let child = self.child;
     let palette = self.palette;
 
     owner.enter(|| {
@@ -170,7 +168,7 @@ impl<P: Realization, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
   }
 }
 
-/// The constructors of a facade's [`Theme`].
+/// What a facade's [`Theme`] carries: its constructors and its child.
 pub trait ThemeBase<P: Realization, S: TokenSet<P::TokenValue>>:
   Wraps<Inner = Theme<P, S>>
 {
@@ -185,5 +183,11 @@ pub trait ThemeBase<P: Realization, S: TokenSet<P::TokenValue>>:
   #[must_use]
   fn derive(palette: impl Fn() -> S + 'static) -> Self {
     Self::wrap(Theme::derive(palette))
+  }
+
+  /// Sets the child, built by `child` under the theme.
+  #[must_use]
+  fn set_child_builder<V: View<P>>(self, child: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_child_builder(child))
   }
 }

@@ -28,7 +28,6 @@ use skene_foundation::{
   Leaf,
   Length,
   Media,
-  NoChild,
   NodeId,
   PointerPrecision,
   Prevented,
@@ -103,7 +102,7 @@ type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
 type Flexible = skene_foundation::Flexible<Headless>;
-type Theme<S, C = NoChild> = skene_foundation::Theme<Headless, S, C>;
+type Theme<S> = skene_foundation::Theme<Headless, S>;
 
 const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);

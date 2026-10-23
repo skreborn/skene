@@ -1,13 +1,6 @@
 //! A lazily loaded subtree: content from an async source.
 
-use std::future::Future;
-
-use skene_foundation::{
-  NoChild,
-  View,
-  Wraps,
-  web::{AsyncViewBase, ChildLoader},
-};
+use skene_foundation::{View, Wraps, web::AsyncViewBase};
 
 use crate::Active;
 
@@ -21,8 +14,8 @@ use crate::Active;
 ///
 /// On a hydrated page whose server render included the content, the server markup is
 /// claimed instead: it stays visible, already satisfying the enclosing boundary, until
-/// the module arrives and the real content replaces it in place. Holds [`NoChild`]
-/// until [`set_child_loader`](Self::set_child_loader) supplies the content.
+/// the module arrives and the real content replaces it in place. Without the content
+/// [`set_child_loader`](Self::set_child_loader) supplies, it renders nothing.
 ///
 /// ```
 /// use skene_web::{AsyncView, prelude::*};
@@ -35,21 +28,6 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct AsyncView<C = NoChild>(skene_foundation::web::AsyncView<Active, C>);
+pub struct AsyncView(skene_foundation::web::AsyncView<Active>);
 
 impl AsyncViewBase<Active> for AsyncView {}
-
-impl AsyncView {
-  /// Sets the content, loaded by `load`, run to completion as a task.
-  #[inline(always)]
-  pub fn set_child_loader<V, F>(
-    self,
-    load: impl FnOnce() -> F + 'static,
-  ) -> AsyncView<ChildLoader<Active>>
-  where
-    V: View<Active>,
-    F: Future<Output = V> + 'static,
-  {
-    AsyncView(self.0.set_child_loader(load))
-  }
-}

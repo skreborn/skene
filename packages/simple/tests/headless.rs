@@ -74,7 +74,7 @@ type SimplePicker = skene_simple::SimplePicker<Headless>;
 type Container = skene_foundation::Container<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Theme<P, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, P, C>;
+type Theme<P> = skene_foundation::Theme<Headless, P>;
 
 const COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Background);
 const TEXT_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::TextColor);

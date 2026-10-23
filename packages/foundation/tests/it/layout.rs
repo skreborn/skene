@@ -50,7 +50,7 @@ type Row = skene_foundation::Row<Headless>;
 type Column = skene_foundation::Column<Headless>;
 type Grid = skene_foundation::Grid<Headless>;
 type Stack = skene_foundation::Stack<Headless>;
-type Theme<P, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, P, C>;
+type Theme<P> = skene_foundation::Theme<Headless, P>;
 
 /// A layout's spacing reaches the platform as declared, and a token-valued spacing
 /// resolves through the theme to the palette's length.

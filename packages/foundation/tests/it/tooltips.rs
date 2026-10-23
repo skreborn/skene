@@ -43,7 +43,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 
 type Container = skene_foundation::Container<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Tooltip<C = skene_foundation::NoChild> = skene_foundation::Tooltip<Headless, C>;
+type Tooltip = skene_foundation::Tooltip<Headless>;
 type BasicButton = skene_foundation::BasicButton<Headless>;
 
 /// The described view and its bubble, mounted in the segment `start` begins.

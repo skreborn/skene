@@ -1,6 +1,6 @@
 //! Content shown beside the view it describes.
 
-use skene_foundation::{AnyView, DecorationBase, NoChild, TooltipBase, View, Wraps};
+use skene_foundation::{DecorationBase, TooltipBase, View, Wraps};
 
 use crate::Active;
 
@@ -15,7 +15,7 @@ use crate::Active;
 /// where it does; a view tooltip is reported as describing that node. The bubble is the
 /// [`Part::Bubble`](skene_foundation::Part::Bubble) of the described view, decorated through the
 /// setters here, and sits where an anchored overlay's [placement](Self::set_placement) puts it.
-/// Holds [`NoChild`] until [`set_child`](Self::set_child) supplies the view it describes.
+/// Without the view [`set_child`](Self::set_child) supplies, it renders nothing.
 ///
 /// ```
 /// use skene_web::{Activate, prelude::*};
@@ -25,16 +25,8 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Tooltip<C = NoChild>(skene_foundation::Tooltip<Active, C>);
+pub struct Tooltip(skene_foundation::Tooltip<Active>);
 
 impl TooltipBase<Active> for Tooltip {}
 
 impl DecorationBase<Active> for Tooltip {}
-
-impl Tooltip {
-  /// Sets the view the tooltip describes.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Tooltip<AnyView<Active>> {
-    Tooltip(self.0.set_child(child))
-  }
-}

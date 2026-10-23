@@ -8,7 +8,7 @@ use skene_headless::{Headless, children, end_turn, is_live, reset};
 use skene_reactive::{Effect, Get, Owner, Set, signal};
 
 type Container = skene_foundation::Container<Headless>;
-type Visibility<C = skene_foundation::NoChild> = skene_foundation::Visibility<Headless, C>;
+type Visibility = skene_foundation::Visibility<Headless>;
 
 /// A box with the segment `start` begins attached beneath it.
 fn parent_of(start: NodeId) -> NodeId {

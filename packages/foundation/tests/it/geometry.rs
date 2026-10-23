@@ -63,7 +63,7 @@ type Row = skene_foundation::Row<Headless>;
 type Span = skene_foundation::Span<Headless>;
 type Stack = skene_foundation::Stack<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Theme<S, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, S, C>;
+type Theme<S> = skene_foundation::Theme<Headless, S>;
 
 /// The boxes and runs placed under `node`, its anchors left out.
 fn content(node: NodeId) -> Vec<NodeId> {

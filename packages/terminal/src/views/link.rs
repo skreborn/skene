@@ -1,14 +1,14 @@
 //! A navigation link: a box navigating the router when followed.
 
-use skene_foundation::{AnyView, LinkBase, NoChild, View, Wraps, routing::Route};
+use skene_foundation::{LinkBase, View, Wraps, routing::Route};
 
 use crate::Active;
 
 /// A link to a route.
 ///
 /// A tab stop that navigates the [`Router`](skene_foundation::routing::Router) on a
-/// click or on `Enter`, as a browser's link does. Holds [`NoChild`] until
-/// [`set_child`](Self::set_child) supplies the one view it links.
+/// click or on `Enter`, as a browser's link does. Without the one view
+/// [`set_child`](Self::set_child) supplies, it renders nothing.
 ///
 /// ```
 /// use skene_terminal::{prelude::*, router::Route};
@@ -40,14 +40,6 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Link<R: Route, C = NoChild>(skene_foundation::Link<Active, R, C>);
+pub struct Link<R: Route>(skene_foundation::Link<Active, R>);
 
 impl<R: Route> LinkBase<Active, R> for Link<R> {}
-
-impl<R: Route> Link<R> {
-  /// Sets the view the link holds.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Link<R, AnyView<Active>> {
-    Link(self.0.set_child(child))
-  }
-}

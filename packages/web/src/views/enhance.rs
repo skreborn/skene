@@ -1,6 +1,6 @@
 //! A view with two forms: a fallback and the form a signal makes possible.
 
-use skene_foundation::{ChildBuilder, EnhanceBase, NoChild, View, Wraps};
+use skene_foundation::{EnhanceBase, View, Wraps};
 
 use crate::Active;
 
@@ -12,9 +12,9 @@ use crate::Active;
 /// child built in its place, under a replacement owner, so state bound beneath keeps
 /// its snapshot identity. Once built, the child stands whatever the signal does after.
 /// A form builds untracked, so a signal it reads while building never rebuilds it. With
-/// no fallback the segment stays empty until the signal turns. Holds [`NoChild`] until
-/// [`set_child_builder`](Self::set_child_builder) supplies the child; both forms are
-/// builder closures, and only one of them is built.
+/// no fallback the segment stays empty until the signal turns, and with no child
+/// [`set_child_builder`](Self::set_child_builder) supplies it stays empty from then on;
+/// both forms are builder closures, and only one of them is built.
 ///
 /// The signals the built-ins wait on are the web's own: [`media::hydrated`](crate::media::hydrated)
 /// for a render made without script, and [`Painting::available`](crate::Painting::available)
@@ -29,17 +29,6 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Enhance<C = NoChild>(skene_foundation::Enhance<Active, C>);
+pub struct Enhance(skene_foundation::Enhance<Active>);
 
 impl EnhanceBase<Active> for Enhance {}
-
-impl Enhance {
-  /// Sets the form built once `live` is true.
-  #[inline(always)]
-  pub fn set_child_builder<V: View<Active>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Enhance<ChildBuilder<Active>> {
-    Enhance(self.0.set_child_builder(child))
-  }
-}

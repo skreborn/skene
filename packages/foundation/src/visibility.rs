@@ -4,7 +4,7 @@ use std::{cell::Cell, marker::PhantomData};
 
 use skene_reactive::{Effect, Owner, untrack};
 
-use crate::{AnyKind, AnyView, NoChild, NodeId, Piece, Realization, Segment, View, Wraps};
+use crate::{AnyKind, AnyView, NodeId, Piece, Realization, Segment, View, Wraps, empty};
 
 /// Shows or hides one child, preserving its state.
 ///
@@ -12,15 +12,15 @@ use crate::{AnyKind, AnyView, NoChild, NodeId, Piece, Realization, Segment, View
 /// pair of anchors when the condition changes, and left where it stands while it
 /// holds. While hidden its effects pause, catching up once it shows again.
 ///
-/// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
+/// Without the child [`set_child`](Self::set_child) supplies, it renders nothing.
 #[must_use]
-pub struct Visibility<P: Realization, C = NoChild> {
+pub struct Visibility<P: Realization> {
   shown: Box<dyn Fn() -> bool>,
-  child: C,
+  child: Option<AnyView<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for Visibility<P, C> {
+impl<P: Realization> std::fmt::Debug for Visibility<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Visibility").finish_non_exhaustive()
   }
@@ -31,7 +31,7 @@ impl<P: Realization> Visibility<P> {
   pub fn new() -> Self {
     Self {
       shown: Box::new(|| true),
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -61,24 +61,26 @@ impl<P: Realization> Visibility<P> {
   }
 
   /// Sets the child.
-  pub fn set_child(self, child: impl View<P>) -> Visibility<P, AnyView<P>> {
-    Visibility {
-      shown: self.shown,
-      child: child.into_any(),
-      platform: PhantomData,
-    }
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
   }
 }
 
-impl<P: Realization, C> AnyKind for Visibility<P, C> {}
+impl<P: Realization> AnyKind for Visibility<P> {}
 
-impl<P: Realization> View<P> for Visibility<P, AnyView<P>> {
+impl<P: Realization> View<P> for Visibility<P> {
   fn build(self) -> NodeId {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().build();
+    };
     let segment = Segment::<P>::new();
     let start = segment.start();
     let scope = Owner::current().child();
     let shown = self.shown;
-    let child = Cell::new(Some(self.child));
+    let child = Cell::new(Some(child));
     let piece = Cell::new(None::<Piece>);
 
     Effect::render(move |previous: Option<bool>| {
@@ -115,7 +117,7 @@ impl<P: Realization> View<P> for Visibility<P, AnyView<P>> {
   }
 }
 
-/// What a facade's [`Visibility`] carries: its constructor and its condition.
+/// What a facade's [`Visibility`] carries: its constructor, its condition and its child.
 pub trait VisibilityBase<P: Realization>: Wraps<Inner = Visibility<P>> {
   /// A `Visibility` with no child yet, shown until told otherwise.
   #[must_use]
@@ -134,5 +136,11 @@ pub trait VisibilityBase<P: Realization>: Wraps<Inner = Visibility<P>> {
   #[must_use]
   fn derive_shown(self, shown: impl Fn() -> bool + 'static) -> Self {
     Self::wrap(self.into_inner().derive_shown(shown))
+  }
+
+  /// Sets the child.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

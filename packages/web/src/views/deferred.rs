@@ -1,6 +1,6 @@
 //! A streaming boundary: a subtree the server can flush around and stream in place.
 
-use skene_foundation::{ChildBuilder, NoChild, View, Wraps, web::DeferredBase};
+use skene_foundation::{View, Wraps, web::DeferredBase};
 
 use crate::Active;
 
@@ -14,8 +14,8 @@ use crate::Active;
 /// in place. On the client the content builds directly, and hydration adopts the
 /// server's already-settled markup. A streamed page's head flushes with the shell, so a
 /// head element registered inside the subtree reaches that page only once the client
-/// hydrates. Holds [`NoChild`] until [`set_child_builder`](Self::set_child_builder)
-/// supplies the content.
+/// hydrates. Without the content [`set_child_builder`](Self::set_child_builder)
+/// supplies, it renders nothing.
 ///
 /// ```
 /// use skene_web::{Deferred, prelude::*};
@@ -24,18 +24,6 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Deferred<C = NoChild>(skene_foundation::web::Deferred<Active, C>);
+pub struct Deferred(skene_foundation::web::Deferred<Active>);
 
 impl DeferredBase<Active> for Deferred {}
-
-impl Deferred {
-  /// Sets the content, built by `content`: its async work reports to a boundary of its
-  /// own, and a streaming render flushes the surrounding page before it settles.
-  #[inline(always)]
-  pub fn set_child_builder<V: View<Active>>(
-    self,
-    content: impl FnOnce() -> V + 'static,
-  ) -> Deferred<ChildBuilder<Active>> {
-    Deferred(self.0.set_child_builder(content))
-  }
-}

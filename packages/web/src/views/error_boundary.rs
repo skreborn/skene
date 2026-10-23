@@ -1,6 +1,6 @@
 //! Fallback content when a subtree reports an error.
 
-use skene_foundation::{ChildBuilder, ErrorBoundaryBase, NoChild, View, Wraps};
+use skene_foundation::{ErrorBoundaryBase, View, Wraps};
 
 use crate::Active;
 
@@ -11,9 +11,9 @@ use crate::Active;
 /// errors and dismiss them. The content is built once and attached or detached between
 /// anchors as errors arrive and clear, so clearing restores it as it was; the fallback
 /// rebuilds whenever the held errors change; both are destroyed when the owner the view
-/// was built under is disposed. Holds [`NoChild`] until
-/// [`set_child_builder`](Self::set_child_builder) supplies the content as a builder
-/// closure, built under the owner the handle is provided on.
+/// was built under is disposed. The content is a builder closure
+/// [`set_child_builder`](Self::set_child_builder) supplies, built under the owner the
+/// handle is provided on; without it the view builds nothing, its fallback included.
 ///
 /// ```
 /// use skene_web::prelude::*;
@@ -24,7 +24,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct ErrorBoundary<C = NoChild>(skene_foundation::ErrorBoundary<Active, C>);
+pub struct ErrorBoundary(skene_foundation::ErrorBoundary<Active>);
 
 impl Default for ErrorBoundary {
   #[inline(always)]
@@ -34,14 +34,3 @@ impl Default for ErrorBoundary {
 }
 
 impl ErrorBoundaryBase<Active> for ErrorBoundary {}
-
-impl ErrorBoundary {
-  /// Sets the content, built by `child` under the boundary.
-  #[inline(always)]
-  pub fn set_child_builder<V: View<Active>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> ErrorBoundary<ChildBuilder<Active>> {
-    ErrorBoundary(self.0.set_child_builder(child))
-  }
-}

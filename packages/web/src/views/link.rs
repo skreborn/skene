@@ -1,7 +1,7 @@
 //! A navigation link: a box with a destination, upgraded to router navigation when
 //! running.
 
-use skene_foundation::{AnyView, LinkBase, NoChild, View, Wraps, routing::Route};
+use skene_foundation::{LinkBase, View, Wraps, routing::Route};
 
 use crate::Active;
 
@@ -10,8 +10,7 @@ use crate::Active;
 /// An anchor whose destination is the route's path, so a page without JavaScript
 /// navigates by full page load, and a running app navigates the
 /// [`Router`](skene_foundation::routing::Router) instead, on a click or on `Enter`.
-/// Holds [`NoChild`] until [`set_child`](Self::set_child) supplies the one view it
-/// links.
+/// Without the one view [`set_child`](Self::set_child) supplies, it renders nothing.
 ///
 /// A modified click or `Enter`—control, shift, alt, or command held—is left to the
 /// browser, so open-in-new-tab and friends keep working.
@@ -46,14 +45,6 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Link<R: Route, C = NoChild>(skene_foundation::Link<Active, R, C>);
+pub struct Link<R: Route>(skene_foundation::Link<Active, R>);
 
 impl<R: Route> LinkBase<Active, R> for Link<R> {}
-
-impl<R: Route> Link<R> {
-  /// Sets the view the link holds.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Link<R, AnyView<Active>> {
-    Link(self.0.set_child(child))
-  }
-}

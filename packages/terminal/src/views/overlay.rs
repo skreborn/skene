@@ -1,15 +1,6 @@
 //! Content above the app, opened and closed by the app.
 
-use skene_foundation::{
-  AnyView,
-  DecorationBase,
-  HasBoxStyle,
-  MotionBase,
-  NoChild,
-  OverlayBase,
-  View,
-  Wraps,
-};
+use skene_foundation::{DecorationBase, HasBoxStyle, MotionBase, OverlayBase, View, Wraps};
 
 use crate::Active;
 
@@ -23,8 +14,9 @@ use crate::Active;
 /// popup only run [`handle_dismiss`](Self::handle_dismiss), and the open state stays
 /// what [`derive_open`](Self::derive_open) reads; [`bind_open`](Self::bind_open) wires
 /// both to one signal. Opening and closing attach nothing and destroy nothing, so state
-/// inside the content survives. Its content box is decorated like a container. Holds
-/// [`NoChild`] until [`set_child`](Self::set_child) supplies the content.
+/// inside the content survives. Its content box is decorated like a container. Without
+/// the content [`set_child`](Self::set_child) supplies, it realizes no overlay and
+/// renders nothing.
 ///
 /// ```
 /// use skene_terminal::prelude::*;
@@ -37,7 +29,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Overlay<C = NoChild>(skene_foundation::Overlay<Active, C>);
+pub struct Overlay(skene_foundation::Overlay<Active>);
 
 impl OverlayBase<Active> for Overlay {}
 
@@ -46,10 +38,5 @@ impl DecorationBase<Active> for Overlay {}
 impl MotionBase<Active> for Overlay {}
 
 impl Overlay {
-  /// Sets the content.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> Overlay<AnyView<Active>> {
-    Overlay(self.0.set_child(child))
-  }
   crate::views::terminal_decoration!(box_style_mut);
 }

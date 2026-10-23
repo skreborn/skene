@@ -8,7 +8,6 @@ use crate::{
   AnyKind,
   AnyView,
   Errors,
-  NoChild,
   NodeId,
   Realization,
   Segment,
@@ -26,17 +25,17 @@ use crate::{
 /// them. The content is built once and attached or detached between anchors as errors
 /// arrive and clear, so clearing restores it as it was; the fallback rebuilds whenever
 /// the held errors change; both are destroyed when the owner the view was built under
-/// is disposed. Holds [`NoChild`] until [`set_child_builder`](Self::set_child_builder)
-/// supplies the content as a builder closure, built under the owner the handle is
-/// provided on.
+/// is disposed. The content is a builder closure
+/// [`set_child_builder`](Self::set_child_builder) supplies, built under the owner the
+/// handle is provided on; without it the view builds nothing, its fallback included.
 #[must_use]
-pub struct ErrorBoundary<P: Realization, C = NoChild> {
+pub struct ErrorBoundary<P: Realization> {
   fallback: Option<Rc<dyn Fn(Errors) -> AnyView<P>>>,
-  child: C,
+  child: Option<ChildBuilder<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for ErrorBoundary<P, C> {
+impl<P: Realization> std::fmt::Debug for ErrorBoundary<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ErrorBoundary")
@@ -57,7 +56,7 @@ impl<P: Realization> ErrorBoundary<P> {
   pub const fn new() -> Self {
     Self {
       fallback: None,
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -76,27 +75,25 @@ impl<P: Realization> ErrorBoundary<P> {
   }
 
   /// Sets the content, built by `child` under the boundary.
-  pub fn set_child_builder<V: View<P>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> ErrorBoundary<P, ChildBuilder<P>> {
-    ErrorBoundary {
-      fallback: self.fallback,
-      child: ChildBuilder::new(child),
-      platform: PhantomData,
-    }
+  pub fn set_child_builder<V: View<P>>(mut self, child: impl FnOnce() -> V + 'static) -> Self {
+    self.child = Some(ChildBuilder::new(child));
+
+    self
   }
 }
 
-impl<P: Realization, C> AnyKind for ErrorBoundary<P, C> {}
+impl<P: Realization> AnyKind for ErrorBoundary<P> {}
 
-impl<P: Realization> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
+impl<P: Realization> View<P> for ErrorBoundary<P> {
   fn build(self) -> NodeId {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().build();
+    };
     let segment = Segment::<P>::new();
     let start = segment.start();
     let errors = Errors::new();
     let owner = Owner::current();
-    let child = self.child;
     let content = segment.build(owner.child(), || {
       provide_context(errors);
 
@@ -137,7 +134,8 @@ impl<P: Realization> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   }
 }
 
-/// What a facade's [`ErrorBoundary`] carries: its constructor and its fallback.
+/// What a facade's [`ErrorBoundary`] carries: its constructor, its fallback and its
+/// content.
 pub trait ErrorBoundaryBase<P: Realization>: Wraps<Inner = ErrorBoundary<P>> {
   /// A boundary with no fallback and no content yet.
   #[must_use]
@@ -150,5 +148,11 @@ pub trait ErrorBoundaryBase<P: Realization>: Wraps<Inner = ErrorBoundary<P>> {
   #[must_use]
   fn set_fallback_builder<V: View<P>>(self, fallback: impl Fn(Errors) -> V + 'static) -> Self {
     Self::wrap(self.into_inner().set_fallback_builder(fallback))
+  }
+
+  /// Sets the content, built by `child` under the boundary.
+  #[must_use]
+  fn set_child_builder<V: View<P>>(self, child: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_child_builder(child))
   }
 }

@@ -1,6 +1,6 @@
 //! Commands shown beside the pointer on a secondary press over the view it serves.
 
-use skene_foundation::{AnyView, ContextMenuBase, DecorationBase, NoChild, View, Wraps};
+use skene_foundation::{ContextMenuBase, DecorationBase, View, Wraps};
 
 use crate::Active;
 
@@ -20,9 +20,9 @@ use crate::Active;
 /// disabled or absent does not open; the platform's menu is prevented either way.
 ///
 /// The list is decorated like a container and every item per property through the
-/// `set_item_*` setters. Holds [`NoChild`] until [`set_child`](Self::set_child)
-/// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
-/// already exists instead.
+/// `set_item_*` setters. Without the view [`set_child`](Self::set_child) supplies, it
+/// renders nothing; [`serve`](Self::serve) attaches the menu to a node that already
+/// exists instead.
 ///
 /// ```
 /// use skene_web::prelude::*;
@@ -37,7 +37,7 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct ContextMenu<C = NoChild>(skene_foundation::ContextMenu<Active, C>);
+pub struct ContextMenu(skene_foundation::ContextMenu<Active>);
 
 impl Default for ContextMenu {
   #[inline(always)]
@@ -49,11 +49,3 @@ impl Default for ContextMenu {
 impl ContextMenuBase<Active> for ContextMenu {}
 
 impl DecorationBase<Active> for ContextMenu {}
-
-impl ContextMenu {
-  /// Sets the view the menu serves.
-  #[inline(always)]
-  pub fn set_child(self, child: impl View<Active>) -> ContextMenu<AnyView<Active>> {
-    ContextMenu(self.0.set_child(child))
-  }
-}

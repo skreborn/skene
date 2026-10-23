@@ -77,9 +77,6 @@ macro_rules! facade {
     pub type Label = $crate::Label<$platform>;
     /// A handle naming the node a view built; see [`skene_foundation::NodeHandle`].
     pub type NodeHandle = $crate::NodeHandle<$platform>;
-    /// The closure building a view's child under the context the view provides; see
-    /// [`skene_foundation::ChildBuilder`].
-    pub type ChildBuilder = $crate::ChildBuilder<$platform>;
 
     #[doc = concat!("A condition on the environment, in ", $unit, "; see [`skene_foundation::Media`].")]
     pub type Media = $crate::Media<$scalar>;

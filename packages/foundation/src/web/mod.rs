@@ -19,7 +19,7 @@ mod seams;
 mod typography;
 
 pub use self::{
-  async_view::{AsyncView, AsyncViewBase, ChildLoader},
+  async_view::{AsyncView, AsyncViewBase},
   deferred::{Deferred, DeferredBase},
   ext::{WebBoxFields, WebProperty, WebRunFields, WebStyle, web_fields},
   head::{Head, HeadElement, HeadId},

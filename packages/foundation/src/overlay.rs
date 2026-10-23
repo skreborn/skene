@@ -17,7 +17,6 @@ use crate::{
   Layout,
   LayoutBox,
   MotionBase,
-  NoChild,
   NodeHandle,
   NodeId,
   NodeKind,
@@ -31,6 +30,7 @@ use crate::{
   Scene,
   View,
   Wraps,
+  empty,
   realize::Source,
 };
 
@@ -50,10 +50,11 @@ fn modal_backdrop() -> Color {
 /// popup only run [`handle_dismiss`](Self::handle_dismiss), and the open state stays
 /// what [`derive_open`](Self::derive_open) reads; [`bind_open`](Self::bind_open) wires
 /// both to one signal. Opening and closing attach nothing and destroy nothing, so state
-/// inside the content survives. Its content box is decorated like a container. Holds
-/// [`NoChild`] until [`set_child`](Self::set_child) supplies the content.
+/// inside the content survives. Its content box is decorated like a container. Without
+/// the content [`set_child`](Self::set_child) supplies, it realizes no overlay and
+/// renders nothing.
 #[must_use]
-pub struct Overlay<P: Realization, C = NoChild> {
+pub struct Overlay<P: Realization> {
   modal: bool,
   hint: bool,
   placement: Source<Placement>,
@@ -63,10 +64,10 @@ pub struct Overlay<P: Realization, C = NoChild> {
   open: Source<bool>,
   dismiss: Vec<Rc<PlainHandler>>,
   inner: LayoutBox<P, PlainChild>,
-  child: C,
+  child: Option<AnyView<P>>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for Overlay<P, C> {
+impl<P: Realization> std::fmt::Debug for Overlay<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Overlay").finish_non_exhaustive()
   }
@@ -84,7 +85,7 @@ impl<P: Realization> Overlay<P> {
       open: Source::Fixed(false),
       dismiss: Vec::new(),
       inner: LayoutBox::new(Layout::Single),
-      child: NoChild,
+      child: None,
     }
   }
 
@@ -105,22 +106,6 @@ impl<P: Realization> Overlay<P> {
   #[inline(always)]
   pub fn hint() -> Self {
     Self::new(false, true)
-  }
-
-  /// Sets the content.
-  pub fn set_child(self, child: impl View<P>) -> Overlay<P, AnyView<P>> {
-    Overlay {
-      modal: self.modal,
-      hint: self.hint,
-      placement: self.placement,
-      backdrop: self.backdrop,
-      anchor: self.anchor,
-      position: self.position,
-      open: self.open,
-      dismiss: self.dismiss,
-      inner: self.inner,
-      child: child.into_any(),
-    }
   }
 }
 
@@ -215,6 +200,13 @@ impl<P: Realization> Overlay<P> {
       .derive_open(move || signal.get())
       .handle_dismiss(move || signal.set(false))
   }
+
+  /// Sets the content.
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
+  }
 }
 
 impl<P: Realization> HasBoxStyle<P> for Overlay<P> {
@@ -243,9 +235,9 @@ impl<P: Realization> DecorationBase<P> for Overlay<P> {}
 
 impl<P: Realization> MotionBase<P> for Overlay<P> {}
 
-impl<P: Realization, C> AnyKind for Overlay<P, C> {}
+impl<P: Realization> AnyKind for Overlay<P> {}
 
-impl<P: Realization> View<P> for Overlay<P, AnyView<P>> {
+impl<P: Realization> View<P> for Overlay<P> {
   fn build(self) -> NodeId {
     let Self {
       modal,
@@ -259,6 +251,10 @@ impl<P: Realization> View<P> for Overlay<P, AnyView<P>> {
       inner,
       child,
     } = self;
+    let Some(child) = child
+    else {
+      return empty::<P>().build();
+    };
     let (initial, placement) = match placement {
       Source::Fixed(placement) => (placement, None),
       Source::Derived(compute) => (untrack(|| compute()), Some(compute)),
@@ -317,7 +313,7 @@ impl<P: Realization> View<P> for Overlay<P, AnyView<P>> {
 
 /// What a facade's [`Overlay`] carries beyond its content box's decoration and motion.
 ///
-/// Its constructors, what names it, where it sits and whether it is open.
+/// Its constructors, what names it, where it sits, whether it is open and its content.
 pub trait OverlayBase<P: Realization>: Wraps<Inner = Overlay<P>> {
   /// A modal: focus trapped, interaction beneath blocked, a backdrop painted.
   #[must_use]
@@ -421,5 +417,11 @@ pub trait OverlayBase<P: Realization>: Wraps<Inner = Overlay<P>> {
   #[must_use]
   fn bind_open(self, signal: skene_reactive::Signal<bool>) -> Self {
     Self::wrap(self.into_inner().bind_open(signal))
+  }
+
+  /// Sets the content.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

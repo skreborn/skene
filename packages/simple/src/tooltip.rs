@@ -4,11 +4,9 @@ use std::time::Duration;
 
 use skene_foundation::{
   AnyKind,
-  AnyView,
   CornerRadius,
   DecorationBase,
   DecorationWithCornerRadius,
-  NoChild,
   NodeId,
   Placement,
   Realization,
@@ -33,8 +31,8 @@ use super::{
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleTooltip<P: Realization, C = NoChild> {
-  raw: Tooltip<P, C>,
+pub struct SimpleTooltip<P: Realization> {
+  raw: Tooltip<P>,
 }
 
 impl<P: Realization> SimpleTooltip<P> {
@@ -58,17 +56,6 @@ impl<P: Realization> SimpleTooltip<P> {
       raw: Tooltip::view(content),
     }
   }
-
-  /// Sets the view the tooltip describes.
-  pub fn set_child(self, child: impl View<P>) -> SimpleTooltip<P, AnyView<P>>
-  where
-    P::Scalar: SimpleUnit,
-    P::StyleExt: CornerRadius,
-  {
-    SimpleTooltip {
-      raw: dress(self.raw).set_child(child),
-    }
-  }
 }
 
 impl<P: Realization> SimpleTooltip<P> {
@@ -88,17 +75,24 @@ impl<P: Realization> SimpleTooltip<P> {
 
     self
   }
+
+  /// Sets the view the tooltip describes.
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.raw = self.raw.set_child(child);
+
+    self
+  }
 }
 
-impl<P: Realization, C> AnyKind for SimpleTooltip<P, C> {}
+impl<P: Realization> AnyKind for SimpleTooltip<P> {}
 
-impl<P: Realization> View<P> for SimpleTooltip<P, AnyView<P>>
+impl<P: Realization> View<P> for SimpleTooltip<P>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    self.raw.build()
+    dress(self.raw).build()
   }
 }
 
@@ -148,5 +142,11 @@ pub trait SimpleTooltipBase<P: Realization>: Wraps<Inner = SimpleTooltip<P>> {
   #[must_use]
   fn set_delay(self, delay: Duration) -> Self {
     Self::wrap(self.into_inner().set_delay(delay))
+  }
+
+  /// Sets the view the tooltip describes.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }

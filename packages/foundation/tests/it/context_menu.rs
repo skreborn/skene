@@ -56,7 +56,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 
 type Container = skene_foundation::Container<Headless>;
 type Text = skene_foundation::Text<Headless>;
-type Menu<C = skene_foundation::NoChild> = ContextMenu<Headless, C>;
+type Menu = ContextMenu<Headless>;
 
 /// The served view and its list, mounted in the segment `start` begins.
 fn parts(start: skene_foundation::NodeId) -> (skene_foundation::NodeId, skene_foundation::NodeId) {

@@ -10,7 +10,7 @@ use std::{
 use skene_reactive::{Owner, provide_context, spawn};
 
 use super::WebHydration;
-use crate::{AnyKind, Boundary, NoChild, NodeId, Scene, View, Wraps};
+use crate::{AnyKind, Boundary, NodeId, Scene, View, Wraps, empty};
 
 /// A subtree whose content arrives asynchronously—typically a `#[lazy]` function whose
 /// body loads in a separately fetched wasm module.
@@ -22,32 +22,23 @@ use crate::{AnyKind, Boundary, NoChild, NodeId, Scene, View, Wraps};
 ///
 /// On a hydrated page whose server render included the content, the server markup is
 /// claimed instead: it stays visible, already satisfying the enclosing boundary, until
-/// the module arrives and the real content replaces it in place. Holds [`NoChild`]
-/// until [`set_child_loader`](Self::set_child_loader) supplies the content.
+/// the module arrives and the real content replaces it in place. Without the content
+/// [`set_child_loader`](Self::set_child_loader) supplies, it renders nothing.
 #[must_use]
-pub struct AsyncView<P: WebHydration, C = NoChild> {
-  load: C,
+pub struct AsyncView<P: WebHydration> {
+  load: Option<ChildLoader>,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: WebHydration, C> std::fmt::Debug for AsyncView<P, C> {
+impl<P: WebHydration> std::fmt::Debug for AsyncView<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("AsyncView").finish_non_exhaustive()
   }
 }
 
 /// The loader of an [`AsyncView`]'s content, run to completion as a task once the view
-/// builds.
-#[must_use]
-pub struct ChildLoader<P: WebHydration>(Box<dyn FnOnce(NodeId)>, PhantomData<fn() -> P>);
-
-impl<P: WebHydration> std::fmt::Debug for ChildLoader<P> {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter
-      .debug_struct("ChildLoader")
-      .finish_non_exhaustive()
-  }
-}
+/// builds, given the start of the view's segment.
+type ChildLoader = Box<dyn FnOnce(NodeId)>;
 
 impl<P: WebHydration> Default for AsyncView<P> {
   #[inline(always)]
@@ -61,57 +52,50 @@ impl<P: WebHydration> AsyncView<P> {
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
-      load: NoChild,
+      load: None,
       platform: PhantomData,
     }
   }
 
   /// Sets the content, loaded by `load`, run to completion as a task.
-  pub fn set_child_loader<V, F>(
-    self,
-    load: impl FnOnce() -> F + 'static,
-  ) -> AsyncView<P, ChildLoader<P>>
+  pub fn set_child_loader<V, F>(mut self, load: impl FnOnce() -> F + 'static) -> Self
   where
     V: View<P>,
     F: Future<Output = V> + 'static,
   {
-    AsyncView {
-      load: ChildLoader(
-        Box::new(move |start| {
-          let claimed = P::claim_lazy(start);
-          let region = P::enter_lazy();
-          let owner = Owner::current().child();
-          let work = InRegion::<P, _>::new(region, async move {
-            let content = load().await;
-            let content = owner.enter(|| content.build());
+    self.load = Some(Box::new(move |start| {
+      let claimed = P::claim_lazy(start);
+      let region = P::enter_lazy();
+      let owner = Owner::current().child();
+      let work = InRegion::<P, _>::new(region, async move {
+        let content = load().await;
+        let content = owner.enter(|| content.build());
 
-            if claimed {
-              P::discard_lazy(start);
-            }
+        if claimed {
+          P::discard_lazy(start);
+        }
 
-            Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
-          });
+        Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
+      });
 
-          P::install_executor();
+      P::install_executor();
 
-          if claimed {
-            // The claimed markup already satisfies the enclosing boundary; the swap
-            // reports to a private one nothing watches.
-            let scope = Owner::current().child();
+      if claimed {
+        // The claimed markup already satisfies the enclosing boundary; the swap
+        // reports to a private one nothing watches.
+        let scope = Owner::current().child();
 
-            scope.enter(|| {
-              provide_context(Boundary::new());
-              spawn(work);
-            });
-          }
-          else {
-            spawn(work);
-          }
-        }),
-        PhantomData,
-      ),
-      platform: PhantomData,
-    }
+        scope.enter(|| {
+          provide_context(Boundary::new());
+          spawn(work);
+        });
+      }
+      else {
+        spawn(work);
+      }
+    }));
+
+    self
   }
 }
 
@@ -142,23 +126,37 @@ impl<P: WebHydration, F: Future> Future for InRegion<P, F> {
   }
 }
 
-impl<P: WebHydration> AnyKind for AsyncView<P, ChildLoader<P>> {}
+impl<P: WebHydration> AnyKind for AsyncView<P> {}
 
-impl<P: WebHydration> View<P> for AsyncView<P, ChildLoader<P>> {
+impl<P: WebHydration> View<P> for AsyncView<P> {
   fn build(self) -> NodeId {
+    let Some(load) = self.load
+    else {
+      return empty::<P>().build();
+    };
     let (start, _) = Scene::<P>::create_segment();
 
-    (self.load.0)(start);
+    load(start);
 
     start
   }
 }
 
-/// What a facade's [`AsyncView`] carries: its constructor.
+/// What a facade's [`AsyncView`] carries: its constructor and its content's loader.
 pub trait AsyncViewBase<P: WebHydration>: Wraps<Inner = AsyncView<P>> {
   /// A view with no content yet.
   #[must_use]
   fn new() -> Self {
     Self::wrap(AsyncView::new())
+  }
+
+  /// Sets the content, loaded by `load`, run to completion as a task.
+  #[must_use]
+  fn set_child_loader<V, F>(self, load: impl FnOnce() -> F + 'static) -> Self
+  where
+    V: View<P>,
+    F: Future<Output = V> + 'static,
+  {
+    Self::wrap(self.into_inner().set_child_loader(load))
   }
 }

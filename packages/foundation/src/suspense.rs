@@ -7,12 +7,12 @@ use skene_reactive::{Effect, Owner, on_cleanup, provide_context};
 use crate::{
   AnyKind,
   Boundary,
-  NoChild,
   NodeId,
   Realization,
   Segment,
   View,
   Wraps,
+  empty,
   realize::ChildBuilder,
 };
 
@@ -23,14 +23,15 @@ use crate::{
 /// and report there; content and fallback are each built once and attached or detached
 /// between anchors as the boundary empties and refills, so state inside survives the
 /// swaps, and both are destroyed when the owner the view was built under is disposed.
-/// Toward an enclosing boundary the whole subtree counts as one pending task. Holds
-/// [`NoChild`] until [`set_child_builder`](Self::set_child_builder) supplies the
-/// content as a builder closure, built under the owner the boundary is provided on.
+/// Toward an enclosing boundary the whole subtree counts as one pending task. The
+/// content is a builder closure [`set_child_builder`](Self::set_child_builder) supplies,
+/// built under the owner the boundary is provided on; without it the view builds
+/// nothing, its fallback included.
 #[derive(Debug)]
 #[must_use]
-pub struct Suspense<P: Realization, C = NoChild> {
+pub struct Suspense<P: Realization> {
   fallback: Option<ChildBuilder<P>>,
-  child: C,
+  child: Option<ChildBuilder<P>>,
   platform: PhantomData<fn() -> P>,
 }
 
@@ -47,7 +48,7 @@ impl<P: Realization> Suspense<P> {
   pub const fn new() -> Self {
     Self {
       fallback: None,
-      child: NoChild,
+      child: None,
       platform: PhantomData,
     }
   }
@@ -66,28 +67,26 @@ impl<P: Realization> Suspense<P> {
   }
 
   /// Sets the content, built by `child` under the boundary.
-  pub fn set_child_builder<V: View<P>>(
-    self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Suspense<P, ChildBuilder<P>> {
-    Suspense {
-      fallback: self.fallback,
-      child: ChildBuilder::new(child),
-      platform: PhantomData,
-    }
+  pub fn set_child_builder<V: View<P>>(mut self, child: impl FnOnce() -> V + 'static) -> Self {
+    self.child = Some(ChildBuilder::new(child));
+
+    self
   }
 }
 
-impl<P: Realization, C> AnyKind for Suspense<P, C> {}
+impl<P: Realization> AnyKind for Suspense<P> {}
 
-impl<P: Realization> View<P> for Suspense<P, ChildBuilder<P>> {
+impl<P: Realization> View<P> for Suspense<P> {
   fn build(self) -> NodeId {
+    let Some(child) = self.child
+    else {
+      return empty::<P>().build();
+    };
     let segment = Segment::<P>::new();
     let start = segment.start();
     let boundary = Boundary::new();
     let parent = Boundary::current();
     let owner = Owner::current();
-    let child = self.child;
     let content = segment.build(owner.child(), || {
       provide_context(boundary);
 
@@ -146,7 +145,7 @@ impl<P: Realization> View<P> for Suspense<P, ChildBuilder<P>> {
   }
 }
 
-/// What a facade's [`Suspense`] carries: its constructor and its fallback.
+/// What a facade's [`Suspense`] carries: its constructor, its fallback and its content.
 pub trait SuspenseBase<P: Realization>: Wraps<Inner = Suspense<P>> {
   /// A suspense with no fallback and no content yet.
   #[must_use]
@@ -159,5 +158,11 @@ pub trait SuspenseBase<P: Realization>: Wraps<Inner = Suspense<P>> {
   #[must_use]
   fn set_fallback_builder<V: View<P>>(self, fallback: impl FnOnce() -> V + 'static) -> Self {
     Self::wrap(self.into_inner().set_fallback_builder(fallback))
+  }
+
+  /// Sets the content, built by `child` under the boundary.
+  #[must_use]
+  fn set_child_builder<V: View<P>>(self, child: impl FnOnce() -> V + 'static) -> Self {
+    Self::wrap(self.into_inner().set_child_builder(child))
   }
 }

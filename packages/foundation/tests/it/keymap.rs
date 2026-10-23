@@ -7,7 +7,7 @@ use skene_headless::{Headless, children, reset, trigger_key_down};
 use skene_reactive::Owner;
 
 type Container = skene_foundation::Container<Headless>;
-type Keymap<C = skene_foundation::NoChild> = skene_foundation::Keymap<Headless, C>;
+type Keymap = skene_foundation::Keymap<Headless>;
 
 /// A shortcut pressed with focus inside the view served runs its action in place of
 /// the platform's response and the ancestors', and any other key passes by.

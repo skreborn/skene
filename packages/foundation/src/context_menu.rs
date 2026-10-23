@@ -32,7 +32,6 @@ use crate::{
   MenuOption,
   MotionBase,
   MouseCursor,
-  NoChild,
   NodeId,
   Overlay,
   Part,
@@ -55,6 +54,7 @@ use crate::{
   View,
   Visibility,
   Wraps,
+  empty,
   properties,
   realize::Source,
 };
@@ -236,11 +236,11 @@ impl MenuEntry {
 /// not open; the platform's menu is prevented either way.
 ///
 /// The list is decorated like a container and every item per property through the
-/// `set_item_*` setters. Holds [`NoChild`] until [`set_child`](Self::set_child)
-/// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
-/// already exists instead.
+/// `set_item_*` setters. Without the view [`set_child`](Self::set_child) supplies, it
+/// renders nothing; [`serve`](Self::serve) attaches the menu to a node that already
+/// exists instead.
 #[must_use]
-pub struct ContextMenu<P: Realization, C = NoChild> {
+pub struct ContextMenu<P: Realization> {
   items: Vec<MenuEntry>,
   list: Overlay<P>,
   item_style: Box<DeclaredBoxStyle<P>>,
@@ -250,10 +250,10 @@ pub struct ContextMenu<P: Realization, C = NoChild> {
   separator_thickness: Option<Declared<P, Dimension<P::Scalar>>>,
   shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
   item_view: Option<ItemView<P>>,
-  child: C,
+  child: Option<AnyView<P>>,
 }
 
-impl<P: Realization, C> std::fmt::Debug for ContextMenu<P, C> {
+impl<P: Realization> std::fmt::Debug for ContextMenu<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ContextMenu")
@@ -275,7 +275,7 @@ impl<P: Realization> ContextMenu<P> {
       separator_thickness: None,
       shortcut_spacing: None,
       item_view: None,
-      child: NoChild,
+      child: None,
     }
   }
 
@@ -286,24 +286,9 @@ impl<P: Realization> ContextMenu<P> {
     self
   }
 
-  /// Sets the view the menu serves.
-  pub fn set_child(self, child: impl View<P>) -> ContextMenu<P, AnyView<P>> {
-    ContextMenu {
-      items: self.items,
-      list: self.list,
-      item_style: self.item_style,
-      item_text_color: self.item_text_color,
-      shortcut_color: self.shortcut_color,
-      separator_color: self.separator_color,
-      separator_thickness: self.separator_thickness,
-      shortcut_spacing: self.shortcut_spacing,
-      item_view: self.item_view,
-      child: child.into_any(),
-    }
-  }
-
   /// Attaches the menu to `node`, a view that already exists, mounting the list under
-  /// it; returns the list's node.
+  /// it; returns the list's node. A view [`set_child`](Self::set_child) supplied is not
+  /// built.
   #[inline(always)]
   pub fn serve(self, node: NodeId) -> NodeId {
     let list = self.mount(node);
@@ -439,9 +424,16 @@ impl<P: Realization> ContextMenu<P> {
 
     self
   }
+
+  /// Sets the view the menu serves.
+  pub fn set_child(mut self, child: impl View<P>) -> Self {
+    self.child = Some(child.into_any());
+
+    self
+  }
 }
 
-impl<P: Realization, C> ContextMenu<P, C> {
+impl<P: Realization> ContextMenu<P> {
   /// Builds the list and registers what opens it on `served`; returns the list's node,
   /// attached nowhere yet.
   fn mount(self, served: NodeId) -> NodeId {
@@ -784,37 +776,17 @@ impl<P: Realization> HasBoxStyle<P> for ContextMenu<P> {
 
 impl<P: Realization> DecorationBase<P> for ContextMenu<P> {}
 
-impl<P: Realization, C> AnyKind for ContextMenu<P, C> {}
+impl<P: Realization> AnyKind for ContextMenu<P> {}
 
-impl<P: Realization> View<P> for ContextMenu<P, AnyView<P>> {
-  fn build(self) -> NodeId {
+impl<P: Realization> View<P> for ContextMenu<P> {
+  fn build(mut self) -> NodeId {
+    let Some(child) = self.child.take()
+    else {
+      return empty::<P>().build();
+    };
     let (start, _) = Scene::<P>::create_segment();
-    let Self {
-      items,
-      list,
-      item_style,
-      item_text_color,
-      shortcut_color,
-      separator_color,
-      separator_thickness,
-      shortcut_spacing,
-      item_view,
-      child,
-    } = self;
     let node = child.build();
-    let list = ContextMenu::<P> {
-      items,
-      list,
-      item_style,
-      item_text_color,
-      shortcut_color,
-      separator_color,
-      separator_thickness,
-      shortcut_spacing,
-      item_view,
-      child: NoChild,
-    }
-    .mount(node);
+    let list = self.mount(node);
 
     Scene::<P>::with(|scene| {
       scene.insert_in_segment(start, node, None);
@@ -827,8 +799,8 @@ impl<P: Realization> View<P> for ContextMenu<P, AnyView<P>> {
 
 /// What a facade's [`ContextMenu`] carries beyond its list's decoration.
 ///
-/// Its constructor, its items, the node it serves, every item's and separator's styling,
-/// the item view and the placement.
+/// Its constructor, its items, the view or node it serves, every item's and separator's
+/// styling, the item view and the placement.
 pub trait ContextMenuBase<P: Realization>: Wraps<Inner = ContextMenu<P>> {
   /// A menu with no items yet.
   #[must_use]
@@ -843,7 +815,8 @@ pub trait ContextMenuBase<P: Realization>: Wraps<Inner = ContextMenu<P>> {
   }
 
   /// Attaches the menu to `node`, a view that already exists, mounting the list under
-  /// it; returns the list's node.
+  /// it; returns the list's node. A view [`set_child`](Self::set_child) supplied is not
+  /// built.
   fn serve(self, node: NodeId) -> NodeId {
     self.into_inner().serve(node)
   }
@@ -957,6 +930,12 @@ pub trait ContextMenuBase<P: Realization>: Wraps<Inner = ContextMenu<P>> {
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     Self::wrap(self.into_inner().add_transition(transition))
+  }
+
+  /// Sets the view the menu serves.
+  #[must_use]
+  fn set_child(self, child: impl View<P>) -> Self {
+    Self::wrap(self.into_inner().set_child(child))
   }
 }
 

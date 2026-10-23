@@ -64,7 +64,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 use crate::common::{COLOR, TestPalette, blue, only_child, red};
 
 type Container = skene_foundation::Container<Headless>;
-type Theme<S, C = skene_foundation::NoChild> = skene_foundation::Theme<Headless, S, C>;
+type Theme<S> = skene_foundation::Theme<Headless, S>;
 
 fn press() -> PointerEvent {
   PointerEvent::mouse(1., 2.).with_press(PointerButton::Primary)

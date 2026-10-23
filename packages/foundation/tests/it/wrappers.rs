@@ -14,13 +14,25 @@ use skene_foundation::{
   MenuEntry,
   Modifiers,
   NodeId,
+  Scene,
   Shortcut,
   StaticValue,
+  TOOLTIP_DELAY,
   View,
   routing::Route,
   web::Typography,
 };
-use skene_headless::{Headless, box_props, children, full_outline, outline, reset};
+use skene_headless::{
+  Headless,
+  box_props,
+  children,
+  full_outline,
+  is_open,
+  outline,
+  reset,
+  trigger_frame,
+  trigger_pointer_enter,
+};
 use skene_reactive::{Owner, Set, Signal, Track, signal};
 
 use crate::common::only_child;
@@ -344,27 +356,38 @@ fn an_enhancement_without_its_child_empties_once_live() {
 }
 
 /// A view given its child takes its setters still: an overlay opened after its content
-/// is set shows it.
+/// is set opens, and a tooltip whose delay is shortened after its described view is set
+/// opens after the shorter delay.
 #[test]
 fn a_view_given_its_child_takes_its_setters() {
   reset();
 
   let owner = Owner::new();
-  let root = owner.enter(|| {
+  let (overlay, tooltip) = owner.enter(|| {
     let overlay = Overlay::popup().set_child(Text::new("content"));
     let tooltip = Tooltip::new("A tip").set_child(Text::new("described"));
 
-    Column::new()
-      .set_children(vec![
-        overlay.set_open(true).into_any(),
-        tooltip.set_delay(std::time::Duration::ZERO).into_any(),
-      ])
-      .build()
+    (
+      overlay.set_open(true).build(),
+      tooltip.set_delay(TOOLTIP_DELAY / 4).build(),
+    )
   });
 
-  assert_eq!(
-    outline(root),
-    "Box\n  Overlay popup\n    Run \"content\"\n  Run \"described\"\n  Overlay popup\n    Run \"A tip\"\n"
+  assert_eq!(outline(overlay), "Overlay popup\n  Run \"content\"\n");
+  assert!(is_open(overlay), "set_open after set_child opened it");
+
+  let nodes = Scene::<Headless>::with(|scene| scene.segment_nodes(tooltip));
+  let [described, bubble] = nodes[..]
+  else {
+    panic!("the described view and its bubble: {nodes:?}");
+  };
+
+  trigger_pointer_enter(described);
+  trigger_frame(TOOLTIP_DELAY / 2);
+
+  assert!(
+    is_open(bubble),
+    "set_delay after set_child shortened the delay"
   );
 
   owner.dispose();

@@ -108,8 +108,8 @@ fn placeholder_and_value_serialize_as_attributes() {
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
     BasicTextField::new(TextEntry::new())
-      .set_padding(Inset::all(8.))
-      .set_corner_radius(0f32.when(Condition::from(State::Focused), 4.))
+      .set_padding(Inset::all(8))
+      .set_corner_radius(0.when(Condition::from(State::Focused), 4))
   });
 
   let body = rendered.body();

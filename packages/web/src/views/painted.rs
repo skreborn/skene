@@ -22,8 +22,8 @@ use crate::Active;
 ///
 ///   canvas.fill(&area, Color::srgb(0.2, 0.4, 0.8));
 /// })
-/// .set_width(Dimension::Length(40.))
-/// .set_height(Dimension::Length(20.))
+/// .set_width(40)
+/// .set_height(20)
 /// .set_description("A blue swatch");
 /// ```
 #[derive(Debug, View, Wraps)]

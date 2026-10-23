@@ -117,8 +117,8 @@ pub fn item_window_over(offset: f32, viewport: f32, edges: &[f32], overscan: usi
 
 /// The extent of every item of a lazy list along its axis, in the medium's unit.
 ///
-/// `set_item_height(32.)` on a column and `set_item_width(32.)` on a row take a plain
-/// number as the fixed form.
+/// `set_item_height(32)` on a column and `set_item_width(32.5)` on a row take a plain
+/// number, an `i32` or an `f32`, as the fixed form.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub enum ItemExtent {
@@ -128,6 +128,13 @@ pub enum ItemExtent {
   /// assumed this long. An estimate off from the measure moves what follows by the
   /// difference when the item measures.
   Estimated(f32),
+}
+
+impl From<i32> for ItemExtent {
+  #[inline(always)]
+  fn from(extent: i32) -> Self {
+    Self::Fixed(f32::from_i32(extent))
+  }
 }
 
 impl From<f32> for ItemExtent {

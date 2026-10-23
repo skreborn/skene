@@ -548,7 +548,7 @@ mod tests {
     );
     assert_eq!(
       render(&Condition::and([
-        Media::MinWidth(900.).into(),
+        Media::min_width(900).into(),
         State::Hovered.into(),
         Media::Dark.into(),
       ])),
@@ -560,7 +560,7 @@ mod tests {
     assert_eq!(
       render(&Condition::from(Media::Container {
         name: Some(ContainerName("sidebar")),
-        query: ContainerQuery::MinWidth(300.),
+        query: ContainerQuery::min_width(300),
       })),
       "@container sidebar (min-width: 300px){.C{color:red;}}"
     );
@@ -588,7 +588,7 @@ mod tests {
   fn nested_media_disjunctions_expand() {
     let condition = Condition::and([
       State::Hovered.into(),
-      Media::or([Media::MinWidth(900.), Media::ReducedMotion]).into(),
+      Media::or([Media::min_width(900), Media::ReducedMotion]).into(),
     ]);
 
     assert_eq!(Conjunction::of_condition(&condition).len(), 2);

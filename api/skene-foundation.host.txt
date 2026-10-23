@@ -3421,6 +3421,8 @@ impl core::cmp::PartialEq for skene_foundation::ItemExtent
 pub fn skene_foundation::ItemExtent::eq(&self, &skene_foundation::ItemExtent) -> bool
 impl core::convert::From<f32> for skene_foundation::ItemExtent
 pub fn skene_foundation::ItemExtent::from(f32) -> Self
+impl core::convert::From<i32> for skene_foundation::ItemExtent
+pub fn skene_foundation::ItemExtent::from(i32) -> Self
 impl core::fmt::Debug for skene_foundation::ItemExtent
 pub fn skene_foundation::ItemExtent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::ItemExtent
@@ -7351,7 +7353,7 @@ pub fn skene_foundation::Slider::handle_change(self, impl core::ops::function::F
 pub fn skene_foundation::Slider::new() -> Self
 pub const fn skene_foundation::Slider::set_axis(self, skene_foundation::Axis) -> Self
 pub fn skene_foundation::Slider::set_range(self, skene_foundation::SliderRange) -> Self
-pub const fn skene_foundation::Slider::set_thumb_extent(self, f32) -> Self
+pub fn skene_foundation::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::Length>) -> Self
 pub fn skene_foundation::Slider::set_value(self, f32) -> Self
 impl core::default::Default for skene_foundation::Slider
 pub fn skene_foundation::Slider::default() -> Self

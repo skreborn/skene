@@ -17,7 +17,6 @@ use skene_foundation::{
   DecorationBase,
   DecorationWithCornerRadius,
   Definition,
-  Dimension,
   Edge,
   EventKind,
   Expr,
@@ -175,7 +174,7 @@ fn the_pixel_properties_resolve_on_the_host() {
   let owner = Owner::new();
   let node = owner.enter(|| {
     Container::new()
-      .set_corner_radius(8.)
+      .set_corner_radius(8)
       .set_child(Text::new("big").set_font_size(24.))
       .build()
   });
@@ -532,7 +531,7 @@ fn expressions_resolve_over_tokens_and_the_environment() {
         Container::new()
           .set_background(Expr::from(TestPalette::CARD).with_alpha(0.5))
           .set_width(Expr::<Length>::viewport_width(0.5))
-          .set_padding(Inset::all(4.))
+          .set_padding(Inset::all(4))
       })
       .build()
   });
@@ -586,7 +585,7 @@ fn container_condition_resolves_against_the_named_containers_size() {
       .set_child(Container::new().set_background(WHITE.when(
         Condition::from(Media::Container {
           name: Some(SIDEBAR),
-          query: ContainerQuery::MinWidth(400.),
+          query: ContainerQuery::min_width(400),
         }),
         red(),
       )))
@@ -780,7 +779,7 @@ fn state_seams_record_value_focus_and_hover() {
   reset();
 
   let owner = Owner::new();
-  let node = owner.enter(|| Container::new().set_width(Dimension::Length(10.)).build());
+  let node = owner.enter(|| Container::new().set_width(10).build());
 
   assert_eq!(value(node), Some(String::new()));
   assert!(!is_focused(node));
@@ -911,7 +910,7 @@ fn a_length_reads_the_safe_area() {
   let owner = Owner::new();
   let node = owner.enter(|| {
     Container::new()
-      .set_padding(Expr::<Length>::safe_area(Edge::Top) + 4.)
+      .set_padding(Expr::<Length>::safe_area(Edge::Top) + 4)
       .build()
   });
 

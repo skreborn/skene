@@ -37,7 +37,7 @@ fn themed_in_registers_root_defaults_once_and_a_box_resolves_them() {
     (
       Container::new()
         .set_background(TestPalette::CARD)
-        .set_padding(Inset::all(1.))
+        .set_padding(Inset::all(1))
         .set_child(Container::new().set_background(typography::INK))
         .build(),
       palette,

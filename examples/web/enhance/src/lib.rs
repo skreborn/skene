@@ -21,14 +21,12 @@ fn app() -> impl View {
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
-          .set_padding(Inset::symmetric(24., 48.))
+          .set_padding(Inset::symmetric(24, 48))
           .add_child(
-            Container::new().set_max_width(460.).set_child(
-              Column::new().set_spacing(24.).set_children((
-                heading(),
-                clock_card(),
-                picture_card(),
-              )),
+            Container::new().set_max_width(460).set_child(
+              Column::new()
+                .set_spacing(24)
+                .set_children((heading(), clock_card(), picture_card())),
             ),
           ),
       )
@@ -36,7 +34,7 @@ fn app() -> impl View {
 }
 
 fn heading() -> impl View {
-  Column::new().set_spacing(6.).set_children((
+  Column::new().set_spacing(6).set_children((
     Text::new("ENHANCE")
       .set_font_size(13.)
       .set_font_weight(500.)
@@ -47,7 +45,7 @@ fn heading() -> impl View {
 
 /// A clock the bundle keeps, over a caption the server carries.
 fn clock_card() -> impl View {
-  SimpleCard::new().set_spacing(12.).set_children((
+  SimpleCard::new().set_spacing(12).set_children((
     Text::new("Clock").set_font_weight(600.),
     Text::new("The server renders the caption; the bundle counts from its arrival.")
       .set_font_size(13.)
@@ -77,7 +75,7 @@ fn tick(seconds: Signal<u32>) {
 
 /// A painted stripe, over a description the server carries.
 fn picture_card() -> impl View {
-  SimpleCard::new().set_spacing(12.).set_children((
+  SimpleCard::new().set_spacing(12).set_children((
     Text::new("Picture").set_font_weight(600.),
     Text::new("The server renders the description; the bundle paints the stripes.")
       .set_font_size(13.)
@@ -96,7 +94,7 @@ fn picture_card() -> impl View {
         );
       }
     })
-    .set_height(Dimension::Length(48.))
+    .set_height(48)
     .set_fallback_builder(|| Text::new("Eight blue stripes, lightening from left to right.")),
   ))
 }

@@ -25,11 +25,11 @@ fn app() -> impl View {
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
-          .set_padding(Inset::symmetric(24., 48.))
+          .set_padding(Inset::symmetric(24, 48))
           .add_child(
-            Container::new().set_max_width(460.).set_child(
+            Container::new().set_max_width(460).set_child(
               Column::new()
-                .set_spacing(24.)
+                .set_spacing(24)
                 .set_children((heading(), echo_card())),
             ),
           ),
@@ -38,7 +38,7 @@ fn app() -> impl View {
 }
 
 fn heading() -> impl View {
-  Column::new().set_spacing(6.).set_children((
+  Column::new().set_spacing(6).set_children((
     Text::new("WEBSOCKET")
       .set_font_size(13.)
       .set_font_weight(500.)
@@ -94,7 +94,7 @@ fn echo_card() -> impl View {
     (None, Some(Ok(()))) => "Connected; the service echoes what is sent.".to_owned(),
   };
 
-  SimpleCard::new().set_spacing(12.).set_children((
+  SimpleCard::new().set_spacing(12).set_children((
     Text::new("Echo").set_font_weight(600.),
     Text::derive(state)
       .set_font_size(13.)
@@ -105,7 +105,7 @@ fn echo_card() -> impl View {
     SimpleButton::new("Send").handle_activate(send),
     derived(move || {
       Column::new()
-        .set_spacing(4.)
+        .set_spacing(4)
         .set_children(
           received
             .get()

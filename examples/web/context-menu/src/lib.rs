@@ -28,10 +28,10 @@ fn app() -> impl View {
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
-          .set_padding(Inset::symmetric(24., 48.))
+          .set_padding(Inset::symmetric(24, 48))
           .add_child(
-            Container::new().set_max_width(460.).set_child(
-              Column::new().set_spacing(24.).set_children((
+            Container::new().set_max_width(460).set_child(
+              Column::new().set_spacing(24).set_children((
                 heading(),
                 notes_card(notes, last),
                 draft_card(draft),
@@ -46,7 +46,7 @@ fn app() -> impl View {
 }
 
 fn heading() -> impl View {
-  Column::new().set_spacing(6.).set_children((
+  Column::new().set_spacing(6).set_children((
     Text::new("CONTEXT MENU")
       .set_font_size(13.)
       .set_font_weight(500.)
@@ -57,12 +57,12 @@ fn heading() -> impl View {
 
 /// The notes, each wrapped in a menu of its own commands, and the last command run.
 fn notes_card(notes: Signal<Vec<String>>, last: Signal<String>) -> impl View {
-  SimpleCard::new().set_spacing(12.).set_children((
+  SimpleCard::new().set_spacing(12).set_children((
     Text::new("Notes").set_font_weight(600.),
     Text::new("Right-click a note, or focus one and press Shift-F10.")
       .set_font_size(13.)
       .set_color(SimplePalette::MUTED_FOREGROUND),
-    Column::new().set_spacing(4.).derive_children(
+    Column::new().set_spacing(4).derive_children(
       move || notes.get(),
       Clone::clone,
       move |name| note(name, notes, last),
@@ -106,8 +106,8 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
     ])
     .set_child(
       Container::new()
-        .set_padding(Inset::symmetric(12., 8.))
-        .set_corner_radius(6.)
+        .set_padding(Inset::symmetric(12, 8))
+        .set_corner_radius(6)
         .set_focus_order(FocusOrder::Auto)
         .set_background(
           SimplePalette::CARD
@@ -120,7 +120,7 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
 
 /// A field whose menu carries the clipboard's standard items beside a command of its own.
 fn draft_card(draft: Signal<String>) -> impl View {
-  SimpleCard::new().set_spacing(12.).set_children((
+  SimpleCard::new().set_spacing(12).set_children((
     Text::new("Draft").set_font_weight(600.),
     Text::new("Cut, Copy and Paste follow the selection and the clipboard.")
       .set_font_size(13.)

@@ -11,7 +11,6 @@ use skene_foundation::{
   ContainerBase,
   DecorationBase,
   DecorationWithCornerRadius,
-  Dimension,
   FlexBase,
   GridBase,
   ItemAlignment,
@@ -74,17 +73,17 @@ pub(super) fn tree() -> impl View {
   .set_child_builder(|| {
     Container::new()
       .set_background(Color::srgb(0.1, 0.2, 0.3))
-      .set_border_width(Inset::all(2.))
+      .set_border_width(Inset::all(2))
       .set_border_color(Color::oklch(0.5, 0.1, 200.))
-      .set_corner_radius(6.)
-      .set_min_width(Dimension::Length(200.))
-      .set_max_height(Dimension::Length(800.))
+      .set_corner_radius(6)
+      .set_min_width(200)
+      .set_max_height(800)
       .set_child(
         Column::new()
           .set_arrangement(Arrangement::Center)
           .set_item_alignment(ItemAlignment::Stretch)
-          .set_spacing(12.)
-          .set_padding(Inset::symmetric(16., 24.))
+          .set_spacing(12)
+          .set_padding(Inset::symmetric(16, 24))
           .set_children((
             Text::new("Title & <escaped>")
               .set_font_size(24.)
@@ -94,12 +93,12 @@ pub(super) fn tree() -> impl View {
             Container::new()
               .set_role(Role::Region)
               .set_cursor(MouseCursor::Click)
-              .set_width(Dimension::Length(120.))
-              .set_height(Dimension::Length(40.))
+              .set_width(120)
+              .set_height(40)
               .derive_background(|| Color::srgb(0.5, 0.5, 0.5))
               .handle_click(|| {})
-              .set_child(Row::new().set_spacing(4.).add_child(Text::new("Press"))),
-            Grid::uniform(3).set_spacing(4.).set_children((
+              .set_child(Row::new().set_spacing(4).add_child(Text::new("Press"))),
+            Grid::uniform(3).set_spacing(4).set_children((
               Text::new("a"),
               Text::new("b"),
               Text::new("c"),
@@ -111,23 +110,23 @@ pub(super) fn tree() -> impl View {
                 .set_color(Color::srgb(1.0, 0.5, 0.0)),
               Span::view(
                 Container::new()
-                  .set_width(Dimension::Length(10.))
-                  .set_height(Dimension::Length(10.)),
+                  .set_width(10)
+                  .set_height(10),
               ),
               Span::new(" tail").set_link("/rel"),
             ]),
             // Two identically-styled boxes: their class must intern once.
-            Container::new().set_padding(Inset::all(8.)),
-            Container::new().set_padding(Inset::all(8.)),
+            Container::new().set_padding(Inset::all(8)),
+            Container::new().set_padding(Inset::all(8)),
             // Declarative dynamics: a hover variant, a media variant, a transition, and an
             // animation, all compiled into the interned class.
             Container::new()
               .set_width(
-                Dimension::Length(50.)
-                  .when(Condition::from(State::Hovered), Dimension::Length(60.))
+                50
+                  .when(Condition::from(State::Hovered), 60)
                   .when(
-                    Condition::from(Media::MaxWidth(480.)),
-                    Dimension::Length(40.),
+                    Condition::from(Media::max_width(480)),
+                    40,
                   ),
               )
               .add_transition(Transition::new(Property::Width, 0.2))

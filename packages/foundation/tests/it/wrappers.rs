@@ -191,7 +191,7 @@ fn a_wrapper_around_nothing_annotates_no_later_box() {
     Stack::new()
       .set_children((
         Pinned::new()
-          .set_edges(Inset::all(Dimension::Length(4.)))
+          .set_edges(Inset::all(4))
           .set_child(skene_foundation::empty::<Headless>()),
         Container::new(),
       ))
@@ -216,10 +216,7 @@ fn a_wrapper_without_its_child_renders_nothing() {
   let owner = Owner::new();
   let (stack, column, grid) = owner.enter(|| {
     let stack = Stack::new()
-      .set_children((
-        Pinned::new().set_edges(Inset::all(Dimension::Length(4.))),
-        Container::new(),
-      ))
+      .set_children((Pinned::new().set_edges(Inset::all(4)), Container::new()))
       .build();
     let column = Column::new()
       .set_children((
@@ -259,7 +256,7 @@ fn a_wrapper_given_its_child_takes_its_setters() {
   reset();
 
   let owner = Owner::new();
-  let edges = Inset::all(Dimension::Length(4.));
+  let edges = Inset::all(4);
   let root = owner.enter(|| {
     let wrapper = Pinned::new().set_child(Container::new());
 

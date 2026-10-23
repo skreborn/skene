@@ -98,8 +98,8 @@ async fn a_painted_box_is_blitted_without_webgpu() {
         Color::srgb(0., 0., 1.),
       );
     })
-    .set_width(Dimension::Length(40.))
-    .set_height(Dimension::Length(20.))
+    .set_width(40)
+    .set_height(20)
     .build()
   });
 
@@ -141,7 +141,7 @@ async fn a_resized_box_is_blitted_again() {
       );
     })
     .derive_width(move || Dimension::Length(width.get()))
-    .set_height(Dimension::Length(20.))
+    .set_height(20)
     .build()
   });
 
@@ -184,8 +184,8 @@ async fn a_lost_2d_context_repaints_in_a_fresh_canvas() {
         Color::srgb(0., 1., 0.),
       );
     })
-    .set_width(Dimension::Length(40.))
-    .set_height(Dimension::Length(20.))
+    .set_width(40)
+    .set_height(20)
     .build()
   });
 
@@ -222,7 +222,7 @@ async fn a_canvas_never_sizes_its_box() {
   let (_installed, root) = fresh_root();
   let _ = mount(|| {
     skene_web::Column::new()
-      .add_child(Painted::new(|_, _| {}).set_width(Dimension::Length(40.)))
+      .add_child(Painted::new(|_, _| {}).set_width(40))
       .build()
   });
 

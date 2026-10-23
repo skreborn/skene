@@ -8,7 +8,7 @@
 //! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_gpu_loss`.
 #![cfg(skene_web_platform = "browser")]
 
-use skene_foundation::{Dimension, PaintedBase};
+use skene_foundation::PaintedBase;
 use skene_web::{
   Color,
   Painted,
@@ -73,8 +73,8 @@ async fn a_lost_device_falls_back_to_the_cpu_in_a_fresh_canvas() {
         Color::srgb(0., 0., 1.),
       );
     })
-    .set_width(Dimension::Length(40.))
-    .set_height(Dimension::Length(20.))
+    .set_width(40)
+    .set_height(20)
     .build()
   });
 

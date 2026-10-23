@@ -63,13 +63,13 @@ fn card(todos: Store<Todos>) -> impl View {
     draft.set(String::new());
   };
 
-  SimpleCard::new().set_spacing(16.).set_children((
+  SimpleCard::new().set_spacing(16).set_children((
     Text::new("TODOS")
       .set_font_size(13.)
       .set_font_weight(500.)
       .set_color(SimplePalette::MUTED_FOREGROUND),
     Row::new()
-      .set_spacing(8.)
+      .set_spacing(8)
       .set_item_alignment(ItemAlignment::Center)
       .set_children((
         Flexible::new()
@@ -82,7 +82,7 @@ fn card(todos: Store<Todos>) -> impl View {
         SimpleButton::new("Add").handle_activate(add),
       )),
     Column::new()
-      .set_spacing(8.)
+      .set_spacing(8)
       .derive_entries(todos.items().keyed_by(|todo| todo.id), move |todo| {
         row(todos, todo)
       }),
@@ -95,7 +95,7 @@ fn card(todos: Store<Todos>) -> impl View {
 /// One todo's row, following its own entry of `todos`.
 fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl View {
   Row::new()
-    .set_spacing(8.)
+    .set_spacing(8)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((
       SimpleCheckbox::new()

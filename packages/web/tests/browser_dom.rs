@@ -24,7 +24,6 @@ use skene_foundation::{
   ContextMenuBase,
   ControlBase,
   DecorationBase,
-  Dimension,
   DragAxes,
   DragData,
   FlexBase,
@@ -375,7 +374,7 @@ fn a_wrapper_without_its_child_mounts_nothing() {
 
   let _ = mount(|| {
     Column::new()
-      .set_spacing(Spacing::from(8.))
+      .set_spacing(Spacing::from(8))
       .set_children((
         Text::new("a"),
         Flexible::new().set_flexibility(Flexibility::grow(1.)),
@@ -429,8 +428,8 @@ fn interned_class_actually_applies_its_style() {
 
   let _ = mount(|| {
     Container::new()
-      .set_padding(Inset::all(10.0))
-      .set_border_width(Inset::all(2.0))
+      .set_padding(Inset::all(10))
+      .set_border_width(Inset::all(2))
       .set_border_color(Color::srgb(0.0, 0.0, 0.0))
       .build()
   });
@@ -1025,14 +1024,12 @@ fn a_pointer_cancel_reaches_the_box() {
 /// the slider's size.
 #[wasm_bindgen_test]
 async fn a_press_on_the_thumb_slides_by_the_slider_box() {
-  use skene_foundation::Dimension;
-
   let (_guard, root) = fresh_root();
   let value = Signal::new(40.0f32);
 
   let _ = mount(move || {
     Container::new()
-      .set_width(Dimension::Length(200.))
+      .set_width(200)
       .set_child(SimpleSlider::new().bind_value(value))
       .build()
   });
@@ -1917,7 +1914,7 @@ fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
   let _ = mount(move || {
     Theme::derive(move || {
       let ink = if conditional.get() {
-        Definition::from(Color::srgb(1., 0., 0.)).when(Media::MinWidth(1.), green)
+        Definition::from(Color::srgb(1., 0., 0.)).when(Media::min_width(1), green)
       }
       else {
         Definition::from(blue)
@@ -1970,7 +1967,7 @@ fn a_typography_theme_reaches_the_text_beneath_it() {
         .set_size(20.)
         .set_weight(700.)
         .set_line_height(2.)
-        .set_letter_spacing(1.),
+        .set_letter_spacing(1),
     )
     .set_child_builder(|| {
       Column::new().set_children((Text::new("themed"), Text::new("own").set_font_size(12.)))
@@ -2088,30 +2085,28 @@ fn named_areas_and_adaptive_tracks_lay_out() {
   const MAIN: GridName = GridName::new("main");
 
   let (_guard, root) = fresh_root();
-  let cell = || Container::new().set_height(Dimension::Length(10.));
+  let cell = || Container::new().set_height(10);
 
   let _ = mount(move || {
     Column::new()
       .set_children((
+        Container::new().set_width(300).set_child(
+          Grid::new()
+            .set_columns(vec![GridTrack::Length(100.), GridTrack::Flex(1.)])
+            .set_areas(GridAreas::new(["head head", "nav main"]))
+            .set_children((
+              GridCell::new()
+                .set_row(MAIN)
+                .set_column(MAIN)
+                .set_child(cell()),
+              GridCell::new()
+                .set_row(HEAD)
+                .set_column(HEAD)
+                .set_child(cell()),
+            )),
+        ),
         Container::new()
-          .set_width(Dimension::Length(300.))
-          .set_child(
-            Grid::new()
-              .set_columns(vec![GridTrack::Length(100.), GridTrack::Flex(1.)])
-              .set_areas(GridAreas::new(["head head", "nav main"]))
-              .set_children((
-                GridCell::new()
-                  .set_row(MAIN)
-                  .set_column(MAIN)
-                  .set_child(cell()),
-                GridCell::new()
-                  .set_row(HEAD)
-                  .set_column(HEAD)
-                  .set_child(cell()),
-              )),
-          ),
-        Container::new()
-          .set_width(Dimension::Length(250.))
+          .set_width(250)
           .set_child(Grid::adaptive(80.).set_children((cell(), cell(), cell(), cell()))),
       ))
       .build()
@@ -2158,18 +2153,18 @@ fn named_lines_place_a_child() {
     Grid::new()
       .set_columns(
         GridTemplate::new()
-          .add_track(GridTrack::Length(100.))
+          .add_track(100)
           .add_line(CONTENT)
-          .add_track(GridTrack::Length(100.))
+          .add_track(100)
           .add_line(END)
-          .add_track(GridTrack::Length(100.)),
+          .add_track(100),
       )
       .set_children((GridCell::new()
         .set_column(Line {
           start: GridPlacement::Named(CONTENT, 1),
           end: GridPlacement::Named(END, 1),
         })
-        .set_child(Container::new().set_height(Dimension::Length(10.))),))
+        .set_child(Container::new().set_height(10)),))
       .build()
   });
 
@@ -2323,14 +2318,14 @@ fn derived_view_swaps_between_trees_on_state_change() {
 /// which would otherwise scroll it.
 fn scroller() -> Container {
   Container::new()
-    .set_height(40.)
+    .set_height(40)
     .set_overflow(skene_foundation::Overflow::ScrollIfNeeded)
     .set_child(
       Column::new().set_children((
         Container::new()
-          .set_min_height(20.)
+          .set_min_height(20)
           .set_focus_order(skene_web::FocusOrder::Auto),
-        Container::new().set_min_height(200.),
+        Container::new().set_min_height(200),
       )),
     )
 }
@@ -2927,16 +2922,16 @@ fn a_token_keyframe_animation_applies() {
 /// the same tree, the same field holds focus and the same box holds its offset.
 #[wasm_bindgen_test]
 fn focus_and_scroll_survive_a_snapshot_roundtrip() {
-  use skene_foundation::{Dimension, Overflow};
+  use skene_foundation::Overflow;
   use skene_web::{BasicTextField, NodeId, TextEntry, reactive};
 
   fn build() -> NodeId {
     Column::new()
       .set_children((
         Container::new()
-          .set_height(Dimension::Length(40.))
+          .set_height(40)
           .set_overflow(Overflow::Scroll)
-          .set_child(Container::new().set_height(Dimension::Length(400.))),
+          .set_child(Container::new().set_height(400)),
         BasicTextField::new(TextEntry::new()),
       ))
       .build()
@@ -3115,7 +3110,7 @@ async fn a_lazy_column_measures_its_estimated_items() {
   let (_installed, root) = fresh_root();
   let _ = mount(|| {
     Container::new()
-      .set_height(50.)
+      .set_height(50)
       .set_child(
         LazyColumn::new()
           .set_item_height(ItemExtent::Estimated(10.))
@@ -3125,7 +3120,7 @@ async fn a_lazy_column_measures_its_estimated_items() {
             |index| *index,
             |index| {
               Container::new()
-                .set_height(20.)
+                .set_height(20)
                 .set_child(Text::new(index.to_string()))
             },
           ),
@@ -3164,7 +3159,6 @@ async fn a_lazy_column_measures_its_estimated_items() {
 /// `browser_painted` covers the CPU path.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
-  use skene_foundation::Dimension;
   use skene_web::{Painted, kurbo::Rect};
   use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
@@ -3213,8 +3207,8 @@ async fn a_painted_box_draws_into_its_canvas() {
         Color::srgb(0., 0., 1.),
       );
     })
-    .set_width(Dimension::Length(40.))
-    .set_height(Dimension::Length(20.))
+    .set_width(40)
+    .set_height(20)
     .build()
   });
   next_frame().await;
@@ -3465,7 +3459,7 @@ fn a_pinned_checkbox_leaves_the_flow() {
   let _ = mount(|| {
     Stack::new()
       .set_children((Pinned::new()
-        .set_edges(Inset::all(Dimension::Length(0.)))
+        .set_edges(Inset::all(0))
         .set_child(SimpleCheckbox::new().set_label("pinned")),))
       .build()
   });

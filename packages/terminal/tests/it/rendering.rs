@@ -257,7 +257,7 @@ fn a_container_query_switches_a_padding_when_the_terminal_narrows() {
             .set_padding(Inset::all(0).when(
               Media::Container {
                 name: Some(CARD),
-                query: ContainerQuery::MaxWidth(30),
+                query: ContainerQuery::max_width(30),
               },
               Inset::all(2),
             ))
@@ -407,7 +407,7 @@ fn a_corner_radius_renders_arc_corners() {
         .set_height(3)
         .set_border_width(Inset::all(1))
         .set_border_color(red())
-        .set_corner_radius(1.)
+        .set_corner_radius(1)
         .into_any()
         .build()
     });

@@ -564,7 +564,7 @@ mod tests {
       .add_track(GridTrack::<f32>::Flex(1.))
       .add_line(content)
       .add_line(wide)
-      .add_track(GridTrack::Length(600.))
+      .add_track(600)
       .add_track(GridTrack::Flex(1.))
       .add_line(full);
 

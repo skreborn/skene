@@ -49,7 +49,7 @@ fn accent(name: Option<&str>) -> Accent {
 ///
 /// `set_primary` replaces one look wholesale; a look's own conditions ride its
 /// definitions. Every `.when` here names `Media::Dark`, but nothing about the setter
-/// is the scheme's—`Media::MinWidth(120)` would sit in exactly the same place.
+/// is the scheme's—`Media::min_width(120)` would sit in exactly the same place.
 fn palette(accent_name: Option<&str>) -> SimplePalette {
   let accent = accent(accent_name);
 

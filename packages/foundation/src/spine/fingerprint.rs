@@ -534,7 +534,7 @@ mod tests {
   fn static_styles_hash_by_value() {
     let style = |dark: Color| {
       BoxStyle::<f32, Declared<Condition<f32>>> {
-        width: Some(Value::from(Dimension::from(10.))),
+        width: Some(Value::from(Dimension::from(10))),
         background: Some(
           TokenRef::<Color>::new("card")
             .when(Media::Dark.into(), dark)

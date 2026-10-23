@@ -16,7 +16,7 @@ use skene_web::Active;
 /// use skene_web::prelude::*;
 ///
 /// let card = SimpleCard::new()
-///   .set_spacing(12.)
+///   .set_spacing(12)
 ///   .set_children((Text::new("Title"), Text::new("Body")));
 /// ```
 #[derive(Debug, Default, View, Wraps)]

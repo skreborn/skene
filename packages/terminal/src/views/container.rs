@@ -19,7 +19,7 @@ use crate::Active;
 /// let card = Container::new()
 ///   .set_padding(Inset::all(1))
 ///   .set_background(Color::srgb(1., 1., 1.))
-///   .set_corner_radius(1.)
+///   .set_corner_radius(1)
 ///   .set_child(Text::new("Hello"));
 /// ```
 #[derive(Debug, Default, View, Wraps)]

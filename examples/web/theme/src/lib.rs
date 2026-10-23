@@ -45,7 +45,7 @@ fn accent(name: Option<&str>) -> Accent {
 ///
 /// `set_primary` replaces one look wholesale; a look's own conditions ride its
 /// definitions. Every `.when` here names `Media::Dark`, but nothing about the setter
-/// is the scheme's—`Media::MinWidth(900.)` would sit in exactly the same place.
+/// is the scheme's—`Media::min_width(900)` would sit in exactly the same place.
 fn palette(accent_name: Option<&str>) -> SimplePalette {
   let accent = accent(accent_name);
 
@@ -93,9 +93,9 @@ fn app() -> impl View {
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
-          .set_padding(Inset::symmetric(24., 48.))
-          .add_child(Container::new().set_max_width(460.).set_child(
-            Column::new().set_spacing(24.).set_children((
+          .set_padding(Inset::symmetric(24, 48))
+          .add_child(Container::new().set_max_width(460).set_child(
+            Column::new().set_spacing(24).set_children((
               heading(),
               chooser(scheme),
               accents(accent),
@@ -108,7 +108,7 @@ fn app() -> impl View {
 }
 
 fn heading() -> impl View {
-  Column::new().set_spacing(6.).set_children((
+  Column::new().set_spacing(6).set_children((
     Text::new("THEME")
       .set_font_size(13.)
       .set_font_weight(500.)
@@ -127,7 +127,7 @@ fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl View {
       .handle_activate(move || scheme.set(wanted))
   };
 
-  Row::new().set_spacing(12.).set_children((
+  Row::new().set_spacing(12).set_children((
     choice("System", None),
     choice("Light", Some(ColorScheme::Light)),
     choice("Dark", Some(ColorScheme::Dark)),
@@ -139,7 +139,7 @@ fn accents(accent: Signal<Option<String>>) -> impl View {
   SimpleRadioGroup::new()
     .bind_chosen(accent)
     .set_label("Accent")
-    .set_child(Row::new().set_spacing(16.).set_children((
+    .set_child(Row::new().set_spacing(16).set_children((
       SimpleRadio::new("indigo").set_label("Indigo"),
       SimpleRadio::new("teal").set_label("Teal"),
     )))
@@ -147,12 +147,12 @@ fn accents(accent: Signal<Option<String>>) -> impl View {
 
 fn swatches() -> impl View {
   let swatch = |token: TokenRef<Color>, label: &'static str| {
-    Column::new().set_spacing(6.).set_children((
+    Column::new().set_spacing(6).set_children((
       Container::new()
-        .set_height(44.)
-        .set_corner_radius(8.)
+        .set_height(44)
+        .set_corner_radius(8)
         .set_background(token)
-        .set_border_width(Inset::all(1.))
+        .set_border_width(Inset::all(1))
         .set_border_color(SimplePalette::BORDER),
       Text::new(label)
         .set_font_size(12.)
@@ -160,7 +160,7 @@ fn swatches() -> impl View {
     ))
   };
 
-  SimpleCard::new().set_spacing(16.).set_children((
+  SimpleCard::new().set_spacing(16).set_children((
     Text::new("Tokens").set_font_weight(600.),
     Grid::new()
       .set_columns(vec![
@@ -168,13 +168,13 @@ fn swatches() -> impl View {
         GridTrack::Flex(1.),
         GridTrack::Flex(1.),
       ])
-      .set_spacing(12.)
+      .set_spacing(12)
       .set_children((
         swatch(SimplePalette::CARD, "card"),
         swatch(SimplePalette::PRIMARY_SURFACE, "primary"),
         swatch(SimplePalette::DESTRUCTIVE_SURFACE, "destructive"),
       )),
-    Row::new().set_spacing(12.).set_children((
+    Row::new().set_spacing(12).set_children((
       SimpleButton::new("Primary"),
       SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive),
     )),
@@ -185,12 +185,12 @@ fn swatches() -> impl View {
 /// signal too, and replaces the palette for its subtree only.
 fn nested(accent: Signal<Option<String>>) -> impl View {
   Theme::derive(move || accent.with(|name| warm(name.as_deref()))).set_child_builder(|| {
-    SimpleCard::new().set_spacing(12.).set_children((
+    SimpleCard::new().set_spacing(12).set_children((
       Text::new("Nested theme").set_font_weight(600.),
       Text::new("A theme inside a theme replaces the palette for its subtree only.")
         .set_font_size(14.)
         .set_color(SimplePalette::current().muted_foreground),
-      Row::new().set_spacing(12.).set_children((
+      Row::new().set_spacing(12).set_children((
         SimpleButton::new("Primary"),
         SimpleButton::new("Cancel").set_variant(SimpleVariant::Outline),
       )),

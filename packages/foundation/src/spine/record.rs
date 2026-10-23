@@ -1066,7 +1066,7 @@ mod tests {
   fn box_style<X: StyleExtension>() -> BoxStyle<f32, Static<Pixel>, X> {
     BoxStyle {
       width: Some(fixed(Dimension::Length(10.)).when(
-        Media::MinWidth(900.).into(),
+        Media::min_width(900).into(),
         kept(StaticLeaf::Token(TokenName::new("wide"))),
       )),
       padding: Some(
@@ -1238,7 +1238,7 @@ mod tests {
     let mut record = Record::<f32>::new();
 
     record.set_box::<box_fields::Width>(fixed(Dimension::Length(4.)));
-    record.set_box::<box_fields::Padding>(fixed(Inset::all(2.)));
+    record.set_box::<box_fields::Padding>(fixed(Inset::all(2)));
     record.set_box::<box_fields::Width>(fixed(Dimension::Auto));
 
     assert_eq!(
@@ -1405,7 +1405,7 @@ mod tests {
       high_contrast: false,
       pointer: PointerPrecision::Fine,
       hover: true,
-      safe_area: Inset::all(0.),
+      safe_area: Inset::all(0),
     };
     let token = |name: TokenName| match name.as_str() {
       "wide" => Some(Resolved::Dimension(Dimension::Length(640.))),
@@ -1485,7 +1485,7 @@ mod tests {
         .resolved();
 
       assert_eq!(frame.boxed, resolver.box_keyframe(&box_keyframe(8.)));
-      assert_eq!(frame.boxed.padding, Some(Inset::all(100.)));
+      assert_eq!(frame.boxed.padding, Some(Inset::all(100)));
       assert_eq!(
         run_frame.run,
         resolver.run_keyframe(&run_dynamics().animations[0].keyframes[0].1)
@@ -1617,7 +1617,7 @@ mod tests {
       high_contrast: false,
       pointer: PointerPrecision::Fine,
       hover: true,
-      safe_area: Inset::all(0.),
+      safe_area: Inset::all(0),
     };
     let token = |name: TokenName| match name.as_str() {
       "wide" => Some(Resolved::Dimension(Dimension::Length(640.))),
@@ -1691,7 +1691,7 @@ mod tests {
     }));
     assert_eq!(
       idle.animations()[0].keyframes[0].1.resolved().boxed.padding,
-      Some(Inset::all(100.))
+      Some(Inset::all(100))
     );
     assert_eq!(idle.address(), compile(false).address());
     assert_ne!(idle.address(), compile(true).address());

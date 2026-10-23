@@ -48,9 +48,9 @@ fn app() -> impl View {
           .set_arrangement(Arrangement::Center)
           .set_item_alignment(ItemAlignment::Center)
           .add_child(
-            SimpleCard::new().set_spacing(24.).set_children((
+            SimpleCard::new().set_spacing(24).set_children((
               Text::derive(move || count.get().to_string()).set_font_size(56.),
-              Row::new().set_spacing(12.).set_children((
+              Row::new().set_spacing(12).set_children((
                 SimpleButton::new("−").handle_activate(move || count.update(|n| *n = n.saturating_sub(1))),
                 SimpleButton::new("+").handle_activate(move || count.update(|n| *n = n.saturating_add(1))),
               )),

@@ -27,7 +27,7 @@ fn card(count: Signal<u64>) -> impl View {
   let palette = SimplePalette::current();
 
   SimpleCard::new()
-    .set_spacing(24.)
+    .set_spacing(24)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((
       Text::new("COUNTER")
@@ -38,7 +38,7 @@ fn card(count: Signal<u64>) -> impl View {
         .set_font_size(56.)
         .set_font_weight(700.)
         .set_color(palette.foreground),
-      Row::new().set_spacing(12.).set_children((
+      Row::new().set_spacing(12).set_children((
         SimpleButton::new("−")
           .set_variant(SimpleVariant::Outline)
           .handle_activate(move || {

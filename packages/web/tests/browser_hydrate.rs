@@ -116,14 +116,14 @@ fn served(app: impl FnOnce() -> skene_web::AnyView + 'static) -> (String, String
 fn hydrate_keeps_the_readers_scroll_and_focus() {
   let app = || {
     Container::new()
-      .set_height(40.)
+      .set_height(40)
       .set_overflow(skene_foundation::Overflow::ScrollIfNeeded)
       .set_child(
         skene_web::Column::new().set_children((
           Container::new()
-            .set_min_height(20.)
+            .set_min_height(20)
             .set_focus_order(skene_web::FocusOrder::Auto),
-          Container::new().set_min_height(200.),
+          Container::new().set_min_height(200),
         )),
       )
   };

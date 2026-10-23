@@ -14,7 +14,7 @@ use crate::Active;
 /// use skene_web::prelude::*;
 ///
 /// let toolbar = Row::new()
-///   .set_spacing(8.)
+///   .set_spacing(8)
 ///   .set_item_alignment(ItemAlignment::Center)
 ///   .set_children((Text::new("Title"), Text::new("Subtitle")));
 /// ```
@@ -36,7 +36,7 @@ impl FlexBase<Active> for Row {}
 /// use skene_web::prelude::*;
 ///
 /// let list = Column::new()
-///   .set_spacing(4.)
+///   .set_spacing(4)
 ///   .set_arrangement(Arrangement::Start)
 ///   .set_children((Text::new("First"), Text::new("Second")));
 /// ```

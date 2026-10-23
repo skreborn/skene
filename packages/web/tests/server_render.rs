@@ -170,7 +170,7 @@ fn any_role_reaches_the_markup() {
 /// takes a place in the focus order.
 #[test]
 fn names_and_roles_reach_the_markup() {
-  use skene_foundation::{Dimension, Overflow, Role};
+  use skene_foundation::{Overflow, Role};
 
   let page = render_to_string(|| {
     Column::new().set_children((
@@ -187,7 +187,7 @@ fn names_and_roles_reach_the_markup() {
       Painted::new(|_, _| {}).set_description("Eight blue stripes"),
       Container::new()
         .set_overflow(Overflow::ScrollIfNeeded)
-        .set_height(Dimension::Length(40.))
+        .set_height(40)
         .set_child(Text::new("long")),
       Tooltip::new("Saves your work").set_child(Text::new("hover me")),
       Overlay::modal()

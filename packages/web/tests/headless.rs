@@ -120,7 +120,7 @@ fn derived_property_updates_the_resolved_style() {
   let width = Signal::new(100.0f32);
   let root = owner.enter(|| {
     Container::new()
-      .set_height(40.)
+      .set_height(40)
       .derive_width(move || Dimension::Length(width.get()))
       .build()
   });
@@ -357,8 +357,8 @@ fn a_third_party_layout_view_matches_the_built_in() {
       }
     }
 
-    fn set_spacing(mut self, spacing: f32) -> Self {
-      self.base.style_mut().spacing = Some(skene_web::Spacing::from(spacing).into());
+    fn set_spacing(mut self, spacing: impl Into<skene_web::Spacing>) -> Self {
+      self.base.style_mut().spacing = Some(spacing.into().into());
 
       self
     }
@@ -380,8 +380,8 @@ fn a_third_party_layout_view_matches_the_built_in() {
     let _ = &clicks;
 
     (
-      Toolbar::new().set_spacing(8.).build(),
-      Row::new().set_spacing(8.).build(),
+      Toolbar::new().set_spacing(8).build(),
+      Row::new().set_spacing(8).build(),
     )
   });
   let (toolbar, row) = (box_props(toolbar).unwrap(), box_props(row).unwrap());
@@ -806,8 +806,8 @@ fn a_painted_box_draws_through_vello() {
         Color::srgb(1., 0., 0.),
       );
     })
-    .set_width(Dimension::Length(8.))
-    .set_height(Dimension::Length(4.))
+    .set_width(8)
+    .set_height(4)
     .build()
   });
 

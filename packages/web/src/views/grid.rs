@@ -13,7 +13,7 @@ use crate::Active;
 /// ```
 /// use skene_web::prelude::*;
 ///
-/// let tiles = Grid::uniform(3).set_spacing(8.).set_children((
+/// let tiles = Grid::uniform(3).set_spacing(8).set_children((
 ///   Text::new("One"),
 ///   Text::new("Two"),
 ///   Text::new("Three"),

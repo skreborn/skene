@@ -62,10 +62,10 @@ fn app() -> impl View {
       .set_background(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
-          .set_spacing(32.)
-          .set_padding(Inset::all(48.))
+          .set_spacing(32)
+          .set_padding(Inset::all(48))
           .set_children((
-            Row::new().set_spacing(16.).set_children((
+            Row::new().set_spacing(16).set_children((
               Link::new(Page::Home).set_child(navigation("Home")),
               Link::new(Page::About).set_child(navigation("About")),
             )),
@@ -97,8 +97,8 @@ async fn about() -> AnyView {
 }
 
 fn page(title: &'static str, body: &'static str) -> impl View {
-  Container::new().set_max_width(420.).set_child(
-    SimpleCard::new().set_spacing(12.).set_children((
+  Container::new().set_max_width(420).set_child(
+    SimpleCard::new().set_spacing(12).set_children((
       Text::new(title)
         .set_font_size(13.)
         .set_font_weight(500.)

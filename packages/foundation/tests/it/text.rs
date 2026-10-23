@@ -176,7 +176,7 @@ fn a_groups_compound_media_variant_reaches_its_spans() {
         RichText::new().add_spans([Span::group([Span::new("x")]).set_color(
           skene_foundation::Value::from(red()).when(
             skene_foundation::Condition::and([
-              skene_foundation::Condition::from(skene_foundation::Media::MinWidth(1.)),
+              skene_foundation::Condition::from(skene_foundation::Media::min_width(1)),
               skene_foundation::Condition::from(skene_foundation::Media::Light),
             ]),
             green(),

@@ -37,7 +37,7 @@ fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
-    SimpleCard::new().set_spacing(12.).set_children((
+    SimpleCard::new().set_spacing(12).set_children((
       Text::derive(move || count.get().to_string()),
       SimpleButton::new("+").handle_activate(move || count.update(|count| *count += 1)),
     ))

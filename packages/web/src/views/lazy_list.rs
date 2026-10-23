@@ -15,7 +15,7 @@ use crate::Active;
 /// ```
 /// use skene_web::prelude::*;
 ///
-/// let rows = LazyColumn::new().set_item_height(24.).derive_items(
+/// let rows = LazyColumn::new().set_item_height(24).derive_items(
 ///   || 0..10_000,
 ///   |index| *index,
 ///   |index| Text::new(format!("Row {index}")),
@@ -38,7 +38,7 @@ impl LazyColumnBase<Active> for LazyColumn {}
 /// ```
 /// use skene_web::prelude::*;
 ///
-/// let strip = LazyRow::new().set_item_width(64.).derive_items(
+/// let strip = LazyRow::new().set_item_width(64).derive_items(
 ///   || 0..1_000,
 ///   |index| *index,
 ///   |index| Text::new(index.to_string()),

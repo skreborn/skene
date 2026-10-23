@@ -586,10 +586,14 @@ fn media_reports_the_window() {
   )]
   let above = (width + 1.) as f32;
 
-  assert!(platform::watch_media(&Media::MinWidth(below)).get());
-  assert!(!platform::watch_media(&Media::MinWidth(above)).get());
+  assert!(platform::watch_media(&Media::min_width(below)).get());
+  assert!(!platform::watch_media(&Media::min_width(above)).get());
   assert!(
-    platform::watch_media(&Media::or([Media::MinWidth(above), Media::MaxWidth(above)])).get()
+    platform::watch_media(&Media::or([
+      Media::min_width(above),
+      Media::max_width(above)
+    ]))
+    .get()
   );
   assert!(platform::media_query(&format!("(min-width: {below}px)")).get());
   assert!(!platform::media_query(&format!("(min-width: {above}px)")).get());

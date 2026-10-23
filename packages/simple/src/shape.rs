@@ -109,15 +109,15 @@ pub enum SimpleMarks {
 impl SimpleUnit for f32 {
   fn shape() -> SimpleShape<Self> {
     SimpleShape {
-      control_inset: Inset::symmetric(12., 8.),
+      control_inset: Inset::symmetric(12, 8),
       control_ring: 1.,
       field_ring: 1.,
       control_radius: Length(8.),
-      card_inset: Inset::all(24.),
+      card_inset: Inset::all(24),
       card_radius: Length(12.),
-      list_inset: Inset::all(4.),
-      row_inset: Inset::all(6.),
-      tooltip_inset: Inset::symmetric(8., 4.),
+      list_inset: Inset::all(4),
+      row_inset: Inset::all(6),
+      tooltip_inset: Inset::symmetric(8, 4),
       indicator_spacing: 8.,
       shortcut_spacing: 24.,
       card_spacing: 16.,

@@ -148,7 +148,7 @@ impl Default for ParityPalette {
       shifted: Token::new(
         Self::SHIFTED.name().as_str(),
         Definition::from(Color::srgb(0.9, 0.1, 0.1))
-          .when(Media::MinWidth(1.), Color::srgb(0.1, 0.7, 0.3)),
+          .when(Media::min_width(1), Color::srgb(0.1, 0.7, 0.3)),
       ),
       wide: Token::new(
         Self::WIDE.name().as_str(),
@@ -409,7 +409,7 @@ impl Case {
             .set_background(Value::from(blue()).when(
               Media::Container {
                 name: Some(BOX),
-                query: ContainerQuery::MinWidth(300.),
+                query: ContainerQuery::min_width(300),
               },
               orange(),
             ))
@@ -456,34 +456,32 @@ impl Case {
       Self::DerivedColor => container.derive_background(blue),
       Self::DerivedTokenColor => container.derive_background(|| ParityPalette::SURFACE),
       Self::HeldCondition => {
-        container.set_background(Value::from(blue()).when(Media::MinWidth(1.), orange()))
+        container.set_background(Value::from(blue()).when(Media::min_width(1), orange()))
       }
       Self::UnheldCondition => {
-        container.set_background(Value::from(blue()).when(Media::MaxWidth(1.), orange()))
+        container.set_background(Value::from(blue()).when(Media::max_width(1), orange()))
       }
       Self::DarkUnchosen => {
         container.set_background(Value::from(blue()).when(Condition::from(Media::Dark), orange()))
       }
-      Self::FixedWidth => container.set_width(Dimension::Length(120.)),
+      Self::FixedWidth => container.set_width(120),
       Self::ViewportWidth => container.set_width(Expr::viewport_width(0.1)),
-      Self::ClampedWidth => container.set_width(Expr::<Length>::from(100.).clamp(20., 80.)),
-      Self::CrossedClampWidth => container.set_width(Expr::<Length>::from(50.).clamp(80., 20.)),
+      Self::ClampedWidth => container.set_width(Expr::<Length>::from(100).clamp(20, 80)),
+      Self::CrossedClampWidth => container.set_width(Expr::<Length>::from(50).clamp(80, 20)),
       Self::FontSizeWidth => container.set_width(Expr::font_size(3.)),
       Self::TokenWidth => container.set_width(ParityPalette::WIDE),
       Self::LengthTokenWidth => container.set_width(ParityPalette::GAP),
       Self::LengthTokenExpressionWidth => container.set_width(Expr::from(ParityPalette::GAP) * 3.),
-      Self::DerivedWidth => container.derive_width(|| Dimension::Length(70.)),
-      Self::ConditionalWidth => container.set_width(
-        Value::from(Dimension::Length(40.)).when(Media::MinWidth(1.), Dimension::Length(60.)),
-      ),
-      Self::FixedPadding => container.set_padding(Inset::all(12.)),
+      Self::DerivedWidth => container.derive_width(|| 70),
+      Self::ConditionalWidth => container.set_width(Value::from(40).when(Media::min_width(1), 60)),
+      Self::FixedPadding => container.set_padding(Inset::all(12)),
       Self::LengthTokenPadding => container.set_padding(ParityPalette::GAP),
       Self::ConditionalPadding => {
-        container.set_padding(Value::from(Inset::all(4.)).when(Media::MinWidth(1.), Inset::all(9.)))
+        container.set_padding(Value::from(Inset::all(4)).when(Media::min_width(1), Inset::all(9)))
       }
-      Self::SafeAreaPadding => container.set_padding(Expr::<Length>::safe_area(Edge::Top) + 6.),
+      Self::SafeAreaPadding => container.set_padding(Expr::<Length>::safe_area(Edge::Top) + 6),
       Self::FixedBorder => container
-        .set_border_width(Inset::all(3.))
+        .set_border_width(Inset::all(3))
         .set_border_color(orange()),
       Self::EdgeBorder => container
         .set_border_width(Inset {
@@ -517,7 +515,7 @@ impl Case {
   /// The case's box in motion, where the case moves; the box as it is otherwise.
   fn moving<P: Realization<Scalar = f32>>(self, container: Container<P>) -> Container<P> {
     match self {
-      Self::NeutralKeyframe => container.set_width(Dimension::Length(40.)).add_animation(
+      Self::NeutralKeyframe => container.set_width(40).add_animation(
         Animation::new(
           1.,
           [(
@@ -554,7 +552,7 @@ impl Case {
         MOVING.set(Some(moving));
 
         container
-          .set_width(Dimension::Length(40.))
+          .set_width(40)
           .derive_aspect_ratio(move || AspectRatio(1. + 3. * moving.get()))
           .add_transition(Transition::new(Property::AspectRatio, 1.).set_easing(Easing::Linear))
       }
@@ -574,8 +572,8 @@ impl Case {
   /// A box inside a control, blue until `state` holds and orange while it does.
   fn state_box<P: Realization<Scalar = f32>>(state: State) -> Container<P> {
     Container::<P>::new()
-      .set_width(Dimension::Length(10.))
-      .set_height(Dimension::Length(10.))
+      .set_width(10)
+      .set_height(10)
       .set_background(Value::from(blue()).when(state, orange()))
       .set_accessibility(target())
   }

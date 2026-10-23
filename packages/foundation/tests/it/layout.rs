@@ -131,9 +131,9 @@ fn media_condition_on_padding_switches_with_the_viewport() {
   let owner = Owner::new();
   let root = owner.enter(|| {
     Column::new()
-      .set_spacing(Spacing::from(8.).when(Media::MinWidth(900.), 16.))
-      .set_padding(Inset::all(4.).when(Media::MinWidth(900.), Inset::all(12.)))
-      .add_child(Container::new().set_aspect_ratio(1f32.when(Media::MinWidth(900.), 2.)))
+      .set_spacing(Spacing::from(8).when(Media::min_width(900), 16))
+      .set_padding(Inset::all(4).when(Media::min_width(900), Inset::all(12)))
+      .add_child(Container::new().set_aspect_ratio(1f32.when(Media::min_width(900), 2.)))
       .build()
   });
   let child = children(root)[1];
@@ -150,8 +150,8 @@ fn media_condition_on_padding_switches_with_the_viewport() {
   assert_eq!(
     box_props(root).unwrap().style.padding.unwrap().variants(),
     &[(
-      Condition::Media(Media::MinWidth(900.)),
-      KeptLeaf::Static(StaticLeaf::Fixed(Inset::all(12.))),
+      Condition::Media(Media::min_width(900)),
+      KeptLeaf::Static(StaticLeaf::Fixed(Inset::all(12))),
     )]
   );
 

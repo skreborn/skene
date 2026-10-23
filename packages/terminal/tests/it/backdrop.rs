@@ -15,7 +15,7 @@ fn card() -> AnyView {
     .set_background(red())
     .set_border_width(Inset::all(1))
     .set_border_color(Color::srgb(0., 1., 0.))
-    .set_corner_radius(1.)
+    .set_corner_radius(1)
     .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5))
     .set_child(
       Column::new().set_children((

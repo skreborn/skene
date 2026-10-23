@@ -932,7 +932,7 @@ mod tests {
     );
     assert_eq!(
       Expr::<Inset<f32>>::from(expr).evaluate(&env(), &tokens),
-      Some(Inset::all(20.))
+      Some(Inset::all(20))
     );
   }
 

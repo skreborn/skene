@@ -131,7 +131,7 @@ fn a_column_lays_its_children_out_in_turn() {
   let owner = Owner::new();
   let column = owner.enter(|| {
     Column::new()
-      .set_spacing(10.)
+      .set_spacing(10)
       .set_children((sized(100., 20.), sized(50., 30.)))
       .build()
   });
@@ -159,7 +159,7 @@ fn a_wrapper_without_its_child_takes_no_room() {
   let owner = Owner::new();
   let column = owner.enter(|| {
     Column::new()
-      .set_spacing(10.)
+      .set_spacing(10)
       .set_children((
         sized(100., 20.),
         Flexible::new().set_flexibility(Flexibility::grow(1.)),
@@ -238,16 +238,14 @@ fn a_flexible_child_grows_and_a_stack_overlays() {
   let page = owner.enter(|| {
     Column::new()
       .set_children((
-        Container::new()
-          .set_width(Dimension::Length(300.))
-          .set_child(
-            Row::new().set_children((
-              Flexible::new()
-                .set_flexibility(Flexibility::grow(1.))
-                .set_child(sized(0., 10.)),
-              sized(100., 10.),
-            )),
-          ),
+        Container::new().set_width(300).set_child(
+          Row::new().set_children((
+            Flexible::new()
+              .set_flexibility(Flexibility::grow(1.))
+              .set_child(sized(0., 10.)),
+            sized(100., 10.),
+          )),
+        ),
         Stack::new().set_children((sized(40., 40.), sized(20., 20.))),
       ))
       .build()
@@ -308,7 +306,7 @@ fn a_frame_reports_the_laid_out_size() {
     Column::new()
       .set_children((Container::new()
         .set_width(Dimension::Fraction(0.5))
-        .set_height(Dimension::Length(40.))
+        .set_height(40)
         .bind_handle(handle),))
       .build()
   });
@@ -351,7 +349,7 @@ fn a_box_lays_out_at_the_width_its_motion_presents() {
     Column::new()
       .set_children((Container::new()
         .derive_width(move || width.get())
-        .set_height(Dimension::Length(10.))
+        .set_height(10)
         .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear)),))
       .build()
   });
@@ -436,7 +434,7 @@ fn a_clipping_box_hides_its_overflow_from_a_hit() {
     sized(200., 300.)
       .set_child(
         sized(100., 50.)
-          .set_border_width(Inset::all(5.))
+          .set_border_width(Inset::all(5))
           .set_overflow(Overflow::Clip)
           .set_child(sized(90., 200.)),
       )
@@ -702,7 +700,7 @@ fn a_line_may_end_before_an_inline_box() {
   let page = owner.enter(|| {
     Column::new()
       .set_children((Container::new()
-        .set_width(Dimension::Length(30.))
+        .set_width(30)
         .set_child(RichText::new().add_spans([Span::new("abc"), Span::view(sized(20., 30.))])),))
       .build()
   });
@@ -783,7 +781,7 @@ fn a_paragraph_breaks_after_a_hyphen() {
   let page = owner.enter(|| {
     Column::new()
       .set_children((Container::new()
-        .set_width(Dimension::Length(56.))
+        .set_width(56)
         .set_child(RichText::new().add_spans([Span::new("well-known")])),))
       .build()
   });
@@ -822,7 +820,7 @@ fn letter_spacing_widens_each_cluster() {
   let owner = Owner::new();
   let row = owner.enter(|| {
     Row::new()
-      .set_children((Text::new("abc").set_letter_spacing(Length(2.)),))
+      .set_children((Text::new("abc").set_letter_spacing(2),))
       .build()
   });
   let [run] = content(row)[..]
@@ -884,7 +882,7 @@ fn a_text_entry_stretches_across_its_layout() {
   let page = owner.enter(|| {
     Column::new()
       .set_children((Container::new()
-        .set_width(Dimension::Length(400.))
+        .set_width(400)
         .set_child(Column::new().set_children((
           BasicTextField::new(TextEntry::new()),
           Row::new().set_children((sized(10., 100.), BasicTextField::new(TextEntry::new()))),
@@ -921,7 +919,7 @@ fn a_change_resolves_only_what_it_touched() {
       .set_children((
         Container::new()
           .derive_width(move || width.get())
-          .set_height(Dimension::Length(10.)),
+          .set_height(10),
         sized(10., 10.),
         RichText::new().add_spans([Span::derive(move || words.get())]),
         sized(10., 10.),
@@ -966,10 +964,8 @@ fn a_box_sized_by_its_hover_lays_out_as_it_moves() {
     Column::new()
       .set_children((
         Container::new()
-          .set_width(
-            Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(30.)),
-          )
-          .set_height(Dimension::Length(10.)),
+          .set_width(10.when(Condition::from(State::Hovered), 30))
+          .set_height(10),
         sized(10., 10.),
       ))
       .build()
@@ -1053,7 +1049,7 @@ fn blanks_hang_where_a_line_wraps() {
   let column = owner.enter(|| {
     Column::new()
       .set_children((Container::new()
-        .set_width(Dimension::Length(40.))
+        .set_width(40)
         .set_child(Text::new("aaa     bbb")),))
       .build()
   });

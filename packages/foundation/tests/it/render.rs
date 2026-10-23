@@ -6,11 +6,9 @@ use skene_foundation::{
   Color,
   DecorationBase,
   DecorationWithCornerRadius,
-  Dimension,
   HasChild,
   HasChildren,
   Inset,
-  Length,
   Overflow,
   Painted,
   PaintedBase,
@@ -71,12 +69,12 @@ fn a_box_draws_its_background_border_and_corners() {
   let _row = owner.enter(|| {
     Row::new()
       .set_children((Container::new()
-        .set_width(Dimension::Length(100.))
-        .set_height(Dimension::Length(60.))
+        .set_width(100)
+        .set_height(60)
         .set_background(Color::srgb(1., 0., 0.))
-        .set_border_width(Inset::all(4.))
+        .set_border_width(Inset::all(4))
         .set_border_color(Color::srgb(0., 0., 1.))
-        .set_corner_radius(Length(12.)),))
+        .set_corner_radius(12),))
       .build()
   });
   let image = render_to_image();
@@ -98,13 +96,13 @@ fn a_clipping_box_clips_what_it_holds() {
   let _row = owner.enter(|| {
     Row::new()
       .set_children((Container::new()
-        .set_width(Dimension::Length(50.))
-        .set_height(Dimension::Length(50.))
+        .set_width(50)
+        .set_height(50)
         .set_overflow(Overflow::Clip)
         .set_child(
           Container::new()
-            .set_width(Dimension::Length(100.))
-            .set_height(Dimension::Length(100.))
+            .set_width(100)
+            .set_height(100)
             .set_background(Color::srgb(0., 1., 0.)),
         ),))
       .build()
@@ -193,8 +191,7 @@ fn a_text_field_draws_its_value_in_its_middle() {
   let owner = Owner::new();
   let _row = owner.enter(|| {
     Row::new()
-      .set_children((BasicTextField::new(TextEntry::new().set_value("fixed"))
-        .set_height(Dimension::Length(120.)),))
+      .set_children((BasicTextField::new(TextEntry::new().set_value("fixed")).set_height(120),))
       .build()
   });
   let image = render_to_image();
@@ -215,17 +212,15 @@ fn a_painted_box_draws_its_picture() {
   let _row = owner.enter(|| {
     Row::new()
       .set_children((
-        Container::new()
-          .set_width(Dimension::Length(30.))
-          .set_height(Dimension::Length(10.)),
+        Container::new().set_width(30).set_height(10),
         Painted::<Headless>::new(|canvas, size| {
           canvas.fill(
             &kurbo::Rect::new(0., 0., f64::from(size.width), f64::from(size.height)),
             Color::srgb(0., 1., 0.),
           );
         })
-        .set_width(Dimension::Length(40.))
-        .set_height(Dimension::Length(40.)),
+        .set_width(40)
+        .set_height(40),
       ))
       .build()
   });

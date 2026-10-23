@@ -20,7 +20,6 @@ use skene_foundation::{
   ControlState,
   DecorationBase,
   DecorationWithCornerRadius,
-  Dimension,
   EventKind,
   Expr,
   Flexibility,
@@ -75,7 +74,7 @@ impl Default for Palette {
   fn default() -> Self {
     Self {
       card: Token::new("simple-card", white()).define_when(Media::Dark, black()),
-      gutter: Token::new("simple-gutter", 8.),
+      gutter: Token::new("simple-gutter", 8),
     }
   }
 }
@@ -245,7 +244,7 @@ fn a_container_condition_renders_an_at_container_block() {
       .set_child(Box_::new().set_background(white().when(
         Condition::from(Media::Container {
           name: Some(ContainerName("sidebar")),
-          query: ContainerQuery::MinWidth(300.),
+          query: ContainerQuery::min_width(300),
         }),
         black(),
       )))
@@ -527,7 +526,7 @@ fn classes_are_deterministic_and_rules_follow_interning_order() {
   let app = || {
     Box_::new()
       .set_background(white())
-      .set_child(Box_::new().set_width(Dimension::Length(10.)))
+      .set_child(Box_::new().set_width(10))
   };
   let first = render_to_string(app);
   let second = render_to_string(app);
@@ -537,7 +536,7 @@ fn classes_are_deterministic_and_rules_follow_interning_order() {
 
   let reversed = render_to_string(|| {
     Box_::new()
-      .set_width(Dimension::Length(10.))
+      .set_width(10)
       .set_child(Box_::new().set_background(white()))
   });
   let forward = classes(first.body());

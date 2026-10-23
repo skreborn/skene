@@ -12,6 +12,7 @@ use crate::{
   EventKind,
   Key,
   KeyEvent,
+  Length,
   NamedKey,
   NativeElement,
   NodeId,
@@ -79,12 +80,12 @@ impl Slider {
     self
   }
 
-  /// Sets the extent of the thumb along the axis, in the medium's unit: the thumb's
-  /// center travels from half of it past the start to half of it short of the end.
-  /// Zero, the default, maps the pointer straight along the whole extent.
+  /// Sets the extent of the thumb along the axis, a plain number in the medium's unit:
+  /// the thumb's center travels from half of it past the start to half of it short of
+  /// the end. Zero, the default, maps the pointer straight along the whole extent.
   #[inline(always)]
-  pub const fn set_thumb_extent(mut self, extent: f32) -> Self {
-    self.thumb = extent;
+  pub fn set_thumb_extent(mut self, extent: impl Into<Length>) -> Self {
+    self.thumb = extent.into().0;
 
     self
   }

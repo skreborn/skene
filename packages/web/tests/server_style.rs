@@ -125,11 +125,8 @@ fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, WebStyle> {
 /// A hover variant renders as a `:hover` rule on the same class, adding no specificity.
 #[test]
 fn state_variant_renders_a_pseudo_class_rule() {
-  let rendered = render_to_string(|| {
-    Container::new().set_width(
-      Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(20.)),
-    )
-  });
+  let rendered =
+    render_to_string(|| Container::new().set_width(10.when(Condition::from(State::Hovered), 20)));
 
   let class = root_class(rendered.body());
 
@@ -148,7 +145,7 @@ fn state_variant_renders_a_pseudo_class_rule() {
 #[test]
 fn media_variant_renders_an_at_media_block() {
   let rendered = render_to_string(|| {
-    Container::new().set_corner_radius(0f32.when(Condition::from(Media::MaxWidth(600.)), 4.))
+    Container::new().set_corner_radius(0.when(Condition::from(Media::max_width(600)), 4))
   });
 
   let class = root_class(rendered.body());
@@ -162,9 +159,9 @@ fn media_variant_renders_an_at_media_block() {
 #[test]
 fn combined_conditions_nest_media_around_states() {
   let rendered = render_to_string(|| {
-    Container::new().set_corner_radius(0f32.when(
+    Container::new().set_corner_radius(0.when(
       Condition::and([State::Hovered.into(), Media::Dark.into()]),
-      8.,
+      8,
     ))
   });
 
@@ -184,12 +181,12 @@ fn combined_conditions_nest_media_around_states() {
 #[test]
 fn or_composition_emits_a_rule_per_alternative() {
   let rendered = render_to_string(|| {
-    Container::new().set_corner_radius(0f32.when(
+    Container::new().set_corner_radius(0.when(
       Condition::or([
-        Media::MaxWidth(600.).into(),
+        Media::max_width(600).into(),
         Condition::and([Media::Dark.into(), State::Hovered.into()]),
       ]),
-      2.,
+      2,
     ))
   });
 
@@ -242,7 +239,7 @@ fn overflow_renders_per_axis() {
 fn transitions_render_into_the_base_rule() {
   let rendered = render_to_string(|| {
     Container::new()
-      .set_width(Dimension::Length(10.))
+      .set_width(10)
       .add_transition(Transition::new(Property::Background, 0.3))
       .add_transition(
         Transition::new(Property::Width, 1.)
@@ -361,15 +358,9 @@ fn run_variants_intern_and_render() {
 fn variants_participate_in_content_addressing() {
   let rendered = render_to_string(|| {
     Row::new().set_children((
-      Container::new().set_width(
-        Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(20.)),
-      ),
-      Container::new().set_width(
-        Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(20.)),
-      ),
-      Container::new().set_width(
-        Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(30.)),
-      ),
+      Container::new().set_width(10.when(Condition::from(State::Hovered), 20)),
+      Container::new().set_width(10.when(Condition::from(State::Hovered), 20)),
+      Container::new().set_width(10.when(Condition::from(State::Hovered), 30)),
     ))
   });
 
@@ -554,7 +545,7 @@ fn a_templates_line_names_render() {
         .add_track(GridTrack::Flex(1.))
         .add_line(CONTENT)
         .add_line(WIDE)
-        .add_track(GridTrack::Length(600.))
+        .add_track(600)
         .add_track(GridTrack::Flex(1.))
         .add_line(FULL),
     )
@@ -613,7 +604,7 @@ fn a_theme_following_the_platform_renders_a_color_scheme_query() {
 #[test]
 fn a_scheme_variant_renders_the_preference_and_the_choice() {
   let rendered = render_to_string(|| {
-    Container::new().set_corner_radius(0f32.when(Condition::from(Media::Dark), 8.))
+    Container::new().set_corner_radius(0.when(Condition::from(Media::Dark), 8))
   });
   let class = root_class(rendered.body());
 
@@ -633,9 +624,9 @@ fn a_scheme_variant_renders_the_preference_and_the_choice() {
 #[test]
 fn a_scheme_variant_keeps_its_states_on_both_rules() {
   let rendered = render_to_string(|| {
-    Container::new().set_corner_radius(0f32.when(
+    Container::new().set_corner_radius(0.when(
       Condition::and([State::Hovered.into(), Media::Dark.into()]),
-      4.,
+      4,
     ))
   });
   let class = root_class(rendered.body());
@@ -992,7 +983,7 @@ fn every_rule_has_a_class_specificity() {
       Container::new().set_width(width).set_background(
         Color::srgb(0.1, 0.2, 0.3)
           .when(Media::Dark, Color::srgb(0.7, 0.8, 0.9))
-          .when(Media::MinWidth(600.), Color::srgb(0.4, 0.5, 0.6)),
+          .when(Media::min_width(600), Color::srgb(0.4, 0.5, 0.6)),
       ),
       Text::new("hovered")
         .set_color(Color::srgb(0., 0., 0.).when(State::Hovered, Color::srgb(1., 0., 0.))),

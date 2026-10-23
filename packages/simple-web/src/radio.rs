@@ -17,7 +17,7 @@ use skene_web::Active;
 ///
 /// let size = Signal::new(Some(String::from("m")));
 /// let sizes = SimpleRadioGroup::new().bind_chosen(size).set_child(
-///   Column::new().set_spacing(12.).set_children((
+///   Column::new().set_spacing(12).set_children((
 ///     SimpleRadio::new("s").set_label("Small"),
 ///     SimpleRadio::new("m").set_label("Medium"),
 ///   )),

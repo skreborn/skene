@@ -573,7 +573,7 @@ mod tests {
   #[test]
   fn split_yields_the_static_part_and_the_slot_list() {
     let declared = BoxStyle::<f32, Declared<PixelCondition>> {
-      width: Some(Value::from(Dimension::from(10.))),
+      width: Some(Value::from(Dimension::from(10))),
       padding: Some(Value::from(TokenRef::<Length>::new("gutter"))),
       background: Some(
         Value::new(Leaf::derive(|| Color::TRANSPARENT))
@@ -672,7 +672,7 @@ mod tests {
     }
 
     let style = BoxStyle::<f32, Plain> {
-      spacing: Some(8f32.into()),
+      spacing: Some(8.into()),
       ..Default::default()
     };
     let mut names = Names(Vec::new());

@@ -24,10 +24,10 @@ pub fn app() -> impl View {
         .set_child(
           Column::new()
             .set_item_alignment(ItemAlignment::Center)
-            .set_padding(Inset::symmetric(24., 48.))
+            .set_padding(Inset::symmetric(24, 48))
             .add_child(
-              Container::new().set_max_width(560.).set_child(
-                Column::new().set_spacing(24.).set_children((
+              Container::new().set_max_width(560).set_child(
+                Column::new().set_spacing(24).set_children((
                   Text::new("GALLERY")
                     .set_font_size(13.)
                     .set_font_weight(500.)
@@ -41,7 +41,7 @@ pub fn app() -> impl View {
                   layouts(),
                   list(),
                   lazy_row(),
-                  Column::new().set_spacing(24.).set_children((
+                  Column::new().set_spacing(24).set_children((
                     context_menu(),
                     link(),
                     visibility_and_one_of(),
@@ -93,11 +93,11 @@ fn named_palette(name: Option<&str>) -> SimplePalette {
 fn palettes(palette: Signal<Option<String>>) -> impl View {
   section(
     "Palette",
-    Column::new().set_spacing(12.).set_children((
+    Column::new().set_spacing(12).set_children((
       SimpleRadioGroup::new()
         .bind_chosen(palette)
         .set_label("Palette")
-        .set_child(Row::new().set_spacing(16.).set_children((
+        .set_child(Row::new().set_spacing(16).set_children((
           radio_choice("neutral"),
           radio_choice("indigo"),
           radio_choice("rose"),
@@ -117,7 +117,7 @@ fn typography() -> impl View {
     "Text",
     // The paragraph rhythm: text-box trimming removes the leading, so the spacing
     // carries the whole between-paragraph gap.
-    Column::new().set_spacing(16.).set_children((
+    Column::new().set_spacing(16).set_children((
       Text::new("A run of text with a size, a weight, and a color.").set_font_size(16.),
       Text::new(
         "Selection is opt-in: this paragraph is selectable, so drag across it and copy—\
@@ -147,9 +147,9 @@ fn buttons() -> impl View {
 
   section(
     "Button",
-    Column::new().set_spacing(12.).set_children((
+    Column::new().set_spacing(12).set_children((
       Row::new()
-        .set_spacing(8.)
+        .set_spacing(8)
         .set_wrap(Wrap::Forward)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
@@ -171,7 +171,7 @@ fn tooltips() -> impl View {
   section(
     "Tooltip",
     Row::new()
-      .set_spacing(8.)
+      .set_spacing(8)
       .set_wrap(Wrap::Forward)
       .set_item_alignment(ItemAlignment::Center)
       .set_children((
@@ -179,7 +179,7 @@ fn tooltips() -> impl View {
           .set_child(SimpleButton::new("Save").set_variant(SimpleVariant::Secondary)),
         SimpleTooltip::view(
           Row::new()
-            .set_spacing(6.)
+            .set_spacing(6)
             .set_item_alignment(ItemAlignment::Center)
             .set_children((
               Text::new("⌘S").set_color(SimplePalette::BACKGROUND),
@@ -203,9 +203,9 @@ fn toggles() -> impl View {
 
   section(
     "Checkbox & Radio",
-    Column::new().set_spacing(12.).set_children((
+    Column::new().set_spacing(12).set_children((
       Row::new()
-        .set_spacing(8.)
+        .set_spacing(8)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
           SimpleCheckbox::new()
@@ -225,7 +225,7 @@ fn toggles() -> impl View {
       SimpleRadioGroup::new()
         .bind_chosen(flavor)
         .set_label("Flavor")
-        .set_child(Row::new().set_spacing(16.).set_children((
+        .set_child(Row::new().set_spacing(16).set_children((
           radio_choice("mint"),
           radio_choice("vanilla"),
           radio_choice("plum"),
@@ -246,7 +246,7 @@ fn inputs() -> impl View {
 
   section(
     "TextField, TextEditor, Slider & Picker",
-    Column::new().set_spacing(16.).set_children((
+    Column::new().set_spacing(16).set_children((
       SimpleTextField::new()
         .set_placeholder("Your name")
         .bind_value(name),
@@ -255,7 +255,7 @@ fn inputs() -> impl View {
         .set_lines(3)
         .bind_value(bio),
       Row::new()
-        .set_spacing(12.)
+        .set_spacing(12)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
           SimpleSlider::new()
@@ -284,8 +284,8 @@ fn layouts() -> impl View {
 
   section(
     "Grid, Stack & Overlay",
-    Column::new().set_spacing(16.).set_children((
-      Grid::uniform(4).set_spacing(8.).set_children((
+    Column::new().set_spacing(16).set_children((
+      Grid::uniform(4).set_spacing(8).set_children((
         swatch(0.30),
         swatch(0.40),
         swatch(0.50),
@@ -296,9 +296,9 @@ fn layouts() -> impl View {
         swatch(0.30),
       )),
       Container::new()
-        .set_height(64.)
+        .set_height(64)
         .set_background(SimplePalette::SECONDARY_SURFACE)
-        .set_corner_radius(8.)
+        .set_corner_radius(8)
         .set_child(
           Stack::new().add_child(
             Pinned::new()
@@ -318,7 +318,7 @@ fn layouts() -> impl View {
         // The overlay is layering and dismissal alone; the surface is a card inside it,
         // which is what dresses a popup in the Simple design language.
         Overlay::modal().bind_open(open).set_child(
-          SimpleCard::new().set_spacing(20.).set_children((
+          SimpleCard::new().set_spacing(20).set_children((
             Text::new("A modal overlay; Escape or the backdrop dismisses.").set_font_size(14.),
             Row::new().set_arrangement(Arrangement::End).add_child(
               SimpleButton::new("Close")
@@ -335,14 +335,15 @@ fn layouts() -> impl View {
 fn list() -> impl View {
   section(
     "LazyColumn",
-    Container::new().set_height(160.).set_child(
-      LazyColumn::new().set_item_height(32.).derive_items(
+    Container::new()
+      .set_height(160)
+      .set_child(LazyColumn::new().set_item_height(32).derive_items(
         || 0..1000,
         |index| *index,
         move |index| {
           Row::new()
-            .set_spacing(8.)
-            .set_padding(Inset::symmetric(12., 6.))
+            .set_spacing(8)
+            .set_padding(Inset::symmetric(12, 6))
             .set_item_alignment(ItemAlignment::Center)
             .set_children((
               Text::new(format!("Row {index}")).set_font_size(13.),
@@ -351,15 +352,14 @@ fn list() -> impl View {
                 .set_color(SimplePalette::MUTED_FOREGROUND),
             ))
         },
-      ),
-    ),
+      )),
   )
 }
 
 fn lazy_row() -> impl View {
   section(
     "LazyRow",
-    Container::new().set_height(48.).set_child(
+    Container::new().set_height(48).set_child(
       LazyRow::new()
         .set_item_width(ItemExtent::Estimated(96.))
         .derive_items(
@@ -367,7 +367,7 @@ fn lazy_row() -> impl View {
           |index| *index,
           move |index| {
             Container::new()
-              .set_padding(Inset::symmetric(12., 6.))
+              .set_padding(Inset::symmetric(12, 6))
               .set_child(Text::new(format!("Cell {index}")).set_font_size(13.))
           },
         ),
@@ -381,7 +381,7 @@ fn context_menu() -> impl View {
 
   section(
     "Context menu",
-    Column::new().set_spacing(8.).set_children((
+    Column::new().set_spacing(8).set_children((
       SimpleContextMenu::new()
         .set_items([
           MenuEntry::new("Open").handle_activate(ran("Opened")),
@@ -391,8 +391,8 @@ fn context_menu() -> impl View {
         ])
         .set_child(
           Container::new()
-            .set_padding(Inset::symmetric(12., 8.))
-            .set_corner_radius(6.)
+            .set_padding(Inset::symmetric(12, 8))
+            .set_corner_radius(6)
             .set_focus_order(FocusOrder::Auto)
             .set_background(
               SimplePalette::CARD
@@ -442,7 +442,7 @@ fn visibility_and_one_of() -> impl View {
 
   section(
     "Visibility & OneOf",
-    Column::new().set_spacing(12.).set_children((
+    Column::new().set_spacing(12).set_children((
       SimpleCheckbox::new()
         .set_label("Show the details")
         .bind_checked(shown),
@@ -453,7 +453,7 @@ fn visibility_and_one_of() -> impl View {
             .set_font_size(14.)
             .set_color(SimplePalette::MUTED_FOREGROUND),
         ),
-      Row::new().set_spacing(8.).set_children((
+      Row::new().set_spacing(8).set_children((
         SimpleButton::new("Summary")
           .set_variant(SimpleVariant::Outline)
           .handle_activate(move || pane.set(String::from("summary"))),
@@ -488,7 +488,7 @@ impl std::error::Error for Failed {}
 fn boundaries() -> impl View {
   section(
     "Suspense & ErrorBoundary",
-    Column::new().set_spacing(12.).set_children((
+    Column::new().set_spacing(12).set_children((
       Suspense::new()
         .set_fallback_builder(|| Text::new("Loading…").set_color(SimplePalette::MUTED_FOREGROUND))
         .set_child_builder(|| {
@@ -499,7 +499,7 @@ fn boundaries() -> impl View {
       ErrorBoundary::new()
         .set_fallback_builder(|errors: Errors| {
           Row::new()
-            .set_spacing(8.)
+            .set_spacing(8)
             .set_item_alignment(ItemAlignment::Center)
             .set_children((
               Text::derive(move || {
@@ -535,7 +535,7 @@ fn painted() -> impl View {
   section(
     "Painted",
     Row::new()
-      .set_spacing(12.)
+      .set_spacing(12)
       .set_item_alignment(ItemAlignment::Center)
       .set_children((
         Painted::new(|canvas, size| {
@@ -550,8 +550,8 @@ fn painted() -> impl View {
             Color::srgb(0.98, 0.80, 0.30),
           );
         })
-        .set_width(Dimension::Length(120.))
-        .set_height(Dimension::Length(64.)),
+        .set_width(120)
+        .set_height(64),
         Text::new("a vello scene sized by its box")
           .set_font_size(13.)
           .set_color(SimplePalette::MUTED_FOREGROUND),
@@ -584,9 +584,9 @@ fn plain(text: &'static str) -> Span {
 
 fn badge(text: &'static str) -> impl View {
   Container::new()
-    .set_padding(Inset::symmetric(8., 4.))
+    .set_padding(Inset::symmetric(8, 4))
     .set_background(SimplePalette::CARD)
-    .set_corner_radius(6.)
+    .set_corner_radius(6)
     .set_child(
       Text::new(text)
         .set_font_size(12.)
@@ -596,7 +596,7 @@ fn badge(text: &'static str) -> impl View {
 
 fn swatch(brightness: f32) -> impl View {
   Container::new()
-    .set_height(32.)
+    .set_height(32)
     .set_background(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))
-    .set_corner_radius(6.)
+    .set_corner_radius(6)
 }

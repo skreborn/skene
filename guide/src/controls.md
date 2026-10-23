@@ -9,7 +9,7 @@ use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 fn settings(name: Signal<String>, agreed: Signal<bool>) -> impl View {
-  Column::new().set_spacing(12.).set_children((
+  Column::new().set_spacing(12).set_children((
     SimpleTextField::new()
       .set_label("Name")
       .set_placeholder("Your name")
@@ -71,7 +71,7 @@ use skene_web::prelude::*;
 
 fn sizes(size: Signal<Option<String>>) -> impl View {
   SimpleRadioGroup::new().set_label("Size").bind_chosen(size).set_child(
-    Row::new().set_spacing(16.).set_children((
+    Row::new().set_spacing(16).set_children((
       SimpleRadio::new("s").set_label("Small"),
       SimpleRadio::new("m").set_label("Medium"),
       SimpleRadio::new("l").set_label("Large"),

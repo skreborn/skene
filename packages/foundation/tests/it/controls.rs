@@ -18,7 +18,6 @@ use skene_foundation::{
   ContainerBase,
   ControlHandle,
   DecorationBase,
-  Dimension,
   DragAxes,
   Edit,
   EventKind,
@@ -331,7 +330,7 @@ fn a_press_centers_the_thumb_under_the_pointer() {
   let owner = Owner::new();
   let bound = Signal::new(0.);
   let node =
-    owner.enter(|| BasicSlider::new(Slider::new().set_thumb_extent(20.).bind_value(bound)).build());
+    owner.enter(|| BasicSlider::new(Slider::new().set_thumb_extent(20).bind_value(bound)).build());
 
   trigger_size(node, Size::new(200., 20.));
 
@@ -1114,8 +1113,7 @@ fn a_control_given_its_body_takes_its_setters() {
   let owner = Owner::new();
   let log = Rc::new(RefCell::new(Vec::new()));
   let button = owner.enter(|| {
-    let button = BasicButton::new(Activate::new())
-      .set_child(Container::new().set_width(Dimension::Length(4.)));
+    let button = BasicButton::new(Activate::new()).set_child(Container::new().set_width(4));
 
     button
       .set_label("Save")
@@ -1185,7 +1183,7 @@ fn a_control_lays_out_its_row() {
       BasicButton::new(Activate::new()).set_label("a").build(),
       BasicButton::new(Activate::new())
         .set_axis(skene_foundation::Axis::Vertical)
-        .set_spacing(Spacing::all(3.))
+        .set_spacing(Spacing::all(3))
         .set_item_alignment(ItemAlignment::Start)
         .set_label("b")
         .build(),
@@ -1355,7 +1353,7 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
     let seen = Rc::clone(&seen);
 
     Control::new(Stepper { count })
-      .set_width(Dimension::Length(40.))
+      .set_width(40)
       .set_background(red().when(focus_visible(), blue()))
       .set_part(Part::Face, Text::new("0"))
       .handle_key_down(move |_| seen.set(seen.get() + 1))

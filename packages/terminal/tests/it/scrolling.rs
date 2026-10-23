@@ -228,7 +228,7 @@ fn lazy_column_windows_its_items() {
         .set_height(4)
         .set_child(
           LazyColumn::new()
-            .set_item_height(1.)
+            .set_item_height(1)
             .set_overscan(2)
             .derive_items(
               || 0..1000,

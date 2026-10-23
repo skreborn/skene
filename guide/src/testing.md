@@ -15,7 +15,7 @@ use skene_web::{
 fn counter() -> impl View {
   let count = Signal::new(0u32);
 
-  Row::new().set_spacing(8.).set_children((
+  Row::new().set_spacing(8).set_children((
     Text::derive(move || count.get().to_string()),
     SimpleButton::new("Add").handle_activate(move || count.update(|count| *count += 1)),
   ))

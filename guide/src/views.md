@@ -45,7 +45,7 @@ use skene_web::prelude::*;
 
 fn toolbar() -> impl View {
   Row::new()
-    .set_spacing(8.)
+    .set_spacing(8)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((
       Text::new("Title"),
@@ -127,7 +127,7 @@ moves keeps its view and the state beneath it.
 use skene_web::prelude::*;
 
 fn names(names: Signal<Vec<String>>) -> impl View {
-  Column::new().set_spacing(4.).derive_children(
+  Column::new().set_spacing(4).derive_children(
     move || names.get(),
     |name| name.clone(),
     |name| Text::new(name),

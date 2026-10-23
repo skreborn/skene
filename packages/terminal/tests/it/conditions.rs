@@ -16,7 +16,7 @@ fn media_variant_resolves_against_terminal_size() {
       Container::new()
         .set_width(6)
         .set_height(3)
-        .set_background(red().when(Media::MaxWidth(10), blue()))
+        .set_background(red().when(Media::max_width(10), blue()))
         .into_any()
         .build()
     });
@@ -37,8 +37,8 @@ fn composed_condition_resolves() {
         .set_height(3)
         .set_background(red().when(
           Condition::or([
-            Media::MaxWidth(10).into(),
-            Condition::and([Media::MinHeight(6).into(), Media::MaxHeight(8).into()]),
+            Media::max_width(10).into(),
+            Condition::and([Media::min_height(6).into(), Media::max_height(8).into()]),
           ]),
           blue(),
         ))

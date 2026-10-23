@@ -82,7 +82,7 @@ struct Todo {
 }
 
 fn list(todos: Store<Todos>) -> impl View {
-  Column::new().set_spacing(4.).derive_entries(
+  Column::new().set_spacing(4).derive_entries(
     todos.items().keyed_by(|todo| todo.id),
     |todo| {
       Text::derive(move || todo.title().get()).derive_color(move || {

@@ -33,12 +33,12 @@ fn app() -> impl View {
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
-          .set_padding(Inset::symmetric(24., 48.))
+          .set_padding(Inset::symmetric(24, 48))
           .add_child(
-            Column::new().set_spacing(24.).set_children((
+            Column::new().set_spacing(24).set_children((
               heading(),
               Row::new()
-                .set_spacing(16.)
+                .set_spacing(16)
                 .set_children((list("To do", todo, done), list("Done", done, todo))),
             )),
           ),
@@ -47,7 +47,7 @@ fn app() -> impl View {
 }
 
 fn heading() -> impl View {
-  Column::new().set_spacing(6.).set_children((
+  Column::new().set_spacing(6).set_children((
     Text::new("DRAG AND DROP")
       .set_font_size(13.)
       .set_font_weight(500.)
@@ -59,9 +59,9 @@ fn heading() -> impl View {
 /// The cards in `own`, taking a card dropped on the list from `other`.
 fn list(name: &'static str, own: Signal<Vec<String>>, other: Signal<Vec<String>>) -> impl View {
   Container::new()
-    .set_width(220.)
-    .set_padding(Inset::all(12.))
-    .set_corner_radius(8.)
+    .set_width(220)
+    .set_padding(Inset::all(12))
+    .set_corner_radius(8)
     .set_background(SimplePalette::CARD.when(State::Targeted, SimplePalette::SECONDARY_SURFACE))
     .handle_drop(move |card: &Moving| {
       if card.from != name {
@@ -69,9 +69,9 @@ fn list(name: &'static str, own: Signal<Vec<String>>, other: Signal<Vec<String>>
         own.update(|cards| cards.push(card.title.clone()));
       }
     })
-    .set_child(Column::new().set_spacing(8.).set_children((
+    .set_child(Column::new().set_spacing(8).set_children((
       Text::new(name).set_font_weight(600.),
-      Column::new().set_spacing(8.).derive_children(
+      Column::new().set_spacing(8).derive_children(
         move || own.get(),
         Clone::clone,
         move |title| card(title, name),
@@ -87,8 +87,8 @@ fn card(title: String, list: &'static str) -> impl View {
   };
 
   Container::new()
-    .set_padding(Inset::symmetric(12., 8.))
-    .set_corner_radius(6.)
+    .set_padding(Inset::symmetric(12, 8))
+    .set_corner_radius(6)
     .set_cursor(MouseCursor::Grab)
     .set_background(
       SimplePalette::BACKGROUND.when(State::Dragged, SimplePalette::SECONDARY_SURFACE),

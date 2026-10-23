@@ -458,7 +458,7 @@ mod tests {
     let compound = Condition::<f32>::and([
       Condition::from(Media::Dark),
       Condition::or([
-        Condition::from(Media::MinWidth(600.)),
+        Condition::from(Media::min_width(600)),
         Condition::from(Media::HighContrast),
       ]),
     ]);
@@ -467,7 +467,7 @@ mod tests {
       compound.to_media(),
       Some(Media::And(vec![
         Media::Dark,
-        Media::Or(vec![Media::MinWidth(600.), Media::HighContrast]),
+        Media::Or(vec![Media::min_width(600), Media::HighContrast]),
       ]))
     );
     assert_eq!(
@@ -484,14 +484,14 @@ mod tests {
   #[test]
   fn media_expands_to_disjunctive_normal_form() {
     let condition = Media::and([
-      Media::or([Media::MinWidth(900.), Media::Dark]),
+      Media::or([Media::<f32>::min_width(900), Media::Dark]),
       Media::ReducedMotion,
     ]);
 
     assert_eq!(
       condition.disjunctive_leaves(),
       [
-        vec![&Media::MinWidth(900.), &Media::ReducedMotion],
+        vec![&Media::<f32>::min_width(900), &Media::ReducedMotion],
         vec![&Media::Dark, &Media::ReducedMotion],
       ]
     );
@@ -502,9 +502,9 @@ mod tests {
   fn media_holds_against_the_environment() {
     let env = env(&containers);
 
-    assert!(Media::MinWidth(1200.).holds_in(&env));
-    assert!(!Media::MaxWidth(1199.).holds_in(&env));
-    assert!(Media::MaxHeight(800.).holds_in(&env));
+    assert!(Media::min_width(1200).holds_in(&env));
+    assert!(!Media::max_width(1199).holds_in(&env));
+    assert!(Media::max_height(800).holds_in(&env));
     assert!(Media::Dark.holds_in(&env));
     assert!(!Media::Light.holds_in(&env));
     assert!(Media::ReducedMotion.holds_in(&env));
@@ -512,21 +512,21 @@ mod tests {
     assert!(
       Media::Container {
         name: None,
-        query: ContainerQuery::MinWidth(300.),
+        query: ContainerQuery::min_width(300),
       }
       .holds_in(&env)
     );
     assert!(
       Media::Container {
         name: Some(ContainerName("sidebar")),
-        query: ContainerQuery::MaxWidth(250.),
+        query: ContainerQuery::max_width(250),
       }
       .holds_in(&env)
     );
     assert!(
       !Media::Container {
         name: Some(ContainerName("missing")),
-        query: ContainerQuery::MinHeight(0.),
+        query: ContainerQuery::min_height(0),
       }
       .holds_in(&env)
     );

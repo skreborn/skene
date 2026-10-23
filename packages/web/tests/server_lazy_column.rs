@@ -19,7 +19,7 @@ use skene_web::{
 fn virtual_list_serializes_the_overscan_slice() {
   let rendered = render_to_string(|| {
     LazyColumn::new()
-      .set_item_height(24.)
+      .set_item_height(24)
       .set_overscan(3)
       .derive_items(
         || 0..1000,
@@ -48,7 +48,7 @@ fn virtual_list_serializes_the_overscan_slice() {
 fn virtual_row_serializes_the_overscan_slice() {
   let rendered = render_to_string(|| {
     LazyRow::new()
-      .set_item_width(24.)
+      .set_item_width(24)
       .set_overscan(3)
       .derive_items(
         || 0..1000,

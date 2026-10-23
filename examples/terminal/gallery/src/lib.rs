@@ -355,7 +355,7 @@ fn list() -> impl View {
     "LazyColumn",
     Container::new()
       .set_height(6)
-      .set_child(LazyColumn::new().set_item_height(1.).derive_items(
+      .set_child(LazyColumn::new().set_item_height(1).derive_items(
         || 0..1000,
         |index| *index,
         |index| {
@@ -372,7 +372,7 @@ fn lazy_row() -> impl View {
   section(
     "LazyRow",
     Container::new().set_width(40).set_height(1).set_child(
-      LazyRow::new().set_item_width(9.).derive_items(
+      LazyRow::new().set_item_width(9).derive_items(
         || 0..1000,
         |index| *index,
         |index| Text::new(format!("Cell {index}")).set_color(SimplePalette::FOREGROUND),

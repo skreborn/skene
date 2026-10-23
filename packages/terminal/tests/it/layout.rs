@@ -611,7 +611,7 @@ fn a_container_aligns_its_child() {
 fn layout_properties_vary_by_condition() {
   fn row() -> impl View {
     Row::new()
-      .set_spacing(Spacing::from(1).when(Media::MinWidth(10), Spacing::from(3)))
+      .set_spacing(Spacing::from(1).when(Media::min_width(10), Spacing::from(3)))
       .set_children((Text::new("ab"), Text::new("cd")))
   }
 

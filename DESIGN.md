@@ -702,9 +702,8 @@ Condition     = Media | State | And | Or
   pinned face with its decoration's lines, a text entry's value (a field's line in its middle,
   as a browser draws an `<input>`'s), each painted box's picture and the
   open overlays above the rest, a border solid whatever its style and a decoration's
-  lines solid whatever theirs; every page of the conformance suite is held to a golden of it, and the
-  golden to the browser's. `Dimension` is a fixed length,
-  a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
+  lines solid whatever theirs. `Dimension` is a fixed length, a `Fraction` of the
+  parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,
   only along an axis that scrolls. An adaptive track (`GridTrack::Adaptive`,

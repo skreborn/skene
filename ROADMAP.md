@@ -336,7 +336,7 @@ in a code comment.
 11. **Testing on the real platforms.** No headless platform and no test double: each
     platform is tested on itself, through what its readers read and by the input its
     users give, Linux's harness (item 4) the model.
-    - `skene-headless` leaves, with its goldens and its seams; what it tested moves to
+    - `skene-headless` leaves, with its seams; what it tested moves to
     the platform it stood for, and an app's shared logic is tested as plain Rust.
     - Conformance: one suite of scenarios, a page per facade in its own vocabulary, run
     through a `Driver` per platform over its accessibility layer and its real input, on

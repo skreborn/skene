@@ -13,7 +13,6 @@ skene-foundation.workspace = true
 taffy = "0.15"
 
 [dev-dependencies]
-skene-headless = { path = "../headless" }
 skene-parley = { path = "../parley" }
 
 [lints]

@@ -628,16 +628,15 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
 
 #[cfg(test)]
 mod tests {
+  use std::sync::atomic::{AtomicU32, Ordering};
+
   use skene_foundation::{
     NodeId,
-    NodeKind,
     Point,
     Rect,
-    Scene,
     Size,
     text::{Laid as _, ParagraphStyle, TextStyle},
   };
-  use skene_headless::Headless;
   use skene_parley::{ParleyEngine, Typeface};
   use taffy::{
     prelude::{AvailableSpace, length},
@@ -681,9 +680,11 @@ mod tests {
     flow((), text).leaf().laid(None).size().width
   }
 
-  /// A node of the scene, to key the layout by.
+  /// A fresh id to key the layout by, each call's distinct from every other's.
   fn node() -> NodeId {
-    Scene::<Headless>::with(|scene| scene.create(NodeKind::Box, None))
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+
+    NodeId::new(NEXT.fetch_add(1, Ordering::Relaxed), 0)
   }
 
   /// A tree holding `parent` styled `style`, its children each a text leaf of the text

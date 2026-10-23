@@ -6474,6 +6474,7 @@ pub const fn skene_foundation::NodeId::access_id(self) -> accesskit::NodeId
 pub const fn skene_foundation::NodeId::access_run_id(self, u16) -> accesskit::NodeId
 pub const fn skene_foundation::NodeId::generation(self) -> u32
 pub const fn skene_foundation::NodeId::index(self) -> u32
+pub const fn skene_foundation::NodeId::new(u32, u32) -> Self
 impl core::clone::Clone for skene_foundation::NodeId
 pub fn skene_foundation::NodeId::clone(&self) -> skene_foundation::NodeId
 impl core::cmp::Eq for skene_foundation::NodeId

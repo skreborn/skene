@@ -13,8 +13,10 @@ pub struct NodeId {
 }
 
 impl NodeId {
+  /// An id as the scene mints it, of the node in slot `index` allocated in
+  /// `generation`; one the scene did not mint resolves to nothing in it.
   #[inline(always)]
-  pub(super) const fn new(index: u32, generation: u32) -> Self {
+  pub const fn new(index: u32, generation: u32) -> Self {
     Self { index, generation }
   }
 

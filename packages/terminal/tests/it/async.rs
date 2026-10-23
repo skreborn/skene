@@ -5,9 +5,9 @@
 use std::{cell::Cell, fmt, rc::Rc};
 
 use skene_foundation::Boundary;
-use skene_terminal::{self as terminal, NodeId, Scene, Terminal, prelude::*, testing};
+use skene_terminal::{self as terminal, prelude::*, testing};
 
-use crate::common::{blue, colors_at, green, red, rgb, with_platform};
+use crate::common::{blue, colors_at, green, is_live, red, rgb, with_platform};
 
 /// The error the boundary tests report.
 #[derive(Debug)]
@@ -20,11 +20,6 @@ impl fmt::Display for Failed {
 }
 
 impl std::error::Error for Failed {}
-
-/// Whether the scene still holds `node`, destroyed or not.
-fn is_live(node: NodeId) -> bool {
-  Scene::<Terminal>::read(|scene| scene.contains(node))
-}
 
 /// A derived subtree swaps its content when its dependency changes.
 #[test]

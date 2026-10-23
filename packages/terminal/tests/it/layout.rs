@@ -433,12 +433,12 @@ impl terminal::router::Route for Home {
   }
 }
 
-/// A wrapper or a view of one child without its child paints nothing and takes no room,
-/// its fallback included: the texts around them sit the column's spacing apart and no
-/// more.
+/// A wrapper or a view of one child without its child paints nothing, takes no room and
+/// shows a reader nothing, its fallback included: the texts around them sit the
+/// column's spacing apart and no more, and a reader finds the texts alone.
 #[test]
 fn a_wrapper_without_its_child_takes_no_room() {
-  with_platform(|| {
+  let childless = with_platform(|| {
     let live = Signal::new(true);
 
     let _ = terminal::mount(move || {
@@ -465,7 +465,21 @@ fn a_wrapper_without_its_child_takes_no_room() {
     });
 
     assert_eq!(testing::render_to_text(4, 5), "a\n\nb\n\n\n");
+
+    testing::access_outline()
   });
+  let texts = with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((Text::new("a"), Text::new("b")))
+        .into_any()
+        .build()
+    });
+
+    testing::access_outline()
+  });
+
+  assert_eq!(childless, texts);
 }
 
 /// A pinned wrapper around a derived subtree lands its edges on the content box, on

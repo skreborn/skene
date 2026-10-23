@@ -5,22 +5,9 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_terminal::{
-  self as terminal,
-  NodeId,
-  Scene,
-  TOOLTIP_DELAY,
-  Terminal,
-  prelude::*,
-  testing,
-};
+use skene_terminal::{self as terminal, NodeId, TOOLTIP_DELAY, prelude::*, testing};
 
-use crate::common::{colors_at, red, rgb, rows, with_platform};
-
-/// Whether the scene still holds `node`, shown or not.
-fn is_live(node: NodeId) -> bool {
-  Scene::<Terminal>::read(|scene| scene.contains(node))
-}
+use crate::common::{colors_at, is_live, red, rgb, rows, with_platform};
 
 /// Whether a reader finds `node` in the tree the turn ends with.
 fn is_read(node: NodeId) -> bool {
@@ -217,6 +204,7 @@ fn a_hidden_child_builds_when_first_shown_and_pauses_while_hidden() {
             let runs = Rc::clone(&runs);
 
             builds.set(builds.get() + 1);
+
             Effect::render(move |_: Option<()>| {
               let _ = source.get();
 

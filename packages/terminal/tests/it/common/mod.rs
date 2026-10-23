@@ -1,8 +1,8 @@
-//! What the render tests share: the platform install, and the probes reading
-//! a frame back.
+//! What the render tests share: the platform install, and the probes reading a frame,
+//! a reader's tree and the scene back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
-use skene_terminal::{Color, NodeId, testing};
+use skene_terminal::{Color, NodeId, Scene, Terminal, testing};
 
 /// A cell's foreground and background.
 pub(crate) type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);
@@ -74,6 +74,12 @@ pub(crate) fn read(node: NodeId) -> accesskit::Node {
     .into_iter()
     .find_map(|(held, access)| (held == id).then_some(access))
     .unwrap_or_else(|| panic!("the tree holds no node for {node:?}"))
+}
+
+/// Whether the scene still holds `node`, attached or set aside: false once it is
+/// destroyed.
+pub(crate) fn is_live(node: NodeId) -> bool {
+  Scene::<Terminal>::read(|scene| scene.contains(node))
 }
 
 /// Mounts what `views` builds, one beneath another, paints a frame 40 cells by 12

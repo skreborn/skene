@@ -498,20 +498,10 @@ impl<S: Sink> Realizer<S> {
   /// Realizes the scope `node` as a layout-invisible element.
   pub(crate) fn create_scope(&mut self, node: NodeId) {
     let (element, adopted) = self.sink.create_element("div");
-    let inline = if adopted {
-      self.sink.custom_properties(&element)
-    }
-    else {
-      Vec::new()
-    };
 
     self.sink.set_attribute(&element, SCOPE_ATTRIBUTE, "");
     self.sink.set_property(&element, "display", "contents");
     self.insert(node, element, "div", Realized::Scope, adopted);
-
-    if let Some(record) = self.records.get_mut(node) {
-      record.inline_tokens = inline;
-    }
   }
 
   /// Writes the box slot `slot` of `node` as the custom property its class reads.
@@ -660,6 +650,10 @@ impl<S: Sink> Realizer<S> {
 
   /// Defines `node`'s tokens: inline over its token class while every
   /// definition is unconditional and the class exists, else as a fresh class.
+  ///
+  /// The first definition of a node adopted from the server's markup gives up the
+  /// definitions the server wrote inline on it: every custom property of a scope, and
+  /// those naming one of `definitions` on any other node.
   pub(crate) fn define_tokens(&mut self, node: NodeId, definitions: &Definitions<WebTokenValue>) {
     let Some(record) = self.records.get_mut(node)
     else {
@@ -669,6 +663,22 @@ impl<S: Sink> Realizer<S> {
     self.book.register_tokens(definitions);
 
     let previous = record.token_class.clone();
+
+    if previous.is_none() && record.adopted {
+      let scope = matches!(record.realized, Realized::Scope);
+
+      record.inline_tokens = self
+        .sink
+        .custom_properties(&record.element)
+        .into_iter()
+        .filter(|property| {
+          scope
+            || definitions
+              .iter()
+              .any(|(name, _)| property.strip_prefix("--") == Some(name.as_str()))
+        })
+        .collect();
+    }
 
     if previous.is_some() && all_unconditional(definitions) {
       Self::write_inline_definitions(&mut self.sink, record, inline_definitions(definitions));

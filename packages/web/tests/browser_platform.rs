@@ -50,6 +50,7 @@ use skene_simple_web::{
   SimpleCheckboxBase,
   SimplePicker,
   SimplePickerBase,
+  SimpleVariant,
 };
 use skene_web::{
   platform::{self, Declarations, Web, WebMarkup, WebTokenValue},
@@ -817,6 +818,54 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   assert_eq!(
     computed(&only_child(&scope), "background-color"),
     probe(&root, &Declarations::render_color(white()))
+  );
+}
+
+/// A served control that redefined its own look inline gives those definitions up to
+/// the class the client assigns on adoption, so it shows the client's look.
+#[wasm_bindgen_test]
+fn a_hydrated_control_drops_its_served_inline_definitions() {
+  let app = |variant: Signal<SimpleVariant>| {
+    move || SimpleButton::new("Go").derive_variant(move || variant.get())
+  };
+  let (markup, styles) = {
+    let (_guard, root) = fresh_root();
+    let variant = Signal::new(SimpleVariant::Primary);
+
+    let _ = platform::mount(move || app(variant)().build());
+
+    variant.set(SimpleVariant::Destructive);
+    platform::end_turn();
+
+    (as_served(&root), sheet_text())
+  };
+
+  assert!(markup.contains("--simple-look-surface"), "{markup}");
+
+  let _block = serve_styles(&styles);
+  let root = connected_root();
+
+  root.set_inner_html(&markup);
+
+  let served_button = only_child(&root);
+
+  platform::hydrate(root.clone(), "", app(Signal::new(SimpleVariant::Primary)));
+
+  let _guard = Installed::on(root.clone());
+  let button = html(&only_child(&root));
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert!(
+    served_button == *button,
+    "the button was adopted, not rebuilt"
+  );
+  assert_eq!(
+    button
+      .style()
+      .get_property_value("--simple-look-surface")
+      .ok()
+      .as_deref(),
+    Some("")
   );
 }
 

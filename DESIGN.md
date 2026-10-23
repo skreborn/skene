@@ -213,9 +213,9 @@ toolkit's keeps the default, which does nothing.
   web's in a browser DOM via `wasm-bindgen-test` and on the server leaf natively under a
   byte-exact snapshot, never on the headless platform; native ones against their toolkit.
   A component library tests each facade's crate on its platform the same way: Simple's in
-  the browser through the styles the engine computes, and on the terminal through the cells
-  it paints, where the pointer can rest on a control. Only the spine's own unit tests run on a double, a `TestPlatform` recording
-  the calls it receives.
+  the browser through the styles the engine computes, and on the terminal through the
+  cells it paints, where the pointer can rest on a control. Only the spine's own unit
+  tests run on a double, a `TestPlatform` recording the calls it receives.
 
 ## Composition
 
@@ -829,10 +829,11 @@ custom property with `@property`, so it interpolates and inherits as a typed val
 token set used with no theme above registers its default under `:root` once
 (`ThemedIn::current`/`watch`). Any node defining tokens, a scope or a control defining
 its own look as a Simple button does, takes them as such a class, and a redefinition
-whose every token is unconditional writes them inline over it. `Typography` (all text inheritance on both facades) and
-the Simple library's `SimpleGlyphs` (its terminal marks, a set only a platform with text
-tokens over cells can theme) are token sets, so the framework has one inheritance
-mechanism.
+whose every token is unconditional writes them inline over it; a node adopted from the
+server's markup gives up the definitions the server wrote inline on it at its first
+definition. `Typography` (all text inheritance on both facades) and the Simple library's
+`SimpleGlyphs` (its terminal marks, a set only a platform with text tokens over cells can
+theme) are token sets, so the framework has one inheritance mechanism.
 Nothing below a component library knows what a palette is: `skene-simple` owns
 `SimplePalette`, and a third party's palette gets its `Theme`, `current()` and
 `watch()` from the same blanket.

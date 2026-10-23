@@ -568,6 +568,8 @@ impl<X: StyleExtension> RunValue<X> {
 enum Kind {
   /// A length, read by every property measured in lengths.
   Length,
+  /// A dimension, read by a box property measured in dimensions.
+  Dimension,
   /// A unitless number.
   Number,
   /// A color.
@@ -578,7 +580,8 @@ impl Kind {
   /// The kind of the token `definition` defines, where a property reads it.
   const fn of_token<N: Scalar>(definition: &TokenValue<N>) -> Option<Self> {
     match definition {
-      TokenValue::Length(_) | TokenValue::Dimension(_) => Some(Self::Length),
+      TokenValue::Length(_) => Some(Self::Length),
+      TokenValue::Dimension(_) => Some(Self::Dimension),
       TokenValue::Number(_) => Some(Self::Number),
       TokenValue::Color(_) => Some(Self::Color),
       TokenValue::Text(_) => None,
@@ -594,35 +597,43 @@ impl Kind {
     }
   }
 
-  /// A value of this kind, where an expression evaluates a token.
+  /// A value of this kind, where an expression evaluates a token, a dimension's as its
+  /// length.
   const fn value(self) -> ExprValue {
     match self {
-      Self::Length => ExprValue::Length(1.),
+      Self::Length | Self::Dimension => ExprValue::Length(1.),
       Self::Number => ExprValue::Number(1.),
       Self::Color => ExprValue::Color(Color::TRANSPARENT),
     }
   }
 
-  /// The kind a box property of type `T` reads from a token or an expression.
-  fn of_box<N: Scalar, X: StyleExtension, T: IntoBoxValue<N, X>>() -> Option<Self> {
+  /// The kinds a box property of type `T` reads from a token or an expression, its
+  /// widest first.
+  fn of_box<N: Scalar, X: StyleExtension, T: IntoBoxValue<N, X>>() -> Vec<Self> {
     [
+      (
+        Self::Dimension,
+        BoxValue::Dimension(Dimension::Fraction(0.5)),
+      ),
       (Self::Length, BoxValue::Length(Length(1.))),
       (Self::Number, BoxValue::Number(1.)),
       (Self::Color, BoxValue::Color(Color::TRANSPARENT)),
     ]
     .into_iter()
-    .find_map(|(kind, value)| T::from_box_value(value).map(|_| kind))
+    .filter_map(|(kind, value)| T::from_box_value(value).map(|_| kind))
+    .collect()
   }
 
-  /// The kind a run property of type `T` reads from a token or an expression.
-  fn of_run<X: StyleExtension, T: IntoRunValue<X>>() -> Option<Self> {
+  /// The kinds a run property of type `T` reads from a token or an expression.
+  fn of_run<X: StyleExtension, T: IntoRunValue<X>>() -> Vec<Self> {
     [
       (Self::Length, Some(RunValue::Length(Length(1.)))),
       (Self::Number, X::run_value_from_number(1.)),
       (Self::Color, Some(RunValue::Color(Color::TRANSPARENT))),
     ]
     .into_iter()
-    .find_map(|(kind, value)| value.and_then(T::from_run_value).map(|_| kind))
+    .filter_map(|(kind, value)| value.and_then(T::from_run_value).map(|_| kind))
+    .collect()
   }
 }
 
@@ -636,8 +647,8 @@ struct Sampler<N: Scalar, X: StyleExtension> {
   next_condition: usize,
   tokens: Vec<(Kind, TokenName)>,
   nodes: Vec<(Kind, ExprNode)>,
-  token_turns: [usize; 3],
-  node_turns: [usize; 3],
+  token_turns: [usize; 4],
+  node_turns: [usize; 4],
   slots: Vec<SlotLeaf<N, X>>,
   boxed: BoxStyle<N, Static<Condition<N>>, X>,
   run: RunStyle<Static<Condition<N>>, X>,
@@ -681,8 +692,8 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
       next_condition: 0,
       tokens,
       nodes,
-      token_turns: [0; 3],
-      node_turns: [0; 3],
+      token_turns: [0; 4],
+      node_turns: [0; 4],
       slots: Vec::new(),
       boxed: BoxStyle::default(),
       run: RunStyle::default(),
@@ -698,42 +709,44 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
     condition
   }
 
-  /// The next of `items` of `kind`, taken in turn per kind as `turns` counts; `None`
-  /// where there is none.
-  fn next_of<T: Clone>(items: &[(Kind, T)], turns: &mut [usize; 3], kind: Kind) -> Option<T> {
-    let of_kind: Vec<_> = items
+  /// The next of `items` of one of `kinds`, taken in turn per the widest kind any of them
+  /// has as `turns` counts; `None` where there is none.
+  fn next_of<T: Clone>(items: &[(Kind, T)], turns: &mut [usize; 4], kinds: &[Kind]) -> Option<T> {
+    let widest = kinds
       .iter()
-      .filter(|(item, _)| *item == kind)
+      .find(|kind| items.iter().any(|(item, _)| item == *kind))?;
+    let of_kinds: Vec<_> = items
+      .iter()
+      .filter(|(item, _)| kinds.contains(item))
       .map(|(_, item)| item)
       .collect();
-    let turn = &mut turns[kind as usize];
-    let item = (!of_kind.is_empty()).then(|| of_kind[*turn % of_kind.len()].clone());
+    let turn = &mut turns[*widest as usize];
+    let item = of_kinds[*turn % of_kinds.len()].clone();
 
     *turn += 1;
 
-    item
+    Some(item)
   }
 
-  /// The value of a property of type `T` reading `kind`: the first of `values` fixed, and
+  /// The value of a property of type `T` reading `kinds`: the first of `values` fixed, and
   /// a variant per leaf the property takes, fixed, a token, two expressions and a slot
   /// holding one of them, erased by `erase`.
   fn value<T: Clone + Debug>(
     &mut self,
     key: PropertyKey<X::Property>,
     values: &[T],
-    kind: Option<Kind>,
+    kinds: &[Kind],
     erase: impl Fn(StaticLeaf<T>) -> SlotLeaf<N, X>,
   ) -> StaticValue<T, Condition<N>> {
     let [base, other, ..] = values
     else {
       panic!("`{}` reads two of the sampled values", key.name());
     };
-    let token = kind.and_then(|kind| Self::next_of(&self.tokens, &mut self.token_turns, kind));
-    let expr = kind.and_then(|kind| Self::next_of(&self.nodes, &mut self.node_turns, kind));
+    let token = Self::next_of(&self.tokens, &mut self.token_turns, kinds);
+    let expr = Self::next_of(&self.nodes, &mut self.node_turns, kinds);
     let mut leaves = StaticLeaf::samples(other.clone(), token, expr);
 
-    if let Some(node) = kind.and_then(|kind| Self::next_of(&self.nodes, &mut self.node_turns, kind))
-    {
+    if let Some(node) = Self::next_of(&self.nodes, &mut self.node_turns, kinds) {
       leaves.push(StaticLeaf::Expr(Expr::from_node(node)));
     }
 
@@ -864,7 +877,8 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
 
   /// Proves that `record`, holding the sampled styles and their motion, resolves as they
   /// do in every reading, that every sampled condition both holds and fails among the
-  /// readings, and that every property resolves to a value in some reading.
+  /// readings, and that every property, and every leaf of each, resolves to a value in
+  /// some reading.
   fn assert_resolves(
     &self,
     record: &Record<N, X>,
@@ -876,6 +890,7 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
     let (box_animations, run_animations) =
       record.animations().split_at(box_dynamics.animations.len());
     let mut resolved_keys = Vec::new();
+    let mut leaves = Vec::new();
     let mut fingerprints = Vec::new();
     let mut held = vec![(false, false); self.conditions.len()];
 
@@ -919,6 +934,13 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
 
         assert!(resolver.interaction_read.get(), "the states were read");
 
+        let mut resolving = LeavesResolve {
+          resolver,
+          leaves: &mut leaves,
+        };
+
+        self.boxed.visit(&mut resolving);
+        self.run.visit(&mut resolving);
         boxed.visit(&mut SetKeys(&mut resolved_keys));
         run.visit(&mut SetKeys(&mut resolved_keys));
         fingerprints.push((fingerprint(&boxed), fingerprint(&run)));
@@ -936,6 +958,14 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
       assert!(
         resolved_keys.contains(key),
         "`{}` resolves to a value in some reading",
+        key.name()
+      );
+    }
+
+    for ((key, index), resolves) in &leaves {
+      assert!(
+        resolves,
+        "leaf {index} of `{}` resolves to a value of its property in some reading",
         key.name()
       );
     }
@@ -1073,7 +1103,7 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for Sampler<N, X> {
       <F::Value as IntoBoxValue<N, X>>::from_box_value,
       <F::Value as IntoBoxValue<N, X>>::into_box_value,
     );
-    let value = self.value(F::KEY, &values, Kind::of_box::<N, X, F::Value>(), |leaf| {
+    let value = self.value(F::KEY, &values, &Kind::of_box::<N, X, F::Value>(), |leaf| {
       leaf.map(|fixed| SlotValue::Box(fixed.into_box_value()))
     });
 
@@ -1088,7 +1118,7 @@ impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for Sampler<N, X> {
       <F::Value as IntoRunValue<X>>::from_run_value,
       <F::Value as IntoRunValue<X>>::into_run_value,
     );
-    let value = self.value(F::KEY, &values, Kind::of_run::<X, F::Value>(), |leaf| {
+    let value = self.value(F::KEY, &values, &Kind::of_run::<X, F::Value>(), |leaf| {
       leaf.map(|fixed| SlotValue::Run(fixed.into_run_value()))
     });
 
@@ -1193,6 +1223,102 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for Keys<X::Property> {
 impl<X: StyleExtension> RunFieldVisitor<X> for Keys<X::Property> {
   fn field<F: RunField<X>>(&mut self) {
     self.run.push(F::KEY);
+  }
+}
+
+/// A leaf's place in a style: its property and its place in the property's value.
+type LeafPlace<P> = (PropertyKey<P>, usize);
+
+/// Notes whether each leaf of a sampled style, a slot's through the leaf it holds,
+/// resolves to a value of its property, keyed by the property and the leaf's place in its
+/// value, each once and holding once any reading resolves it.
+struct LeavesResolve<'a, 'r, N: Scalar, X: StyleExtension> {
+  resolver: &'a Resolver<'r, N, X>,
+  leaves: &'a mut Vec<(LeafPlace<X::Property>, bool)>,
+}
+
+impl<N: Scalar, X: StyleExtension> LeavesResolve<'_, '_, N, X> {
+  /// Notes whether each leaf of `value` resolves through `resolve`.
+  fn note<T>(
+    &mut self,
+    key: PropertyKey<X::Property>,
+    value: Option<&StaticValue<T, Condition<N>>>,
+    resolve: impl Fn(&StaticLeaf<SlotValue<N, X>>) -> bool,
+    erase: impl Fn(&StaticLeaf<T>) -> StaticLeaf<SlotValue<N, X>>,
+  ) {
+    for (index, (_, leaf)) in value.into_iter().flat_map(Conditional::leaves).enumerate() {
+      let resolves = match leaf {
+        KeptLeaf::Static(leaf) => resolve(&erase(leaf)),
+        KeptLeaf::Slot(slot) => (self.resolver.slot)(*slot).is_some_and(|leaf| resolve(&leaf)),
+      };
+
+      match self
+        .leaves
+        .iter_mut()
+        .find(|(noted, _)| *noted == (key, index))
+      {
+        Some((_, noted)) => *noted |= resolves,
+        None => self.leaves.push(((key, index), resolves)),
+      }
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> BoxVisitor<N, Static<Condition<N>>, X>
+  for LeavesResolve<'_, '_, N, X>
+{
+  fn value<T: IntoBoxValue<N, X>>(
+    &mut self,
+    key: PropertyKey<X::Property>,
+    value: &Option<StaticValue<T, Condition<N>>>,
+  ) {
+    let resolver = self.resolver;
+
+    self.note(
+      key,
+      value.as_ref(),
+      |leaf| {
+        leaf
+          .clone()
+          .try_map(SlotValue::read_box::<T>)
+          .and_then(|leaf| resolver.keyframe_box_value(&leaf))
+          .is_some()
+      },
+      |leaf| {
+        leaf
+          .clone()
+          .map(|fixed| SlotValue::Box(fixed.into_box_value()))
+      },
+    );
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> RunVisitor<Static<Condition<N>>, X>
+  for LeavesResolve<'_, '_, N, X>
+{
+  fn value<T: IntoRunValue<X>>(
+    &mut self,
+    key: PropertyKey<X::Property>,
+    value: &Option<StaticValue<T, Condition<N>>>,
+  ) {
+    let resolver = self.resolver;
+
+    self.note(
+      key,
+      value.as_ref(),
+      |leaf| {
+        leaf
+          .clone()
+          .try_map(SlotValue::read_run::<T>)
+          .and_then(|leaf| resolver.keyframe_run_value(&leaf))
+          .is_some()
+      },
+      |leaf| {
+        leaf
+          .clone()
+          .map(|fixed| SlotValue::Run(fixed.into_run_value()))
+      },
+    );
   }
 }
 

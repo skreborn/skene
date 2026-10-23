@@ -311,6 +311,32 @@ fn a_sliders_input_holds_its_range_natively() {
   assert!(!body.contains("aria-valuenow"), "{body}");
 }
 
+/// A radio group's scriptless radios share one `name`, so the browser keeps one of them
+/// chosen and submits them as one field; another group's radios share another.
+#[test]
+fn a_radio_groups_radios_share_one_name() {
+  use skene_web::{BasicRadio, BasicRadioGroup, Radio, RadioGroup};
+
+  let group = |values: [&'static str; 2]| {
+    BasicRadioGroup::new(RadioGroup::new().set_chosen(values[0]))
+      .set_child(Column::new().set_children(values.map(|value| BasicRadio::new(Radio::new(value)))))
+  };
+  let page = render_to_string(move || {
+    Column::new().set_children([group(["s", "m"]), group(["red", "blue"])])
+  });
+  let body = page.body();
+  let names: Vec<&str> = body
+    .split(" name=\"")
+    .skip(1)
+    .map(|rest| &rest[..rest.find('"').expect("the attribute's end")])
+    .collect();
+
+  assert_eq!(names.len(), 4, "every radio is named: {body}");
+  assert_eq!(names[0], names[1], "one group's radios share it: {body}");
+  assert_eq!(names[2], names[3], "so do the other's: {body}");
+  assert_ne!(names[0], names[2], "two groups' names differ: {body}");
+}
+
 /// A picker's scriptless form is a `<select>` listing its options by value and name
 /// with the chosen one selected, and no drawn face.
 #[test]

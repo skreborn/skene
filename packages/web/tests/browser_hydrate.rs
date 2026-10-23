@@ -646,6 +646,75 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
   root.remove();
 }
 
+/// A radio the reader chose before the bundle arrived unchecks the one the server
+/// chose, since the group's radios share one `name`, and hydration carries the choice
+/// into the bound value with the server's choice left unchecked.
+#[wasm_bindgen_test]
+fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
+  use skene_web::{BasicRadio, BasicRadioGroup, Radio, RadioGroup, reactive::Signal};
+
+  let group = |chosen: Signal<Option<String>>| {
+    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen)).set_child(
+      Column::new().set_children(["s", "m"].map(|value| BasicRadio::new(Radio::new(value)))),
+    )
+  };
+  let (markup, _) =
+    served(move || skene_web::View::into_any(group(Signal::new(Some("s".to_owned())))));
+  let root = server_root(&markup);
+  let radios = || {
+    let found = root
+      .query_selector_all("input[type=radio]")
+      .expect("query the radios");
+
+    (0..found.length())
+      .filter_map(|index| found.item(index))
+      .map(JsCast::unchecked_into::<web_sys::HtmlInputElement>)
+      .collect::<Vec<_>>()
+  };
+  let served_radios = radios();
+
+  assert_eq!(served_radios.len(), 2);
+
+  // The server serializes its choice as the attribute.
+  let _ = served_radios[0].set_attribute("checked", "");
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  served_radios[1].click();
+
+  assert!(
+    !served_radios[0].checked(),
+    "the browser unchecked the server's choice"
+  );
+
+  let value = Signal::new(Some("s".to_owned()));
+
+  hydrate(root.clone(), "", move || group(value));
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(
+    value.get().as_deref(),
+    Some("m"),
+    "the reader's choice reached the signal"
+  );
+  assert!(radios() == served_radios, "the radios were adopted");
+  assert!(
+    served_radios[1].checked(),
+    "the reader's choice stays checked"
+  );
+  assert!(
+    !served_radios[0].checked(),
+    "the server's choice stays unchecked"
+  );
+
+  platform::uninstall();
+  root.remove();
+}
+
 #[wasm_bindgen_test]
 fn a_structural_mismatch_is_caught_not_silently_adopted() {
   // The server sent a <span> for marker 1, but the client builds a <div> there.

@@ -193,6 +193,13 @@ pub trait Behavior<P: Realization>: 'static {
     }
   }
 
+  /// The collection whose members the platform groups as one, where the control is a
+  /// member of one; `None`, the default, for a control no group holds.
+  #[inline(always)]
+  fn group(&self) -> Option<NodeId> {
+    None
+  }
+
   /// Runs once the control's node exists and its reports have been read, before its
   /// parts and child build, under the control's owner: what a behavior binds to the
   /// node, provides to its subtree or joins goes here. A behavior whose reports change
@@ -893,6 +900,7 @@ impl<P: Realization, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, 
             placeholder,
             lines,
             label_beside: placement == LabelPlacement::Beside,
+            group: behavior.group(),
           },
         );
       });

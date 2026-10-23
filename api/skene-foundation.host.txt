@@ -4310,6 +4310,7 @@ pub fn skene_foundation::Activate::access(&self) -> alloc::vec::Vec<skene_founda
 pub fn skene_foundation::Activate::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Activate::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Activate::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Activate::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Activate::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Activate::lines(&self) -> u16
@@ -4691,6 +4692,7 @@ pub fn skene_foundation::Collection<C>::access(&self) -> alloc::vec::Vec<skene_f
 pub fn skene_foundation::Collection<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Collection<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Collection<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Collection<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Collection<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Collection<C>::lines(&self) -> u16
@@ -5162,6 +5164,7 @@ impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Co
 pub fn skene_foundation::ControlHandle<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::ControlProps<P: skene_foundation::Realization>
 pub skene_foundation::ControlProps::box_props: skene_foundation::BoxProps<P>
+pub skene_foundation::ControlProps::group: core::option::Option<skene_foundation::NodeId>
 pub skene_foundation::ControlProps::label: core::option::Option<alloc::string::String>
 pub skene_foundation::ControlProps::label_beside: bool
 pub skene_foundation::ControlProps::lines: u16
@@ -6145,6 +6148,7 @@ pub fn skene_foundation::Member<C>::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::Member<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Member<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Member<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Member<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Member<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Member<C>::lines(&self) -> u16
@@ -6276,6 +6280,7 @@ pub fn skene_foundation::NativePicker::access(&self) -> alloc::vec::Vec<skene_fo
 pub fn skene_foundation::NativePicker::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::NativePicker::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::NativePicker::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::NativePicker::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::NativePicker::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::NativePicker::lines(&self) -> u16
@@ -6692,6 +6697,7 @@ pub fn skene_foundation::Popup::access(&self) -> alloc::vec::Vec<skene_foundatio
 pub fn skene_foundation::Popup::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Popup::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Popup::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Popup::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Popup::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Popup::lines(&self) -> u16
@@ -6863,6 +6869,7 @@ pub fn skene_foundation::Roster::leave(&self, skene_foundation::NodeId)
 pub fn skene_foundation::Roster::new() -> Self
 pub fn skene_foundation::Roster::options<P: skene_foundation::Realization>(&self) -> alloc::vec::Vec<skene_foundation::PickerOption>
 pub fn skene_foundation::Roster::ordered<P: skene_foundation::Realization>(&self) -> alloc::vec::Vec<(skene_foundation::NodeId, alloc::string::String)>
+pub fn skene_foundation::Roster::root(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Roster::root_at(&self, skene_foundation::NodeId)
 pub fn skene_foundation::Roster::tab_stop<P: skene_foundation::Realization>(&self, impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static) -> skene_reactive::memo::Memo<core::option::Option<alloc::string::String>>
 pub fn skene_foundation::Roster::typed<P: skene_foundation::Realization>(&self, &str, core::option::Option<&str>) -> core::option::Option<usize>
@@ -7200,6 +7207,7 @@ pub fn skene_foundation::Slider::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Slider::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Slider::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Slider::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Slider::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Slider::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Slider::lines(&self) -> u16
@@ -7442,6 +7450,7 @@ pub fn skene_foundation::TextEntry::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::TextEntry::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::TextEntry::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::TextEntry::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::TextEntry::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::TextEntry::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::TextEntry::lines(&self) -> u16
@@ -7547,6 +7556,7 @@ pub fn skene_foundation::Toggle::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Toggle::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Toggle::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Toggle::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Toggle::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Toggle::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Toggle::lines(&self) -> u16
@@ -7864,6 +7874,7 @@ pub fn skene_foundation::Behavior::access(&self) -> alloc::vec::Vec<skene_founda
 pub fn skene_foundation::Behavior::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Behavior::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Behavior::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Behavior::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Behavior::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Behavior::lines(&self) -> u16
@@ -7889,6 +7900,7 @@ pub fn skene_foundation::Collection<C>::access(&self) -> alloc::vec::Vec<skene_f
 pub fn skene_foundation::Collection<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Collection<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Collection<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Collection<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Collection<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Collection<C>::lines(&self) -> u16
@@ -7914,6 +7926,7 @@ pub fn skene_foundation::Member<C>::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::Member<C>::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Member<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Member<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Member<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Member<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Member<C>::lines(&self) -> u16
@@ -7939,6 +7952,7 @@ pub fn skene_foundation::Activate::access(&self) -> alloc::vec::Vec<skene_founda
 pub fn skene_foundation::Activate::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Activate::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Activate::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Activate::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Activate::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Activate::lines(&self) -> u16
@@ -7964,6 +7978,7 @@ pub fn skene_foundation::NativePicker::access(&self) -> alloc::vec::Vec<skene_fo
 pub fn skene_foundation::NativePicker::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::NativePicker::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::NativePicker::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::NativePicker::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::NativePicker::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::NativePicker::lines(&self) -> u16
@@ -7989,6 +8004,7 @@ pub fn skene_foundation::Popup::access(&self) -> alloc::vec::Vec<skene_foundatio
 pub fn skene_foundation::Popup::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Popup::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Popup::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Popup::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Popup::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Popup::lines(&self) -> u16
@@ -8014,6 +8030,7 @@ pub fn skene_foundation::Slider::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Slider::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Slider::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Slider::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Slider::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Slider::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Slider::lines(&self) -> u16
@@ -8039,6 +8056,7 @@ pub fn skene_foundation::TextEntry::access(&self) -> alloc::vec::Vec<skene_found
 pub fn skene_foundation::TextEntry::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::TextEntry::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::TextEntry::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::TextEntry::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::TextEntry::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::TextEntry::lines(&self) -> u16
@@ -8064,6 +8082,7 @@ pub fn skene_foundation::Toggle::access(&self) -> alloc::vec::Vec<skene_foundati
 pub fn skene_foundation::Toggle::attach(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Toggle::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Toggle::group(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Toggle::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Toggle::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Toggle::lines(&self) -> u16

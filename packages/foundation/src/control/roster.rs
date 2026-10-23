@@ -72,6 +72,13 @@ impl Roster {
     self.changed.notify();
   }
 
+  /// The node whose subtree holds the members, once one is set.
+  #[inline(always)]
+  #[must_use]
+  pub fn root(&self) -> Option<NodeId> {
+    self.root.get()
+  }
+
   /// Adds the member `node` holding `value`, going by the name `name` reads and
   /// disabled while `disabled` answers so, replacing any member already at that node.
   pub fn join(

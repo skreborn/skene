@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 use super::{BoxProps, Realization, State};
-use crate::spine::{CheckState, Role};
+use crate::spine::{CheckState, NodeId, Role};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
 /// conditions of the control and everything inside it resolve against.
@@ -124,6 +124,9 @@ pub struct ControlProps<P: Realization> {
   /// Whether the control's [`Part::Label`] sits before its box among its siblings,
   /// answering to the control, rather than inside it.
   pub label_beside: bool,
+  /// The collection whose members the platform groups as one, as a radio group's
+  /// choices; `None` for a control no group holds.
+  pub group: Option<NodeId>,
 }
 
 impl<P: Realization> Clone for ControlProps<P> {
@@ -135,6 +138,7 @@ impl<P: Realization> Clone for ControlProps<P> {
       placeholder: self.placeholder.clone(),
       lines: self.lines,
       label_beside: self.label_beside,
+      group: self.group,
     }
   }
 }
@@ -148,6 +152,7 @@ impl<P: Realization> Debug for ControlProps<P> {
       .field("placeholder", &self.placeholder)
       .field("lines", &self.lines)
       .field("label_beside", &self.label_beside)
+      .field("group", &self.group)
       .finish_non_exhaustive()
   }
 }

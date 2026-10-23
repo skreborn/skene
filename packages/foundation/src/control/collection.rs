@@ -3,7 +3,7 @@
 
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, use_context};
+use skene_reactive::{Memo, Signal, Trigger, With, on_cleanup, provide_context, use_context};
 
 use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster, TypeAhead};
 use crate::{
@@ -15,6 +15,7 @@ use crate::{
   KeyEvent,
   NamedKey,
   NativeElement,
+  NodeId,
   Prevent,
   Realization,
   Role,
@@ -127,6 +128,7 @@ pub struct CollectionContext<C: CollectionPolicy> {
   tab_stop: Memo<Option<String>>,
   type_ahead: Rc<TypeAhead>,
   commit_on_tab: bool,
+  reasserted: Trigger,
   policy: PhantomData<C>,
 }
 
@@ -139,6 +141,7 @@ impl<C: CollectionPolicy> Clone for CollectionContext<C> {
       tab_stop: self.tab_stop,
       type_ahead: Rc::clone(&self.type_ahead),
       commit_on_tab: self.commit_on_tab,
+      reasserted: self.reasserted,
       policy: PhantomData,
     }
   }
@@ -175,6 +178,7 @@ impl<C: CollectionPolicy> CollectionContext<C> {
       tab_stop,
       type_ahead: Rc::new(TypeAhead::new()),
       commit_on_tab: false,
+      reasserted: Trigger::new(),
       policy: PhantomData,
     }
   }
@@ -407,12 +411,14 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
 /// reach the ends and a typed character the member the type-ahead picks; and it is the
 /// collection's tab stop while it is chosen or, with nothing chosen, while first.
 ///
-/// Outside a collection it reports its role, is never chosen and takes focus like any
-/// control.
+/// Inside a collection it names the collection as its [`group`](Behavior::group), and
+/// a toggle the platform reports on one member re-reads and rewrites every member's
+/// state. Outside a collection it reports its role, is never chosen and takes focus
+/// like any control.
 #[must_use]
 pub struct Member<C: CollectionPolicy> {
   value: String,
-  group: RefCell<Option<CollectionContext<C>>>,
+  collection: RefCell<Option<CollectionContext<C>>>,
 }
 
 impl<C: CollectionPolicy> std::fmt::Debug for Member<C> {
@@ -429,7 +435,7 @@ impl<C: CollectionPolicy> Member<C> {
   pub fn new(value: impl Into<String>) -> Self {
     Self {
       value: value.into(),
-      group: RefCell::new(None),
+      collection: RefCell::new(None),
     }
   }
 
@@ -442,14 +448,14 @@ impl<C: CollectionPolicy> Member<C> {
 
   /// The collection this member found when it attached.
   #[inline(always)]
-  fn group(&self) -> Option<CollectionContext<C>> {
-    self.group.borrow().clone()
+  fn collection(&self) -> Option<CollectionContext<C>> {
+    self.collection.borrow().clone()
   }
 
   /// Whether this member is its collection's chosen one.
   fn is_chosen(&self) -> bool {
     self
-      .group()
+      .collection()
       .is_some_and(|group| group.chosen().as_deref() == Some(self.value.as_str()))
   }
 }
@@ -470,6 +476,10 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     C::MEMBER_EVENTS
   }
 
+  fn group(&self) -> Option<NodeId> {
+    use_context::<CollectionContext<C>>().and_then(|group| group.roster.root())
+  }
+
   fn attach(&self, control: &ControlHandle<P>) {
     let Some(group) = use_context::<CollectionContext<C>>()
     else {
@@ -487,12 +497,12 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     let roster = group.roster.clone();
 
     on_cleanup(move || roster.leave(node));
-    *self.group.borrow_mut() = Some(group);
+    *self.collection.borrow_mut() = Some(group);
     control.refresh();
   }
 
   fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
-    if let Some(group) = self.group() {
+    if let Some(group) = self.collection() {
       group.choose(self.value.clone());
     }
 
@@ -500,7 +510,7 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
   }
 
   fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
-    let Some(group) = self.group()
+    let Some(group) = self.collection()
     else {
       return Prevent::None;
     };
@@ -532,8 +542,14 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
       return;
     }
 
-    if let Some(group) = self.group() {
+    if let Some(group) = self.collection() {
       group.choose(self.value.clone());
+    }
+  }
+
+  fn reconcile(&self, _control: &ControlHandle<P>) {
+    if let Some(group) = self.collection() {
+      group.reasserted.notify();
     }
   }
 
@@ -542,13 +558,17 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
   }
 
   fn focus_order(&self) -> Option<FocusOrder> {
-    match self.group() {
+    match self.collection() {
       Some(group) if !group.is_tab_stop(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }
 
   fn state(&self) -> ControlState {
+    if let Some(group) = self.collection() {
+      group.reasserted.track();
+    }
+
     ControlState {
       checked: (C::MARKS_CHOSEN && self.is_chosen()).into(),
       ..ControlState::DEFAULT

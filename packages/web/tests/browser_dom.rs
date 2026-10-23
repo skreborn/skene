@@ -2461,6 +2461,53 @@ fn a_radio_group_traverses_in_document_order() {
   );
 }
 
+/// A radio group's radios share one `name`, so a click on one unchecks the chosen one
+/// natively; a choice its handler refuses checks the chosen one again.
+#[wasm_bindgen_test]
+fn a_refused_radio_choice_keeps_the_chosen_one_checked() {
+  let (_guard, root) = fresh_root();
+  let asked = Rc::new(RefCell::new(Vec::new()));
+
+  let _ = mount({
+    let asked = Rc::clone(&asked);
+
+    move || {
+      BasicRadioGroup::new(
+        RadioGroup::new()
+          .derive_chosen(|| Some(String::from("mint")))
+          .handle_choose(move |value| asked.borrow_mut().push(value)),
+      )
+      .set_child(
+        Column::new()
+          .set_children(["mint", "fig"].map(|flavor| BasicRadio::new(Radio::new(flavor)))),
+      )
+      .build()
+    }
+  });
+
+  let radios = root
+    .query_selector_all("input[type=radio]")
+    .expect("query the radios");
+  let radio = |index: u32| -> HtmlInputElement {
+    radios
+      .item(index)
+      .and_then(|node| node.dyn_into().ok())
+      .expect("a radio")
+  };
+  let name = radio(0).name();
+
+  assert!(!name.is_empty(), "the radios are named");
+  assert_eq!(radio(1).name(), name, "after their group");
+  assert!(radio(0).checked());
+
+  radio(1).click();
+  platform::end_turn();
+
+  assert_eq!(*asked.borrow(), ["fig"], "the choice was asked for");
+  assert!(radio(0).checked(), "the chosen radio is checked again");
+  assert!(!radio(1).checked(), "the refused one is not");
+}
+
 /// Every page of the routed test app.
 #[derive(Clone, PartialEq)]
 enum Page {

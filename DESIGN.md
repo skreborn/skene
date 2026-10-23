@@ -441,17 +441,22 @@ re-export.
   keeps its native input inside its label, covering the label's box unseen and
   focusable, beside the parts that draw it, which take the press it lets through, as a
   run inside any control leaves a press to the box it falls in. So keyboard, form
-  participation and accessibility are the
-  browser's before and after hydration and nothing is swapped. The picker alone is
-  drawn (no engine but Chromium restyles an open `<select>` yet), so it is an
-  `Enhance` of its own: its scriptless form is a `NativePicker` control, a `<select>`
-  on the web, listing the options the option views name, its caption a `<label for>`
-  beside it and the chosen value selected; the option views build once, under the
-  group both forms answer through, and attach nowhere until the drawn form lists
-  them, and the caption builds once and each form mounts it with its name and the
-  disabled setting, so a swap rebuilds nothing but the face; a choice the reader made in the
-  `<select>` before the bundle arrived reaches the signal as any adopted live value
-  does, and the drawn face that takes the select's place shows it.
+  participation and accessibility are the browser's before and after hydration and
+  nothing is swapped. A radio group's radios share the group's element id as their
+  `name` (a member names its collection through `Behavior::group`, carried to the
+  platform as `ControlProps::group`), so before the bundle the browser keeps one of
+  them chosen and submits them as one field, and a choice made there reaches the
+  signal as any adopted toggle does; since the browser unchecks the others with the
+  one it checks, a toggle reported on one member re-reads every member's state. The
+  picker alone is drawn (no engine but Chromium restyles an open `<select>` yet), so it
+  is an `Enhance` of its own: its scriptless form is a `NativePicker` control, a
+  `<select>` on the web, listing the options the option views name, its caption a
+  `<label for>` beside it and the chosen value selected; the option views build once,
+  under the group both forms answer through, and attach nowhere until the drawn form
+  lists them, and the caption builds once and each form mounts it with its name and
+  the disabled setting, so a swap rebuilds nothing but the face; a choice the reader
+  made in the `<select>` before the bundle arrived reaches the signal as any adopted
+  live value does, and the drawn face that takes the select's place shows it.
 - **Accessibility is reported, never spelled.** A behavior reports what it is
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,

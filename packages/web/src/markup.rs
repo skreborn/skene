@@ -298,8 +298,9 @@ pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'sta
   attributes
 }
 
-/// The attributes a control's native element carries: its `type`, the placeholder and
-/// the lines of a text entry, and the accessible name when nothing visible supplies one.
+/// The attributes a control's native element carries: its `type`, the `name` a radio
+/// shares with its group's other radios, the placeholder and the lines of a text
+/// entry, and the accessible name when nothing visible supplies one.
 pub(crate) fn native_attributes<P: Realization>(
   native: FormElement,
   props: &ControlProps<P>,
@@ -308,6 +309,10 @@ pub(crate) fn native_attributes<P: Realization>(
 
   if let Some(kind) = native.kind {
     attributes.push(("type", kind.to_owned()));
+  }
+
+  if let (Some("radio"), Some(group)) = (native.kind, props.group) {
+    attributes.push(("name", element_id(group)));
   }
 
   if let Some(placeholder) = &props.placeholder {

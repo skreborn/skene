@@ -1,5 +1,8 @@
-//! The state snapshot in cells: scroll offsets and focus riding it into a fresh platform,
-//! and the dev loop's rebuild notice.
+//! The state snapshot in cells: scroll offsets, focus and the caret riding it into a
+//! fresh platform, a keyed view's and a keyed item's state restoring by key, and the dev
+//! loop's rebuild notice.
+
+use std::{cell::RefCell, rc::Rc};
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, HasChild, prelude::*, testing};
@@ -138,7 +141,7 @@ fn dev_notice_modal_presents_and_dismisses() {
 /// focus without a keystroke, so the next `Space` activates it.
 #[test]
 fn focus_survives_a_snapshot_roundtrip() {
-  use std::{cell::Cell, rc::Rc};
+  use std::cell::Cell;
 
   fn build(hits: &Rc<Cell<u32>>) {
     let hits = Rc::clone(hits);
@@ -184,8 +187,6 @@ fn focus_survives_a_snapshot_roundtrip() {
 /// resumes focused, so the next `Space` activates it and not the one at its old place.
 #[test]
 fn focus_follows_a_keyed_item_across_a_reorder() {
-  use std::{cell::RefCell, rc::Rc};
-
   fn build(items: Vec<u8>, hits: &Rc<RefCell<Vec<u8>>>) {
     let hits = Rc::clone(hits);
 
@@ -309,4 +310,136 @@ fn a_caret_survives_a_snapshot_roundtrip() {
       "the selection resumed over the word"
     );
   });
+}
+
+/// A container named by `name`, keyed by it where `keyed` says, whose content creates
+/// one saved signal, pushed to `signals`.
+fn card(name: &'static str, keyed: bool, signals: &Rc<RefCell<Vec<Signal<u32>>>>) -> AnyView {
+  let signals = Rc::clone(signals);
+  let card = Container::new().derive_child(move || {
+    let count = Signal::saved(0u32);
+
+    signals.borrow_mut().push(count);
+
+    Text::new(name)
+  });
+
+  if keyed {
+    card.set_key(name).into_any()
+  }
+  else {
+    card.into_any()
+  }
+}
+
+/// Mounts a column of the cards `order` names, keyed where `keyed` says, and returns the
+/// signals they created in order and the size of the tree a reader finds.
+fn mount_cards(order: [&'static str; 3], keyed: bool) -> (Vec<Signal<u32>>, usize) {
+  let signals = Rc::new(RefCell::new(Vec::new()));
+  let cards = Rc::clone(&signals);
+
+  let _ = terminal::mount(move || {
+    Column::new()
+      .set_children(order.map(|name| card(name, keyed, &cards)))
+      .into_any()
+      .build()
+  });
+
+  assert_eq!(
+    testing::render_to_text(4, 3),
+    order.map(|name| format!("{name}\n")).concat()
+  );
+
+  (signals.take(), testing::access_tree().nodes.len())
+}
+
+/// A keyed view restores by its key: reordered among its siblings on the next run, each
+/// finds its own state, one it never had starting afresh, and the key adds no node.
+#[test]
+fn a_keyed_view_restores_by_key_among_its_siblings() {
+  let (bytes, keyed) = with_platform(|| {
+    terminal::reactive::record_snapshots();
+
+    let (signals, size) = mount_cards(["a", "b", "c"], true);
+
+    for (signal, value) in signals.into_iter().zip([10, 20, 30]) {
+      signal.set(value);
+    }
+
+    (terminal::reactive::snapshot(), size)
+  });
+  let restored = with_platform(|| {
+    terminal::reactive::restore(&bytes);
+
+    let (signals, _) = mount_cards(["c", "a", "d"], true);
+
+    terminal::adopt_restoration();
+
+    signals
+      .into_iter()
+      .map(|signal| signal.get())
+      .collect::<Vec<_>>()
+  });
+  let plain = with_platform(|| mount_cards(["a", "b", "c"], false).1);
+
+  assert_eq!(restored, [30, 10, 0]);
+  assert_eq!(
+    keyed, plain,
+    "the key added no node between the column and its cards"
+  );
+}
+
+/// A keyed list item's state restores by the item's key: the list reordered on the next
+/// run, each item finds its own.
+#[test]
+fn a_keyed_list_item_restores_by_its_key() {
+  fn build(items: Vec<u8>) -> Vec<Signal<u32>> {
+    let signals = Rc::new(RefCell::new(Vec::new()));
+    let pushed = Rc::clone(&signals);
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .derive_children(
+          move || items.clone(),
+          |item| *item,
+          move |item| {
+            let count = Signal::saved(0u32);
+
+            pushed.borrow_mut().push(count);
+
+            Text::new(item.to_string())
+          },
+        )
+        .into_any()
+        .build()
+    });
+
+    signals.take()
+  }
+
+  let bytes = with_platform(|| {
+    terminal::reactive::record_snapshots();
+
+    for (signal, value) in build(vec![1, 2, 3]).into_iter().zip([10, 20, 30]) {
+      signal.set(value);
+    }
+
+    terminal::reactive::snapshot()
+  });
+  let restored = with_platform(|| {
+    terminal::reactive::restore(&bytes);
+
+    let signals = build(vec![3, 1, 4]);
+
+    terminal::adopt_restoration();
+
+    assert_eq!(testing::render_to_text(4, 3), "3\n1\n4\n");
+
+    signals
+      .into_iter()
+      .map(|signal| signal.get())
+      .collect::<Vec<_>>()
+  });
+
+  assert_eq!(restored, [30, 10, 0]);
 }

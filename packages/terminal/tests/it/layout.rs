@@ -419,12 +419,29 @@ fn flex_grow_distributes_space() {
   });
 }
 
-/// A wrapper without its child paints nothing and takes no room: the texts around it
-/// sit the column's spacing apart and no more.
+/// The one route a link in these tests names.
+#[derive(Clone, PartialEq)]
+struct Home;
+
+impl terminal::router::Route for Home {
+  fn parse(path: &str) -> Option<Self> {
+    (path == "/").then_some(Self)
+  }
+
+  fn to_path(&self) -> String {
+    "/".to_owned()
+  }
+}
+
+/// A wrapper or a view of one child without its child paints nothing and takes no room,
+/// its fallback included: the texts around them sit the column's spacing apart and no
+/// more.
 #[test]
 fn a_wrapper_without_its_child_takes_no_room() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let live = Signal::new(true);
+
+    let _ = terminal::mount(move || {
       Column::new()
         .set_spacing(1)
         .set_children((
@@ -433,13 +450,178 @@ fn a_wrapper_without_its_child_takes_no_room() {
           Tooltip::new("about"),
           Visibility::new(),
           Overlay::popup().set_open(true),
-          Text::new("b"),
+          Overlay::modal().set_open(true).set_label("Settings"),
         ))
+        .add_child(ContextMenu::new().set_items([MenuEntry::new("Inspect")]))
+        .add_child(Keymap::new().handle_shortcut(Shortcut::new(Modifiers::CTRL, "s"), || {}))
+        .add_child(Link::new(Home))
+        .add_child(Enhance::new(live.read_only()).set_fallback_builder(|| Text::new("fallback")))
+        .add_child(Suspense::new().set_fallback_builder(|| Text::new("loading")))
+        .add_child(ErrorBoundary::new().set_fallback_builder(|_| Text::new("failed")))
+        .add_child(Theme::new(Typography::default()))
+        .add_child(Text::new("b"))
         .into_any()
         .build()
     });
 
     assert_eq!(testing::render_to_text(4, 5), "a\n\nb\n\n\n");
+  });
+}
+
+/// A pinned wrapper around a derived subtree lands its edges on the content box, on
+/// every rebuild, and on no other node.
+#[test]
+fn pinned_annotates_the_content_of_a_derived_subtree() {
+  with_platform(|| {
+    let version = Signal::new(0);
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("top"),
+          Stack::new().derive_child(move || {
+            let version = version.get();
+
+            Pinned::new()
+              .set_edges(Inset {
+                top: Dimension::Length(1),
+                end: Dimension::Auto,
+                bottom: Dimension::Auto,
+                start: Dimension::Length(2),
+              })
+              .set_child(
+                Container::new()
+                  .set_child(Container::new().set_child(Text::new(format!("x{version}")))),
+              )
+          }),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(6, 4),
+      "top\n\n  x0\n\n",
+      "the content box alone takes the edges, in the stack below the text"
+    );
+
+    version.set(1);
+
+    assert_eq!(testing::render_to_text(6, 4), "top\n\n  x1\n\n");
+  });
+}
+
+/// A grid cell around a derived subtree lands its placements and both alignment axes
+/// on the content box, on every rebuild.
+#[test]
+fn grid_cell_annotates_the_content_of_a_derived_subtree() {
+  with_platform(|| {
+    let version = Signal::new(0);
+
+    let _ = terminal::mount(move || {
+      Grid::uniform(2)
+        .set_rows(vec![GridTrack::Length(1), GridTrack::Length(3)])
+        .add_child(Text::new("t"))
+        .derive_child(move || {
+          let version = version.get();
+
+          GridCell::new()
+            .set_row(Line::at(2))
+            .set_column(Line::span(2))
+            .set_alignment(Alignment::new(ItemAlignment::End, ItemAlignment::Center))
+            .set_child(Container::new().set_child(Text::new(format!("c{version}"))))
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(8, 4),
+      "t\n\n      c0\n\n",
+      "the content sits in the second row across both columns, at its end and centered"
+    );
+
+    version.set(1);
+
+    assert_eq!(testing::render_to_text(8, 4), "t\n\n      c1\n\n");
+  });
+}
+
+/// A wrapper whose child creates no node leaves its properties on nothing: the next box
+/// built takes none of them.
+#[test]
+fn a_wrapper_around_nothing_annotates_no_later_box() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Stack::new()
+        .set_children((
+          Pinned::new().set_edges(Inset::all(2)).set_child(empty()),
+          Container::new().set_child(Text::new("x")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(4, 3), "x\n\n\n");
+  });
+}
+
+/// A wrapper without its child annotates no later box: the box after it in a stack, a
+/// column and a grid takes none of its properties.
+#[test]
+fn a_wrapper_without_its_child_annotates_no_later_box() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Stack::new().set_children((
+            Pinned::new().set_edges(Inset::all(2)),
+            Container::new().set_child(Text::new("s")),
+          )),
+          Container::new().set_height(3).set_child(
+            Column::new().set_children((
+              Flexible::new().set_flexibility(Flexibility::grow(1.)),
+              Container::new()
+                .set_background(red())
+                .set_child(Text::new("c")),
+            )),
+          ),
+          Grid::uniform(2).set_children((
+            GridCell::new().set_column(Line::at(2)),
+            Container::new().set_child(Text::new("g")),
+          )),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      crate::common::rows(&testing::render_to_text(6, 5)),
+      "s\nc\n\n\ng\n"
+    );
+
+    let red_rows = (1..4)
+      .filter(|row| colors_at(6, 5, 0, *row).1 == Some(rgb(red())))
+      .count();
+
+    assert_eq!(red_rows, 1, "the box after the flexible did not grow");
+  });
+}
+
+/// A wrapper given its child takes its setters still.
+#[test]
+fn a_wrapper_given_its_child_takes_its_setters() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      let wrapper = Pinned::new().set_child(Container::new().set_child(Text::new("x")));
+
+      Stack::new()
+        .set_children((wrapper.set_edges(Inset::all(1)),))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(3, 3), "\n x\n\n");
   });
 }
 

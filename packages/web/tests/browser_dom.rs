@@ -26,6 +26,8 @@ use skene_foundation::{
   DecorationBase,
   DragAxes,
   DragData,
+  EnhanceBase,
+  ErrorBoundaryBase,
   FlexBase,
   Flexibility,
   FlexibleBase,
@@ -37,8 +39,10 @@ use skene_foundation::{
   GridTemplate,
   GridTrack,
   ItemAlignment,
+  KeymapBase,
   LazyColumnBase,
   Line,
+  LinkBase,
   MotionBase,
   OverlayBase,
   PaintedBase,
@@ -53,6 +57,7 @@ use skene_foundation::{
   RunWithTypeMetrics,
   SpanBase,
   StackBase,
+  SuspenseBase,
   TextBase,
   ThemeBase,
   TooltipBase,
@@ -63,6 +68,8 @@ use skene_foundation::{
 use skene_simple_web::prelude::*;
 use skene_web::{
   AnyView,
+  AsyncView,
+  AsyncViewBase,
   BasicCheckbox,
   BasicRadio,
   BasicRadioGroup,
@@ -77,14 +84,19 @@ use skene_web::{
   DeferredBase,
   Definition,
   Dimension,
+  Enhance,
+  ErrorBoundary,
   Flexible,
   Grid,
   GridCell,
   HasChild,
   HasChildren,
   Inset,
+  Keymap,
+  Link,
   Media,
   MenuEntry,
+  Modifiers,
   NamedKey,
   NodeHandle,
   Overlay,
@@ -94,11 +106,13 @@ use skene_web::{
   RichText,
   Role,
   Row,
+  Shortcut,
   Slider,
   SliderRange,
   Spacing,
   Span,
   Stack,
+  Suspense,
   TOOLTIP_GRACE,
   Text,
   TextDecoration,
@@ -368,13 +382,15 @@ fn children_mount_in_order() {
   assert_eq!(child_texts(&container), ["a", "b", "c"]);
 }
 
-/// A wrapper without its child mounts no element and takes no room: the texts around
-/// it are the column's only elements, its spacing apart and no more.
+/// A wrapper or a view of one child without its child mounts no element and takes no
+/// room, its fallback included, and a theme without its child no scope: the texts
+/// around them are the column's only elements, its spacing apart and no more.
 #[wasm_bindgen_test]
 fn a_wrapper_without_its_child_mounts_nothing() {
   let (_guard, root) = fresh_root();
+  let live = Signal::new(true);
 
-  let _ = mount(|| {
+  let _ = mount(move || {
     Column::new()
       .set_spacing(Spacing::from(8))
       .set_children((
@@ -383,8 +399,18 @@ fn a_wrapper_without_its_child_mounts_nothing() {
         Tooltip::new("about"),
         Visibility::new(),
         Overlay::popup().set_open(true),
-        Text::new("b"),
+        Overlay::modal().set_open(true).set_label("Settings"),
       ))
+      .add_child(ContextMenu::new().set_items([MenuEntry::new("Inspect")]))
+      .add_child(Keymap::new().handle_shortcut(Shortcut::new(Modifiers::CTRL, "s"), || {}))
+      .add_child(Link::new(Page::Home))
+      .add_child(Enhance::new(live.read_only()).set_fallback_builder(|| Text::new("fallback")))
+      .add_child(Suspense::new().set_fallback_builder(|| Text::new("loading")))
+      .add_child(ErrorBoundary::new().set_fallback_builder(|_| Text::new("failed")))
+      .add_child(Theme::new(Typography::default()))
+      .add_child(Deferred::new())
+      .add_child(AsyncView::new())
+      .add_child(Text::new("b"))
       .build()
   });
 

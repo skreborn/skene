@@ -211,13 +211,15 @@ toolkit's keeps the default, which does nothing.
   an inspectable record store, resolves a property through the spine's `Resolver` (the
   scene's tokens, the expression evaluator and the environment), and runs tasks when a
   test pumps them, giving the foundation's views fast tests without pretending to be a
-  platform. The controls and the overlays test on the platforms that realize them
-  instead: their behaviors, names and keys, a modal's and a popup's dismissal, a
-  tooltip's timing and a context menu's items in the terminal's in-process tier, through
-  real input, the hand-stepped clock and what a reader finds, and their web form (the
-  native element, a reported edit's verdict, the hydrated swap, a popup's anchoring, a
-  tooltip's `aria-describedby`) in the browser; what a behavior declares it listens to
-  is a unit test of its own.
+  platform. The controls, the overlays and the reactive structure test on the platforms
+  that realize them instead: their behaviors, names and keys, a modal's and a popup's
+  dismissal, a tooltip's timing, a context menu's items, a lazy list's window, a
+  boundary's, a switch's, a show's and an enhancement's swap, a wrapper's annotation and
+  a key's restoration in the terminal's in-process tier, through real input, the
+  hand-stepped clock and what a reader finds, and their web form (the native element, a
+  reported edit's verdict, the hydrated swap, a popup's anchoring, a tooltip's
+  `aria-describedby`, a childless view's absence from the DOM) in the browser; what a
+  behavior declares it listens to is a unit test of its own.
   A facade's views test on their platform alone, against its real sinks: the web's in a
   browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
   snapshot, never on the headless platform; native ones against their toolkit. A component
@@ -272,8 +274,9 @@ and its cost unjustified.
   enhancement in place, as a `derived` rebuild is, under a replacement owner, so a
   signal bound beneath keeps its value and its snapshot identity; a mount that
   hydrates nothing answers true from the start and never builds the baseline. The
-  headless platform answers hydrated until a test says otherwise (`trigger_hydrated`),
-  so a generic view's two forms are tested on the host. **Pixels** are `Painting`'s:
+  headless platform answers hydrated until `trigger_hydrated` says otherwise; an
+  enhancement's two forms are tested on the terminal over a signal of the test's own,
+  and over the hydration signal in the browser. **Pixels** are `Painting`'s:
   `Painting::available()` is the signal a painted box waits on, false on the server
   leaf, false on the browser leaf until it is live, false in the terminal until the
   graphics probe is answered, and the headless platform's from `trigger_graphics`. Only
@@ -309,8 +312,9 @@ and its cost unjustified.
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
   into `Owner::replacement()`, the same parent and step, so snapshot identity survives
   a branch flip. A reconciled item's owner is `Owner::keyed_child` under the item's key,
-  and `View::set_key` builds any view under one, so state beneath either restores by
-  key wherever it sits.
+  and `View::set_key` builds any view under one, each facade's `View` carrying it
+  beside `build` and `into_any`, so state beneath either restores by key wherever it
+  sits.
 
 ## Controls
 

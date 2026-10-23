@@ -838,9 +838,11 @@ pub fn S::watch() -> skene_reactive::memo::Memo<Self>
 pub trait skene_terminal::prelude::View: skene_foundation::spine::view::View<skene_terminal::Active>
 pub fn skene_terminal::prelude::View::build(self) -> skene_foundation::spine::node::NodeId where Self: core::marker::Sized
 pub fn skene_terminal::prelude::View::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+pub fn skene_terminal::prelude::View::set_key(self, impl core::hash::Hash) -> skene_terminal::Keyed<Self> where Self: core::marker::Sized
 impl<V: skene_foundation::spine::view::View<skene_terminal::Active>> skene_terminal::View for V
 pub fn V::build(self) -> skene_foundation::spine::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+pub fn V::set_key(self, impl core::hash::Hash) -> skene_terminal::Keyed<Self> where Self: core::marker::Sized
 pub fn skene_terminal::prelude::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
 pub fn skene_terminal::prelude::derived(impl core::ops::function::Fn() -> skene_foundation::spine::node::NodeId + 'static) -> skene_foundation::spine::node::NodeId
@@ -1691,9 +1693,11 @@ pub fn S::watch() -> skene_reactive::memo::Memo<Self>
 pub trait skene_terminal::View: skene_foundation::spine::view::View<skene_terminal::Active>
 pub fn skene_terminal::View::build(self) -> skene_foundation::spine::node::NodeId where Self: core::marker::Sized
 pub fn skene_terminal::View::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+pub fn skene_terminal::View::set_key(self, impl core::hash::Hash) -> skene_terminal::Keyed<Self> where Self: core::marker::Sized
 impl<V: skene_foundation::spine::view::View<skene_terminal::Active>> skene_terminal::View for V
 pub fn V::build(self) -> skene_foundation::spine::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
+pub fn V::set_key(self, impl core::hash::Hash) -> skene_terminal::Keyed<Self> where Self: core::marker::Sized
 pub fn skene_terminal::adopt_restoration()
 pub fn skene_terminal::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)

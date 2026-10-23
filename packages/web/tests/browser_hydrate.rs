@@ -331,6 +331,49 @@ fn an_enhancement_adopts_its_fallback_then_builds_its_child() {
   platform::uninstall();
 }
 
+/// A page mounted without a server's markup is live at once: the hydration signal is
+/// true from the start, so an enhancement over it builds its child and never its
+/// fallback.
+#[wasm_bindgen_test]
+fn a_mount_without_hydrating_is_hydrated_from_the_start() {
+  let root = server_root("");
+  let fallbacks = Rc::new(Cell::new(0));
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+  platform::install(root.clone());
+
+  let _ = platform::mount({
+    let fallbacks = Rc::clone(&fallbacks);
+
+    move || {
+      assert!(
+        skene_web::media::hydrated().get(),
+        "hydrated while building"
+      );
+
+      skene_web::View::build(
+        Enhance::new(skene_web::media::hydrated())
+          .set_fallback_builder(move || {
+            fallbacks.set(fallbacks.get() + 1);
+
+            Text::new("baseline")
+          })
+          .set_child_builder(|| Text::new("live")),
+      )
+    }
+  });
+
+  assert_eq!(root.text_content().expect("text"), "live");
+  assert_eq!(fallbacks.get(), 0, "the fallback was never built");
+
+  platform::uninstall();
+  root.remove();
+}
+
 /// A painted box with a fallback adopts the server's fallback while hydrating, and its
 /// canvas takes the fallback's place once hydration has finished.
 #[wasm_bindgen_test]

@@ -28,6 +28,19 @@ macro_rules! facade {
         $crate::View::build(self)
       }
 
+      /// Gives this view a stable identity, so the state created under it keeps its
+      /// place in a snapshot wherever the view sits and however its siblings change.
+      ///
+      /// The key is matched across runs by its hash. Goes after the properties and
+      /// before the children: the keyed view still takes them.
+      #[inline(always)]
+      fn set_key(self, key: impl ::std::hash::Hash) -> Keyed<Self>
+      where
+        Self: Sized,
+      {
+        $crate::View::set_key(self, key)
+      }
+
       /// Erases this view's concrete type.
       #[inline(always)]
       fn into_any(self) -> AnyView

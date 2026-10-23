@@ -32,6 +32,7 @@ mod scrolling;
 mod selection;
 mod sizing;
 mod snapshot;
+mod structure;
 mod text_entry;
 mod title;
 mod tokens;

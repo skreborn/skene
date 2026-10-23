@@ -1,5 +1,6 @@
 //! Scrolling in cells: clipping, the wheel and its latch, scrollbars, focus revealing a
-//! control, the page keys, and a lazy column's window.
+//! control, the page keys, and the lazy lists' windows: the overscan, keyed reuse, a
+//! resize, measured items and a row.
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -215,28 +216,216 @@ fn focus_scrolls_into_view() {
   });
 }
 
-/// A lazy column builds only the visible slice plus overscan, and scrolling shifts
-/// that window while the content stays in place.
+/// The rows of a `width` x `height` frame, each without its trailing blanks and the
+/// scrollbar painted down its last column.
+fn frame_rows(width: u16, height: u16) -> Vec<String> {
+  crate::common::rows(&testing::render_to_text(width, height))
+    .lines()
+    .map(str::to_owned)
+    .collect()
+}
+
+/// A lazy column of `count` items one cell tall in a box ten cells tall, counting the
+/// items it builds in `built`.
+fn mount_lazy_column(count: usize, built: &Rc<RefCell<Vec<usize>>>) {
+  let built = Rc::clone(built);
+
+  let _ = terminal::mount(|| {
+    Container::new()
+      .set_height(10)
+      .set_child(
+        LazyColumn::new()
+          .set_item_height(1)
+          .set_overscan(3)
+          .derive_items(
+            move || 0..count,
+            |index| *index,
+            move |index| {
+              built.borrow_mut().push(index);
+
+              Text::new(index.to_string())
+            },
+          ),
+      )
+      .into_any()
+      .build()
+  });
+}
+
+/// Ten thousand items build as the overscan alone until the column is measured, then
+/// as the slice in view plus the overscan, with spacers standing in for the rest: the
+/// scroll range is every item's.
 #[test]
-fn lazy_column_windows_its_items() {
+fn only_the_window_plus_the_overscan_builds() {
+  with_platform(|| {
+    let built = Rc::new(RefCell::new(Vec::new()));
+
+    mount_lazy_column(10_000, &built);
+
+    assert_eq!(
+      *built.borrow(),
+      [0, 1, 2],
+      "the overscan alone builds before a measure"
+    );
+
+    let rows = frame_rows(8, 10);
+
+    assert_eq!(
+      rows,
+      (0..10).map(|index| index.to_string()).collect::<Vec<_>>()
+    );
+    assert_eq!(
+      *built.borrow(),
+      (0..13).collect::<Vec<_>>(),
+      "the ten rows in view and the three past them"
+    );
+
+    testing::trigger_mouse_scroll(2, 1, 0, 20_000);
+
+    let rows = frame_rows(8, 10);
+
+    assert_eq!(
+      rows,
+      (9990..10_000)
+        .map(|index| index.to_string())
+        .collect::<Vec<_>>(),
+      "the spacers take the room of the items they stand for"
+    );
+    assert!(built.borrow().len() < 13 + 14, "{:?}", built.borrow());
+  });
+}
+
+/// Scrolling moves the window: the items whose keys stay keep their nodes, only the
+/// newcomers build, and the spacers take up the difference.
+#[test]
+fn scrolling_rebuilds_the_window_with_keyed_reuse() {
+  with_platform(|| {
+    let built = Rc::new(RefCell::new(Vec::new()));
+
+    mount_lazy_column(10_000, &built);
+
+    let _ = testing::render_to_text(8, 10);
+
+    testing::trigger_mouse_scroll(2, 1, 0, 50);
+
+    let rows = frame_rows(8, 10);
+
+    assert_eq!(
+      rows,
+      (50..60).map(|index| index.to_string()).collect::<Vec<_>>()
+    );
+    assert_eq!(
+      built.borrow()[13..],
+      (47..63).collect::<Vec<_>>(),
+      "the window of 47 to 62 builds in place of the first"
+    );
+
+    let before = testing::find_by_text("51").expect("an item in view");
+
+    testing::trigger_mouse_scroll(2, 1, 0, 1);
+
+    let rows = frame_rows(8, 10);
+
+    assert_eq!(
+      rows,
+      (51..61).map(|index| index.to_string()).collect::<Vec<_>>()
+    );
+    assert_eq!(built.borrow()[13 + 16..], [63], "only the newcomer builds");
+    assert_eq!(
+      testing::find_by_text("51"),
+      Some(before),
+      "an item whose key stays keeps its node"
+    );
+  });
+}
+
+/// A taller viewport widens the window in place, and a shorter list shrinks it.
+#[test]
+fn a_resize_widens_the_window() {
+  with_platform(|| {
+    let count = Signal::new(10_000);
+    let built = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&built);
+
+    let _ = terminal::mount(move || {
+      LazyColumn::new()
+        .set_item_height(1)
+        .set_overscan(3)
+        .derive_items(
+          move || 0..count.get(),
+          |index| *index,
+          move |index| {
+            log.borrow_mut().push(index);
+
+            Text::new(index.to_string())
+          },
+        )
+        .into_any()
+        .build()
+    });
+
+    testing::trigger_resize(8, 10);
+
+    let narrow = frame_rows(8, 10);
+
+    assert_eq!(narrow.len(), 10);
+    assert_eq!(*built.borrow(), (0..13).collect::<Vec<_>>());
+
+    let kept = testing::find_by_text("9").expect("an item in view");
+
+    testing::trigger_resize(8, 20);
+
+    let wide = frame_rows(8, 20);
+
+    assert_eq!(
+      wide,
+      (0..20).map(|index| index.to_string()).collect::<Vec<_>>()
+    );
+    assert_eq!(
+      built.borrow()[13..],
+      (13..23).collect::<Vec<_>>(),
+      "only the items the taller window adds build"
+    );
+    assert_eq!(testing::find_by_text("9"), Some(kept));
+
+    count.set(5);
+
+    let few = frame_rows(8, 20);
+
+    assert_eq!(few[..5], ["0", "1", "2", "3", "4"]);
+    assert!(
+      few[5..].iter().all(String::is_empty),
+      "no spacer stands below the five: {few:?}"
+    );
+    assert_eq!(built.borrow().len(), 23, "the five are the window's own");
+  });
+}
+
+/// Estimated items build by the estimate, then each measure reshapes the window and the
+/// spacers: the edges follow the measured items, and an item scrolled out keeps its
+/// measure.
+#[test]
+fn measured_items_reshape_the_window() {
   with_platform(|| {
     let built = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&built);
 
-    let _ = terminal::mount(|| {
+    let _ = terminal::mount(move || {
       Container::new()
-        .set_height(4)
+        .set_height(6)
         .set_child(
           LazyColumn::new()
-            .set_item_height(1)
-            .set_overscan(2)
+            .set_item_height(ItemExtent::Estimated(1.))
+            .set_overscan(0)
             .derive_items(
-              || 0..1000,
+              || 0..100,
               |index| *index,
               move |index| {
                 log.borrow_mut().push(index);
 
-                Text::new(format!("row {index}"))
+                Container::new()
+                  .set_height(2)
+                  .set_child(Text::new(format!("row {index}")))
               },
             ),
         )
@@ -244,33 +433,68 @@ fn lazy_column_windows_its_items() {
         .build()
     });
 
-    let first = testing::render_to_text(12, 6);
+    let first = frame_rows(10, 6);
 
-    assert!(
-      first.contains("row 0") && first.contains("row 3"),
-      "{first}"
+    assert_eq!(
+      first,
+      ["row 0", "", "row 1", "", "row 2", ""],
+      "three measured items fill the viewport"
     );
-    assert!(!first.contains("row 7"), "{first}");
-
-    testing::trigger_mouse_scroll(2, 1, 0, 500);
-
-    let scrolled = testing::render_to_text(12, 6);
-
-    assert!(
-      scrolled.contains("row 500") && scrolled.contains("row 503"),
-      "{scrolled}"
+    assert_eq!(
+      built.borrow()[..6],
+      [0, 1, 2, 3, 4, 5],
+      "six items of the estimate fill it first"
     );
 
-    let log = built.borrow();
-    let max_built = log.iter().copied().max().unwrap_or(0);
+    testing::trigger_mouse_scroll(2, 1, 0, 4);
 
-    assert!(
-      log.len() < 30,
-      "built {} items instead of a window",
-      log.len()
+    let scrolled = frame_rows(10, 6);
+
+    assert_eq!(
+      scrolled,
+      ["row 2", "", "row 3", "", "row 4", ""],
+      "the two items scrolled out keep their measures"
     );
-    assert!(max_built < 520);
-    assert!(log.iter().any(|index| *index >= 490));
+    assert!(built.borrow().len() < 20, "{:?}", built.borrow());
+  });
+}
+
+/// A lazy row windows along the horizontal axis: its width is the viewport, its scroll
+/// offset the horizontal one, and its spacers take widths.
+#[test]
+fn a_lazy_row_windows_along_x() {
+  with_platform(|| {
+    let built = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&built);
+
+    let _ = terminal::mount(move || {
+      LazyRow::new()
+        .set_item_width(5)
+        .set_overscan(3)
+        .derive_items(
+          || 0..10_000,
+          |index| *index,
+          move |index| {
+            log.borrow_mut().push(index);
+
+            Text::new(index.to_string())
+          },
+        )
+        .into_any()
+        .build()
+    });
+
+    let first = frame_rows(20, 2);
+
+    assert_eq!(first[0], "0    1    2    3");
+    assert_eq!(*built.borrow(), (0..7).collect::<Vec<_>>());
+
+    testing::trigger_mouse_scroll(2, 0, 250, 0);
+
+    let scrolled = frame_rows(20, 2);
+
+    assert_eq!(scrolled[0], "50   51   52   53");
+    assert_eq!(built.borrow()[7..], (47..57).collect::<Vec<_>>());
   });
 }
 

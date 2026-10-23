@@ -836,10 +836,10 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   `cargo xtask gate test:browser` runs one step and `cargo xtask gate clippy` a group;
   each step logs to `target/gate/<step>.log`, and a failed one prints why beside the end
   of its log. A step that builds or runs anything is skipped while nothing it reads has
-  changed since it last passed (every file but the documents, the toolchain, the browser
-  drivers); `--force`, or a `CI` variable, runs it regardless. `cargo xtask api`
-  rewrites the snapshots once a change to a surface is meant. CI runs the same command
-  on every pull request.
+  changed since it last passed (every file but the documents no crate compiles, the
+  toolchain, the browser drivers); `--force`, or a `CI` variable, runs it regardless.
+  `cargo xtask api` rewrites the snapshots once a change to a surface is meant. CI runs
+  the same command on every pull request.
 - Tests run per platform, each in its platform's build, and one platform's tests prove
   nothing about another's: a test written for one platform compiles to nothing in the
   others' builds, so a change can pass every test of one while breaking another

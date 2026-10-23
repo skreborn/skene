@@ -6,8 +6,9 @@
 //! step and, for a step that failed, why and the end of its log.
 //!
 //! A step that builds or runs anything is skipped while nothing it reads has changed since
-//! it last passed: every file of the workspace but its documents, the toolchain and the
-//! browser drivers. `--force`, or a `CI` variable, runs every selected step regardless.
+//! it last passed: every file of the workspace but the documents no crate compiles, the
+//! toolchain and the browser drivers. `--force`, or a `CI` variable, runs every selected
+//! step regardless.
 //!
 //! `cargo xtask api` rewrites the public API snapshots the `api` step checks.
 
@@ -166,6 +167,16 @@ const WASM_DOCS: &[&str] = &[
   "skene-simple-web",
   "skene-transport",
   "skene-web",
+];
+
+/// The documents no crate compiles, which no stamped step reads; every other document,
+/// the README and the guide among them, is compiled into a doctest crate.
+const PROSE: &[&str] = &[
+  "AGENTS.md",
+  "CLAUDE.md",
+  "DECISIONS.md",
+  "DESIGN.md",
+  "ROADMAP.md",
 ];
 
 /// How many lines of a failed step's log the gate prints.
@@ -352,7 +363,8 @@ impl Gate {
   }
 
   /// A hash of everything a stamped step reads: every file of the workspace, listed or
-  /// not ignored, but its documents; the toolchain; and the browser drivers.
+  /// not ignored, but the documents no crate compiles ([`PROSE`]); the toolchain; and the
+  /// browser drivers.
   fn inputs(&self) -> Result<String, String> {
     let listed = Command::new("git")
       .args([
@@ -372,7 +384,7 @@ impl Gate {
     let mut paths: Vec<&[u8]> = listed
       .stdout
       .split(|byte| *byte == 0)
-      .filter(|path| !path.is_empty() && !path.ends_with(b".md"))
+      .filter(|path| !path.is_empty() && !PROSE.iter().any(|prose| *path == prose.as_bytes()))
       .collect();
     let mut hasher = DefaultHasher::new();
 

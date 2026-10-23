@@ -48,7 +48,8 @@ each cell's character, and its style as a character beside it.
 A web test runs in a real browser, built for `wasm32-unknown-unknown` and run under
 `wasm-bindgen-test`'s runner, which drives Firefox or Chromium over WebDriver.
 `skene_web::testing` installs the browser leaf on a fresh root, and the test reads the
-elements it built and the styles the engine computes for them:
+elements it built and the styles the engine computes for them, through `web-sys` and
+`wasm-bindgen` beside `wasm-bindgen-test` among the crate's dev-dependencies:
 
 ```rust,ignore
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -58,8 +59,8 @@ use skene_web::{
   platform::mount,
   prelude::*,
   testing::{computed, fresh_root, only_child},
-  wasm_bindgen::JsCast,
 };
+use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -115,11 +116,12 @@ fn the_counter_renders_its_count_and_its_button() {
 
 ## Shared logic
 
-An app's shared crate of logic and state names no platform, so its tests are plain Rust
-over its signals and stores, run by `cargo test` with no platform installed.
+An app's shared crate of logic and state names no platform, so its tests are plain
+`#[test]`s over its signals and stores, which build no view and install no platform.
 
 ## What platforms share
 
 A behavior every platform must share is a scenario in `skene-conformance`, which runs
 one suite through a driver each platform implements over its own accessibility layer
-and input. A platform of your own proves itself by implementing that driver.
+and input; a divergence it finds is a bug in the platform, never a special case in the
+suite.

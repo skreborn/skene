@@ -1227,14 +1227,14 @@ stylesheet, holding every rule the browser interns.
 The host leaf: the `Realization` `skene-web` selects off its targets, so the builds that
 only compile on the host have a platform to build against—the docs crates' doctests,
 the web examples' libraries, `#[main]`'s host arm and acme-map's, and the compile-fail
-suite. No test runs on it; each platform's tests run on the platform itself (Real
-platforms, not a mock platform). It is the web medium (`StyleExt = WebStyle`), so a
+suite. No test runs on it; each platform's tests run on the platform itself, as **Real
+platforms, not a mock platform** says. It is the web medium (`StyleExt = WebStyle`), so a
 view written for the web compiles against it unchanged. Every `Realization` method
 writes into a record per node, keyed by its `NodeId`, while the structure stays the
 scene's alone, and it lays the scene out and draws it as the layout bullet of the style
 model says, its text through `skene-parley` in the pinned face; no platform response
-fires. It leaves with the host leaf (`ROADMAP.md` item 1's selection), its `trigger_*`
-seams, `user` gestures, queries and task pump with it.
+fires. It leaves with item 1's selection (`ROADMAP.md`), its `trigger_*` seams, `user`
+gestures, queries and task pump with it.
 
 ### Native (planned)
 

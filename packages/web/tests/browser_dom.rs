@@ -1046,6 +1046,62 @@ fn a_pointer_cancel_reaches_the_box() {
   assert_eq!(cancels.get(), 1);
 }
 
+/// A box's pointer release, move, entry and exit, focus, blur and scroll handlers each
+/// hear their DOM event, through the listener each asks the document for.
+#[wasm_bindgen_test]
+fn a_boxs_pointer_focus_and_scroll_handlers_hear_their_events() {
+  let (_guard, root) = fresh_root();
+  let log = Rc::new(RefCell::new(Vec::<String>::new()));
+  let note = |name: &'static str| {
+    let log = Rc::clone(&log);
+
+    move || log.borrow_mut().push(name.to_owned())
+  };
+  let (up, moved, entered, left, focused, blurred) = (
+    note("up"),
+    note("move"),
+    note("enter"),
+    note("leave"),
+    note("focus"),
+    note("blur"),
+  );
+  let scrolled = Rc::clone(&log);
+
+  let _ = mount(move || {
+    Container::new()
+      .set_height(20)
+      .set_overflow(skene_foundation::Overflow::Scroll)
+      .set_focus_order(skene_web::FocusOrder::Auto)
+      .handle_pointer_up(move |_| up())
+      .handle_pointer_move(move |_| moved())
+      .handle_pointer_enter(entered)
+      .handle_pointer_leave(left)
+      .handle_focus(focused)
+      .handle_blur(blurred)
+      .handle_scroll(move |event| scrolled.borrow_mut().push(format!("scroll {}", event.y)))
+      .set_child(Container::new().set_height(200))
+      .build()
+  });
+
+  let boxed = html(&only_child(&root));
+
+  pointer(&boxed, "pointerup");
+  pointer(&boxed, "pointermove");
+  pointer(&boxed, "pointerover");
+  pointer(&boxed, "pointerout");
+
+  let _ = boxed.focus();
+  let _ = boxed.blur();
+
+  boxed.set_scroll_top(10);
+  dispatch(&boxed, "scroll");
+
+  assert_eq!(
+    log.borrow()[..7],
+    ["up", "move", "enter", "leave", "focus", "blur", "scroll 10"]
+  );
+}
+
 /// A press on a slider's thumb asks for the value whose thumb centers under the
 /// pointer, measured from the slider's own box rather than the thumb's: 150 pixels into
 /// 200, the thumb's 16-pixel center travelling 184, is 77, once the browser has reported

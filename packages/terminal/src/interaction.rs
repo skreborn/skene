@@ -972,11 +972,12 @@ pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modi
 }
 
 /// Dispatches a press at (`x`, `y`): the hover path follows it, the press reaches the
-/// deepest node's handlers before the left press focuses and records the path for its
-/// release, and—unless a handler prevented the platform—the left press places an
-/// entry's caret or anchors a selection and arms a link, and the right press places an
-/// entry's caret; a right press then asks the deepest node for its context menu. An
-/// entry's selection the press moved is reported.
+/// deepest node's handlers before the left press, or a right press on an entry, moves
+/// focus and the left press records the path for its release, and—unless a handler
+/// prevented the platform—the left press places an entry's caret or anchors a selection
+/// and arms a link, and the right press places an entry's caret; a right press then
+/// asks the deepest node for its context menu. An entry's selection the press moved is
+/// reported.
 pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   press(x, y, button, modifiers);
   crate::field::report_selections();

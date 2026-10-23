@@ -235,8 +235,8 @@ fn two_quick_clicks_at_one_cell_are_a_double_click() {
   });
 }
 
-/// A press on a box offering drag data, on its own cell or its content's, starts a
-/// drag once the pointer leaves the cell, cancelling the press: the source holds
+/// A press on a box offering drag data, its content's cells included, starts a drag
+/// once the pointer leaves the cell, cancelling the press: the source holds
 /// `Dragged` while the drag lasts, the box under the pointer taking what it carries
 /// holds `Targeted` and one taking another type does not, and the release drops the
 /// drag there without a click.

@@ -588,21 +588,30 @@ fn hydrate_adopts_a_captioned_text_field() {
 }
 
 /// Text typed into a server-rendered field before the bundle arrived reaches the
-/// signal as the reader's edit, and a handler transforming it repairs the adopted
-/// `<input>` in place by the smallest edit, the reader's caret kept.
+/// signal as the reader's edit, its caret with it, and a handler transforming it
+/// repairs the adopted `<input>` in place by the smallest edit, the reader's caret kept.
 #[wasm_bindgen_test]
 fn a_value_typed_before_the_bundle_reports_as_an_edit() {
-  use skene_web::{BasicTextField, TextEntry, reactive::Set};
+  use skene_web::{
+    BasicTextField,
+    TextEntry,
+    TextSelection,
+    reactive::{Set, Signal},
+  };
 
-  let field = |value: skene_web::reactive::Signal<String>| {
+  let field = |value: Signal<String>, selection: Signal<TextSelection>| {
     BasicTextField::new(
       TextEntry::new()
         .derive_value(move || value.get())
-        .handle_change(move |text| value.set(text.to_uppercase())),
+        .handle_change(move |text| value.set(text.to_uppercase()))
+        .bind_selection(selection),
     )
   };
   let (markup, _) = served(move || {
-    skene_web::View::into_any(field(skene_web::reactive::Signal::new("AB".to_owned())))
+    skene_web::View::into_any(field(
+      Signal::new("AB".to_owned()),
+      Signal::new(TextSelection::new(2, 2)),
+    ))
   });
   let root = server_root(&markup);
   let server_input: web_sys::HtmlInputElement = root
@@ -624,12 +633,18 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
 
   let _ = server_input.set_selection_range(1, 1);
 
-  let value = skene_web::reactive::Signal::new("AB".to_owned());
+  let value = Signal::new("AB".to_owned());
+  let selection = Signal::new(TextSelection::new(2, 2));
 
-  hydrate(root.clone(), "", move || field(value));
+  hydrate(root.clone(), "", move || field(value, selection));
 
   assert_eq!(platform::hydration_mismatches(), 0);
   assert_eq!(value.get(), "ABC", "the typed text reached the handler");
+  assert_eq!(
+    selection.get(),
+    TextSelection::new(1, 1),
+    "the reader's caret reached the bound selection"
+  );
 
   let input = root
     .query_selector("input")
@@ -645,6 +660,92 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
   assert_eq!(
     (server_input.selection_start(), server_input.selection_end()),
     (Ok(Some(1)), Ok(Some(1))),
+    "the reader's caret, before the repaired range, stays"
+  );
+
+  platform::uninstall();
+  root.remove();
+}
+
+/// Text typed into a server-rendered editor before the bundle arrived reaches the
+/// signal as the reader's edit, its caret with it, and a handler transforming it
+/// repairs the adopted `<textarea>` in place, across its lines, the reader's caret kept.
+#[wasm_bindgen_test]
+fn a_value_typed_into_an_editor_before_the_bundle_reports_as_an_edit() {
+  use skene_web::{
+    BasicTextEditor,
+    TextEntry,
+    TextSelection,
+    reactive::{Set, Signal},
+  };
+
+  let editor = |value: Signal<String>, selection: Signal<TextSelection>| {
+    BasicTextEditor::new(
+      TextEntry::new()
+        .set_lines(3)
+        .derive_value(move || value.get())
+        .handle_change(move |text| value.set(text.to_uppercase()))
+        .bind_selection(selection),
+    )
+  };
+  let (markup, _) = served(move || {
+    skene_web::View::into_any(editor(
+      Signal::new("\u{1F600}\nAB".to_owned()),
+      Signal::new(TextSelection::new(4, 4)),
+    ))
+  });
+  let root = server_root(&markup);
+  let server_area: web_sys::HtmlTextAreaElement = root
+    .query_selector("textarea")
+    .expect("query")
+    .expect("a textarea")
+    .unchecked_into();
+
+  // The server serializes the value as the content; the reader typed after it.
+  server_area.set_text_content(Some("\u{1F600}\nAB"));
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  server_area.set_value("\u{1F600}\nABc\nd");
+
+  // After the line break: the emoji is two UTF-16 units and one cluster.
+  let _ = server_area.set_selection_range(3, 3);
+
+  let value = Signal::new("\u{1F600}\nAB".to_owned());
+  let selection = Signal::new(TextSelection::new(4, 4));
+
+  hydrate(root.clone(), "", move || editor(value, selection));
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(
+    value.get(),
+    "\u{1F600}\nABC\nD",
+    "the typed text reached the handler"
+  );
+  assert_eq!(
+    selection.get(),
+    TextSelection::new(2, 2),
+    "the reader's caret reached the bound selection in clusters"
+  );
+
+  let area = root
+    .query_selector("textarea")
+    .expect("query")
+    .expect("a textarea");
+
+  assert!(area == **server_area, "the textarea was adopted");
+  assert_eq!(
+    server_area.value(),
+    "\u{1F600}\nABC\nD",
+    "the textarea was repaired to the truth"
+  );
+  assert_eq!(
+    (server_area.selection_start(), server_area.selection_end()),
+    (Ok(Some(3)), Ok(Some(3))),
     "the reader's caret, before the repaired range, stays"
   );
 

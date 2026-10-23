@@ -1099,7 +1099,7 @@ impl Entry {
   /// Reports what the entry shows at `node`, its value and its selection, as an edit its
   /// toolkit applied, and repairs it to the truth the verdict answers with unless
   /// `composing`, where the repair waits for the composition's end.
-  fn report(&self, node: NodeId, composing: bool) {
+  pub(super) fn report(&self, node: NodeId, composing: bool) {
     let shown = Edit::new(self.value());
     let shown = match self.selection() {
       Some(selection) => shown.with_selection(selection),

@@ -36,18 +36,15 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use skene_foundation::{
-  Edit,
   EventKind,
   NodeId,
   NodeKind,
   Scene,
   Size,
   Timer,
-  Verdict,
   View,
   notify_change,
   notify_toggle,
-  report_edit,
 };
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{Document, Element, HtmlElement, ResizeObserver, ResizeObserverEntry};
@@ -535,10 +532,10 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 /// resource `state` serialized alongside them.
 ///
 /// A native element whose live value or checked state differs from the serialized one
-/// reports the difference once the tree is built: a text entry's text as an edit its
-/// toolkit applied, repaired in place to the truth the verdict answers with, and any
-/// other control's through its change or toggle path. Every mismatch is reported to the
-/// console and counted in [`hydration_mismatches`].
+/// reports the difference once the tree is built: a text entry's text and selection as
+/// an edit its toolkit applied, repaired in place to the truth the verdict answers with,
+/// and any other control's through its change or toggle path. Every mismatch is reported
+/// to the console and counted in [`hydration_mismatches`].
 ///
 /// # Panics
 ///
@@ -563,16 +560,16 @@ where
     match pending {
       Pending::Toggle(checked) => notify_toggle::<Web>(node, checked),
       Pending::Change(value) => notify_change::<Web>(node, &value),
-      Pending::Edit(value) => {
-        if let Verdict::Replace(truth) = report_edit::<Web>(node, &Edit::new(value), true)
-          && let Some(entry) = with_dom(|dom| {
-            dom
-              .node(node)
-              .and_then(Node::carrier_element)
-              .and_then(|element| Entry::of(element))
-          })
-        {
-          entry.repair(&truth);
+      Pending::Edit => {
+        let entry = with_dom(|dom| {
+          dom
+            .node(node)
+            .and_then(Node::carrier_element)
+            .and_then(|element| Entry::of(element))
+        });
+
+        if let Some(entry) = entry {
+          entry.report(node, false);
         }
       }
     }

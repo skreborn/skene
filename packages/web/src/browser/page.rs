@@ -25,8 +25,8 @@ pub(super) enum Pending {
   Toggle(bool),
   /// A slider's or a picker's new value.
   Change(String),
-  /// The text typed in a text entry.
-  Edit(String),
+  /// Text typed in a text entry, which reports what it shows.
+  Edit,
 }
 
 /// The server's nodes awaiting adoption, and what adoption found.
@@ -353,7 +353,7 @@ impl Sink for Page {
         return;
       };
 
-      (value != serialized).then_some(Pending::Edit(value))
+      (value != serialized).then_some(Pending::Edit)
     }
     else if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
       if native.is_toggle() {
@@ -382,7 +382,7 @@ impl Sink for Page {
     };
 
     if let (Some(pending), Some(hydration)) = (pending, &mut self.hydration) {
-      if matches!(pending, Pending::Edit(_)) {
+      if matches!(pending, Pending::Edit) {
         hydration.typed.push(input.clone());
       }
 

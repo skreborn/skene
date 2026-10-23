@@ -422,8 +422,12 @@ re-export.
   (`InputEvent.isComposing`) the repair waits, and a signal's write of the value or the
   selection leaves the entry alone, until `compositionend` reports the entry's text
   again and applies the verdict (an adopted entry holding text typed before the client
-  arrived is left alone the same way until hydration replays it); `Edit::holds` makes
-  the report idempotent whichever of the two events an engine sends last. Headless
+  arrived is left alone the same way until hydration replays it as one more report of
+  its value and selection); a cut or a paste from the context menu splices the entry's
+  selection, the caret after the text it inserts, and dispatches the bubbling `input`
+  (`deleteByCut`, `insertFromPaste`) a browser's own would, so it reports the same way;
+  `Edit::holds` makes the report idempotent whichever of the two events an engine sends
+  last. Headless
   alone still reports through `notify_change` and `notify_selection_change`, reconciled
   after. A `TextSelection` counts grapheme clusters; where a platform's protocol counts
   in code points or UTF-16 code units it names its unit (`Unit::CodePoint`,

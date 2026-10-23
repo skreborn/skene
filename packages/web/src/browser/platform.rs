@@ -54,6 +54,9 @@ use web_sys::{
   HtmlElement,
   HtmlInputElement,
   HtmlTextAreaElement,
+  InputEvent,
+  InputEventInit,
+  SelectionMode,
 };
 
 use super::{
@@ -174,20 +177,38 @@ fn document_selection(dom: &Dom) -> Option<String> {
   Some(String::from(selection.to_string()))
 }
 
-/// Replaces the selection of an `<input>` or `<textarea>` with `text`, reporting the
-/// edit as the platform would.
-fn replace_entry_selection(entry: &Element, text: &str) {
+/// Replaces the selection of an `<input>` or `<textarea>` with `text`, the caret after
+/// it, and reports the edit as the platform would: a bubbling `input` of `input_type`.
+fn replace_entry_selection(entry: &Element, text: &str, input_type: &str) {
+  let Some((start, end, _)) = entry_selection(entry)
+  else {
+    return;
+  };
   let replaced = if let Some(input) = entry.dyn_ref::<HtmlInputElement>() {
-    input.set_range_text(text).is_ok()
+    input
+      .set_range_text_with_start_and_end_and_selection_mode(text, start, end, SelectionMode::End)
+      .is_ok()
   }
   else if let Some(editor) = entry.dyn_ref::<HtmlTextAreaElement>() {
-    editor.set_range_text(text).is_ok()
+    editor
+      .set_range_text_with_start_and_end_and_mode(text, start, end, "end")
+      .is_ok()
   }
   else {
     false
   };
 
-  if replaced && let Ok(event) = web_sys::Event::new("input") {
+  if !replaced {
+    return;
+  }
+
+  let init = InputEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_input_type(input_type);
+  init.set_data((!text.is_empty()).then_some(text));
+
+  if let Ok(event) = InputEvent::new_with_event_init_dict("input", &init) {
     let _ = entry.dispatch_event(&event);
   }
 }
@@ -854,7 +875,7 @@ impl Realization for Web {
       ClipboardAction::Cut => {
         if let (Some(text), Some(entry)) = (text, entry) {
           let _ = clipboard.write_text(&text);
-          replace_entry_selection(&entry, "");
+          replace_entry_selection(&entry, "", "deleteByCut");
         }
       }
       ClipboardAction::Paste => {
@@ -863,7 +884,7 @@ impl Realization for Web {
 
           wasm_bindgen_futures::spawn_local(async move {
             if let Some(text) = read.await.ok().and_then(|text| text.as_string()) {
-              replace_entry_selection(&entry, &text);
+              replace_entry_selection(&entry, &text, "insertFromPaste");
             }
           });
         }

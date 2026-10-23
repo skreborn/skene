@@ -18,6 +18,7 @@ use skene_foundation::{
   Axes,
   Axis,
   BasicPickerBase,
+  ClipboardAction,
   ColumnBase,
   ContainerBase,
   ContextMenuBase,
@@ -46,6 +47,7 @@ use skene_foundation::{
   PointerButton,
   PointerId,
   PointerType,
+  Realization,
   RichTextBase,
   RowBase,
   RunBase,
@@ -66,6 +68,7 @@ use skene_web::{
   BasicRadio,
   BasicRadioGroup,
   BasicSlider,
+  BasicTextEditor,
   BasicTextField,
   Color,
   Column,
@@ -110,10 +113,10 @@ use skene_web::{
   derived,
   empty,
   head,
-  platform::{self, Declarations, mount},
+  platform::{self, Declarations, Web, mount},
   reactive::{Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, next_frame, only_child, wait},
-  wasm_bindgen::JsCast,
+  wasm_bindgen::{JsCast, JsValue},
   window,
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
@@ -123,6 +126,7 @@ use web_sys::{
   Element,
   HtmlElement,
   HtmlInputElement,
+  HtmlTextAreaElement,
   InputEvent,
   InputEventInit,
 };
@@ -1282,6 +1286,236 @@ fn a_repair_waits_out_composition() {
     "the reader's caret stands"
   );
   assert_eq!(value.get(), "ABX");
+  assert_eq!(selection.get(), TextSelection::new(3, 3));
+}
+
+/// A character the handler refuses is taken back out of a `<textarea>` by the smallest
+/// edit across its lines: the element stays, and the caret stays where the reader left
+/// it, counted past a character two UTF-16 units wide and a line break.
+#[wasm_bindgen_test]
+fn a_refused_character_is_repaired_in_place_in_an_editor() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("\u{1F600}\nab".to_owned());
+
+  let _ = mount(move || {
+    BasicTextEditor::new(
+      TextEntry::new()
+        .set_lines(3)
+        .derive_value(move || value.get())
+        .handle_change(move |text| {
+          if !text.contains('x') {
+            value.set(text.to_owned());
+          }
+        }),
+    )
+    .build()
+  });
+
+  let element = only_child(&root);
+  let area = element
+    .clone()
+    .dyn_into::<HtmlTextAreaElement>()
+    .expect("a textarea");
+
+  let _ = area.focus();
+
+  area.set_value("\u{1F600}\nxab");
+
+  let _ = area.set_selection_range(4, 4);
+
+  dispatch(&area, "input");
+  platform::end_turn();
+
+  assert_eq!(area.value(), "\u{1F600}\nab");
+  assert_eq!(value.get(), "\u{1F600}\nab", "the refusal wrote nothing");
+  assert_eq!(
+    (area.selection_start(), area.selection_end()),
+    (Ok(Some(3)), Ok(Some(3))),
+    "the caret stays where the refused character was typed"
+  );
+  assert!(only_child(&root) == element, "the element is the same");
+}
+
+/// An input method's composition in a `<textarea>` is left alone: an edit reported while
+/// it composes is not repaired, and the composition's end repairs it, the caret kept.
+#[wasm_bindgen_test]
+fn a_repair_in_an_editor_waits_out_composition() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("a\nb".to_owned());
+  let selection = Signal::new(TextSelection::new(3, 3));
+
+  let _ = mount(move || {
+    BasicTextEditor::new(
+      TextEntry::new()
+        .set_lines(3)
+        .derive_value(move || value.get())
+        .handle_change(move |text| value.set(text.to_uppercase()))
+        .bind_selection(selection),
+    )
+    .build()
+  });
+
+  let area = only_child(&root)
+    .dyn_into::<HtmlTextAreaElement>()
+    .expect("a textarea");
+
+  let _ = area.focus();
+
+  area.set_value("a\nbx");
+
+  let _ = area.set_selection_range(4, 4);
+
+  let init = InputEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_is_composing(true);
+
+  let composing = InputEvent::new_with_event_init_dict("input", &init).expect("an input event");
+  let _ = area.dispatch_event(&composing);
+
+  platform::end_turn();
+
+  assert_eq!(
+    value.get(),
+    "A\nBX",
+    "the composing edit reached the handler"
+  );
+  assert_eq!(
+    area.value(),
+    "a\nbx",
+    "nothing is repaired while the input method composes"
+  );
+
+  let init = CompositionEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_data("x");
+
+  let end = CompositionEvent::new_with_event_init_dict("compositionend", &init)
+    .expect("a composition event");
+  let _ = area.dispatch_event(&end);
+
+  platform::end_turn();
+
+  assert_eq!(area.value(), "A\nBX", "the composition's end repairs it");
+  assert_eq!(
+    (area.selection_start(), area.selection_end()),
+    (Ok(Some(4)), Ok(Some(4))),
+    "the reader's caret stands"
+  );
+  assert_eq!(selection.get(), TextSelection::new(4, 4));
+}
+
+/// Stands in for the system clipboard: `readText` answers `pasted`, and `writeText`
+/// keeps what it is given for [`written`]; [`restore_clipboard`] takes the stand-in
+/// away.
+fn stub_clipboard(pasted: &str) {
+  let clipboard = web_sys::window().expect("a window").navigator().clipboard();
+  let read = js_sys::Function::new_with_args("", "return Promise.resolve(this.pasted);");
+  let write =
+    js_sys::Function::new_with_args("text", "this.written = text; return Promise.resolve();");
+
+  for (name, value) in [
+    ("pasted", JsValue::from_str(pasted)),
+    ("readText", read.into()),
+    ("writeText", write.into()),
+  ] {
+    js_sys::Reflect::set(&clipboard, &JsValue::from_str(name), &value).expect("stub");
+  }
+}
+
+/// What the clipboard's stand-in was last given to write.
+fn written() -> Option<String> {
+  let clipboard = web_sys::window().expect("a window").navigator().clipboard();
+
+  js_sys::Reflect::get(&clipboard, &JsValue::from_str("written"))
+    .ok()
+    .and_then(|text| text.as_string())
+}
+
+/// Takes the clipboard's stand-in away.
+fn restore_clipboard() {
+  let clipboard = web_sys::window().expect("a window").navigator().clipboard();
+
+  for name in ["pasted", "readText", "writeText", "written"] {
+    let _ = js_sys::Reflect::delete_property(&clipboard, &JsValue::from_str(name));
+  }
+}
+
+/// A cut from a bound field writes the selection to the clipboard and reports the edit
+/// it makes: the signal holds what is left and the caret sits where the selection was.
+#[wasm_bindgen_test]
+fn a_cut_reports_its_edit() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("abcd".to_owned());
+  let selection = Signal::new(TextSelection::new(0, 0));
+
+  let _ = mount(move || {
+    BasicTextField::new(TextEntry::new().bind_value(value).bind_selection(selection)).build()
+  });
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  let _ = input.focus();
+  let _ = input.set_selection_range(1, 3);
+
+  stub_clipboard("");
+  Web::clipboard(ClipboardAction::Cut);
+  platform::end_turn();
+
+  let cut = written();
+
+  restore_clipboard();
+
+  assert_eq!(
+    cut.as_deref(),
+    Some("bc"),
+    "the selection reached the clipboard"
+  );
+  assert_eq!(value.get(), "ad", "the edit reached the signal");
+  assert_eq!(input.value(), "ad");
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(1)), Ok(Some(1)))
+  );
+  assert_eq!(selection.get(), TextSelection::new(1, 1));
+}
+
+/// A paste into a bound field replaces its selection and reports the edit it makes: the
+/// signal holds the result, and the caret sits after the pasted text.
+#[wasm_bindgen_test]
+async fn a_paste_reports_its_edit_with_the_caret_after_it() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("abc".to_owned());
+  let selection = Signal::new(TextSelection::new(0, 0));
+
+  let _ = mount(move || {
+    BasicTextField::new(TextEntry::new().bind_value(value).bind_selection(selection)).build()
+  });
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  let _ = input.focus();
+  let _ = input.set_selection_range(1, 2);
+
+  stub_clipboard("XY");
+  Web::clipboard(ClipboardAction::Paste);
+
+  let pasted = frames_until(|| value.get() == "aXYc").await;
+
+  restore_clipboard();
+
+  assert!(pasted, "the edit reached the signal: {}", value.get());
+  assert_eq!(input.value(), "aXYc");
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(3)), Ok(Some(3))),
+    "the caret sits after the pasted text"
+  );
   assert_eq!(selection.get(), TextSelection::new(3, 3));
 }
 

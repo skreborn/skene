@@ -41,7 +41,6 @@ use crate::spine::{
   FocusOrder,
   Inset,
   Length,
-  PointerEvent,
   PointerPrecision,
   Size,
   TextSelection,
@@ -104,7 +103,6 @@ thread_local! {
   static SCENE: RefCell<Scene<TestPlatform>> = RefCell::new(Scene::new());
   static LOG: RefCell<Vec<Call>> = const { RefCell::new(Vec::new()) };
   static MEDIA: RefCell<Option<MediaSignals<f32>>> = const { RefCell::new(None) };
-  static ORIGINS: RefCell<Vec<(NodeId, f32, f32)>> = const { RefCell::new(Vec::new()) };
 }
 
 impl TestPlatform {
@@ -112,12 +110,6 @@ impl TestPlatform {
   pub(super) fn reset() {
     SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
     LOG.with(|log| log.borrow_mut().clear());
-    ORIGINS.with(|origins| origins.borrow_mut().clear());
-  }
-
-  /// Places `node`'s box at (`x`, `y`), for pointer events to localize against.
-  pub(super) fn set_origin(node: NodeId, x: f32, y: f32) {
-    ORIGINS.with(|origins| origins.borrow_mut().push((node, x, y)));
   }
 
   /// The calls received since the last reset or take.
@@ -203,20 +195,6 @@ impl Realization for TestPlatform {
 
   fn listen(node: NodeId, kind: EventKind) {
     Self::log(Call::Listen(node, kind));
-  }
-
-  fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent {
-    ORIGINS.with(|origins| {
-      origins
-        .borrow()
-        .iter()
-        .find(|(placed, _, _)| *placed == node)
-        .map_or(*event, |(_, x, y)| PointerEvent {
-          local_x: event.x - x,
-          local_y: event.y - y,
-          ..*event
-        })
-    })
   }
 
   fn focus(node: NodeId) {

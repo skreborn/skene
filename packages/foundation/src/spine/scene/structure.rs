@@ -4,7 +4,7 @@
 use smallvec::SmallVec;
 
 use super::{Mirror, NodeKind, NodeRecord, Scene};
-use crate::spine::{NodeId, Part, Realization};
+use crate::spine::{NodeId, Part, Realization, dispatch::Crossing};
 
 /// The end of a segment and, while the segment is detached, the content waiting
 /// between its anchors.
@@ -74,19 +74,9 @@ impl<P: Realization> Scene<P> {
   /// Every live node standing in no parent and no segment, in index order: each tree's
   /// root, and each node built and not yet attached; a node hidden while live is none.
   pub fn roots(&self) -> impl Iterator<Item = NodeId> + '_ {
-    self
-      .entries
-      .iter()
-      .enumerate()
-      .filter_map(|(index, entry)| {
-        let record = entry.record.as_ref()?;
-
-        if record.parent.is_some() || record.enclosing.is_some() || record.hidden {
-          return None;
-        }
-
-        Some(NodeId::new(u32::try_from(index).ok()?, entry.generation))
-      })
+    self.nodes.iter().filter_map(|(node, record)| {
+      (record.parent.is_none() && record.enclosing.is_none() && !record.hidden).then_some(node)
+    })
   }
 
   /// The children of `node`, in order; empty for a leaf or a stale id.
@@ -159,14 +149,9 @@ impl<P: Realization> Scene<P> {
   /// The nodes among `from` and its ancestors that are neither `to` nor among its
   /// ancestors, innermost first: those a move from `from` to `to` leaves.
   pub fn crossed(&self, from: Option<NodeId>, to: Option<NodeId>) -> SmallVec<[NodeId; 16]> {
-    let kept = to.map(|to| self.ancestry(to)).unwrap_or_default();
+    let ancestry = |node: Option<NodeId>| node.map(|node| self.ancestry(node)).unwrap_or_default();
 
-    from
-      .map(|from| self.ancestry(from))
-      .unwrap_or_default()
-      .into_iter()
-      .filter(|node| !kept.contains(node))
-      .collect()
+    Crossing::leaving(&ancestry(from), &ancestry(to))
   }
 
   /// Places `child` under `parent`, immediately before `before` when given, else last,
@@ -238,31 +223,26 @@ impl<P: Realization> Scene<P> {
         self.open_overlays.retain(|open| *open != node);
       }
 
-      for held in [&mut self.hovered, &mut self.pressed, &mut self.focused] {
-        if *held == Some(node) {
-          *held = None;
-          self.interaction_generation += 1;
-        }
-      }
+      self.held.forget(node);
 
       self.kept_focus.remove(&node);
 
       if self.drag.as_ref().is_some_and(|drag| drag.source == node) {
         self.drag = None;
-        self.interaction_generation += 1;
+        self.held.touch();
       }
 
       if let Some(drag) = &mut self.drag
         && drag.target == Some(node)
       {
         drag.target = None;
-        self.interaction_generation += 1;
+        self.held.touch();
       }
 
       self.mirrors.push(Mirror::Destroy(node));
     }
 
-    self.definitions_generation += 1;
+    self.tokens.touch();
   }
 
   /// Mounts `node` in the segment `start` begins, before `before` when given, else
@@ -516,7 +496,7 @@ impl<P: Realization> Scene<P> {
     }
 
     self.return_kept_focus(child);
-    self.definitions_generation += 1;
+    self.tokens.touch();
   }
 
   /// Moves `child`, standing under a parent, under `parent` immediately before `before`,
@@ -549,18 +529,17 @@ impl<P: Realization> Scene<P> {
       self.link(parent, node, before, Arrival::Relocate);
     }
 
-    self.definitions_generation += 1;
+    self.tokens.touch();
   }
 
   /// Takes `child`, standing under a parent, out of the tree live, keeping the focus
   /// held inside it for its return.
   fn hide(&mut self, child: NodeId) {
-    if let Some(focused) = self.focused
+    if let Some(focused) = self.focused()
       && self.ancestry(focused).contains(&child)
     {
-      self.focused = None;
+      self.held.focus(None);
       self.kept_focus.insert(child, focused);
-      self.interaction_generation += 1;
     }
 
     self.unlink(child, Departure::Hide);
@@ -569,14 +548,14 @@ impl<P: Realization> Scene<P> {
       record.hidden = true;
     }
 
-    self.definitions_generation += 1;
+    self.tokens.touch();
   }
 
   /// Gives the focus `child` kept when it left back to its node, where that node is live
   /// and focus has gone nowhere since.
   fn return_kept_focus(&mut self, child: NodeId) {
     if let Some(focused) = self.kept_focus.remove(&child)
-      && self.focused.is_none()
+      && self.focused().is_none()
       && self.contains(focused)
     {
       self.mirrors.push(Mirror::Focus(focused));

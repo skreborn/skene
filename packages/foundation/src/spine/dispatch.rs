@@ -17,6 +17,7 @@ use smallvec::SmallVec;
 use super::{Handler, NodeId, Realization, Scene};
 use crate::spine::{
   ClickEvent,
+  ClickHandler,
   Edit,
   EditHandler,
   KeyEvent,
@@ -34,23 +35,7 @@ use crate::spine::{
 
 /// Dispatches a click at `node`.
 pub fn dispatch_click<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
-  bubble::<P, _, _>(
-    node,
-    |set, out| {
-      out.extend(set.select(|handler| match handler {
-        Handler::ActingClick(run) => Some(run),
-        _ => None,
-      }));
-      out.extend(set.select(|handler| match handler {
-        Handler::Click(run) => Some(run),
-        _ => None,
-      }));
-
-      false
-    },
-    |_| (),
-    |handler, ()| handler(event),
-  )
+  bubble::<P, _, _>(node, select_click, |_| (), |handler, ()| handler(event))
 }
 
 /// Dispatches the second click of a double click at `node`, after the click itself.
@@ -73,17 +58,7 @@ pub fn dispatch_double_click<P: Realization>(node: NodeId, event: &ClickEvent) -
 pub fn dispatch_click_observed<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    |set, out| {
-      out.extend(set.select(|handler| match handler {
-        Handler::Click(run) => Some(run),
-        _ => None,
-      }));
-
-      set.has(|handler| match handler {
-        Handler::ActingClick(run) => Some(run),
-        _ => None,
-      })
-    },
+    select_observed_click,
     |_| (),
     |handler, ()| handler(event),
   )
@@ -313,12 +288,11 @@ pub fn report_edit<P: Realization>(node: NodeId, edit: &Edit, applied: bool) -> 
       }),
     );
 
-    handlers.iter().fold(Verdict::Accept, |verdict, handler| {
-      match run_handler(handler.owner(), || handler(edit, applied)) {
-        Verdict::Accept => verdict,
-        replaced @ Verdict::Replace(_) => replaced,
-      }
-    })
+    Verdict::fold(
+      handlers
+        .iter()
+        .map(|handler| run_handler(handler.owner(), || handler(edit, applied))),
+    )
   })
 }
 
@@ -363,6 +337,119 @@ pub fn dispatch_context_menu<P: Realization>(node: NodeId, event: &PointerEvent)
 /// The handlers a dispatch runs on one node, in order.
 type Selected<H> = SmallVec<[Registered<H>; 2]>;
 
+/// The nodes a move from one node to another crosses, read from their ancestries, a
+/// node and the nodes it stands in, itself first, as [`Scene::ancestry`] gives it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::spine) struct Crossing {
+  /// The nodes whose subtree the move left, innermost first.
+  pub(in crate::spine) left: SmallVec<[NodeId; 16]>,
+  /// The nodes whose subtree the move reached, outermost first.
+  pub(in crate::spine) reached: SmallVec<[NodeId; 16]>,
+}
+
+impl Crossing {
+  /// What a move from the node of ancestry `from` to the node of ancestry `to` crosses;
+  /// an empty ancestry for no node.
+  pub(in crate::spine) fn between(from: &[NodeId], to: &[NodeId]) -> Self {
+    let mut reached = Self::leaving(to, from);
+
+    reached.reverse();
+
+    Self {
+      left: Self::leaving(from, to),
+      reached,
+    }
+  }
+
+  /// The nodes of the ancestry `from` that are not in the ancestry `to`, innermost
+  /// first: those a move from the one node to the other leaves.
+  pub(in crate::spine) fn leaving(from: &[NodeId], to: &[NodeId]) -> SmallVec<[NodeId; 16]> {
+    from
+      .iter()
+      .copied()
+      .filter(|node| !to.contains(node))
+      .collect()
+  }
+}
+
+impl Prevented {
+  /// Climbs `path`, a dispatch's nodes deepest first, folding the verdicts of the
+  /// handlers on each: `select` picks a node's handlers, in order, with whether the
+  /// selection ends the climb there, and `run` runs each with the payload `prepare` makes
+  /// for its node, made only where a handler runs.
+  ///
+  /// Every handler a node carries runs, and the climb ends past the node whose verdicts
+  /// prevent bubbling or whose selection ends it.
+  pub(in crate::spine) fn climb<N: Copy, T, E>(
+    path: impl IntoIterator<Item = N>,
+    mut select: impl FnMut(N) -> (SmallVec<[T; 2]>, bool),
+    prepare: impl Fn(N) -> E,
+    mut run: impl FnMut(&T, &E) -> Prevent,
+  ) -> Self {
+    let mut prevented = Self::default();
+
+    for node in path {
+      let (handlers, ends) = select(node);
+
+      if !handlers.is_empty() {
+        let payload = prepare(node);
+
+        for handler in &handlers {
+          prevented.absorb(run(handler, &payload));
+        }
+      }
+
+      if prevented.bubbling || ends {
+        break;
+      }
+    }
+
+    prevented
+  }
+}
+
+impl Verdict {
+  /// What an edit's handlers answer together, from their verdicts in order: the last
+  /// replacing the edit decides, and the edit stands where none does.
+  pub(in crate::spine) fn fold(verdicts: impl IntoIterator<Item = Self>) -> Self {
+    verdicts
+      .into_iter()
+      .fold(Self::Accept, |verdict, next| match next {
+        Self::Accept => verdict,
+        replaced @ Self::Replace(_) => replaced,
+      })
+  }
+}
+
+/// The handlers a click runs on one node: its acting ones, then the rest, ending the
+/// climb nowhere.
+fn select_click(set: &HandlerSet, out: &mut Selected<ClickHandler>) -> bool {
+  out.extend(set.select(|handler| match handler {
+    Handler::ActingClick(run) => Some(run),
+    _ => None,
+  }));
+  out.extend(set.select(|handler| match handler {
+    Handler::Click(run) => Some(run),
+    _ => None,
+  }));
+
+  false
+}
+
+/// The handlers a click the platform already acted on runs on one node: all but the
+/// acting ones, ending the climb at a node carrying acting ones.
+fn select_observed_click(set: &HandlerSet, out: &mut Selected<ClickHandler>) -> bool {
+  out.extend(set.select(|handler| match handler {
+    Handler::Click(run) => Some(run),
+    _ => None,
+  }));
+
+  set.has(|handler| match handler {
+    Handler::ActingClick(run) => Some(run),
+    _ => None,
+  })
+}
+
 /// A selection taking every handler `pick` takes, ending the climb nowhere.
 fn all<H: ?Sized>(pick: Pick<H>) -> impl Fn(&HandlerSet, &mut Selected<H>) -> bool {
   move |set, out| {
@@ -398,25 +485,12 @@ fn bubble<P: Realization, H: ?Sized, E>(
   run: impl Fn(&H, &E) -> Prevent,
 ) -> Prevented {
   batch(|| {
-    let mut prevented = Prevented::default();
-
-    for node in Scene::<P>::with(|scene| scene.ancestry(node)) {
-      let (handlers, ends) = snapshot::<P, H>(node, &select);
-
-      if !handlers.is_empty() {
-        let payload = prepare(node);
-
-        for handler in &handlers {
-          prevented.absorb(run_handler(handler.owner(), || run(handler, &payload)));
-        }
-      }
-
-      if prevented.bubbling || ends {
-        break;
-      }
-    }
-
-    prevented
+    Prevented::climb(
+      Scene::<P>::with(|scene| scene.ancestry(node)),
+      |at| snapshot::<P, H>(at, &select),
+      prepare,
+      |handler, payload| run_handler(handler.owner(), || run(handler, payload)),
+    )
   })
 }
 
@@ -436,15 +510,17 @@ mod tests {
   use std::{cell::RefCell, rc::Rc};
 
   use skene_reactive::{Owner, provide_context, use_context};
+  use smallvec::SmallVec;
 
   use super::{
+    Crossing,
+    HandlerSet,
+    Selected,
     dispatch_click,
-    dispatch_click_observed,
-    dispatch_pointer_down,
     notify_dismiss,
-    notify_focus_moved,
     notify_pointer_moved,
-    report_edit,
+    select_click,
+    select_observed_click,
   };
   use crate::spine::{
     Boundary,
@@ -452,19 +528,18 @@ mod tests {
     ClickEvent,
     ClickHandler,
     Edit,
-    EventKind,
     Handler,
     NodeId,
     PointerButton,
     PointerEvent,
-    PointerHandler,
     Prevent,
     Prevented,
     Scene,
     TextSelection,
     Verdict,
     count_pending,
-    testing::{Call, TestBox, TestPlatform},
+    scene::Held,
+    testing::{TestBox, TestPlatform},
   };
 
   fn chain() -> (NodeId, NodeId, NodeId) {
@@ -489,157 +564,6 @@ mod tests {
 
       Prevent::None
     })
-  }
-
-  /// Handlers run deepest first, every handler on a node runs, and registration is
-  /// reported to the platform.
-  #[test]
-  fn click_runs_deepest_first() {
-    TestPlatform::reset();
-
-    let (outer, middle, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(outer, Handler::Click(record(&log, "outer")));
-      scene.handle(inner, Handler::Click(record(&log, "inner first")));
-      scene.handle(inner, Handler::Click(record(&log, "inner second")));
-    });
-
-    assert_eq!(
-      TestPlatform::take_log(),
-      [
-        Call::Listen(outer, EventKind::Click),
-        Call::Listen(inner, EventKind::Click),
-        Call::Listen(inner, EventKind::Click),
-      ]
-    );
-    assert_eq!(
-      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
-      Prevented::default()
-    );
-    assert_eq!(*log.borrow(), ["inner first", "inner second", "outer"]);
-    assert_eq!(
-      dispatch_click::<TestPlatform>(middle, &ClickEvent::new(1)),
-      Prevented::default()
-    );
-    assert_eq!(
-      *log.borrow(),
-      ["inner first", "inner second", "outer", "outer"]
-    );
-  }
-
-  /// A box that stops bubbling keeps the click from its ancestors, and its verdict
-  /// folds into the result.
-  #[test]
-  fn bubbling_stop_ends_the_climb() {
-    TestPlatform::reset();
-
-    let (outer, middle, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(outer, Handler::Click(record(&log, "outer")));
-      scene.handle(inner, Handler::Click(record(&log, "inner")));
-
-      let stop = Rc::clone(&log);
-
-      scene.handle(
-        middle,
-        Handler::Click(Rc::new(move |_: &ClickEvent| {
-          stop.borrow_mut().push("middle");
-
-          Bubbling::Stop.into()
-        })),
-      );
-    });
-
-    assert_eq!(
-      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
-      Prevented {
-        platform: false,
-        bubbling: true,
-      }
-    );
-    assert_eq!(*log.borrow(), ["inner", "middle"]);
-  }
-
-  /// The `Prevent::Realization` verdict is the control's own: it suppresses the native response
-  /// without stopping the ancestors, and a handler may reach the scene while it runs.
-  #[test]
-  fn platform_verdict_is_the_controls() {
-    TestPlatform::reset();
-
-    let (outer, _, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(outer, Handler::Click(record(&log, "outer")));
-
-      let control = Rc::clone(&log);
-
-      scene.handle(
-        inner,
-        Handler::Click(Rc::new(move |_: &ClickEvent| {
-          let parent = Scene::<TestPlatform>::with(|scene| scene.parent(inner));
-
-          control.borrow_mut().push(if parent.is_some() {
-            "control"
-          }
-          else {
-            "orphan"
-          });
-
-          Prevent::Realization
-        })),
-      );
-    });
-
-    assert_eq!(
-      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
-      Prevented {
-        platform: true,
-        bubbling: false,
-      }
-    );
-    assert_eq!(*log.borrow(), ["control", "outer"]);
-  }
-
-  /// An acting handler runs before the node's observers on a click, and an observed
-  /// click skips it while the observers beneath and on its node still run, the climb
-  /// ending there as the acting handler's verdict ends it.
-  #[test]
-  fn observed_click_skips_the_acting_handler() {
-    TestPlatform::reset();
-
-    let (outer, middle, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-    let acting = {
-      let log = Rc::clone(&log);
-
-      Rc::new(move |_: &ClickEvent| {
-        log.borrow_mut().push("acting");
-
-        Prevent::Bubbling
-      })
-    };
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(inner, Handler::Click(record(&log, "inner")));
-      scene.handle(middle, Handler::Click(record(&log, "observer")));
-      scene.handle(middle, Handler::ActingClick(acting));
-      scene.handle(outer, Handler::Click(record(&log, "outer")));
-    });
-
-    let _ = dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1));
-
-    assert_eq!(*log.borrow(), ["inner", "acting", "observer"]);
-
-    log.borrow_mut().clear();
-
-    let _ = dispatch_click_observed::<TestPlatform>(inner, &ClickEvent::new(1));
-
-    assert_eq!(*log.borrow(), ["inner", "observer"]);
   }
 
   /// The climb follows the parents a node had when the dispatch began, whatever a
@@ -740,167 +664,6 @@ mod tests {
     assert_eq!(*log.borrow(), ["leave"]);
   }
 
-  /// A notification runs the node's own handlers only.
-  #[test]
-  fn notifications_do_not_bubble() {
-    TestPlatform::reset();
-
-    let (outer, _, inner) = chain();
-    let log = Rc::new(RefCell::new(Vec::new()));
-
-    Scene::<TestPlatform>::with(|scene| {
-      let outer_log = Rc::clone(&log);
-      let inner_log = Rc::clone(&log);
-
-      scene.handle(
-        outer,
-        Handler::Dismiss(Rc::new(move || outer_log.borrow_mut().push("outer"))),
-      );
-      scene.handle(
-        inner,
-        Handler::Dismiss(Rc::new(move || inner_log.borrow_mut().push("inner"))),
-      );
-    });
-
-    notify_dismiss::<TestPlatform>(inner);
-
-    assert_eq!(*log.borrow(), ["inner"]);
-  }
-
-  /// A pointer move leaves each node whose subtree the pointer left, innermost first,
-  /// then enters each whose subtree it reached, outermost first; a node holding the
-  /// pointer throughout hears nothing.
-  #[test]
-  fn a_pointer_move_notifies_the_subtrees_it_crosses() {
-    TestPlatform::reset();
-
-    let (outer, middle, inner) = chain();
-    let sibling = TestBox::node();
-    let log = Rc::new(RefCell::new(Vec::new()));
-    let note = |name: &'static str| -> Rc<dyn Fn()> {
-      let log = Rc::clone(&log);
-
-      Rc::new(move || log.borrow_mut().push(name))
-    };
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.attach(outer, sibling, None);
-
-      for (node, enter, leave) in [
-        (outer, "outer enter", "outer leave"),
-        (middle, "middle enter", "middle leave"),
-        (inner, "inner enter", "inner leave"),
-        (sibling, "sibling enter", "sibling leave"),
-      ] {
-        scene.handle(node, Handler::PointerEnter(note(enter)));
-        scene.handle(node, Handler::PointerLeave(note(leave)));
-      }
-    });
-
-    notify_pointer_moved::<TestPlatform>(Some(inner));
-
-    assert_eq!(
-      std::mem::take(&mut *log.borrow_mut()),
-      ["outer enter", "middle enter", "inner enter"]
-    );
-
-    notify_pointer_moved::<TestPlatform>(Some(sibling));
-
-    assert_eq!(
-      std::mem::take(&mut *log.borrow_mut()),
-      ["inner leave", "middle leave", "sibling enter"]
-    );
-    assert!(Scene::<TestPlatform>::with(|scene| scene.is_hovered(outer)));
-
-    notify_pointer_moved::<TestPlatform>(None);
-
-    assert_eq!(*log.borrow(), ["sibling leave", "outer leave"]);
-  }
-
-  /// A focus move blurs each node whose subtree focus left, innermost first, then
-  /// focuses each whose subtree it reached, outermost first; a node holding it
-  /// throughout hears nothing.
-  #[test]
-  fn a_focus_move_notifies_the_subtrees_it_crosses() {
-    TestPlatform::reset();
-
-    let (outer, middle, inner) = chain();
-    let sibling = TestBox::node();
-    let log = Rc::new(RefCell::new(Vec::new()));
-    let note = |name: &'static str| -> Rc<dyn Fn()> {
-      let log = Rc::clone(&log);
-
-      Rc::new(move || log.borrow_mut().push(name))
-    };
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.attach(outer, sibling, None);
-
-      for (node, focus, blur) in [
-        (outer, "outer focus", "outer blur"),
-        (middle, "middle focus", "middle blur"),
-        (inner, "inner focus", "inner blur"),
-        (sibling, "sibling focus", "sibling blur"),
-      ] {
-        scene.handle(node, Handler::Focus(note(focus)));
-        scene.handle(node, Handler::Blur(note(blur)));
-      }
-    });
-
-    notify_focus_moved::<TestPlatform>(Some(inner));
-
-    assert_eq!(
-      std::mem::take(&mut *log.borrow_mut()),
-      ["outer focus", "middle focus", "inner focus"]
-    );
-
-    notify_focus_moved::<TestPlatform>(Some(sibling));
-
-    assert_eq!(
-      std::mem::take(&mut *log.borrow_mut()),
-      ["inner blur", "middle blur", "sibling focus"]
-    );
-
-    notify_focus_moved::<TestPlatform>(None);
-
-    assert_eq!(*log.borrow(), ["sibling blur", "outer blur"]);
-  }
-
-  /// A pointer event reaches each handling node local to that node's own box.
-  #[test]
-  fn pointer_events_localize_per_node() {
-    TestPlatform::reset();
-
-    let (outer, _, inner) = chain();
-    let seen = Rc::new(RefCell::new(Vec::new()));
-    let observe = |name: &'static str| -> Rc<PointerHandler> {
-      let seen = Rc::clone(&seen);
-
-      Rc::new(move |event: &PointerEvent| {
-        seen.borrow_mut().push((name, event.local_x, event.local_y));
-
-        Prevent::None
-      })
-    };
-
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(outer, Handler::PointerDown(observe("outer")));
-      scene.handle(inner, Handler::PointerDown(observe("inner")));
-    });
-    TestPlatform::set_origin(outer, 10., 100.);
-    TestPlatform::set_origin(inner, 30., 120.);
-
-    let event = PointerEvent {
-      local_x: 5.,
-      local_y: 5.,
-      ..PointerEvent::mouse(35., 125.)
-    }
-    .with_press(PointerButton::Primary);
-    let _ = dispatch_pointer_down::<TestPlatform>(inner, &event);
-
-    assert_eq!(*seen.borrow(), [("inner", 5., 5.), ("outer", 25., 25.)]);
-  }
-
   /// A handler runs as the owner that registered it, so it sees that owner's context
   /// and what it creates ends with that owner.
   #[test]
@@ -972,56 +735,364 @@ mod tests {
     assert!(boundary.is_settled());
   }
 
-  /// An edit is answered by the node's own handlers alone, the last replacing it deciding,
-  /// each hearing whether the toolkit shows the edit already.
+  /// A notification runs the node's own handlers only.
   #[test]
-  fn report_edit_folds_its_handlers_verdicts() {
+  fn notifications_do_not_bubble() {
     TestPlatform::reset();
 
     let (outer, _, inner) = chain();
-    let heard = Rc::new(RefCell::new(Vec::new()));
-    let answer = |verdict: Verdict| {
-      let heard = Rc::clone(&heard);
+    let log = Rc::new(RefCell::new(Vec::new()));
 
-      Handler::Edit(Rc::new(move |edit: &Edit, applied| {
-        heard.borrow_mut().push((edit.text.to_string(), applied));
+    Scene::<TestPlatform>::with(|scene| {
+      let outer_log = Rc::clone(&log);
+      let inner_log = Rc::clone(&log);
 
-        verdict.clone()
-      }))
+      scene.handle(
+        outer,
+        Handler::Dismiss(Rc::new(move || outer_log.borrow_mut().push("outer"))),
+      );
+      scene.handle(
+        inner,
+        Handler::Dismiss(Rc::new(move || inner_log.borrow_mut().push("inner"))),
+      );
+    });
+
+    notify_dismiss::<TestPlatform>(inner);
+
+    assert_eq!(*log.borrow(), ["inner"]);
+  }
+
+  /// A plain node of a climb: its name, its handlers' names and verdicts in order, and
+  /// whether its selection ends the climb.
+  type PlainNode = (&'static str, &'static [(&'static str, Prevent)], bool);
+
+  /// Climbs `path`, deepest first, over plain handlers, returning what it folded and the
+  /// names of the handlers it ran, in order.
+  fn climb(path: &[PlainNode]) -> (Prevented, Vec<&'static str>) {
+    let ran = RefCell::new(Vec::new());
+    let prevented = Prevented::climb(
+      path,
+      |(_, handlers, ends)| (handlers.iter().copied().collect(), *ends),
+      |_| (),
+      |(name, verdict): &(&'static str, Prevent), ()| {
+        ran.borrow_mut().push(*name);
+
+        *verdict
+      },
+    );
+
+    (prevented, ran.into_inner())
+  }
+
+  /// A node id for plain data, by its index.
+  fn plain(index: usize) -> NodeId {
+    NodeId::new(u32::try_from(index).unwrap(), 0)
+  }
+
+  /// The handlers `select` picks out of `set`, run on a click, their names in the order
+  /// they ran, with whether the selection ends the climb.
+  fn clicked(
+    set: &HandlerSet,
+    select: fn(&HandlerSet, &mut Selected<ClickHandler>) -> bool,
+    log: &Rc<RefCell<Vec<&'static str>>>,
+  ) -> (Vec<&'static str>, bool) {
+    let mut handlers = Selected::new();
+    let ends = select(set, &mut handlers);
+
+    for handler in &handlers {
+      let _ = handler(&ClickEvent::new(1));
+    }
+
+    (std::mem::take(&mut *log.borrow_mut()), ends)
+  }
+
+  /// Handlers run deepest first and every handler on a node runs, a click's acting
+  /// handlers before the node's others.
+  #[test]
+  fn click_runs_deepest_first() {
+    assert_eq!(
+      climb(&[
+        (
+          "inner",
+          &[
+            ("inner first", Prevent::None),
+            ("inner second", Prevent::None)
+          ],
+          false
+        ),
+        ("middle", &[], false),
+        ("outer", &[("outer", Prevent::None)], false),
+      ]),
+      (
+        Prevented::default(),
+        vec!["inner first", "inner second", "outer"]
+      )
+    );
+
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let mut set = HandlerSet::default();
+
+    set.push(Handler::Click(record(&log, "first")));
+    set.push(Handler::ActingClick(record(&log, "acting")));
+    set.push(Handler::Click(record(&log, "second")));
+
+    assert_eq!(
+      clicked(&set, select_click, &log),
+      (vec!["acting", "first", "second"], false)
+    );
+  }
+
+  /// A node that stops bubbling keeps the event from its ancestors, every handler on it
+  /// still running, and its verdict folds into the result.
+  #[test]
+  fn bubbling_stop_ends_the_climb() {
+    assert_eq!(
+      climb(&[
+        ("inner", &[("inner", Prevent::None)], false),
+        (
+          "middle",
+          &[
+            ("middle", Prevent::Bubbling),
+            ("middle after", Prevent::None)
+          ],
+          false
+        ),
+        ("outer", &[("outer", Prevent::None)], false),
+      ]),
+      (
+        Prevented {
+          platform: false,
+          bubbling: true,
+        },
+        vec!["inner", "middle", "middle after"]
+      )
+    );
+    assert_eq!(Prevent::from(Bubbling::Stop), Prevent::Bubbling);
+  }
+
+  /// The `Prevent::Realization` verdict is the control's own: it suppresses the native
+  /// response without stopping the ancestors.
+  #[test]
+  fn platform_verdict_is_the_controls() {
+    assert_eq!(
+      climb(&[
+        ("control", &[("control", Prevent::Realization)], false),
+        ("outer", &[("outer", Prevent::None)], false),
+      ]),
+      (
+        Prevented {
+          platform: true,
+          bubbling: false,
+        },
+        vec!["control", "outer"]
+      )
+    );
+  }
+
+  /// An acting handler runs before the node's observers on a click, and an observed
+  /// click skips it while the observers beneath and on its node still run, the climb
+  /// ending there as the acting handler's verdict ends it.
+  #[test]
+  fn observed_click_skips_the_acting_handler() {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let mut inner = HandlerSet::default();
+    let mut middle = HandlerSet::default();
+    let mut outer = HandlerSet::default();
+    let acting = {
+      let log = Rc::clone(&log);
+
+      Rc::new(move |_: &ClickEvent| {
+        log.borrow_mut().push("acting");
+
+        Prevent::Bubbling
+      })
     };
+
+    inner.push(Handler::Click(record(&log, "inner")));
+    middle.push(Handler::Click(record(&log, "observer")));
+    middle.push(Handler::ActingClick(acting));
+    outer.push(Handler::Click(record(&log, "outer")));
+
+    let path = [&inner, &middle, &outer];
+    let dispatch = |select: fn(&HandlerSet, &mut Selected<ClickHandler>) -> bool| {
+      let prevented = Prevented::climb(
+        path,
+        |set| {
+          let mut handlers = Selected::new();
+          let ends = select(set, &mut handlers);
+
+          (handlers, ends)
+        },
+        |_| (),
+        |handler, ()| handler(&ClickEvent::new(1)),
+      );
+
+      (prevented, std::mem::take(&mut *log.borrow_mut()))
+    };
+
+    assert_eq!(
+      dispatch(select_click),
+      (
+        Prevented {
+          platform: false,
+          bubbling: true,
+        },
+        vec!["inner", "acting", "observer"]
+      )
+    );
+    assert_eq!(
+      dispatch(select_observed_click),
+      (Prevented::default(), vec!["inner", "observer"])
+    );
+    assert_eq!(
+      clicked(&middle, select_observed_click, &log),
+      (vec!["observer"], true)
+    );
+  }
+
+  /// A pointer move leaves each node whose subtree the pointer left, innermost first,
+  /// then enters each whose subtree it reached, outermost first; a node holding the
+  /// pointer throughout hears nothing and stays hovered.
+  #[test]
+  fn a_pointer_move_notifies_the_subtrees_it_crosses() {
+    let [outer, middle, inner, sibling] = std::array::from_fn(plain);
+    let ancestry = |node: NodeId| -> SmallVec<[NodeId; 16]> {
+      match node {
+        node if node == inner => [inner, middle, outer].into_iter().collect(),
+        node if node == middle => [middle, outer].into_iter().collect(),
+        node => [node, outer].into_iter().collect(),
+      }
+    };
+    let mut held = Held::new();
+    let mut hover = |next: Option<NodeId>| {
+      let previous = held.hover(next);
+      let crossing = Crossing::between(
+        &previous.map(ancestry).unwrap_or_default(),
+        &next.map(ancestry).unwrap_or_default(),
+      );
+
+      (crossing.left.to_vec(), crossing.reached.to_vec())
+    };
+
+    assert_eq!(hover(Some(inner)), (vec![], vec![outer, middle, inner]));
+    assert_eq!(hover(Some(sibling)), (vec![inner, middle], vec![sibling]));
+    assert_eq!(hover(Some(sibling)), (vec![], vec![]));
+
+    let generation = held.generation();
+
+    assert!(held.hovers(outer, ancestry));
+    assert!(!held.hovers(middle, ancestry));
+    assert_eq!(held.hover(None), Some(sibling));
+    assert_eq!(held.generation(), generation + 1);
+    assert_eq!(
+      Crossing::between(&ancestry(sibling), &[]),
+      Crossing {
+        left: [sibling, outer].into_iter().collect(),
+        reached: SmallVec::new(),
+      }
+    );
+  }
+
+  /// A focus move blurs each node whose subtree focus left, innermost first, then
+  /// focuses each whose subtree it reached, outermost first; a node holding it
+  /// throughout hears nothing.
+  #[test]
+  fn a_focus_move_notifies_the_subtrees_it_crosses() {
+    let [outer, middle, inner, sibling] = std::array::from_fn(plain);
+    let ancestry = |node: Option<NodeId>| -> SmallVec<[NodeId; 16]> {
+      match node {
+        None => SmallVec::new(),
+        Some(node) if node == inner => [inner, middle, outer].into_iter().collect(),
+        Some(node) => [node, outer].into_iter().collect(),
+      }
+    };
+    let mut held = Held::new();
+    let mut focus = |next: Option<NodeId>| {
+      let previous = held.focus(next);
+      let crossing = Crossing::between(&ancestry(previous), &ancestry(next));
+
+      (crossing.left.to_vec(), crossing.reached.to_vec())
+    };
+
+    assert_eq!(focus(Some(inner)), (vec![], vec![outer, middle, inner]));
+    assert_eq!(focus(Some(sibling)), (vec![inner, middle], vec![sibling]));
+    assert_eq!(focus(None), (vec![sibling, outer], vec![]));
+    assert_eq!(held.focused(), None);
+    assert_eq!(
+      Crossing::leaving(&ancestry(Some(inner)), &ancestry(Some(sibling))).to_vec(),
+      [inner, middle]
+    );
+  }
+
+  /// A pointer event reaches each handling node local to that node's own box, made only
+  /// for the nodes whose handlers run.
+  #[test]
+  fn pointer_events_localize_per_node() {
+    let event = PointerEvent {
+      local_x: 5.,
+      local_y: 5.,
+      ..PointerEvent::mouse(35., 125.)
+    }
+    .with_press(PointerButton::Primary);
+    let origins: [(&'static str, &'static [&'static str], f32, f32); 3] = [
+      ("inner", &["inner"], 30., 120.),
+      ("middle", &[], 20., 110.),
+      ("outer", &["outer"], 10., 100.),
+    ];
+    let prepared = RefCell::new(Vec::new());
+    let seen = RefCell::new(Vec::new());
+    let prevented = Prevented::climb(
+      &origins,
+      |(_, handlers, _, _)| (handlers.iter().copied().collect(), false),
+      |(node, _, x, y)| {
+        prepared.borrow_mut().push(*node);
+
+        PointerEvent {
+          local_x: event.x - x,
+          local_y: event.y - y,
+          ..event
+        }
+      },
+      |name: &&'static str, local: &PointerEvent| {
+        seen
+          .borrow_mut()
+          .push((*name, local.local_x, local.local_y));
+
+        Prevent::None
+      },
+    );
+
+    assert_eq!(prevented, Prevented::default());
+    assert_eq!(*seen.borrow(), [("inner", 5., 5.), ("outer", 25., 25.)]);
+    assert_eq!(*prepared.borrow(), ["inner", "outer"]);
+  }
+
+  /// An edit is answered by its handlers together, the last replacing it deciding.
+  #[test]
+  fn report_edit_folds_its_handlers_verdicts() {
     let first = Edit::new("A");
     let last = Edit::new("B").with_selection(TextSelection::collapsed(1));
 
-    Scene::<TestPlatform>::with(|scene| {
-      scene.handle(outer, answer(Verdict::Replace(Edit::new("outer"))));
-      scene.handle(inner, answer(Verdict::Replace(first)));
-      scene.handle(inner, answer(Verdict::Replace(last.clone())));
-      scene.handle(inner, answer(Verdict::Accept));
-    });
-
     assert_eq!(
-      report_edit::<TestPlatform>(inner, &Edit::new("a"), true),
+      Verdict::fold([
+        Verdict::Replace(first.clone()),
+        Verdict::Replace(last.clone()),
+        Verdict::Accept,
+      ]),
       Verdict::Replace(last)
     );
     assert_eq!(
-      *heard.borrow(),
-      [
-        ("a".to_owned(), true),
-        ("a".to_owned(), true),
-        ("a".to_owned(), true)
-      ]
+      Verdict::fold([Verdict::Accept, Verdict::Replace(first.clone())]),
+      Verdict::Replace(first)
     );
   }
 
   /// An edit no handler answers stands.
   #[test]
   fn report_edit_accepts_where_no_handler_acts() {
-    TestPlatform::reset();
-
-    let (_, _, inner) = chain();
-
+    assert_eq!(Verdict::fold([]), Verdict::Accept);
     assert_eq!(
-      report_edit::<TestPlatform>(inner, &Edit::new("a"), false),
+      Verdict::fold([Verdict::Accept, Verdict::Accept]),
       Verdict::Accept
     );
   }

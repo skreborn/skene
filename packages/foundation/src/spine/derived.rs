@@ -2,15 +2,12 @@
 
 use std::{
   cell::{Cell, RefCell},
-  collections::VecDeque,
   hash::Hash,
 };
 
-use rustc_hash::FxHashMap;
 use skene_reactive::{Effect, Key, Owner, untrack};
 
-use super::{AnyView, NodeId, Piece, Realization, Scene, Segment, View};
-use crate::spine::Reorder;
+use super::{AnyView, NodeId, Piece, Realization, Scene, Segment, View, reorder::KeyedItems};
 
 /// Mounts the node `build` returns between a fresh pair of anchors and returns the
 /// start anchor; `build` reruns whenever a signal it read changes.
@@ -49,106 +46,40 @@ pub fn empty<P: Realization>() -> impl View<P> {
   AnyView::new(|| Segment::<P>::new().start())
 }
 
+/// What a reconciled item mounted: its node, and the scope it was built in.
 struct Mounted {
   node: NodeId,
   scope: Owner,
 }
 
-/// What a keyed reconcile keeps between its runs: the mounted items by key in order,
-/// and the scratch each run reuses.
-#[derive(Default)]
-struct Reconciled {
-  mounted: Vec<(Key, Mounted)>,
-  old: FxHashMap<Key, VecDeque<(usize, Mounted)>>,
-  occurrences: FxHashMap<Key, u32>,
-  old_positions: Vec<usize>,
-  new_positions: Vec<usize>,
-  reorder: Reorder,
-}
-
-impl Reconciled {
+impl KeyedItems<Mounted> {
   /// Brings the content of the segment `start` begins to the items `keys` names in
   /// order: a kept item stays, a new one is built by `build` from its index in its own
   /// scope under `parent_scope`, a gone one is destroyed, and only the displaced are
   /// re-inserted.
-  fn update<P: Realization>(
+  fn reconcile<P: Realization>(
     &mut self,
     start: NodeId,
     parent_scope: Owner,
     keys: &[Key],
     build: &mut dyn FnMut(usize) -> NodeId,
   ) {
-    let Self {
-      mounted,
-      old,
-      occurrences,
-      old_positions,
-      new_positions,
-      reorder,
-    } = self;
+    let dropped = self.update(keys, |index, key| {
+      let scope = parent_scope.keyed_child(key);
+      let node = scope.enter(|| untrack(|| build(index)));
 
-    for (index, (key, entry)) in mounted.drain(..).enumerate() {
-      old.entry(key).or_default().push_back((index, entry));
-    }
+      Mounted { node, scope }
+    });
 
-    occurrences.clear();
-    old_positions.clear();
-    new_positions.clear();
-
-    for (index, &key) in keys.iter().enumerate() {
-      let occurrence = occurrences.entry(key).or_insert(0);
-      let repeat = *occurrence;
-
-      *occurrence += 1;
-
-      #[cfg(debug_assertions)]
-      if repeat == 1 {
-        warn_repeated_key();
-      }
-
-      let kept = old.get_mut(&key).and_then(VecDeque::pop_front);
-      let entry = if let Some((position, entry)) = kept {
-        old_positions.push(position);
-        new_positions.push(mounted.len());
-
-        entry
-      }
-      else {
-        let scope = parent_scope.keyed_child(if repeat == 0 {
-          key
-        }
-        else {
-          Key::of(&(key, repeat))
-        });
-        let node = scope.enter(|| untrack(|| build(index)));
-
-        Mounted { node, scope }
-      };
-
-      mounted.push((key, entry));
-    }
-
-    // The last goes first, so each removal shifts as little as it can.
-    let mut dropped: Vec<(usize, Mounted)> = old.drain().flat_map(|(_, entries)| entries).collect();
-
-    dropped.sort_unstable_by_key(|(index, _)| std::cmp::Reverse(*index));
-
-    for (_, entry) in dropped {
+    for entry in dropped {
       Scene::<P>::with(|scene| scene.destroy(entry.node));
       entry.scope.dispose();
     }
 
-    let settled = reorder.settled_positions(old_positions.as_slice(), new_positions.as_slice());
-    let mut stable = settled.iter().copied().peekable();
-
     Scene::<P>::with(|scene| {
-      for index in (0..mounted.len()).rev() {
-        let before = mounted.get(index + 1).map(|(_, entry)| entry.node);
-
-        if stable.next_if_eq(&index).is_none() {
-          scene.insert_in_segment(start, mounted[index].1.node, before);
-        }
-      }
+      self.place_displaced(|entry, before| {
+        scene.insert_in_segment(start, entry.node, before.map(|before| before.node));
+      });
     });
   }
 }
@@ -175,7 +106,7 @@ pub fn reconcile<P: Realization, T, I, K>(
   K: Eq + Hash + 'static,
 {
   let parent_scope = Owner::current();
-  let reconciled = RefCell::new(Reconciled::default());
+  let reconciled = RefCell::new(KeyedItems::default());
 
   Effect::render(move |_: Option<()>| {
     let mut pending = Vec::new();
@@ -192,7 +123,7 @@ pub fn reconcile<P: Realization, T, I, K>(
 
     reconciled
       .borrow_mut()
-      .update::<P>(start, parent_scope, &keys, &mut |index| {
+      .reconcile::<P>(start, parent_scope, &keys, &mut |index| {
         let Some(item) = pending[index].take()
         else {
           unreachable!("a reconcile builds each new item once");
@@ -203,26 +134,13 @@ pub fn reconcile<P: Realization, T, I, K>(
   });
 }
 
-/// Warns, once, that a reconciled collection repeated a key.
-#[cfg(debug_assertions)]
-fn warn_repeated_key() {
-  static WARNED: std::sync::Once = std::sync::Once::new();
-
-  WARNED.call_once(|| {
-    eprintln!(
-      "skene-foundation: a reconciled collection repeated a key; keys should be unique, and \
-       items sharing one match in order"
-    );
-  });
-}
-
 #[cfg(test)]
 mod tests {
   use std::{cell::Cell, rc::Rc};
 
-  use skene_reactive::{Get, Owner, Set, Signal, Track, signal};
+  use skene_reactive::{Owner, Set, Track, signal};
 
-  use super::{derived, reconcile};
+  use super::derived;
   use crate::spine::{
     Annotation,
     Flexibility,
@@ -317,189 +235,5 @@ mod tests {
     assert_eq!(TestScene::with(Scene::take_pending_annotation), None);
 
     owner.dispose();
-  }
-
-  /// A reconciled item that leaves is destroyed and its scope disposed, so a signal
-  /// created while building it is dead; kept items keep their nodes.
-  #[test]
-  fn reconcile_disposes_the_owner_of_a_removed_item() {
-    TestPlatform::reset();
-
-    let owner = Owner::new();
-    let (items, set_items) = signal(vec![1, 2, 3]);
-    let inner = Rc::new(Cell::new(None::<Signal<i32>>));
-    let parent = TestBox::node();
-    let (start, end) = Scene::<TestPlatform>::create_segment();
-
-    TestScene::with(|scene| scene.attach(parent, start, None));
-    owner.enter(|| {
-      let inner = Rc::clone(&inner);
-
-      reconcile::<TestPlatform, _, _, _>(
-        start,
-        move || items.get(),
-        |item| *item,
-        move |item| {
-          if item == 2 {
-            inner.set(Some(Signal::new(item)));
-          }
-
-          TestBox::node()
-        },
-      );
-    });
-
-    let before = children(parent);
-    let second = before[2];
-    let inner = inner.get().unwrap();
-
-    assert_eq!(before.len(), 5);
-    assert_eq!(inner.try_get(), Some(2));
-
-    set_items.set(vec![3, 1]);
-
-    let after = children(parent);
-
-    assert_eq!(after, [start, before[3], before[1], end]);
-    assert!(TestScene::with(|scene| scene.record(second).is_none()));
-    assert_eq!(inner.try_get(), None);
-
-    owner.dispose();
-  }
-
-  /// Items sharing a key match the ones before them in order, each its own node, and
-  /// every one that leaves is destroyed, so no node outlives its item.
-  #[test]
-  fn reconcile_matches_repeated_keys_in_order() {
-    TestPlatform::reset();
-
-    let owner = Owner::new();
-    let (items, set_items) = signal(vec![1, 1, 2]);
-    let parent = TestBox::node();
-    let (start, end) = Scene::<TestPlatform>::create_segment();
-
-    TestScene::with(|scene| scene.attach(parent, start, None));
-    owner.enter(|| {
-      reconcile::<TestPlatform, _, _, _>(
-        start,
-        move || items.get(),
-        |item| *item,
-        |_| TestBox::node(),
-      );
-    });
-
-    let before = children(parent);
-
-    assert_eq!(before.len(), 5);
-
-    set_items.set(vec![2, 1]);
-
-    let after = children(parent);
-
-    assert_eq!(after, [start, before[3], before[1], end]);
-    assert!(
-      TestScene::with(|scene| scene.record(before[2]).is_none()),
-      "the second of the repeated items is gone"
-    );
-
-    set_items.set(vec![1, 1, 1]);
-
-    assert_eq!(children(parent).len(), 5);
-    assert_eq!(children(parent)[1], before[1], "the first keeps its node");
-
-    owner.dispose();
-  }
-
-  #[cfg(not(target_arch = "wasm32"))]
-  use proptest::prelude::*;
-
-  #[cfg(not(target_arch = "wasm32"))]
-  proptest! {
-    /// Any run of keyed lists, repeated keys among them, reconciles to nodes in the
-    /// lists' order: an item kept from the list before keeps its node, the nth item of
-    /// a key matching the nth before it, and every node left behind is destroyed.
-    #[test]
-    fn any_run_of_lists_reconciles_like_its_model(
-      lists in proptest::collection::vec(
-        proptest::collection::vec(0..6_u8, 0..10),
-        1..8,
-      ),
-    ) {
-      use std::collections::HashMap;
-
-      TestPlatform::reset();
-
-      let owner = Owner::new();
-      let (items, set_items) = signal(Vec::<u8>::new());
-      let built = Rc::new(std::cell::RefCell::new(HashMap::<NodeId, u8>::new()));
-      let parent = TestBox::node();
-      let (start, end) = Scene::<TestPlatform>::create_segment();
-
-      TestScene::with(|scene| scene.attach(parent, start, None));
-      owner.enter(|| {
-        let built = Rc::clone(&built);
-
-        reconcile::<TestPlatform, _, _, _>(
-          start,
-          move || items.get(),
-          |item| *item,
-          move |item| {
-            let node = TestBox::node();
-
-            built.borrow_mut().insert(node, item);
-
-            node
-          },
-        );
-      });
-
-      let mut previous: Vec<(u8, NodeId)> = Vec::new();
-
-      for list in lists {
-        set_items.set(list.clone());
-
-        let nodes = children(parent);
-
-        prop_assert_eq!(nodes.first(), Some(&start));
-        prop_assert_eq!(nodes.last(), Some(&end));
-
-        let content = &nodes[1..nodes.len() - 1];
-        let keys: Vec<u8> = content.iter().map(|node| built.borrow()[node]).collect();
-
-        prop_assert_eq!(&keys, &list);
-
-        // The nth occurrence of a key keeps the node of the nth occurrence before it.
-        let mut before: HashMap<u8, Vec<NodeId>> = HashMap::new();
-
-        for (key, node) in &previous {
-          before.entry(*key).or_default().push(*node);
-        }
-
-        let mut seen: HashMap<u8, usize> = HashMap::new();
-
-        for (key, node) in keys.iter().zip(content) {
-          let occurrence = seen.entry(*key).or_insert(0);
-
-          if let Some(kept) = before.get(key).and_then(|nodes| nodes.get(*occurrence)) {
-            prop_assert_eq!(kept, node, "the item keeps its node");
-          }
-
-          *occurrence += 1;
-        }
-
-        for (_, node) in &previous {
-          if !content.contains(node) {
-            prop_assert!(
-              TestScene::with(|scene| scene.record(*node).is_none()),
-              "a node left behind is destroyed"
-            );
-          }
-        }
-
-        previous = keys.into_iter().zip(content.iter().copied()).collect();
-      }
-
-      owner.dispose();
-    }
   }
 }

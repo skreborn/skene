@@ -33,7 +33,7 @@ impl<P: Realization> Scene<P> {
     }
 
     if record.control.replace(state) != Some(state) {
-      self.interaction_generation += 1;
+      self.held.touch();
     }
 
     self.mirrors.push(Mirror::ControlState { node, state });

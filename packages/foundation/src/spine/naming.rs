@@ -442,34 +442,8 @@ impl<P: Realization> Scene<P> {
       return None;
     }
 
-    let role = own.role.unwrap_or(if own.text.is_some() {
-      Role::Label
-    }
-    else {
-      Role::GenericContainer
-    });
-    let mut access = accesskit::Node::new(role);
-
-    if let Some(name) = Self::accessible_name(node, facts) {
-      access.set_label(name);
-    }
-
-    if let Some(text) = own.value.clone().or(own.text.clone()) {
-      access.set_value(text);
-    }
-
-    if let Some(placeholder) = &own.placeholder {
-      access.set_placeholder(placeholder.clone());
-    }
-
-    for prop in &own.access {
-      prop.apply(&mut access);
-    }
-
-    let mut children = own
-      .text_runs
-      .as_ref()
-      .map_or_else(Vec::new, |text| text.report(node, &mut access, nodes));
+    let (mut access, mut children) =
+      own.access_node(node, Self::accessible_name(node, facts), nodes);
     let beneath = Self::with(|scene| {
       let mut beneath: Vec<_> = scene.children(node).collect();
 
@@ -493,6 +467,51 @@ impl<P: Realization> Scene<P> {
     nodes.push((id, access));
 
     Some(id)
+  }
+}
+
+impl NameFacts {
+  /// The AccessKit node these facts make of `node`, named `name`, with the ids of the
+  /// children they give it: its role (a run's a label holding its text, a box of no role
+  /// a generic container), its value and placeholder, what it reports, and a drawn
+  /// entry's runs, added to `nodes`, with its selection and the editing actions its state
+  /// allows.
+  pub(in crate::spine) fn access_node(
+    &self,
+    node: NodeId,
+    name: Option<String>,
+    nodes: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+  ) -> (accesskit::Node, Vec<accesskit::NodeId>) {
+    let role = self.role.unwrap_or(if self.text.is_some() {
+      Role::Label
+    }
+    else {
+      Role::GenericContainer
+    });
+    let mut access = accesskit::Node::new(role);
+
+    if let Some(name) = name {
+      access.set_label(name);
+    }
+
+    if let Some(text) = self.value.clone().or(self.text.clone()) {
+      access.set_value(text);
+    }
+
+    if let Some(placeholder) = &self.placeholder {
+      access.set_placeholder(placeholder.clone());
+    }
+
+    for prop in &self.access {
+      prop.apply(&mut access);
+    }
+
+    let children = self
+      .text_runs
+      .as_ref()
+      .map_or_else(Vec::new, |text| text.report(node, &mut access, nodes));
+
+    (access, children)
   }
 }
 
@@ -941,42 +960,21 @@ macro_rules! access_queries {
 mod tests {
   use accesskit::Action;
 
-  use crate::spine::{
-    AccessProp,
-    AccessText,
-    NameFacts,
-    Role,
-    Scene,
-    testing::{TestBox, TestPlatform},
-  };
+  use crate::spine::{AccessProp, AccessText, NameFacts, NodeId, Role};
 
   /// An entry with runs reports the editing actions its state allows: an editable one takes
   /// a value, a selection and a replacement of what is selected, a read-only one only a
   /// selection, and a disabled one none.
   #[test]
   fn an_entry_reports_the_editing_actions_its_state_allows() {
-    TestPlatform::reset();
-
-    let entry = TestBox::node();
     let actions = |access: Vec<AccessProp>| {
-      let tree = Scene::<TestPlatform>::access_tree(|node| {
-        if node == entry {
-          NameFacts {
-            role: Some(Role::TextInput),
-            access: access.clone(),
-            text_runs: Some(AccessText::default()),
-            ..NameFacts::default()
-          }
-        }
-        else {
-          NameFacts::default()
-        }
-      });
-      let (_, node) = tree
-        .nodes
-        .iter()
-        .find(|(id, _)| *id == entry.access_id())
-        .expect("the entry is in the tree");
+      let facts = NameFacts {
+        role: Some(Role::TextInput),
+        access,
+        text_runs: Some(AccessText::default()),
+        ..NameFacts::default()
+      };
+      let (node, _) = facts.access_node(NodeId::new(0, 0), None, &mut Vec::new());
 
       [
         Action::SetValue,

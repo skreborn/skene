@@ -9,20 +9,20 @@ mod overlays;
 mod structure;
 mod tokens;
 
-use std::{any::TypeId, fmt::Debug};
+use std::fmt::Debug;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use skene_reactive::SnapshotPlace;
 
 pub use self::annotation::{Annotated, Annotation};
-pub(in crate::spine) use self::tokens::TokenScope;
 use self::{
   controls::AccessReports,
   drag::DragRecord,
   overlays::OverlayRecord,
   structure::SegmentRecord,
-  tokens::{ResolvedTokens, TokenCache},
+  tokens::{ResolvedTokens, TokenCache, TokenState},
 };
+pub(in crate::spine) use self::{interaction::Held, tokens::TokenScope};
 use crate::spine::{
   ContainerName,
   ControlState,
@@ -33,6 +33,7 @@ use crate::spine::{
   Part,
   Realization,
   handler::HandlerSet,
+  node_map::NodeSlots,
 };
 
 /// What a node is.
@@ -160,11 +161,6 @@ impl<P: Realization> NodeRecord<P> {
   }
 }
 
-struct Entry<P: Realization> {
-  generation: u32,
-  record: Option<NodeRecord<P>>,
-}
-
 /// A mutation the scene owes its platform, mirrored once the scene is released.
 enum Mirror<P: Realization> {
   Attach {
@@ -251,25 +247,16 @@ impl<P: Realization> Mirror<P> {
 /// that recorded them is released.
 #[must_use]
 pub struct Scene<P: Realization> {
-  entries: Vec<Entry<P>>,
-  free: Vec<u32>,
+  nodes: NodeSlots<NodeRecord<P>>,
   pending_annotation: Option<Annotation<P>>,
-  root_definitions: Definitions<P::TokenValue>,
-  root_sets: FxHashSet<TypeId>,
-  definitions_generation: u64,
+  tokens: TokenState<P::TokenValue>,
   graveyard: Vec<HandlerSet>,
   mirrors: Vec<Mirror<P>>,
   open_overlays: Vec<NodeId>,
-  hovered: Option<NodeId>,
-  pressed: Option<NodeId>,
-  focused: Option<NodeId>,
+  held: Held,
   kept_focus: FxHashMap<NodeId, NodeId>,
-  focus_visible: bool,
   drag: Option<DragRecord>,
-  interaction_generation: u64,
   resolved_tokens: ResolvedTokens<P::Scalar>,
-  #[cfg(debug_assertions)]
-  token_kinds: FxHashMap<crate::spine::TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
 
 impl<P: Realization> std::fmt::Debug for Scene<P> {
@@ -290,25 +277,16 @@ impl<P: Realization> Scene<P> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      entries: Vec::new(),
-      free: Vec::new(),
+      nodes: NodeSlots::new(),
       pending_annotation: None,
-      root_definitions: Definitions::from(Vec::new()),
-      root_sets: FxHashSet::default(),
-      definitions_generation: 0,
+      tokens: TokenState::new(),
       graveyard: Vec::new(),
       mirrors: Vec::new(),
       open_overlays: Vec::new(),
-      hovered: None,
-      pressed: None,
-      focused: None,
+      held: Held::new(),
       kept_focus: FxHashMap::default(),
-      focus_visible: true,
       drag: None,
-      interaction_generation: 0,
       resolved_tokens: ResolvedTokens::default(),
-      #[cfg(debug_assertions)]
-      token_kinds: FxHashMap::default(),
     }
   }
 
@@ -361,22 +339,14 @@ impl<P: Realization> Scene<P> {
   #[inline(always)]
   #[must_use]
   pub fn record(&self, node: NodeId) -> Option<&NodeRecord<P>> {
-    self
-      .entries
-      .get(node.index() as usize)
-      .filter(|entry| entry.generation == node.generation())
-      .and_then(|entry| entry.record.as_ref())
+    self.nodes.get(node)
   }
 
   /// The record of `node`, mutably, if it is live.
   #[inline(always)]
   #[must_use]
   pub fn record_mut(&mut self, node: NodeId) -> Option<&mut NodeRecord<P>> {
-    self
-      .entries
-      .get_mut(node.index() as usize)
-      .filter(|entry| entry.generation == node.generation())
-      .and_then(|entry| entry.record.as_mut())
+    self.nodes.get_mut(node)
   }
 
   /// Whether `node` is live.
@@ -423,82 +393,22 @@ impl<P: Realization> Scene<P> {
       overlay: None,
     };
 
-    if let Some(index) = self.free.pop() {
-      let entry = &mut self.entries[index as usize];
-
-      entry.record = Some(record);
-
-      return NodeId::new(index, entry.generation);
-    }
-
-    let index = u32::try_from(self.entries.len()).expect("a scene holds at most 2^32 nodes");
-
-    self.entries.push(Entry {
-      generation: 0,
-      record: Some(record),
-    });
-
-    NodeId::new(index, 0)
+    self.nodes.insert(record)
   }
 
   /// The live node created at `position`, if any.
   #[must_use]
   pub fn node_at(&self, position: &SnapshotPlace) -> Option<NodeId> {
-    self.entries.iter().enumerate().find_map(|(index, entry)| {
-      let record = entry.record.as_ref()?;
-
-      (record.position == *position)
-        .then(|| {
-          u32::try_from(index)
-            .ok()
-            .map(|index| NodeId::new(index, entry.generation))
-        })
-        .flatten()
-    })
+    self
+      .nodes
+      .iter()
+      .find_map(|(node, record)| (record.position == *position).then_some(node))
   }
 
   /// Takes the record of `node` out of the arena, retiring the slot's generation; a
   /// slot whose generations are exhausted is retired whole, so a stale id never names a
   /// live node.
   fn remove(&mut self, node: NodeId) -> Option<NodeRecord<P>> {
-    let entry = self
-      .entries
-      .get_mut(node.index() as usize)
-      .filter(|entry| entry.generation == node.generation())?;
-    let record = entry.record.take()?;
-
-    if let Some(generation) = entry.generation.checked_add(1) {
-      entry.generation = generation;
-      self.free.push(node.index());
-    }
-
-    Some(record)
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use crate::spine::testing::{TestBox, TestPlatform, TestScene};
-
-  /// A slot whose generations are exhausted is never reused, so its last id stays
-  /// stale.
-  #[test]
-  fn an_exhausted_slot_is_retired() {
-    TestPlatform::reset();
-
-    let node = TestBox::node();
-
-    TestScene::with(|scene| {
-      scene.entries[node.index() as usize].generation = u32::MAX;
-    });
-
-    let last = super::NodeId::new(node.index(), u32::MAX);
-
-    TestScene::with(|scene| scene.destroy(last));
-
-    let next = TestBox::node();
-
-    assert_ne!(next.index(), node.index());
-    assert!(TestScene::with(|scene| scene.record(last).is_none()));
+    self.nodes.remove(node)
   }
 }

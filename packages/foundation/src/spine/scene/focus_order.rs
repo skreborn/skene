@@ -5,6 +5,45 @@ use rustc_hash::FxHashMap;
 use super::{Mirror, Scene};
 use crate::spine::{FocusOrder, NodeId, Realization};
 
+/// A node the tab order weighs: its place in focus traversal and its position in
+/// document order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::spine) struct TabStop {
+  /// The node.
+  pub(in crate::spine) node: NodeId,
+  /// Its place in focus traversal.
+  pub(in crate::spine) order: FocusOrder,
+  /// Its position in document order.
+  pub(in crate::spine) document: usize,
+}
+
+impl TabStop {
+  /// The tab order of `stops`: positioned ones first by position, then the rest in
+  /// document order, each tie in document order; a stop that skips, or that `reachable`
+  /// rejects, as the topmost modal does a node outside it, is left out.
+  pub(in crate::spine) fn order(
+    mut stops: Vec<Self>,
+    reachable: impl Fn(NodeId) -> bool,
+  ) -> Vec<NodeId> {
+    stops.retain(|stop| stop.order != FocusOrder::Skip);
+    stops.sort_by_key(|stop| {
+      (
+        match stop.order {
+          FocusOrder::Position(position) => (0, position),
+          FocusOrder::Auto | FocusOrder::Skip => (1, 0),
+        },
+        stop.document,
+      )
+    });
+
+    stops
+      .into_iter()
+      .map(|stop| stop.node)
+      .filter(|node| reachable(*node))
+      .collect()
+  }
+}
+
 impl<P: Realization> Scene<P> {
   /// Records `node`'s place in focus traversal as the platform was given it at
   /// creation; `None` keeps it out of focus.
@@ -72,9 +111,9 @@ impl<P: Realization> Scene<P> {
     overlays: &[NodeId],
     hidden: impl Fn(NodeId) -> bool,
   ) -> Vec<NodeId> {
-    let mut positioned = Vec::new();
-    let mut ordered = Vec::new();
+    let mut stops = Vec::new();
     let mut stack = vec![root];
+    let mut document = 0;
 
     while let Some(current) = stack.pop() {
       let Some(record) = self.record(current)
@@ -86,23 +125,21 @@ impl<P: Realization> Scene<P> {
         continue;
       }
 
-      match record.focus_order {
-        Some(FocusOrder::Position(position)) => positioned.push((position, current)),
-        Some(FocusOrder::Auto) => ordered.push(current),
-        Some(FocusOrder::Skip) | None => {}
+      if let Some(order) = record.focus_order {
+        stops.push(TabStop {
+          node: current,
+          order,
+          document,
+        });
       }
 
+      document += 1;
       stack.extend(self.children_reversed(current));
     }
 
-    positioned.sort_by_key(|(position, _)| *position);
+    let overlays = self.overlay_stack(overlays);
 
-    let mut order: Vec<NodeId> = positioned.into_iter().map(|(_, node)| node).collect();
-
-    order.extend(ordered);
-    order.retain(|node| self.reachable_under_modal(overlays, *node));
-
-    order
+    TabStop::order(stops, |node| overlays.reaches(|| self.ancestry(node)))
   }
 
   /// The stop `step` places from `from` along `order`, the tab stops under `root` in
@@ -172,9 +209,14 @@ impl<P: Realization> Scene<P> {
 
 #[cfg(test)]
 mod tests {
+  use rustc_hash::FxHashMap;
+
+  use super::TabStop;
   use crate::spine::{
     FocusOrder,
+    NodeId,
     Scene,
+    scene::overlays::{OpenOverlay, OverlayStack},
     testing::{TestBox, TestPlatform, TestScene},
   };
 
@@ -206,69 +248,80 @@ mod tests {
   }
 
   /// The tab order puts positioned stops first by position, then the rest in document
-  /// order, skipping closed overlays and hidden subtrees; the modal opened last contains
-  /// it with the overlays opened after it, whatever order they were built in.
+  /// order, leaving out the stops that skip and those the last modal does not contain
+  /// with the overlays opened after it, whatever order they were built in.
   #[test]
   fn the_tab_order_follows_positions_documents_and_the_last_modal() {
-    TestPlatform::reset();
+    let [
+      root,
+      first,
+      second,
+      positioned,
+      skipped,
+      earlier,
+      later,
+      inside_earlier,
+      inside_later,
+    ] = std::array::from_fn(|index| NodeId::new(u32::try_from(index).unwrap(), 0));
+    let parents: FxHashMap<NodeId, NodeId> = [
+      (first, root),
+      (second, root),
+      (positioned, root),
+      (skipped, root),
+      (earlier, root),
+      (later, root),
+      (inside_earlier, earlier),
+      (inside_later, later),
+    ]
+    .into_iter()
+    .collect();
+    let ancestry =
+      |node| std::iter::successors(Some(node), |node| parents.get(node).copied()).collect();
+    let stop = |node, order, document| TabStop {
+      node,
+      order,
+      document,
+    };
+    let stops = vec![
+      stop(inside_later, FocusOrder::Auto, 8),
+      stop(first, FocusOrder::Auto, 1),
+      stop(positioned, FocusOrder::Position(2), 3),
+      stop(second, FocusOrder::Auto, 2),
+      stop(skipped, FocusOrder::Skip, 4),
+      stop(earlier, FocusOrder::Position(1), 6),
+      stop(inside_earlier, FocusOrder::Auto, 5),
+    ];
+    let order = |open: &[(NodeId, bool)]| {
+      let overlays = OverlayStack::new(open.iter().map(|&(node, modal)| OpenOverlay {
+        node,
+        modal,
+        anchor: None,
+      }));
 
-    let root = TestBox::node();
-    let [first, second, positioned, hidden, closed, earlier, later] =
-      std::array::from_fn(|_| TestBox::node());
-    let (inside_earlier, inside_later, inside_closed, inside_hidden) = (
-      TestBox::node(),
-      TestBox::node(),
-      TestBox::node(),
-      TestBox::node(),
-    );
+      TabStop::order(stops.clone(), |node| overlays.reaches(|| ancestry(node)))
+    };
 
-    TestScene::with(|scene| {
-      for node in [first, second, positioned, hidden, closed, earlier, later] {
-        scene.attach(root, node, None);
-      }
-
-      scene.attach(earlier, inside_earlier, None);
-      scene.attach(later, inside_later, None);
-      scene.attach(closed, inside_closed, None);
-      scene.attach(hidden, inside_hidden, None);
-
-      for node in [
+    assert_eq!(
+      order(&[]),
+      [
+        earlier,
+        positioned,
         first,
         second,
         inside_earlier,
-        inside_later,
-        inside_closed,
-        inside_hidden,
-      ] {
-        scene.note_focus_order(node, Some(FocusOrder::Auto));
-      }
-
-      scene.note_focus_order(positioned, Some(FocusOrder::Position(1)));
-
-      for (overlay, modal) in [(closed, false), (earlier, true), (later, true)] {
-        scene.note_overlay(overlay, modal);
-      }
-    });
-
-    let order = || {
-      TestScene::with(|scene| {
-        let overlays = scene.open_overlays().to_vec();
-
-        scene.tab_order(root, &overlays, |node| node == hidden)
-      })
-    };
-
-    assert_eq!(order(), [positioned, first, second]);
-
-    TestScene::with(|scene| {
-      scene.set_overlay_open(later, true, None);
-      scene.set_overlay_open(earlier, true, None);
-    });
-
-    assert_eq!(order(), [inside_earlier], "the modal opened last wins");
-
-    TestScene::with(|scene| scene.set_overlay_open(earlier, false, None));
-
-    assert_eq!(order(), [inside_later]);
+        inside_later
+      ]
+    );
+    assert_eq!(
+      order(&[(later, true), (earlier, true)]),
+      [earlier, inside_earlier],
+      "the modal opened last wins"
+    );
+    assert_eq!(order(&[(later, true)]), [inside_later]);
+    assert_eq!(
+      order(&[(earlier, true), (later, false)]),
+      [earlier, inside_earlier, inside_later],
+      "an overlay opened after the modal stays reachable"
+    );
   }
 }

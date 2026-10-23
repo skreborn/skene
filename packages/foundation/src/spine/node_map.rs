@@ -138,9 +138,119 @@ impl<T> NodeMap<T> {
   }
 }
 
+/// One slot of [`NodeSlots`]: the generation its next id carries, and what it holds.
+#[derive(Debug, Clone)]
+struct SlotEntry<T> {
+  generation: u32,
+  value: Option<T>,
+}
+
+/// The scene's arena: values in generational slots, each minting the [`NodeId`] it is
+/// reached by.
+///
+/// A value removed retires its slot's generation and frees the slot for reuse, so a
+/// stale id reaches nothing; a slot whose generations are exhausted is retired whole and
+/// never reused, so its last id stays stale.
+#[derive(Debug, Clone)]
+#[must_use]
+pub(in crate::spine) struct NodeSlots<T> {
+  entries: Vec<SlotEntry<T>>,
+  free: Vec<u32>,
+}
+
+impl<T> NodeSlots<T> {
+  /// An empty arena.
+  #[inline(always)]
+  pub(in crate::spine) const fn new() -> Self {
+    Self {
+      entries: Vec::new(),
+      free: Vec::new(),
+    }
+  }
+
+  /// Stores `value` in a free slot, else a new one, returning the id that reaches it.
+  ///
+  /// # Panics
+  ///
+  /// Panics past 2^32 slots.
+  pub(in crate::spine) fn insert(&mut self, value: T) -> NodeId {
+    if let Some(index) = self.free.pop() {
+      let entry = &mut self.entries[index as usize];
+
+      entry.value = Some(value);
+
+      return NodeId::new(index, entry.generation);
+    }
+
+    let index = u32::try_from(self.entries.len()).expect("a scene holds at most 2^32 nodes");
+
+    self.entries.push(SlotEntry {
+      generation: 0,
+      value: Some(value),
+    });
+
+    NodeId::new(index, 0)
+  }
+
+  /// The value `node` reaches, if it is live.
+  #[inline(always)]
+  #[must_use]
+  pub(in crate::spine) fn get(&self, node: NodeId) -> Option<&T> {
+    self
+      .entries
+      .get(node.index() as usize)
+      .filter(|entry| entry.generation == node.generation())
+      .and_then(|entry| entry.value.as_ref())
+  }
+
+  /// The value `node` reaches, mutably, if it is live.
+  #[inline(always)]
+  #[must_use]
+  pub(in crate::spine) fn get_mut(&mut self, node: NodeId) -> Option<&mut T> {
+    self
+      .entries
+      .get_mut(node.index() as usize)
+      .filter(|entry| entry.generation == node.generation())
+      .and_then(|entry| entry.value.as_mut())
+  }
+
+  /// Takes the value `node` reaches out, retiring its slot's generation; a slot whose
+  /// generations are exhausted is retired whole.
+  pub(in crate::spine) fn remove(&mut self, node: NodeId) -> Option<T> {
+    let entry = self
+      .entries
+      .get_mut(node.index() as usize)
+      .filter(|entry| entry.generation == node.generation())?;
+    let value = entry.value.take()?;
+
+    if let Some(generation) = entry.generation.checked_add(1) {
+      entry.generation = generation;
+      self.free.push(node.index());
+    }
+
+    Some(value)
+  }
+
+  /// Every live value with its id, in index order.
+  pub(in crate::spine) fn iter(&self) -> impl Iterator<Item = (NodeId, &T)> {
+    self
+      .entries
+      .iter()
+      .enumerate()
+      .filter_map(|(index, entry)| {
+        let value = entry.value.as_ref()?;
+
+        Some((
+          NodeId::new(u32::try_from(index).ok()?, entry.generation),
+          value,
+        ))
+      })
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use super::NodeMap;
+  use super::{NodeMap, NodeSlots};
   use crate::spine::NodeId;
 
   /// A record is reached by its node alone: a stale id of the same slot reaches nothing,
@@ -160,5 +270,34 @@ mod tests {
     assert_eq!(map.iter().collect::<Vec<_>>(), [(reused, &"reused")]);
     assert_eq!(map.remove(reused), Some("reused"));
     assert!(!map.contains(reused));
+  }
+
+  /// A slot whose generations are exhausted is never reused, so its last id stays
+  /// stale, while a slot with generations left is reused under the next one.
+  #[test]
+  fn an_exhausted_slot_is_retired() {
+    let mut slots = NodeSlots::new();
+    let first = slots.insert("first");
+    let exhausted = slots.insert("exhausted");
+
+    slots.entries[exhausted.index() as usize].generation = u32::MAX;
+
+    let last = NodeId::new(exhausted.index(), u32::MAX);
+
+    assert_eq!(slots.remove(first), Some("first"));
+    assert_eq!(slots.remove(last), Some("exhausted"));
+    assert_eq!(slots.remove(last), None);
+
+    let reused = slots.insert("reused");
+    let next = slots.insert("next");
+
+    assert_eq!(reused, NodeId::new(first.index(), 1));
+    assert_eq!(slots.get(first), None);
+    assert_ne!(next.index(), exhausted.index());
+    assert_eq!(slots.get(last), None);
+    assert_eq!(
+      slots.iter().collect::<Vec<_>>(),
+      [(reused, &"reused"), (next, &"next")]
+    );
   }
 }

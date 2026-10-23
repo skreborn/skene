@@ -91,7 +91,7 @@ impl<P: Realization> Scene<P> {
       data,
       target: None,
     });
-    self.interaction_generation += 1;
+    self.held.touch();
   }
 
   /// Makes `target` the node taking the drag in progress.
@@ -100,14 +100,14 @@ impl<P: Realization> Scene<P> {
       && drag.target != target
     {
       drag.target = target;
-      self.interaction_generation += 1;
+      self.held.touch();
     }
   }
 
   /// Ends the drag in progress.
   pub(in crate::spine) fn finish_drag(&mut self) {
     if self.drag.take().is_some() {
-      self.interaction_generation += 1;
+      self.held.touch();
     }
   }
 }

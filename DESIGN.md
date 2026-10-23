@@ -240,8 +240,14 @@ toolkit's keeps the default, which does nothing.
   snapshot, never on the headless platform; native ones against their toolkit. A component
   library tests each facade's crate on its platform the same way: Simple's in the browser
   through the styles the engine computes, and on the terminal through the cells it paints,
-  where the pointer can rest on a control. Only the spine's own unit tests run on a
-  double, a `TestPlatform` recording the calls it receives.
+  where the pointer can rest on a control. The spine's algorithms are functions over
+  plain data, unit-tested there with no scene: the tab order (`TabStop`), the open
+  overlays a press dismisses and a modal keeps reachable (`OverlayStack`), the nearest
+  definer of a token and its caches, the interaction held (`Held`), the keyed
+  reconcile's plan (`KeyedItems`), the climb that folds a dispatch's verdicts, the
+  subtrees a move crosses (`Crossing`), the arena's slots and an entry's accessibility
+  node. Only the spine's tests of a live scene still run on a double, a `TestPlatform`
+  recording the calls it receives.
 
 ## Composition
 

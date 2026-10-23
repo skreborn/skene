@@ -3,6 +3,8 @@
 
 use std::fmt::Debug;
 
+use smallvec::SmallVec;
+
 use super::{Mirror, NodeKind, Scene};
 use crate::spine::{NodeId, Realization};
 
@@ -14,6 +16,117 @@ pub(super) struct OverlayRecord {
   pub(super) open: bool,
   pub(super) anchor: Option<NodeId>,
   pub(super) opener: Option<NodeId>,
+}
+
+/// An open overlay as the stack weighs it: the overlay, whether it is modal, and the
+/// node it opened against.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::spine) struct OpenOverlay {
+  /// The overlay.
+  pub(in crate::spine) node: NodeId,
+  /// Whether it blocks what lies beneath it.
+  pub(in crate::spine) modal: bool,
+  /// The node it opened against, if any.
+  pub(in crate::spine) anchor: Option<NodeId>,
+}
+
+/// Open overlays in the order they opened, the last on top: what a press dismisses,
+/// what focus leaves and what stays reachable under a modal, read from the ancestries of
+/// the nodes they reach.
+///
+/// An ancestry is a node and the nodes it stands in, itself first, as
+/// [`Scene::ancestry`] gives it.
+#[derive(Debug, Clone)]
+pub(in crate::spine) struct OverlayStack {
+  open: SmallVec<[OpenOverlay; 4]>,
+}
+
+impl OverlayStack {
+  /// The stack of `open`, in the order they opened.
+  pub(in crate::spine) fn new(open: impl IntoIterator<Item = OpenOverlay>) -> Self {
+    Self {
+      open: open.into_iter().collect(),
+    }
+  }
+
+  /// The overlays a primary press on the node of `ancestry` dismisses, topmost first; an
+  /// empty `ancestry` for a press on no node.
+  ///
+  /// From the top down, each overlay the press lands outside of—on neither the overlay
+  /// nor, for a popup, the anchor it opened from—is dismissed, until the first it lands
+  /// inside of or on the anchor of; a modal stops the descent, dismissed itself by a
+  /// press outside it.
+  #[must_use]
+  pub(in crate::spine) fn dismissed_by(&self, ancestry: &[NodeId]) -> Vec<NodeId> {
+    let mut dismissed = Vec::new();
+
+    for overlay in self.open.iter().rev() {
+      let on_anchor = !overlay.modal
+        && overlay
+          .anchor
+          .is_some_and(|anchor| ancestry.contains(&anchor));
+
+      if ancestry.contains(&overlay.node) || on_anchor {
+        break;
+      }
+
+      dismissed.push(overlay.node);
+
+      if overlay.modal {
+        break;
+      }
+    }
+
+    dismissed
+  }
+
+  /// The popups focus leaves as it moves to the node of `ancestry`: each non-modal
+  /// overlay opened against an anchor, where neither the popup nor its anchor holds the
+  /// node.
+  #[must_use]
+  pub(in crate::spine) fn left_by(&self, ancestry: &[NodeId]) -> Vec<NodeId> {
+    self
+      .open
+      .iter()
+      .filter(|overlay| {
+        !overlay.modal
+          && overlay
+            .anchor
+            .is_some_and(|anchor| !ancestry.contains(&overlay.node) && !ancestry.contains(&anchor))
+      })
+      .map(|overlay| overlay.node)
+      .collect()
+  }
+
+  /// The topmost modal.
+  #[must_use]
+  pub(in crate::spine) fn topmost_modal(&self) -> Option<NodeId> {
+    self
+      .open
+      .iter()
+      .rev()
+      .find(|overlay| overlay.modal)
+      .map(|overlay| overlay.node)
+  }
+
+  /// Whether the node `ancestry` gives stays reachable under the topmost modal: inside
+  /// that modal, or inside an overlay opened after it; every node is while none is
+  /// open, and `ancestry` is asked for only while one is.
+  #[must_use]
+  pub(in crate::spine) fn reaches(
+    &self,
+    ancestry: impl FnOnce() -> SmallVec<[NodeId; 16]>,
+  ) -> bool {
+    let Some(modal) = self.open.iter().rposition(|overlay| overlay.modal)
+    else {
+      return true;
+    };
+    let ancestry = ancestry();
+
+    self.open[modal..]
+      .iter()
+      .any(|overlay| ancestry.contains(&overlay.node))
+  }
 }
 
 impl<P: Realization> Scene<P> {
@@ -39,7 +152,7 @@ impl<P: Realization> Scene<P> {
   /// else to the nearest node taking focus at or above the anchor it opened against.
   pub fn set_overlay_open(&mut self, node: NodeId, open: bool, anchor: Option<NodeId>) {
     let placed = anchor.and_then(|anchor| self.placement(anchor));
-    let focused = self.focused;
+    let focused = self.focused();
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -89,16 +202,16 @@ impl<P: Realization> Scene<P> {
     anchor: Option<NodeId>,
   ) {
     let inside = self
-      .focused
+      .focused()
       .is_some_and(|focused| self.ancestry(focused).contains(&node));
 
     if !modal && !inside {
       return;
     }
 
-    let overlays = self.open_overlays.clone();
+    let stack = self.overlay_stack(&self.open_overlays);
     let takes_focus = |scene: &Self, candidate: NodeId| {
-      scene.focus_order(candidate).is_some() && scene.reachable_under_modal(&overlays, candidate)
+      scene.focus_order(candidate).is_some() && stack.reaches(|| scene.ancestry(candidate))
     };
     let target = opener
       .filter(|opener| takes_focus(self, *opener))
@@ -163,27 +276,17 @@ impl<P: Realization> Scene<P> {
   #[must_use]
   pub fn dismissed_by_press(&self, overlays: &[NodeId], at: Option<NodeId>) -> Vec<NodeId> {
     let ancestry = at.map(|at| self.ancestry(at)).unwrap_or_default();
-    let mut dismissed = Vec::new();
 
-    for overlay in overlays.iter().rev().copied() {
-      let modal = self.is_modal(overlay);
-      let on_anchor = !modal
-        && self
-          .overlay_anchor(overlay)
-          .is_some_and(|anchor| ancestry.contains(&anchor));
+    self.overlay_stack(overlays).dismissed_by(&ancestry)
+  }
 
-      if ancestry.contains(&overlay) || on_anchor {
-        break;
-      }
-
-      dismissed.push(overlay);
-
-      if modal {
-        break;
-      }
-    }
-
-    dismissed
+  /// The stack `overlays`, overlays in the order they opened, make as plain data.
+  pub(in crate::spine) fn overlay_stack(&self, overlays: &[NodeId]) -> OverlayStack {
+    OverlayStack::new(overlays.iter().map(|&node| OpenOverlay {
+      node,
+      modal: self.is_modal(node),
+      anchor: self.overlay_anchor(node),
+    }))
   }
 
   /// The open overlays in the order they opened: the last stands on top.
@@ -196,19 +299,9 @@ impl<P: Realization> Scene<P> {
   /// against an anchor, where neither the popup nor its anchor holds `next`.
   #[must_use]
   pub fn popups_left_by(&self, next: NodeId) -> Vec<NodeId> {
-    let ancestry = self.ancestry(next);
-
     self
-      .open_overlays
-      .iter()
-      .copied()
-      .filter(|overlay| {
-        !self.is_modal(*overlay)
-          && self
-            .overlay_anchor(*overlay)
-            .is_some_and(|anchor| !ancestry.contains(overlay) && !ancestry.contains(&anchor))
-      })
-      .collect()
+      .overlay_stack(&self.open_overlays)
+      .left_by(&self.ancestry(next))
   }
 
   /// The node the modal `modal` takes focus to as it opens, as a dialog's focusing steps
@@ -235,11 +328,7 @@ impl<P: Realization> Scene<P> {
   /// opened.
   #[must_use]
   pub fn topmost_modal(&self, overlays: &[NodeId]) -> Option<NodeId> {
-    overlays
-      .iter()
-      .rev()
-      .copied()
-      .find(|overlay| self.is_modal(*overlay))
+    self.overlay_stack(overlays).topmost_modal()
   }
 
   /// Whether `node` stays reachable under the topmost modal among `overlays`, open
@@ -247,25 +336,24 @@ impl<P: Realization> Scene<P> {
   /// after it; every node is while none is open.
   #[must_use]
   pub fn reachable_under_modal(&self, overlays: &[NodeId], node: NodeId) -> bool {
-    let Some(modal) = overlays.iter().rposition(|overlay| self.is_modal(*overlay))
-    else {
-      return true;
-    };
-    let ancestry = self.ancestry(node);
-
-    overlays[modal..]
-      .iter()
-      .any(|overlay| ancestry.contains(overlay))
+    self.overlay_stack(overlays).reaches(|| self.ancestry(node))
   }
 }
 
 #[cfg(test)]
 mod tests {
+  use super::{OpenOverlay, OverlayStack};
   use crate::spine::{
+    NodeId,
     NodeKind,
     Scene,
     testing::{TestBox, TestPlatform, TestScene},
   };
+
+  /// A node id for plain data, by its index.
+  fn node(index: usize) -> NodeId {
+    NodeId::new(u32::try_from(index).unwrap(), 0)
+  }
 
   /// An overlay anchored on a segment or a scope is placed against the first node
   /// inside it with a box of its own, an empty segment standing for none.
@@ -299,39 +387,65 @@ mod tests {
   }
 
   /// A press dismisses, from the top down, each overlay it lands outside of, until one
-  /// it lands inside of or on the anchor of; a modal ends the descent, dismissed itself.
+  /// it lands inside of or on the anchor of; a modal ends the descent, dismissed itself,
+  /// and keeps what opened beneath it.
   #[test]
   fn a_press_dismisses_the_overlays_it_lands_outside_of() {
-    TestPlatform::reset();
+    let [root, page, beneath, modal, menu, item, submenu] = std::array::from_fn(node);
+    let stack = OverlayStack::new([
+      OpenOverlay {
+        node: beneath,
+        modal: false,
+        anchor: None,
+      },
+      OpenOverlay {
+        node: modal,
+        modal: true,
+        anchor: None,
+      },
+      OpenOverlay {
+        node: menu,
+        modal: false,
+        anchor: None,
+      },
+      OpenOverlay {
+        node: submenu,
+        modal: false,
+        anchor: Some(item),
+      },
+    ]);
 
-    let root = TestBox::node();
-    let [page, modal, menu, item, submenu] = std::array::from_fn(|_| TestBox::node());
+    assert_eq!(
+      stack.dismissed_by(&[item, menu, modal, root]),
+      [],
+      "on the submenu's anchor"
+    );
+    assert_eq!(stack.dismissed_by(&[menu, modal, root]), [submenu]);
+    assert_eq!(stack.dismissed_by(&[page, root]), [submenu, menu, modal]);
+    assert_eq!(stack.dismissed_by(&[]), [submenu, menu, modal]);
+  }
 
-    TestScene::with(|scene| {
-      scene.attach(root, page, None);
-      scene.attach(root, modal, None);
-      scene.attach(modal, menu, None);
-      scene.attach(menu, item, None);
-      scene.attach(menu, submenu, None);
-      scene.note_overlay(modal, true);
-      scene.note_overlay(menu, false);
-      scene.note_overlay(submenu, false);
-      scene.set_overlay_open(modal, true, None);
-      scene.set_overlay_open(menu, true, None);
-      scene.set_overlay_open(submenu, true, Some(item));
-    });
-
-    let dismissed = |at| {
-      TestScene::with(|scene| {
-        let overlays = scene.open_overlays().to_vec();
-
-        scene.dismissed_by_press(&overlays, at)
-      })
+  /// The modal opened last is the topmost and contains what stays reachable with the
+  /// overlays opened after it; with no modal open, everything is reachable, unasked.
+  #[test]
+  fn the_modal_opened_last_holds_what_stays_reachable() {
+    let [root, page, earlier, later, popup, inside] = std::array::from_fn(node);
+    let overlay = |node, modal| OpenOverlay {
+      node,
+      modal,
+      anchor: None,
     };
+    let stack = OverlayStack::new([
+      overlay(earlier, true),
+      overlay(later, true),
+      overlay(popup, false),
+    ]);
 
-    assert_eq!(dismissed(Some(item)), [], "on the submenu's anchor");
-    assert_eq!(dismissed(Some(menu)), [submenu]);
-    assert_eq!(dismissed(Some(page)), [submenu, menu, modal]);
-    assert_eq!(dismissed(None), [submenu, menu, modal]);
+    assert_eq!(stack.topmost_modal(), Some(later));
+    assert!(stack.reaches(|| [inside, later, root].into_iter().collect()));
+    assert!(stack.reaches(|| [inside, popup, root].into_iter().collect()));
+    assert!(!stack.reaches(|| [inside, earlier, root].into_iter().collect()));
+    assert!(!stack.reaches(|| [page, root].into_iter().collect()));
+    assert!(OverlayStack::new([overlay(popup, false)]).reaches(|| unreachable!()));
   }
 }

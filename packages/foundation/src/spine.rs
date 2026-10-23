@@ -167,6 +167,8 @@ pub use props::{
   StaticRunStyle,
 };
 pub use realization::{Observation, Realization, Timer, Timers};
+#[cfg(test)]
+pub use record::coverage;
 pub use record::{Frame, FrameEntry, Record, RecordEntry, RecordValue, ResolvedStyle};
 pub use reorder::Reorder;
 pub use resolve::{

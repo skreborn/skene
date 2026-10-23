@@ -169,7 +169,10 @@ mod tests {
     Shape,
     State,
     StaticLeaf,
+    TokenSet,
     When,
+    coverage::{Medium, chain},
+    web::Typography,
   };
 
   /// The extension's fields follow the shared ones in a visit, under their own names.
@@ -229,5 +232,33 @@ mod tests {
       (slots[0].compute)(),
       StaticLeaf::Fixed(RunValue::Length(Length(18.)))
     );
+  }
+
+  impl WebProperty {
+    /// Every property of the web's own, in declaration order.
+    fn samples() -> Vec<Self> {
+      chain(Self::CornerRadius, |property| match property {
+        Self::CornerRadius => Some(Self::FontSize),
+        Self::FontSize => Some(Self::FontWeight),
+        Self::FontWeight => Some(Self::LineHeight),
+        Self::LineHeight => Some(Self::LetterSpacing),
+        Self::LetterSpacing => None,
+      })
+    }
+  }
+
+  /// Every property of the web, shared and its own, under every condition and leaf kind,
+  /// crosses a record whole and resolves through it as the typed style does, the
+  /// typography's tokens among its leaves.
+  #[test]
+  fn every_kind_crosses_the_record() {
+    assert_eq!(WebProperty::samples(), WebProperty::ALL);
+
+    Medium::<f32, WebStyle> {
+      properties: WebProperty::samples(),
+      values: vec![400., 1.5],
+      definitions: Typography::default().definitions(),
+    }
+    .check();
   }
 }

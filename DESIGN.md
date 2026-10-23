@@ -588,8 +588,10 @@ Leaf<T>       = Static(StaticLeaf<T>) | Derived(Rc<dyn Fn() -> StaticLeaf<T>>)
 Value<T>      = Conditional<Leaf<T>, Condition>          // what a setter takes
 Definition<T> = Conditional<StaticLeaf<T>, Media>        // what a token is; no closures
 Media         = MinWidth | MaxWidth | MinHeight | MaxHeight | Dark | Light | ReducedMotion
-              | ReducedTransparency | HighContrast | Container { name, query } | And | Or
+              | ReducedTransparency | HighContrast | Pointer(PointerPrecision) | Hover
+              | Container { name, query } | And | Or
 State         = Hovered | Focused | FocusVisible | Pressed              // the node's own
+              | Dragged | Targeted
               | Checked | Indeterminate | Disabled | Invalid | Open      // the control's
 Condition     = Media | State | And | Or
 ```
@@ -694,8 +696,13 @@ Condition     = Media | State | And | Or
   (`entries`, `get`, `has`). `box_style` and `run_style` read the typed styles back,
   and its resolution (`Record::resolve`, `Frame::resolve`, a `ResolvedStyle`) is that
   readback resolved through the one `Resolver`, so no second resolution exists to
-  drift from it. The seam does not carry it yet: a realization receives the typed
-  styles in `BoxProps` and `RunProps`.
+  drift from it. A coverage test holds it to the whole model for each medium (none,
+  `WebStyle` in pixels, `TerminalStyle` in cells): a style setting every property, each
+  under variants of every `Media`, container query, `State` and `Condition` kind with
+  every leaf and expression node kind among them, crosses whole, motion included, and
+  resolves as the typed style does under readings where every condition both holds and
+  fails. The seam does not carry it yet: a realization receives the typed styles in
+  `BoxProps` and `RunProps`.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.

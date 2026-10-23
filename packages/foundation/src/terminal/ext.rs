@@ -414,3 +414,54 @@ impl TypeMetrics for TerminalStyle {
     fields.weight.clone()
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::{BorderGlyphs, ScrollbarGlyphs, TerminalProperty, TerminalStyle, TerminalValue};
+  use crate::{
+    TokenSet,
+    coverage::{Medium, chain},
+    terminal::Typography,
+  };
+
+  impl TerminalProperty {
+    /// Every property of the terminal's own, in declaration order.
+    fn samples() -> Vec<Self> {
+      chain(Self::BorderGlyphs, |property| match property {
+        Self::BorderGlyphs => Some(Self::CornerRadius),
+        Self::CornerRadius => Some(Self::Shadow),
+        Self::Shadow => Some(Self::ShadowOffset),
+        Self::ShadowOffset => Some(Self::ShadowSoftening),
+        Self::ShadowSoftening => Some(Self::ScrollbarThumb),
+        Self::ScrollbarThumb => Some(Self::ScrollbarTrack),
+        Self::ScrollbarTrack => Some(Self::ScrollbarGlyphs),
+        Self::ScrollbarGlyphs => Some(Self::Bold),
+        Self::Bold => Some(Self::Size),
+        Self::Size => Some(Self::Weight),
+        Self::Weight => None,
+      })
+    }
+  }
+
+  /// Every property of the terminal, shared and its own, glyphs and shadow among them,
+  /// under every condition and leaf kind crosses a record whole and resolves through it
+  /// as the typed style does, in cells, the typography's tokens among its leaves.
+  #[test]
+  fn every_kind_crosses_the_record() {
+    Medium::<u32, TerminalStyle> {
+      properties: TerminalProperty::samples(),
+      values: vec![
+        TerminalValue::BorderGlyphs(BorderGlyphs::LIGHT),
+        TerminalValue::BorderGlyphs(BorderGlyphs::DOUBLE),
+        TerminalValue::ScrollbarGlyphs(ScrollbarGlyphs::BLOCK),
+        TerminalValue::ScrollbarGlyphs(ScrollbarGlyphs::LINE),
+        TerminalValue::Bold(true),
+        TerminalValue::Bold(false),
+        TerminalValue::Number(400.),
+        TerminalValue::Number(700.),
+      ],
+      definitions: Typography::default().definitions(),
+    }
+    .check();
+  }
+}

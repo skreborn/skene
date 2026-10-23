@@ -27,6 +27,9 @@ use super::{
   Transition,
 };
 
+#[cfg(test)]
+pub mod coverage;
+
 /// One property's value in a [`Record`], erased over the property.
 ///
 /// It is the property's [`StaticValue`] under the facade's conditions, each fixed leaf
@@ -450,7 +453,7 @@ impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ReadRunFrame<'_, N, X>
 mod tests {
   use std::cell::Cell;
 
-  use super::{Frame, Record};
+  use super::{Frame, Record, coverage::Medium};
   use crate::spine::{
     Animation,
     BoxDynamics,
@@ -1062,5 +1065,13 @@ mod tests {
     }
 
     assert!(read.get());
+  }
+
+  /// Every shared property, condition, expression and leaf kind crosses a record whole and
+  /// resolves through it as the typed style does, in pixels and in cells.
+  #[test]
+  fn every_kind_crosses_the_record() {
+    Medium::<f32, ()>::shared().check();
+    Medium::<u32, ()>::shared().check();
   }
 }

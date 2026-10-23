@@ -110,6 +110,11 @@ in a code comment.
     `MenuEntry`s that `NSMenu`, `UIMenu` and `PopupMenu` would realize where the
     platform composites views, since a drawn Paste triggers iOS's paste prompt and
     macOS 26's pasteboard alert.
+    - A context menu's `set_placement` places nothing on any platform: the list is a
+    pinned overlay, and the seam's `set_overlay_position` has a pinned overlay ignore its
+    placement, so the web and the terminal both open the list's top-start corner at the
+    pointer whatever the menu says; the design places a pinned overlay against its
+    point, or the setter goes, and its test returns where a platform passes it.
 4. **Linux, drawn on its own protocols.** A window platform: Skene owns the whole
     window, draws everything and speaks Linux's text, input and accessibility protocols
     itself, the GTK prototype remaining a reference whose transcripts are the bar. The

@@ -196,6 +196,11 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       act: a_context_menu_opens_on_shift_f10,
     },
     Scenario {
+      name: "a context menu's item runs on Enter, closing the menu",
+      page: "context-menu",
+      act: a_context_menu_item_runs_on_enter,
+    },
+    Scenario {
       name: "a tooltip shows once the pointer rests on its view for the delay",
       page: "tooltip",
       act: a_tooltip_shows_after_its_delay,
@@ -815,6 +820,30 @@ fn a_context_menu_opens_on_shift_f10<D: Driver>(driver: &mut D) {
     "focus returns to the note"
   );
   assert_eq!(driver.probe("renamed"), "false", "closing runs nothing");
+}
+
+fn a_context_menu_item_runs_on_enter<D: Driver>(driver: &mut D) {
+  let note = found(driver, Role::Group, "Note");
+
+  driver.focus(&note);
+  driver.press(&shifted("F10"));
+
+  let rename = found(driver, Role::MenuItem, "Rename");
+
+  assert_eq!(driver.focused().as_ref(), Some(&rename));
+
+  driver.press(&key("Enter"));
+
+  assert_eq!(driver.probe("renamed"), "true", "Enter runs the item");
+  assert!(
+    driver.find(Role::MenuItem, "Rename").is_none(),
+    "running it closes the menu"
+  );
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&note),
+    "focus returns to the note"
+  );
 }
 
 fn a_tooltip_shows_after_its_delay<D: Driver>(driver: &mut D) {

@@ -38,7 +38,7 @@ const RUNS: &[Run] = &[
       ("browser_platform", 17),
       ("browser_resource", 5),
       ("browser_task", 4),
-      ("browser_views", 27),
+      ("browser_views", 31),
     ],
   },
   Run {
@@ -82,7 +82,7 @@ struct Suite {
 const SUITE: Suite = Suite {
   package: "skene-conformance-web",
   harness: "harness",
-  scenarios: 27,
+  scenarios: 28,
   pages: 18,
 };
 

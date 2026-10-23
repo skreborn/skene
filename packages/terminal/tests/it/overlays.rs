@@ -1,12 +1,235 @@
-//! Overlays in cells: a modal's scrim, blocking and dismissal, a popup's anchoring and
-//! light dismissal, and focus trapped inside a modal, taken by it on open and returned
-//! on close.
+//! Overlays in cells: a modal following its signal without rebuilding, its scrim,
+//! blocking and dismissal, a dismiss as a request the app answers, a popup's anchoring,
+//! re-placing and light dismissal, focus trapped inside a modal, taken by it on open and
+//! returned on close, and a focus handle moving focus to the view it is bound to.
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
 use skene_terminal::{self as terminal, Activate, HasChild, prelude::*, testing};
 
-use crate::common::{black, red, with_platform};
+use crate::common::{black, blue, colors_at, red, rgb, with_platform};
+
+/// A modal follows its bound signal, centered over the app; closing and reopening keep
+/// its content, so a signal created while building the content keeps its value across a
+/// close and the content is built once.
+#[test]
+fn a_modal_opens_and_closes_through_its_signal_without_rebuilding() {
+  with_platform(|| {
+    let open = Signal::new(false);
+    let content = NodeHandle::new();
+    let built = Rc::new(Cell::new(0u32));
+    let inner: Rc<Cell<Option<Signal<i32>>>> = Rc::new(Cell::new(None));
+
+    let _ = terminal::mount({
+      let (built, inner) = (Rc::clone(&built), Rc::clone(&inner));
+
+      move || {
+        Column::new()
+          .set_children((
+            Text::new("page").into_any(),
+            Overlay::modal()
+              .bind_open(open)
+              .set_child(AnyView::new(move || {
+                let count = Signal::new(1);
+
+                built.set(built.get() + 1);
+                inner.set(Some(count));
+
+                Container::new()
+                  .bind_handle(content)
+                  .derive_background(move || if count.get() > 1 { red() } else { blue() })
+                  .set_child(Text::new("dialog"))
+                  .build()
+              }))
+              .into_any(),
+          ))
+          .into_any()
+          .build()
+      }
+    });
+
+    assert!(!testing::render_to_text(20, 5).contains("dialog"));
+
+    open.set(true);
+
+    let frame = testing::render_to_text(20, 5);
+    let (x, y) = testing::locate(&frame, "dialog");
+
+    assert_eq!((x, y), (7, 2), "the modal sits centered: {frame}");
+    assert_eq!(colors_at(20, 5, 7, 2).1, Some(rgb(blue())));
+
+    let count = inner.get().expect("the content's signal");
+    let node = content.node();
+
+    count.set(2);
+
+    assert_eq!(colors_at(20, 5, 7, 2).1, Some(rgb(red())));
+
+    open.set(false);
+
+    assert!(!testing::render_to_text(20, 5).contains("dialog"));
+    assert_eq!(count.get(), 2, "the content's signal outlives the close");
+
+    open.set(true);
+
+    assert!(testing::render_to_text(20, 5).contains("dialog"));
+    assert_eq!(colors_at(20, 5, 7, 2).1, Some(rgb(red())));
+    assert_eq!(content.node(), node, "the same content node");
+    assert_eq!(built.get(), 1, "the content was built once");
+  });
+}
+
+/// A dismiss runs the handler and nothing else: a popup whose signal only derives its
+/// openness stays open until the app writes the signal, and a bound popup closes, its
+/// binding writing the signal.
+#[test]
+fn a_dismiss_requests_and_never_closes_by_itself() {
+  with_platform(|| {
+    let requested = Signal::new(true);
+    let bound = Signal::new(false);
+    let log = Rc::new(RefCell::new(Vec::new()));
+
+    let _ = terminal::mount({
+      let log = Rc::clone(&log);
+
+      move || {
+        Column::new()
+          .set_children((
+            Overlay::popup()
+              .derive_open(move || requested.get())
+              .handle_dismiss(move || log.borrow_mut().push("dismiss"))
+              .set_child(Text::new("requested"))
+              .into_any(),
+            Overlay::popup()
+              .bind_open(bound)
+              .set_child(Text::new("bound"))
+              .into_any(),
+          ))
+          .into_any()
+          .build()
+      }
+    });
+
+    assert!(testing::render_to_text(20, 5).contains("requested"));
+
+    testing::trigger_key("Escape");
+
+    assert_eq!(*log.borrow(), ["dismiss"]);
+    assert!(requested.get());
+    assert!(
+      testing::render_to_text(20, 5).contains("requested"),
+      "a dismiss alone closes nothing"
+    );
+
+    requested.set(false);
+    bound.set(true);
+
+    let frame = testing::render_to_text(20, 5);
+
+    assert!(
+      frame.contains("bound") && !frame.contains("requested"),
+      "{frame}"
+    );
+
+    testing::trigger_key("Escape");
+
+    assert!(!bound.get(), "the binding wrote the signal");
+    assert!(!testing::render_to_text(20, 5).contains("bound"));
+  });
+}
+
+/// A popup's derived placement re-places it while it stays open: below its anchor,
+/// then above it.
+#[test]
+fn a_derived_placement_re_places_an_open_popup() {
+  with_platform(|| {
+    let placement = Signal::new(Placement::Bottom);
+    let anchor = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("top").into_any(),
+          Text::new("").into_any(),
+          Container::new()
+            .bind_handle(anchor)
+            .set_child(Text::new("anchor"))
+            .into_any(),
+          Overlay::popup()
+            .set_anchor(anchor)
+            .derive_placement(move || placement.get())
+            .set_open(true)
+            .set_child(Text::new("popup"))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(12, 6);
+
+    assert_eq!(testing::locate(&frame, "anchor").1, 2, "{frame}");
+    assert_eq!(testing::locate(&frame, "popup"), (0, 3), "below: {frame}");
+
+    placement.set(Placement::Top);
+
+    let frame = testing::render_to_text(12, 6);
+
+    assert_eq!(testing::locate(&frame, "popup"), (0, 1), "above: {frame}");
+  });
+}
+
+/// A press inside an open popup or on the anchor it opened from leaves it open, and a
+/// press anywhere else dismisses it, as a browser's light dismiss does.
+#[test]
+fn a_press_inside_a_popup_or_on_its_anchor_leaves_it_open() {
+  with_platform(|| {
+    let open = Signal::new(false);
+    let anchor = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .bind_handle(anchor)
+            .set_child(Text::new("anchor"))
+            .into_any(),
+          Overlay::popup()
+            .set_anchor(anchor)
+            .set_placement(Placement::Bottom)
+            .bind_open(open)
+            .set_child(Text::new("inside"))
+            .into_any(),
+          Text::new("").into_any(),
+          Text::new("page").into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(12, 4);
+
+    open.set(true);
+
+    let frame = testing::render_to_text(12, 4);
+    let (inside, anchored, page) = (
+      testing::locate(&frame, "inside"),
+      testing::locate(&frame, "anchor"),
+      testing::locate(&frame, "page"),
+    );
+
+    testing::trigger_mouse_click(inside.0 + 1, inside.1);
+    testing::trigger_mouse_click(anchored.0 + 1, anchored.1);
+
+    assert!(open.get(), "a press inside or on the anchor leaves it open");
+
+    testing::trigger_mouse_click(page.0 + 1, page.1);
+
+    assert!(!open.get(), "a press outside dismisses it");
+  });
+}
 
 /// A modal overlay paints over the app with its backdrop scrim, blocks clicks beneath
 /// it, and `Escape` asks it to close.
@@ -418,5 +641,56 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
       opener.node(),
       "focus returned to the opener"
     );
+  });
+}
+
+/// A focus handle bound to a control or to a box with a focus order moves focus to it
+/// and takes it off again; unbound, it does nothing.
+#[test]
+fn a_focus_handle_moves_focus_to_its_bound_view() {
+  with_platform(|| {
+    let button = NodeHandle::new();
+    let plain = NodeHandle::new();
+    let unbound = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new())
+            .bind_handle(button)
+            .set_label("Save")
+            .into_any(),
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .bind_handle(plain)
+            .set_child(Text::new("box"))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(12, 4);
+
+    assert_eq!(testing::focused_node(), None);
+
+    button.focus();
+
+    assert_eq!(testing::focused_node(), button.node());
+
+    plain.focus();
+
+    assert_eq!(testing::focused_node(), plain.node());
+
+    unbound.focus();
+
+    assert_eq!(
+      testing::focused_node(),
+      plain.node(),
+      "unbound, nothing moves"
+    );
+
+    plain.blur();
+
+    assert_eq!(testing::focused_node(), None);
   });
 }

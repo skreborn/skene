@@ -211,10 +211,13 @@ toolkit's keeps the default, which does nothing.
   an inspectable record store, resolves a property through the spine's `Resolver` (the
   scene's tokens, the expression evaluator and the environment), and runs tasks when a
   test pumps them, giving the foundation's views fast tests without pretending to be a
-  platform. The controls test on the platforms that realize them instead: their behaviors,
-  names and keys in the terminal's in-process tier, through real input and what a reader
-  finds, and their web form (the native element, a reported edit's verdict, the hydrated
-  swap) in the browser; what a behavior declares it listens to is a unit test of its own.
+  platform. The controls and the overlays test on the platforms that realize them
+  instead: their behaviors, names and keys, a modal's and a popup's dismissal, a
+  tooltip's timing and a context menu's items in the terminal's in-process tier, through
+  real input, the hand-stepped clock and what a reader finds, and their web form (the
+  native element, a reported edit's verdict, the hydrated swap, a popup's anchoring, a
+  tooltip's `aria-describedby`) in the browser; what a behavior declares it listens to
+  is a unit test of its own.
   A facade's views test on their platform alone, against its real sinks: the web's in a
   browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
   snapshot, never on the headless platform; native ones against their toolkit. A component

@@ -29,18 +29,21 @@ use skene_foundation::{
   Media,
   NativeElement,
   OverlayBase,
+  Placement,
   RowBase,
   Size,
   Spacing,
   StaticLeaf,
   TextBase,
   ThemeBase,
+  TooltipBase,
   Verdict,
   report_edit,
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
   Activate,
+  AnyView,
   AsyncView,
   AsyncViewBase,
   BasicButton,
@@ -58,6 +61,7 @@ use skene_web::{
   Column,
   Container,
   Control,
+  FocusOrder,
   HasChild,
   HasChildren,
   LayoutBox,
@@ -78,6 +82,7 @@ use skene_web::{
   Theme,
   ThemedIn,
   Toggle,
+  Tooltip,
   Typography,
   View,
   head,
@@ -163,6 +168,25 @@ fn key_down(target: &Element, key: &str) -> bool {
   let _ = target.dispatch_event(&event);
 
   event.default_prevented()
+}
+
+/// `element` as the HTML element it is.
+fn html(element: &Element) -> &HtmlElement {
+  element.dyn_ref().expect("an HTML element")
+}
+
+/// The element `element`'s `aria-describedby` names, in order.
+fn described_by(element: &Element) -> Vec<Element> {
+  element
+    .get_attribute("aria-describedby")
+    .unwrap_or_default()
+    .split_whitespace()
+    .map(|id| {
+      document()
+        .get_element_by_id(id)
+        .unwrap_or_else(|| panic!("no element {id}"))
+    })
+    .collect()
 }
 
 /// The scheme an app put in force, returned to following the platform when dropped.
@@ -1247,5 +1271,277 @@ fn the_face_reports_its_popup_and_the_list_it_controls() {
       .expect("query")
       .length(),
     2
+  );
+}
+
+/// A popup anchored to a bound box opens against the anchor's element: through CSS
+/// anchor positioning where the engine has it, at the anchor's measured rectangle where
+/// it does not; a derived placement re-places it while it stays open.
+#[wasm_bindgen_test]
+fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
+  let (_guard, root) = fresh_root();
+  let open = Signal::new(false);
+  let placement = Signal::new(Placement::Bottom);
+  let anchor = NodeHandle::new();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new().set_height(120),
+        Container::new()
+          .bind_handle(anchor)
+          .set_width(160)
+          .set_height(24)
+          .set_child(Text::new("anchor")),
+        Overlay::popup()
+          .set_anchor(anchor)
+          .derive_placement(move || placement.get())
+          .bind_open(open)
+          .set_child(Text::new("popup")),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let boxed = elements(&column)[1].clone();
+  let popup = root
+    .query_selector("[popover]")
+    .expect("query")
+    .expect("the popup");
+  let is_open = || popup.matches(":popover-open").unwrap_or(false);
+
+  assert!(
+    anchor.node().is_some(),
+    "the handle names the anchor's node"
+  );
+  assert_ne!(
+    popup.tag_name().to_lowercase(),
+    "dialog",
+    "a popup is no modal"
+  );
+  assert!(!is_open());
+
+  open.set(true);
+  platform::end_turn();
+
+  assert!(is_open());
+
+  let edges = |element: &Element| {
+    let rect = element.get_bounding_client_rect();
+
+    (rect.left(), rect.top(), rect.bottom())
+  };
+  let (anchor_left, anchor_top, anchor_bottom) = edges(&boxed);
+  let (left, top, _) = edges(&popup);
+
+  assert!(
+    (top - anchor_bottom).abs() < 1. && (left - anchor_left).abs() < 1.,
+    "below the anchor, start-aligned: popup {:?} anchor {:?}",
+    (left, top),
+    (anchor_left, anchor_bottom)
+  );
+
+  if web_sys::css::supports_with_value("position-area", "block-end").unwrap_or(false) {
+    let name = html(&boxed)
+      .style()
+      .get_property_value("anchor-name")
+      .unwrap();
+
+    assert!(name.starts_with("--skene-anchor-"), "{name}");
+    assert_eq!(
+      html(&popup)
+        .style()
+        .get_property_value("position-anchor")
+        .unwrap(),
+      name,
+      "the popup follows the anchor's sink through CSS anchor positioning"
+    );
+  }
+  else {
+    assert!(
+      html(&popup)
+        .style()
+        .get_property_value("top")
+        .unwrap()
+        .ends_with("px"),
+      "the measured rectangle stands in for the engine's"
+    );
+  }
+
+  placement.set(Placement::Top);
+  platform::end_turn();
+
+  let (_, _, bottom) = edges(&popup);
+
+  assert!(is_open(), "re-placing keeps it open");
+  assert!(
+    (bottom - anchor_top).abs() < 1.,
+    "above the anchor: popup bottom {bottom} anchor top {anchor_top}"
+  );
+}
+
+/// A tooltip describes the element that takes focus within the view it wraps, not the
+/// view's outer box: its `aria-describedby` names the bubble, a hint popover holding
+/// the text, and no `title` stands in for it once live.
+#[wasm_bindgen_test]
+fn a_tooltip_describes_the_focus_holder_within_its_view() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Tooltip::new("Saves your work")
+      .set_child(
+        Container::new().set_child(
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .set_child(Text::new("Save")),
+        ),
+      )
+      .build()
+  });
+
+  let outer = only_child(&root);
+  let holder = outer
+    .query_selector("[tabindex]")
+    .expect("query")
+    .expect("the focusable box");
+  let bubbles = described_by(&holder);
+
+  assert_eq!(bubbles.len(), 1, "the focus holder names the bubble");
+  assert_eq!(bubbles[0].get_attribute("popover").as_deref(), Some("hint"));
+  assert_eq!(
+    bubbles[0].text_content().as_deref(),
+    Some("Saves your work")
+  );
+  assert_eq!(
+    outer.get_attribute("aria-describedby"),
+    None,
+    "the outer box does not"
+  );
+  assert_eq!(
+    holder.get_attribute("title"),
+    None,
+    "no browser tooltip once live"
+  );
+  assert_eq!(
+    root
+      .query_selector_all("[aria-describedby]")
+      .expect("query")
+      .length(),
+    1
+  );
+}
+
+/// A derived text tooltip re-describes as its text changes and its report sits beside
+/// the control's own through a rewrite of either; a view tooltip's bubble holds its view.
+#[wasm_bindgen_test]
+fn a_tooltips_report_sits_beside_the_controls_own() {
+  let (_guard, root) = fresh_root();
+  let disabled = Signal::new(false);
+  let text = Signal::new("Saves".to_owned());
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Tooltip::derive(move || text.get()).set_child(
+          BasicButton::new(Activate::new())
+            .derive_disabled(move || disabled.get())
+            .set_label("Save"),
+        ),
+        Tooltip::view(Text::new("rich")).set_child(Container::new().set_child(Text::new("plain"))),
+      ))
+      .build()
+  });
+
+  let described = root
+    .query_selector_all("[aria-describedby]")
+    .expect("query");
+
+  assert_eq!(described.length(), 2);
+
+  let element = |index: u32| -> Element {
+    described
+      .item(index)
+      .expect("a described element")
+      .dyn_into()
+      .expect("an element")
+  };
+  let (button, plain) = (element(0), element(1));
+  let bubble = described_by(&button);
+
+  assert_eq!(bubble.len(), 1);
+  assert_eq!(bubble[0].text_content().as_deref(), Some("Saves"));
+
+  disabled.set(true);
+  platform::end_turn();
+
+  assert!(
+    button.has_attribute("disabled")
+      || button.get_attribute("aria-disabled").as_deref() == Some("true"),
+    "the control's own report"
+  );
+  assert_eq!(
+    described_by(&button),
+    bubble,
+    "the description survives the control's rewrite"
+  );
+
+  text.set("Saves the document".to_owned());
+  platform::end_turn();
+
+  assert_eq!(
+    bubble[0].text_content().as_deref(),
+    Some("Saves the document")
+  );
+  assert_eq!(described_by(&button), bubble);
+
+  let rich = described_by(&plain);
+
+  assert_eq!(rich.len(), 1, "a view tooltip names its bubble");
+  assert_eq!(rich[0].text_content().as_deref(), Some("rich"));
+}
+
+/// A control's own description and a tooltip's fold into one `aria-describedby`, the
+/// control's first, through a rewrite of the control's report.
+#[wasm_bindgen_test]
+fn a_controls_description_and_a_tooltips_fold_into_one_list() {
+  let (_guard, root) = fresh_root();
+  let disabled = Signal::new(false);
+
+  let _ = mount(move || {
+    let hint = Text::new("Required").build();
+
+    Column::new()
+      .set_children((
+        AnyView::node(hint),
+        Tooltip::new("Saves").set_child(
+          BasicButton::new(Activate::new())
+            .derive_disabled(move || disabled.get())
+            .set_label("Save")
+            .set_described_by(hint),
+        ),
+      ))
+      .build()
+  });
+
+  let button = root
+    .query_selector("[aria-describedby]")
+    .expect("query")
+    .expect("the described control");
+  let texts = || {
+    described_by(&button)
+      .iter()
+      .map(|element| element.text_content().unwrap_or_default())
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(texts(), ["Required", "Saves"]);
+
+  disabled.set(true);
+  platform::end_turn();
+
+  assert_eq!(
+    texts(),
+    ["Required", "Saves"],
+    "through the control's rewrite"
   );
 }

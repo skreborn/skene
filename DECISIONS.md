@@ -8,6 +8,14 @@ supersedes.
 
 ## Decided against
 
+- **The prototype's record vocabulary** (2026-10-23), `spikes/linux`'s seam record: a
+  `Prop` list of its own, its properties sorted into groups and its values into kinds
+  of its own, compiled and resolved in its own `CompileCx`. The style record is the
+  erased projection of the one property model (`BoxStyle`, `RunStyle` and their motion,
+  keyed by `PropertyKey` in their visitors' order), and its resolution is the typed
+  readback through the one `Resolver`, so no second vocabulary or resolution can drift
+  from the model. Revisit when a realization needs a property or a grouping the
+  model's visitors cannot give.
 - **A builder opting a signal in, `Signal::new(v).saved()`** (2026-10-23), one
   constructor and a method that registers the signal after it is made: the opt-in is a
   constructor, `Signal::saved` and `Store::saved` beside `tagged`, so a signal's place

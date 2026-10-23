@@ -5552,6 +5552,21 @@ impl<P: skene_foundation::Realization> core::default::Default for skene_foundati
 pub fn skene_foundation::Flexible<P>::default() -> Self
 impl<P: skene_foundation::Realization> skene_foundation::IntoChildOf<P, skene_foundation::FlexChild> for skene_foundation::Flexible<P, skene_foundation::AnyView<P>>
 pub fn skene_foundation::Flexible<P, skene_foundation::AnyView<P>>::into_child(self) -> skene_foundation::AnyView<P>
+pub struct skene_foundation::Frame<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::box_keyframe(&self) -> skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>
+pub const fn skene_foundation::Frame<N, X>::entries(&self) -> &[skene_foundation::FrameEntry<N, X>]
+pub fn skene_foundation::Frame<N, X>::of_box(&skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>) -> Self
+pub fn skene_foundation::Frame<N, X>::of_run(&skene_foundation::RunStyle<skene_foundation::Keyframe, X>) -> Self
+pub fn skene_foundation::Frame<N, X>::resolve(&self, &skene_foundation::Resolver<'_, N, X>) -> skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::Frame<N, X>::run_keyframe(&self) -> skene_foundation::RunStyle<skene_foundation::Keyframe, X>
+impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::clone(&self) -> skene_foundation::Frame<N, X>
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::cmp::PartialEq for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::eq(&self, &skene_foundation::Frame<N, X>) -> bool
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::Frame<N, X>
+impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Grid<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Grid<P>
 pub fn skene_foundation::Grid<P>::adaptive(<P as skene_foundation::Realization>::Scalar) -> Self
@@ -6759,6 +6774,32 @@ pub const skene_foundation::RadioPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_foundation::RadioPolicy::ROLE: accesskit::Role
 pub const skene_foundation::RadioPolicy::WRAPS: bool
 pub fn skene_foundation::RadioPolicy::member_access(bool) -> alloc::vec::Vec<skene_foundation::AccessProp>
+pub struct skene_foundation::Record<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Record<N, X>
+pub fn skene_foundation::Record<N, X>::add_box(&mut self, &skene_foundation::BoxStyle<N, skene_foundation::Static<skene_foundation::Condition<N>>, X>)
+pub fn skene_foundation::Record<N, X>::add_box_dynamics(&mut self, &skene_foundation::BoxDynamics<N, X>)
+pub fn skene_foundation::Record<N, X>::add_run(&mut self, &skene_foundation::RunStyle<skene_foundation::Static<skene_foundation::Condition<N>>, X>)
+pub fn skene_foundation::Record<N, X>::add_run_dynamics(&mut self, &skene_foundation::RunDynamics<X>)
+pub const fn skene_foundation::Record<N, X>::animations(&self) -> &[skene_foundation::Animation<skene_foundation::Frame<N, X>>]
+pub fn skene_foundation::Record<N, X>::box_style(&self) -> skene_foundation::BoxStyle<N, skene_foundation::Static<skene_foundation::Condition<N>>, X>
+pub const fn skene_foundation::Record<N, X>::entries(&self) -> &[skene_foundation::RecordEntry<N, X>]
+pub fn skene_foundation::Record<N, X>::get(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> core::option::Option<&skene_foundation::RecordValue<N, X>>
+pub fn skene_foundation::Record<N, X>::has(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> bool
+pub const fn skene_foundation::Record<N, X>::new() -> Self
+pub fn skene_foundation::Record<N, X>::resolve(&self, &skene_foundation::Resolver<'_, N, X>) -> skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::Record<N, X>::run_style(&self) -> skene_foundation::RunStyle<skene_foundation::Static<skene_foundation::Condition<N>>, X>
+pub fn skene_foundation::Record<N, X>::set_box<F: skene_foundation::BoxField<N, X>>(&mut self, skene_foundation::StaticValue<<F as skene_foundation::BoxField>::Value, skene_foundation::Condition<N>>)
+pub fn skene_foundation::Record<N, X>::set_run<F: skene_foundation::RunField<X>>(&mut self, skene_foundation::StaticValue<<F as skene_foundation::RunField>::Value, skene_foundation::Condition<N>>)
+pub const fn skene_foundation::Record<N, X>::transitions(&self) -> &[skene_foundation::Transition<<X as skene_foundation::StyleExtension>::Property>]
+impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::Record<N, X> where <X as skene_foundation::StyleExtension>::Property: core::clone::Clone
+pub fn skene_foundation::Record<N, X>::clone(&self) -> skene_foundation::Record<N, X>
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::cmp::PartialEq for skene_foundation::Record<N, X> where <X as skene_foundation::StyleExtension>::Property: core::cmp::PartialEq
+pub fn skene_foundation::Record<N, X>::eq(&self, &skene_foundation::Record<N, X>) -> bool
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::Record<N, X> where <X as skene_foundation::StyleExtension>::Property: core::cmp::PartialEq
+impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::Record<N, X> where <X as skene_foundation::StyleExtension>::Property: core::fmt::Debug
+pub fn skene_foundation::Record<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> core::default::Default for skene_foundation::Record<N, X>
+pub fn skene_foundation::Record<N, X>::default() -> Self
 pub struct skene_foundation::Rect<T>
 pub skene_foundation::Rect::origin: skene_foundation::Point<T>
 pub skene_foundation::Rect::size: skene_foundation::Size<T>
@@ -6804,6 +6845,18 @@ pub fn skene_foundation::ResolutionContext<'a, P, S>::root(&'a S) -> Self
 pub fn skene_foundation::ResolutionContext<'a, P, S>::with_resolver<R>(&self, impl core::ops::function::FnOnce(&skene_foundation::Resolver<'_, <P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>) -> R) -> R
 impl<P: skene_foundation::Realization, S> core::fmt::Debug for skene_foundation::ResolutionContext<'_, P, S>
 pub fn skene_foundation::ResolutionContext<'_, P, S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::ResolvedStyle<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
+pub skene_foundation::ResolvedStyle::boxed: skene_foundation::BoxStyle<N, skene_foundation::Plain, X>
+pub skene_foundation::ResolvedStyle::run: skene_foundation::RunStyle<skene_foundation::Plain, X>
+impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::ResolvedStyle<N, X>::clone(&self) -> skene_foundation::ResolvedStyle<N, X>
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::cmp::PartialEq for skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::ResolvedStyle<N, X>::eq(&self, &skene_foundation::ResolvedStyle<N, X>) -> bool
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::ResolvedStyle<N, X>
+impl<N: core::default::Default + skene_foundation::Scalar, X: core::default::Default + skene_foundation::StyleExtension> core::default::Default for skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::ResolvedStyle<N, X>::default() -> skene_foundation::ResolvedStyle<N, X>
+impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::ResolvedStyle<N, X>
+pub fn skene_foundation::ResolvedStyle<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Resolver<'a, N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
 pub skene_foundation::Resolver::containers: &'a [(skene_foundation::ContainerName, core::option::Option<skene_foundation::Size<N>>)]
 pub skene_foundation::Resolver::environment: skene_foundation::Environment<N>
@@ -9960,6 +10013,7 @@ pub type skene_foundation::Definition<T, N> = skene_foundation::Conditional<sken
 pub type skene_foundation::DragSource = dyn core::ops::function::Fn() -> skene_foundation::DragData
 pub type skene_foundation::DropHandler = dyn core::ops::function::Fn(&skene_foundation::DragData, skene_foundation::DropPhase) -> bool
 pub type skene_foundation::EditHandler = dyn core::ops::function::Fn(&skene_foundation::Edit, bool) -> skene_foundation::Verdict
+pub type skene_foundation::FrameEntry<N, X> = (skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::SlotLeaf<N, X>)
 pub type skene_foundation::KeyHandler = dyn core::ops::function::Fn(&skene_foundation::KeyEvent) -> skene_foundation::Prevent
 pub type skene_foundation::Listbox = skene_foundation::Collection<skene_foundation::ListboxPolicy>
 pub type skene_foundation::ListboxContext = skene_foundation::CollectionContext<skene_foundation::ListboxPolicy>
@@ -9973,6 +10027,8 @@ pub type skene_foundation::PointerHandler = dyn core::ops::function::Fn(&skene_f
 pub type skene_foundation::Radio = skene_foundation::Member<skene_foundation::RadioPolicy>
 pub type skene_foundation::RadioGroup = skene_foundation::Collection<skene_foundation::RadioPolicy>
 pub type skene_foundation::RadioGroupContext = skene_foundation::CollectionContext<skene_foundation::RadioPolicy>
+pub type skene_foundation::RecordEntry<N, X> = (skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::RecordValue<N, X>)
+pub type skene_foundation::RecordValue<N, X> = skene_foundation::StaticValue<skene_foundation::SlotValue<N, X>, skene_foundation::Condition<N>>
 pub type skene_foundation::RunKeyframe<P> = skene_foundation::RunStyle<skene_foundation::Keyframe, <P as skene_foundation::Realization>::StyleExt>
 pub type skene_foundation::RunSlot<X> = skene_foundation::DerivedSlot<skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::RunValue<X>>
 pub type skene_foundation::ScrollHandler = dyn core::ops::function::Fn(&skene_foundation::ScrollEvent)

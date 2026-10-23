@@ -24,6 +24,7 @@ mod node_map;
 mod property;
 mod props;
 mod realization;
+mod record;
 mod reorder;
 mod resolve;
 mod run_style;
@@ -166,6 +167,7 @@ pub use props::{
   StaticRunStyle,
 };
 pub use realization::{Observation, Realization, Timer, Timers};
+pub use record::{Frame, FrameEntry, Record, RecordEntry, RecordValue, ResolvedStyle};
 pub use reorder::Reorder;
 pub use resolve::{
   Focus,

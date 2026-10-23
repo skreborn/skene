@@ -33,6 +33,19 @@ impl<T> StaticLeaf<T> {
       Self::Expr(expr) => StaticLeaf::Expr(Expr::from_node(expr.into_node())),
     }
   }
+
+  /// [`map`](Self::map) for a reading that may fail: `None` where `read` refuses a fixed
+  /// value.
+  pub(in crate::spine) fn try_map<U>(
+    self,
+    read: impl FnOnce(T) -> Option<U>,
+  ) -> Option<StaticLeaf<U>> {
+    match self {
+      Self::Fixed(value) => read(value).map(StaticLeaf::Fixed),
+      Self::Token(name) => Some(StaticLeaf::Token(name)),
+      Self::Expr(expr) => Some(StaticLeaf::Expr(Expr::from_node(expr.into_node()))),
+    }
+  }
 }
 
 /// What a builder stores for a property: a [`StaticLeaf`], or a leaf derived from
@@ -90,6 +103,29 @@ pub enum KeptLeaf<T> {
   Static(StaticLeaf<T>),
   /// A value a render effect writes into the slot.
   Slot(Slot),
+}
+
+impl<T> KeptLeaf<T> {
+  /// This leaf with `map` applied to a fixed value, as [`StaticLeaf::map`] maps it; a
+  /// slot stays the slot.
+  pub(in crate::spine) fn map<U>(self, map: impl FnOnce(T) -> U) -> KeptLeaf<U> {
+    match self {
+      Self::Static(leaf) => KeptLeaf::Static(leaf.map(map)),
+      Self::Slot(slot) => KeptLeaf::Slot(slot),
+    }
+  }
+
+  /// [`map`](Self::map) for a reading that may fail: `None` where `read` refuses a fixed
+  /// value.
+  pub(in crate::spine) fn try_map<U>(
+    self,
+    read: impl FnOnce(T) -> Option<U>,
+  ) -> Option<KeptLeaf<U>> {
+    match self {
+      Self::Static(leaf) => leaf.try_map(read).map(KeptLeaf::Static),
+      Self::Slot(slot) => Some(KeptLeaf::Slot(slot)),
+    }
+  }
 }
 
 /// One derived leaf a style's split lifted out: where it lands, and how to compute it.
@@ -197,6 +233,22 @@ impl<L, C> Conditional<L, C> {
         .map(|(condition, leaf)| (condition, map(leaf)))
         .collect(),
     }
+  }
+
+  /// [`map`](Self::map) for a reading that may fail: `None` where `read` refuses any
+  /// leaf.
+  pub(in crate::spine) fn try_map<M>(
+    self,
+    mut read: impl FnMut(L) -> Option<M>,
+  ) -> Option<Conditional<M, C>> {
+    Some(Conditional {
+      base: read(self.base)?,
+      variants: self
+        .variants
+        .into_iter()
+        .map(|(condition, leaf)| Some((condition, read(leaf)?)))
+        .collect::<Option<_>>()?,
+    })
   }
 
   /// This value with `map` applied to every condition, in declaration order.

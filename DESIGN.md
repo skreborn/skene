@@ -681,6 +681,20 @@ Condition     = Media | State | And | Or
   `Line::area`), a template breaking CSS's rules dropped whole on every platform as CSS
   drops it. The framework invents no layout
   system.
+- **The record** (`Record<N, X>`) is a node's style as one list: every property its box
+  and run styles set, keyed by its `PropertyKey` in the order the styles' visitors give
+  (a run's own before its layout's), each value a `RecordValue` erased over the
+  property (a `StaticValue` of `SlotValue`s: a fixed value erased, a token kept by its
+  name, an expression by its tree, a derived leaf as its `KeptLeaf::Slot`), with its
+  transitions as data and each animation's keyframes as `Frame`s. It is written typed,
+  a property at a time (`set_box::<F>`, `set_run::<F>`, keyed by a `BoxField` or a
+  `RunField`, so a value of another property's kind does not compile) or a style at a
+  time (`add_box`, `add_run`, `add_box_dynamics`, `add_run_dynamics`), and read erased
+  (`entries`, `get`, `has`). `box_style` and `run_style` read the typed styles back,
+  and its resolution (`Record::resolve`, `Frame::resolve`, a `ResolvedStyle`) is that
+  readback resolved through the one `Resolver`, so no second resolution exists to
+  drift from it. The seam does not carry it yet: a realization receives the typed
+  styles in `BoxProps` and `RunProps`.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.
@@ -1560,7 +1574,9 @@ sense apart where context does not.
   reload records and reads back. A platform's record store (see record).
 - **Record.** A platform's record of a node: what it keeps per `NodeId` beside its
   realization, the terminal's and headless's. A snapshot record: what a run writes for
-  its successor at a dev reload.
+  its successor at a dev reload. A node's style record (`Record`): its box and run
+  styles and their motion as one erased list under Skene's property names (The style
+  model).
 - **Realize.** A platform turning a scene node into its own representation: an element
   in the browser, an entry in the server's string tree, a record and a taffy node in the
   terminal. `LowLevel::realize` mints a node a view realizes itself.

@@ -999,16 +999,17 @@ fn a_caption_kept_beside_is_placed_before_its_control() {
     };
 
     Scene::<Terminal>::with(|scene| {
+      scene.keep_caption_beside(beside);
+
       for (control, label, rest) in [
         (inside, inside_caption, inside_track),
         (beside, caption, track),
       ] {
+        scene.set_part(label, Part::Label);
         scene.attach(control, label, None);
         scene.attach(control, rest, None);
-        scene.set_part(label, Part::Label);
       }
 
-      scene.keep_caption_beside(beside);
       scene.attach(stage, inside, None);
       scene.attach(stage, beside, None);
     });
@@ -1791,7 +1792,6 @@ proptest! {
           "a reader finds them in the same order"
         );
       }
-
     });
   }
 }

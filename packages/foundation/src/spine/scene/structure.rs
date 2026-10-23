@@ -376,6 +376,9 @@ impl<P: Realization> Scene<P> {
 
   /// Records that the control `control` keeps its caption, its `Label` part, beside it:
   /// placed before it among its siblings rather than inside it.
+  ///
+  /// Called as the control is created, before its caption is attached: a platform
+  /// places a caption as it is attached, so a later call moves none.
   pub fn keep_caption_beside(&mut self, control: NodeId) {
     if let Some(record) = self.record_mut(control) {
       record.caption_beside = true;

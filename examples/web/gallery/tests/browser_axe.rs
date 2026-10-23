@@ -32,7 +32,30 @@ fn field(value: &JsValue, name: &str) -> String {
     .unwrap_or_default()
 }
 
-/// Loads axe-core into the page, unless an earlier test has.
+/// The rule requiring a name of each composite widget ARIA requires one of and axe has
+/// no rule of its own for: a radio group, a tree, a tree grid and a grid.
+const COMPOSITE_NAME: &str = "composite-name";
+
+/// Configures `COMPOSITE_NAME` into axe, spelled as axe's own naming rules are.
+const COMPOSITE_NAME_RULE: &str = r#"axe.configure({
+  rules: [{
+    id: "composite-name",
+    impact: "serious",
+    selector: '[role="radiogroup"], [role="tree"], [role="treegrid"], [role="grid"]',
+    matches: "no-naming-method-matches",
+    tags: ["cat.aria", "wcag2a", "wcag412"],
+    metadata: {
+      description: "Ensures every ARIA radiogroup, tree, treegrid and grid has an accessible name",
+      help: "ARIA composite widgets must have an accessible name",
+    },
+    all: [],
+    any: ["aria-label", "aria-labelledby", { options: { attribute: "title" }, id: "non-empty-title" }],
+    none: [],
+  }],
+});"#;
+
+/// Loads axe-core into the page with `COMPOSITE_NAME` among its rules, unless an earlier
+/// test has.
 fn load_axe() {
   let window = web_sys::window().expect("a window");
 
@@ -40,20 +63,22 @@ fn load_axe() {
     return;
   }
 
-  let script = document()
-    .create_element("script")
-    .expect("a script element");
+  for source in [AXE, COMPOSITE_NAME_RULE] {
+    let script = document()
+      .create_element("script")
+      .expect("a script element");
 
-  script.set_text_content(Some(AXE));
-  document()
-    .head()
-    .expect("a head")
-    .append_child(&script)
-    .expect("load axe");
+    script.set_text_content(Some(source));
+    document()
+      .head()
+      .expect("a head")
+      .append_child(&script)
+      .expect("load axe");
+  }
 }
 
-/// axe's rules requiring a name: each control, link, picture, dialog, heading, tooltip
-/// and range has one.
+/// axe's rules requiring a name, `COMPOSITE_NAME` among them: each control, group of
+/// controls, link, picture, dialog, heading, tooltip and range has one.
 const NAMING_RULES: &[&str] = &[
   "aria-command-name",
   "aria-dialog-name",
@@ -64,6 +89,7 @@ const NAMING_RULES: &[&str] = &[
   "aria-tooltip-name",
   "aria-treeitem-name",
   "button-name",
+  COMPOSITE_NAME,
   "empty-heading",
   "frame-title",
   "image-alt",

@@ -497,9 +497,10 @@ re-export.
   axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
   gallery's overlays open: a tooltip, the picker's popup and a context menu, once under
-  every rule and once under the naming rules alone, each proven to have run. Disabled
-  controls leave the focus order, a deliberate reading of the practices' allowance,
-  recorded in `AGENTS.md`.
+  every rule and once under the naming rules alone, each proven to have run, a rule of
+  the test's own (`composite-name`) requiring the name ARIA requires of a radio group,
+  a tree and a grid, which axe has no rule for. Disabled controls leave the focus
+  order, a deliberate reading of the practices' allowance, recorded in `AGENTS.md`.
 - **Parity holds by construction.** `skene-conformance` is one suite of scenarios, each
   opening a page of the suite, acting on it as a user does and checking what a reader
   finds—the probes the page publishes of the signals it binds, the node holding focus,

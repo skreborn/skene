@@ -46,8 +46,8 @@ generational arena of node records—parent, children as a list of linked siblin
 relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
 the token definitions a theme placed on the node, the query-container name, the
 handlers. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
-index and generation, as the layout engine's tests key their canned trees, and one the
-scene did not mint resolves to nothing in it), and the platform keys its own record of the
+index and generation, as the layout engine's tests key their canned trees, and one no
+live node holds resolves to nothing in the scene), and the platform keys its own record of the
 node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing
 it once the scene is released and before the node takes part in anything else. Every
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in the spine;

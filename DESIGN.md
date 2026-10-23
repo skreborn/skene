@@ -1064,8 +1064,8 @@ and on wasm proved the bits equal. One representative tree holds the two builds 
 `server_snapshot` holds the server leaf's style block, body and state script for it byte
 for byte, and `browser_hydrate`'s `the_server_leafs_bytes_hydrate_in_place` hydrates
 those same bytes in Firefox and Chromium, every served element adopted with the class
-the server gave it and the server's block the one stylesheet, holding every rule the
-browser interns.
+and the inline declarations the server gave it and the server's block the one
+stylesheet, holding every rule the browser interns.
 
 ### Headless (`skene-headless`)
 

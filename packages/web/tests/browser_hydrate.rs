@@ -988,8 +988,8 @@ fn hydrate_removes_the_servers_title_from_a_tooltips_child() {
 }
 
 /// The bytes the server leaf renders for the representative tree hydrate in place:
-/// every served element adopted with the class the server gave it, under the server's
-/// style block alone.
+/// every served element adopted with the class and the inline declarations the server
+/// gave it, under the server's style block alone.
 #[wasm_bindgen_test]
 fn the_server_leafs_bytes_hydrate_in_place() {
   let head = document().head().expect("a head");
@@ -1032,8 +1032,18 @@ fn the_server_leafs_bytes_hydrate_in_place() {
     .iter()
     .map(|element| element.get_attribute("class"))
     .collect();
+  let inline = |element: &Element| {
+    element
+      .dyn_ref::<HtmlElement>()
+      .map(|html| html.style().css_text())
+  };
+  let declarations: Vec<_> = served.iter().map(inline).collect();
 
-  assert!(served.len() > 20, "the representative tree is served whole");
+  assert_eq!(
+    served.len(),
+    representative::BODY.matches(" data-h=").count() + 1,
+    "every marked element and the state script are served",
+  );
 
   hydrate(root.clone(), &state, representative::tree);
 
@@ -1048,6 +1058,11 @@ fn the_server_leafs_bytes_hydrate_in_place() {
       hydrated.get_attribute("class"),
       classes[index],
       "element {index} keeps the server's class",
+    );
+    assert_eq!(
+      inline(hydrated),
+      declarations[index],
+      "element {index} keeps the server's inline declarations",
     );
   }
 

@@ -64,7 +64,6 @@ pub use skene_terminal::MotionBase
 pub use skene_terminal::NamedKey
 pub use skene_terminal::NativeElement
 pub use skene_terminal::NativePicker
-pub use skene_terminal::NoChild
 pub use skene_terminal::NodeId
 pub use skene_terminal::Number
 pub use skene_terminal::OneOfBase
@@ -218,7 +217,6 @@ pub use skene_terminal::prelude::Modifiers
 pub use skene_terminal::prelude::MotionBase
 pub use skene_terminal::prelude::MouseCursor
 pub use skene_terminal::prelude::NamedKey
-pub use skene_terminal::prelude::NoChild
 pub use skene_terminal::prelude::OneOfBase
 pub use skene_terminal::prelude::Overflow
 pub use skene_terminal::prelude::OverlayBase

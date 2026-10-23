@@ -1,12 +1,11 @@
-error[E0277]: `skene_web::GridCell` is not a compatible and complete view
+error[E0277]: `skene_web::GridCell` is not a child this container accepts
  --> tests/compile_fail/a_wrapper_outside_its_container.rs:6:36
   |
 6 |   let _ = Row::new().set_children((GridCell::new().set_child(Text::new("a")),));
-  |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a compatible and complete view
+  |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a child this container accepts
   |
-  = note: check that it is indeed a compatible view type
+  = note: a container accepts any view, and a wrapper of its own kind
   = note: a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it
-  = note: see its documentation to determine what completes it
 help: the trait `IntoChildOf<Headless, skene_foundation::spine::view::FlexChild>` is not implemented for `skene_web::GridCell`
       but trait `IntoChildOf<Headless, skene_foundation::spine::view::GridChild>` is implemented for it
  --> src/views/grid_cell.rs

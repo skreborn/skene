@@ -6365,18 +6365,6 @@ pub fn skene_foundation::NativePicker::placeholder(&self) -> core::option::Optio
 pub fn skene_foundation::NativePicker::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::NativePicker::state(&self) -> skene_foundation::ControlState
-pub struct skene_foundation::NoChild
-impl core::clone::Clone for skene_foundation::NoChild
-pub fn skene_foundation::NoChild::clone(&self) -> skene_foundation::NoChild
-impl core::cmp::Eq for skene_foundation::NoChild
-impl core::cmp::PartialEq for skene_foundation::NoChild
-pub fn skene_foundation::NoChild::eq(&self, &skene_foundation::NoChild) -> bool
-impl core::default::Default for skene_foundation::NoChild
-pub fn skene_foundation::NoChild::default() -> skene_foundation::NoChild
-impl core::fmt::Debug for skene_foundation::NoChild
-pub fn skene_foundation::NoChild::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_foundation::NoChild
-impl core::marker::StructuralPartialEq for skene_foundation::NoChild
 pub struct skene_foundation::NodeHandle<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::NodeHandle<P>
 pub fn skene_foundation::NodeHandle<P>::assign(self, skene_foundation::NodeId)

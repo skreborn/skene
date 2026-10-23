@@ -270,15 +270,5 @@ pub use values::{
   Verdict,
   Wrap,
 };
-pub use view::{
-  AnyKind,
-  AnyView,
-  FlexChild,
-  GridChild,
-  IntoChildOf,
-  NoChild,
-  PlainChild,
-  StackChild,
-  View,
-};
+pub use view::{AnyKind, AnyView, FlexChild, GridChild, IntoChildOf, PlainChild, StackChild, View};
 pub use wraps::Wraps;

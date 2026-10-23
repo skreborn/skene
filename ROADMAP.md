@@ -36,10 +36,6 @@ in a code comment.
     - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
     come from the macro the shared properties come from, with their `derive_` twins and
     their backing fields cfg-gated; another platform's setter compiles and does nothing.
-    - Children: a wrapper holds a boxed child and a missing child renders nothing, so
-    `NoChild` and `Children<V>` go, children last stays a convention the gate checks and
-    the compile-fail suite loses its children-last programs; typed children stay
-    (`Flexible` in `Row` and `Column`, `GridCell` in `Grid`, `Pinned` in `Stack`).
     - Values: every length takes `i32` beside `f32`, value constructors included, the
     terminal's lengths whole cells (an `f32` rounding at the setter, a font size keeping
     its fraction); `derive_` setters stay, and tokens stay as they are.

@@ -419,6 +419,30 @@ fn flex_grow_distributes_space() {
   });
 }
 
+/// A wrapper without its child paints nothing and takes no room: the texts around it
+/// sit the column's spacing apart and no more.
+#[test]
+fn a_wrapper_without_its_child_takes_no_room() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_spacing(1)
+        .set_children((
+          Text::new("a"),
+          Flexible::new().set_flexibility(Flexibility::grow(1.)),
+          Tooltip::new("about"),
+          Visibility::new(),
+          Overlay::popup().set_open(true),
+          Text::new("b"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(4, 5), "a\n\nb\n\n\n");
+  });
+}
+
 /// A fraction width resolves against the parent's extent.
 #[test]
 fn fraction_width_resolves_against_parent() {

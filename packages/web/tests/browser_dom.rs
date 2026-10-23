@@ -96,6 +96,7 @@ use skene_web::{
   Row,
   Slider,
   SliderRange,
+  Spacing,
   Span,
   Stack,
   TOOLTIP_GRACE,
@@ -364,6 +365,40 @@ fn children_mount_in_order() {
   let container = only_child(&root);
 
   assert_eq!(child_texts(&container), ["a", "b", "c"]);
+}
+
+/// A wrapper without its child mounts no element and takes no room: the texts around
+/// it are the column's only elements, its spacing apart and no more.
+#[wasm_bindgen_test]
+fn a_wrapper_without_its_child_mounts_nothing() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_spacing(Spacing::from(8.))
+      .set_children((
+        Text::new("a"),
+        Flexible::new().set_flexibility(Flexibility::grow(1.)),
+        Tooltip::new("about"),
+        Visibility::new(),
+        Overlay::popup().set_open(true),
+        Text::new("b"),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+
+  assert_eq!(child_texts(&column), ["a", "b"]);
+
+  let first = column.first_element_child().expect("the first text");
+  let last = column.last_element_child().expect("the last text");
+  let between = last.get_bounding_client_rect().top() - first.get_bounding_client_rect().bottom();
+
+  assert!(
+    (between - 8.).abs() < 0.5,
+    "the texts sit the spacing apart, not {between}px"
+  );
 }
 
 #[wasm_bindgen_test]

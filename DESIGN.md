@@ -289,7 +289,10 @@ and its cost unjustified.
   `Link`) or as a builder closure (`Theme`, `Enhance`, `Suspense`, `ErrorBoundary`,
   `Deferred`, and `AsyncView`'s loader), and without it builds the same empty segment:
   a theme realizes no scope, an overlay no overlay, a boundary not even its fallback,
-  and an enhancement keeps its fallback until it turns live, empty after.
+  and an enhancement keeps its fallback until it turns live, empty after. Children
+  last is a convention, not a type: the gate's lint reports a property, a handler or
+  an `apply` that follows a child setter in a chain, an applied child setter
+  (`.apply(child, Container::set_child)`) counting as one.
 - **Owners** are created per reconciled item, per rebuild, per keyed view and where
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
   into `Owner::replacement()`, the same parent and step, so snapshot identity survives

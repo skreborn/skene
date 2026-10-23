@@ -22,10 +22,9 @@ pub trait AnyKind {}
 ///
 /// There is no update path; updates are the effects a build left behind.
 #[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a complete view",
-  label = "not a complete view",
-  note = "check that it is indeed a view type",
-  note = "see its documentation to determine what completes it"
+  message = "`{Self}` is not a view",
+  label = "not a view",
+  note = "a view is a built-in such as `Text` or `Container`, or a type implementing `View`"
 )]
 pub trait View<P: Realization>: AnyKind + 'static {
   /// Realizes this view and returns its root node.
@@ -121,13 +120,6 @@ impl<P: Realization> View<P> for NodeId {
   }
 }
 
-/// The absence of a child, in a view that requires one.
-///
-/// A wrapper starts out holding this and cannot build; `set_child` exchanges it for
-/// the child, and only then is the view a view.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct NoChild;
-
 /// The child kind a plain container accepts: any view.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlainChild;
@@ -149,11 +141,10 @@ pub struct GridChild;
 /// Every view is a child of every kind; a wrapper implements it only for the kind of
 /// the container that understands its properties, and is not [`AnyKind`].
 #[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a compatible and complete view",
-  label = "not a compatible and complete view",
-  note = "check that it is indeed a compatible view type",
-  note = "a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it",
-  note = "see its documentation to determine what completes it"
+  message = "`{Self}` is not a child this container accepts",
+  label = "not a child this container accepts",
+  note = "a container accepts any view, and a wrapper of its own kind",
+  note = "a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it"
 )]
 pub trait IntoChildOf<P: Realization, Kind> {
   /// Converts this value into the child's view.

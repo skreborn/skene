@@ -19,7 +19,9 @@ Every property has one setter, `set_<property>`, and a reactive twin,
 `derive_<property>`, which takes a closure and follows the signals it reads. An event
 takes a handler through `handle_<event>`. A view's children come last in its chain:
 `set_child` for a view of one child, and `add_child` or `set_children` for a layout,
-which takes a tuple of views of any types.
+which takes a tuple of views of any types. Children last is a convention rather than a
+rule of the types, so a chain compiles in any order, and `cargo xtask gate` checks it in
+the framework's own code.
 
 A setting the chain may lack goes through `apply`, which calls the setter where there is
 a value and leaves the view as it is where there is none:
@@ -58,7 +60,7 @@ fn toolbar() -> impl View {
 A child's own place in its layout travels in a wrapper: `Flexible` in a row or a
 column, `GridCell` in a grid, `Pinned` in a stack. A wrapper creates no node of its own,
 and a layout accepts only the wrapper that belongs to it, so a misplaced one does not
-compile.
+compile. A wrapper without its child shows nothing and takes no room.
 
 `Arrangement` distributes the children along the main axis, and `ItemAlignment` places
 each across it:

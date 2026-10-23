@@ -35,7 +35,9 @@ const CHILD_SETTERS: &[&str] = &[
   "derive_entries",
   "set_child",
   "set_child_builder",
+  "set_child_loader",
   "set_children",
+  "set_face",
 ];
 
 /// The prefixes of a builder's property and handler methods.
@@ -333,21 +335,13 @@ impl<'ast> Visit<'ast> for Rules<'_> {
   }
 
   fn visit_expr_method_call(&mut self, call: &'ast ExprMethodCall) {
-    let method = call.method.to_string();
-
-    if !CHILD_SETTERS.contains(&method.as_str())
-      && PROPERTY_PREFIXES
-        .iter()
-        .any(|prefix| method.starts_with(prefix))
+    if let Some(method) = property_set_by(call)
       && let Expr::MethodCall(receiver) = &*call.receiver
-      && CHILD_SETTERS.contains(&receiver.method.to_string().as_str())
+      && let Some(children) = children_set_by(receiver)
     {
       self.report(
         call.method.span(),
-        &format!(
-          "`{method}` follows `{}`: a chain ends with the children",
-          receiver.method
-        ),
+        &format!("`{method}` follows `{children}`: a chain ends with the children"),
       );
     }
 
@@ -367,6 +361,55 @@ impl<'ast> Visit<'ast> for TriggerCalls {
     }
 
     visit::visit_expr_call(self, call);
+  }
+}
+
+/// The child setter a builder call gives a view its content through, written out or
+/// applied (`.apply(child, Container::set_child)`).
+fn children_set_by(call: &ExprMethodCall) -> Option<String> {
+  let method = call.method.to_string();
+
+  if CHILD_SETTERS.contains(&method.as_str()) {
+    return Some(method);
+  }
+
+  applied_setter(call).filter(|setter| CHILD_SETTERS.contains(&setter.as_str()))
+}
+
+/// The property, handler or applied option a builder call sets, where it sets no
+/// content.
+fn property_set_by(call: &ExprMethodCall) -> Option<String> {
+  if children_set_by(call).is_some() {
+    return None;
+  }
+
+  let method = call.method.to_string();
+
+  (method == "apply"
+    || PROPERTY_PREFIXES
+      .iter()
+      .any(|prefix| method.starts_with(prefix)))
+  .then_some(method)
+}
+
+/// The setter an `apply` call applies: the last segment of the path it names, or the
+/// method a closure it is given calls on the builder.
+fn applied_setter(call: &ExprMethodCall) -> Option<String> {
+  if call.method != "apply" {
+    return None;
+  }
+
+  match call.args.last()? {
+    Expr::Path(setter) => setter
+      .path
+      .segments
+      .last()
+      .map(|segment| segment.ident.to_string()),
+    Expr::Closure(closure) => match &*closure.body {
+      Expr::MethodCall(body) => Some(body.method.to_string()),
+      _ => None,
+    },
+    _ => None,
   }
 }
 
@@ -534,6 +577,57 @@ mod tests {
     assert_eq!(
       findings("fn app() { Row::new().set_spacing(8.).set_children(()); }"),
       Vec::<String>::new()
+    );
+  }
+
+  #[test]
+  fn an_applied_option_after_the_children_is_reported() {
+    assert_eq!(
+      findings("fn app() { Row::new().set_children(()).apply(spacing, Row::set_spacing); }"),
+      ["test.rs:1: `apply` follows `set_children`: a chain ends with the children"]
+    );
+  }
+
+  #[test]
+  fn an_applied_child_is_a_child_setter() {
+    assert_eq!(
+      findings("fn app() { Container::new().apply(child, Container::set_child).set_padding(4.); }"),
+      ["test.rs:1: `set_padding` follows `set_child`: a chain ends with the children"]
+    );
+  }
+
+  #[test]
+  fn a_closure_applying_a_child_is_a_child_setter() {
+    assert_eq!(
+      findings(
+        "fn app() { Column::new().add_child(a).apply(b, |column, b| column.add_child(b)); \
+         Column::new().apply(b, |column, b| column.add_child(b)).set_spacing(4.); }"
+      ),
+      ["test.rs:1: `set_spacing` follows `add_child`: a chain ends with the children"]
+    );
+  }
+
+  #[test]
+  fn a_chain_ending_with_an_applied_child_passes() {
+    assert_eq!(
+      findings(
+        "fn app() { Container::new().apply(padding, Container::set_padding).apply(child, Container::set_child); }"
+      ),
+      Vec::<String>::new()
+    );
+  }
+
+  #[test]
+  fn a_property_after_a_loader_or_a_face_is_reported() {
+    assert_eq!(
+      findings(
+        "fn app() { AsyncView::new().set_child_loader(load).set_key(1); \
+         BasicPicker::new().set_face(face).handle_choose(choose); }"
+      ),
+      [
+        "test.rs:1: `set_key` follows `set_child_loader`: a chain ends with the children",
+        "test.rs:1: `handle_choose` follows `set_face`: a chain ends with the children",
+      ]
     );
   }
 

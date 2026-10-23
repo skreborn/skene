@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use skene_foundation::{BoxKeyframe, Property};
+use skene_foundation::{BoxKeyframe, Property, RunKeyframe};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, Color, State, prelude::*, testing};
 
@@ -211,6 +211,46 @@ fn a_keyframe_animation_samples_its_frames() {
     testing::trigger_frame(Duration::from_secs(2));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+  });
+}
+
+/// A run's keyframe animation samples its text color between its frames and rests on
+/// its last frame; its token leaves resolve through the theme.
+#[test]
+fn a_runs_keyframe_animation_samples_its_frames() {
+  with_platform(|| {
+    let ink = |color: skene_terminal::StaticLeaf<Color>| RunKeyframe::<terminal::Terminal> {
+      color: Some(color),
+      ..Default::default()
+    };
+
+    let _ = terminal::mount(move || {
+      Theme::new(SimplePalette::default().set_card(blue()))
+        .set_child_builder(move || {
+          Text::new("ink").set_color(red()).add_animation(
+            Animation::new(
+              1.,
+              [
+                (0., ink(red().into())),
+                (100., ink(SimplePalette::CARD.into())),
+              ],
+            )
+            .set_easing(Easing::Linear),
+          )
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(6, 2, 0, 0).0, Some(rgb(red())));
+
+    testing::trigger_frame(Duration::from_millis(500));
+
+    assert_eq!(colors_at(6, 2, 0, 0).0, Some(rgb(red().mix(blue(), 0.5))));
+
+    testing::trigger_frame(Duration::from_secs(2));
+
+    assert_eq!(colors_at(6, 2, 0, 0).0, Some(rgb(blue())));
   });
 }
 

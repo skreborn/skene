@@ -727,7 +727,12 @@ Condition     = Media | State | And | Or
   a token resolved where it is defined, the font size from the typography's size
   token, the platform's `EM` where text takes no sizes) over a `ResolutionSource` giving
   what the scene does not hold: the environment, container sizes, slots and whether
-  text is drawn at other sizes.
+  text is drawn at other sizes. In debug builds the terminal resolves every box, run,
+  text entry and keyframe style through the node's record as well, with the same
+  resolver and before its own fill-ins (rounded border glyphs, the typography's size and
+  weight, `bold`), and asserts the two resolutions equal by their `Fingerprint`, as it
+  does the record's motion against the dynamics it was built from; a wrapper's
+  annotation resolves typed alone.
 
 ### Tokens and themes
 

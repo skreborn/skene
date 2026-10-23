@@ -23,7 +23,6 @@ use skene_foundation::{
   Layout,
   Media,
   OverlayBase,
-  PaintedBase,
   RowBase,
   Size,
   StaticLeaf,
@@ -49,7 +48,6 @@ use skene_web::{
   NodeHandle,
   NodeId,
   Overlay,
-  Painted,
   Radio,
   RadioGroup,
   Role,
@@ -91,18 +89,18 @@ fn elements(parent: &Element) -> Vec<Element> {
     .collect()
 }
 
-/// The computed color a `<div>` under `parent` gets from `color: <value>`, so colors
-/// compare as the engine serializes them.
-fn probe(parent: &Element, color: Color) -> String {
+/// The computed `property` a `<div>` under `parent` gets from `<property>: <color>`, so
+/// colors compare as the engine serializes them.
+fn probe(parent: &Element, property: &str, color: Color) -> String {
   let element = document().create_element("div").expect("a probe");
 
   let _ = element.set_attribute(
     "style",
-    &format!("color:{}", Declarations::render_color(color)),
+    &format!("{property}:{}", Declarations::render_color(color)),
   );
   let _ = parent.append_child(&element);
 
-  let color = computed(&element, "color");
+  let color = computed(&element, property);
 
   element.remove();
 
@@ -146,6 +144,7 @@ fn key_down(target: &Element, key: &str) -> bool {
 }
 
 /// The scheme an app put in force, returned to following the platform when dropped.
+#[must_use]
 struct Scheme;
 
 impl Scheme {
@@ -184,24 +183,6 @@ fn card_dark() -> Color {
   assert_eq!(*condition, Media::Dark);
 
   fixed(leaf)
-}
-
-/// The computed background a `<div>` under `parent` gets from `background-color:
-/// <color>`.
-fn probe_background(parent: &Element, color: Color) -> String {
-  let element = document().create_element("div").expect("a probe");
-
-  let _ = element.set_attribute(
-    "style",
-    &format!("background-color:{}", Declarations::render_color(color)),
-  );
-  let _ = parent.append_child(&element);
-
-  let color = background(&element);
-
-  element.remove();
-
-  color
 }
 
 /// A static tree realizes its elements in order, a role as its semantic element, and a
@@ -691,39 +672,6 @@ async fn a_size_handle_reports_the_measured_size() {
   assert_eq!(seen.get(), 2, "the measurement notified the effect");
 }
 
-/// A painted box with a fallback is the painted box once the page is live: its canvas
-/// stands where the fallback would.
-#[wasm_bindgen_test]
-async fn a_painted_box_takes_its_fallbacks_place_once_live() {
-  let (_guard, root) = fresh_root();
-
-  let _ = mount(|| {
-    Painted::new(|_, _| {})
-      .set_width(8)
-      .set_height(4)
-      .set_fallback_builder(|| Text::new("a red box"))
-      .build()
-  });
-
-  assert!(
-    frames_until(|| {
-      root
-        .query_selector("canvas")
-        .expect("a valid selector")
-        .is_some()
-    })
-    .await,
-    "the painted box's canvas"
-  );
-  assert!(
-    !root
-      .text_content()
-      .unwrap_or_default()
-      .contains("a red box"),
-    "the fallback is not shown"
-  );
-}
-
 /// A nested theme replaces the palette beneath it and leaves the one above alone; each
 /// consumer is inked by the nearest definition.
 #[wasm_bindgen_test]
@@ -750,13 +698,14 @@ fn a_nested_theme_replaces_the_palette_beneath_it() {
 
   assert_eq!(
     background(&content[0]),
-    probe_background(&root, card_light())
+    probe(&root, "background-color", card_light())
   );
-  assert_eq!(background(&inner), probe_background(&root, ink));
+  assert_eq!(background(&inner), probe(&root, "background-color", ink));
 }
 
 /// The scheme in force is the document's: `media::set_scheme` picks which value a
-/// conditional token takes, the signal follows, and the element is re-inked in place.
+/// conditional token takes, the signal follows, and the element is re-inked in place;
+/// `None` returns to following the platform.
 #[wasm_bindgen_test]
 fn the_scheme_follows_the_media_choice() {
   let (_guard, root) = fresh_root();
@@ -771,7 +720,10 @@ fn the_scheme_follows_the_media_choice() {
   let card = only_child(&only_child(&root));
 
   assert_eq!(media::scheme().get(), ColorScheme::Light);
-  assert_eq!(background(&card), probe_background(&root, card_light()));
+  assert_eq!(
+    background(&card),
+    probe(&root, "background-color", card_light())
+  );
 
   media::set_scheme(Some(ColorScheme::Dark));
   platform::end_turn();
@@ -785,7 +737,10 @@ fn the_scheme_follows_the_media_choice() {
       .as_deref(),
     Some("dark")
   );
-  assert_eq!(background(&card), probe_background(&root, card_dark()));
+  assert_eq!(
+    background(&card),
+    probe(&root, "background-color", card_dark())
+  );
   assert_eq!(
     only_child(&only_child(&root)),
     card,
@@ -794,7 +749,30 @@ fn the_scheme_follows_the_media_choice() {
 
   drop(scheme);
 
+  let preferred = if web_sys::window()
+    .expect("a window")
+    .match_media("(prefers-color-scheme: dark)")
+    .ok()
+    .flatten()
+    .is_some_and(|query| query.matches())
+  {
+    (ColorScheme::Dark, card_dark())
+  }
+  else {
+    (ColorScheme::Light, card_light())
+  };
+
   assert_eq!(media::chosen_scheme(), None);
+  assert_eq!(media::scheme().get(), preferred.0, "the platform's again");
+  assert!(
+    !document()
+      .document_element()
+      .is_some_and(|html| html.has_attribute("data-skene-scheme"))
+  );
+  assert_eq!(
+    background(&card),
+    probe(&root, "background-color", preferred.1)
+  );
 }
 
 /// A derived scheme follows its signal the same way, and a `Media::Dark` watch agrees
@@ -818,13 +796,19 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
   let card = only_child(&only_child(&root));
 
   assert!(!dark.get());
-  assert_eq!(background(&card), probe_background(&root, card_light()));
+  assert_eq!(
+    background(&card),
+    probe(&root, "background-color", card_light())
+  );
 
   scheme.set(Some(ColorScheme::Dark));
   platform::end_turn();
 
   assert!(dark.get());
-  assert_eq!(background(&card), probe_background(&root, card_dark()));
+  assert_eq!(
+    background(&card),
+    probe(&root, "background-color", card_dark())
+  );
   assert_eq!(
     only_child(&only_child(&root)),
     card,
@@ -860,6 +844,9 @@ fn typography_inks_the_runs() {
   let ink = fixed(Typography::default().ink.definition().base());
   let foreground = fixed(SimplePalette::default().foreground.definition().base());
 
-  assert_eq!(computed(bare, "color"), probe(&root, ink));
-  assert_eq!(computed(&themed, "color"), probe(&root, foreground));
+  assert_eq!(computed(bare, "color"), probe(&root, "color", ink));
+  assert_eq!(
+    computed(&themed, "color"),
+    probe(&root, "color", foreground)
+  );
 }

@@ -32,6 +32,8 @@ use skene_web::{
   HasChildren,
   Label,
   ListboxOption,
+  Painted,
+  PaintedBase,
   Resource,
   Text,
   TextBase,
@@ -325,6 +327,52 @@ fn an_enhancement_adopts_its_fallback_then_builds_its_child() {
   assert_eq!(element_count(&root), 1, "the fallback is gone");
   assert_eq!(children.get(), 1);
   assert!(skene_web::media::hydrated().get());
+
+  platform::uninstall();
+}
+
+/// A painted box with a fallback adopts the server's fallback while hydrating, and its
+/// canvas takes the fallback's place once hydration has finished.
+#[wasm_bindgen_test]
+fn a_painted_box_adopts_its_fallback_then_takes_its_place() {
+  let root = server_root("<!--s:0--><span data-h=\"1\">a red box</span><!--e:0-->");
+  let fallbacks = Rc::new(Cell::new(0));
+
+  hydrate(root.clone(), "", {
+    let fallbacks = Rc::clone(&fallbacks);
+
+    move || {
+      Painted::new(|_, _| {})
+        .set_width(8)
+        .set_height(4)
+        .set_fallback_builder(move || {
+          fallbacks.set(fallbacks.get() + 1);
+
+          Text::new("a red box")
+        })
+    }
+  });
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(
+    fallbacks.get(),
+    1,
+    "the fallback adopted the server's markup"
+  );
+  assert!(
+    root
+      .query_selector("canvas")
+      .expect("a valid selector")
+      .is_some(),
+    "the painted box's canvas"
+  );
+  assert!(
+    !root
+      .text_content()
+      .unwrap_or_default()
+      .contains("a red box"),
+    "the fallback is gone"
+  );
 
   platform::uninstall();
 }

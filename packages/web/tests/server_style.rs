@@ -34,6 +34,7 @@ use skene_foundation::{
   Property,
   RowBase,
   RunBase,
+  RunStyle,
   RunWithTypeMetrics,
   StackBase,
   StaticLeaf,
@@ -290,6 +291,51 @@ fn animations_render_keyframes_and_reference_them() {
     styles.contains(&format!(
       "animation:{name} 2s ease 0s infinite alternate both;"
     )),
+    "{styles}"
+  );
+}
+
+/// A run's keyframes render its own properties, and a box's offset keyframe positions the
+/// box as its offset does.
+#[test]
+fn run_and_offset_keyframes_render() {
+  let mut faded: RunStyle<Keyframe, WebStyle> = RunStyle::default();
+  let mut inked: RunStyle<Keyframe, WebStyle> = RunStyle::default();
+  let mut resting: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
+  let mut shifted: BoxStyle<f32, Keyframe, WebStyle> = BoxStyle::default();
+  let inset = |length: f32| Inset {
+    top: Dimension::Length(length),
+    end: Dimension::Length(length),
+    bottom: Dimension::Length(length),
+    start: Dimension::Length(length),
+  };
+
+  faded.color = Some(Color::TRANSPARENT.into());
+  inked.color = Some(Color::srgb(1., 1., 1.).into());
+  resting.offset = Some(inset(0.).into());
+  shifted.offset = Some(inset(4.).into());
+
+  let rendered = render_to_string(move || {
+    Column::new().set_children((
+      Text::new("a").add_animation(Animation::new(1., [(0., faded), (100., inked)])),
+      Container::new().add_animation(Animation::new(1., [(0., resting), (100., shifted)])),
+    ))
+  });
+  let styles = rendered.styles();
+  let transparent = css_color(Color::TRANSPARENT);
+  let white = css_color(Color::srgb(1., 1., 1.));
+
+  assert!(
+    styles.contains(&format!(
+      "{{0%{{color:{transparent};}}100%{{color:{white};}}}}"
+    )),
+    "{styles}"
+  );
+  assert!(
+    styles.contains(
+      "{0%{inset-block:0px 0px;inset-inline:0px 0px;position:relative;}100%{inset-block:4px \
+       4px;inset-inline:4px 4px;position:relative;}}"
+    ),
     "{styles}"
   );
 }

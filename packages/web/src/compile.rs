@@ -837,13 +837,6 @@ impl Source for TypedRun<'_> {
 
 /// The record path: a node's style read from its [`Record`](skene_foundation::Record),
 /// every compile held equal to the typed path's in debug builds.
-#[cfg_attr(
-  not(debug_assertions),
-  expect(
-    dead_code,
-    reason = "a release build compiles through the typed path alone"
-  )
-)]
 mod record {
   use std::fmt::Debug;
 

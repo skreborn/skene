@@ -1,5 +1,7 @@
 //! Motion on the terminal's frame clock: a transition steps across frames from every
-//! change source, reduced motion cuts, and a keyframe animation samples its frames.
+//! change source, reduced motion cuts, an interrupted transition reverses over what it
+//! played, and a keyframe animation samples its frames, moving from the resolved value
+//! where a frame is missing.
 
 use std::time::Duration;
 
@@ -101,6 +103,90 @@ fn a_derived_length_transition_rounds_to_cells() {
 
     assert!(painted(9));
     assert!(!painted(10));
+  });
+}
+
+/// A derived color moving under a transition paints the in-between color at the
+/// stepped clock and lands on its target.
+#[test]
+fn a_derived_color_transitions_across_the_stepped_clock() {
+  with_platform(|| {
+    let color = Signal::new(red());
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_width(4)
+        .set_height(1)
+        .derive_background(move || color.get())
+        .add_transition(color_transition())
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
+
+    color.set(blue());
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
+
+    testing::trigger_frame(Duration::from_millis(500));
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
+
+    testing::trigger_frame(Duration::from_millis(500));
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+  });
+}
+
+/// A write back to where a running transition began reverses it over the share it had
+/// played, as CSS's reversing shortening does: a quarter of the way to eight cells, it
+/// returns to none in a quarter of the duration.
+#[test]
+fn an_interrupted_transition_reverses_over_what_it_played() {
+  with_platform(|| {
+    let width = Signal::new(0i32);
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((Container::new()
+          .derive_width(move || Dimension::Length(width.get()))
+          .set_height(1)
+          .set_background(red())
+          .add_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear)),))
+        .into_any()
+        .build()
+    });
+    let painted = || {
+      testing::render_to_colors(12, 2)[..12]
+        .iter()
+        .filter(|colors| colors.1 == Some(rgb(red())))
+        .count()
+    };
+
+    assert_eq!(painted(), 0);
+
+    width.set(8);
+
+    assert_eq!(painted(), 0, "the first frame paints where it begins");
+
+    testing::trigger_frame(Duration::from_millis(250));
+
+    assert_eq!(painted(), 2);
+
+    width.set(0);
+
+    assert_eq!(
+      painted(),
+      2,
+      "the reversal begins where the transition stands"
+    );
+
+    testing::trigger_frame(Duration::from_millis(125));
+
+    assert_eq!(painted(), 1, "half of the reversed quarter");
+
+    testing::trigger_frame(Duration::from_millis(125));
+
+    assert_eq!(painted(), 0, "back where it began, a quarter in");
   });
 }
 
@@ -225,6 +311,16 @@ fn a_palette_flip_transitions_a_token_driven_color() {
     testing::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+
+    testing::trigger_reduced_motion(true);
+    palette.update(|palette| *palette = palette.clone().set_card(red()));
+    testing::trigger_frame(Duration::from_millis(1));
+
+    assert_eq!(
+      colors_at(6, 2, 0, 0).1,
+      Some(rgb(red())),
+      "reduced motion cuts the flip"
+    );
   });
 }
 
@@ -269,6 +365,38 @@ fn a_keyframe_animation_samples_its_frames() {
     testing::trigger_frame(Duration::from_secs(2));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+  });
+}
+
+/// A keyframe animation setting a color at its midpoint alone moves from the resolved
+/// color and back, as CSS's neutral keyframes do, and the resolved color stands once it
+/// ends.
+#[test]
+fn a_keyframe_missing_its_ends_moves_from_the_resolved_value() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(4)
+        .set_height(1)
+        .set_background(red())
+        .add_animation(Animation::new(1., [(50., frame(blue()))]).set_easing(Easing::Linear))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
+
+    testing::trigger_frame(Duration::from_millis(250));
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
+
+    testing::trigger_frame(Duration::from_millis(250));
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+
+    testing::trigger_frame(Duration::from_secs(1));
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
   });
 }
 

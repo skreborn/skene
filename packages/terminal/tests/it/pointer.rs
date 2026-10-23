@@ -24,7 +24,7 @@ use skene_terminal::{
   testing,
 };
 
-use crate::common::{blue, colors_at, red, rgb, with_platform};
+use crate::common::{blue, colors_at, green, red, rgb, with_platform};
 
 /// Pointer events reach handlers along the hit path with terminal and view-relative
 /// positions, at the cell's center when the terminal reports cells alone.
@@ -235,9 +235,11 @@ fn two_quick_clicks_at_one_cell_are_a_double_click() {
   });
 }
 
-/// A press on a box offering drag data starts a drag once the pointer leaves the cell,
-/// cancelling the press: the box under the pointer taking what it carries holds
-/// `Targeted`, and the release drops the drag there without a click.
+/// A press on a box offering drag data, on its own cell or its content's, starts a
+/// drag once the pointer leaves the cell, cancelling the press: the source holds
+/// `Dragged` while the drag lasts, the box under the pointer taking what it carries
+/// holds `Targeted` and one taking another type does not, and the release drops the
+/// drag there without a click.
 #[test]
 fn a_drag_moves_between_boxes_and_drops_on_release() {
   with_platform(|| {
@@ -250,19 +252,28 @@ fn a_drag_moves_between_boxes_and_drops_on_release() {
           Container::new()
             .set_width(4)
             .set_height(2)
+            .set_background(green().when(State::Dragged, blue()))
             .set_drag_data(|| terminal::DragData::new(String::from("card")))
             .handle_click(move || clicked.borrow_mut().push(String::from("click")))
-            .handle_pointer_cancel(move |_| cancelled.borrow_mut().push(String::from("cancel"))),
+            .handle_pointer_cancel(move |_| cancelled.borrow_mut().push(String::from("cancel")))
+            .set_child(Container::new().set_width(2).set_height(1)),
           Container::new()
             .set_width(4)
             .set_height(2)
             .set_background(red().when(State::Targeted, blue()))
             .handle_drop(move |card: &String| dropped.borrow_mut().push(card.clone())),
+          Container::new()
+            .set_width(4)
+            .set_height(2)
+            .set_background(red().when(State::Targeted, blue()))
+            .handle_drop(|_: &u32| {}),
         ))
         .into_any()
         .build()
     });
-    let target = || colors_at(10, 3, 5, 0).1;
+    let source = || colors_at(14, 3, 3, 0).1;
+    let target = || colors_at(14, 3, 5, 0).1;
+    let other = || colors_at(14, 3, 9, 0).1;
 
     assert_eq!(target(), Some(rgb(red())));
 
@@ -274,15 +285,27 @@ fn a_drag_moves_between_boxes_and_drops_on_release() {
       Vec::<String>::new(),
       "no drag within the cell"
     );
+    assert_eq!(source(), Some(rgb(green())));
+
+    testing::trigger_mouse_drag(9, 0);
+
+    assert_eq!(source(), Some(rgb(blue())), "the source is dragged");
+    assert_eq!(
+      other(),
+      Some(rgb(red())),
+      "a box taking another type is no target"
+    );
 
     testing::trigger_mouse_drag(5, 0);
 
     assert_eq!(target(), Some(rgb(blue())));
+    assert_eq!(other(), Some(rgb(red())));
 
     testing::trigger_mouse_release(5, 0);
 
     assert_eq!(*log.borrow(), ["cancel", "card"]);
     assert_eq!(target(), Some(rgb(red())));
+    assert_eq!(source(), Some(rgb(green())), "the drag has ended");
 
     testing::trigger_mouse_click(1, 0);
 
@@ -330,6 +353,43 @@ fn hover_variant_and_pointer_handlers() {
 
     assert_eq!(colors_at(10, 3, 0, 0).1, Some(rgb(red())));
     assert_eq!((enters.get(), leaves.get()), (1, 1));
+  });
+}
+
+/// The pointer over a node holds `Hovered` on its ancestors too, as `:hover` does, and
+/// leaving the node for the box around it keeps that box hovered.
+#[test]
+fn hover_holds_on_the_ancestors_of_the_hovered_node() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(2)
+        .set_background(red().when(State::Hovered, blue()))
+        .set_child(
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(blue().when(State::Hovered, red())),
+        )
+        .into_any()
+        .build()
+    });
+    let colors = || (colors_at(8, 3, 4, 1).1, colors_at(8, 3, 0, 0).1);
+
+    assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
+
+    testing::trigger_mouse_move(0, 0);
+
+    assert_eq!(colors(), (Some(rgb(blue())), Some(rgb(red()))));
+
+    testing::trigger_mouse_move(4, 1);
+
+    assert_eq!(colors(), (Some(rgb(blue())), Some(rgb(blue()))));
+
+    testing::trigger_mouse_move(7, 2);
+
+    assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
   });
 }
 

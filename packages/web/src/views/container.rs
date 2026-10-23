@@ -26,6 +26,9 @@ use crate::Active;
 #[must_use]
 pub struct Container(skene_foundation::Container<Active>);
 
+// A box view is at most a kibibyte on the stack, however many properties its style holds.
+const _: () = assert!(size_of::<Container>() <= 1024);
+
 impl ContainerBase<Active> for Container {}
 
 impl DecorationBase<Active> for Container {}

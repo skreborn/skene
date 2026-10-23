@@ -4,7 +4,16 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{AnyKind, Children, FlexChild, Seal};
-use skene_terminal::{self as terminal, TextEntry, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  Definition,
+  Length,
+  TextEntry,
+  Token,
+  TokenName,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{colors_at, locate, red, rgb, white, with_platform};
 
@@ -880,6 +889,158 @@ fn layout_properties_vary_by_condition() {
     let _ = terminal::mount(|| row().build());
 
     assert_eq!(testing::render_to_text(8, 2), "ab cd\n\n");
+  });
+}
+
+const GUTTER: TokenRef<Length> = TokenRef::new("gutter");
+
+/// A palette holding a gutter length.
+#[derive(Debug, Clone, PartialEq)]
+struct Gutters {
+  /// The room between a row's children.
+  gutter: Token<Length>,
+}
+
+impl<V: From<Definition<Length>> + 'static> TokenSet<V> for Gutters {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.gutter.define()]
+  }
+}
+
+/// A row's layout properties reach its layout: a spacing that is a token resolves
+/// through the theme to the palette's length, an expression over it doubles it in a
+/// reversed row, and an arrangement and an item alignment place the children.
+#[test]
+fn layout_properties_reach_the_layout_and_a_token_spacing_resolves() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Theme::new(Gutters {
+        gutter: Token::new(GUTTER.name().as_str(), 2.),
+      })
+      .set_child_builder(|| {
+        Column::new().set_children((
+          Row::new()
+            .set_spacing(GUTTER)
+            .set_children((Text::new("a"), Text::new("b")))
+            .into_any(),
+          Row::reversed()
+            .set_spacing(Expr::<Length>::from(GUTTER) * 2.)
+            .set_children((Text::new("a"), Text::new("b")))
+            .into_any(),
+          Container::new()
+            .set_width(8)
+            .set_height(3)
+            .set_child(
+              Row::new()
+                .set_arrangement(Arrangement::SpaceBetween)
+                .set_item_alignment(ItemAlignment::Center)
+                .set_children((Text::new("a"), Text::new("b"))),
+            )
+            .into_any(),
+        ))
+      })
+      .into_any()
+      .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(10, 5),
+      "a  b\n    b    a\n\na      b\n\n"
+    );
+  });
+}
+
+/// A media condition on a layout's padding switches with the terminal's size, whether
+/// spelled on the inset, on a plain spacing, or on a plain number.
+#[test]
+fn a_media_condition_on_padding_switches_with_the_terminals_size() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_spacing(Spacing::from(1).when(Media::min_width(10), 2))
+        .set_padding(Inset::all(0).when(Media::min_width(10), Inset::all(1)))
+        .set_children((
+          Text::new("a").into_any(),
+          Container::new()
+            .set_width(2)
+            .set_aspect_ratio(1f32.when(Media::min_width(10), 2.))
+            .set_background(red())
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let boxed = |width: u16| {
+      let colors = testing::render_to_colors(width, 6);
+
+      (0..6)
+        .filter(|row| colors[row * usize::from(width)].1 == Some(rgb(red())))
+        .collect::<Vec<_>>()
+    };
+
+    assert_eq!(testing::render_to_text(12, 6), "\n a\n\n\n\n\n");
+    assert!(boxed(12).is_empty(), "the box starts a column in");
+    assert_eq!(colors_at(12, 6, 1, 4).1, Some(rgb(red())));
+    assert_eq!(
+      colors_at(12, 6, 1, 5).1,
+      None,
+      "twice as wide as it is tall"
+    );
+    assert_eq!(testing::render_to_text(8, 6), "a\n\n\n\n\n\n");
+    assert_eq!(
+      boxed(8),
+      [2, 3],
+      "as tall as it is wide, a row below the text"
+    );
+  });
+}
+
+/// A uniform grid lays out one equal track per column, and its two-axis alignment
+/// places each item on both axes while its row arrangement places the row.
+#[test]
+fn a_uniform_grid_lays_out_equal_tracks_and_splits_its_alignment() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(12)
+        .set_height(3)
+        .set_child(
+          Grid::uniform(3)
+            .set_item_alignment(Alignment::new(ItemAlignment::End, ItemAlignment::Start))
+            .set_row_arrangement(Arrangement::Center)
+            .set_children((Text::new("a"), Text::new("b"), Text::new("c"))),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(12, 3), "\n   a   b   c\n\n");
+  });
+}
+
+/// A stack's derived alignment places its child on both axes and follows the signal.
+#[test]
+fn a_stacks_derived_alignment_drives_both_axes() {
+  with_platform(|| {
+    let alignment = Signal::new(Alignment::CENTER);
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_width(5)
+        .set_height(3)
+        .set_child(
+          Stack::new()
+            .derive_item_alignment(move || alignment.get())
+            .add_child(Text::new("x")),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(5, 3), "\n  x\n\n");
+
+    alignment.set(Alignment::new(ItemAlignment::Start, ItemAlignment::End));
+
+    assert_eq!(testing::render_to_text(5, 3), "\n\nx\n");
   });
 }
 

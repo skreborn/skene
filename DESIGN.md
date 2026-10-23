@@ -219,7 +219,12 @@ toolkit's keeps the default, which does nothing.
   hand-stepped clock and what a reader finds, and their web form (the native element, a
   reported edit's verdict, the hydrated swap, a popup's anchoring, a tooltip's
   `aria-describedby`, a childless view's absence from the DOM) in the browser; what a
-  behavior declares it listens to is a unit test of its own.
+  behavior declares it listens to is a unit test of its own. So do the styles: a
+  transition's and a keyframe's motion, a token set's root defaults, a run's inks, a
+  box's handlers, hover, tab order and drag in the cells the terminal paints, and the
+  layout properties, a media condition against the window's width, a token border and a
+  scheme-conditioned run in the styles the browser computes; a view's size on the stack
+  is a compile-time assertion in each facade.
   A facade's views test on their platform alone, against its real sinks: the web's in a
   browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
   snapshot, never on the headless platform; native ones against their toolkit. A component

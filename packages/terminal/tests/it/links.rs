@@ -1,12 +1,13 @@
 //! Links in cells: a link run is a tab stop, `Enter` clicks and opens it, `Space` does
 //! not, a click on its cell focuses it, and focus scrolls a link's paragraph into view;
-//! a route link navigates the router as `Enter` or a click follows it.
+//! a link group inks its spans in the link ink; a route link navigates the router as
+//! `Enter` or a click follows it.
 
 use std::{cell::Cell, rc::Rc};
 
 use skene_terminal::{self as terminal, Activate, prelude::*, testing};
 
-use crate::common::{locate, rgb, white, with_platform};
+use crate::common::{colors_at, locate, red, rgb, white, with_platform};
 
 /// Whether every cell of `needle`'s first appearance in the frame paints in reverse
 /// video.
@@ -141,6 +142,30 @@ fn a_typography_colors_the_focused_link() {
       "the focused linked span paints in them too"
     );
     assert_eq!(colors[at(guide_x, guide_y)].1, None);
+  });
+}
+
+/// A link group that sets no color paints the spans beneath it in the link ink, as a
+/// link's own text paints, and the span beside it keeps the ink.
+#[test]
+fn a_link_groups_spans_take_the_link_ink() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Theme::new(Typography::default().set_ink(white()).set_link_ink(red()))
+        .set_child_builder(|| {
+          RichText::new().add_spans([
+            Span::group([Span::new("x"), Span::new("y")]).set_link("/g"),
+            Span::new("z"),
+          ])
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(4, 1), "xyz\n");
+    assert_eq!(colors_at(4, 1, 0, 0).0, Some(rgb(red())));
+    assert_eq!(colors_at(4, 1, 1, 0).0, Some(rgb(red())));
+    assert_eq!(colors_at(4, 1, 2, 0).0, Some(rgb(white())));
   });
 }
 

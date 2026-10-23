@@ -44,6 +44,10 @@ impl FlexBase<Active> for Row {}
 #[must_use]
 pub struct Column(skene_foundation::Column<Active>);
 
+// A layout view is at most a kibibyte on the stack, however many properties its style
+// holds.
+const _: () = assert!(size_of::<Column>() <= 1024);
+
 impl ColumnBase<Active> for Column {}
 
 impl FlexBase<Active> for Column {}

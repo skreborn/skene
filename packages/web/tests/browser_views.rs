@@ -12,10 +12,13 @@ use std::{
 };
 
 use skene_foundation::{
+  Alignment,
+  Arrangement,
   Axis,
   BasicPickerBase,
   ColorScheme,
   ColumnBase,
+  Condition,
   ContainerBase,
   ControlBase,
   DecorationBase,
@@ -23,21 +26,32 @@ use skene_foundation::{
   EventKind,
   FlexBase,
   FlexChild,
+  GridBase,
+  Inset,
   ItemAlignment,
   LabelPlacement,
   Layout,
   Media,
+  MotionBase,
   NativeElement,
   OverlayBase,
   Placement,
+  Property,
+  RichTextBase,
   RowBase,
+  RunBase,
   Size,
   Spacing,
+  SpanBase,
+  StackBase,
   StaticLeaf,
   TextBase,
   ThemeBase,
   TooltipBase,
+  Transition,
+  Value,
   Verdict,
+  When,
   report_edit,
 };
 use skene_simple_web::prelude::*;
@@ -61,10 +75,13 @@ use skene_web::{
   Column,
   Container,
   Control,
+  Expr,
   FocusOrder,
+  Grid,
   HasChild,
   HasChildren,
   LayoutBox,
+  Length,
   Link,
   LinkBase,
   ListboxOption,
@@ -73,15 +90,21 @@ use skene_web::{
   Overlay,
   Radio,
   RadioGroup,
+  RichText,
   Role,
   Row,
   Slider,
+  Span,
+  Stack,
   Text,
   TextEntry,
   TextSelection,
   Theme,
   ThemedIn,
   Toggle,
+  TokenName,
+  TokenRef,
+  TokenSet,
   Tooltip,
   Typography,
   View,
@@ -514,6 +537,209 @@ fn a_third_party_layout_view_matches_the_built_in() {
   }
 }
 
+const GUTTER: TokenRef<Length> = TokenRef::new("gutter");
+
+/// A palette holding a gutter length.
+#[derive(Debug, Clone, PartialEq)]
+struct Gutters {
+  /// The room between a row's children.
+  gutter: skene_web::Token<Length>,
+}
+
+impl<V: From<skene_web::Definition<Length>> + 'static> TokenSet<V> for Gutters {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.gutter.define()]
+  }
+}
+
+/// A row's layout properties reach its element: a spacing that is a token resolves
+/// through the theme to the palette's length, an expression over it doubles it in a
+/// reversed row, and a spacing per axis sets each gap.
+#[wasm_bindgen_test]
+fn layout_properties_reach_the_box_and_a_token_spacing_resolves() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(Gutters {
+      gutter: skene_web::Token::new(GUTTER.name().as_str(), 8.),
+    })
+    .set_child_builder(|| {
+      Column::new().set_children((
+        Row::new()
+          .set_spacing(GUTTER)
+          .set_arrangement(Arrangement::SpaceBetween)
+          .set_item_alignment(ItemAlignment::Center),
+        Row::reversed().set_spacing(Expr::<Length>::from(GUTTER) * 2.),
+        Row::new().set_spacing(Spacing::new(2, 1)),
+      ))
+    })
+    .build()
+  });
+
+  let rows = elements(&only_child(&only_child(&root)));
+  let styles = |row: &Element, properties: &[&str]| {
+    properties
+      .iter()
+      .map(|property| computed(row, property))
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(
+    styles(
+      &rows[0],
+      &[
+        "display",
+        "flex-direction",
+        "column-gap",
+        "justify-content",
+        "align-items"
+      ]
+    ),
+    ["flex", "row", "8px", "space-between", "center"]
+  );
+  assert_eq!(
+    styles(&rows[1], &["flex-direction", "column-gap"]),
+    ["row-reverse", "16px"]
+  );
+  assert_eq!(styles(&rows[2], &["column-gap", "row-gap"]), ["2px", "1px"]);
+}
+
+/// The window's width, a pixel below it and a pixel above it.
+fn around_the_viewport() -> (f32, f32) {
+  let width = web_sys::window()
+    .expect("a window")
+    .inner_width()
+    .expect("a width")
+    .as_f64()
+    .expect("a number");
+
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a viewport width is precise enough in f32"
+  )]
+  let around = ((width - 1.) as f32, (width + 1.) as f32);
+
+  around
+}
+
+/// A media condition on a layout's padding switches with the viewport, whether spelled
+/// on the inset, on a plain spacing, or on a plain number: a condition the window's
+/// width meets takes the variant, and one it falls short of keeps the base.
+#[wasm_bindgen_test]
+fn a_media_condition_on_padding_switches_with_the_viewport() {
+  let (_guard, root) = fresh_root();
+  let (below, above) = around_the_viewport();
+  let column = move |threshold: f32| {
+    Column::new()
+      .set_spacing(Spacing::from(8).when(Media::min_width(threshold), 16))
+      .set_padding(Inset::all(4).when(Media::min_width(threshold), Inset::all(12)))
+      .set_children((
+        Container::new()
+          .set_width(40)
+          .set_aspect_ratio(1f32.when(Media::min_width(threshold), 2.)),
+        Container::new().set_height(1),
+      ))
+  };
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((column(below), column(above)))
+      .build()
+  });
+
+  let columns = elements(&only_child(&root));
+  let read = |column: &Element| {
+    (
+      computed(column, "row-gap"),
+      computed(column, "padding-top"),
+      html(&elements(column)[0]).offset_height(),
+    )
+  };
+
+  assert_eq!(
+    read(&columns[0]),
+    ("16px".to_owned(), "12px".to_owned(), 20),
+    "the window is at least as wide"
+  );
+  assert_eq!(
+    read(&columns[1]),
+    ("8px".to_owned(), "4px".to_owned(), 40),
+    "the window is narrower"
+  );
+}
+
+/// A uniform grid declares one equal track per column, and its two-axis alignment lands
+/// on both item alignments while its row arrangement places the rows.
+#[wasm_bindgen_test]
+fn a_uniform_grid_declares_equal_tracks_and_splits_its_alignment() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Container::new()
+      .set_width(300)
+      .set_child(
+        Grid::uniform(3)
+          .set_item_alignment(Alignment::new(ItemAlignment::End, ItemAlignment::Start))
+          .set_row_arrangement(Arrangement::Center),
+      )
+      .build()
+  });
+
+  let grid = only_child(&only_child(&root));
+
+  assert_eq!(
+    [
+      "display",
+      "grid-template-columns",
+      "justify-items",
+      "align-items",
+      "align-content"
+    ]
+    .map(|property| computed(&grid, property)),
+    [
+      "grid",
+      "100px 100px 100px",
+      "flex-end",
+      "flex-start",
+      "center"
+    ]
+  );
+}
+
+/// A stack's derived alignment writes both axes on the same element as its signal
+/// changes.
+#[wasm_bindgen_test]
+fn a_stacks_derived_alignment_drives_both_axes() {
+  let (_guard, root) = fresh_root();
+  let alignment = Signal::new(Alignment::CENTER);
+
+  let _ = mount(move || {
+    Stack::new()
+      .derive_item_alignment(move || alignment.get())
+      .add_child(Text::new("x"))
+      .build()
+  });
+
+  let stack = only_child(&root);
+  let axes = |stack: &Element| {
+    (
+      computed(stack, "justify-items"),
+      computed(stack, "align-items"),
+    )
+  };
+
+  assert_eq!(axes(&stack), ("center".to_owned(), "center".to_owned()));
+
+  alignment.set(Alignment::new(ItemAlignment::Start, ItemAlignment::End));
+  platform::end_turn();
+
+  assert_eq!(only_child(&root), stack, "the same element");
+  assert_eq!(
+    axes(&stack),
+    ("flex-start".to_owned(), "flex-end".to_owned())
+  );
+}
+
 /// A page's routes, for the link test.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Page {
@@ -895,6 +1121,83 @@ fn typography_inks_the_runs() {
     computed(&themed, "color"),
     probe(&root, "color", foreground)
   );
+}
+
+/// A border whose color is a token resolves through the theme, its width per edge, and
+/// a transition reaches the element's declared transitions.
+#[wasm_bindgen_test]
+fn a_border_with_a_token_color_resolves_through_the_theme() {
+  let (_guard, root) = fresh_root();
+  let red = Color::srgb(1., 0., 0.);
+
+  let _ = mount(move || {
+    Theme::new(SimplePalette::default().set_card(red))
+      .set_child_builder(|| {
+        Container::new()
+          .set_border_width(Inset::new(4, 1, 2, 3))
+          .set_border_color(SimplePalette::CARD)
+          .add_transition(Transition::new(Property::Background, 0.2))
+      })
+      .build()
+  });
+
+  let card = only_child(&only_child(&root));
+
+  for (edge, width) in [
+    ("top", "1px"),
+    ("right", "2px"),
+    ("bottom", "3px"),
+    ("left", "4px"),
+  ] {
+    assert_eq!(
+      computed(&card, &format!("border-{edge}-width")),
+      width,
+      "{edge}"
+    );
+    assert_eq!(
+      computed(&card, &format!("border-{edge}-color")),
+      probe(&root, &format!("border-{edge}-color"), red),
+      "{edge}"
+    );
+  }
+
+  assert_eq!(computed(&card, "transition-property"), "background-color");
+  assert_eq!(computed(&card, "transition-duration"), "0.2s");
+}
+
+/// A group's compound media variant reaches the spans beneath it as the cascade
+/// resolves it: the light scheme's color while the light scheme is in force, the base
+/// under the dark one.
+#[wasm_bindgen_test]
+fn a_groups_compound_media_variant_reaches_its_spans() {
+  let (_guard, root) = fresh_root();
+  let scheme = Scheme::choose(ColorScheme::Light);
+  let (red, green) = (Color::srgb(1., 0., 0.), Color::srgb(0., 1., 0.));
+
+  let _ = mount(move || {
+    RichText::new()
+      .add_spans([
+        Span::group([Span::new("x")]).set_color(Value::from(red).when(
+          Condition::and([Media::min_width(1).into(), Media::Light.into()]),
+          green,
+        )),
+      ])
+      .build()
+  });
+
+  let span = root
+    .query_selector("span span")
+    .expect("query")
+    .expect("the group's span");
+
+  assert_eq!(span.text_content().as_deref(), Some("x"));
+  assert_eq!(computed(&span, "color"), probe(&root, "color", green));
+
+  drop(scheme);
+
+  let _scheme = Scheme::choose(ColorScheme::Dark);
+
+  assert_eq!(computed(&span, "color"), probe(&root, "color", red));
 }
 
 /// The `<input>` a text field mounted alone under `root` realizes.

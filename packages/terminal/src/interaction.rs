@@ -972,11 +972,11 @@ pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modi
 }
 
 /// Dispatches a press at (`x`, `y`): the hover path follows it, the press reaches the
-/// deepest node, and—unless a handler prevented the platform—the left press focuses,
-/// records the path for its release, places an entry's caret or anchors a selection
-/// and arms a link, and the right press places an entry's caret; a right press then
-/// asks the deepest node for its context menu. An entry's selection the press moved is
-/// reported.
+/// deepest node's handlers before the left press focuses and records the path for its
+/// release, and—unless a handler prevented the platform—the left press places an
+/// entry's caret or anchors a selection and arms a link, and the right press places an
+/// entry's caret; a right press then asks the deepest node for its context menu. An
+/// entry's selection the press moved is reported.
 pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   press(x, y, button, modifiers);
   crate::field::report_selections();
@@ -1112,14 +1112,14 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   let entry_held_focus =
     entry.is_some_and(|entry| records(|records| records.focused() == Some(entry)));
 
-  if button == PointerButton::Primary || entry.is_some() {
-    set_focus(focus_target);
-  }
-
   let node = records(|records| records.record(deepest).and_then(|record| record.node));
   let prevented = node.map_or(Prevented::default(), |node| {
     dispatch_pointer_down::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers))
   });
+
+  if button == PointerButton::Primary || entry.is_some() {
+    set_focus(focus_target);
+  }
 
   records(|records| {
     if button == PointerButton::Primary {

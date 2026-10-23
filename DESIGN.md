@@ -781,20 +781,26 @@ Condition     = Media | State | And | Or
   unit, its token and slot lookups and its font size. The terminal caches the result per
   node under a generation covering environment, interaction and definitions, and
   reports whether the resolved value changed; that report is where a transition
-  starts. The headless platform resolves through the same `Resolver`, so a test's answer
-  and the terminal's are one computation, and both build it through one
-  `ResolutionContext` (a node's environment, interaction and containers from the scene,
-  a token resolved where it is defined, the font size from the typography's size
-  token, the platform's `EM` where text takes no sizes) over a `ResolutionSource` giving
-  what the scene does not hold: the environment, container sizes, slots and whether
-  text is drawn at other sizes. In debug builds the terminal resolves every box, run,
-  text entry and keyframe style through the node's record compiled at `Keep::Nothing`
-  as well, with the same
-  resolver and before its own fill-ins (rounded border glyphs, the typography's size and
-  weight, `bold`), and asserts the two resolutions equal by their `Fingerprint` and
-  alike in whether they read the node's interaction, the flag kept as the typed
-  resolution alone sets it, as it asserts the record's motion equal to the dynamics it
-  was built from; a wrapper's annotation resolves typed alone.
+  starts. It builds the resolver through one `ResolutionContext` (a node's environment,
+  interaction and containers from the scene, a token resolved where it is defined, its
+  definition converted into the shared `TokenValue`, the font size from the
+  typography's size token, the platform's `EM` where text takes no sizes) over a
+  `ResolutionSource` giving what the scene does not hold: the environment, container
+  sizes, slots and whether text is drawn at other sizes. The browser is that
+  resolution's oracle: the parity harness (`browser_parity`) builds each case on the
+  browser leaf, its read node a low-level view keeping the props the web realizes it
+  with, compiles the node's record at `Keep::Nothing` with the resolver of a
+  `ResolutionContext` over the web's own scene (its themes, scopes, containers and the
+  enclosing control's state), runs its motion through the foundation's `Motion`, and
+  holds the value to the one the engine computes, so a divergence it finds is one every
+  platform resolving through the shared half shares. In debug builds the terminal
+  resolves every box, run, text entry and keyframe style through the node's record
+  compiled at `Keep::Nothing` as well, with the same resolver and before its own
+  fill-ins (rounded border glyphs, the typography's size and weight, `bold`), and
+  asserts the two resolutions equal by their `Fingerprint` and alike in whether they
+  read the node's interaction, the flag kept as the typed resolution alone sets it, as
+  it asserts the record's motion equal to the dynamics it was built from; a wrapper's
+  annotation resolves typed alone.
 
 ### Tokens and themes
 

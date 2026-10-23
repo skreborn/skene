@@ -830,7 +830,8 @@ impl<P: Realization, S> std::fmt::Debug for ResolutionContext<'_, P, S> {
 
 impl<'a, P, S> ResolutionContext<'a, P, S>
 where
-  P: Realization<TokenValue = TokenValue<<P as Realization>::Scalar>>,
+  P: Realization,
+  P::TokenValue: Into<TokenValue<P::Scalar>>,
   S: ResolutionSource<P>,
 {
   /// The context of `node`; `None` for a stale id.
@@ -908,7 +909,7 @@ where
     }
 
     let value = Resolver::<P::Scalar, P::StyleExt>::nested(|| {
-      let definition = Scene::<P>::read(|scene| scene.definition_on(scope, name))?;
+      let definition = Scene::<P>::read(|scene| scene.definition_on(scope, name))?.into();
 
       Self::of_scope(self.source, scope)?.with_resolver(|resolver| resolver.definition(&definition))
     });
@@ -938,7 +939,7 @@ where
     }
 
     let resolved = Resolver::<P::Scalar, P::StyleExt>::nested(|| {
-      let definition = Scene::<P>::read(|scene| scene.definition_on(scope, size))?;
+      let definition = Scene::<P>::read(|scene| scene.definition_on(scope, size))?.into();
 
       Self::of_scope(self.source, scope)?
         .with_resolver_at(P::FONT_SIZE, |resolver| resolver.definition(&definition))

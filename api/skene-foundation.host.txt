@@ -6961,7 +6961,7 @@ pub fn skene_foundation::Reorder::default() -> skene_foundation::Reorder
 impl core::fmt::Debug for skene_foundation::Reorder
 pub fn skene_foundation::Reorder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::ResolutionContext<'a, P: skene_foundation::Realization, S>
-impl<'a, P, S> skene_foundation::ResolutionContext<'a, P, S> where P: skene_foundation::Realization<TokenValue = skene_foundation::TokenValue<<P as skene_foundation::Realization>::Scalar>>, S: skene_foundation::ResolutionSource<P>
+impl<'a, P, S> skene_foundation::ResolutionContext<'a, P, S> where P: skene_foundation::Realization, <P as skene_foundation::Realization>::TokenValue: core::convert::Into<skene_foundation::TokenValue<<P as skene_foundation::Realization>::Scalar>>, S: skene_foundation::ResolutionSource<P>
 pub fn skene_foundation::ResolutionContext<'a, P, S>::of(&'a S, skene_foundation::NodeId) -> core::option::Option<Self>
 pub const fn skene_foundation::ResolutionContext<'a, P, S>::read_interaction(&self) -> bool
 pub fn skene_foundation::ResolutionContext<'a, P, S>::root(&'a S) -> Self

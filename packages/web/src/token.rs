@@ -1,6 +1,6 @@
 //! The token definitions the web accepts, and their custom-property registrations.
 
-use skene_foundation::{Color, Definition, Dimension, Length, TokenName};
+use skene_foundation::{Color, Definition, Dimension, Length, TokenName, TokenValue};
 
 /// The erased token definition the web platform stores per token: a color, a number, a
 /// length, or a dimension.
@@ -60,5 +60,17 @@ impl From<Definition<Dimension<f32>, f32>> for WebTokenValue {
   #[inline(always)]
   fn from(definition: Definition<Dimension<f32>, f32>) -> Self {
     Self::Dimension(definition)
+  }
+}
+
+impl From<WebTokenValue> for TokenValue<f32> {
+  /// The definition as the shared half's erased token value, of the same kind.
+  fn from(value: WebTokenValue) -> Self {
+    match value {
+      WebTokenValue::Color(definition) => Self::Color(definition),
+      WebTokenValue::Number(definition) => Self::Number(definition),
+      WebTokenValue::Length(definition) => Self::Length(definition),
+      WebTokenValue::Dimension(definition) => Self::Dimension(definition),
+    }
   }
 }

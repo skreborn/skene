@@ -1,51 +1,87 @@
-//! The parity harness: one declaration realized on the browser leaf and on the headless
-//! platform, the value core's `Resolver` gives it held against the value the engine
-//! computes, for every kind of leaf a property takes.
+//! The parity harness: one declaration realized on the browser leaf, the value the
+//! shared half resolves it to held against the value the engine computes, for every kind
+//! of leaf a property takes.
 //!
-//! The browser is the oracle. A case the resolution gets wrong is a divergence every
-//! platform resolving through core shares, the terminal among them. A case in motion
-//! steps both platforms' clocks alike: the headless one by its frame, the engine's by
-//! seeking its animations.
+//! The browser is the oracle. The resolved side is the shared half's
+//! [`Keep::Nothing`](skene_foundation::Keep::Nothing) compile over the real scene: each
+//! case's read node is a low-level view that keeps the props the platform realizes it
+//! with, and its [`Record`] compiles at [`Keeping::Nothing`] with the resolver of its
+//! [`ResolutionContext`], reading tokens, scopes, containers and the enclosing control's
+//! state from the web's own scene. A case the resolution gets wrong is a divergence every
+//! platform resolving through the shared half shares, the terminal among them. A case in
+//! motion steps both sides alike: the resolved one through the foundation's
+//! [`Motion`], retargeted as each step writes and sampled at its elapsed time, the
+//! engine's by seeking its animations.
 #![cfg(skene_web_platform = "browser")]
 
-use std::{cell::Cell, time::Duration};
+use std::cell::{Cell, RefCell};
 
 use skene_foundation::{
   AccessProp,
   Activate,
   Animation,
+  AnyKind,
   AnyView,
   AspectRatio,
   Axes,
   BasicButton,
   BasicCheckbox,
+  BoxDynamics,
   BoxKeyframe,
+  BoxSlot,
+  BoxValue,
+  Children,
   Color,
+  CompiledStyle,
   Condition,
   Container,
   ContainerBase,
   ContainerName,
   ContainerQuery,
+  DeclaredBoxStyle,
   DecorationBase,
   Definition,
   Dimension,
   Easing,
   Edge,
+  Environment,
   Expr,
+  Frame,
+  HasBoxStyle,
   HasChild,
+  HasChildren,
+  HasLayoutBox,
+  HasRun,
   Inset,
+  Keeping,
+  Layout,
+  LayoutBox,
   Length,
   Media,
   MotionBase,
+  NodeHandle,
   NodeId,
+  NodeKind,
   Overflow,
+  PlainChild,
   Property,
   PropertyKey,
   Realization,
+  Record,
+  ResolutionContext,
+  ResolutionSource,
   RunBase,
+  RunDynamics,
+  RunValue,
+  Seal,
   Size,
+  Slot,
+  SlotLeaf,
+  SlotValue,
   State,
+  StaticBoxStyle,
   StaticLeaf,
+  StaticRunStyle,
   Text,
   Theme,
   Toggle,
@@ -56,24 +92,10 @@ use skene_foundation::{
   Transition,
   Value,
   View,
-  web::{Typography, WebProperty},
+  interpolate::Motion,
+  web::{Typography, WebProperty, WebStyle},
 };
-use skene_headless::{
-  Headless,
-  box_props,
-  children,
-  control_props,
-  resolve_aspect_ratio,
-  resolve_color,
-  resolve_hidden,
-  resolve_inset,
-  resolve_length,
-  resolve_overflow,
-  trigger_container_size,
-  trigger_focus,
-  trigger_frame,
-};
-use skene_reactive::{Get, Owner, Set, Signal};
+use skene_reactive::{Get, Set, Signal, untrack};
 use skene_web::{
   platform::{self, mount},
   testing::{computed, document},
@@ -92,6 +114,9 @@ const WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Width);
 const PADDING: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Padding);
 const BORDER_WIDTH: PropertyKey<WebProperty> = PropertyKey::Shared(Property::BorderWidth);
 const BORDER_COLOR: PropertyKey<WebProperty> = PropertyKey::Shared(Property::BorderColor);
+const HIDDEN: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Hidden);
+const ASPECT_RATIO: PropertyKey<WebProperty> = PropertyKey::Shared(Property::AspectRatio);
+const OVERFLOW: PropertyKey<WebProperty> = PropertyKey::Shared(Property::Overflow);
 
 /// The accessible name a case gives the box it reads, where that box is not its own.
 const TARGET: &str = "parity-target";
@@ -105,6 +130,166 @@ const BOX_WIDTH: f32 = 400.;
 thread_local! {
   /// The number a moving case derives its property from, written as the case steps.
   static MOVING: Cell<Option<Signal<f32>>> = const { Cell::new(None) };
+  /// The box a case reads, as the platform last realized it.
+  static READ_BOX: RefCell<Option<Realized>> = const { RefCell::new(None) };
+  /// The run a case reads, as the platform last realized it.
+  static READ_RUN: RefCell<Option<Realized>> = const { RefCell::new(None) };
+  /// The control a case reads, where the case reads a control's own box.
+  static READ_CONTROL: Cell<Option<NodeHandle<Web>>> = const { Cell::new(None) };
+  /// The count a resolution's tokens are kept under, moved for every case.
+  static GENERATION: Cell<u64> = const { Cell::new(0) };
+}
+
+/// A read node as the platform realized it: the node, once known, the record of the
+/// style it received, and the derived leaves its slots hold.
+#[derive(Debug, Clone)]
+struct Realized {
+  /// The node; `None` for a control's box, whose node its handle names.
+  node: Option<NodeId>,
+  /// The style the platform received, with its motion.
+  record: Record<f32, WebStyle>,
+  /// The derived leaves the style's slots stand for.
+  slots: Vec<BoxSlot<f32, WebStyle>>,
+}
+
+impl Realized {
+  /// The box of `style` and `dynamics` as the platform receives it at `node`, its
+  /// derived leaves lifted into `slots`.
+  fn of_box(
+    node: Option<NodeId>,
+    style: &StaticBoxStyle<Web>,
+    dynamics: &BoxDynamics<f32, WebStyle>,
+    slots: Vec<BoxSlot<f32, WebStyle>>,
+  ) -> Self {
+    let mut record = Record::new();
+
+    record.add_box(style);
+    record.add_box_dynamics(dynamics);
+
+    Self {
+      node,
+      record,
+      slots,
+    }
+  }
+
+  /// The run of `style` and `dynamics` as the platform receives it at `node`.
+  fn of_run(node: NodeId, style: &StaticRunStyle<Web>, dynamics: &RunDynamics<WebStyle>) -> Self {
+    let mut record = Record::new();
+
+    record.add_run(style);
+    record.add_run_dynamics(dynamics);
+
+    Self {
+      node: Some(node),
+      record,
+      slots: Vec::new(),
+    }
+  }
+
+  /// The record compiled at [`Keeping::Nothing`] against `source` at `node`.
+  fn compile(&self, source: &ParitySource, node: NodeId) -> CompiledStyle<f32, WebStyle> {
+    ResolutionContext::<Web, ParitySource>::of(source, node)
+      .expect("the read node is live")
+      .with_resolver(|resolver| self.record.compile(Keeping::Nothing(resolver)))
+  }
+}
+
+/// A case's read box: a low-level view over the public [`LayoutBox`], laid out as a
+/// [`Container`] is, that keeps the style the platform realizes it with in
+/// [`READ_BOX`].
+struct ReadBox {
+  inner: LayoutBox<Web>,
+}
+
+impl ReadBox {
+  /// An undecorated box.
+  fn new() -> Self {
+    Self {
+      inner: LayoutBox::new(Layout::Single),
+    }
+  }
+}
+
+impl HasBoxStyle<Web> for ReadBox {
+  fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<Web> {
+    self.inner.style_mut()
+  }
+}
+
+impl HasLayoutBox<Web> for ReadBox {
+  type Kind = PlainChild;
+
+  fn map_layout_box(
+    self,
+    map: impl FnOnce(LayoutBox<Web, PlainChild>) -> LayoutBox<Web, PlainChild>,
+  ) -> Self {
+    Self {
+      inner: map(self.inner),
+    }
+  }
+}
+
+impl HasChild<Web> for ReadBox {
+  type Kind = PlainChild;
+
+  fn child_mut(&mut self, seal: Seal) -> &mut Children<Web, PlainChild> {
+    self.inner.children_mut(seal)
+  }
+}
+
+impl DecorationBase<Web> for ReadBox {}
+
+impl MotionBase<Web> for ReadBox {}
+
+impl ContainerBase<Web> for ReadBox {}
+
+impl AnyKind for ReadBox {}
+
+impl View<Web> for ReadBox {
+  fn build(mut self) -> NodeId {
+    let (_, slots) = self.inner.style_mut().clone().split();
+
+    self.inner.realize(NodeKind::Box, move |node, props| {
+      READ_BOX.set(Some(Realized::of_box(
+        Some(node),
+        &props.style,
+        &props.dynamics,
+        slots,
+      )));
+      <Web as Realization>::create_box(node, &props);
+    })
+  }
+}
+
+/// `text` as a run that keeps the style the platform realizes it with in [`READ_RUN`].
+fn read_run(text: Text<Web>) -> Text<Web> {
+  text.map_run(|run| {
+    run.add_realization(|node, props| {
+      READ_RUN.set(Some(Realized::of_run(node, &props.style, &props.dynamics)));
+    })
+  })
+}
+
+/// `button` as the read node, keeping the style its box declares in [`READ_BOX`] and
+/// its node in [`READ_CONTROL`].
+fn read_control(button: BasicButton<Web>) -> BasicButton<Web> {
+  let handle = NodeHandle::new();
+
+  READ_CONTROL.set(Some(handle));
+
+  button.map_layout_box(|mut layout| {
+    let (style, slots) = layout.style_mut().clone().split();
+
+    READ_BOX.set(Some(Realized::of_box(
+      None,
+      &style,
+      &BoxDynamics::default(),
+      slots,
+    )));
+
+    layout.bind_handle(handle)
+  })
 }
 
 /// The box a case reads, where it is not the case's own: named [`TARGET`].
@@ -378,31 +563,31 @@ impl Case {
     }
   }
 
-  /// The case's box, inside the scopes the case adds, on the platform `P`.
-  fn view<P: Realization<Scalar = f32>>(self) -> AnyView<P> {
+  /// The case's box, inside the scopes the case adds.
+  fn view(self) -> AnyView<Web> {
     match self {
-      Self::LexicalToken => Theme::<P, InnerPalette>::new(InnerPalette {
+      Self::LexicalToken => Theme::<Web, InnerPalette>::new(InnerPalette {
         surface: Token::new(ParityPalette::SURFACE.name().as_str(), orange()),
       })
-      .set_child_builder(|| Container::<P>::new().set_background(ParityPalette::SHADE))
+      .set_child_builder(|| ReadBox::new().set_background(ParityPalette::SHADE))
       .into_any(),
-      Self::LexicalEm => Theme::<P, Typography>::new(Typography::default().set_size(30.))
-        .set_child_builder(|| Container::<P>::new().set_width(ParityPalette::INDENT))
+      Self::LexicalEm => Theme::<Web, Typography>::new(Typography::default().set_size(30.))
+        .set_child_builder(|| ReadBox::new().set_width(ParityPalette::INDENT))
         .into_any(),
-      Self::ContainerUnitWidth => Container::<P>::new()
+      Self::ContainerUnitWidth => Container::<Web>::new()
         .set_width(Dimension::Length(BOX_WIDTH))
         .set_container_name(BOX)
         .set_child(
-          Container::<P>::new()
+          ReadBox::new()
             .set_width(Expr::container_width(0.25))
             .set_accessibility(target()),
         )
         .into_any(),
-      Self::ContainerQueryColor => Container::<P>::new()
+      Self::ContainerQueryColor => Container::<Web>::new()
         .set_width(Dimension::Length(BOX_WIDTH))
         .set_container_name(BOX)
         .set_child(
-          Container::<P>::new()
+          ReadBox::new()
             .set_background(Value::from(blue()).when(
               Media::Container {
                 name: Some(BOX),
@@ -413,24 +598,26 @@ impl Case {
             .set_accessibility(target()),
         )
         .into_any(),
-      Self::CheckedColor => BasicCheckbox::<P>::new(Toggle::new().set_checked(true))
-        .set_child(Self::state_box::<P>(State::Checked))
+      Self::CheckedColor => BasicCheckbox::<Web>::new(Toggle::new().set_checked(true))
+        .set_child(Self::state_box(State::Checked))
         .into_any(),
-      Self::DisabledColor => BasicButton::<P>::new(Activate::new())
+      Self::DisabledColor => BasicButton::<Web>::new(Activate::new())
         .set_disabled(true)
-        .set_child(Self::state_box::<P>(State::Disabled))
+        .set_child(Self::state_box(State::Disabled))
         .into_any(),
-      Self::FocusedColor => BasicButton::<P>::new(Activate::new())
-        .set_accessible_name(TARGET)
-        .set_background(Value::from(blue()).when(State::Focused, orange()))
-        .into_any(),
-      _ => self.container::<P>().into_any(),
+      Self::FocusedColor => read_control(
+        BasicButton::<Web>::new(Activate::new())
+          .set_accessible_name(TARGET)
+          .set_background(Value::from(blue()).when(State::Focused, orange())),
+      )
+      .into_any(),
+      _ => self.container().into_any(),
     }
   }
 
-  /// The case's box, where the case adds no scope, on the platform `P`.
-  fn container<P: Realization<Scalar = f32>>(self) -> Container<P> {
-    let container = Container::<P>::new();
+  /// The case's box, where the case adds no scope.
+  fn container(self) -> ReadBox {
+    let container = ReadBox::new();
 
     match self {
       Self::FixedColor => container.set_background(blue()),
@@ -488,7 +675,7 @@ impl Case {
           start: 4.,
         })
         .set_border_color(ParityPalette::SURFACE),
-      Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
+      Self::FixedInk => container.set_child(read_run(Text::new("ink").set_color(orange()))),
       Self::AxisOverflow => container.set_overflow(Axes::new(Overflow::Clip, Overflow::Scroll)),
       Self::VisibleBesideScroll => {
         container.set_overflow(Axes::new(Overflow::Visible, Overflow::Scroll))
@@ -498,7 +685,9 @@ impl Case {
       | Self::HiddenTransition
       | Self::RatioTransition
       | Self::PaddingTransition => self.moving(container),
-      Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
+      Self::TokenInk => {
+        container.set_child(read_run(Text::new("ink").set_color(ParityPalette::SURFACE)))
+      }
       Self::LexicalToken
       | Self::LexicalEm
       | Self::ContainerUnitWidth
@@ -510,16 +699,16 @@ impl Case {
   }
 
   /// The case's box in motion, where the case moves; the box as it is otherwise.
-  fn moving<P: Realization<Scalar = f32>>(self, container: Container<P>) -> Container<P> {
+  fn moving(self, container: ReadBox) -> ReadBox {
     match self {
       Self::NeutralKeyframe => container.set_width(40).add_animation(
         Animation::new(
           1.,
           [(
             50.,
-            BoxKeyframe::<P> {
+            BoxKeyframe::<Web> {
               width: Some(StaticLeaf::Fixed(Dimension::Length(80.))),
-              ..BoxKeyframe::<P>::default()
+              ..BoxKeyframe::<Web>::default()
             },
           )],
         )
@@ -567,8 +756,8 @@ impl Case {
   }
 
   /// A box inside a control, blue until `state` holds and orange while it does.
-  fn state_box<P: Realization<Scalar = f32>>(state: State) -> Container<P> {
-    Container::<P>::new()
+  fn state_box(state: State) -> ReadBox {
+    ReadBox::new()
       .set_width(10)
       .set_height(10)
       .set_background(Value::from(blue()).when(state, orange()))
@@ -594,12 +783,12 @@ impl Case {
   }
 
   /// The case's box under a theme of the palette, inside a typography of a size other
-  /// than the default, built on the platform `P`.
-  fn build<P: Realization<Scalar = f32>>(self) -> NodeId {
-    Theme::<P, Typography>::new(Typography::default().set_size(20.))
+  /// than the default.
+  fn build(self) -> NodeId {
+    Theme::<Web, Typography>::new(Typography::default().set_size(20.))
       .set_child_builder(move || {
-        Theme::<P, ParityPalette>::new(ParityPalette::default())
-          .set_child_builder(move || self.view::<P>())
+        Theme::<Web, ParityPalette>::new(ParityPalette::default())
+          .set_child_builder(move || self.view())
       })
       .build()
   }
@@ -729,76 +918,290 @@ fn pixels(value: &str) -> f32 {
     .unwrap_or(f32::NAN)
 }
 
-/// What the headless platform's resolution gives `case`, its viewport the browser's.
-fn resolved(case: Case, viewport: Size<f32>) -> Reading {
-  skene_headless::reset();
-  skene_headless::trigger_resize(viewport);
-  trigger_container_size(BOX, Size::new(BOX_WIDTH, 0.));
+/// Where a case's resolution reads what the scene does not hold: the browser's
+/// environment, the query container's width, and the read node's derived leaves.
+struct ParitySource {
+  /// The environment the browser reports, at the viewport the test reads.
+  environment: Environment<f32>,
+  /// The read node.
+  node: NodeId,
+  /// The derived leaves the read node's slots stand for.
+  slots: Vec<BoxSlot<f32, WebStyle>>,
+  /// The count the case's tokens are kept under.
+  generation: u64,
+}
 
-  let owner = Owner::new();
-  let built = owner.enter(|| case.build::<Headless>());
-  let mut node = built;
-
-  while box_props(node).is_none() {
-    node = children(node)[0];
+impl ResolutionSource<Web> for ParitySource {
+  fn environment(&self) -> Environment<f32> {
+    self.environment
   }
 
-  if case.focuses()
-    && let Some(control) = headless_control(built)
-  {
-    trigger_focus(control);
+  fn container_size(&self, name: ContainerName) -> Option<Size<f32>> {
+    (name == BOX).then(|| Size::new(BOX_WIDTH, 0.))
   }
 
-  let node = headless_target(built).unwrap_or(node);
-  let read = || match case.read() {
-    Read::Background => resolve_color(node, COLOR).map(Reading::Color),
-    Read::Width => resolve_length(node, WIDTH).map(Reading::Length),
-    Read::Padding => resolve_length(node, PADDING).map(Reading::Length),
-    Read::Border(edge) => resolve_inset(node, BORDER_WIDTH)
-      .zip(resolve_color(node, BORDER_COLOR))
-      .map(|(width, color)| Reading::Border(width.edge(edge), color)),
-    Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
-    Read::Hidden => resolve_hidden(node).map(Reading::Hidden),
-    Read::AspectRatio => resolve_aspect_ratio(node).map(|ratio| Reading::Ratio(ratio.0)),
-    Read::Overflow => resolve_overflow(node).map(Reading::Overflow),
-  };
-  let _ = read();
-
-  for (width, milliseconds) in case.steps() {
-    if let Some(width) = width {
-      MOVING.get().expect("the moving case's width").set(*width);
+  fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf<f32, WebStyle>> {
+    if node != self.node {
+      return None;
     }
 
-    trigger_frame(Duration::from_millis(*milliseconds));
+    self
+      .slots
+      .iter()
+      .find(|derived| derived.slot == slot)
+      .map(|derived| untrack(|| (derived.compute)()).into())
   }
 
-  let reading = read();
+  fn sizes_text(&self) -> bool {
+    true
+  }
 
-  owner.dispose();
-
-  reading.unwrap_or(Reading::Missing)
+  fn generation(&self) -> u64 {
+    self.generation
+  }
 }
 
-/// The node under `node` a case names [`TARGET`], if it names one.
-fn headless_target(node: NodeId) -> Option<NodeId> {
-  let named = box_props(node)
-    .is_some_and(|props| props.access.contains(&AccessProp::Name(TARGET.to_owned())))
-    || control_props(node).is_some_and(|props| props.label.as_deref() == Some(TARGET));
-
-  if named {
-    return Some(node);
+impl Read {
+  /// The properties the reading takes.
+  const fn keys(self) -> &'static [PropertyKey<WebProperty>] {
+    match self {
+      Self::Background => &[COLOR],
+      Self::Width => &[WIDTH],
+      Self::Padding => &[PADDING],
+      Self::Border(_) => &[BORDER_WIDTH, BORDER_COLOR],
+      Self::Ink => &[TEXT_COLOR],
+      Self::Hidden => &[HIDDEN],
+      Self::AspectRatio => &[ASPECT_RATIO],
+      Self::Overflow => &[OVERFLOW],
+    }
   }
 
-  children(node).into_iter().find_map(headless_target)
+  /// The reading of the values `value` gives each property.
+  fn reading(
+    self,
+    value: impl Fn(PropertyKey<WebProperty>) -> Option<SlotValue<f32, WebStyle>>,
+  ) -> Reading {
+    let reading = match self {
+      Self::Background => match value(COLOR) {
+        Some(SlotValue::Box(BoxValue::Color(color))) => Some(Reading::Color(color)),
+        _ => None,
+      },
+      Self::Width => match value(WIDTH) {
+        Some(SlotValue::Box(BoxValue::Dimension(Dimension::Length(length)))) => {
+          Some(Reading::Length(length))
+        }
+        _ => None,
+      },
+      Self::Padding => match value(PADDING) {
+        Some(SlotValue::Box(BoxValue::Inset(inset))) if inset == Inset::all(inset.top) => {
+          Some(Reading::Length(inset.top))
+        }
+        _ => None,
+      },
+      Self::Border(edge) => match (value(BORDER_WIDTH), value(BORDER_COLOR)) {
+        (
+          Some(SlotValue::Box(BoxValue::Inset(width))),
+          Some(SlotValue::Box(BoxValue::Color(color))),
+        ) => Some(Reading::Border(width.edge(edge), color)),
+        _ => None,
+      },
+      Self::Ink => match value(TEXT_COLOR) {
+        Some(SlotValue::Run(RunValue::Color(color))) => Some(Reading::Color(color)),
+        _ => None,
+      },
+      Self::Hidden => match value(HIDDEN) {
+        Some(SlotValue::Box(BoxValue::Hidden(hidden))) => Some(Reading::Hidden(hidden)),
+        _ => None,
+      },
+      Self::AspectRatio => match value(ASPECT_RATIO) {
+        Some(SlotValue::Box(BoxValue::AspectRatio(ratio))) => Some(Reading::Ratio(ratio.0)),
+        _ => None,
+      },
+      Self::Overflow => match value(OVERFLOW) {
+        Some(SlotValue::Box(BoxValue::Overflow(overflow))) => {
+          Some(Reading::Overflow(overflow.computed()))
+        }
+        _ => None,
+      },
+    };
+
+    reading.unwrap_or(Reading::Missing)
+  }
 }
 
-/// The first control at or under `node`.
-fn headless_control(node: NodeId) -> Option<NodeId> {
-  if control_props(node).is_some() {
-    return Some(node);
+/// The value `style` compiled at [`Keeping::Nothing`] gives the property `key`.
+fn compiled_value(
+  style: &CompiledStyle<f32, WebStyle>,
+  key: PropertyKey<WebProperty>,
+) -> Option<SlotValue<f32, WebStyle>> {
+  let resolved = style.resolved();
+
+  resolved
+    .boxed
+    .value(key)
+    .map(SlotValue::Box)
+    .or_else(|| resolved.run.value(key).map(SlotValue::Run))
+}
+
+/// The value `frame` compiled at [`Keeping::Nothing`] gives the property `key`.
+fn frame_value(
+  frame: &Frame<f32, WebStyle>,
+  key: PropertyKey<WebProperty>,
+) -> Option<SlotValue<f32, WebStyle>> {
+  let resolved = frame.resolved();
+
+  resolved
+    .boxed
+    .value(key)
+    .map(SlotValue::Box)
+    .or_else(|| resolved.run.value(key).map(SlotValue::Run))
+}
+
+/// `value` held to the range of the property `key`, as CSS holds an interpolated value.
+fn in_range(
+  value: SlotValue<f32, WebStyle>,
+  key: PropertyKey<WebProperty>,
+) -> SlotValue<f32, WebStyle> {
+  match value {
+    SlotValue::Box(value) => SlotValue::Box(value.in_range_of(key)),
+    SlotValue::Run(value) => SlotValue::Run(value),
+  }
+}
+
+/// The value `case`'s read node presents once its steps are taken: each step retargets
+/// the node's motion from the style it held to the style the step's write compiles to,
+/// and the reading samples the tweens and animations at the steps' elapsed time.
+fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
+  let node = source.node;
+  let keys = case.read().keys();
+  let reduced = source.environment.reduced_motion;
+  let mut motion = Motion::<WebProperty, SlotValue<f32, WebStyle>>::started_at(0.);
+  let mut now = 0.;
+  let mut style = read.compile(source, node);
+
+  for (written, milliseconds) in case.steps() {
+    if let Some(written) = written {
+      MOVING
+        .get()
+        .expect("the moving case's number")
+        .set(*written);
+      platform::end_turn();
+
+      let next = read.compile(source, node);
+
+      for key in keys {
+        motion.retarget(
+          *key,
+          compiled_value(&style, *key).as_ref(),
+          compiled_value(&next, *key).as_ref(),
+          next.transitions(),
+          now,
+          reduced,
+        );
+      }
+
+      style = next;
+    }
+
+    #[expect(
+      clippy::cast_precision_loss,
+      reason = "a step lasts far fewer milliseconds than f64 holds exactly"
+    )]
+    let elapsed = *milliseconds as f64 / 1000.;
+
+    now += elapsed;
   }
 
-  children(node).into_iter().find_map(headless_control)
+  let presented: Vec<_> = keys
+    .iter()
+    .map(|key| {
+      let target = compiled_value(&style, *key);
+      let underlying = motion
+        .sample(*key, now)
+        .map(|sample| in_range(sample, *key))
+        .or_else(|| target.clone());
+      let value = motion.animate(
+        style.animations(),
+        underlying,
+        |frame| frame_value(frame, *key),
+        now,
+        reduced,
+      );
+      let value = if value == target {
+        value
+      }
+      else {
+        value.map(|sample| in_range(sample, *key))
+      };
+
+      (*key, value)
+    })
+    .collect();
+
+  case.read().reading(|key| {
+    presented
+      .iter()
+      .find(|(presented, _)| *presented == key)
+      .and_then(|(_, value)| value.clone())
+  })
+}
+
+/// What the shared half resolves `case` to over the browser leaf's scene, its viewport
+/// the browser's.
+fn resolved(case: Case, viewport: Size<f32>) -> Reading {
+  let root = document().create_element("div").expect("a root");
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+  platform::install(root.clone());
+  READ_BOX.set(None);
+  READ_RUN.set(None);
+  READ_CONTROL.set(None);
+
+  let _ = mount(move || case.build());
+
+  if case.focuses()
+    && let Some(control) = root
+      .query_selector("[data-skene-control]")
+      .ok()
+      .flatten()
+      .and_then(|control| control.dyn_into::<web_sys::HtmlElement>().ok())
+  {
+    let _ = control.focus();
+  }
+
+  let read = match case.read() {
+    Read::Ink => READ_RUN.take(),
+    _ => READ_BOX.take(),
+  }
+  .expect("the case's read node");
+  let node = read
+    .node
+    .or_else(|| READ_CONTROL.get().and_then(NodeHandle::node))
+    .expect("the read node's id");
+  let generation = GENERATION.get() + 1;
+
+  GENERATION.set(generation);
+
+  let environment = Environment {
+    viewport,
+    ..untrack(|| <Web as Realization>::media().environment())
+  };
+  let source = ParitySource {
+    environment,
+    node,
+    slots: read.slots.clone(),
+    generation,
+  };
+  let reading = present(case, &read, &source);
+
+  platform::uninstall();
+  root.remove();
+
+  reading
 }
 
 /// What the engine computes for `case`.
@@ -812,7 +1215,7 @@ fn rendered(case: Case) -> Reading {
     .expect("connect the root");
   platform::install(root.clone());
 
-  let _ = mount(move || case.build::<Web>());
+  let _ = mount(move || case.build());
 
   if case.focuses()
     && let Some(control) = root

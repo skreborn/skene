@@ -657,6 +657,6 @@ supersedes.
 - **Unsigned cells (`u32`) as the terminal's unit** (2026-10-23): a cell count cannot
   hold `-4`, so a negative margin or inset had no length to be, and every expression
   landing below zero clamped to it. The terminal measures in `i32` whole cells: a
-  margin and an inset keep their sign, and layout takes a negative size, padding,
-  border, spacing or track as zero, as a browser does. Not revisited while lengths are
-  signed.
+  margin and an inset keep their sign, and layout takes any other length below zero
+  as CSS does, a size as auto, a track list as dropped, a padding, a border or a
+  spacing as none. Not revisited while lengths are signed.

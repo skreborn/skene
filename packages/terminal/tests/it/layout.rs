@@ -4,7 +4,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{AnyKind, Children, FlexChild, Seal};
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{self as terminal, TextEntry, prelude::*, testing};
 
 use crate::common::{colors_at, locate, red, rgb, white, with_platform};
 
@@ -469,6 +469,41 @@ fn a_negative_margin_overlaps_and_a_negative_padding_takes_no_room() {
     });
 
     assert_eq!(testing::render_to_text(4, 3), "axc\np\n\n");
+  });
+}
+
+/// A width below zero is dropped as CSS drops it: a box sizes to its content and a field
+/// to its value, as where no width is set.
+#[test]
+fn a_negative_width_is_dropped() {
+  with_platform(|| {
+    let value = Signal::new("hi".to_owned());
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Row::new().set_children((
+            Container::new().set_width(-4).set_child(Text::new("ab")),
+            Text::new("c"),
+          )),
+          Row::new().set_children((
+            BasicTextField::new(TextEntry::new().bind_value(value)).set_width(-4),
+            Text::new("|"),
+          )),
+          Row::new().set_children((
+            BasicTextField::new(TextEntry::new().bind_value(value)),
+            Text::new("|"),
+          )),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(20, 3);
+    let lines: Vec<&str> = frame.lines().collect();
+
+    assert!(lines[0].starts_with("abc"), "{frame}");
+    assert_eq!(lines[1].find('|'), lines[2].find('|'), "{frame}");
+    assert!(lines[1].find('|') > Some(2), "{frame}");
   });
 }
 

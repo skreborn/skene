@@ -70,12 +70,8 @@ impl Scalar for i32 {
   }
 
   #[inline(always)]
-  #[expect(
-    clippy::cast_sign_loss,
-    reason = "the bit pattern is the hash, its sign included"
-  )]
   fn hash_bits(self) -> u64 {
-    u64::from(self as u32)
+    u64::from(self.cast_unsigned())
   }
 }
 

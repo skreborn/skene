@@ -882,7 +882,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       if let Some(field) = field {
         let chrome = chrome(&resolved);
 
-        if resolved.width.is_none() {
+        if style.size.width.is_auto() {
           // One cell past the value's longest line keeps the caret inside the box at
           // its end.
           let content = (field.widest() + 1)
@@ -894,7 +894,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
           ));
         }
 
-        if resolved.height.is_none() {
+        if style.size.height.is_auto() {
           style.size.height = length(cell(u32::from(field.lines) + chrome.top + chrome.bottom));
         }
       }

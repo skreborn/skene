@@ -334,27 +334,32 @@ impl<N: Scalar, X: StyleExtension> BoxLayout for BoxStyle<N, Plain, X> {
   }
 }
 
-/// A length a size, padding, border, spacing or track takes: a negative one is zero, as
-/// a browser takes none of them below it.
+/// A length a padding, border or spacing takes: none below zero.
 fn extent<N: Scalar>(units: N) -> f32 {
   units.to_f32().max(0.)
 }
 
-/// A [`Dimension`] as a taffy size.
+/// A [`Dimension`] as a taffy size; auto for a length or a fraction below zero, as CSS
+/// drops such a size.
 fn dimension<N: Scalar>(value: Dimension<N>) -> taffy::style::Dimension {
   match value {
-    Dimension::Length(units) => length(extent(units)),
-    Dimension::Fraction(value) => percent(value),
-    Dimension::Auto => taffy::style::Dimension::AUTO,
+    Dimension::Length(units) if units.to_f32() >= 0. => length(units.to_f32()),
+    Dimension::Fraction(value) if value >= 0. => percent(value),
+    Dimension::Length(_) | Dimension::Fraction(_) | Dimension::Auto => {
+      taffy::style::Dimension::AUTO
+    }
   }
 }
 
-/// A [`Dimension`] as a taffy auto-capable size.
+/// A [`Dimension`] as a taffy auto-capable size; auto for a length or a fraction below
+/// zero, as CSS drops such a size.
 fn dimension_lpa<N: Scalar>(value: Dimension<N>) -> taffy::style::LengthPercentageAuto {
   match value {
-    Dimension::Length(units) => length(extent(units)),
-    Dimension::Fraction(value) => percent(value),
-    Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
+    Dimension::Length(units) if units.to_f32() >= 0. => length(units.to_f32()),
+    Dimension::Fraction(value) if value >= 0. => percent(value),
+    Dimension::Length(_) | Dimension::Fraction(_) | Dimension::Auto => {
+      taffy::style::LengthPercentageAuto::AUTO
+    }
   }
 }
 
@@ -382,7 +387,7 @@ fn dimension_rect<N: Scalar>(
 /// One [`TrackLimit`] as a taffy min-track sizing function.
 fn min_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MinTrackSizingFunction {
   match limit {
-    TrackLimit::Length(units) => length(extent(units)),
+    TrackLimit::Length(units) => length(units.to_f32()),
     TrackLimit::Fraction(value) => percent(value),
     TrackLimit::Flex(_) | TrackLimit::Auto => taffy::style::MinTrackSizingFunction::AUTO,
     TrackLimit::MinContent => taffy::prelude::min_content(),
@@ -393,7 +398,7 @@ fn min_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MinTrackSizingFun
 /// One [`TrackLimit`] as a taffy max-track sizing function.
 fn max_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MaxTrackSizingFunction {
   match limit {
-    TrackLimit::Length(units) => length(extent(units)),
+    TrackLimit::Length(units) => length(units.to_f32()),
     TrackLimit::Fraction(value) => percent(value),
     TrackLimit::Flex(value) => fr(value),
     TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
@@ -402,25 +407,53 @@ fn max_track<N: Scalar>(limit: TrackLimit<N>) -> taffy::style::MaxTrackSizingFun
   }
 }
 
+/// Whether a track limit is a length or a fraction below zero, which CSS rejects.
+fn rejected_limit<N: Scalar>(limit: TrackLimit<N>) -> bool {
+  match limit {
+    TrackLimit::Length(units) => units.to_f32() < 0.,
+    TrackLimit::Fraction(value) => value < 0.,
+    TrackLimit::Flex(_) | TrackLimit::Auto | TrackLimit::MinContent | TrackLimit::MaxContent => {
+      false
+    }
+  }
+}
+
+/// Whether a track holds a length or a fraction below zero, for which CSS drops the
+/// whole track list.
+fn rejected<N: Scalar>(value: GridTrack<N>) -> bool {
+  match value {
+    GridTrack::Length(units) | GridTrack::FitContent(units) => units.to_f32() < 0.,
+    GridTrack::Fraction(value) => value < 0.,
+    GridTrack::Between(min, max) | GridTrack::Adaptive(min, max) => {
+      rejected_limit(min) || rejected_limit(max)
+    }
+    GridTrack::Flex(_) | GridTrack::Auto | GridTrack::MinContent | GridTrack::MaxContent => false,
+  }
+}
+
 /// One [`GridTrack`] as a taffy track sizing function; `None` for an adaptive track,
-/// which only a template holds.
+/// which only a template holds, and for a track CSS rejects.
 fn track<N: Scalar>(value: GridTrack<N>) -> Option<taffy::style::TrackSizingFunction> {
+  if rejected(value) {
+    return None;
+  }
+
   Some(match value {
-    GridTrack::Length(units) => length(extent(units)),
+    GridTrack::Length(units) => length(units.to_f32()),
     GridTrack::Fraction(value) => percent(value),
     GridTrack::Flex(value) => fr(value),
     GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
     GridTrack::MinContent => taffy::prelude::min_content(),
     GridTrack::MaxContent => taffy::prelude::max_content(),
-    GridTrack::FitContent(units) => fit_content(length(extent(units))),
+    GridTrack::FitContent(units) => fit_content(length(units.to_f32())),
     GridTrack::Between(min, max) => minmax(min_track(min), max_track(max)),
     GridTrack::Adaptive(..) => return None,
   })
 }
 
 /// A template as taffy's tracks and line names, the names empty where no line has one;
-/// both empty where CSS drops the list: more than one adaptive track, or one with
-/// neither limit a length or a fraction.
+/// both empty where CSS drops the list: more than one adaptive track, one with neither
+/// limit a length or a fraction, or a track below zero.
 fn explicit<N: Scalar>(
   template: &GridTemplate<N>,
 ) -> (
@@ -440,13 +473,15 @@ fn explicit<N: Scalar>(
   let tracks: Option<Vec<_>> = template
     .tracks()
     .map(|entry| match entry {
-      GridTrack::Adaptive(min, max) => (fixed(min) || fixed(max)).then(|| {
-        taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
-          count: taffy::style::RepetitionCount::AutoFill,
-          tracks: vec![minmax(min_track(min), max_track(max))],
-          line_names: Vec::new(),
+      GridTrack::Adaptive(min, max) => {
+        (!rejected(entry) && (fixed(min) || fixed(max))).then(|| {
+          taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
+            count: taffy::style::RepetitionCount::AutoFill,
+            tracks: vec![minmax(min_track(min), max_track(max))],
+            line_names: Vec::new(),
+          })
         })
-      }),
+      }
       entry => track(entry).map(taffy::style::GridTemplateComponent::Single),
     })
     .collect();
@@ -474,7 +509,7 @@ fn explicit<N: Scalar>(
 }
 
 /// A track list as taffy's implicit tracks; empty where CSS drops the list, an adaptive
-/// track in it.
+/// track or a track below zero in it.
 fn implicit<N: Scalar>(tracks: &[GridTrack<N>]) -> Vec<taffy::style::TrackSizingFunction> {
   tracks
     .iter()
@@ -538,9 +573,10 @@ mod tests {
     Layout,
     Plain,
     Spacing,
+    TrackLimit,
   };
   use taffy::{
-    prelude::{TaffyGridLine, length, percent},
+    prelude::{TaffyAuto, TaffyGridLine, length, percent},
     style::{Display, FlexDirection},
   };
 
@@ -616,13 +652,15 @@ mod tests {
     );
   }
 
-  /// A negative size, padding, border, spacing or track takes no room, as a browser
-  /// takes none of them below zero, while a margin and an inset keep their sign.
+  /// A size or a track list below zero is dropped as CSS drops it, a padding, border
+  /// or spacing below zero takes no room, and a margin and an inset keep their sign.
   #[test]
-  fn a_negative_length_is_zero_where_a_browser_takes_none() {
+  fn a_negative_length_is_dropped_or_zero_where_css_takes_none() {
     let style = BoxStyle::<i32, Plain> {
       width: Some(Dimension::Length(-4)),
+      height: Some(Dimension::Fraction(-0.5)),
       min_height: Some(Dimension::Length(-2)),
+      max_width: Some(Dimension::Length(6)),
       padding: Some(Inset::all(-1)),
       border_width: Some(Inset::all(-3)),
       spacing: Some(Spacing {
@@ -636,7 +674,16 @@ mod tests {
         bottom: Dimension::Auto,
         start: Dimension::Length(2),
       }),
-      grid_columns: Some(GridTemplate::new().add_track(GridTrack::Length(-3))),
+      grid_columns: Some(
+        GridTemplate::new()
+          .add_track(GridTrack::Length(2))
+          .add_track(GridTrack::Length(-3)),
+      ),
+      grid_rows: Some(GridTemplate::new().add_track(GridTrack::Length(2))),
+      grid_implicit_columns: Some(vec![
+        GridTrack::Auto,
+        GridTrack::Between(TrackLimit::Length(-1), TrackLimit::Auto),
+      ]),
       ..BoxStyle::default()
     };
     let taffy = style.taffy_style(
@@ -647,9 +694,14 @@ mod tests {
       },
     );
 
-    assert_eq!(taffy.size.width, length(0.));
-    assert_eq!(taffy.min_size.height, length(0.));
-    assert_eq!(taffy.padding.left, length(0.));
+    assert_eq!(taffy.size.width, taffy::style::Dimension::AUTO);
+    assert_eq!(taffy.size.height, taffy::style::Dimension::AUTO);
+    assert_eq!(
+      taffy.min_size.height,
+      taffy::style::LengthPercentageAuto::AUTO
+    );
+    assert_eq!(taffy.max_size.width, length(6.));
+    assert_eq!(taffy.padding, taffy::geometry::Rect::zero());
     assert_eq!(taffy.border, taffy::geometry::Rect::zero());
     assert_eq!(taffy.gap.width, length(0.));
     assert_eq!(taffy.gap.height, length(1.));
@@ -657,9 +709,11 @@ mod tests {
     assert_eq!(taffy.margin.bottom, length(-4.));
     assert_eq!(taffy.inset.top, length(-1.));
     assert_eq!(taffy.inset.left, length(2.));
+    assert_eq!(taffy.grid_template_columns, Vec::new());
     assert_eq!(
-      taffy.grid_template_columns,
-      vec![taffy::style::GridTemplateComponent::Single(length(0.))]
+      taffy.grid_template_rows,
+      vec![taffy::style::GridTemplateComponent::Single(length(2.))]
     );
+    assert_eq!(taffy.grid_auto_columns, Vec::new());
   }
 }

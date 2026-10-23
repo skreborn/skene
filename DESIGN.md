@@ -694,7 +694,10 @@ Condition     = Media | State | And | Or
   tracks (`GridTemplate`, a track list with names added where lines stand, a plain
   list naming none), and a child is placed by an area's or a line's name (`GridName`,
   `Line::area`), a template breaking CSS's rules dropped whole on every platform as CSS
-  drops it. The framework invents no layout
+  drops it. A length below zero is laid out as CSS takes it: a size (a width, a height,
+  a limit, a flexible basis) as auto, the declaration dropped, a track list holding one
+  dropped whole, a padding, a border or a spacing as none, and a margin or an inset
+  with its sign. The framework invents no layout
   system.
 - **The record** (`Record<N, X>`) is a node's style as one list: every property its box
   and run styles set, keyed by its `PropertyKey` (each naming one box or run property)
@@ -1180,9 +1183,9 @@ plan, its prerequisites and its order are in `ROADMAP.md`.
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, a fraction rounding to the
-nearest cell where a length lands (`Scalar::from_f32`) and a negative size, padding,
-border or spacing laid out as zero, as a browser does, while a run's font size keeps its
-fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
+nearest cell where a length lands (`Scalar::from_f32`) and a margin or an inset keeping
+its sign, laid out as layout takes any length below zero, while a run's font size keeps
+its fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
 box-drawing characters on each edge its width names, in its own color, its conditions
 are cells and its own background. Nothing the medium lacks exists to call, so a terminal app is
 first-class at compile time rather than best-effort at run time.

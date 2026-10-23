@@ -709,7 +709,12 @@ Condition     = Media | State | And | Or
 - **Web** renders the whole set into one interned rule template: base declarations,
   `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
   `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
-  therefore works in a static document with zero script.
+  therefore works in a static document with zero script. A template is compiled from
+  the node's typed styles and, in debug builds on both leaves, from its record as well
+  (its entries through the same `Rules`, its frames' leaves rendered as the typed
+  keyframes', a container's `size` containment read from whether it has a height), and
+  the two compiles are asserted equal, template and slot bindings, as is each derived
+  leaf's text.
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's

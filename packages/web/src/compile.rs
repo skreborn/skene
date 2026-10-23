@@ -9,9 +9,12 @@
 //! `i`-th variant, an inset's halves suffixed `-block` and `-inline` before the
 //! variant's index. Variants group by their canonical condition into one rule per
 //! conjunction, kept in each property's declaration order.
+//!
+//! A template is compiled from the node's typed styles and, in debug builds, from its
+//! [`Record`](skene_foundation::Record) as well, the two held equal.
 
 use std::{
-  fmt::Write as _,
+  fmt::{Debug, Write as _},
   hash::{Hash, Hasher},
 };
 
@@ -19,6 +22,7 @@ use rustc_hash::{FxHashMap, FxHasher};
 use skene_foundation::{
   Animation,
   Axis,
+  BoxDynamics,
   BoxProps,
   BoxStyle,
   BoxValue,
@@ -42,6 +46,7 @@ use skene_foundation::{
   Property,
   PropertyKey,
   Realization,
+  RunDynamics,
   RunPlacement,
   RunProps,
   RunStyle,
@@ -68,9 +73,12 @@ use super::{
 use crate::declarations::{Declarations, Ident};
 
 /// A realization over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelRealization: Realization<Scalar = f32, StyleExt = WebStyle> {}
+pub(crate) trait PixelRealization:
+  Realization<Scalar = f32, StyleExt = WebStyle> + Debug
+{
+}
 
-impl<P: Realization<Scalar = f32, StyleExt = WebStyle>> PixelRealization for P {}
+impl<P: Realization<Scalar = f32, StyleExt = WebStyle> + Debug> PixelRealization for P {}
 
 /// A property's key on the web.
 pub(crate) type Key = PropertyKey<WebProperty>;
@@ -352,13 +360,29 @@ pub(crate) fn render_box_leaf(
   leaf: &StaticLeaf<BoxValue<f32, WebStyle>>,
   count: usize,
 ) -> Vec<String> {
-  static_leaf_texts(leaf, count, |value| render_box_value(&value))
+  let texts = static_leaf_texts(leaf, count, |value| render_box_value(&value));
+
+  debug_assert_eq!(
+    record::render_slot_leaf(&leaf.clone().into(), count),
+    texts,
+    "the box leaf {leaf:?} renders from its record apart from its typed value"
+  );
+
+  texts
 }
 
 /// The CSS texts a derived run leaf writes into the `count` custom properties of its
 /// slot: a value rendered, a token or an expression referenced in each.
 pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<WebStyle>>, count: usize) -> Vec<String> {
-  static_leaf_texts(leaf, count, |value| vec![render_run_value(&value)])
+  let texts = static_leaf_texts(leaf, count, |value| vec![render_run_value(&value)]);
+
+  debug_assert_eq!(
+    record::render_slot_leaf(&leaf.clone().into(), count),
+    texts,
+    "the run leaf {leaf:?} renders from its record apart from its typed value"
+  );
+
+  texts
 }
 
 /// The texts of a static leaf for `count` declarations: a fixed value through `fixed`,
@@ -720,17 +744,256 @@ fn layout_declarations(layout: Layout) -> Declarations {
   }
 }
 
+/// A node's style as the compiler reads it: its typed styles, or its record.
+trait Source {
+  /// Whether the style sets the box's height.
+  fn sets_height(&self) -> bool;
+
+  /// Folds the style's motion into `base` as [`motion`] does, appending its
+  /// `@keyframes` blocks to `out`.
+  fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String);
+
+  /// Adds every property the style sets to `rules`, in its visitors' order.
+  fn properties(&self, rules: &mut Rules);
+}
+
+/// A box's typed style and its motion.
+struct TypedBox<'a> {
+  style: &'a BoxStyle<f32, Static<Condition<f32>>, WebStyle>,
+  dynamics: &'a BoxDynamics<f32, WebStyle>,
+}
+
+impl<'a> TypedBox<'a> {
+  /// The style and the motion of a box's props.
+  const fn of<P: PixelRealization>(props: &'a BoxProps<P>) -> Self {
+    Self {
+      style: &props.style,
+      dynamics: &props.dynamics,
+    }
+  }
+}
+
+impl Source for TypedBox<'_> {
+  fn sets_height(&self) -> bool {
+    self.style.height.is_some()
+  }
+
+  fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
+    motion(
+      out,
+      base,
+      &self.dynamics.transitions,
+      &self.dynamics.animations,
+      &box_keyframe_declarations,
+    )
+  }
+
+  fn properties(&self, rules: &mut Rules) {
+    self.style.visit(&mut BoxRules(rules));
+  }
+}
+
+/// A run's typed style, the per-child layout a wrapper gave it, and its motion.
+struct TypedRun<'a> {
+  style: &'a RunStyle<Static<Condition<f32>>, WebStyle>,
+  layout: Option<&'a BoxStyle<f32, Static<Condition<f32>>, WebStyle>>,
+  dynamics: &'a RunDynamics<WebStyle>,
+}
+
+impl<'a> TypedRun<'a> {
+  /// The style, the layout and the motion of a run's props.
+  fn of<P: PixelRealization>(props: &'a RunProps<P>) -> Self {
+    Self {
+      style: &props.style,
+      layout: props.layout.as_deref(),
+      dynamics: &props.dynamics,
+    }
+  }
+}
+
+impl Source for TypedRun<'_> {
+  fn sets_height(&self) -> bool {
+    self.layout.is_some_and(|layout| layout.height.is_some())
+  }
+
+  fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
+    motion(
+      out,
+      base,
+      &self.dynamics.transitions,
+      &self.dynamics.animations,
+      &run_keyframe_declarations,
+    )
+  }
+
+  fn properties(&self, rules: &mut Rules) {
+    self.style.visit(&mut RunRules(rules));
+
+    if let Some(layout) = self.layout {
+      layout.visit(&mut BoxRules(rules));
+    }
+  }
+}
+
+/// The record path: a node's style read from its [`Record`](skene_foundation::Record),
+/// every compile held equal to the typed path's in debug builds.
+#[cfg_attr(
+  not(debug_assertions),
+  expect(
+    dead_code,
+    reason = "a release build compiles through the typed path alone"
+  )
+)]
+mod record {
+  use std::fmt::Debug;
+
+  use skene_foundation::{
+    BoxProps,
+    BoxStyle,
+    Condition,
+    Frame,
+    Property,
+    PropertyKey,
+    Record,
+    RunProps,
+    SlotLeaf,
+    SlotValue,
+    Static,
+    web::WebStyle,
+  };
+
+  use super::{
+    Compiled,
+    Declarations,
+    PixelRealization,
+    Rules,
+    Source,
+    motion,
+    render_box_value,
+    render_run_value,
+    static_leaf_texts,
+    target,
+  };
+
+  /// The CSS texts of an erased value, one per property its target declares: an inset's
+  /// block and inline halves, any other value whole.
+  pub(super) fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String> {
+    match value {
+      SlotValue::Box(value) => render_box_value(value),
+      SlotValue::Run(value) => vec![render_run_value(value)],
+    }
+  }
+
+  /// The CSS texts a derived leaf writes into the `count` custom properties of its slot:
+  /// a value rendered, a token or an expression referenced in each.
+  pub(super) fn render_slot_leaf(leaf: &SlotLeaf<f32, WebStyle>, count: usize) -> Vec<String> {
+    static_leaf_texts(leaf, count, |value| render_slot_value(&value))
+  }
+
+  /// A record's keyframe as declarations.
+  fn frame_declarations(frame: &Frame<f32, WebStyle>) -> Declarations {
+    frame
+      .entries()
+      .iter()
+      .fold(Declarations::new(), |declarations, (key, leaf)| {
+        let target = target(*key);
+        let texts = static_leaf_texts(leaf, target.declared().len(), |value| {
+          render_slot_value(&value)
+        });
+        let declarations = target.declare(declarations, &texts);
+
+        match target.position {
+          Some(position) => declarations.set("position", position),
+          None => declarations,
+        }
+      })
+  }
+
+  impl Source for Record<f32, WebStyle> {
+    fn sets_height(&self) -> bool {
+      self.has(PropertyKey::Shared(Property::Height))
+    }
+
+    fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
+      motion(
+        out,
+        base,
+        self.transitions(),
+        self.animations(),
+        &frame_declarations,
+      )
+    }
+
+    fn properties(&self, rules: &mut Rules) {
+      for (key, value) in self.entries() {
+        rules.property(*key, value, &|value: SlotValue<f32, WebStyle>| {
+          render_slot_value(&value)
+        });
+      }
+    }
+  }
+
+  /// The record of a box's style and its motion.
+  pub(super) fn of_box<P: PixelRealization>(props: &BoxProps<P>) -> Record<f32, WebStyle> {
+    let mut record = Record::new();
+
+    record.add_box(&props.style);
+    record.add_box_dynamics(&props.dynamics);
+
+    record
+  }
+
+  /// The record of the per-child layout a wrapper gave a low-level node.
+  pub(super) fn of_layout(
+    layout: &BoxStyle<f32, Static<Condition<f32>>, WebStyle>,
+  ) -> Record<f32, WebStyle> {
+    let mut record = Record::new();
+
+    record.add_box(layout);
+
+    record
+  }
+
+  /// The record of a run's style, then its layout's, and its motion.
+  pub(super) fn of_run<P: PixelRealization>(props: &RunProps<P>) -> Record<f32, WebStyle> {
+    let mut record = Record::new();
+
+    record.add_run(&props.style);
+
+    if let Some(layout) = &props.layout {
+      record.add_box(layout);
+    }
+
+    record.add_run_dynamics(&props.dynamics);
+
+    record
+  }
+
+  /// Holds what a `kind` node of `props` compiled to from its record to what it compiled
+  /// to from its typed style.
+  pub(super) fn hold(kind: &str, props: &impl Debug, typed: &Compiled, record: &Compiled) {
+    debug_assert_eq!(
+      record, typed,
+      "the {kind} {props:?} compiles from its record apart from its typed style"
+    );
+  }
+}
+
 /// The base declarations a box starts from: its layout and its identity.
-fn box_base<P: PixelRealization>(props: &BoxProps<P>) -> Declarations {
-  box_identity(props, layout_declarations(props.layout))
+fn box_base<P: PixelRealization>(props: &BoxProps<P>, source: &impl Source) -> Declarations {
+  box_identity(props, source, layout_declarations(props.layout))
 }
 
 /// `base` with what names a box: when it names itself for container queries, its
 /// containment—`size` when its height is set, else `inline-size`—and its
 /// view-transition name.
-fn box_identity<P: PixelRealization>(props: &BoxProps<P>, mut base: Declarations) -> Declarations {
+fn box_identity<P: PixelRealization>(
+  props: &BoxProps<P>,
+  source: &impl Source,
+  mut base: Declarations,
+) -> Declarations {
   if let Some(name) = props.container {
-    let containment = if props.style.height.is_some() {
+    let containment = if source.sets_height() {
       "size"
     }
     else {
@@ -747,26 +1010,36 @@ fn box_identity<P: PixelRealization>(props: &BoxProps<P>, mut base: Declarations
   base
 }
 
-/// Compiles a box's props with `base` ahead of its own declarations.
-fn compile_box_with<P: PixelRealization>(props: &BoxProps<P>, base: Declarations) -> Compiled {
+/// Compiles the style `source` reads with `base` ahead of its own declarations.
+fn compile_box_with(source: &impl Source, base: Declarations) -> Compiled {
   let mut out = String::new();
-  let (base, trailer) = motion(
-    &mut out,
-    base,
-    &props.dynamics.transitions,
-    &props.dynamics.animations,
-    &box_keyframe_declarations,
-  );
+  let (base, trailer) = source.motion(&mut out, base);
   let mut rules = Rules::new(base);
 
-  props.style.visit(&mut BoxRules(&mut rules));
+  source.properties(&mut rules);
 
   rules.finish(out, &trailer)
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
 pub(crate) fn compile_box<P: PixelRealization>(props: &BoxProps<P>) -> Compiled {
-  let mut compiled = compile_box_with(props, box_base(props));
+  let compiled = compile_box_from(props, &TypedBox::of(props));
+
+  if cfg!(debug_assertions) {
+    record::hold(
+      "box",
+      props,
+      &compiled,
+      &compile_box_from(props, &record::of_box(props)),
+    );
+  }
+
+  compiled
+}
+
+/// The rule template of a box, its style read from `source`.
+fn compile_box_from<P: PixelRealization>(props: &BoxProps<P>, source: &impl Source) -> Compiled {
+  let mut compiled = compile_box_with(source, box_base(props, source));
 
   if props.layout == Layout::Stack {
     Conjunction::default().emit(
@@ -782,9 +1055,29 @@ pub(crate) fn compile_box<P: PixelRealization>(props: &BoxProps<P>) -> Compiled 
 
 /// The rule template of the per-child layout a wrapper gave a low-level node.
 pub(crate) fn compile_layout<P: PixelRealization>(layout: &StaticBoxStyle<P>) -> Compiled {
+  let dynamics = BoxDynamics::default();
+  let compiled = compile_layout_from(&TypedBox {
+    style: layout,
+    dynamics: &dynamics,
+  });
+
+  if cfg!(debug_assertions) {
+    record::hold(
+      "layout",
+      layout,
+      &compiled,
+      &compile_layout_from(&record::of_layout(layout)),
+    );
+  }
+
+  compiled
+}
+
+/// The rule template of a per-child layout, its style read from `source`.
+fn compile_layout_from(source: &impl Source) -> Compiled {
   let mut rules = Rules::new(Declarations::new());
 
-  layout.visit(&mut BoxRules(&mut rules));
+  source.properties(&mut rules);
 
   rules.finish(String::new(), "")
 }
@@ -793,6 +1086,25 @@ pub(crate) fn compile_layout<P: PixelRealization>(layout: &StaticBoxStyle<P>) ->
 /// native element's own chrome; a text entry's value is inked and selected by the
 /// typography inherited at it.
 pub(crate) fn compile_control<P: PixelRealization>(props: &ControlProps<P>) -> Compiled {
+  let compiled = compile_control_from(props, &TypedBox::of(&props.box_props));
+
+  if cfg!(debug_assertions) {
+    record::hold(
+      "control",
+      &(props, &props.box_props),
+      &compiled,
+      &compile_control_from(props, &record::of_box(&props.box_props)),
+    );
+  }
+
+  compiled
+}
+
+/// The rule template of a control, its box's style read from `source`.
+fn compile_control_from<P: PixelRealization>(
+  props: &ControlProps<P>,
+  source: &impl Source,
+) -> Compiled {
   let entry = props.native.is_some_and(NativeElement::is_text_entry);
   let ink = if entry {
     token_reference(typography::INK.name())
@@ -801,8 +1113,8 @@ pub(crate) fn compile_control<P: PixelRealization>(props: &ControlProps<P>) -> C
     "inherit".to_owned()
   };
   let mut compiled = compile_box_with(
-    &props.box_props,
-    box_base(&props.box_props)
+    source,
+    box_base(&props.box_props, source)
       .set("appearance", "none")
       .set("font", "inherit")
       .set("color", ink)
@@ -846,14 +1158,33 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// `display: none` stands while closed, and the `::backdrop` rule of a modal with a
 /// backdrop.
 pub(crate) fn compile_overlay<P: PixelRealization>(props: &OverlayProps<P>) -> Compiled {
-  let base = box_identity(&props.box_props, Declarations::new())
+  let compiled = compile_overlay_from(props, &TypedBox::of(&props.box_props));
+
+  if cfg!(debug_assertions) {
+    record::hold(
+      "overlay",
+      props,
+      &compiled,
+      &compile_overlay_from(props, &record::of_box(&props.box_props)),
+    );
+  }
+
+  compiled
+}
+
+/// The rule template of an overlay, its box's style read from `source`.
+fn compile_overlay_from<P: PixelRealization>(
+  props: &OverlayProps<P>,
+  source: &impl Source,
+) -> Compiled {
+  let base = box_identity(&props.box_props, source, Declarations::new())
     .set("border", "0 solid")
     .set("padding", "0")
     .set("background", "none")
     .set("color", "inherit")
     .set("overflow", "visible")
     .set("margin", placement_margin(props.placement));
-  let mut compiled = compile_box_with(&props.box_props, base);
+  let mut compiled = compile_box_with(source, base);
 
   Conjunction::default().emit(
     &mut compiled.template,
@@ -879,6 +1210,22 @@ pub(crate) fn compile_overlay<P: PixelRealization>(props: &OverlayProps<P>) -> C
 /// The rule template of a text run; a run on a line of its own lays out one line while
 /// empty, through a rule of its class's specificity that precedes the class's own.
 pub(crate) fn compile_run<P: PixelRealization>(props: &RunProps<P>) -> Compiled {
+  let compiled = compile_run_from(props, &TypedRun::of(props));
+
+  if cfg!(debug_assertions) {
+    record::hold(
+      "run",
+      props,
+      &compiled,
+      &compile_run_from(props, &record::of_run(props)),
+    );
+  }
+
+  compiled
+}
+
+/// The rule template of a text run, its style and its layout's read from `source`.
+fn compile_run_from<P: PixelRealization>(props: &RunProps<P>, source: &impl Source) -> Compiled {
   let mut base = match props.placement {
     RunPlacement::Line => Declarations::new().set("display", "block"),
     RunPlacement::Inline => Declarations::new(),
@@ -892,13 +1239,7 @@ pub(crate) fn compile_run<P: PixelRealization>(props: &RunProps<P>) -> Compiled 
   }
 
   let mut out = String::new();
-  let (base, trailer) = motion(
-    &mut out,
-    base,
-    &props.dynamics.transitions,
-    &props.dynamics.animations,
-    &run_keyframe_declarations,
-  );
+  let (base, trailer) = source.motion(&mut out, base);
 
   if props.placement == RunPlacement::Line {
     Conjunction::default().emit(
@@ -913,11 +1254,7 @@ pub(crate) fn compile_run<P: PixelRealization>(props: &RunProps<P>) -> Compiled 
 
   let mut rules = Rules::new(base);
 
-  props.style.visit(&mut RunRules(&mut rules));
-
-  if let Some(layout) = &props.layout {
-    layout.visit(&mut BoxRules(&mut rules));
-  }
+  source.properties(&mut rules);
 
   rules.finish(out, &trailer)
 }

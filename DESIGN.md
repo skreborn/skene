@@ -188,7 +188,7 @@ toolkit's keeps the default, which does nothing.
   surface per canvas, asked for afresh when lost, and through vello's CPU renderer
   otherwise, in a fresh canvas where a canvas's GPU path failed or the browser lost
   its 2D context; the headless platform renders it to pixels
-  a test reads (`headless::render_to_pixels`); the server leaf renders it empty; the terminal
+  (`headless::render_to_pixels`); the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind
   the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-foundation`, since
@@ -224,7 +224,12 @@ toolkit's keeps the default, which does nothing.
   box's handlers, hover, tab order and drag in the cells the terminal paints, and the
   layout properties, a media condition against the window's width, a token border and a
   scheme-conditioned run in the styles the browser computes; a view's size on the stack
-  is a compile-time assertion in each facade.
+  is a compile-time assertion in each facade. So does the geometry: the layout engine's
+  boxes and text flows (a paragraph's spans, its wrapping, an inline box, the guaranteed
+  core) are `skene-layout`'s unit tests over canned trees and the real Parley engine,
+  and what needs a live platform (a hit, a frame's measured size, a change resolving
+  only what it touched, a text entry's native size) is the terminal's, in cells; the
+  drawing is held by the pinned browser's goldens and the cells the terminal paints.
   A facade's views test on their platform alone, against its real sinks: the web's in a
   browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
   snapshot, never on the headless platform; native ones against their toolkit. A component
@@ -1344,7 +1349,9 @@ wrapped at its content width) is held apart from the records, so an operation on
 key, a press or a drag, a paste, a write from the app—runs with none of them borrowed
 and what it changed (damage, restyle, the window, a moved selection to report) is
 settled after, an operation reaching an editor another holds (a handler that moves
-focus, say) waiting for that one to end. Its edits are reported through `report_edit`,
+focus, say) waiting for that one to end. Its box is at least its native size, eight
+cells or its value's widest line and the caret's cell past it, and its lines tall,
+stretched where its layout stretches its items as an `<input>` is. Its edits are reported through `report_edit`,
 never applied ahead of the verdict, which it shows; it takes its read-only state from
 the scene before each operation, and a key command lays the scene out first
 (`lay_out`). Its selection is the core's—an anchor beside the caret over the value,

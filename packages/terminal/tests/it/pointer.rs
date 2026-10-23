@@ -1,5 +1,6 @@
 //! The pointer in cells: coordinates, hover and its handlers, the cursor shapes, links,
-//! clicks completing on release, and a hover repainting only its rows.
+//! clicks completing on release, a hover repainting only its rows, the node a press
+//! lands on, and a box sized by its hover.
 
 use std::{
   cell::{Cell, RefCell},
@@ -647,5 +648,138 @@ fn a_hover_change_repaints_only_its_rows() {
     let _ = testing::render_to_text(10, 5);
 
     assert_eq!(testing::repainted_rows(), vec![2]);
+  });
+}
+
+/// A press lands on the topmost node covering its cell: a child above its parent, a
+/// stack's later layer above an earlier one, the earlier beside it, and the page's box,
+/// filling the terminal, wherever nothing above it lies.
+#[test]
+fn a_point_hits_the_topmost_node() {
+  with_platform(|| {
+    let hits = Rc::new(RefCell::new(Vec::new()));
+    let named = |name: &'static str| {
+      let hits = Rc::clone(&hits);
+
+      move || {
+        hits.borrow_mut().push(name);
+
+        Bubbling::Stop
+      }
+    };
+
+    let _ = terminal::mount(|| {
+      Container::new()
+        .handle_click(named("page"))
+        .set_child(
+          Column::new().set_children((
+            Container::new()
+              .set_width(10)
+              .set_height(2)
+              .handle_click(named("first")),
+            Stack::new().set_children((
+              Container::new()
+                .set_width(10)
+                .set_height(2)
+                .handle_click(named("under")),
+              Container::new()
+                .set_width(5)
+                .set_height(1)
+                .handle_click(named("over")),
+            )),
+          )),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 8);
+
+    for (x, y) in [(1, 0), (1, 2), (7, 2), (7, 3), (15, 0), (1, 7)] {
+      testing::trigger_mouse_click(x, y);
+    }
+
+    assert_eq!(
+      *hits.borrow(),
+      ["first", "over", "under", "under", "page", "page"]
+    );
+  });
+}
+
+/// A box clipping its overflow hides what lies beneath it beyond its padding box from a
+/// press, its own border still taking it and the box around it beyond.
+#[test]
+fn a_clipping_box_hides_its_overflow_from_a_hit() {
+  with_platform(|| {
+    let hits = Rc::new(RefCell::new(Vec::new()));
+    let named = |name: &'static str| {
+      let hits = Rc::clone(&hits);
+
+      move || {
+        hits.borrow_mut().push(name);
+
+        Bubbling::Stop
+      }
+    };
+
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(20)
+        .set_height(8)
+        .handle_click(named("outer"))
+        .set_child(
+          Container::new()
+            .set_width(10)
+            .set_height(3)
+            .set_border_width(Inset::all(1))
+            .set_overflow(Overflow::Clip)
+            .handle_click(named("clipping"))
+            .set_child(
+              Container::new()
+                .set_width(8)
+                .set_height(6)
+                .handle_click(named("overflowing")),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 8);
+
+    for (x, y) in [(2, 1), (2, 2), (2, 4)] {
+      testing::trigger_mouse_click(x, y);
+    }
+
+    assert_eq!(*hits.borrow(), ["overflowing", "clipping", "outer"]);
+  });
+}
+
+/// A box sized by its hover lays out afresh as the pointer enters and leaves it, the
+/// box after it moving with it.
+#[test]
+fn a_box_sized_by_its_hover_lays_out_as_it_moves() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Row::new()
+        .set_children((
+          Container::new()
+            .set_width(2.when(State::Hovered, 6))
+            .set_height(1)
+            .set_background(red()),
+          Text::new("|"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(10, 2), "  |\n\n");
+
+    testing::trigger_mouse_move(0, 0);
+
+    assert_eq!(testing::render_to_text(10, 2), "      |\n\n");
+    assert_eq!(colors_at(10, 2, 5, 0).1, Some(rgb(red())));
+
+    testing::trigger_mouse_move(0, 1);
+
+    assert_eq!(testing::render_to_text(10, 2), "  |\n\n");
   });
 }

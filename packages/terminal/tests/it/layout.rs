@@ -1314,3 +1314,92 @@ fn a_grouped_inline_box_places_its_content() {
     assert_eq!(pressed.get(), (1.5, 0.5));
   });
 }
+
+/// A frame reports a box's laid-out size to a handle measuring it, and again as the
+/// terminal resizes it.
+#[test]
+fn a_frame_reports_the_laid_out_size() {
+  with_platform(|| {
+    let handle = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((Container::new()
+          .set_width(Dimension::Fraction(0.5))
+          .set_height(4)
+          .bind_handle(handle),))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(handle.size(), None, "nothing is measured before a frame");
+
+    let _ = testing::render_to_text(20, 10);
+
+    assert_eq!(handle.size(), Some(skene_foundation::Size::new(10, 4)));
+
+    testing::trigger_resize(30, 10);
+
+    let _ = testing::render_to_text(30, 10);
+
+    assert_eq!(handle.size(), Some(skene_foundation::Size::new(15, 4)));
+  });
+}
+
+/// A text entry lays out at the terminal's native size for it: a field eight cells wide,
+/// or its value's widest line and the caret's cell past it, and a line tall, an editor
+/// its lines tall.
+#[test]
+fn a_text_entry_lays_out_at_its_native_size() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_item_alignment(ItemAlignment::Start)
+        .set_children((
+          Row::new().set_children((BasicTextField::new(TextEntry::new()), Text::new("|"))),
+          Row::new().set_children((
+            BasicTextField::new(TextEntry::new().set_value("a longer value")),
+            Text::new("|"),
+          )),
+          BasicTextEditor::new(TextEntry::new().set_lines(3)),
+          Text::new("after"),
+        ))
+        .into_any()
+        .build()
+    });
+    let frame = testing::render_to_text(20, 7);
+
+    assert_eq!(locate(&frame, "|"), (8, 0), "{frame}");
+    assert_eq!(frame.lines().nth(1), Some("a longer value |"), "{frame}");
+    assert_eq!(locate(&frame, "after"), (0, 5), "{frame}");
+  });
+}
+
+/// A text entry stretches across its layout's cross axis as an `<input>` does: across a
+/// column's width, and to a row's height.
+#[test]
+fn a_text_entry_stretches_across_its_layout() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(12)
+        .set_child(Column::new().set_children((
+          BasicTextField::new(TextEntry::new()).set_background(red()),
+          Row::new().set_children((
+            Container::new().set_width(1).set_height(4),
+            BasicTextField::new(TextEntry::new()).set_background(red()),
+          )),
+        )))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 6);
+    let red_at = |x: usize, y: usize| colors_at(20, 6, x, y).1 == Some(rgb(red()));
+
+    assert!(red_at(11, 0) && !red_at(12, 0), "across the column");
+    assert!(
+      red_at(1, 1) && red_at(1, 4) && !red_at(1, 5),
+      "to the row's height"
+    );
+  });
+}

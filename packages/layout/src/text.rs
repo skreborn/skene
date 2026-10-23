@@ -644,7 +644,7 @@ mod tests {
   };
 
   use super::{RunHit, TextFlow};
-  use crate::Tree;
+  use crate::{Frames, Tree};
 
   /// The face the tests lay text out in.
   const INTER: Typeface = Typeface::new(
@@ -678,6 +678,499 @@ mod tests {
   /// How wide `text` lays out on one line.
   fn width(text: &str) -> f32 {
     flow((), text).leaf().laid(None).size().width
+  }
+
+  /// How far above the baseline the face's capital letters reach, a fraction of the
+  /// font size: what a trimmed flow cuts its first line to.
+  const CAP: f32 = 1490. / 2048.;
+
+  /// The style of the tests' text at `size`, its lines one and a half times it tall.
+  fn style_at(size: f32) -> TextStyle {
+    TextStyle::new(size).with_line_height(skene_foundation::text::LineHeight::Factor(1.5))
+  }
+
+  /// How wide `text` lays out on one line at `size`.
+  fn width_at(text: &str, size: f32) -> f32 {
+    let mut flow = TextFlow::new(engine(), style_at(size), ParagraphStyle::default());
+
+    flow.add_run((), &[], text, style_at(size));
+    flow.leaf().laid(None).size().width
+  }
+
+  /// How far above the baseline the face's capital letters reach at `size`.
+  fn cap(size: f32) -> f32 {
+    CAP * size
+  }
+
+  /// How far below the top of a line box `height` tall the face's baseline lies at
+  /// `size`: the box's room beyond the face's ascent and descent split above and below.
+  fn baseline(height: f32, size: f32) -> f32 {
+    let scale = size / 2048.;
+
+    (height - 2478. * scale) / 2. + 1984. * scale
+  }
+
+  /// The rectangle at (`x`, `y`) of `width` by `height`.
+  const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect<f32> {
+    Rect {
+      origin: Point::new(x, y),
+      size: Size::new(width, height),
+    }
+  }
+
+  /// Asserts that `actual` is `expected`, each edge within a ten-thousandth of a unit.
+  #[track_caller]
+  fn assert_near(actual: Option<Rect<f32>>, expected: Rect<f32>) {
+    let near = actual.is_some_and(|actual| {
+      [
+        (actual.origin.x, expected.origin.x),
+        (actual.origin.y, expected.origin.y),
+        (actual.size.width, expected.size.width),
+        (actual.size.height, expected.size.height),
+      ]
+      .iter()
+      .all(|(actual, expected)| (actual - expected).abs() < 1e-4)
+    });
+
+    assert!(near, "{actual:?} is not {expected:?}");
+  }
+
+  /// A trimmed paragraph of the tests' text holding `runs`, each a node, the groups
+  /// around it, its text and its font size.
+  fn paragraph(runs: &[(NodeId, &[NodeId], &str, f32)]) -> TextFlow<ParleyEngine> {
+    let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default()).trimmed(CAP);
+
+    for (node, groups, text, size) in runs {
+      flow.add_run(*node, groups, text, style_at(*size));
+    }
+
+    flow
+  }
+
+  /// A page `width` wide and 768 tall laying its items out down it, each a text leaf or
+  /// a row holding one.
+  struct Page {
+    tree: Tree<TextFlow<ParleyEngine>>,
+    viewport: NodeId,
+    width: f32,
+    items: Vec<NodeId>,
+  }
+
+  impl Page {
+    /// An empty page `width` wide.
+    fn new(width: f32) -> Self {
+      let mut tree = Tree::new(false);
+      let viewport = node();
+
+      tree.insert(viewport);
+
+      tree.set_style(
+        viewport,
+        Style {
+          display: taffy::style::Display::Flex,
+          flex_direction: FlexDirection::Column,
+          size: taffy::geometry::Size {
+            width: length(width),
+            height: length(768.),
+          },
+          ..Style::default()
+        },
+      );
+
+      Self {
+        tree,
+        viewport,
+        width,
+        items: Vec::new(),
+      }
+    }
+
+    /// Adds the leaf `leaf` holding `flow` as the page's next item, inside a row of its
+    /// own where `row` is given.
+    fn add(&mut self, leaf: NodeId, flow: TextFlow<ParleyEngine>, row: Option<NodeId>) {
+      self.tree.insert(leaf);
+      self.tree.set_context(leaf, Some(flow));
+
+      if let Some(row) = row {
+        self.tree.insert(row);
+
+        self.tree.set_style(
+          row,
+          Style {
+            flex_direction: FlexDirection::Row,
+            ..Style::default()
+          },
+        );
+
+        self.tree.set_children(row, [leaf]);
+      }
+
+      self.items.push(row.unwrap_or(leaf));
+    }
+
+    /// Adds the inline box `inline` flowing in `leaf`, holding `view`, a box of `size`,
+    /// and gives the leaf the size it lays out at, as a walk of the scene does.
+    fn add_box(&mut self, leaf: NodeId, inline: NodeId, view: NodeId, size: Size<f32>) {
+      self.tree.insert(inline);
+
+      self.tree.set_style(
+        inline,
+        Style {
+          display: taffy::style::Display::Flex,
+          ..Style::default()
+        },
+      );
+
+      self.tree.insert(view);
+
+      self.tree.set_style(
+        view,
+        Style {
+          size: taffy::geometry::Size {
+            width: length(size.width),
+            height: length(size.height),
+          },
+          ..Style::default()
+        },
+      );
+
+      self.tree.set_children(inline, [view]);
+
+      self.tree.compute(
+        inline,
+        taffy::geometry::Size {
+          width: AvailableSpace::MaxContent,
+          height: AvailableSpace::MaxContent,
+        },
+      );
+
+      let laid = self
+        .tree
+        .layout(inline)
+        .map(|layout| Size::new(layout.size.width, layout.size.height))
+        .expect("the box laid out");
+      let flow = self.tree.context_mut(leaf).expect("the leaf's flow");
+
+      flow.add_box(inline, &[], Size::new(0., 0.));
+      crate::Leaf::size_box(flow, inline, laid);
+      self.tree.mark_dirty(leaf);
+    }
+
+    /// Lays the page out and returns every node's rectangle.
+    fn lay_out(&mut self) -> Frames {
+      self
+        .tree
+        .set_children(self.viewport, self.items.iter().copied());
+
+      self.tree.compute(
+        self.viewport,
+        taffy::geometry::Size {
+          width: AvailableSpace::Definite(self.width),
+          height: AvailableSpace::Definite(768.),
+        },
+      );
+
+      self.tree.frames(self.viewport)
+    }
+  }
+
+  /// A paragraph's spans flow on one line, each where its text is, a group spanning its
+  /// own, and a point finds the span drawn there.
+  #[test]
+  fn a_paragraphs_spans_flow_on_one_line() {
+    let (text, hello, group, wor, ld) = (node(), node(), node(), node(), node());
+    let mut page = Page::new(1024.);
+
+    page.add(
+      text,
+      paragraph(&[
+        (hello, &[], "Hello ", 16.),
+        (wor, &[group], "wor", 16.),
+        (ld, &[group], "ld", 16.),
+      ]),
+      None,
+    );
+
+    let frames = page.lay_out();
+    let start = width("Hello ");
+    let end = start + width("world");
+    let middle = end - width("ld");
+    let top = cap(16.) - baseline(24., 16.);
+
+    assert_near(frames.rect(text), rect(0., 0., 1024., cap(16.)));
+    assert_near(frames.rect(hello), rect(0., top, start, 24.));
+    assert_near(frames.rect(group), rect(start, top, end - start, 24.));
+    assert_near(frames.rect(wor), rect(start, top, middle - start, 24.));
+    assert_near(frames.rect(ld), rect(middle, top, width("ld"), 24.));
+    assert_eq!(frames.hit(Point::new(start + 2., 10.)), Some(wor));
+
+    assert_eq!(
+      frames.hit(Point::new(200., 10.)),
+      Some(text),
+      "beyond the text"
+    );
+  }
+
+  /// A paragraph wraps across its spans, and a span broken across lines covers each of
+  /// its pieces, spanning them, but takes a hit only where a piece is.
+  #[test]
+  fn a_paragraph_wraps_across_its_spans() {
+    let (text, before, broken) = (node(), node(), node());
+    let narrow = width("c aaa");
+    let mut page = Page::new(narrow);
+
+    page.add(
+      text,
+      paragraph(&[(before, &[], "c ", 16.), (broken, &[], "aaa bb", 16.)]),
+      None,
+    );
+
+    let frames = page.lay_out();
+    let start = width("c ");
+    let top = cap(16.) - baseline(24., 16.);
+
+    assert_near(frames.rect(text), rect(0., 0., narrow, 24. + cap(16.)));
+    assert_near(frames.rect(before), rect(0., top, start, 24.));
+    assert_near(frames.rect(broken), rect(0., top, narrow, 48.));
+
+    assert_eq!(
+      frames.hit(Point::new(start + 2., 10.)),
+      Some(broken),
+      "its first piece"
+    );
+
+    assert_eq!(
+      frames.hit(Point::new(2., 30.)),
+      Some(broken),
+      "its second piece"
+    );
+
+    assert_eq!(
+      frames.hit(Point::new(width("bb") + 4., 30.)),
+      Some(text),
+      "beside its second piece"
+    );
+  }
+
+  /// A line is as tall as its tallest span, a smaller span sitting on its baseline.
+  #[test]
+  fn a_line_is_as_tall_as_its_tallest_span() {
+    let (text, big, small) = (node(), node(), node());
+    let mut page = Page::new(1024.);
+
+    page.add(
+      text,
+      paragraph(&[(big, &[], "big ", 32.), (small, &[], "small", 16.)]),
+      None,
+    );
+
+    let frames = page.lay_out();
+    let start = width_at("big ", 32.);
+
+    assert_near(frames.rect(text), rect(0., 0., 1024., cap(32.)));
+
+    assert_near(
+      frames.rect(big),
+      rect(0., cap(32.) - baseline(48., 32.), start, 48.),
+    );
+
+    assert_near(
+      frames.rect(small),
+      rect(start, cap(32.) - baseline(24., 16.), width("small"), 24.),
+    );
+  }
+
+  /// An inline box lays out at its content's size among its paragraph's text, its line
+  /// as tall as the box, and a point finds the view inside it.
+  #[test]
+  fn an_inline_box_flows_among_its_paragraphs_text() {
+    let (text, before, inline, view, after) = (node(), node(), node(), node(), node());
+    let mut page = Page::new(1024.);
+
+    page.add(text, paragraph(&[(before, &[], "ab ", 16.)]), None);
+    page.add_box(text, inline, view, Size::new(20., 30.));
+    page
+      .tree
+      .context_mut(text)
+      .expect("the leaf's flow")
+      .add_run(after, &[], " cd", style());
+
+    let frames = page.lay_out();
+    let start = width("ab ");
+    let top = 30. - baseline(24., 16.);
+
+    assert_near(frames.rect(text), rect(0., 0., 1024., 30.));
+    assert_near(frames.rect(before), rect(0., top, start, 24.));
+    assert_near(frames.rect(inline), rect(start, 0., 20., 30.));
+    assert_near(frames.rect(view), rect(start, 0., 20., 30.));
+
+    assert_near(
+      frames.rect(after),
+      rect(start + 20., top, width(" cd"), 24.),
+    );
+
+    assert_eq!(frames.hit(Point::new(start + 6., 10.)), Some(view));
+  }
+
+  /// A line may end before an inline box with no blank between them.
+  #[test]
+  fn a_line_may_end_before_an_inline_box() {
+    let (text, run, inline, view) = (node(), node(), node(), node());
+    let mut page = Page::new(30.);
+
+    page.add(text, paragraph(&[(run, &[], "abc", 16.)]), None);
+    page.add_box(text, inline, view, Size::new(20., 30.));
+
+    let frames = page.lay_out();
+    let second = 24. - baseline(24., 16.) + cap(16.);
+
+    assert_near(frames.rect(text), rect(0., 0., 30., second + 30.));
+    assert_near(frames.rect(inline), rect(0., second, 20., 30.));
+  }
+
+  /// A paragraph breaks where the Unicode line breaking algorithm allows, after a
+  /// hyphen as after a blank.
+  #[test]
+  fn a_paragraph_breaks_after_a_hyphen() {
+    let (text, span) = (node(), node());
+    let mut page = Page::new(56.);
+
+    page.add(text, paragraph(&[(span, &[], "well-known", 16.)]), None);
+
+    let frames = page.lay_out();
+
+    assert_near(frames.rect(text), rect(0., 0., 56., 24. + cap(16.)));
+
+    assert_near(
+      frames.rect(span),
+      rect(0., cap(16.) - baseline(24., 16.), width("known"), 48.),
+    );
+  }
+
+  /// A run's letter spacing widens each of its clusters by it.
+  #[test]
+  fn letter_spacing_widens_each_cluster() {
+    let (text, row) = (node(), node());
+    let mut page = Page::new(1024.);
+    let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default()).trimmed(CAP);
+
+    flow.add_run(text, &[], "abc", style().with_letter_spacing(2.));
+    page.add(text, flow, Some(row));
+
+    let frames = page.lay_out();
+
+    assert_eq!(
+      frames.rect(text).map(|rect| rect.size.width),
+      Some(width("abc") + 6.)
+    );
+  }
+
+  /// A text keeps its blanks as CSS's `white-space: pre-wrap` keeps them: the blanks
+  /// starting or ending the text take their room.
+  #[test]
+  fn text_keeps_its_blanks() {
+    let (trailing, leading) = (node(), node());
+    let mut page = Page::new(1024.);
+
+    page.add(
+      trailing,
+      paragraph(&[(trailing, &[], "ab   ", 16.)]),
+      Some(node()),
+    );
+
+    page.add(
+      leading,
+      paragraph(&[(leading, &[], "   ab", 16.)]),
+      Some(node()),
+    );
+
+    let frames = page.lay_out();
+    let kept = width("ab") + 3. * width(" ");
+
+    for run in [trailing, leading] {
+      assert!(
+        frames
+          .rect(run)
+          .is_some_and(|rect| (rect.size.width - kept).abs() < 1e-3),
+        "{:?} takes its three blanks' room",
+        frames.rect(run)
+      );
+    }
+  }
+
+  /// A newline breaks its line, a newline ending the text opens a line, and an empty text
+  /// lays out one.
+  #[test]
+  fn a_newline_breaks_its_line_and_a_final_one_opens_another() {
+    let mut page = Page::new(1024.);
+    let runs = ["a", "a\n", "a\n\n", ""].map(|text| {
+      let run = node();
+
+      page.add(run, paragraph(&[(run, &[], text, 16.)]), Some(node()));
+
+      run
+    });
+    let frames = page.lay_out();
+
+    assert_eq!(
+      runs.map(|run| frames.rect(run).map(|rect| rect.size.height)),
+      [
+        Some(cap(16.)),
+        Some(24. + cap(16.)),
+        Some(48. + cap(16.)),
+        Some(cap(16.))
+      ]
+    );
+  }
+
+  /// The blanks ending a line where it wraps take no room on it.
+  #[test]
+  fn blanks_hang_where_a_line_wraps() {
+    let hung = node();
+    let mut page = Page::new(40.);
+
+    page.add(hung, paragraph(&[(hung, &[], "aaa     bbb", 16.)]), None);
+
+    let frames = page.lay_out();
+
+    assert_eq!(
+      frames.rect(hung).map(|rect| rect.size.height),
+      Some(24. + cap(16.))
+    );
+  }
+
+  /// A word too wide for a line of its own breaks where the line fills, though its
+  /// min-content width, which a row's item keeps, is the widest word's.
+  #[test]
+  fn a_word_too_wide_for_its_line_breaks_where_it_fills() {
+    let (broken, kept) = (node(), node());
+    let mut page = Page::new(40.);
+
+    page.add(
+      broken,
+      paragraph(&[(broken, &[], "aaaaaaaaaaaaaaaaaaaa", 16.)]),
+      None,
+    );
+
+    page.add(
+      kept,
+      paragraph(&[(kept, &[], "aa aaaaaaaaaa b", 16.)]),
+      Some(node()),
+    );
+
+    let frames = page.lay_out();
+
+    assert!(
+      frames
+        .rect(broken)
+        .is_some_and(|rect| (rect.size.height - 4. * 24. - cap(16.)).abs() < 1e-4),
+      "five lines of four letters each"
+    );
+
+    assert_eq!(
+      frames.rect(kept).map(|rect| rect.size.width),
+      Some(width("aaaaaaaaaa"))
+    );
   }
 
   /// A fresh id to key the layout by, each call's distinct from every other's.
@@ -732,7 +1225,9 @@ mod tests {
       !tree.set_context(text, Some(repainted)),
       "nothing it measures to changed"
     );
+
     assert!(!tree.is_dirty(text), "the leaf is not measured again");
+
     assert_eq!(
       laid.paint_at(0),
       red,
@@ -759,6 +1254,7 @@ mod tests {
       },
       &[(first, "alpha beta"), (second, "gamma delta")],
     );
+
     let size = |tree: &Tree<_>, node| {
       let layout: &taffy::tree::Layout = tree.layout(node).expect("laid out");
 
@@ -772,6 +1268,7 @@ mod tests {
         height: AvailableSpace::MaxContent,
       },
     );
+
     assert_eq!(
       tree.layout(row).map(|layout| layout.size.width),
       Some(width("alpha").max(width("beta")) + width("gamma").max(width("delta")))
@@ -784,6 +1281,7 @@ mod tests {
         height: AvailableSpace::MaxContent,
       },
     );
+
     assert_eq!(
       tree.layout(row).map(|layout| layout.size.width),
       Some(width("alpha beta") + width("gamma delta"))
@@ -803,6 +1301,7 @@ mod tests {
         ..Style::default()
       },
     );
+
     tree.compute(
       row,
       taffy::geometry::Size {
@@ -819,7 +1318,9 @@ mod tests {
       (0., 48., 48.),
       "two lines each"
     );
+
     assert_eq!(second_x, first_width);
+
     assert!(
       (first_width + second_width - narrow).abs() < 1.,
       "{first_width} + {second_width}"
@@ -860,6 +1361,7 @@ mod tests {
       tree.layout(boxed).map(|layout| layout.size.height),
       Some(58.)
     );
+
     assert_eq!(
       tree
         .layout(text)
@@ -883,21 +1385,26 @@ mod tests {
 
     assert_eq!(hit(12., 30.), Some(RunHit { node: 1, offset: 0 }));
     assert_eq!(hit(start + 1., 30.), Some(RunHit { node: 3, offset: 0 }));
+
     assert_eq!(
       hit(start + width("world") - 1., 30.),
       Some(RunHit { node: 3, offset: 5 })
     );
+
     assert_eq!(hit(start - 10., 30.), None, "on the box");
     assert_eq!(hit(400., 30.), None, "beside the text");
     assert_eq!(hit(12., 50.), None, "below the text");
+
     assert_eq!(
       flow.nearest(content, Point::new(400., 30.)),
       Some(RunHit { node: 3, offset: 5 })
     );
+
     assert_eq!(
       flow.nearest(content, Point::new(0., 0.)),
       Some(RunHit { node: 1, offset: 0 })
     );
+
     assert_eq!(flow.node_at(7), Some(&3));
 
     let mut wrapped = TextFlow::new(engine(), style(), ParagraphStyle::default());
@@ -912,11 +1419,13 @@ mod tests {
       Some(RunHit { node: 1, offset: 6 }),
       "past the end of a wrapped line, the run that line ends with"
     );
+
     assert_eq!(
       wrapped.nearest(narrow, Point::new(-5., 36.)),
       Some(RunHit { node: 2, offset: 0 }),
       "before the start of the next, the run it starts with"
     );
+
     assert_eq!(
       wrapped.run_at(narrow, Point::new(2., 36.)),
       Some(RunHit { node: 2, offset: 0 })

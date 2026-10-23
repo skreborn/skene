@@ -1916,9 +1916,10 @@ fn derived_text_updates_the_dom_on_change() {
   assert_eq!(element.text_content().as_deref(), Some("5"));
 }
 
-/// Text keeps the guaranteed core: its blanks and newlines are kept, a word too wide
-/// for its line breaks where the line fills, and an empty text, fixed or derived, lays
-/// out the one line a letter does. The word's line is a fixed grid track.
+/// Text keeps the guaranteed core: its blanks and newlines are kept, the blanks starting
+/// or ending it taking their room, those ending a line where it wraps hanging past it,
+/// a word too wide for its line breaks where the line fills, and an empty text, fixed or
+/// derived, lays out the one line a letter does. The word's line is a fixed grid track.
 #[wasm_bindgen_test]
 fn text_keeps_the_guaranteed_core() {
   let (_guard, root) = fresh_root();
@@ -1937,6 +1938,11 @@ fn text_keeps_the_guaranteed_core() {
           .set_children((Text::new("unbreakable".repeat(4)),)),
         Text::new(""),
         Text::derive(move || shown.get()),
+        Text::new("   a b"),
+        Text::new("a b   "),
+        Grid::new()
+          .set_columns(vec![GridTrack::length(40)])
+          .set_children((Text::new("aaa     bbb"),)),
       ))
       .build()
   });
@@ -1987,6 +1993,24 @@ fn text_keeps_the_guaranteed_core() {
     (rect(6).height() - letter).abs() < 0.5,
     "a derived text is as tall as a letter's line: {} against {letter}",
     rect(6).height(),
+  );
+
+  for (index, blanks) in [(7, "leading"), (8, "trailing")] {
+    assert!(
+      rect(index).width() > rect(0).width() + 1.,
+      "the {blanks} blanks take their room: {} against {}",
+      rect(index).width(),
+      rect(0).width(),
+    );
+  }
+
+  let hung = only_child(&child(9)).get_bounding_client_rect();
+
+  assert!(
+    (hung.height() - rect(3).height()).abs() < 0.5,
+    "the blanks ending a wrapped line hang past it, the text two lines: {} against {}",
+    hung.height(),
+    rect(3).height(),
   );
 
   shown.set(String::new());

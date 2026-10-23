@@ -131,9 +131,10 @@ fn a_paint_mixes_against_the_terminals_own_colors() {
   });
 }
 
-/// A run's decoration reaches its cells: an underline keeps its style and color, an
-/// overline and a line through are their own lines, a link is underlined unless its
-/// decoration says otherwise, and plain text carries none.
+/// A run's decoration reaches its cells: an underline keeps its style and color and
+/// runs beneath the blanks between its words, an overline and a line through are their
+/// own lines, a link is underlined unless its decoration says otherwise, and plain text
+/// carries none.
 #[test]
 fn a_runs_decoration_paints_its_lines_into_the_cells() {
   with_platform(|| {
@@ -153,12 +154,13 @@ fn a_runs_decoration_paints_its_lines_into_the_cells() {
               .set_link("https://example.com")
               .set_decoration(TextDecoration::None),
           ]),
+          Text::new("ab cd").set_decoration(TextDecoration::Underline),
         ))
         .into_any()
         .build()
     });
 
-    let decorations = testing::render_to_decorations(12, 4);
+    let decorations = testing::render_to_decorations(12, 5);
     let at = |column: usize, row: usize| decorations[row * 12 + column];
 
     assert_eq!(
@@ -202,5 +204,14 @@ fn a_runs_decoration_paints_its_lines_into_the_cells() {
       CellDecoration::NONE,
       "a link's own decoration wins"
     );
+    assert_eq!(
+      at(2, 4),
+      CellDecoration {
+        underline: Some(TextDecorationStyle::Solid),
+        ..CellDecoration::NONE
+      },
+      "the blank between the words"
+    );
+    assert_eq!(at(1, 3), CellDecoration::NONE, "a plain span's blank");
   });
 }

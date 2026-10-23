@@ -1,15 +1,15 @@
-//! The incremental frame against a frame drawn from scratch: whatever a user and an app
-//! do, the frame that restyles, measures and repaints only what changed, its tokens
-//! kept where they are defined, shows what a frame resolving, laying out and painting
-//! everything shows.
+//! The incremental frame: whatever a user and an app do, the frame that restyles,
+//! measures and repaints only what changed, its tokens kept where they are defined,
+//! shows what a frame resolving, laying out and painting everything shows; the layout
+//! follows the scene across frames, and a change resolves only what it touched.
 
-use std::time::Duration;
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use proptest::prelude::*;
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{self as terminal, prelude::*, testing};
 
-use crate::common::{blue, green, red, white, with_platform};
+use crate::common::{blue, colors_at, green, red, rgb, white, with_platform};
 
 /// The frame's width.
 const WIDTH: u16 = 32;
@@ -189,4 +189,102 @@ proptest! {
       Ok(())
     })?;
   }
+}
+
+/// The layout follows the scene from frame to frame: rows reordered, removed and added,
+/// only the added one built, and a row's width moved by a signal.
+#[test]
+fn the_layout_follows_the_scene_across_frames() {
+  with_platform(|| {
+    let rows = Signal::new(vec![1_u8, 2, 3]);
+    let width = Signal::new(4_i32);
+    let built = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&built);
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .derive_children(
+          move || rows.get(),
+          |row| *row,
+          move |row| {
+            log.borrow_mut().push(row);
+
+            Container::new()
+              .derive_width(move || if row == 2 { width.get() } else { 3 })
+              .set_height(i32::from(row))
+              .set_background(red())
+              .set_child(Text::new(row.to_string()))
+          },
+        )
+        .into_any()
+        .build()
+    });
+    let painted = |y: usize| {
+      (0..12)
+        .filter(|x| colors_at(12, 10, *x, y).1 == Some(rgb(red())))
+        .count()
+    };
+
+    assert_eq!(testing::render_to_text(12, 10), "1\n2\n\n3\n\n\n\n\n\n\n");
+    assert_eq!(painted(1), 4);
+
+    rows.set(vec![3, 2, 4]);
+    width.set(6);
+
+    assert_eq!(testing::render_to_text(12, 10), "3\n\n\n2\n\n4\n\n\n\n\n");
+    assert_eq!(painted(3), 6);
+    assert_eq!(painted(0), 3);
+    assert_eq!(
+      *built.borrow(),
+      [1, 2, 3, 4],
+      "the kept rows are not built again"
+    );
+  });
+}
+
+/// A change to one box's style resolves that box alone at the next frame, which lays
+/// it out afresh beside the boxes it kept; a change to a span's text resolves no style,
+/// the paragraph it flows in laid out afresh.
+#[test]
+fn a_change_resolves_only_what_it_touched() {
+  with_platform(|| {
+    let width = Signal::new(2_i32);
+    let words = Signal::new("one".to_owned());
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Row::new().set_children((
+            Container::new()
+              .derive_width(move || width.get())
+              .set_height(1),
+            Text::new("|"),
+          )),
+          Text::new("kept"),
+          RichText::new().add_spans([Span::derive(move || words.get())]),
+          Text::new("after"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(12, 4), "  |\nkept\none\nafter\n");
+
+    let resolved = testing::style_resolutions();
+
+    width.set(5);
+
+    assert_eq!(testing::render_to_text(12, 4), "     |\nkept\none\nafter\n");
+    assert_eq!(testing::style_resolutions() - resolved, 1);
+
+    let resolved = testing::style_resolutions();
+
+    words.set("one two".to_owned());
+
+    assert_eq!(
+      testing::render_to_text(12, 4),
+      "     |\nkept\none two\nafter\n"
+    );
+    assert_eq!(testing::style_resolutions(), resolved);
+  });
 }

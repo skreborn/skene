@@ -882,20 +882,21 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       if let Some(field) = field {
         let chrome = chrome(&resolved);
 
-        if style.size.width.is_auto() {
-          // One cell past the value's longest line keeps the caret inside the box at
-          // its end.
+        // The native size is the entry's least, as an `<input>`'s is in a flex layout,
+        // so a layout stretching its items stretches it. One cell past the value's
+        // longest line keeps the caret inside the box at its end.
+        if style.size.width.is_auto() && style.min_size.width.is_auto() {
           let content = (field.widest() + 1)
             .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
             .max(8);
 
-          style.size.width = length(cell(
+          style.min_size.width = length(cell(
             u32::try_from(content).unwrap_or(u32::MAX) + chrome.start + chrome.end,
           ));
         }
 
-        if style.size.height.is_auto() {
-          style.size.height = length(cell(u32::from(field.lines) + chrome.top + chrome.bottom));
+        if style.size.height.is_auto() && style.min_size.height.is_auto() {
+          style.min_size.height = length(cell(u32::from(field.lines) + chrome.top + chrome.bottom));
         }
       }
 

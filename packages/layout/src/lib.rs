@@ -527,24 +527,240 @@ const fn item(value: ItemAlignment) -> taffy::style::AlignItems {
 
 #[cfg(test)]
 mod tests {
+  use std::sync::atomic::{AtomicU32, Ordering};
+
   use skene_foundation::{
     Axis,
     BoxStyle,
     Dimension,
+    Flexibility,
     GridTemplate,
     GridTrack,
     Inset,
     Layout,
+    NodeId,
     Plain,
+    Point,
+    Rect,
     Spacing,
     TrackLimit,
   };
   use taffy::{
-    prelude::{TaffyAuto, TaffyGridLine, length, percent},
+    prelude::{AvailableSpace, TaffyAuto, TaffyGridLine, length, percent},
     style::{Display, FlexDirection},
   };
 
-  use super::{Borders, BoxLayout, Place};
+  use super::{Borders, BoxLayout, Frames, Leaf, Place, Tree};
+
+  /// A leaf measuring to nothing, the boxes of these tests sizing themselves.
+  #[derive(PartialEq)]
+  struct Empty;
+
+  impl Leaf for Empty {
+    fn measure(
+      &self,
+      _known: taffy::geometry::Size<Option<f32>>,
+      _available: taffy::geometry::Size<taffy::prelude::AvailableSpace>,
+    ) -> skene_foundation::Size<f32> {
+      skene_foundation::Size::new(0., 0.)
+    }
+  }
+
+  /// A fresh id to key the layout by, each call's distinct from every other's.
+  fn node() -> NodeId {
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+
+    NodeId::new(NEXT.fetch_add(1, Ordering::Relaxed), 0)
+  }
+
+  /// A box `width` by `height` units, laid out as a box of one child.
+  fn sized(width: f32, height: f32) -> BoxStyle<f32, Plain> {
+    BoxStyle {
+      width: Some(Dimension::Length(width)),
+      height: Some(Dimension::Length(height)),
+      ..BoxStyle::default()
+    }
+  }
+
+  /// The rectangle at (`x`, `y`) of `width` by `height`.
+  const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect<f32> {
+    Rect {
+      origin: Point::new(x, y),
+      size: skene_foundation::Size::new(width, height),
+    }
+  }
+
+  /// A tree of boxes laid out in a viewport 1024 by 768 that lays its items out down
+  /// it, as a page's column fills it.
+  struct Page {
+    tree: Tree<Empty>,
+    viewport: NodeId,
+  }
+
+  impl Page {
+    /// An empty page.
+    fn new() -> Self {
+      let mut tree = Tree::new(false);
+      let viewport = node();
+
+      tree.insert(viewport);
+
+      tree.set_style(
+        viewport,
+        taffy::style::Style {
+          display: Display::Flex,
+          flex_direction: FlexDirection::Column,
+          size: taffy::geometry::Size {
+            width: length(1024.),
+            height: length(768.),
+          },
+          ..taffy::style::Style::default()
+        },
+      );
+
+      Self { tree, viewport }
+    }
+
+    /// Adds a box styled `style`, laid out as `layout`, in a stack's cell where
+    /// `in_stack` says so, holding `children`, and returns it.
+    fn add(
+      &mut self,
+      style: &BoxStyle<f32, Plain>,
+      layout: Layout,
+      in_stack: bool,
+      children: &[NodeId],
+    ) -> NodeId {
+      let added = node();
+
+      self.tree.insert(added);
+
+      self.tree.set_style(
+        added,
+        style.taffy_style(
+          layout,
+          Place {
+            in_stack,
+            borders: Borders::Width,
+          },
+        ),
+      );
+
+      self.tree.set_children(added, children.iter().copied());
+
+      added
+    }
+
+    /// Lays the page out, `top` its one item, and returns every node's rectangle.
+    fn lay_out(&mut self, top: NodeId) -> Frames {
+      self.tree.set_children(self.viewport, [top]);
+
+      self.tree.compute(
+        self.viewport,
+        taffy::geometry::Size {
+          width: AvailableSpace::Definite(1024.),
+          height: AvailableSpace::Definite(768.),
+        },
+      );
+
+      self.tree.frames(self.viewport)
+    }
+  }
+
+  /// A column lays its children out one after another down it, the spacing between
+  /// them, and stretches across the page.
+  #[test]
+  fn a_column_lays_its_children_out_in_turn() {
+    let mut page = Page::new();
+    let first = page.add(&sized(100., 20.), Layout::Single, false, &[]);
+    let second = page.add(&sized(50., 30.), Layout::Single, false, &[]);
+    let column = page.add(
+      &BoxStyle {
+        spacing: Some(Spacing::from(10.)),
+        ..BoxStyle::default()
+      },
+      Layout::Flex {
+        axis: Axis::Vertical,
+        reversed: false,
+      },
+      false,
+      &[first, second],
+    );
+
+    let frames = page.lay_out(column);
+
+    assert_eq!(frames.rect(first), Some(rect(0., 0., 100., 20.)));
+    assert_eq!(frames.rect(second), Some(rect(0., 30., 50., 30.)));
+
+    assert_eq!(
+      frames.rect(column).map(|rect| rect.size.width),
+      Some(1024.),
+      "the column stretches across the page"
+    );
+  }
+
+  /// A flexible child takes the room its row leaves, and a stack lays every child out
+  /// in its one cell.
+  #[test]
+  fn a_flexible_child_grows_and_a_stack_overlays() {
+    let mut page = Page::new();
+    let grown = page.add(
+      &BoxStyle {
+        flex: Some(Flexibility::grow(1.)),
+        ..sized(0., 10.)
+      },
+      Layout::Single,
+      false,
+      &[],
+    );
+
+    let fixed = page.add(&sized(100., 10.), Layout::Single, false, &[]);
+    let row = page.add(
+      &BoxStyle::default(),
+      Layout::Flex {
+        axis: Axis::Horizontal,
+        reversed: false,
+      },
+      false,
+      &[grown, fixed],
+    );
+
+    let narrow = page.add(
+      &BoxStyle {
+        width: Some(Dimension::Length(300.)),
+        ..BoxStyle::default()
+      },
+      Layout::Single,
+      false,
+      &[row],
+    );
+
+    let under = page.add(&sized(40., 40.), Layout::Single, true, &[]);
+    let over = page.add(&sized(20., 20.), Layout::Single, true, &[]);
+    let stack = page.add(&BoxStyle::default(), Layout::Stack, false, &[under, over]);
+    let column = page.add(
+      &BoxStyle::default(),
+      Layout::Flex {
+        axis: Axis::Vertical,
+        reversed: false,
+      },
+      false,
+      &[narrow, stack],
+    );
+
+    let frames = page.lay_out(column);
+
+    assert_eq!(frames.rect(grown).map(|rect| rect.size.width), Some(200.));
+
+    assert_eq!(
+      frames.rect(fixed).map(|rect| rect.origin),
+      Some(Point::new(200., 0.))
+    );
+
+    assert_eq!(
+      [under, over].map(|layer| frames.rect(layer).map(|rect| rect.origin)),
+      [Some(Point::new(0., 10.)), Some(Point::new(0., 10.))]
+    );
+  }
 
   /// A border takes one unit on each edge drawn where it is cells, and its width where
   /// it is lengths.
@@ -569,6 +785,7 @@ mod tests {
         start: 0.,
       }
     );
+
     assert_eq!(
       Borders::Width.room(&style),
       Inset {
@@ -610,6 +827,7 @@ mod tests {
     assert_eq!(taffy.size.height, percent(0.5));
     assert_eq!(taffy.gap.width, length(2.));
     assert_eq!(taffy.gap.height, length(3.));
+
     assert_eq!(
       taffy.grid_row.start,
       taffy::style::GridPlacement::from_line_index(1)
@@ -660,10 +878,12 @@ mod tests {
 
     assert_eq!(taffy.size.width, taffy::style::Dimension::AUTO);
     assert_eq!(taffy.size.height, taffy::style::Dimension::AUTO);
+
     assert_eq!(
       taffy.min_size.height,
       taffy::style::LengthPercentageAuto::AUTO
     );
+
     assert_eq!(taffy.max_size.width, length(6.));
     assert_eq!(taffy.padding, taffy::geometry::Rect::zero());
     assert_eq!(taffy.border, taffy::geometry::Rect::zero());
@@ -674,10 +894,12 @@ mod tests {
     assert_eq!(taffy.inset.top, length(-1.));
     assert_eq!(taffy.inset.left, length(2.));
     assert_eq!(taffy.grid_template_columns, Vec::new());
+
     assert_eq!(
       taffy.grid_template_rows,
       vec![taffy::style::GridTemplateComponent::Single(length(2.))]
     );
+
     assert_eq!(taffy.grid_auto_columns, Vec::new());
   }
 }

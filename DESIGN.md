@@ -624,6 +624,20 @@ Condition     = Media | State | And | Or
   token's reference, and the theme in force answers it where the slot is read. A
   definition admits no closure, which is what keeps a palette plain data that
   serializes, hashes and renders without script.
+- **A length is a plain number**, an `i32` or an `f32`, wherever one is taken. Every
+  length-valued property's value, leaf and definition converts from both, so
+  `set_width(16)`, `set_width(16.5)`, `when(.., 16)` and a token defined as `8` are the
+  ordinary spelling, and every constructor measured in lengths takes
+  `impl IntoScalar<N>`: `Spacing::new(8, -4)`, `Inset::new(0, 8, 0, 8)` in its fields'
+  order (start, top, end, bottom), `Inset::all`, `Media::min_width(900)` and
+  `ContainerQuery::max_width(40)`, so code generic over the platform's scalar writes
+  `Inset::all(4)` as an app does. `IntoScalar` lands a number in the unit through
+  `Scalar::from_i32` and `Scalar::from_f32`: a pixel holds either exactly, and a cell
+  rounds an `f32` to the nearest at the setter, so layout sees whole cells, while a
+  `Length` (a font size, a corner radius, a letter spacing) keeps its fraction in every
+  unit. An inset of dimensions (a margin, an offset, a pinned edge) takes a plain
+  number as a fixed length beside a `Dimension`. Any other type is no length, and
+  `IntoScalar`'s diagnostic states the rule.
 - Conditions ride the value: `value.when(condition, other)`. The composition machinery
   (`ConditionTree`: `holds`, DNF expansion) is one generic in the spine; the web emits one
   rule per conjunction and groups a node's properties by canonical condition, the
@@ -1182,9 +1196,8 @@ plan, its prerequisites and its order are in `ROADMAP.md`.
 ### The terminal (`skene-terminal`)
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
-ones typed to the terminal: lengths are `i32` whole cells, a fraction rounding to the
-nearest cell where a length lands (`Scalar::from_f32`) and a margin or an inset keeping
-its sign, laid out as layout takes any length below zero, while a run's font size keeps
+ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
+nearest cell at the setter (`1.5` is two) and a margin or an inset keeping its sign, laid out as layout takes any length below zero, while a run's font size keeps
 its fraction of a cell; text is a color plus a `bool` bold, a border is one cell of
 box-drawing characters on each edge its width names, in its own color, its conditions
 are cells and its own background. Nothing the medium lacks exists to call, so a terminal app is

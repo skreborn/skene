@@ -433,7 +433,14 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
     );
     let edges = key.border_edges;
 
-    if edges == Inset::all(true) {
+    if edges
+      == (Inset {
+        start: true,
+        top: true,
+        end: true,
+        bottom: true,
+      })
+    {
       canvas.stroke(
         &RoundedRect::new(
           line / 2.,

@@ -717,7 +717,7 @@ mod tests {
     );
     assert!(!Dimension::<f32>::Auto.interpolates_with(&Dimension::Length(10.)));
     assert_eq!(
-      Inset::all(0f32).interpolate(&Inset::all(4.), 0.25),
+      Inset::<f32>::all(0.).interpolate(&Inset::all(4.), 0.25),
       Some(Inset::all(1.))
     );
   }

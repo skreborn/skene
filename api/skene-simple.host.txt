@@ -303,10 +303,10 @@ pub fn skene_simple::SimpleTooltipBase::set_placement(self, skene_foundation::sp
 pub fn skene_simple::SimpleTooltipBase::view(impl skene_foundation::spine::view::View<P>) -> Self
 pub trait skene_simple::SimpleUnit: skene_foundation::spine::scalar::Scalar
 pub const skene_simple::SimpleUnit::MARKS: skene_simple::SimpleMarks
-pub const skene_simple::SimpleUnit::SHAPE: skene_simple::SimpleShape<Self>
+pub fn skene_simple::SimpleUnit::shape() -> skene_simple::SimpleShape<Self>
 impl skene_simple::SimpleUnit for f32
 pub const f32::MARKS: skene_simple::SimpleMarks
-pub const f32::SHAPE: skene_simple::SimpleShape<Self>
+pub fn f32::shape() -> skene_simple::SimpleShape<Self>
 impl skene_simple::SimpleUnit for i32
 pub const i32::MARKS: skene_simple::SimpleMarks
-pub const i32::SHAPE: skene_simple::SimpleShape<Self>
+pub fn i32::shape() -> skene_simple::SimpleShape<Self>

@@ -1,4 +1,4 @@
-use crate::spine::{Leaf, StaticLeaf, Value, values::is_identifier};
+use crate::spine::{Leaf, Scalar, StaticLeaf, Value, values::is_identifier};
 
 /// One grid track's size, in a template or an auto-track list.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,6 +33,22 @@ impl<T: Copy> GridTrack<T> {
   #[inline(always)]
   pub fn repeated(self, count: u16) -> impl Iterator<Item = Self> {
     std::iter::repeat_n(self, count as usize)
+  }
+}
+
+impl<N: Scalar> From<i32> for GridTrack<N> {
+  /// A plain number as a fixed length.
+  #[inline(always)]
+  fn from(length: i32) -> Self {
+    Self::Length(N::from_i32(length))
+  }
+}
+
+impl<N: Scalar> From<f32> for GridTrack<N> {
+  /// A plain number as a fixed length, rounded to the unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::Length(N::from_f32(length))
   }
 }
 
@@ -74,10 +90,11 @@ impl<T> GridTemplate<T> {
     }
   }
 
-  /// This template with `track` after its entries.
+  /// This template with `track` after its entries: a track, or a plain number for a
+  /// fixed length.
   #[inline(always)]
-  pub fn add_track(mut self, track: GridTrack<T>) -> Self {
-    self.entries.push(TemplateEntry::Track(track));
+  pub fn add_track(mut self, track: impl Into<GridTrack<T>>) -> Self {
+    self.entries.push(TemplateEntry::Track(track.into()));
 
     self
   }
@@ -182,6 +199,22 @@ pub enum TrackLimit<T> {
   MinContent,
   /// The content's maximum size.
   MaxContent,
+}
+
+impl<N: Scalar> From<i32> for TrackLimit<N> {
+  /// A plain number as a fixed length.
+  #[inline(always)]
+  fn from(length: i32) -> Self {
+    Self::Length(N::from_i32(length))
+  }
+}
+
+impl<N: Scalar> From<f32> for TrackLimit<N> {
+  /// A plain number as a fixed length, rounded to the unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::Length(N::from_f32(length))
+  }
 }
 
 /// The direction auto-placed grid items fill, and whether gaps are backfilled.

@@ -42,6 +42,7 @@ pub use skene_terminal::HasRun
 pub use skene_terminal::IntoBrush
 pub use skene_terminal::IntoChildOf
 pub use skene_terminal::IntoChildren
+pub use skene_terminal::IntoScalar
 pub use skene_terminal::ItemExtent
 pub use skene_terminal::Key
 pub use skene_terminal::KeyEvent
@@ -198,6 +199,7 @@ pub use skene_terminal::prelude::HasChildren
 pub use skene_terminal::prelude::IndexedField
 pub use skene_terminal::prelude::IntoChildOf
 pub use skene_terminal::prelude::IntoChildren
+pub use skene_terminal::prelude::IntoScalar
 pub use skene_terminal::prelude::ItemAlignment
 pub use skene_terminal::prelude::ItemExtent
 pub use skene_terminal::prelude::Iterations

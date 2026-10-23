@@ -28,6 +28,7 @@ use skene_foundation::{
   Realization,
   Row,
   RunBase,
+  Spacing,
   State,
   Text,
   View,
@@ -225,7 +226,7 @@ where
   );
 
   Row::<P>::new()
-    .set_spacing(shape::<P>().indicator_spacing)
+    .set_spacing(Spacing::all(shape::<P>().indicator_spacing))
     .set_arrangement(Arrangement::SpaceBetween)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((

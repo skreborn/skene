@@ -9,7 +9,7 @@ use skene_web::prelude::*;
 
 fn kinds(selected: Signal<bool>) -> impl View {
   Container::new()
-    .set_padding(Inset::all(12.))
+    .set_padding(Inset::all(12))
     .set_background(
       Color::srgb(0.95, 0.95, 0.97).when(State::Hovered, Color::srgb(0.9, 0.9, 0.95)),
     )
@@ -21,10 +21,31 @@ fn kinds(selected: Signal<bool>) -> impl View {
         Color::srgb(0.85, 0.85, 0.9)
       }
     })
-    .set_border_width(Inset::all(1.))
+    .set_border_width(Inset::all(1))
     .set_child(Text::new("Hover me"))
 }
 ```
+
+A length is a plain number, an `i32` or an `f32`: `set_width(16)` and `set_width(16.5)`
+both set a width, and every constructor measured in lengths takes either, in the
+order of its fields.
+
+```rust
+use skene_web::prelude::*;
+
+fn lengths() -> impl View {
+  Row::new()
+    .set_spacing(Spacing::new(8, -4))
+    .set_padding(Inset::new(0, 8, 0, 8))
+    .set_children((
+      Container::new().set_width(16).set_child(Text::new("Whole")),
+      Container::new().set_width(16.5).set_child(Text::new("Fractional")),
+    ))
+}
+```
+
+`Inset::new` takes the start, the top, the end and the bottom; `Inset::all`,
+`Inset::symmetric`, `Inset::horizontal` and `Inset::vertical` the common shapes.
 
 On the web the fixed values, tokens, expressions and conditions compile to CSS, so the
 server's page is styled, responsive and hoverable with no script. A derived value is

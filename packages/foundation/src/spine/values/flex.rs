@@ -1,4 +1,5 @@
 use super::Dimension;
+use crate::spine::{IntoScalar, Scalar};
 
 /// Whether and how a flex container wraps its children onto multiple lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -30,11 +31,11 @@ pub struct Flexibility<T> {
 }
 
 impl<T> Flexibility<T> {
-  /// Flexibility from all three components.
+  /// Flexibility from all three components: `initial` a dimension or a plain number.
   #[inline(always)]
-  pub const fn new(initial: Dimension<T>, grow_factor: f32, shrink_factor: f32) -> Self {
+  pub fn new(initial: impl Into<Dimension<T>>, grow_factor: f32, shrink_factor: f32) -> Self {
     Self {
-      initial,
+      initial: initial.into(),
       grow_factor,
       shrink_factor,
     }
@@ -86,10 +87,21 @@ pub struct Spacing<T> {
   pub vertical: T,
 }
 
-impl<T: Copy> Spacing<T> {
+impl<N: Scalar> Spacing<N> {
+  /// `horizontal` between neighbors in a row, `vertical` between neighbors in a column.
+  #[inline(always)]
+  pub fn new(horizontal: impl IntoScalar<N>, vertical: impl IntoScalar<N>) -> Self {
+    Self {
+      horizontal: horizontal.into_scalar(),
+      vertical: vertical.into_scalar(),
+    }
+  }
+
   /// The same spacing on both axes.
   #[inline(always)]
-  pub const fn all(value: T) -> Self {
+  pub fn all(value: impl IntoScalar<N>) -> Self {
+    let value = value.into_scalar();
+
     Self {
       horizontal: value,
       vertical: value,
@@ -97,9 +109,18 @@ impl<T: Copy> Spacing<T> {
   }
 }
 
-impl<T: Copy> From<T> for Spacing<T> {
+impl<N: Scalar> From<i32> for Spacing<N> {
+  /// A plain number as the same spacing on both axes.
   #[inline(always)]
-  fn from(value: T) -> Self {
+  fn from(value: i32) -> Self {
+    Self::all(value)
+  }
+}
+
+impl<N: Scalar> From<f32> for Spacing<N> {
+  /// A plain number as the same spacing on both axes, rounded to the unit.
+  #[inline(always)]
+  fn from(value: f32) -> Self {
     Self::all(value)
   }
 }

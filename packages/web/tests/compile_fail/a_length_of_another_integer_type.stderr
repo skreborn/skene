@@ -1,0 +1,31 @@
+error[E0277]: `u64` is not a length
+ --> tests/compile_fail/a_length_of_another_integer_type.rs:6:47
+  |
+6 |   let _ = Row::new().set_spacing(Spacing::new(8u64, 4));
+  |                                  ------------ ^^^^ not a length here
+  |                                  |
+  |                                  required by a bound introduced by this call
+  |
+  = help: the trait `IntoScalar<f32>` is not implemented for `u64`
+  = note: lengths are plain numbers: `16`, `-4` or `16.5`, an `i32` or an `f32`
+help: the following other types implement trait `IntoScalar<N>`
+ --> $WORKSPACE/packages/foundation/src/spine/scalar.rs
+  |
+  | impl<N: Scalar> IntoScalar<N> for i32 {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `i32` implements `IntoScalar<N>`
+...
+  | impl<N: Scalar> IntoScalar<N> for f32 {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `f32` implements `IntoScalar<N>`
+  |
+ ::: $WORKSPACE/packages/foundation/src/spine/values/dimension.rs
+  |
+  | impl<N: Scalar> IntoScalar<Dimension<N>> for i32 {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `i32` implements `IntoScalar<skene_foundation::spine::values::dimension::Dimension<N>>`
+...
+  | impl<N: Scalar> IntoScalar<Dimension<N>> for f32 {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `f32` implements `IntoScalar<skene_foundation::spine::values::dimension::Dimension<N>>`
+note: required by a bound in `skene_foundation::spine::values::flex::Spacing::<N>::new`
+ --> $WORKSPACE/packages/foundation/src/spine/values/flex.rs
+  |
+  |   pub fn new(horizontal: impl IntoScalar<N>, vertical: impl IntoScalar<N>) -> Self {
+  |                               ^^^^^^^^^^^^^ required by this bound in `Spacing::<N>::new`

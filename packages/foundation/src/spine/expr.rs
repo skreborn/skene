@@ -27,6 +27,13 @@ impl From<f32> for Length {
   }
 }
 
+impl From<i32> for Length {
+  #[inline(always)]
+  fn from(length: i32) -> Self {
+    Self(f32::from_i32(length))
+  }
+}
+
 /// A unitless number.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[must_use]
@@ -491,6 +498,15 @@ impl<Q: Quantity> Add<f32> for Expr<Q> {
   }
 }
 
+impl<Q: Quantity> Add<i32> for Expr<Q> {
+  type Output = Self;
+
+  #[inline(always)]
+  fn add(self, rhs: i32) -> Self {
+    self + Self::from(rhs)
+  }
+}
+
 impl<Q: Quantity> Sub for Expr<Q> {
   type Output = Self;
 
@@ -505,6 +521,15 @@ impl<Q: Quantity> Sub<f32> for Expr<Q> {
   #[inline(always)]
   fn sub(self, rhs: f32) -> Self {
     self - Self::from_node(Q::literal(rhs))
+  }
+}
+
+impl<Q: Quantity> Sub<i32> for Expr<Q> {
+  type Output = Self;
+
+  #[inline(always)]
+  fn sub(self, rhs: i32) -> Self {
+    self - Self::from(rhs)
   }
 }
 
@@ -574,6 +599,13 @@ impl<Q: Quantity> From<f32> for Expr<Q> {
   #[inline(always)]
   fn from(value: f32) -> Self {
     Self::from_node(Q::literal(value))
+  }
+}
+
+impl<Q: Quantity> From<i32> for Expr<Q> {
+  #[inline(always)]
+  fn from(value: i32) -> Self {
+    Self::from(f32::from_i32(value))
   }
 }
 
@@ -775,37 +807,45 @@ token_targets!(Length =>
 
 token_targets!(f32 => [] AspectRatio);
 
-impl From<f32> for StaticLeaf<Length> {
-  /// A number as a length literal, in the medium's unit.
-  #[inline(always)]
-  fn from(length: f32) -> Self {
-    Self::Fixed(Length(length))
-  }
+/// The conversions letting a plain number, an `i32` or an `f32`, stand for a length
+/// literal at every leaf, in the medium's unit and keeping its fraction.
+macro_rules! length_literals {
+  ($($number:ty),+) => {$(
+    impl From<$number> for StaticLeaf<Length> {
+      /// A number as a length literal, in the medium's unit.
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::Fixed(Length::from(length))
+      }
+    }
+
+    impl From<$number> for Leaf<Length> {
+      /// A number as a length literal, in the medium's unit.
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::Static(StaticLeaf::from(length))
+      }
+    }
+
+    impl<C> From<$number> for Value<Length, C> {
+      /// A number as a length literal, in the medium's unit.
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::new(Leaf::from(length))
+      }
+    }
+
+    impl<M: Scalar> From<$number> for Definition<Length, M> {
+      /// A number as a length literal, in the medium's unit.
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::new(StaticLeaf::from(length))
+      }
+    }
+  )+};
 }
 
-impl From<f32> for Leaf<Length> {
-  /// A number as a length literal, in the medium's unit.
-  #[inline(always)]
-  fn from(length: f32) -> Self {
-    Self::Static(StaticLeaf::from(length))
-  }
-}
-
-impl<C> From<f32> for Value<Length, C> {
-  /// A number as a length literal, in the medium's unit.
-  #[inline(always)]
-  fn from(length: f32) -> Self {
-    Self::new(Leaf::from(length))
-  }
-}
-
-impl<M: Scalar> From<f32> for Definition<Length, M> {
-  /// A number as a length literal, in the medium's unit.
-  #[inline(always)]
-  fn from(length: f32) -> Self {
-    Self::new(StaticLeaf::from(length))
-  }
-}
+length_literals!(i32, f32);
 
 impl From<f32> for StaticLeaf<AspectRatio> {
   /// A number as a ratio to one.

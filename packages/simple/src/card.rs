@@ -50,7 +50,7 @@ where
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      column: Column::new().set_spacing(shape::<P>().card_spacing),
+      column: Column::new().set_spacing(Spacing::all(shape::<P>().card_spacing)),
     }
   }
 }

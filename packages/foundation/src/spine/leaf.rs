@@ -5,7 +5,7 @@ use std::{fmt::Debug, rc::Rc};
 use thin_vec::ThinVec;
 
 use super::{Condition, Expr, Media, Scalar, State, Token, TokenName, TokenRef, Tokenable};
-use crate::spine::{Alignment, Axes, Dimension, ItemAlignment, Spacing};
+use crate::spine::{Alignment, Axes, Dimension, Inset, ItemAlignment, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
 ///
@@ -343,7 +343,7 @@ fn alignment_axis(
 /// Every plain value has it; a [`TokenRef`], [`Token`] and [`Expr`] carry the same
 /// `when` as an inherent method. The condition fixes the value's condition type, and a
 /// value under [`Media`] or [`State`] alone converts into one under [`Condition`], so
-/// `8f32.when(Media::MinWidth(900.), 16.)` is accepted where a
+/// `8f32.when(Media::min_width(900), 16.)` is accepted where a
 /// `Value<f32, Condition<N>>` is.
 pub trait When<T>: Into<Leaf<T>> {
   /// This value, overridden by `value` while `condition` holds.
@@ -512,8 +512,7 @@ impl<T, N> From<Definition<T, N>> for Value<T, Condition<N>> {
 }
 
 /// The conversions letting a plain value stand for a uniform value of a type built from
-/// one, at every leaf: `set_spacing(8.)`, `set_width(10.)`, `when(.., 16.)`,
-/// `set_overflow(Overflow::ScrollIfNeeded)`.
+/// one, at every leaf: `set_overflow(Overflow::ScrollIfNeeded)`, `when(.., Overflow::Clip)`.
 macro_rules! uniform_leaves {
   ($($wrapper:ident),+ $(,)?) => {$(
     impl<T: Copy> From<T> for StaticLeaf<$wrapper<T>> {
@@ -546,7 +545,47 @@ macro_rules! uniform_leaves {
   )+};
 }
 
-uniform_leaves!(Spacing, Dimension, Axes);
+uniform_leaves!(Axes);
+
+/// The conversions letting a plain number, an `i32` or an `f32`, stand for a length of
+/// every type measured in one, at every leaf: `set_spacing(8)`, `set_width(16.5)`,
+/// `set_padding(-4)`, `when(.., 16)`; an `f32` rounds to a unit of whole cells.
+macro_rules! length_leaves {
+  ($($number:ty => $($target:ty),+);+ $(;)?) => {$($(
+    impl<N: Scalar> From<$number> for StaticLeaf<$target> {
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::Fixed(<$target>::from(length))
+      }
+    }
+
+    impl<N: Scalar> From<$number> for Leaf<$target> {
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::Static(StaticLeaf::from(length))
+      }
+    }
+
+    impl<N: Scalar, C> From<$number> for Value<$target, C> {
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::new(Leaf::from(length))
+      }
+    }
+
+    impl<N: Scalar, M: Scalar> From<$number> for Definition<$target, M> {
+      #[inline(always)]
+      fn from(length: $number) -> Self {
+        Self::new(StaticLeaf::from(length))
+      }
+    }
+  )+)+};
+}
+
+length_leaves!(
+  i32 => Spacing<N>, Dimension<N>, Inset<N>, Inset<Dimension<N>>;
+  f32 => Spacing<N>, Dimension<N>, Inset<N>, Inset<Dimension<N>>;
+);
 
 impl<T, N: Scalar> From<T> for Definition<T, N> {
   #[inline(always)]

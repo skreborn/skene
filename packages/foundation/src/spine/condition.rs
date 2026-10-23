@@ -2,7 +2,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use super::Scalar;
+use super::{IntoScalar, Scalar};
 use crate::spine::{
   ColorScheme,
   Inset,
@@ -30,6 +30,30 @@ pub enum ContainerQuery<N> {
 }
 
 impl<N: Scalar> ContainerQuery<N> {
+  /// The container is at least `width` wide.
+  #[inline(always)]
+  pub fn min_width(width: impl IntoScalar<N>) -> Self {
+    Self::MinWidth(width.into_scalar())
+  }
+
+  /// The container is at most `width` wide.
+  #[inline(always)]
+  pub fn max_width(width: impl IntoScalar<N>) -> Self {
+    Self::MaxWidth(width.into_scalar())
+  }
+
+  /// The container is at least `height` tall.
+  #[inline(always)]
+  pub fn min_height(height: impl IntoScalar<N>) -> Self {
+    Self::MinHeight(height.into_scalar())
+  }
+
+  /// The container is at most `height` tall.
+  #[inline(always)]
+  pub fn max_height(height: impl IntoScalar<N>) -> Self {
+    Self::MaxHeight(height.into_scalar())
+  }
+
   /// Whether a container of `size` satisfies the query.
   #[inline(always)]
   pub fn holds_for(&self, size: Size<N>) -> bool {
@@ -100,6 +124,30 @@ pub enum Media<N> {
 }
 
 impl<N: Scalar> Media<N> {
+  /// The viewport is at least `width` wide.
+  #[inline(always)]
+  pub fn min_width(width: impl IntoScalar<N>) -> Self {
+    Self::MinWidth(width.into_scalar())
+  }
+
+  /// The viewport is at most `width` wide.
+  #[inline(always)]
+  pub fn max_width(width: impl IntoScalar<N>) -> Self {
+    Self::MaxWidth(width.into_scalar())
+  }
+
+  /// The viewport is at least `height` tall.
+  #[inline(always)]
+  pub fn min_height(height: impl IntoScalar<N>) -> Self {
+    Self::MinHeight(height.into_scalar())
+  }
+
+  /// The viewport is at most `height` tall.
+  #[inline(always)]
+  pub fn max_height(height: impl IntoScalar<N>) -> Self {
+    Self::MaxHeight(height.into_scalar())
+  }
+
   /// A condition holding while every one of `conditions` holds; empty always holds.
   pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
     Self::And(conditions.into_iter().collect())

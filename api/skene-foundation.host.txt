@@ -3059,6 +3059,10 @@ pub skene_foundation::ContainerQuery::MinHeight(N)
 pub skene_foundation::ContainerQuery::MinWidth(N)
 impl<N: skene_foundation::Scalar> skene_foundation::ContainerQuery<N>
 pub fn skene_foundation::ContainerQuery<N>::holds_for(&self, skene_foundation::Size<N>) -> bool
+pub fn skene_foundation::ContainerQuery<N>::max_height(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::ContainerQuery<N>::max_width(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::ContainerQuery<N>::min_height(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::ContainerQuery<N>::min_width(impl skene_foundation::IntoScalar<N>) -> Self
 impl<N: core::clone::Clone> core::clone::Clone for skene_foundation::ContainerQuery<N>
 pub fn skene_foundation::ContainerQuery<N>::clone(&self) -> skene_foundation::ContainerQuery<N>
 impl<N: core::cmp::PartialEq> core::cmp::PartialEq for skene_foundation::ContainerQuery<N>
@@ -3076,12 +3080,22 @@ pub skene_foundation::Dimension::Length(T)
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Dimension<N>
 pub fn skene_foundation::Dimension<N>::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::Dimension<N>::into_box_value(self) -> skene_foundation::BoxValue<N, X>
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::Dimension<N>
+pub fn skene_foundation::Dimension<N>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::Dimension<N>
+pub fn skene_foundation::Dimension<N>::from(i32) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Dimension<N>> for skene_foundation::Resolved<N>
 pub fn skene_foundation::Resolved<N>::from(skene_foundation::Dimension<N>) -> Self
 impl<N: skene_foundation::Scalar> skene_foundation::ExprOutput for skene_foundation::Dimension<N>
 pub fn skene_foundation::Dimension<N>::from_expr_value(skene_foundation::ExprValue) -> core::option::Option<Self>
 impl<N: skene_foundation::Scalar> skene_foundation::Fingerprint for skene_foundation::Dimension<N>
 pub fn skene_foundation::Dimension<N>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<skene_foundation::Dimension<N>> for f32
+pub fn f32::into_scalar(self) -> skene_foundation::Dimension<N>
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<skene_foundation::Dimension<N>> for i32
+pub fn i32::into_scalar(self) -> skene_foundation::Dimension<N>
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<skene_foundation::Dimension<N>> for skene_foundation::Dimension<N>
+pub fn skene_foundation::Dimension<N>::into_scalar(self) -> Self
 impl<N: skene_foundation::Scalar> skene_foundation::Tokenable for skene_foundation::Dimension<N>
 impl<T: core::clone::Clone> core::clone::Clone for skene_foundation::Dimension<T>
 pub fn skene_foundation::Dimension<T>::clone(&self) -> skene_foundation::Dimension<T>
@@ -3094,8 +3108,6 @@ impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::Dimension<T
 impl<T: skene_foundation::interpolate::Interpolate> skene_foundation::interpolate::Interpolate for skene_foundation::Dimension<T>
 pub fn skene_foundation::Dimension<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_foundation::Dimension<T>::interpolates_with(&self, &Self) -> bool
-impl<T> core::convert::From<T> for skene_foundation::Dimension<T>
-pub fn skene_foundation::Dimension<T>::from(T) -> Self
 pub enum skene_foundation::DragAxes
 pub skene_foundation::DragAxes::Both
 pub skene_foundation::DragAxes::Horizontal
@@ -3331,6 +3343,10 @@ pub skene_foundation::GridTrack::MaxContent
 pub skene_foundation::GridTrack::MinContent
 impl<T: core::marker::Copy> skene_foundation::GridTrack<T>
 pub fn skene_foundation::GridTrack<T>::repeated(self, u16) -> impl core::iter::traits::iterator::Iterator<Item = Self>
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::GridTrack<N>
+pub fn skene_foundation::GridTrack<N>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::GridTrack<N>
+pub fn skene_foundation::GridTrack<N>::from(i32) -> Self
 impl<N: skene_foundation::Scalar> skene_foundation::Fingerprint for skene_foundation::GridTrack<N>
 pub fn skene_foundation::GridTrack<N>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: core::clone::Clone> core::clone::Clone for skene_foundation::GridTrack<T>
@@ -3528,6 +3544,8 @@ impl core::convert::From<f32> for skene_foundation::Leaf<skene_foundation::Aspec
 pub fn skene_foundation::Leaf<skene_foundation::AspectRatio>::from(f32) -> Self
 impl core::convert::From<f32> for skene_foundation::Leaf<skene_foundation::Length>
 pub fn skene_foundation::Leaf<skene_foundation::Length>::from(f32) -> Self
+impl core::convert::From<i32> for skene_foundation::Leaf<skene_foundation::Length>
+pub fn skene_foundation::Leaf<skene_foundation::Length>::from(i32) -> Self
 impl core::convert::From<skene_foundation::Expr<skene_foundation::Number>> for skene_foundation::Leaf<f32>
 pub fn skene_foundation::Leaf<f32>::from(skene_foundation::Expr<skene_foundation::Number>) -> Self
 impl core::convert::From<skene_foundation::Expr<skene_foundation::Number>> for skene_foundation::Leaf<skene_foundation::AspectRatio>
@@ -3536,6 +3554,22 @@ impl core::convert::From<skene_foundation::GridName> for skene_foundation::Leaf<
 pub fn skene_foundation::Leaf<skene_foundation::Line<skene_foundation::GridPlacement>>::from(skene_foundation::GridName) -> Self
 impl core::convert::From<skene_foundation::TokenRef<f32>> for skene_foundation::Leaf<skene_foundation::AspectRatio>
 pub fn skene_foundation::Leaf<skene_foundation::AspectRatio>::from(skene_foundation::TokenRef<f32>) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::Leaf<skene_foundation::Dimension<N>>
+pub fn skene_foundation::Leaf<skene_foundation::Dimension<N>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::Leaf<skene_foundation::Inset<N>>
+pub fn skene_foundation::Leaf<skene_foundation::Inset<N>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::Leaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>
+pub fn skene_foundation::Leaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::Leaf<skene_foundation::Spacing<N>>
+pub fn skene_foundation::Leaf<skene_foundation::Spacing<N>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::Leaf<skene_foundation::Dimension<N>>
+pub fn skene_foundation::Leaf<skene_foundation::Dimension<N>>::from(i32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::Leaf<skene_foundation::Inset<N>>
+pub fn skene_foundation::Leaf<skene_foundation::Inset<N>>::from(i32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::Leaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>
+pub fn skene_foundation::Leaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>::from(i32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::Leaf<skene_foundation::Spacing<N>>
+pub fn skene_foundation::Leaf<skene_foundation::Spacing<N>>::from(i32) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Expr<skene_foundation::Length>> for skene_foundation::Leaf<skene_foundation::Dimension<N>>
 pub fn skene_foundation::Leaf<skene_foundation::Dimension<N>>::from(skene_foundation::Expr<skene_foundation::Length>) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Expr<skene_foundation::Length>> for skene_foundation::Leaf<skene_foundation::Inset<N>>
@@ -3562,10 +3596,6 @@ impl<T: core::fmt::Debug> core::fmt::Debug for skene_foundation::Leaf<T>
 pub fn skene_foundation::Leaf<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::Leaf<skene_foundation::Axes<T>>
 pub fn skene_foundation::Leaf<skene_foundation::Axes<T>>::from(T) -> Self
-impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::Leaf<skene_foundation::Dimension<T>>
-pub fn skene_foundation::Leaf<skene_foundation::Dimension<T>>::from(T) -> Self
-impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::Leaf<skene_foundation::Spacing<T>>
-pub fn skene_foundation::Leaf<skene_foundation::Spacing<T>>::from(T) -> Self
 impl<T: skene_foundation::Tokenable, N: skene_foundation::Scalar> core::convert::From<&skene_foundation::Token<T, N>> for skene_foundation::Leaf<T>
 pub fn skene_foundation::Leaf<T>::from(&skene_foundation::Token<T, N>) -> Self
 impl<T: skene_foundation::Tokenable, N: skene_foundation::Scalar> core::convert::From<skene_foundation::Token<T, N>> for skene_foundation::Leaf<T>
@@ -3600,6 +3630,10 @@ pub skene_foundation::Media::ReducedTransparency
 impl<N: skene_foundation::Scalar> skene_foundation::Media<N>
 pub fn skene_foundation::Media<N>::and(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
 pub fn skene_foundation::Media<N>::holds_in(&self, &skene_foundation::MediaEnv<'_, N>) -> bool
+pub fn skene_foundation::Media<N>::max_height(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::Media<N>::max_width(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::Media<N>::min_height(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::Media<N>::min_width(impl skene_foundation::IntoScalar<N>) -> Self
 pub fn skene_foundation::Media<N>::or(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
 impl<N: core::clone::Clone> core::clone::Clone for skene_foundation::Media<N>
 pub fn skene_foundation::Media<N>::clone(&self) -> skene_foundation::Media<N>
@@ -4026,6 +4060,8 @@ impl core::convert::From<f32> for skene_foundation::StaticLeaf<skene_foundation:
 pub fn skene_foundation::StaticLeaf<skene_foundation::AspectRatio>::from(f32) -> Self
 impl core::convert::From<f32> for skene_foundation::StaticLeaf<skene_foundation::Length>
 pub fn skene_foundation::StaticLeaf<skene_foundation::Length>::from(f32) -> Self
+impl core::convert::From<i32> for skene_foundation::StaticLeaf<skene_foundation::Length>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Length>::from(i32) -> Self
 impl core::convert::From<skene_foundation::Expr<skene_foundation::Number>> for skene_foundation::StaticLeaf<f32>
 pub fn skene_foundation::StaticLeaf<f32>::from(skene_foundation::Expr<skene_foundation::Number>) -> Self
 impl core::convert::From<skene_foundation::Expr<skene_foundation::Number>> for skene_foundation::StaticLeaf<skene_foundation::AspectRatio>
@@ -4038,6 +4074,22 @@ impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> core::con
 pub fn skene_foundation::SlotLeaf<N, X>::from(skene_foundation::StaticLeaf<skene_foundation::BoxValue<N, X>>) -> Self
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> core::convert::From<skene_foundation::StaticLeaf<skene_foundation::RunValue<X>>> for skene_foundation::SlotLeaf<N, X>
 pub fn skene_foundation::SlotLeaf<N, X>::from(skene_foundation::StaticLeaf<skene_foundation::RunValue<X>>) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::StaticLeaf<skene_foundation::Dimension<N>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Dimension<N>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::StaticLeaf<skene_foundation::Inset<N>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Inset<N>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::StaticLeaf<skene_foundation::Spacing<N>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Spacing<N>>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::StaticLeaf<skene_foundation::Dimension<N>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Dimension<N>>::from(i32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::StaticLeaf<skene_foundation::Inset<N>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Inset<N>>::from(i32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Inset<skene_foundation::Dimension<N>>>::from(i32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::StaticLeaf<skene_foundation::Spacing<N>>
+pub fn skene_foundation::StaticLeaf<skene_foundation::Spacing<N>>::from(i32) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Expr<skene_foundation::Length>> for skene_foundation::StaticLeaf<skene_foundation::Dimension<N>>
 pub fn skene_foundation::StaticLeaf<skene_foundation::Dimension<N>>::from(skene_foundation::Expr<skene_foundation::Length>) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Expr<skene_foundation::Length>> for skene_foundation::StaticLeaf<skene_foundation::Inset<N>>
@@ -4071,10 +4123,6 @@ impl<T: core::hash::Hash> core::hash::Hash for skene_foundation::StaticLeaf<T>
 pub fn skene_foundation::StaticLeaf<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::StaticLeaf<skene_foundation::Axes<T>>
 pub fn skene_foundation::StaticLeaf<skene_foundation::Axes<T>>::from(T) -> Self
-impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::StaticLeaf<skene_foundation::Dimension<T>>
-pub fn skene_foundation::StaticLeaf<skene_foundation::Dimension<T>>::from(T) -> Self
-impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::StaticLeaf<skene_foundation::Spacing<T>>
-pub fn skene_foundation::StaticLeaf<skene_foundation::Spacing<T>>::from(T) -> Self
 impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_foundation::StaticLeaf<T>
 pub fn skene_foundation::StaticLeaf<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_foundation::Tokenable, N: skene_foundation::Scalar> core::convert::From<&skene_foundation::Token<T, N>> for skene_foundation::StaticLeaf<T>
@@ -4204,6 +4252,10 @@ pub skene_foundation::TrackLimit::Fraction(f32)
 pub skene_foundation::TrackLimit::Length(T)
 pub skene_foundation::TrackLimit::MaxContent
 pub skene_foundation::TrackLimit::MinContent
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::TrackLimit<N>
+pub fn skene_foundation::TrackLimit<N>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::TrackLimit<N>
+pub fn skene_foundation::TrackLimit<N>::from(i32) -> Self
 impl<N: skene_foundation::Scalar> skene_foundation::Fingerprint for skene_foundation::TrackLimit<N>
 pub fn skene_foundation::TrackLimit<N>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: core::clone::Clone> core::clone::Clone for skene_foundation::TrackLimit<T>
@@ -5490,12 +5542,17 @@ impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Expr<ske
 pub fn skene_foundation::StaticLeaf<skene_foundation::Spacing<N>>::from(skene_foundation::Expr<skene_foundation::Length>) -> Self
 impl<Q: skene_foundation::Quantity> core::convert::From<f32> for skene_foundation::Expr<Q>
 pub fn skene_foundation::Expr<Q>::from(f32) -> Self
+impl<Q: skene_foundation::Quantity> core::convert::From<i32> for skene_foundation::Expr<Q>
+pub fn skene_foundation::Expr<Q>::from(i32) -> Self
 impl<Q: skene_foundation::Quantity> core::ops::arith::Add for skene_foundation::Expr<Q>
 pub type skene_foundation::Expr<Q>::Output = skene_foundation::Expr<Q>
 pub fn skene_foundation::Expr<Q>::add(self, Self) -> Self
 impl<Q: skene_foundation::Quantity> core::ops::arith::Add<f32> for skene_foundation::Expr<Q>
 pub type skene_foundation::Expr<Q>::Output = skene_foundation::Expr<Q>
 pub fn skene_foundation::Expr<Q>::add(self, f32) -> Self
+impl<Q: skene_foundation::Quantity> core::ops::arith::Add<i32> for skene_foundation::Expr<Q>
+pub type skene_foundation::Expr<Q>::Output = skene_foundation::Expr<Q>
+pub fn skene_foundation::Expr<Q>::add(self, i32) -> Self
 impl<Q: skene_foundation::Quantity> core::ops::arith::Div<f32> for skene_foundation::Expr<Q>
 pub type skene_foundation::Expr<Q>::Output = skene_foundation::Expr<Q>
 pub fn skene_foundation::Expr<Q>::div(self, f32) -> Self
@@ -5514,6 +5571,9 @@ pub fn skene_foundation::Expr<Q>::sub(self, Self) -> Self
 impl<Q: skene_foundation::Quantity> core::ops::arith::Sub<f32> for skene_foundation::Expr<Q>
 pub type skene_foundation::Expr<Q>::Output = skene_foundation::Expr<Q>
 pub fn skene_foundation::Expr<Q>::sub(self, f32) -> Self
+impl<Q: skene_foundation::Quantity> core::ops::arith::Sub<i32> for skene_foundation::Expr<Q>
+pub type skene_foundation::Expr<Q>::Output = skene_foundation::Expr<Q>
+pub fn skene_foundation::Expr<Q>::sub(self, i32) -> Self
 impl<T, C> core::convert::From<skene_foundation::Expr<T>> for skene_foundation::Value<T, C>
 pub fn skene_foundation::Value<T, C>::from(skene_foundation::Expr<T>) -> Self
 impl<T, N: skene_foundation::Scalar> core::convert::From<skene_foundation::Expr<T>> for skene_foundation::Definition<T, N>
@@ -5563,7 +5623,7 @@ pub skene_foundation::Flexibility::initial: skene_foundation::Dimension<T>
 pub skene_foundation::Flexibility::shrink_factor: f32
 impl<T> skene_foundation::Flexibility<T>
 pub const fn skene_foundation::Flexibility<T>::grow(f32) -> Self
-pub const fn skene_foundation::Flexibility<T>::new(skene_foundation::Dimension<T>, f32, f32) -> Self
+pub fn skene_foundation::Flexibility<T>::new(impl core::convert::Into<skene_foundation::Dimension<T>>, f32, f32) -> Self
 pub const fn skene_foundation::Flexibility<T>::weight(f32) -> Self where T: core::marker::Copy
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Flexibility<N>
 pub fn skene_foundation::Flexibility<N>::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
@@ -5764,7 +5824,7 @@ impl<T: core::marker::Copy> skene_foundation::GridTemplate<T>
 pub fn skene_foundation::GridTemplate<T>::tracks(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::GridTrack<T>> + '_
 impl<T> skene_foundation::GridTemplate<T>
 pub fn skene_foundation::GridTemplate<T>::add_line(self, skene_foundation::GridName) -> Self
-pub fn skene_foundation::GridTemplate<T>::add_track(self, skene_foundation::GridTrack<T>) -> Self
+pub fn skene_foundation::GridTemplate<T>::add_track(self, impl core::convert::Into<skene_foundation::GridTrack<T>>) -> Self
 pub fn skene_foundation::GridTemplate<T>::entries(&self) -> &[skene_foundation::TemplateEntry<T>]
 pub fn skene_foundation::GridTemplate<T>::line_names(&self) -> alloc::vec::Vec<alloc::vec::Vec<skene_foundation::GridName>>
 pub const fn skene_foundation::GridTemplate<T>::new() -> Self
@@ -5792,15 +5852,16 @@ pub skene_foundation::Inset::bottom: T
 pub skene_foundation::Inset::end: T
 pub skene_foundation::Inset::start: T
 pub skene_foundation::Inset::top: T
+impl<T: core::marker::Copy> skene_foundation::Inset<T> where i32: skene_foundation::IntoScalar<T>
+pub fn skene_foundation::Inset<T>::horizontal(impl skene_foundation::IntoScalar<T>) -> Self
+pub fn skene_foundation::Inset<T>::vertical(impl skene_foundation::IntoScalar<T>) -> Self
 impl<T: core::marker::Copy> skene_foundation::Inset<T>
-pub const fn skene_foundation::Inset<T>::all(T) -> Self
+pub fn skene_foundation::Inset<T>::all(impl skene_foundation::IntoScalar<T>) -> Self
 pub const fn skene_foundation::Inset<T>::edge(&self, skene_foundation::Edge) -> T
-pub const fn skene_foundation::Inset<T>::symmetric(T, T) -> Self
+pub fn skene_foundation::Inset<T>::new(impl skene_foundation::IntoScalar<T>, impl skene_foundation::IntoScalar<T>, impl skene_foundation::IntoScalar<T>, impl skene_foundation::IntoScalar<T>) -> Self
+pub fn skene_foundation::Inset<T>::symmetric(impl skene_foundation::IntoScalar<T>, impl skene_foundation::IntoScalar<T>) -> Self
 impl<T: skene_foundation::Scalar> skene_foundation::Inset<T>
 pub const skene_foundation::Inset<T>::ZERO: Self
-impl<T: skene_foundation::Scalar> skene_foundation::Inset<T>
-pub const fn skene_foundation::Inset<T>::horizontal(T) -> Self
-pub const fn skene_foundation::Inset<T>::vertical(T) -> Self
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Inset<N>
 pub fn skene_foundation::Inset<N>::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::Inset<N>::into_box_value(self) -> skene_foundation::BoxValue<N, X>
@@ -5823,6 +5884,10 @@ impl<T: core::fmt::Debug> core::fmt::Debug for skene_foundation::Inset<T>
 pub fn skene_foundation::Inset<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::hash::Hash> core::hash::Hash for skene_foundation::Inset<T>
 pub fn skene_foundation::Inset<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl<T: core::marker::Copy> core::convert::From<f32> for skene_foundation::Inset<T> where f32: skene_foundation::IntoScalar<T>
+pub fn skene_foundation::Inset<T>::from(f32) -> Self
+impl<T: core::marker::Copy> core::convert::From<i32> for skene_foundation::Inset<T> where i32: skene_foundation::IntoScalar<T>
+pub fn skene_foundation::Inset<T>::from(i32) -> Self
 impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::Inset<T>
 impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_foundation::Inset<T>
 pub fn skene_foundation::Inset<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
@@ -6067,6 +6132,8 @@ impl core::cmp::PartialEq for skene_foundation::Length
 pub fn skene_foundation::Length::eq(&self, &skene_foundation::Length) -> bool
 impl core::convert::From<f32> for skene_foundation::Length
 pub fn skene_foundation::Length::from(f32) -> Self
+impl core::convert::From<i32> for skene_foundation::Length
+pub fn skene_foundation::Length::from(i32) -> Self
 impl core::default::Default for skene_foundation::Length
 pub fn skene_foundation::Length::default() -> skene_foundation::Length
 impl core::fmt::Debug for skene_foundation::Length
@@ -7368,11 +7435,16 @@ impl<P: core::marker::Copy> core::marker::Copy for skene_foundation::SlotBinding
 pub struct skene_foundation::Spacing<T>
 pub skene_foundation::Spacing::horizontal: T
 pub skene_foundation::Spacing::vertical: T
-impl<T: core::marker::Copy> skene_foundation::Spacing<T>
-pub const fn skene_foundation::Spacing<T>::all(T) -> Self
+impl<N: skene_foundation::Scalar> skene_foundation::Spacing<N>
+pub fn skene_foundation::Spacing<N>::all(impl skene_foundation::IntoScalar<N>) -> Self
+pub fn skene_foundation::Spacing<N>::new(impl skene_foundation::IntoScalar<N>, impl skene_foundation::IntoScalar<N>) -> Self
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Spacing<N>
 pub fn skene_foundation::Spacing<N>::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::Spacing<N>::into_box_value(self) -> skene_foundation::BoxValue<N, X>
+impl<N: skene_foundation::Scalar> core::convert::From<f32> for skene_foundation::Spacing<N>
+pub fn skene_foundation::Spacing<N>::from(f32) -> Self
+impl<N: skene_foundation::Scalar> core::convert::From<i32> for skene_foundation::Spacing<N>
+pub fn skene_foundation::Spacing<N>::from(i32) -> Self
 impl<N: skene_foundation::Scalar> skene_foundation::ExprOutput for skene_foundation::Spacing<N>
 pub fn skene_foundation::Spacing<N>::from_expr_value(skene_foundation::ExprValue) -> core::option::Option<Self>
 impl<T: core::clone::Clone> core::clone::Clone for skene_foundation::Spacing<T>
@@ -7385,8 +7457,6 @@ impl<T: core::fmt::Debug> core::fmt::Debug for skene_foundation::Spacing<T>
 pub fn skene_foundation::Spacing<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::hash::Hash> core::hash::Hash for skene_foundation::Spacing<T>
 pub fn skene_foundation::Spacing<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl<T: core::marker::Copy> core::convert::From<T> for skene_foundation::Spacing<T>
-pub fn skene_foundation::Spacing<T>::from(T) -> Self
 impl<T: core::marker::Copy> core::marker::Copy for skene_foundation::Spacing<T>
 impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_foundation::Spacing<T>
 pub fn skene_foundation::Spacing<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
@@ -9388,6 +9458,18 @@ pub fn skene_foundation::TextDecoration::into_run_value(self) -> skene_foundatio
 impl<X: skene_foundation::StyleExtension> skene_foundation::IntoRunValue<X> for skene_foundation::TextDecorationStyle
 pub fn skene_foundation::TextDecorationStyle::from_run_value(skene_foundation::RunValue<X>) -> core::option::Option<Self>
 pub fn skene_foundation::TextDecorationStyle::into_run_value(self) -> skene_foundation::RunValue<X>
+pub trait skene_foundation::IntoScalar<N>: core::marker::Copy
+pub fn skene_foundation::IntoScalar::into_scalar(self) -> N
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<N> for f32
+pub fn f32::into_scalar(self) -> N
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<N> for i32
+pub fn i32::into_scalar(self) -> N
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<skene_foundation::Dimension<N>> for f32
+pub fn f32::into_scalar(self) -> skene_foundation::Dimension<N>
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<skene_foundation::Dimension<N>> for i32
+pub fn i32::into_scalar(self) -> skene_foundation::Dimension<N>
+impl<N: skene_foundation::Scalar> skene_foundation::IntoScalar<skene_foundation::Dimension<N>> for skene_foundation::Dimension<N>
+pub fn skene_foundation::Dimension<N>::into_scalar(self) -> Self
 pub trait skene_foundation::IntoTokenValue<V>
 pub fn skene_foundation::IntoTokenValue::into_token_value(self) -> V
 impl<P, V: core::convert::From<P>> skene_foundation::IntoTokenValue<V> for P
@@ -9733,19 +9815,22 @@ pub fn T::set_font_size(self, impl core::convert::Into<skene_foundation::Value<s
 pub fn T::set_font_weight(self, impl core::convert::Into<skene_foundation::Value<f32, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn T::set_letter_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn T::set_line_height(self, impl core::convert::Into<skene_foundation::Value<f32, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub trait skene_foundation::Scalar: core::marker::Copy + core::cmp::PartialEq + core::cmp::PartialOrd + core::fmt::Debug + core::default::Default + 'static
+pub trait skene_foundation::Scalar: core::marker::Copy + core::cmp::PartialEq + core::cmp::PartialOrd + core::fmt::Debug + core::default::Default + skene_foundation::IntoScalar<Self> + 'static
 pub const skene_foundation::Scalar::ZERO: Self
 pub fn skene_foundation::Scalar::from_f32(f32) -> Self
+pub fn skene_foundation::Scalar::from_i32(i32) -> Self
 pub fn skene_foundation::Scalar::hash_bits(self) -> u64
 pub fn skene_foundation::Scalar::to_f32(self) -> f32
 impl skene_foundation::Scalar for f32
 pub const f32::ZERO: Self
 pub fn f32::from_f32(f32) -> Self
+pub fn f32::from_i32(i32) -> Self
 pub fn f32::hash_bits(self) -> u64
 pub fn f32::to_f32(self) -> f32
 impl skene_foundation::Scalar for i32
 pub const i32::ZERO: Self
 pub fn i32::from_f32(f32) -> Self
+pub fn i32::from_i32(i32) -> Self
 pub fn i32::hash_bits(self) -> u64
 pub fn i32::to_f32(self) -> f32
 pub trait skene_foundation::Shape: core::marker::Copy + core::default::Default + core::cmp::PartialEq + core::fmt::Debug + 'static

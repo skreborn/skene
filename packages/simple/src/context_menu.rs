@@ -11,6 +11,7 @@ use skene_foundation::{
   MouseCursor,
   NodeId,
   Realization,
+  Spacing,
   State,
   View,
   When,
@@ -117,7 +118,7 @@ where
     ))
     .set_shortcut_color(SimplePalette::<P::Scalar>::MUTED_FOREGROUND)
     .set_separator_color(SimplePalette::<P::Scalar>::BORDER)
-    .set_shortcut_spacing(shape.shortcut_spacing)
+    .set_shortcut_spacing(Spacing::all(shape.shortcut_spacing))
     .set_item_cursor(MouseCursor::Click)
     .set_item_corner_radius(shape.mark_radius)
 }

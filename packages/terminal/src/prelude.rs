@@ -44,6 +44,7 @@ pub use skene_foundation::{
   HasChildren,
   IntoChildOf,
   IntoChildren,
+  IntoScalar,
   ItemAlignment,
   Iterations,
   Key,

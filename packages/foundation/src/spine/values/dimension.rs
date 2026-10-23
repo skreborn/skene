@@ -1,3 +1,5 @@
+use crate::spine::{IntoScalar, Scalar};
+
 /// A layout length: a fixed value in the medium's unit, a fraction of the parent, or
 /// automatic.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -16,9 +18,43 @@ pub enum Dimension<T> {
   Auto,
 }
 
-impl<T> From<T> for Dimension<T> {
+impl<N: Scalar> From<i32> for Dimension<N> {
+  /// A plain number as a fixed length.
   #[inline(always)]
-  fn from(value: T) -> Self {
-    Self::Length(value)
+  fn from(length: i32) -> Self {
+    Self::Length(N::from_i32(length))
+  }
+}
+
+impl<N: Scalar> From<f32> for Dimension<N> {
+  /// A plain number as a fixed length, rounded to the unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::Length(N::from_f32(length))
+  }
+}
+
+/// A plain number as a fixed length, wherever a dimension stands in for a length: an
+/// inset of dimensions takes `Inset::all(-4)` as it takes `Inset::all(Dimension::Auto)`.
+impl<N: Scalar> IntoScalar<Dimension<N>> for i32 {
+  #[inline(always)]
+  fn into_scalar(self) -> Dimension<N> {
+    Dimension::from(self)
+  }
+}
+
+/// A plain number as a fixed length, rounded to the unit.
+impl<N: Scalar> IntoScalar<Dimension<N>> for f32 {
+  #[inline(always)]
+  fn into_scalar(self) -> Dimension<N> {
+    Dimension::from(self)
+  }
+}
+
+/// A dimension as itself.
+impl<N: Scalar> IntoScalar<Self> for Dimension<N> {
+  #[inline(always)]
+  fn into_scalar(self) -> Self {
+    self
   }
 }

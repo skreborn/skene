@@ -136,7 +136,8 @@ A view is its own builder and a `View`: chain typed setters and pass it to a par
 One convention: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
 `handle_<event>` for a handler, and children last. Every setter takes a value that may
 be fixed, a token, an expression, derived from signals, or any of those under a
-condition: `set_spacing(Spacing::from(8.).when(Media::MinWidth(900.), 16.))`.
+condition: `set_spacing(Spacing::from(8).when(Media::min_width(900), 16))`. A length is
+a plain number, an `i32` or an `f32`.
 
 Each layout is its own view—`Row`, `Column`, `Grid`, `Stack`—exposing only the
 properties it honors; per-child properties ride in `Flexible`, `Pinned` and `GridCell`,

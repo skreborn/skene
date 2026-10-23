@@ -1,8 +1,10 @@
 # The terminal
 
-A terminal app measures in cells. A length is a whole number of them, text is a color,
-a bold flag and a size that scales the cell, and a border is a cell of box-drawing
-glyphs. What the terminal cannot draw does not exist to call.
+A terminal app measures in cells. A length is a whole number of them, a fraction
+rounding to the nearest (`set_width(1.5)` is two cells) while a font size keeps its
+fraction of a cell; text is a color, a bold flag and a size that scales the cell, and a
+border is a cell of box-drawing glyphs. What the terminal cannot draw does not exist to
+call.
 
 ```rust
 use skene_simple_terminal::prelude::*;

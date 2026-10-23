@@ -86,12 +86,12 @@ use skene_web::prelude::*;
 
 fn panel() -> impl View {
   Container::new()
-    .set_padding(Inset::symmetric(16., 12.))
+    .set_padding(Inset::symmetric(16, 12))
     .set_background(Color::srgb(0.95, 0.95, 0.97))
-    .set_border_width(Inset::all(1.))
+    .set_border_width(Inset::all(1))
     .set_border_color(Color::srgb(0.85, 0.85, 0.9))
-    .set_corner_radius(8.)
-    .set_child(Column::new().set_spacing(8.).set_children((
+    .set_corner_radius(8)
+    .set_child(Column::new().set_spacing(8).set_children((
       Text::new("A panel"),
       Text::new("Its contents"),
     )))
@@ -101,7 +101,7 @@ fn panel() -> impl View {
 ## Conditions
 
 A value varies under a condition through `when`, on the value itself, so no property
-has a conditional setter of its own. A condition is a medium's (`Media::MinWidth`,
+has a conditional setter of its own. A condition is a medium's (`Media::min_width(900)`,
 `Media::Dark`) or an interaction's (`State::Hovered`, `State::FocusVisible`):
 
 ```rust
@@ -109,7 +109,7 @@ use skene_web::prelude::*;
 
 fn responsive() -> impl View {
   Row::new()
-    .set_spacing(Spacing::from(8.).when(Media::MinWidth(900.), 16.))
+    .set_spacing(Spacing::from(8).when(Media::min_width(900), 16))
     .set_children((Text::new("Narrow"), Text::new("Wide")))
 }
 ```

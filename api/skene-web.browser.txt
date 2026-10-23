@@ -42,6 +42,7 @@ pub use skene_web::HasRun
 pub use skene_web::IntoBrush
 pub use skene_web::IntoChildOf
 pub use skene_web::IntoChildren
+pub use skene_web::IntoScalar
 pub use skene_web::ItemExtent
 pub use skene_web::Key
 pub use skene_web::KeyEvent
@@ -464,6 +465,7 @@ pub use skene_web::prelude::HasChildren
 pub use skene_web::prelude::IndexedField
 pub use skene_web::prelude::IntoChildOf
 pub use skene_web::prelude::IntoChildren
+pub use skene_web::prelude::IntoScalar
 pub use skene_web::prelude::ItemAlignment
 pub use skene_web::prelude::ItemExtent
 pub use skene_web::prelude::Iterations

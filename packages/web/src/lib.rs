@@ -9,6 +9,28 @@
 //! server leaf, and [`macro@main`] expanding to whichever the target has. [`platform`]
 //! is the web platform itself, for a view written against the DOM or the server's
 //! markup.
+//!
+//! A length is a plain number of logical pixels, an `i32` or an `f32`, wherever one is
+//! taken: a setter, a condition's variant, a token's definition and every constructor
+//! measured in lengths ([`IntoScalar`]).
+//!
+//! ```
+//! use skene_web::{Length, prelude::*};
+//!
+//! let gutter = Token::<Length>::new("gutter", 8).define_when(Media::min_width(900), 16);
+//! let _ = Column::new()
+//!   .set_spacing(Spacing::from(8).when(Media::min_width(900), 16))
+//!   .set_padding(Inset::new(0, 8, 0, 8))
+//!   .set_children((
+//!     Row::new()
+//!       .set_spacing(Spacing::new(8, -4))
+//!       .set_padding(gutter.reference()),
+//!     Container::new().set_width(16).set_child(Text::new("Whole")),
+//!     Container::new()
+//!       .set_width(16.5)
+//!       .set_child(Text::new("Fractional")),
+//!   ));
+//! ```
 
 pub mod head;
 pub mod media;
@@ -118,6 +140,7 @@ pub use skene_foundation::{
   HasRun,
   IntoChildOf,
   IntoChildren,
+  IntoScalar,
   ItemExtent,
   Key,
   KeyEvent,

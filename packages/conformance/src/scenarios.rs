@@ -19,12 +19,12 @@ use skene_foundation::{
   ContainerBase,
   ContextMenu,
   DecorationBase,
-  Dimension,
   FlexBase,
   FocusOrder,
   HasChild,
   HasChildren,
   Inset,
+  IntoScalar,
   Key,
   KeyEvent,
   ListboxOption,
@@ -36,10 +36,8 @@ use skene_foundation::{
   Realization,
   Role,
   Row,
-  Scalar,
   Size,
   Slider,
-  Spacing,
   TOOLTIP_DELAY,
   Text,
   TextEntry,
@@ -58,7 +56,7 @@ use crate::{Driver, Page, Probes, Scenario};
 const RETURN: Duration = Duration::from_secs(1);
 
 /// The viewport width at and above which the `viewport` page shows its text.
-const BREAKPOINT: f32 = 700.;
+const BREAKPOINT: i32 = 700;
 
 /// Every page, in the order the suite first opens them.
 pub(crate) fn pages<P: Realization>() -> Vec<Page<P>> {
@@ -452,7 +450,7 @@ fn context_menu_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
 /// The text Wide, hidden below the [`BREAKPOINT`] width.
 fn viewport_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Container::<P>::new()
-    .set_hidden(true.when(Media::MinWidth(P::Scalar::from_f32(BREAKPOINT)), false))
+    .set_hidden(true.when(Media::min_width(BREAKPOINT), false))
     .set_child(Text::new("Wide"))
     .into_any()
 }
@@ -510,18 +508,16 @@ fn form_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
 
 /// A box named Outer around a box named Inner, neither focusable.
 fn nested_boxes_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
-  let length = P::Scalar::from_f32;
-
   Container::<P>::new()
     .set_role(Role::Group)
     .set_label("Outer")
-    .set_padding(Inset::all(length(4.)))
+    .set_padding(Inset::all(4))
     .set_child(
       Container::new()
         .set_role(Role::Group)
         .set_label("Inner")
-        .set_width(Dimension::Length(length(40.)))
-        .set_height(Dimension::Length(length(8.))),
+        .set_width(40)
+        .set_height(8),
     )
     .into_any()
 }
@@ -919,16 +915,20 @@ fn a_modal_takes_focus_as_it_opens<D: Driver>(driver: &mut D) {
 }
 
 fn a_viewport_condition_follows_a_resize<D: Driver>(driver: &mut D) {
-  let length = D::Scalar::from_f32;
-
-  driver.resize(Size::new(length(BREAKPOINT + 100.), length(100.)));
+  driver.resize(Size::new(
+    (BREAKPOINT + 100).into_scalar(),
+    100.into_scalar(),
+  ));
 
   assert!(
     driver.find_text("Wide").is_some(),
     "a wide viewport shows it"
   );
 
-  driver.resize(Size::new(length(BREAKPOINT - 100.), length(100.)));
+  driver.resize(Size::new(
+    (BREAKPOINT - 100).into_scalar(),
+    100.into_scalar(),
+  ));
 
   assert!(driver.find_text("Wide").is_none(), "a narrow one hides it");
 }
@@ -1194,7 +1194,7 @@ fn a_box_hears_focus_entering_and_leaving<D: Driver>(driver: &mut D) {
 /// ends.
 fn text_page<P: Realization>(_: &mut Probes) -> AnyView<P> {
   Column::<P>::new()
-    .set_spacing(Spacing::from(P::Scalar::from_f32(16.)))
+    .set_spacing(16)
     .set_children((
       Text::new("Two  spaces between words"),
       Text::new("One line\nand the next"),

@@ -759,7 +759,7 @@ impl<P: Realization> RowDress<P> {
         self
           .shortcut_spacing
           .clone()
-          .unwrap_or_else(|| Spacing::from(P::Scalar::from_f32(2.)).into()),
+          .unwrap_or_else(|| Spacing::all(2).into()),
       )
       .set_children(cells);
 

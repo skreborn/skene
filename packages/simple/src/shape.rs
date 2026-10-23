@@ -92,7 +92,7 @@ pub struct SimpleShape<N> {
 )]
 pub trait SimpleUnit: Scalar {
   /// The shape in this unit.
-  const SHAPE: SimpleShape<Self>;
+  fn shape() -> SimpleShape<Self>;
   /// How the medium shows a control's marks.
   const MARKS: SimpleMarks;
 }
@@ -107,67 +107,73 @@ pub enum SimpleMarks {
 }
 
 impl SimpleUnit for f32 {
-  const SHAPE: SimpleShape<Self> = SimpleShape {
-    control_inset: Inset::symmetric(12., 8.),
-    control_ring: 1.,
-    field_ring: 1.,
-    control_radius: Length(8.),
-    card_inset: Inset::all(24.),
-    card_radius: Length(12.),
-    list_inset: Inset::all(4.),
-    row_inset: Inset::all(6.),
-    tooltip_inset: Inset::symmetric(8., 4.),
-    indicator_spacing: 8.,
-    shortcut_spacing: 24.,
-    card_spacing: 16.,
-    mark_size: 18.,
-    mark_ring: 1.,
-    mark_radius: Length(4.),
-    mark_surface: SimplePalette::<Self>::CARD,
-    dot_size: 8.,
-    track_height: 6.,
-    thumb_size: 16.,
-    thumb_ring: 2.,
-    thumb_surface: SimplePalette::<Self>::PRIMARY_SURFACE,
-    thumb_focus: SimplePalette::<Self>::PRIMARY_SURFACE,
-  };
+  fn shape() -> SimpleShape<Self> {
+    SimpleShape {
+      control_inset: Inset::symmetric(12., 8.),
+      control_ring: 1.,
+      field_ring: 1.,
+      control_radius: Length(8.),
+      card_inset: Inset::all(24.),
+      card_radius: Length(12.),
+      list_inset: Inset::all(4.),
+      row_inset: Inset::all(6.),
+      tooltip_inset: Inset::symmetric(8., 4.),
+      indicator_spacing: 8.,
+      shortcut_spacing: 24.,
+      card_spacing: 16.,
+      mark_size: 18.,
+      mark_ring: 1.,
+      mark_radius: Length(4.),
+      mark_surface: SimplePalette::<Self>::CARD,
+      dot_size: 8.,
+      track_height: 6.,
+      thumb_size: 16.,
+      thumb_ring: 2.,
+      thumb_surface: SimplePalette::<Self>::PRIMARY_SURFACE,
+      thumb_focus: SimplePalette::<Self>::PRIMARY_SURFACE,
+    }
+  }
+
   const MARKS: SimpleMarks = SimpleMarks::Drawn;
 }
 
 impl SimpleUnit for i32 {
-  const SHAPE: SimpleShape<Self> = SimpleShape {
-    control_inset: Inset::symmetric(1, 0),
-    control_ring: 0,
-    field_ring: 1,
-    control_radius: Length(0.25),
-    card_inset: Inset::symmetric(2, 1),
-    card_radius: Length(0.5),
-    list_inset: Inset::all(0),
-    row_inset: Inset::symmetric(1, 0),
-    tooltip_inset: Inset::symmetric(1, 0),
-    indicator_spacing: 1,
-    shortcut_spacing: 2,
-    card_spacing: 1,
-    mark_size: 1,
-    mark_ring: 0,
-    mark_radius: Length(0.25),
-    mark_surface: SimplePalette::<Self>::BORDER,
-    dot_size: 1,
-    track_height: 1,
-    thumb_size: 1,
-    thumb_ring: 0,
-    thumb_surface: SimplePalette::<Self>::MUTED_FOREGROUND,
-    thumb_focus: SimplePalette::<Self>::RING,
-  };
+  fn shape() -> SimpleShape<Self> {
+    SimpleShape {
+      control_inset: Inset::symmetric(1, 0),
+      control_ring: 0,
+      field_ring: 1,
+      control_radius: Length(0.25),
+      card_inset: Inset::symmetric(2, 1),
+      card_radius: Length(0.5),
+      list_inset: Inset::all(0),
+      row_inset: Inset::symmetric(1, 0),
+      tooltip_inset: Inset::symmetric(1, 0),
+      indicator_spacing: 1,
+      shortcut_spacing: 2,
+      card_spacing: 1,
+      mark_size: 1,
+      mark_ring: 0,
+      mark_radius: Length(0.25),
+      mark_surface: SimplePalette::<Self>::BORDER,
+      dot_size: 1,
+      track_height: 1,
+      thumb_size: 1,
+      thumb_ring: 0,
+      thumb_surface: SimplePalette::<Self>::MUTED_FOREGROUND,
+      thumb_focus: SimplePalette::<Self>::RING,
+    }
+  }
+
   const MARKS: SimpleMarks = SimpleMarks::Glyph;
 }
 
 /// The shape of the platform's unit.
-pub(crate) const fn shape<P: Realization>() -> SimpleShape<P::Scalar>
+pub(crate) fn shape<P: Realization>() -> SimpleShape<P::Scalar>
 where
   P::Scalar: SimpleUnit,
 {
-  <P::Scalar as SimpleUnit>::SHAPE
+  <P::Scalar as SimpleUnit>::shape()
 }
 
 /// The cursor over a control a click operates: the click cursor, and the default one
@@ -178,7 +184,7 @@ pub(crate) fn click_cursor<N: Scalar>() -> Value<MouseCursor, Condition<N>> {
 
 /// A border's width of one unit on every edge.
 pub(crate) fn hairline<N: Scalar>() -> Inset<N> {
-  Inset::all(N::from_f32(1.))
+  Inset::all(1)
 }
 
 /// The palette in force as a memo, its default defined at the root where no theme

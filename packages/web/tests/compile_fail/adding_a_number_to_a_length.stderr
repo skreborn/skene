@@ -13,3 +13,6 @@ help: `skene_web::Expr<Q>` implements trait `Add<Rhs>`
 ...
   | impl<Q: Quantity> Add<f32> for Expr<Q> {
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Add<f32>`
+...
+  | impl<Q: Quantity> Add<i32> for Expr<Q> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Add<i32>`

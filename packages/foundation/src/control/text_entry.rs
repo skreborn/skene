@@ -37,6 +37,21 @@ impl std::fmt::Debug for TextEntry {
 }
 
 impl TextEntry {
+  /// The events the entry acts on: a change and an edit, and a move of the selection
+  /// where something hears it.
+  const fn events(&self) -> &'static [EventKind] {
+    if self.selection.is_handled() {
+      &[
+        EventKind::Change,
+        EventKind::SelectionChange,
+        EventKind::Edit,
+      ]
+    }
+    else {
+      &[EventKind::Change, EventKind::Edit]
+    }
+  }
+
   /// An empty single-line field.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -162,16 +177,7 @@ impl<P: Realization> Behavior<P> for TextEntry {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    if self.selection.is_handled() {
-      &[
-        EventKind::Change,
-        EventKind::SelectionChange,
-        EventKind::Edit,
-      ]
-    }
-    else {
-      &[EventKind::Change, EventKind::Edit]
-    }
+    self.events()
   }
 
   #[inline(always)]
@@ -242,5 +248,31 @@ impl<P: Realization> Behavior<P> for TextEntry {
     if let Some(selection) = untrack(|| self.selection.read()) {
       P::set_selection(control.node(), selection);
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::TextEntry;
+  use crate::{EventKind, TextSelection};
+
+  /// An entry listens to its changes and edits, and to the selection's moves only where
+  /// something hears them.
+  #[test]
+  fn an_entry_listens_to_the_selection_only_where_it_is_heard() {
+    assert_eq!(
+      TextEntry::new().events(),
+      [EventKind::Change, EventKind::Edit]
+    );
+    assert_eq!(
+      TextEntry::new()
+        .handle_selection_change(|_: TextSelection| {})
+        .events(),
+      [
+        EventKind::Change,
+        EventKind::SelectionChange,
+        EventKind::Edit,
+      ]
+    );
   }
 }

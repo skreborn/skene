@@ -28,6 +28,7 @@ unicode-segmentation.workspace = true
 unicode-width = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+accesskit.workspace = true
 criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.7" }
 proptest.workspace = true
 skene-conformance = { path = "../conformance" }

@@ -29,6 +29,15 @@ pub struct Activate {
 }
 
 impl Activate {
+  /// The events a button acts on: a click, the keys that activate it, and the blur that
+  /// disarms a `Space` press.
+  const EVENTS: &'static [EventKind] = &[
+    EventKind::Click,
+    EventKind::KeyDown,
+    EventKind::KeyUp,
+    EventKind::Blur,
+  ];
+
   /// A button.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -51,12 +60,7 @@ impl<P: Realization> Behavior<P> for Activate {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[
-      EventKind::Click,
-      EventKind::KeyDown,
-      EventKind::KeyUp,
-      EventKind::Blur,
-    ]
+    Self::EVENTS
   }
 
   #[inline(always)]
@@ -101,5 +105,25 @@ impl<P: Realization> Behavior<P> for Activate {
   #[inline(always)]
   fn on_blur(&self, _control: &ControlHandle<P>) {
     self.armed.set(false);
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::Activate;
+  use crate::EventKind;
+
+  /// A button listens to the click, the keys and the blur it acts on, and nothing else.
+  #[test]
+  fn a_button_listens_to_what_activates_it() {
+    assert_eq!(
+      Activate::EVENTS,
+      [
+        EventKind::Click,
+        EventKind::KeyDown,
+        EventKind::KeyUp,
+        EventKind::Blur,
+      ]
+    );
   }
 }

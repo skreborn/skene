@@ -13,38 +13,57 @@ use std::{
 
 use skene_foundation::{
   Axis,
+  BasicPickerBase,
   ColorScheme,
   ColumnBase,
   ContainerBase,
   ControlBase,
   DecorationBase,
+  Edit,
+  EventKind,
   FlexBase,
   FlexChild,
+  ItemAlignment,
+  LabelPlacement,
   Layout,
   Media,
+  NativeElement,
   OverlayBase,
   RowBase,
   Size,
+  Spacing,
   StaticLeaf,
   TextBase,
   ThemeBase,
+  Verdict,
+  report_edit,
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
+  Activate,
   AsyncView,
   AsyncViewBase,
+  BasicButton,
+  BasicCheckbox,
+  BasicListboxOption,
+  BasicPicker,
   BasicRadio,
   BasicRadioGroup,
+  BasicSlider,
+  BasicTextEditor,
   BasicTextField,
+  Behavior,
   Bubbling,
   Color,
   Column,
   Container,
+  Control,
   HasChild,
   HasChildren,
   LayoutBox,
   Link,
   LinkBase,
+  ListboxOption,
   NodeHandle,
   NodeId,
   Overlay,
@@ -52,16 +71,19 @@ use skene_web::{
   RadioGroup,
   Role,
   Row,
+  Slider,
   Text,
   TextEntry,
+  TextSelection,
   Theme,
   ThemedIn,
+  Toggle,
   Typography,
   View,
   head,
   install_router,
   media,
-  platform::{self, Declarations, mount},
+  platform::{self, Declarations, Web, mount},
   reactive::{Effect, Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, only_child, tick},
   wasm_bindgen::JsCast,
@@ -848,5 +870,382 @@ fn typography_inks_the_runs() {
   assert_eq!(
     computed(&themed, "color"),
     probe(&root, "color", foreground)
+  );
+}
+
+/// The `<input>` a text field mounted alone under `root` realizes.
+fn input_of(root: &Element) -> HtmlInputElement {
+  root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input")
+    .dyn_into()
+    .expect("an input element")
+}
+
+/// A drawn entry's edit is answered with the truth: one its handler transforms is
+/// replaced by what the handler kept, the selection beside it, and one the truth holds
+/// stands.
+#[wasm_bindgen_test]
+fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
+  let (_guard, root) = fresh_root();
+  let text = Signal::new("ab".to_owned());
+  let caret = Signal::new(TextSelection::collapsed(2));
+  let node = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_value(move || text.get())
+        .handle_change(move |value| text.set(value.to_uppercase()))
+        .bind_selection(caret),
+    )
+    .build()
+  });
+  let typed = Edit::new("abc").with_selection(TextSelection::collapsed(3));
+
+  assert_eq!(
+    report_edit::<Web>(node, &typed, false),
+    Verdict::Replace(Edit::new("ABC").with_selection(TextSelection::collapsed(3)))
+  );
+  assert_eq!(text.get(), "ABC");
+
+  platform::end_turn();
+
+  assert_eq!(input_of(&root).value(), "ABC");
+
+  let kept = Edit::new("ABCD").with_selection(TextSelection::collapsed(4));
+
+  assert_eq!(report_edit::<Web>(node, &kept, true), Verdict::Accept);
+  assert_eq!(caret.get(), TextSelection::collapsed(4));
+}
+
+/// An edit the truth holds already is accepted without asking the handlers, and one
+/// leaving a controlled selection unnamed is answered with the truth's.
+#[wasm_bindgen_test]
+fn report_edit_of_what_the_truth_holds_asks_nothing() {
+  let (_guard, _root) = fresh_root();
+  let asked = Rc::new(RefCell::new(Vec::new()));
+  let heard = Rc::clone(&asked);
+  let node = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .set_value("ab")
+        .handle_change(move |value| heard.borrow_mut().push(value.to_owned()))
+        .set_selection(TextSelection::collapsed(1)),
+    )
+    .build()
+  });
+  let truth = Edit::new("ab").with_selection(TextSelection::collapsed(1));
+
+  assert_eq!(report_edit::<Web>(node, &truth, true), Verdict::Accept);
+  assert!(asked.borrow().is_empty());
+  assert_eq!(
+    report_edit::<Web>(node, &Edit::new("ab"), true),
+    Verdict::Replace(truth)
+  );
+}
+
+/// An entry deriving no text keeps no truth: its edit stands, its handler hearing it.
+#[wasm_bindgen_test]
+fn report_edit_accepts_an_uncontrolled_entry() {
+  let (_guard, _root) = fresh_root();
+  let heard = Rc::new(RefCell::new(Vec::new()));
+  let log = Rc::clone(&heard);
+  let node = mount(move || {
+    BasicTextField::new(
+      TextEntry::new().handle_change(move |value| log.borrow_mut().push(value.to_owned())),
+    )
+    .build()
+  });
+
+  assert_eq!(
+    report_edit::<Web>(node, &Edit::new("typed"), true),
+    Verdict::Accept
+  );
+  assert_eq!(*heard.borrow(), ["typed"]);
+}
+
+/// A disabled entry hears no edit and answers each with what it holds, but one its
+/// truth already holds.
+#[wasm_bindgen_test]
+fn a_disabled_entry_answers_its_edit_with_the_truth() {
+  let (_guard, root) = fresh_root();
+  let bound = Signal::new("12".to_owned());
+  let node = mount(move || {
+    BasicTextField::new(TextEntry::new().bind_value(bound))
+      .set_disabled(true)
+      .build()
+  });
+
+  assert!(input_of(&root).disabled());
+  assert_eq!(
+    report_edit::<Web>(node, &Edit::new("123"), false),
+    Verdict::Replace(Edit::new("12"))
+  );
+  assert_eq!(bound.get(), "12");
+  assert_eq!(
+    report_edit::<Web>(node, &Edit::new("12"), true),
+    Verdict::Accept
+  );
+}
+
+/// The verdict is an edit's only write-back: the `<input>` is not reconciled with the
+/// truth while the edit is reported.
+#[wasm_bindgen_test]
+fn report_edit_does_not_reconcile() {
+  let (_guard, root) = fresh_root();
+  let node =
+    mount(|| BasicTextField::new(TextEntry::new().set_value("12").handle_change(|_| {})).build());
+  let input = input_of(&root);
+
+  assert_eq!(input.value(), "12");
+
+  // The `<input>` shows the reader's edit already.
+  input.set_value("12a");
+
+  assert_eq!(
+    report_edit::<Web>(node, &Edit::new("12a"), true),
+    Verdict::Replace(Edit::new("12"))
+  );
+
+  platform::end_turn();
+
+  assert_eq!(input.value(), "12a", "nothing but the verdict writes back");
+}
+
+/// A checkbox is controlled: a platform toggle its handler rejects is undone on the
+/// native input.
+#[wasm_bindgen_test]
+fn a_rejected_toggle_is_undone_on_the_platform() {
+  let (_guard, root) = fresh_root();
+
+  let _ =
+    mount(|| BasicCheckbox::new(Toggle::new().set_checked(false).handle_toggle(|_| {})).build());
+
+  let input = input_of(&root);
+
+  input.set_checked(true);
+  dispatch(&input, "change");
+  platform::end_turn();
+
+  assert!(!input.checked(), "the rejected toggle is undone");
+}
+
+/// A key an input method is composing leaves the behavior alone and its default to the
+/// platform; the same key composed acts.
+#[wasm_bindgen_test]
+fn a_composing_key_never_reaches_the_behavior() {
+  let (_guard, root) = fresh_root();
+  let bound = Signal::new(50.0f32);
+
+  let _ = mount(move || BasicSlider::new(Slider::new().bind_value(bound)).build());
+
+  let input = input_of(&root);
+  let press = |composing: bool| {
+    let init = KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_key("ArrowRight");
+    init.set_is_composing(composing);
+
+    let event = KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+    let _ = input.dispatch_event(&event);
+
+    event.default_prevented()
+  };
+
+  assert!(!press(true), "a composing key keeps its default");
+  assert!((bound.get() - 50.).abs() < f32::EPSILON);
+  assert!(press(false));
+  assert!((bound.get() - 51.).abs() < f32::EPSILON);
+}
+
+/// A text field is its `<input>`: its placeholder an attribute, no role of its own, its
+/// change writing the bound signal and never reaching a box's click, and the signal
+/// writing its value; an editor is a `<textarea>` showing its lines.
+#[wasm_bindgen_test]
+fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
+  let (_guard, root) = fresh_root();
+  let bound = Signal::new(String::new());
+  let clicks = Rc::new(Cell::new(0u32));
+  let counted = Rc::clone(&clicks);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .handle_click(move || counted.set(counted.get() + 1))
+          .set_child(BasicTextField::new(
+            TextEntry::new().set_placeholder("Name").bind_value(bound),
+          )),
+        BasicTextEditor::new(TextEntry::new().set_lines(4)),
+      ))
+      .build()
+  });
+
+  let input = input_of(&root);
+
+  assert_eq!(input.value(), "");
+  assert_eq!(input.placeholder(), "Name");
+  assert_eq!(input.get_attribute("role"), None);
+
+  input.set_value("typed");
+  dispatch(&input, "input");
+
+  assert_eq!(bound.get(), "typed");
+  assert_eq!(clicks.get(), 0, "the change is the field's alone");
+
+  bound.set("fresh".to_owned());
+  platform::end_turn();
+
+  assert_eq!(input.value(), "fresh");
+
+  let editor = root
+    .query_selector("textarea")
+    .expect("query")
+    .expect("the editor's textarea");
+
+  assert_eq!(editor.get_attribute("rows").as_deref(), Some("4"));
+}
+
+/// A text entry keeping its label inside its box.
+struct InlineEntry;
+
+impl Behavior<Web> for InlineEntry {
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::TextField)
+  }
+
+  fn role(&self) -> Option<Role> {
+    None
+  }
+
+  fn listens(&self) -> &'static [EventKind] {
+    &[]
+  }
+
+  fn label_placement(&self) -> LabelPlacement {
+    LabelPlacement::Trailing
+  }
+}
+
+/// A behavior places its label: a text entry's sits beside its box, before it among its
+/// siblings, a button's inside, and a third party's text entry may keep its label
+/// inside instead.
+#[wasm_bindgen_test]
+fn a_behavior_places_its_label() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        BasicTextField::new(TextEntry::new()).set_label("Name"),
+        BasicButton::new(Activate::new()).set_label("Save"),
+        Control::new(InlineEntry).set_label("Inline"),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let siblings: Vec<String> = elements(&column)
+    .iter()
+    .map(|element| {
+      format!(
+        "{}:{}",
+        element.tag_name(),
+        element.text_content().unwrap_or_default()
+      )
+    })
+    .collect();
+
+  assert_eq!(siblings[0], "LABEL:Name", "{siblings:?}");
+  assert_eq!(siblings[1], "INPUT:", "{siblings:?}");
+  assert_eq!(
+    siblings[2], "BUTTON:Save",
+    "the button's caption is inside: {siblings:?}"
+  );
+  assert_eq!(
+    siblings.len(),
+    4,
+    "the inline caption stands beside nothing: {siblings:?}"
+  );
+  assert!(
+    siblings[3].ends_with("Inline"),
+    "the inline caption is inside its box: {siblings:?}"
+  );
+}
+
+/// A control's parts, body and label run across half an em apart unless the control
+/// lays them out otherwise.
+#[wasm_bindgen_test]
+fn a_control_lays_out_its_row() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new()).set_label("a"),
+        BasicButton::new(Activate::new())
+          .set_axis(Axis::Vertical)
+          .set_spacing(Spacing::all(3))
+          .set_item_alignment(ItemAlignment::Start)
+          .set_label("b"),
+      ))
+      .build()
+  });
+
+  let buttons = elements(&only_child(&root));
+  let (plain, spaced) = (&buttons[0], &buttons[1]);
+  let em = computed(plain, "font-size")
+    .trim_end_matches("px")
+    .parse::<f32>()
+    .expect("a font size");
+
+  assert_eq!(computed(plain, "flex-direction"), "row");
+  assert_eq!(computed(plain, "column-gap"), format!("{}px", em / 2.));
+  assert_eq!(computed(spaced, "flex-direction"), "column");
+  assert_eq!(computed(spaced, "row-gap"), "3px");
+  assert_eq!(computed(spaced, "align-items"), "flex-start");
+}
+
+/// The face reports what it opens: a listbox popup, and the listbox it controls.
+#[wasm_bindgen_test]
+fn the_face_reports_its_popup_and_the_list_it_controls() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("a".to_owned());
+
+  let _ = mount(move || {
+    BasicPicker::new()
+      .bind_chosen(value)
+      .set_label("Size")
+      .set_options(
+        ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+
+  let face = root
+    .query_selector("[role=combobox]")
+    .expect("query")
+    .expect("the drawn face");
+  let controlled = face
+    .get_attribute("aria-controls")
+    .expect("the face names the list it controls");
+  let list = document()
+    .get_element_by_id(&controlled)
+    .expect("the controlled element");
+
+  assert_eq!(
+    face.get_attribute("aria-haspopup").as_deref(),
+    Some("listbox")
+  );
+  assert_eq!(list.get_attribute("role").as_deref(), Some("listbox"));
+  assert_eq!(
+    list
+      .query_selector_all("[role=option]")
+      .expect("query")
+      .length(),
+    2
   );
 }

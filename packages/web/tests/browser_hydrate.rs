@@ -488,6 +488,77 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
   root.remove();
 }
 
+/// The drawn face that takes the `<select>`'s place once hydrated carries the same
+/// caption, its view moved into the face's `<label>` rather than rebuilt, the name it
+/// supplies and the disabled setting.
+#[wasm_bindgen_test]
+fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
+  // What the server leaf renders for the picker below.
+  let root = server_root(concat!(
+    "<!--s:1--><label data-h=\"6\" for=\"skene-9-0\"><span data-h=\"4\">Size</span></label>",
+    "<select data-h=\"5\" aria-label=\"Size\" data-skene-control tabindex=\"-1\" ",
+    "data-skene-disabled disabled aria-disabled=\"true\" id=\"skene-9-0\">",
+    "<option value=\"a\">a</option></select><!--e:1-->",
+  ));
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  let caption = root
+    .query_selector("label > span")
+    .expect("query")
+    .expect("the server's caption");
+
+  hydrate(root.clone(), "", || {
+    BasicPicker::new()
+      .set_label("Size")
+      .set_disabled(true)
+      .set_options(
+        ["a"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+  });
+
+  assert_eq!(platform::hydration_mismatches(), 0);
+  assert!(
+    root.query_selector("select").expect("query").is_none(),
+    "the select is gone"
+  );
+
+  let face = root
+    .query_selector("[role=combobox]")
+    .expect("query")
+    .expect("the drawn face");
+  let named = face
+    .get_attribute("aria-labelledby")
+    .and_then(|caption| document().get_element_by_id(&caption))
+    .and_then(|caption| caption.text_content())
+    .or_else(|| face.get_attribute("aria-label"));
+
+  assert_eq!(named.as_deref(), Some("Size"));
+  assert_eq!(face.get_attribute("aria-disabled").as_deref(), Some("true"));
+  assert!(
+    root.query_selector("label > span").expect("query").as_ref() == Some(&caption),
+    "the caption moved, not rebuilt: {}",
+    root.inner_html()
+  );
+  assert!(
+    caption
+      .parent_element()
+      .and_then(|label| label.next_element_sibling())
+      .as_ref()
+      == Some(&face),
+    "the caption stands before the face: {}",
+    root.inner_html()
+  );
+
+  platform::uninstall();
+  root.remove();
+}
+
 #[wasm_bindgen_test]
 async fn a_lazy_view_keeps_server_content_until_it_loads() {
   // Client build order: container 1, then the lazy segment inside the container's

@@ -59,6 +59,16 @@ impl std::fmt::Debug for Slider {
 }
 
 impl Slider {
+  /// The events a slider acts on: the keys that move it and the pointer that presses
+  /// and drags it.
+  const EVENTS: &'static [EventKind] = &[
+    EventKind::KeyDown,
+    EventKind::PointerDown,
+    EventKind::PointerMove,
+    EventKind::PointerUp,
+    EventKind::PointerCancel,
+  ];
+
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
   pub fn new() -> Self {
     Self {
@@ -227,13 +237,7 @@ impl<P: Realization> Behavior<P> for Slider {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[
-      EventKind::KeyDown,
-      EventKind::PointerDown,
-      EventKind::PointerMove,
-      EventKind::PointerUp,
-      EventKind::PointerCancel,
-    ]
+    Self::EVENTS
   }
 
   fn mounted(&self, control: &ControlHandle<P>) {
@@ -437,7 +441,23 @@ impl SliderRange {
 
 #[cfg(test)]
 mod tests {
-  use super::SliderRange;
+  use super::{Slider, SliderRange};
+  use crate::EventKind;
+
+  /// A slider listens to the keys and the pointer it acts on, and nothing else.
+  #[test]
+  fn a_slider_listens_to_what_moves_it() {
+    assert_eq!(
+      Slider::EVENTS,
+      [
+        EventKind::KeyDown,
+        EventKind::PointerDown,
+        EventKind::PointerMove,
+        EventKind::PointerUp,
+        EventKind::PointerCancel,
+      ]
+    );
+  }
 
   /// Crossed or unparsed bounds are normalized, so nothing panics clamping into them.
   #[test]

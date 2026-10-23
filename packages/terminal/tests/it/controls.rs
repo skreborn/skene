@@ -2,20 +2,51 @@
 //! and its fill's edge, the picker and its popup's closing, a disabled control, and the
 //! Simple controls' shape.
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
+use accesskit::{HasPopup, Invalid, Orientation, Toggled};
+use skene_foundation::{ControlHandle, EventKind, PopupKind};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   self as terminal,
   Activate,
+  BasicListbox,
+  Behavior,
+  Listbox,
+  ListboxOption,
+  NativeElement,
+  NodeId,
+  Part,
+  Popup,
+  Prevent,
+  Radio,
+  RadioGroup,
   Slider,
   SliderRange,
+  Terminal,
   TextEntry,
+  Toggle,
+  WheelEvent,
   prelude::*,
   testing,
+  testing::user,
 };
 
-use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_platform};
+use crate::common::{
+  blue,
+  colors_at,
+  green,
+  locate,
+  mount_nodes,
+  read,
+  red,
+  rgb,
+  white,
+  with_platform,
+};
 
 /// Tab focuses a button, a `Focused` variant applies, and `Enter` clicks it.
 #[test]
@@ -606,358 +637,6 @@ fn a_slider_released_off_itself_stops_sliding() {
   });
 }
 
-fn picker(unit: Signal<String>) -> SimplePicker {
-  SimplePicker::new()
-    .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
-    .bind_chosen(unit)
-}
-
-/// Mounts a picker bound to `unit` at the top of the frame.
-fn mount_picker(unit: Signal<String>) {
-  let _ = terminal::mount(|| Column::new().add_child(picker(unit)).build());
-}
-
-/// The row of the last line containing `needle`: the popup's row, beneath the face
-/// that shows the same label.
-fn last_row(frame: &str, needle: &str) -> Option<u16> {
-  frame
-    .lines()
-    .collect::<Vec<_>>()
-    .iter()
-    .rposition(|line| line.contains(needle))
-    .and_then(|row| u16::try_from(row).ok())
-}
-
-/// `Enter` opens the picker's options popup beneath the face with the chosen row
-/// highlighted, a row click selects and closes, and `Escape` dismisses without
-/// selecting.
-#[test]
-fn picker_opens_a_popup_and_selects_by_click() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    mount_picker(unit);
-
-    let closed = testing::render_to_text(20, 10);
-
-    assert!(!closed.contains("cells"), "closed shows only the label");
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("Enter");
-
-    let open = testing::render_to_text(20, 10);
-    let (face_column, face_row) = locate(&open, "pixels");
-    let chosen_row = last_row(&open, "pixels").expect("the popup lists the chosen option");
-    let other_row = last_row(&open, "cells").expect("the popup lists the other option");
-
-    assert!(
-      chosen_row > face_row,
-      "the popup opens beneath the face: {open}"
-    );
-    assert_ne!(
-      colors_at(20, 10, usize::from(face_column), usize::from(chosen_row)).1,
-      colors_at(20, 10, usize::from(face_column), usize::from(other_row)).1,
-      "the chosen row is highlighted: {open}",
-    );
-
-    testing::trigger_mouse_click(face_column, other_row);
-
-    assert_eq!(unit.get_untracked(), "cell", "the row click selected");
-
-    let after_click = testing::render_to_text(20, 10);
-
-    assert!(
-      !after_click.contains("pixels"),
-      "the selection closed the popup: {after_click}"
-    );
-
-    testing::trigger_key("Enter");
-    testing::trigger_key("Escape");
-
-    let dismissed = testing::render_to_text(20, 10);
-
-    assert!(
-      !dismissed.contains("pixels"),
-      "escape dismissed the reopened popup: {dismissed}"
-    );
-    assert_eq!(unit.get_untracked(), "cell");
-  });
-}
-
-/// Popup keyboard navigation moves focus without committing: `Escape` keeps the old
-/// value, `Enter` chooses the focused option.
-#[test]
-fn picker_popup_navigates_without_committing() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    mount_picker(unit);
-    let _ = testing::render_to_text(20, 10);
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("Enter");
-    testing::trigger_key("ArrowDown");
-    testing::trigger_key("Escape");
-
-    assert_eq!(unit.get_untracked(), "px", "escape keeps the old value");
-
-    testing::trigger_key("Enter");
-    testing::trigger_key("ArrowDown");
-    testing::trigger_key("Enter");
-
-    assert_eq!(
-      unit.get_untracked(),
-      "cell",
-      "enter chooses the focused option"
-    );
-  });
-}
-
-/// `ArrowDown` on a closed picker opens the list rather than cycling the value, and
-/// the list's `End` and `Home` reach its ends.
-#[test]
-fn picker_arrows_open_the_list_and_home_and_end_reach_its_ends() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    mount_picker(unit);
-    let _ = testing::render_to_text(20, 10);
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("ArrowDown");
-
-    assert!(
-      testing::render_to_text(20, 10).contains("cells"),
-      "the list opened"
-    );
-    assert_eq!(unit.get_untracked(), "px", "opening chose nothing");
-
-    testing::trigger_key("End");
-    testing::trigger_key("Enter");
-
-    assert_eq!(unit.get_untracked(), "pt");
-
-    testing::trigger_key("ArrowUp");
-    testing::trigger_key("Home");
-    testing::trigger_key(" ");
-
-    assert_eq!(unit.get_untracked(), "px");
-  });
-}
-
-/// The options popup anchors beneath the picker and closes when focus leaves it.
-#[test]
-fn picker_popup_anchors_beneath_and_closes_on_blur() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    let _ = terminal::mount(|| {
-      Column::new()
-        .set_children((
-          picker(unit).into_any(),
-          BasicButton::new(Activate::new())
-            .set_label("next")
-            .into_any(),
-        ))
-        .into_any()
-        .build()
-    });
-    let _ = testing::render_to_text(20, 12);
-
-    testing::trigger_key("Tab");
-
-    let face = testing::focused_node();
-
-    testing::trigger_key("Enter");
-
-    let open = testing::render_to_text(20, 12);
-    let (_, face_row) = locate(&open, "pixels");
-    let list_row = last_row(&open, "pixels").expect("the list shows");
-
-    assert!(
-      list_row > face_row && open.contains("cells"),
-      "the popup opens beneath the face: {open}"
-    );
-
-    testing::trigger_key("Tab");
-
-    let blurred = testing::render_to_text(20, 12);
-
-    assert!(
-      !blurred.contains("cells"),
-      "focus moving on closes the popup: {blurred}"
-    );
-    assert_ne!(testing::focused_node(), face, "focus moved on");
-    assert_eq!(unit.get_untracked(), "px", "nothing was chosen");
-  });
-}
-
-/// `Tab` on a focused option commits it, closes the popup and travels on to the next
-/// tab stop, so the keys that follow reach that stop rather than the closed list.
-#[test]
-fn picker_tab_commits_closes_and_travels_on() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-    let next = NodeHandle::new();
-
-    let _ = terminal::mount(move || {
-      Column::new()
-        .set_children((
-          picker(unit).into_any(),
-          BasicButton::new(Activate::new())
-            .set_label("next")
-            .bind_handle(next)
-            .into_any(),
-        ))
-        .into_any()
-        .build()
-    });
-    let _ = testing::render_to_text(20, 12);
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("Enter");
-    testing::trigger_key("ArrowDown");
-    testing::trigger_key("Tab");
-
-    assert_eq!(
-      unit.get_untracked(),
-      "cell",
-      "tab committed the focused option"
-    );
-    assert_eq!(testing::focused_node(), next.node(), "tab travelled on");
-
-    let closed = testing::render_to_text(20, 12);
-
-    assert!(!closed.contains("points"), "the popup closed: {closed}");
-
-    testing::trigger_key(" ");
-
-    let after = testing::render_to_text(20, 12);
-
-    assert!(
-      !after.contains("points"),
-      "space reached the next stop: {after}"
-    );
-    assert_eq!(unit.get_untracked(), "cell");
-  });
-}
-
-/// Typing over the closed picker chooses by the option's caption without opening the
-/// list, and typing over the open list moves focus to the matching row for `Enter` to
-/// choose.
-#[test]
-fn picker_type_ahead_chooses_closed_and_focuses_open() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    mount_picker(unit);
-    let _ = testing::render_to_text(20, 10);
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("c");
-
-    assert_eq!(unit.get_untracked(), "cell", "a character chooses closed");
-
-    let closed = testing::render_to_text(20, 10);
-
-    assert!(
-      !closed.contains("points"),
-      "the list stays closed: {closed}"
-    );
-
-    testing::trigger_frame(std::time::Duration::from_secs(1));
-    testing::trigger_key("Enter");
-    testing::trigger_key("p");
-    testing::trigger_key("o");
-
-    assert_eq!(
-      unit.get_untracked(),
-      "cell",
-      "typing over the list chooses nothing"
-    );
-
-    testing::trigger_key("Enter");
-
-    assert_eq!(
-      unit.get_untracked(),
-      "pt",
-      "enter chooses the focused match"
-    );
-  });
-}
-
-/// A press on the face of an open picker is the face's click, which closes the popup;
-/// it is never a dismissal the click would reopen.
-#[test]
-fn a_press_on_an_open_pickers_face_closes_it() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    mount_picker(unit);
-    let _ = testing::render_to_text(20, 12);
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("Enter");
-
-    let open = testing::render_to_text(20, 12);
-    let (column, row) = locate(&open, "pixels");
-
-    assert!(open.contains("points"), "the popup opened: {open}");
-
-    testing::trigger_mouse_click(column, row);
-
-    let closed = testing::render_to_text(20, 12);
-
-    assert!(
-      !closed.contains("points"),
-      "the face's click closed it: {closed}"
-    );
-    assert_eq!(unit.get_untracked(), "px");
-
-    testing::trigger_mouse_click(column, row);
-
-    assert!(
-      testing::render_to_text(20, 12).contains("points"),
-      "the next click reopens it"
-    );
-  });
-}
-
-/// A picker's face keeps its ring while its list is open, though focus sits on an
-/// option.
-#[test]
-fn a_pickers_face_keeps_its_ring_while_open() {
-  with_platform(|| {
-    let unit = Signal::new("px".to_owned());
-
-    mount_picker(unit);
-
-    let closed = testing::render_to_text(20, 12);
-    let (column, row) = locate(&closed, "pixels");
-    let border = |x: u16| colors_at(20, 12, usize::from(x), usize::from(row) - 1).0;
-    let resting = border(column);
-
-    testing::trigger_key("Tab");
-
-    let focused = border(column);
-
-    assert_ne!(focused, resting, "focus rings the face");
-
-    testing::trigger_key("Enter");
-
-    assert!(
-      testing::render_to_text(20, 12).contains("points"),
-      "the list opened"
-    );
-    assert_ne!(testing::focused_node(), None);
-    assert_eq!(border(column), focused, "the ring holds while open");
-
-    testing::trigger_key("Escape");
-
-    assert_eq!(border(column), focused, "focus returns to the face");
-  });
-}
-
 /// A control consumes its own press, so a clickable ancestor never fires under it—and
 /// the control still does what it does.
 #[test]
@@ -1206,26 +885,6 @@ fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
   });
 }
 
-/// The open list marks the chosen row alone: an unchosen row's check is hidden, not
-/// drawn in its surface's color.
-#[test]
-fn picker_marks_the_chosen_row_alone() {
-  with_platform(|| {
-    let unit = Signal::new("cell".to_owned());
-
-    mount_picker(unit);
-
-    testing::trigger_key("Tab");
-    testing::trigger_key("Enter");
-
-    let open = testing::render_to_text(20, 10);
-    let marked: Vec<&str> = open.lines().filter(|line| line.contains('✓')).collect();
-
-    assert_eq!(marked.len(), 1, "{open}");
-    assert!(marked[0].contains("cells"), "{open}");
-  });
-}
-
 /// A text field keeps its caption before its box among its siblings, as the web's
 /// `<label>` sits before its `<input>`, so the caption paints clear of the value; a
 /// press on the caption focuses the field.
@@ -1312,6 +971,865 @@ fn simple_controls_take_the_cell_shape() {
         .nth(4)
         .is_some_and(|line| line.starts_with("[ ] agree")),
       "the mark is the unchecked glyph: {frame}"
+    );
+  });
+}
+
+/// A `note` of `name` into `log`, as an action.
+fn note(log: &Rc<RefCell<Vec<&'static str>>>, name: &'static str) -> impl Fn() + 'static {
+  let log = Rc::clone(log);
+
+  move || log.borrow_mut().push(name)
+}
+
+/// Whether a reader finds `node` checked.
+fn is_checked(node: NodeId) -> bool {
+  read(node).toggled() == Some(Toggled::True)
+}
+
+/// The node a `Tab` from `before` focuses: the next tab stop.
+fn stop_after(before: NodeHandle) -> Option<NodeId> {
+  before.focus();
+  testing::trigger_key("Tab");
+
+  testing::focused_node()
+}
+
+/// Whether `signal` holds `expected`, to a slider's precision.
+fn holds(signal: Signal<f32>, expected: f32) -> bool {
+  (signal.get_untracked() - expected).abs() < 1e-4
+}
+
+/// A button's click is the button's alone and never reaches the box it sits in, while
+/// a plain box's click on the same path still climbs; `Enter` on the button is a click
+/// the ancestors never hear, and a key it means nothing to climbs.
+#[test]
+fn a_button_click_stays_on_the_button_while_a_box_click_climbs() {
+  with_platform(|| {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let (outer, outer_key, button, plain) = (
+      note(&log, "outer"),
+      note(&log, "outer key"),
+      note(&log, "button"),
+      note(&log, "box"),
+    );
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .handle_click(outer)
+        .handle_key_down(move |_| outer_key())
+        .set_child(
+          Column::new().set_children((
+            BasicButton::new(Activate::new())
+              .handle_activate(button)
+              .set_label("Save"),
+            Container::new()
+              .handle_click(plain)
+              .set_child(Text::new("box")),
+          )),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 2);
+    let button = testing::find_by_role(Role::Button, "Save").expect("the button");
+
+    assert_eq!(read(button).role(), Role::Button);
+
+    user::click(button);
+
+    assert_eq!(*log.borrow(), ["button"]);
+
+    testing::trigger_key("Enter");
+
+    assert_eq!(*log.borrow(), ["button", "button"]);
+
+    testing::trigger_key("a");
+
+    assert_eq!(*log.borrow(), ["button", "button", "outer key"]);
+
+    user::click(testing::find_by_text("box").expect("the box's text"));
+
+    assert_eq!(
+      *log.borrow(),
+      ["button", "button", "outer key", "box", "outer"]
+    );
+  });
+}
+
+/// Where the terminal reports releases, `Space` activates a button once, as it is
+/// released after a press the button saw: the press and its repeats do nothing, a
+/// second release nothing, and a press the button lost focus after never activates it;
+/// `Enter` activates on every press, repeats included.
+#[test]
+fn space_activates_a_button_once_on_its_release() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+    let go = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      BasicButton::new(Activate::new())
+        .set_label("go")
+        .bind_handle(go)
+        .handle_activate(move || counted.set(counted.get() + 1))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(6, 1);
+    let repeat = |name| KeyEvent {
+      repeat: true,
+      ..KeyEvent::new(name)
+    };
+
+    testing::trigger_key_releases(true);
+    go.focus();
+    testing::trigger_key(" ");
+    testing::trigger_key_event(&repeat(" "));
+
+    assert_eq!(clicks.get(), 0);
+
+    testing::trigger_key_up(" ");
+
+    assert_eq!(clicks.get(), 1);
+
+    testing::trigger_key_up(" ");
+
+    assert_eq!(clicks.get(), 1);
+
+    testing::trigger_key(" ");
+    go.blur();
+    go.focus();
+    testing::trigger_key_up(" ");
+
+    assert_eq!(clicks.get(), 1, "the press was lost with focus");
+
+    testing::trigger_key("Enter");
+    testing::trigger_key_event(&repeat("Enter"));
+
+    assert_eq!(clicks.get(), 3);
+  });
+}
+
+/// `Space`, on its release, and a click each flip the signal a checkbox is bound to;
+/// what the checkbox reports follows the signal, and `Enter` means nothing to it.
+#[test]
+fn space_and_a_click_flip_a_bound_checkbox() {
+  with_platform(|| {
+    let bound = Signal::new(false);
+    let [node] = mount_nodes(|| {
+      [BasicCheckbox::new(Toggle::new().bind_checked(bound))
+        .set_label("agree")
+        .build()]
+    });
+
+    assert!(!is_checked(node));
+
+    user::click(node);
+
+    assert!(bound.get_untracked());
+    assert!(is_checked(node));
+
+    testing::trigger_key_releases(true);
+    testing::trigger_key(" ");
+
+    assert!(bound.get_untracked(), "the press flips nothing");
+
+    testing::trigger_key_up(" ");
+
+    assert!(!bound.get_untracked());
+
+    testing::trigger_key("Enter");
+
+    assert!(!bound.get_untracked());
+
+    bound.set(true);
+
+    assert!(is_checked(node));
+  });
+}
+
+/// A checkbox is controlled: with a derived state and no handler, a click and `Space`
+/// change nothing.
+#[test]
+fn a_controlled_checkbox_keeps_its_state_without_a_handler() {
+  with_platform(|| {
+    let bound = Signal::new(false);
+    let [node] = mount_nodes(|| {
+      [
+        BasicCheckbox::new(Toggle::new().derive_checked(move || bound.get()))
+          .set_label("agree")
+          .build(),
+      ]
+    });
+
+    user::click(node);
+    testing::trigger_key(" ");
+
+    assert!(!bound.get_untracked());
+    assert!(!is_checked(node));
+  });
+}
+
+/// A press maps to the value whose thumb centers under it: the thumb's center travels
+/// the extent less the thumb, so a press on the thumb at either end holds that end.
+#[test]
+fn a_press_centers_the_thumb_under_the_pointer() {
+  with_platform(|| {
+    let bound = Signal::new(50.0f32);
+
+    let _ = terminal::mount(|| {
+      BasicSlider::new(Slider::new().set_thumb_extent(4).bind_value(bound))
+        .set_width(20)
+        .set_height(1)
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 1);
+
+    // The thumb's center travels the 16 cells from 2 to 18: the center of cell 18
+    // passes the end, that of cell 4 is 2.5 cells along, and that of cell 1 falls
+    // before the start.
+    for (cell, value) in [(18, 100.), (4, 16.), (1, 0.)] {
+      testing::trigger_mouse_click(cell, 0);
+
+      assert!(holds(bound, value), "{cell}: {}", bound.get_untracked());
+    }
+  });
+}
+
+/// The arrows, page keys, `Home` and `End` move a slider's bound value by the range's
+/// rules, what it reports follows, `Tab` leaves it, a press a quarter of the way along
+/// its width sets a quarter of the range, and a press of another button than the
+/// primary slides nothing.
+#[test]
+fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
+  with_platform(|| {
+    let bound = Signal::new(50.0f32);
+    let next = NodeHandle::new();
+    let [node, _] = mount_nodes(|| {
+      [
+        BasicSlider::new(
+          Slider::new()
+            .set_range(SliderRange::new(0., 100., 5.))
+            .bind_value(bound),
+        )
+        .set_width(21)
+        .set_height(1)
+        .build(),
+        BasicButton::new(Activate::new())
+          .set_label("next")
+          .bind_handle(next)
+          .build(),
+      ]
+    });
+    let reported = || {
+      let access = read(node);
+
+      (
+        access.numeric_value(),
+        access.min_numeric_value(),
+        access.max_numeric_value(),
+        access.numeric_value_step(),
+        access.orientation(),
+      )
+    };
+
+    assert_eq!(
+      reported(),
+      (
+        Some(50.),
+        Some(0.),
+        Some(100.),
+        Some(5.),
+        Some(Orientation::Horizontal)
+      )
+    );
+
+    testing::trigger_key("Tab");
+
+    for (key, value) in [
+      ("ArrowRight", 55.),
+      ("ArrowLeft", 50.),
+      ("PageUp", 60.),
+      ("ArrowUp", 65.),
+      ("PageDown", 55.),
+      ("Home", 0.),
+      ("ArrowDown", 0.),
+      ("End", 100.),
+    ] {
+      testing::trigger_key(key);
+
+      assert!(holds(bound, value), "{key}: {}", bound.get_untracked());
+    }
+
+    assert_eq!(reported().0, Some(100.));
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::focused_node(),
+      next.node(),
+      "Tab leaves the slider"
+    );
+
+    testing::trigger_mouse_click(5, 0);
+
+    assert!(holds(bound, 25.), "{}", bound.get_untracked());
+
+    testing::trigger_mouse_right_click(15, 0);
+
+    assert!(holds(bound, 25.), "{}", bound.get_untracked());
+  });
+}
+
+/// A radio group with nothing chosen has its first member as the one tab stop,
+/// choosing moves the stop and the checked state, the arrows step with wrap and focus,
+/// and a member joining ahead of the others re-evaluates the stop.
+#[test]
+fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
+  with_platform(|| {
+    let chosen: Signal<Option<String>> = Signal::new(None);
+    let items = Signal::new(vec!["a", "b"]);
+    let (before, after) = (NodeHandle::new(), NodeHandle::new());
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new())
+            .set_label("before")
+            .bind_handle(before),
+          BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen)).set_child(
+            Column::new().derive_children(
+              move || items.get(),
+              |item| *item,
+              |item| BasicRadio::new(Radio::new(item)).set_label(item),
+            ),
+          ),
+          BasicButton::new(Activate::new())
+            .set_label("after")
+            .bind_handle(after),
+        ))
+        .into_any()
+        .build()
+    });
+    let radio = |name: &str| {
+      let _ = testing::render_to_text(10, 6);
+
+      testing::find_by_role(Role::RadioButton, name).expect("the radio")
+    };
+
+    assert_eq!(stop_after(before), Some(radio("a")));
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), after.node(), "b is no stop");
+
+    user::click(radio("b"));
+
+    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert!(is_checked(radio("b")));
+    assert!(!is_checked(radio("a")));
+    assert_eq!(stop_after(before), Some(radio("b")));
+
+    testing::trigger_key("ArrowRight");
+
+    assert_eq!(chosen.get_untracked().as_deref(), Some("a"));
+    assert_eq!(testing::focused_node(), Some(radio("a")));
+
+    testing::trigger_key("ArrowUp");
+
+    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert_eq!(testing::focused_node(), Some(radio("b")));
+
+    chosen.set(None);
+
+    assert_eq!(stop_after(before), Some(radio("a")));
+
+    items.set(vec!["z", "a", "b"]);
+
+    assert_eq!(testing::accessible_name(radio("z")).as_deref(), Some("z"));
+    assert_eq!(stop_after(before), Some(radio("z")));
+
+    testing::trigger_key("ArrowLeft");
+
+    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert_eq!(testing::focused_node(), Some(radio("b")));
+
+    before.focus();
+    testing::trigger_key("Tab");
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::focused_node(),
+      after.node(),
+      "one stop for the group"
+    );
+  });
+}
+
+/// A radio group's disabled members are passed over: the tab stop is the first enabled
+/// member while nothing is chosen, the arrows skip the disabled ones, and a member
+/// disabled later gives up the stop.
+#[test]
+fn a_radio_group_passes_over_its_disabled_members() {
+  with_platform(|| {
+    let chosen: Signal<Option<String>> = Signal::new(None);
+    let second_disabled = Signal::new(false);
+    let before = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new())
+            .set_label("before")
+            .bind_handle(before),
+          BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen)).set_child(
+            Column::new().set_children((
+              BasicRadio::new(Radio::new("a"))
+                .set_label("a")
+                .set_disabled(true),
+              BasicRadio::new(Radio::new("b"))
+                .set_label("b")
+                .derive_disabled(move || second_disabled.get()),
+              BasicRadio::new(Radio::new("c")).set_label("c"),
+            )),
+          ),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 5);
+    let [_, b, c] = ["a", "b", "c"]
+      .map(|name| testing::find_by_role(Role::RadioButton, name).expect("the radio"));
+
+    assert_eq!(stop_after(before), Some(b));
+
+    testing::trigger_key("ArrowDown");
+
+    assert_eq!(chosen.get_untracked().as_deref(), Some("c"));
+
+    testing::trigger_key("ArrowDown");
+
+    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+
+    chosen.set(None);
+    second_disabled.set(true);
+
+    assert_eq!(stop_after(before), Some(c));
+  });
+}
+
+/// A listbox's arrows skip its disabled options, and `Tab` from an option leaves the
+/// list without choosing it.
+#[test]
+fn a_listbox_skips_disabled_options_and_tab_chooses_nothing() {
+  with_platform(|| {
+    let chosen: Signal<Option<String>> = Signal::new(None);
+    let after = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicListbox::new(Listbox::new().bind_chosen(chosen)).set_child(
+            Column::new().set_children((
+              BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),
+              BasicListboxOption::new(ListboxOption::new("b"))
+                .set_label("b")
+                .set_disabled(true),
+              BasicListboxOption::new(ListboxOption::new("c")).set_label("c"),
+            )),
+          ),
+          BasicButton::new(Activate::new())
+            .set_label("after")
+            .bind_handle(after),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 5);
+    let [a, c] =
+      ["a", "c"].map(|name| testing::find_by_role(Role::ListBoxOption, name).expect("an option"));
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), Some(a));
+
+    testing::trigger_key("ArrowDown");
+
+    assert_eq!(
+      testing::focused_node(),
+      Some(c),
+      "the disabled option is skipped"
+    );
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), after.node());
+    assert_eq!(chosen.get_untracked(), None);
+  });
+}
+
+/// A part's focus variant resolves when the control is focused, though focus is the
+/// control's and not the part's, and its checked variant follows the control's state.
+#[test]
+fn a_parts_focus_and_checked_variants_follow_the_control() {
+  with_platform(|| {
+    let bound = Signal::new(false);
+
+    let _ = terminal::mount(|| {
+      BasicCheckbox::new(Toggle::new().bind_checked(bound))
+        .set_part(
+          Part::Face,
+          Container::new()
+            .set_width(1)
+            .set_height(1)
+            .set_background(red().when(State::FocusVisible, blue())),
+        )
+        .set_part(
+          Part::Mark,
+          Container::new()
+            .set_width(1)
+            .set_height(1)
+            .set_background(red().when(State::Checked, green())),
+        )
+        .into_any()
+        .build()
+    });
+    let surfaces = || {
+      let colors = testing::render_to_colors(4, 1);
+
+      (colors[0].1, colors[2].1)
+    };
+
+    assert_eq!(surfaces(), (Some(rgb(red())), Some(rgb(red()))));
+
+    testing::trigger_key("Tab");
+
+    assert_ne!(testing::focused_node(), None);
+    assert_eq!(surfaces(), (Some(rgb(blue())), Some(rgb(red()))));
+
+    testing::trigger_key(" ");
+
+    assert!(bound.get_untracked());
+    assert_eq!(surfaces(), (Some(rgb(blue())), Some(rgb(green()))));
+  });
+}
+
+/// A disabled control reports it, takes no focus and ignores activation, a key letting
+/// by where it holds focus; enabling it again restores all three.
+#[test]
+fn a_disabled_control_reports_it_and_ignores_activation() {
+  with_platform(|| {
+    let disabled = Signal::new(true);
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+    let heard = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&heard);
+    let other = NodeHandle::new();
+    let mut nodes = None;
+
+    let _ = terminal::mount(|| {
+      let node = BasicButton::new(Activate::new())
+        .set_label("go")
+        .derive_disabled(move || disabled.get())
+        .handle_activate(move || counted.set(counted.get() + 1))
+        .build();
+      let fixed = BasicButton::new(Activate::new())
+        .set_label("fixed")
+        .set_disabled(true)
+        .build();
+
+      nodes = Some((node, fixed));
+
+      Container::new()
+        .handle_key_down(move |event| log.borrow_mut().push(event.key.to_string()))
+        .set_child(
+          Column::new().set_children((
+            AnyView::node(node),
+            AnyView::node(fixed),
+            BasicButton::new(Activate::new())
+              .set_label("other")
+              .bind_handle(other)
+              .into_any(),
+          )),
+        )
+        .build()
+    });
+    let (node, fixed) = nodes.expect("the buttons built");
+    let _ = testing::render_to_text(10, 3);
+
+    assert!(read(node).is_disabled());
+    assert!(read(fixed).is_disabled());
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), other.node(), "no disabled stop");
+
+    user::click(node);
+
+    assert_eq!(clicks.get(), 0);
+
+    disabled.set(false);
+
+    let _ = testing::render_to_text(10, 3);
+
+    assert!(!read(node).is_disabled());
+
+    user::click(node);
+
+    assert_eq!(clicks.get(), 1);
+    assert_eq!(testing::focused_node(), Some(node));
+
+    disabled.set(true);
+    heard.borrow_mut().clear();
+    testing::trigger_key("Enter");
+
+    assert_eq!(clicks.get(), 1);
+    assert_eq!(*heard.borrow(), ["Enter"], "the key lets by");
+  });
+}
+
+/// A control given its body takes its setters still: a caption and a handler set after
+/// the body name the control and hear its activation, the body laid out before the
+/// trailing caption.
+#[test]
+fn a_control_given_its_body_takes_its_setters() {
+  with_platform(|| {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let save = note(&log, "save");
+    let [button] = mount_nodes(move || {
+      let button = BasicButton::new(Activate::new()).set_child(
+        Container::new()
+          .set_width(4)
+          .set_height(1)
+          .set_background(red()),
+      );
+
+      [button.set_label("Save").handle_activate(save).build()]
+    });
+    let frame = testing::render_to_text(40, 12);
+    let (column, row) = locate(&frame, "Save");
+
+    assert_eq!(row, 0);
+    assert!(column >= 4, "the body comes first: {frame}");
+    assert_eq!(colors_at(40, 12, 0, 0).1, Some(rgb(red())));
+    assert_eq!(testing::accessible_name(button).as_deref(), Some("Save"));
+
+    user::click(button);
+
+    assert_eq!(*log.borrow(), ["save"]);
+  });
+}
+
+/// A popup face opening a list is a combobox, and one opening a menu or a dialog a
+/// button, each reporting the popup it opens.
+#[test]
+fn a_popup_face_is_what_its_popup_makes_it() {
+  with_platform(|| {
+    let kinds = [PopupKind::Listbox, PopupKind::Menu, PopupKind::Dialog];
+    let faces = mount_nodes(|| {
+      kinds.map(|kind| {
+        Control::new(Popup::new().set_kind(kind))
+          .set_width(4)
+          .set_height(1)
+          .build()
+      })
+    });
+
+    for (kind, face) in kinds.into_iter().zip(faces) {
+      let (role, popup) = match kind {
+        PopupKind::Listbox => (Role::ComboBox, HasPopup::Listbox),
+        PopupKind::Menu => (Role::Button, HasPopup::Menu),
+        PopupKind::Dialog => (Role::Button, HasPopup::Dialog),
+      };
+
+      assert_eq!(read(face).role(), role, "{kind:?}");
+      assert_eq!(read(face).has_popup(), Some(popup), "{kind:?}");
+    }
+  });
+}
+
+/// A control's own observers hear the events they observe beside the ones its behavior
+/// acts on: a button heard focusing and the pointer moving over it.
+#[test]
+fn a_controls_observers_hear_the_events_they_observe() {
+  with_platform(|| {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let (focused, moved) = (note(&log, "focus"), note(&log, "move"));
+    let [button] = mount_nodes(move || {
+      [BasicButton::new(Activate::new())
+        .set_label("go")
+        .handle_focus(focused)
+        .handle_pointer_move(move |_| moved())
+        .build()]
+    });
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(*log.borrow(), ["focus"]);
+
+    user::hover(button);
+
+    assert_eq!(*log.borrow(), ["focus", "move"]);
+  });
+}
+
+/// A stepper: a third party's behavior, built through the public trait alone.
+struct Stepper {
+  count: Signal<i32>,
+}
+
+impl Behavior<Terminal> for Stepper {
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::Button)
+  }
+
+  fn role(&self) -> Option<Role> {
+    Some(Role::Button)
+  }
+
+  fn listens(&self) -> &'static [EventKind] {
+    &[EventKind::KeyDown, EventKind::Wheel]
+  }
+
+  fn on_key(&self, event: &KeyEvent, _: &ControlHandle<Terminal>) -> Prevent {
+    match event.key {
+      Key::Named(NamedKey::ArrowUp) => self.count.set(self.count.get() + 1),
+      Key::Named(NamedKey::ArrowDown) => self.count.set(self.count.get() - 1),
+      _ => return Prevent::None,
+    }
+
+    Prevent::All
+  }
+
+  fn on_wheel(&self, event: &WheelEvent, _: &ControlHandle<Terminal>) -> Prevent {
+    let step = if event.delta.vertical < 0. { 1 } else { -1 };
+
+    self.count.set(self.count.get() + step);
+
+    Prevent::All
+  }
+
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a test's count stays far below the integers f32 holds exactly"
+  )]
+  fn access(&self) -> Vec<AccessProp> {
+    vec![AccessProp::Value(self.count.get() as f32)]
+  }
+
+  fn focus_order(&self) -> Option<FocusOrder> {
+    Some(FocusOrder::Position(2))
+  }
+}
+
+/// A third-party behavior gets focus, decoration, parts, observers and reactive reports
+/// from the same builder as the shipped ones: its positive position leads the tab
+/// order, its keys and the wheel step it, and its focus variant paints.
+#[test]
+fn a_third_party_behavior_builds_through_public_types_alone() {
+  with_platform(|| {
+    let count = Signal::new(0);
+    let seen = Rc::new(Cell::new(0u32));
+    let observed = Rc::clone(&seen);
+    let [_, node] = mount_nodes(move || {
+      [
+        BasicButton::new(Activate::new()).set_label("first").build(),
+        Control::new(Stepper { count })
+          .set_width(4)
+          .set_height(1)
+          .set_accessible_name("Count")
+          .set_background(red().when(State::FocusVisible, blue()))
+          .set_part(Part::Face, Text::new("0"))
+          .handle_key_down(move |_| observed.set(observed.get() + 1))
+          .build(),
+      ]
+    });
+    let frame = testing::render_to_text(40, 12);
+    let (column, row) = locate(&frame, "0");
+
+    assert_eq!(row, 1, "the face part draws in the control: {frame}");
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), Some(node), "the position leads");
+    assert_eq!(
+      colors_at(40, 12, usize::from(column), 1).1,
+      Some(rgb(blue()))
+    );
+
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("x");
+
+    assert_eq!(count.get_untracked(), 2);
+    assert_eq!(seen.get(), 3);
+    assert_eq!(read(node).numeric_value(), Some(2.));
+
+    testing::trigger_mouse_scroll(column, 1, 0, -3);
+
+    assert_eq!(count.get_untracked(), 3, "the stepper takes the turn");
+  });
+}
+
+/// A control's required, read-only and invalid flags report as accessibility, the
+/// invalid flag reaches the control-scoped state, and a described-by names its node.
+#[test]
+fn a_controls_flags_report_as_accessibility_and_state() {
+  with_platform(|| {
+    let invalid = Signal::new(false);
+    let [hint, field] = mount_nodes(|| {
+      let hint = Text::new("Required").build();
+      let field = BasicTextField::new(TextEntry::new())
+        .set_width(6)
+        .set_required(true)
+        .set_read_only(true)
+        .derive_invalid(move || invalid.get())
+        .set_described_by(hint)
+        .set_background(red().when(State::Invalid, blue()))
+        .build();
+
+      [hint, field]
+    });
+    let surface = || colors_at(40, 12, 0, 1).1;
+
+    assert!(read(field).is_required());
+    assert!(read(field).is_read_only());
+    assert_eq!(read(field).described_by(), [hint.access_id()]);
+    assert_eq!(read(field).invalid(), None);
+    assert_eq!(surface(), Some(rgb(red())));
+
+    invalid.set(true);
+
+    assert_eq!(read(field).invalid(), Some(Invalid::True));
+    assert_eq!(surface(), Some(rgb(blue())));
+  });
+}
+
+/// A vertical range reports its orientation and reads the pointer along its height,
+/// bottom to top.
+#[test]
+fn a_vertical_range_reads_the_pointer_bottom_to_top() {
+  with_platform(|| {
+    let bound = Signal::new(50.0f32);
+    let [node] = mount_nodes(|| {
+      [
+        BasicSlider::new(Slider::new().set_axis(Axis::Vertical).bind_value(bound))
+          .set_width(1)
+          .set_height(10)
+          .build(),
+      ]
+    });
+
+    assert_eq!(read(node).orientation(), Some(Orientation::Vertical));
+
+    testing::trigger_mouse_click(0, 1);
+
+    assert!(
+      holds(bound, 85.),
+      "near the top reads high: {}",
+      bound.get_untracked()
     );
   });
 }

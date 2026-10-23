@@ -207,17 +207,21 @@ toolkit's keeps the default, which does nothing.
   while realization is written once above it.
 
   **Headless tests, not a mock platform.** Because the vocabulary carries typed data, the
-  host platform (`skene-headless`) realizes exactly what any real platform receives into an
-  inspectable record store, resolves a property through the spine's `Resolver` (the scene's
-  tokens, the expression evaluator and the environment), and runs tasks when a test
-  pumps them, giving the foundation's views fast tests without pretending to be a
-  platform. A facade's views test on their platform alone, against its real sinks: the
-  web's in a browser DOM via `wasm-bindgen-test` and on the server leaf natively under a
-  byte-exact snapshot, never on the headless platform; native ones against their toolkit.
-  A component library tests each facade's crate on its platform the same way: Simple's in
-  the browser through the styles the engine computes, and on the terminal through the
-  cells it paints, where the pointer can rest on a control. Only the spine's own unit
-  tests run on a double, a `TestPlatform` recording the calls it receives.
+  host platform (`skene-headless`) realizes exactly what any real platform receives into
+  an inspectable record store, resolves a property through the spine's `Resolver` (the
+  scene's tokens, the expression evaluator and the environment), and runs tasks when a
+  test pumps them, giving the foundation's views fast tests without pretending to be a
+  platform. The controls test on the platforms that realize them instead: their behaviors,
+  names and keys in the terminal's in-process tier, through real input and what a reader
+  finds, and their web form (the native element, a reported edit's verdict, the hydrated
+  swap) in the browser; what a behavior declares it listens to is a unit test of its own.
+  A facade's views test on their platform alone, against its real sinks: the web's in a
+  browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
+  snapshot, never on the headless platform; native ones against their toolkit. A component
+  library tests each facade's crate on its platform the same way: Simple's in the browser
+  through the styles the engine computes, and on the terminal through the cells it paints,
+  where the pointer can rest on a control. Only the spine's own unit tests run on a
+  double, a `TestPlatform` recording the calls it receives.
 
 ## Composition
 

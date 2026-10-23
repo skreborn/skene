@@ -117,3 +117,30 @@ impl Snapshot for TextSelection {
     Some(Self::default())
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::TextSelection;
+
+  /// A selection made backward reads its clusters in document order, and clamping
+  /// keeps its direction while holding each index inside the value.
+  #[test]
+  fn a_backward_selection_reads_in_document_order() {
+    let backward = TextSelection::new(4, 2);
+
+    assert!(backward.is_reversed());
+    assert!(!backward.is_collapsed());
+    assert_eq!((backward.min(), backward.max()), (2, 4));
+    assert_eq!(backward.range(), 2..4);
+    assert!(!TextSelection::new(2, 4).is_reversed());
+    assert!(TextSelection::collapsed(3).range().is_empty());
+    assert_eq!(
+      TextSelection::new(9, 2).clamped(5),
+      TextSelection::new(5, 2)
+    );
+    assert_eq!(
+      TextSelection::new(2, 9).clamped(5),
+      TextSelection::new(2, 5)
+    );
+  }
+}

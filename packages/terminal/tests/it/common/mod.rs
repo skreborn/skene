@@ -2,7 +2,7 @@
 //! a frame back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
-use skene_terminal::{Color, testing};
+use skene_terminal::{Color, NodeId, testing};
 
 /// A cell's foreground and background.
 pub(crate) type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);
@@ -58,4 +58,44 @@ pub(crate) fn rows(frame: &str) -> String {
 
     rows
   })
+}
+
+/// What a reader finds of `node`: its node in the accessibility tree the turn ends with.
+///
+/// # Panics
+///
+/// Panics where the tree holds no node for `node`.
+pub(crate) fn read(node: NodeId) -> accesskit::Node {
+  let tree = testing::access_tree();
+  let id = node.access_id();
+
+  tree
+    .nodes
+    .into_iter()
+    .find_map(|(held, access)| (held == id).then_some(access))
+    .unwrap_or_else(|| panic!("the tree holds no node for {node:?}"))
+}
+
+/// Mounts what `views` builds, one beneath another, paints a frame 40 cells by 12
+/// so what a reader finds is on screen, and returns the nodes they built, in order.
+pub(crate) fn mount_nodes<const N: usize>(views: impl FnOnce() -> [NodeId; N]) -> [NodeId; N] {
+  use skene_terminal::prelude::*;
+
+  let mut built = None;
+  let _ = skene_terminal::mount(|| {
+    let nodes = views();
+
+    built = Some(nodes);
+
+    nodes
+      .into_iter()
+      .fold(Column::new(), |column, node| {
+        column.add_child(AnyView::node(node))
+      })
+      .build()
+  });
+
+  let _ = testing::render_to_text(40, 12);
+
+  built.expect("the views built")
 }

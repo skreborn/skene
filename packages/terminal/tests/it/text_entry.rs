@@ -1109,3 +1109,111 @@ fn an_editor_reports_its_lines_as_text_runs_and_its_selection_in_them() {
     );
   });
 }
+
+/// A text entry is controlled: an edit its handler rejects leaves the frame showing the
+/// bound value, one it accepts stands, and a disabled entry hears none.
+#[test]
+fn a_rejected_edit_leaves_the_platform_showing_the_bound_value() {
+  with_platform(|| {
+    let bound = Signal::new("12".to_owned());
+    let disabled = Signal::new(false);
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(
+        TextEntry::new()
+          .derive_value(move || bound.get())
+          .handle_change(move |value| {
+            if value.chars().all(|character| character.is_ascii_digit()) {
+              bound.set(value.to_owned());
+            }
+          }),
+      )
+      .derive_disabled(move || disabled.get())
+      .into_any()
+      .build()
+    });
+    let _ = testing::render_to_text(10, 1);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("a");
+
+    assert_eq!(bound.get_untracked(), "12");
+    assert_eq!(
+      testing::render_to_text(10, 1),
+      "12\n",
+      "the rejected edit is undone"
+    );
+
+    testing::trigger_key("3");
+
+    assert_eq!(bound.get_untracked(), "123");
+    assert_eq!(testing::render_to_text(10, 1), "123\n");
+
+    disabled.set(true);
+    testing::trigger_key("4");
+
+    assert_eq!(
+      bound.get_untracked(),
+      "123",
+      "a disabled entry hears no edit"
+    );
+    assert_eq!(testing::render_to_text(10, 1), "123\n");
+  });
+}
+
+/// A text entry's selection is controlled beside its value: the bound signal places it
+/// where a reader finds it, clamped into the value, and a move the user makes writes
+/// the signal, backward where it was made backward.
+#[test]
+fn a_text_entrys_selection_binds_both_ways() {
+  with_platform(|| {
+    let bound = Signal::new(TextSelection::new(1, 3));
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(TextEntry::new().set_value("hello").bind_selection(bound))
+        .set_width(10)
+        .into_any()
+        .build()
+    });
+    let reported = || {
+      let _ = testing::render_to_text(10, 1);
+      let tree = testing::access_tree();
+      let (_, entry) = tree
+        .nodes
+        .iter()
+        .find(|(_, node)| node.role() == Role::TextInput)
+        .expect("the field is in the tree");
+      let selection = entry
+        .text_selection()
+        .expect("the field reports its selection");
+
+      (
+        selection.anchor.character_index,
+        selection.focus.character_index,
+      )
+    };
+
+    assert_eq!(reported(), (1, 3));
+
+    bound.set(TextSelection::collapsed(5));
+
+    assert_eq!(reported(), (5, 5));
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    testing::trigger_key("Shift+ArrowLeft");
+    testing::trigger_key("Shift+ArrowLeft");
+
+    assert_eq!(bound.get_untracked(), TextSelection::new(5, 3));
+    assert_eq!(reported(), (5, 3));
+
+    bound.set(TextSelection::new(2, 9));
+
+    assert_eq!(
+      reported(),
+      (2, 5),
+      "an index past the value clamps to its end"
+    );
+  });
+}

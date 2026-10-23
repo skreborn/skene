@@ -1065,6 +1065,68 @@ async fn a_press_on_the_thumb_slides_by_the_slider_box() {
   assert!((value.get() - 77.).abs() < f32::EPSILON, "{}", value.get());
 }
 
+/// A press on a slider's thumb slides it as the pointer moves, until the browser
+/// cancels the press: a move after the cancel slides nothing.
+#[wasm_bindgen_test]
+async fn a_cancelled_press_stops_sliding() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(40.0f32);
+
+  let _ = mount(move || {
+    Container::new()
+      .set_width(200)
+      .set_child(SimpleSlider::new().bind_value(value))
+      .build()
+  });
+
+  next_frame().await;
+
+  let slider = only_child(&only_child(&root));
+  let left = slider.get_bounding_client_rect().left();
+  let stack = only_child(&slider.last_element_child().expect("the drawn body"));
+  let thumb = only_child(&stack.last_element_child().expect("the rail"));
+  let pointer = |kind: &str, x: f64| {
+    let init = web_sys::PointerEventInit::new();
+
+    init.set_bubbles(true);
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a coordinate inside the test page fits an i32"
+    )]
+    init.set_client_x((left + x).round() as i32);
+    init.set_button(0);
+
+    let event =
+      web_sys::PointerEvent::new_with_event_init_dict(kind, &init).expect("a pointer event");
+    let _ = thumb.dispatch_event(&event);
+  };
+  let slid = frames_until(|| {
+    pointer("pointerdown", 150.);
+
+    (value.get() - 40.).abs() > f32::EPSILON
+  })
+  .await;
+
+  assert!(slid, "the press moved the slider");
+
+  let pressed = value.get();
+
+  pointer("pointermove", 100.);
+
+  let moved = value.get();
+
+  assert!(moved < pressed, "a move slides it: {pressed} to {moved}");
+
+  pointer("pointercancel", 100.);
+  pointer("pointermove", 20.);
+
+  assert!(
+    (value.get() - moved).abs() < f32::EPSILON,
+    "a move after the cancel slides nothing: {}",
+    value.get()
+  );
+}
+
 /// A slider's native input holds the slider's range, step and value, and follows the
 /// value.
 #[wasm_bindgen_test]
@@ -2708,11 +2770,9 @@ fn a_checkbox_is_a_label_over_a_native_input() {
 }
 
 /// A radio group's arrow traversal follows document order, including a member
-/// reconciled into the middle of the set after the group was built.
-///
-/// The host tier pins the same thing against the headless platform. This pins it against
-/// the browser's: real reconcile, real elements, and a real `keydown`, so the order the
-/// platform reports is checked against the order the document actually renders.
+/// reconciled into the middle of the set after the group was built: real reconcile,
+/// real elements and a real `keydown`, so the order the platform reports is checked
+/// against the order the document renders.
 #[wasm_bindgen_test]
 fn a_radio_group_traverses_in_document_order() {
   let (_guard, root) = fresh_root();

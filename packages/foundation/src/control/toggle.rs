@@ -39,6 +39,16 @@ impl std::fmt::Debug for Toggle {
 }
 
 impl Toggle {
+  /// The events a checkbox acts on: a click, the keys that flip it, the blur that
+  /// disarms a `Space` press, and the platform's own toggle.
+  const EVENTS: &'static [EventKind] = &[
+    EventKind::Click,
+    EventKind::KeyDown,
+    EventKind::KeyUp,
+    EventKind::Blur,
+    EventKind::Toggle,
+  ];
+
   /// An unchecked checkbox with no handler.
   #[inline(always)]
   pub fn new() -> Self {
@@ -113,13 +123,7 @@ impl<P: Realization> Behavior<P> for Toggle {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[
-      EventKind::Click,
-      EventKind::KeyDown,
-      EventKind::KeyUp,
-      EventKind::Blur,
-      EventKind::Toggle,
-    ]
+    Self::EVENTS
   }
 
   fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
@@ -168,5 +172,27 @@ impl<P: Realization> Behavior<P> for Toggle {
       checked: self.read().into(),
       ..ControlState::DEFAULT
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::Toggle;
+  use crate::EventKind;
+
+  /// A checkbox listens to the click, the keys, the blur and the platform's toggle it
+  /// acts on, and nothing else.
+  #[test]
+  fn a_checkbox_listens_to_what_flips_it() {
+    assert_eq!(
+      Toggle::EVENTS,
+      [
+        EventKind::Click,
+        EventKind::KeyDown,
+        EventKind::KeyUp,
+        EventKind::Blur,
+        EventKind::Toggle,
+      ]
+    );
   }
 }

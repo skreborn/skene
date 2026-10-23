@@ -496,9 +496,10 @@ re-export.
   scroller focusable, so the keyboard reaches its content. The gallery runs under
   axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
-  gallery's overlays open: a tooltip, the picker's popup and a context menu. Disabled controls
-  leave the focus order, a deliberate reading of the practices' allowance, recorded
-  in `AGENTS.md`.
+  gallery's overlays open: a tooltip, the picker's popup and a context menu, once under
+  every rule and once under the naming rules alone, each proven to have run. Disabled
+  controls leave the focus order, a deliberate reading of the practices' allowance,
+  recorded in `AGENTS.md`.
 - **Parity holds by construction.** `skene-conformance` is one suite of scenarios, each
   opening a page of the suite, acting on it as a user does and checking what a reader
   finds—the probes the page publishes of the signals it binds, the node holding focus,
@@ -530,11 +531,12 @@ re-export.
   element's role stands where nothing states another (`NativeElement::role`: a text
   field is a text input). The queries a test reads go through the same walk:
   `find_by_role`, `find_by_text`, and `find_all_unnamed`, every link and every node of a
-  role ARIA requires a name for that has none, which both galleries assert empty on the
-  host tier as axe does in the browser. The same walk builds the accessibility tree as
-  AccessKit models it (`Scene::access_tree`): each node's role, name, value, states and
-  relations under a window, focus on the focused node—what a native platform hands its
-  screen reader, and, as indented text (`access_outline`), what a test asserts.
+  role ARIA requires a name for that has none, which the terminal's gallery asserts
+  empty as the web gallery's `browser_axe` holds axe's naming rules in the browser. The
+  same walk builds the accessibility tree as AccessKit models it (`Scene::access_tree`):
+  each node's role, name, value, states and relations under a window, focus on the
+  focused node—what a native platform hands its screen reader, and, as indented text
+  (`access_outline`), what a test asserts.
 - **A drawn entry reports its text as AccessKit reads an editable one.** A platform
   whose entry runs on the editing core hands the scene its text runs
   (`NameFacts::text_runs`, an `AccessText` built once above the engine from the entry's

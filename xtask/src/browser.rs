@@ -54,7 +54,7 @@ const RUNS: &[Run] = &[
   Run {
     package: "gallery",
     arguments: &["--test", "browser_axe"],
-    binaries: &[("browser_axe", 1)],
+    binaries: &[("browser_axe", 2)],
   },
 ];
 

@@ -1,5 +1,6 @@
 //! The gallery against axe-core in a real browser: every built-in view and control,
-//! mounted live, must raise no accessibility violation.
+//! mounted live, must raise no accessibility violation, and every control, link,
+//! picture and dialog it shows is named, as a reader finds it.
 //!
 //! Run in a headless browser:
 //! `cargo test -p gallery --target wasm32-unknown-unknown --test browser_axe`.
@@ -7,7 +8,7 @@
 
 use std::fmt::Write as _;
 
-use js_sys::{Array, Function, Promise, Reflect};
+use js_sys::{Array, Function, Object, Promise, Reflect};
 use skene_web::{
   platform::mount,
   prelude::*,
@@ -31,8 +32,14 @@ fn field(value: &JsValue, name: &str) -> String {
     .unwrap_or_default()
 }
 
-/// Loads axe-core into the page.
+/// Loads axe-core into the page, unless an earlier test has.
 fn load_axe() {
+  let window = web_sys::window().expect("a window");
+
+  if Reflect::has(&window, &JsValue::from_str("axe")).expect("the window's properties") {
+    return;
+  }
+
   let script = document()
     .create_element("script")
     .expect("a script element");
@@ -45,16 +52,68 @@ fn load_axe() {
     .expect("load axe");
 }
 
-/// Every violation axe reports for the page in `state`, each with the elements it names.
-async fn violations(state: &str) -> Vec<String> {
-  let run = Function::new_no_args("return axe.run(document.body)");
-  let promise: Promise = run.call0(&JsValue::NULL).expect("start the run").into();
+/// axe's rules requiring a name: each control, link, picture, dialog, heading, tooltip
+/// and range has one.
+const NAMING_RULES: &[&str] = &[
+  "aria-command-name",
+  "aria-dialog-name",
+  "aria-input-field-name",
+  "aria-meter-name",
+  "aria-progressbar-name",
+  "aria-toggle-field-name",
+  "aria-tooltip-name",
+  "aria-treeitem-name",
+  "button-name",
+  "empty-heading",
+  "frame-title",
+  "image-alt",
+  "input-button-name",
+  "label",
+  "link-name",
+  "role-img-alt",
+  "select-name",
+  "svg-img-alt",
+];
+
+/// The ids of the rules a result list of axe's names.
+fn rule_ids(results: &JsValue, list: &str) -> Vec<String> {
+  let rules: Array = Reflect::get(results, &JsValue::from_str(list))
+    .unwrap_or_else(|_| panic!("the {list}"))
+    .into();
+
+  rules.iter().map(|rule| field(&rule, "id")).collect()
+}
+
+/// The options running only `rules`, or every rule where `rules` is empty.
+fn run_options(rules: &[&str]) -> Object {
+  let options = Object::new();
+
+  if !rules.is_empty() {
+    let run_only = Object::new();
+    let values: Array = rules.iter().copied().map(JsValue::from_str).collect();
+
+    Reflect::set(&run_only, &"type".into(), &"rule".into()).expect("the run's type");
+    Reflect::set(&run_only, &"values".into(), &values).expect("the run's rules");
+    Reflect::set(&options, &"runOnly".into(), &run_only).expect("the run's selection");
+  }
+
+  options
+}
+
+/// What axe finds wrong with the page in `state` under `rules` (every rule where
+/// `rules` is empty): each violation with the elements it names, and each of `rules`
+/// that left an element undecided or did not run.
+async fn audit(state: &str, rules: &[&str]) -> Vec<String> {
+  let run = Function::new_with_args("options", "return axe.run(document.body, options)");
+  let promise: Promise = run
+    .call1(&JsValue::NULL, &run_options(rules))
+    .expect("start the run")
+    .into();
   let results = JsFuture::from(promise).await.expect("the run's results");
   let violations: Array = Reflect::get(&results, &JsValue::from_str("violations"))
     .expect("the violations")
     .into();
-
-  violations
+  let mut found: Vec<String> = violations
     .iter()
     .map(|violation| {
       let mut line = format!(
@@ -73,7 +132,24 @@ async fn violations(state: &str) -> Vec<String> {
 
       line
     })
-    .collect()
+    .collect();
+  let mut ran = rule_ids(&results, "violations");
+
+  ran.extend(rule_ids(&results, "passes"));
+  ran.extend(rule_ids(&results, "inapplicable"));
+
+  let undecided = rule_ids(&results, "incomplete");
+
+  for rule in rules {
+    if undecided.iter().any(|id| id == rule) {
+      found.push(format!("{state}: {rule} left nodes undecided"));
+    }
+    else if !ran.iter().any(|id| id == rule) {
+      found.push(format!("{state}: {rule} did not run"));
+    }
+  }
+
+  found
 }
 
 /// Waits for what an event opened or closed to settle.
@@ -148,17 +224,17 @@ fn open_context_menu(element: &HtmlElement) {
   let _ = element.dispatch_event(&event);
 }
 
-/// The gallery raises no violation as drawn, nor with any of its overlays open: a
-/// tooltip, the picker's popup and a context menu.
-#[wasm_bindgen_test]
-async fn the_gallery_raises_no_accessibility_violation() {
+/// What axe finds wrong under `rules` (every rule where `rules` is empty) with the
+/// gallery mounted live, as drawn and with each of its overlays open: a tooltip, the
+/// picker's popup and a context menu.
+async fn audit_the_gallery(rules: &[&str]) -> Vec<String> {
   let (_guard, _root) = fresh_root();
   let _ = mount(|| gallery::app().build());
 
   load_axe();
   settle().await;
 
-  let mut found = violations("the page").await;
+  let mut found = audit("the page", rules).await;
   let save = element_with_text("button", "Save");
 
   save.focus().expect("focus the described button");
@@ -166,7 +242,7 @@ async fn the_gallery_raises_no_accessibility_violation() {
 
   assert!(overlay_open(), "focus opened no tooltip");
 
-  found.extend(violations("a tooltip open").await);
+  found.extend(audit("a tooltip open", rules).await);
   save.blur().expect("blur the described button");
   settle().await;
 
@@ -180,7 +256,7 @@ async fn the_gallery_raises_no_accessibility_violation() {
     "a click on the picker's face opened no popup"
   );
 
-  found.extend(violations("the picker's popup open").await);
+  found.extend(audit("the picker's popup open", rules).await);
   press_escape();
   settle().await;
 
@@ -189,12 +265,35 @@ async fn the_gallery_raises_no_accessibility_violation() {
 
   assert!(overlay_open(), "the menu gesture opened no context menu");
 
-  found.extend(violations("a context menu open").await);
+  found.extend(audit("a context menu open", rules).await);
   press_escape();
+  settle().await;
+
+  found
+}
+
+/// The gallery raises no violation as drawn, nor with any of its overlays open.
+#[wasm_bindgen_test]
+async fn the_gallery_raises_no_accessibility_violation() {
+  let found = audit_the_gallery(&[]).await;
 
   assert!(
     found.is_empty(),
     "axe found {} violation(s):\n{}",
+    found.len(),
+    found.join("\n")
+  );
+}
+
+/// Every control, link, picture and dialog the gallery shows is named, as drawn and with
+/// each of its overlays open, each naming rule proven to have run.
+#[wasm_bindgen_test]
+async fn every_control_the_gallery_shows_is_named() {
+  let found = audit_the_gallery(NAMING_RULES).await;
+
+  assert!(
+    found.is_empty(),
+    "axe found {} naming failure(s):\n{}",
     found.len(),
     found.join("\n")
   );

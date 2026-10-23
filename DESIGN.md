@@ -1349,12 +1349,16 @@ wrapped at its content width) is held apart from the records, so an operation on
 key, a press or a drag, a paste, a write from the app—runs with none of them borrowed
 and what it changed (damage, restyle, the window, a moved selection to report) is
 settled after, an operation reaching an editor another holds (a handler that moves
-focus, say) waiting for that one to end. Its box is at least its native size, eight
-cells or its value's widest line and the caret's cell past it, and its lines tall,
-stretched where its layout stretches its items as an `<input>` is. Its edits are reported through `report_edit`,
-never applied ahead of the verdict, which it shows; it takes its read-only state from
-the scene before each operation, and a key command lays the scene out first
-(`lay_out`). Its selection is the core's—an anchor beside the caret over the value,
+focus, say) waiting for that one to end. Its box its style leaves unsized lays out at
+its native size, eight cells or its value's widest line and the caret's cell past it,
+and its lines tall, as an `<input>`'s intrinsic size: the least a layout stretching or
+shrinking it leaves it, held to its own maximum and raised to its own minimum (its size
+outright where either is a fraction, which then bounds it). The value draws on the box's
+first row, where a browser centers it in a taller `<input>` (`ROADMAP.md`). Its edits
+are reported through `report_edit`, never applied ahead of the verdict, which it shows;
+it takes its read-only state from the scene before each operation, and a key command
+lays the scene out first (`lay_out`).
+Its selection is the core's—an anchor beside the caret over the value,
 reported to the app as a `TextSelection` in clusters after every move and written from
 its bound signal, each index clamped into the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge

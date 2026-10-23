@@ -598,10 +598,15 @@ in a code comment.
 26. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-27. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+27. **A terminal field centers its value in a taller box.** A browser draws a
+    single-line `<input>`'s value in the middle of a box taller than its line; the
+    terminal draws it on the box's first row, now that a row stretching its items
+    stretches the field to its height. The field's value row, its caret, a press's
+    mapping to its value (`field_inset`) and its paint's inset move together.
+28. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-28. **Server rendering beyond the native binary.** The native server binary stays the
+29. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates

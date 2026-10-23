@@ -1403,3 +1403,41 @@ fn a_text_entry_stretches_across_its_layout() {
     );
   });
 }
+
+/// A text entry's native size gives way to its limits as an `<input>`'s intrinsic size
+/// does: a maximum below it holds the entry to the maximum, a minimum below it leaves it,
+/// and a minimum above it raises it.
+#[test]
+fn a_text_entrys_native_size_yields_to_its_limits() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_item_alignment(ItemAlignment::Start)
+        .set_children((
+          Row::new().set_children((
+            BasicTextField::new(TextEntry::new()).set_max_width(4),
+            Text::new("|"),
+          )),
+          Row::new().set_children((
+            BasicTextField::new(TextEntry::new()).set_min_width(2),
+            Text::new("|"),
+          )),
+          Row::new().set_children((
+            BasicTextField::new(TextEntry::new()).set_min_width(10),
+            Text::new("|"),
+          )),
+          BasicTextEditor::new(TextEntry::new().set_lines(3)).set_max_height(2),
+          Text::new("after"),
+        ))
+        .into_any()
+        .build()
+    });
+    let frame = testing::render_to_text(20, 6);
+
+    assert_eq!(
+      frame.lines().collect::<Vec<_>>(),
+      ["    |", "        |", "          |", "", "", "after"],
+      "{frame}"
+    );
+  });
+}

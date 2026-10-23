@@ -881,23 +881,26 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
 
       if let Some(field) = field {
         let chrome = chrome(&resolved);
+        let columns = (field.widest() + 1)
+          .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
+          .max(8);
 
-        // The native size is the entry's least, as an `<input>`'s is in a flex layout,
-        // so a layout stretching its items stretches it. One cell past the value's
-        // longest line keeps the caret inside the box at its end.
-        if style.size.width.is_auto() && style.min_size.width.is_auto() {
-          let content = (field.widest() + 1)
-            .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
-            .max(8);
+        // An entry its style leaves unsized lays out at its native size, eight cells or
+        // one cell past its value's widest line and its lines tall, the least a layout
+        // stretching or shrinking it leaves it.
+        native_size(
+          &mut style.size.width,
+          &mut style.min_size.width,
+          style.max_size.width,
+          cell(u32::try_from(columns).unwrap_or(u32::MAX) + chrome.start + chrome.end),
+        );
 
-          style.min_size.width = length(cell(
-            u32::try_from(content).unwrap_or(u32::MAX) + chrome.start + chrome.end,
-          ));
-        }
-
-        if style.size.height.is_auto() && style.min_size.height.is_auto() {
-          style.min_size.height = length(cell(u32::from(field.lines) + chrome.top + chrome.bottom));
-        }
+        native_size(
+          &mut style.size.height,
+          &mut style.min_size.height,
+          style.max_size.height,
+          cell(u32::from(field.lines) + chrome.top + chrome.bottom),
+        );
       }
 
       if fills_root {
@@ -1045,6 +1048,33 @@ pub(crate) fn padding_cells(style: &PlainBox) -> Inset<u32> {
     end: cells(padding.end),
     bottom: cells(padding.bottom),
     start: cells(padding.start),
+  }
+}
+
+/// Lays an entry out along one axis at its native extent `native` where its `size` is
+/// unset, as an `<input>`'s intrinsic size is: as its least, held to its `max` and raised
+/// to its `min`, where each is a length or unset, and otherwise as its size, which its
+/// `min` and `max` then bound.
+fn native_size(
+  size: &mut taffy::style::Dimension,
+  min: &mut taffy::style::LengthPercentageAuto,
+  max: taffy::style::LengthPercentageAuto,
+  native: f32,
+) {
+  if !size.is_auto() {
+    return;
+  }
+
+  let least = taffy::style::Dimension::from(*min).into_option();
+  let most = taffy::style::Dimension::from(max).into_option();
+
+  if (min.is_auto() || least.is_some()) && (max.is_auto() || most.is_some()) {
+    let held = most.map_or(native, |most| native.min(most));
+
+    *min = length(least.map_or(held, |least| held.max(least)));
+  }
+  else {
+    *size = length(native);
   }
 }
 

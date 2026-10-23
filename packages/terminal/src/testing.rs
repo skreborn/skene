@@ -440,6 +440,14 @@ pub fn is_frame_pending() -> bool {
   with_records(|records| records.needs_frame())
 }
 
+/// How many scheduled actions are still waiting for the clock, for a test asserting that
+/// a view cancels its own.
+#[must_use]
+pub fn pending_timers() -> usize {
+  end_turn();
+  with_records(|records| records.timers.len())
+}
+
 /// How many layouts have been computed since the platform was installed, for a test
 /// asserting that a change repainted without a relayout.
 #[must_use]

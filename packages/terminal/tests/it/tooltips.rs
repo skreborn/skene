@@ -159,7 +159,14 @@ fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
       "the pointer has not rested"
     );
 
-    testing::trigger_frame(TOOLTIP_DELAY);
+    testing::trigger_frame(TOOLTIP_DELAY / 2);
+
+    assert!(
+      !testing::render_to_text(24, 4).contains("Saves"),
+      "halfway through the delay"
+    );
+
+    testing::trigger_frame(TOOLTIP_DELAY / 2);
 
     let open = testing::render_to_text(24, 4);
     let lines: Vec<&str> = open.lines().collect();
@@ -309,15 +316,31 @@ fn a_tooltip_closes_on_blur_and_its_pending_rest_leaves_with_it() {
       "blur closes it"
     );
 
+    let idle = testing::pending_timers();
+
     testing::trigger_mouse_move(1, 0);
+
+    assert_eq!(
+      testing::pending_timers(),
+      idle + 1,
+      "the rest waits for the delay"
+    );
+
     shown.set(false);
+
+    assert_eq!(
+      testing::pending_timers(),
+      idle,
+      "the rest left with the view"
+    );
+
     testing::trigger_frame(TOOLTIP_DELAY * 2);
 
     let frame = testing::render_to_text(24, 4);
 
     assert!(
       frame.contains("gone") && !frame.contains("Saves"),
-      "the rest left with the view: {frame}"
+      "the delay passing opens nothing: {frame}"
     );
   });
 }
@@ -510,7 +533,6 @@ fn a_controls_description_and_a_tooltips_fold_into_one_list() {
 
     assert_eq!(described_by(), folded, "through the control's rewrite");
 
-    testing::trigger_key("Tab");
     disabled.set(false);
     testing::trigger_key("Tab");
 

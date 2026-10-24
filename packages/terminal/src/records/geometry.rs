@@ -84,13 +84,11 @@ impl Records {
   /// width.
   pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
     let record = self.record(handle)?;
-    let laid_out = |handle: Handle| {
-      self
-        .record(handle)
-        .is_some_and(|record| record.kind.is_laid_out())
-    };
-
-    if self.children(handle).into_iter().any(laid_out) {
+    if self
+      .children(handle)
+      .into_iter()
+      .any(|child| self.record(child).is_some())
+    {
       return None;
     }
 

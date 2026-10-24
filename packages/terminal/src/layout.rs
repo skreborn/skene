@@ -567,17 +567,13 @@ fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) 
 }
 
 /// Resolves `handle`'s style if stale or in motion, and returns the taffy style it maps
-/// to; `None` for a node outside the layout. A node out of the display runs no motion
+/// to; `None` for a node without a record. A node out of the display runs no motion
 /// and forgets its presentation, so it shows afresh once `displayed` again.
 fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option<Restyled> {
   let generation = records.restyle.generation();
   let now = records.now();
   let reduced = records.reduced_motion;
   let record = records.record_mut(handle)?;
-
-  if !record.kind.is_laid_out() {
-    return None;
-  }
 
   if !displayed {
     if !record.hidden {
@@ -888,10 +884,6 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         leaf: text.map(|flow| CellLeaf::Flow(Box::new(flow))),
       }
     }
-    Kind::Anchor | Kind::Scope => Restyled {
-      style: Style::default(),
-      leaf: None,
-    },
     Kind::Box(inner) => {
       let resolved = inner.style().cloned().unwrap_or_default();
       let paragraph = is_paragraph(records, handle);
@@ -977,11 +969,7 @@ pub(crate) fn rebuild_children(records: &mut Records) {
   let handles = records.handles();
 
   for handle in handles {
-    let laid_out = records
-      .record(handle)
-      .is_some_and(|record| record.kind.is_laid_out());
-
-    if !laid_out || !records.tree.contains(handle) {
+    if !records.tree.contains(handle) {
       continue;
     }
 

@@ -63,8 +63,8 @@ impl Realization for Web {
     &SCENE
   }
 
-  fn create(node: NodeId, spec: &NodeSpec) {
-    with_realizer(|realizer| realizer.create(node, spec));
+  fn create(node: NodeId, spec: &NodeSpec) -> bool {
+    with_realizer(|realizer| realizer.create(node, spec))
   }
 
   fn apply_style(node: NodeId, style: CompiledStyle<f32, WebStyle>) {

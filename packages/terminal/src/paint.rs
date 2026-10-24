@@ -969,7 +969,6 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
   };
 
   match &record.kind {
-    Kind::Anchor | Kind::Scope => NodePaint::None,
     Kind::Box(_) if is_paragraph(records, handle) => {
       let source = Source::of(records, handle);
       let mut destinations = Vec::new();
@@ -1105,16 +1104,12 @@ fn paint_node(
 ) {
   let Some(record) = records.record(handle)
   else {
-    return;
-  };
-
-  if !record.kind.is_laid_out() {
     for child in records.children(handle) {
       paint_node(records, buffer, child, offset_x, offset_y);
     }
 
     return;
-  }
+  };
 
   if record.is_invisible() {
     return;

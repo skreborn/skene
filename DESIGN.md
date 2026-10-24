@@ -43,7 +43,7 @@ platforms' builds and compiles empty in the other's.
 
 ## The scene and the platform
 
-**The spine owns the tree; a platform keeps a record per node.** `Scene<P: Realization>` is a
+**The spine owns the tree; a platform keeps a record per node it makes.** `Scene<P: Realization>` is a
 generational arena of node records—parent, children as a list of linked siblings (a move
 relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
 the token definitions a theme placed on the node, the query-container name, the
@@ -51,7 +51,10 @@ handlers. The scene mints every `NodeId` a node holds (`NodeId::new` builds one 
 index and generation, as the layout engine's tests key their canned trees, and one no
 live node holds resolves to nothing in the scene), and the platform keys its own record of the
 node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing
-it once the scene is released and before the node takes part in anything else. Every
+it once the scene is released and before the node takes part in anything else. Its
+`create` answers whether it made a node, and the scene records the answer: the web
+makes one of every kind, the terminal none for an anchor or a scope, whose content joins
+its parent's layout in its place, and a node a low-level view mints counts as made. Every
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in the spine;
 the platform is called only to mirror it into its records, after the spine has released its
 own borrow. The scene also says where each node is placed (`Scene::placed_children`,
@@ -61,8 +64,12 @@ platform. The terminal reads its structure there rather than keeping a copy, thr
 `Scene::read`, the shared borrow reads take, which nests and mirrors nothing, and the
 server's string tree serializes the scene's structure through its records, a control's
 carrier and its caption's `<label>` the only elements it adds; the browser's tree is the
-DOM. The scene tells the platform what happens to each
-child: it is attached (new, or returning from being hidden), relocated (a move, which
+DOM. The scene tells the platform what happens to each child, naming only the nodes it
+made: the parent is the nearest made ancestor, `before` the next node made after the
+child under it, a caption kept beside its control passed over, as the control stands for
+it among its siblings, and a node not made stands for the made nodes beneath it, each
+told in its place (the rule is `spine::scene::placement`'s, over plain data). A child
+is attached (new, or returning from being hidden), relocated (a move, which
 the web makes with `moveBefore` where the engine has it, keeping focus and animations,
 and with one `insertBefore` elsewhere), hidden (taken out live, to return) or removed
 (for good, destroyed next), and re-attaching a node where it already stands tells the
@@ -103,7 +110,8 @@ properties), `TokenValue` (the erased definition the medium accepts), with the c
 `KEEP` (the `Keep` level of a style its toolkit keeps unresolved). Its methods are the
 portable vocabulary over node ids: create every node, a box, a control, an overlay, a
 run, an anchor or a scope, from one `NodeSpec` (`create`: its role, its heading level,
-its drag axes and its kind's facts, a fact of another kind unrepresentable), give a
+its drag axes and its kind's facts, a fact of another kind unrepresentable), answering
+whether it made a node, give a
 box, a control, an overlay or a run its style once as the shared half compiled its
 record (`apply_style`), write a derived slot's erased leaf into it (`apply_slot`),
 mirror tree mutations, define tokens on a `TokenScope` (one call, a node's or the
@@ -276,8 +284,9 @@ model, and it is kept because fine-grained signals make a diffing view tree unne
 and its cost unjustified.
 
 - **Anchors, not groups.** A reactive subtree—`derived`, `Suspense`, `ErrorBoundary`,
-  `Deferred`, `AsyncView`, `empty`—mounts between two anchors (a comment pair on the web, a
-  non-layout record in the terminal) rather than inside a box of its own. Its nodes are
+  `Deferred`, `AsyncView`, `empty`—mounts between two anchors (a comment pair on the web,
+  in the scene alone in the terminal, which makes no node for them) rather than inside a
+  box of its own. Its nodes are
   therefore its parent's children for layout, and a wrapper around it annotates the
   content, every rebuild's and each form of a two-form view's: a boundary's fallback,
   a switch's branches. A group node that is a real `<div>` and a real taffy node makes every
@@ -869,7 +878,8 @@ font size and letter spacing alike, and a property that is a plain number reads 
 number token alone.
 
 `Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
-(`display: contents` on the web, a scope record in the terminal), provides `Memo<P>`
+(`display: contents` on the web; the terminal makes no node for it, keeping no record,
+and its definitions still reach it through `define_tokens`), provides `Memo<P>`
 through context, and runs one effect that writes `P::definitions()` onto the scope, so
 nothing rebuilds. On the web a palette change therefore costs the number of tokens, never
 the number of nodes; the terminal still re-resolves every node beneath the scope until its

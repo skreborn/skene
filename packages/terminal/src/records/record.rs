@@ -165,8 +165,6 @@ pub(crate) enum Kind {
     /// An inline box's size in cells and rows, as last measured.
     extent: Option<(usize, usize)>,
   },
-  Anchor,
-  Scope,
 }
 
 impl Kind {
@@ -246,7 +244,7 @@ impl Kind {
   pub(crate) const fn box_record(&self) -> Option<&BoxRecord> {
     match self {
       Self::Box(inner) | Self::Control { inner, .. } | Self::Overlay { inner, .. } => Some(inner),
-      Self::Run { .. } | Self::Anchor | Self::Scope => None,
+      Self::Run { .. } => None,
     }
   }
 
@@ -255,7 +253,7 @@ impl Kind {
   pub(crate) const fn box_record_mut(&mut self) -> Option<&mut BoxRecord> {
     match self {
       Self::Box(inner) | Self::Control { inner, .. } | Self::Overlay { inner, .. } => Some(inner),
-      Self::Run { .. } | Self::Anchor | Self::Scope => None,
+      Self::Run { .. } => None,
     }
   }
 
@@ -263,12 +261,6 @@ impl Kind {
   #[inline(always)]
   pub(crate) fn box_style(&self) -> Option<&PlainBox> {
     self.box_record().and_then(BoxRecord::style)
-  }
-
-  /// Whether the record takes part in layout: everything but an anchor or a scope.
-  #[inline(always)]
-  pub(crate) const fn is_laid_out(&self) -> bool {
-    !matches!(self, Self::Anchor | Self::Scope)
   }
 
   /// The editing state of a text entry.

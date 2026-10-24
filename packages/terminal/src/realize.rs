@@ -96,12 +96,12 @@ impl Realization for Terminal {
     &SCENE
   }
 
-  fn create(node: NodeId, spec: &NodeSpec) {
+  fn create(node: NodeId, spec: &NodeSpec) -> bool {
     let inner = |boxed: &BoxFacts| BoxRecord::new(spec.role, spec.drag, boxed.clone());
 
     match &spec.facts {
       NodeFacts::Box(boxed) => {
-        with_records(|records| records.insert_laid_out(node, Kind::Box(inner(boxed))));
+        with_records(|records| records.insert(node, Kind::Box(inner(boxed))));
       }
       NodeFacts::Control(control) => {
         let field = control
@@ -111,7 +111,7 @@ impl Realization for Terminal {
         let entry = field.is_some();
 
         with_records(|records| {
-          records.insert_laid_out(
+          records.insert(
             node,
             Kind::Control {
               native: control.native,
@@ -127,7 +127,7 @@ impl Realization for Terminal {
         });
       }
       NodeFacts::Overlay(overlay) => with_records(|records| {
-        records.insert_laid_out(
+        records.insert(
           node,
           Kind::Overlay {
             inner: inner(&overlay.boxed),
@@ -143,7 +143,7 @@ impl Realization for Terminal {
         let inline_box = run.placement == RunPlacement::Embedded;
 
         with_records(|records| {
-          records.insert_laid_out(node, Kind::run(run.clone()));
+          records.insert(node, Kind::run(run.clone()));
 
           // An inline box flows as one placeholder cluster, as large as its own layout.
           if inline_box && let Some(record) = records.record_mut(node) {
@@ -151,9 +151,10 @@ impl Realization for Terminal {
           }
         });
       }
-      NodeFacts::Anchor => with_records(|records| records.insert(node, Kind::Anchor)),
-      NodeFacts::Scope => with_records(|records| records.insert(node, Kind::Scope)),
+      NodeFacts::Anchor | NodeFacts::Scope => return false,
     }
+
+    true
   }
 
   fn apply_style(node: NodeId, style: CompiledStyle<i32, TerminalStyle>) {

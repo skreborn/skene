@@ -70,16 +70,13 @@ impl Records {
   }
 
   /// The nearest laid-out ancestor of `handle`: the node whose taffy children include
-  /// it.
+  /// it, the nearest with a record.
   pub(crate) fn layout_parent(&self, handle: Handle) -> Option<Handle> {
     Scene::<Terminal>::read(|scene| {
       let mut current = scene.placed_parent(handle);
 
       while let Some(visited) = current {
-        if self
-          .record(visited)
-          .is_some_and(|record| record.kind.is_laid_out())
-        {
+        if self.record(visited).is_some() {
           return Some(visited);
         }
 
@@ -90,8 +87,9 @@ impl Records {
     })
   }
 
-  /// The laid-out descendants of `handle` as the layout tree sees them: anchors and
-  /// scopes flattened into their content, overlays left out.
+  /// The laid-out descendants of `handle` as the layout tree sees them: the nodes
+  /// without a record, anchors and scopes, flattened into their content, overlays left
+  /// out.
   pub(crate) fn layout_children(&self, handle: Handle) -> Vec<Handle> {
     let mut out = Vec::new();
 
@@ -102,20 +100,10 @@ impl Records {
 
   fn collect_layout_children(&self, handle: Handle, out: &mut Vec<Handle>) {
     for child in self.children(handle) {
-      let Some(record) = self.record(child)
-      else {
-        continue;
-      };
-
-      if record.is_overlay() {
-        continue;
-      }
-
-      if record.kind.is_laid_out() {
-        out.push(child);
-      }
-      else {
-        self.collect_layout_children(child, out);
+      match self.record(child) {
+        Some(record) if record.is_overlay() => {}
+        Some(_) => out.push(child),
+        None => self.collect_layout_children(child, out),
       }
     }
   }
@@ -144,12 +132,10 @@ impl Records {
 
     Scene::<Terminal>::read(|scene| {
       while let Some(current) = stack.pop() {
-        let Some(record) = self.record(current)
-        else {
-          continue;
-        };
-
-        if record.is_overlay() && !record.is_open_overlay() {
+        if self
+          .record(current)
+          .is_some_and(|record| record.is_overlay() && !record.is_open_overlay())
+        {
           continue;
         }
 

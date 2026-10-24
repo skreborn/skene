@@ -228,9 +228,7 @@ impl<P: Realization> Run<P> {
         link: self.link,
       }),
     );
-    let node = Scene::<P>::with(|scene| scene.create(spec.kind(), annotation));
-
-    P::create(node, &spec);
+    let node = Scene::<P>::realize(&spec, annotation);
 
     for realization in self.realizations {
       realization(node, &spec, &style);

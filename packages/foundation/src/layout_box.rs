@@ -568,9 +568,8 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       }),
     );
     let container = self.container;
-    let node = Scene::<P>::with(|scene| scene.create(spec.kind(), None));
+    let node = Scene::<P>::realize(&spec, None);
 
-    P::create(node, &spec);
     realized(node, &spec, &style);
     P::apply_style(node, style);
     P::update_focus_order(node, focus_order);

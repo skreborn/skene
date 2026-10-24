@@ -158,7 +158,7 @@ fn damaged_rows(
         continue;
       };
 
-      if record.kind.is_laid_out() && record.painted != record.covers {
+      if record.painted != record.covers {
         rects.extend(record.painted);
         rects.extend(record.covers);
       }
@@ -469,12 +469,9 @@ fn measure_covers(records: &mut Records) {
   let mut pending = vec![(records.root, (0, 0), None)];
 
   while let Some((handle, (base_x, base_y), laid_out_parent)) = pending.pop() {
-    let Some(record) = records.record(handle)
-    else {
-      continue;
-    };
-    let laid_out = record.kind.is_laid_out();
-    let origin = if record.is_overlay() {
+    let record = records.record(handle);
+    let laid_out = record.is_some();
+    let origin = if record.is_some_and(Record::is_overlay) {
       records.overlay_origin(handle)
     }
     else if laid_out {
@@ -497,7 +494,10 @@ fn measure_covers(records: &mut Records) {
       laid_out_parent
     };
 
-    covers.push((handle, rect_at(records, handle, origin)));
+    if laid_out {
+      covers.push((handle, rect_at(records, handle, origin)));
+    }
+
     pending.extend(
       records
         .children(handle)

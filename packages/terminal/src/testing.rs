@@ -222,7 +222,6 @@ fn name_facts(node: NodeId) -> NameFacts {
         field.as_ref().and_then(|field| field.placeholder.clone()),
         field.as_ref().and_then(|field| field.value()),
       ),
-      Kind::Anchor | Kind::Scope => NameFacts::default(),
     };
 
     let facts = NameFacts {

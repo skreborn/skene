@@ -205,9 +205,6 @@ impl Records {
   ) -> bool {
     let Some(record) = self.record(handle)
     else {
-      return false;
-    };
-    if !record.kind.is_laid_out() {
       for child in self.children_reversed(handle) {
         if self.hit_walk(child, offset_x, offset_y, x, y, path) {
           return true;
@@ -215,7 +212,7 @@ impl Records {
       }
 
       return false;
-    }
+    };
 
     if record.is_invisible() {
       return false;
@@ -419,18 +416,15 @@ impl Records {
     let mut current = Some(handle);
 
     while let Some(visited) = current {
-      let Some(record) = self.record(visited)
-      else {
-        break;
-      };
+      let record = self.record(visited);
 
-      if record.is_overlay() {
+      if record.is_some_and(Record::is_overlay) {
         let (overlay_x, overlay_y) = self.overlay_origin(visited);
 
         return (x + overlay_x, y + overlay_y);
       }
 
-      if record.kind.is_laid_out() {
+      if record.is_some() {
         let (location_x, location_y) = self.inline_location(visited);
 
         x += location_x;

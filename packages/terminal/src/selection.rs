@@ -220,12 +220,10 @@ impl Records {
     let mut stack = vec![self.root];
 
     while let Some(current) = stack.pop() {
-      let Some(record) = self.record(current)
-      else {
-        continue;
-      };
-
-      if record.is_overlay() && !record.is_open_overlay() {
+      if self
+        .record(current)
+        .is_some_and(|record| record.is_overlay() && !record.is_open_overlay())
+      {
         continue;
       }
 
@@ -398,12 +396,8 @@ impl Records {
     let mut stack = vec![handle];
 
     while let Some(current) = stack.pop() {
-      let Some(record) = self.record(current)
-      else {
-        continue;
-      };
-
-      if current != handle
+      if let Some(record) = self.record(current)
+        && current != handle
         && matches!(&record.kind, Kind::Run { facts, .. } if facts.placement != RunPlacement::Embedded)
       {
         text.push_str(&record.text);

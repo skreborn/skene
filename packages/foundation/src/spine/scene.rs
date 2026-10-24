@@ -6,6 +6,7 @@ mod drag;
 mod focus_order;
 mod interaction;
 mod overlays;
+mod placement;
 mod structure;
 mod tokens;
 
@@ -23,6 +24,7 @@ use self::{
   controls::AccessReports,
   drag::DragRecord,
   overlays::OverlayRecord,
+  placement::Structural,
   structure::SegmentRecord,
   tokens::{ResolvedTokens, TokenCache, TokenState},
 };
@@ -33,6 +35,7 @@ use crate::spine::{
   EventKind,
   FocusOrder,
   NodeId,
+  NodeSpec,
   Part,
   Realization,
   handler::HandlerSet,
@@ -60,6 +63,10 @@ pub enum NodeKind {
 
 /// One node of the scene.
 #[must_use]
+#[expect(
+  clippy::struct_excessive_bools,
+  reason = "each flag is an independent fact about the node"
+)]
 pub struct NodeRecord<P: Realization> {
   parent: Option<NodeId>,
   enclosing: Option<NodeId>,
@@ -68,6 +75,7 @@ pub struct NodeRecord<P: Realization> {
   previous_sibling: Option<NodeId>,
   next_sibling: Option<NodeId>,
   kind: NodeKind,
+  realized: bool,
   annotation: Option<Box<Annotation<P>>>,
   definitions: Option<Box<Definitions<P::TokenValue>>>,
   container: Option<ContainerName>,
@@ -112,6 +120,13 @@ impl<P: Realization> NodeRecord<P> {
   #[inline(always)]
   pub const fn kind(&self) -> NodeKind {
     self.kind
+  }
+
+  /// Whether the platform made a node for this one; see [`Realization::create`].
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_realized(&self) -> bool {
+    self.realized
   }
 
   /// The per-child properties a wrapper asked for this box.
@@ -166,24 +181,7 @@ impl<P: Realization> NodeRecord<P> {
 
 /// A mutation the scene owes its platform, mirrored once the scene is released.
 enum Mirror<P: Realization> {
-  Attach {
-    parent: NodeId,
-    child: NodeId,
-    before: Option<NodeId>,
-  },
-  Relocate {
-    parent: NodeId,
-    child: NodeId,
-    before: Option<NodeId>,
-  },
-  Hide {
-    parent: NodeId,
-    child: NodeId,
-  },
-  Remove {
-    parent: NodeId,
-    child: NodeId,
-  },
+  Structure(Structural),
   Destroy(NodeId),
   DefineTokens {
     scope: TokenScope,
@@ -213,18 +211,7 @@ impl<P: Realization> Mirror<P> {
   /// Hands the mutation to the platform.
   fn run(self) {
     match self {
-      Self::Attach {
-        parent,
-        child,
-        before,
-      } => P::attach(parent, child, before),
-      Self::Relocate {
-        parent,
-        child,
-        before,
-      } => P::relocate(parent, child, before),
-      Self::Hide { parent, child } => P::hide(parent, child),
-      Self::Remove { parent, child } => P::remove(parent, child),
+      Self::Structure(change) => change.run::<P>(),
       Self::Destroy(node) => P::destroy(node),
       Self::DefineTokens { scope, definitions } => P::define_tokens(scope, &definitions),
       Self::ControlState { node, state } => P::set_control_state(node, &state),
@@ -361,7 +348,9 @@ impl<P: Realization> Scene<P> {
   /// control starts in the default [`ControlState`].
   ///
   /// The platform realizes the node, keyed by the id this returns, once the scene is
-  /// released and before the node takes part in any other operation.
+  /// released and before the node takes part in any other operation, and the node
+  /// counts as one the platform made; [`realize`](Self::realize) records the
+  /// platform's answer instead.
   ///
   /// # Panics
   ///
@@ -377,6 +366,7 @@ impl<P: Realization> Scene<P> {
       previous_sibling: None,
       next_sibling: None,
       kind,
+      realized: true,
       annotation: annotation.map(Box::new),
       definitions: None,
       container: None,
@@ -395,6 +385,27 @@ impl<P: Realization> Scene<P> {
     };
 
     self.nodes.insert(record)
+  }
+
+  /// Mints a detached node as `spec` describes it, recording the `annotation` a wrapper
+  /// gave it, and has the platform create it, recording whether it made a node; see
+  /// [`Realization::create`].
+  ///
+  /// # Panics
+  ///
+  /// Panics past 2^32 live nodes, or if the scene is borrowed.
+  pub fn realize(spec: &NodeSpec, annotation: Option<Annotation<P>>) -> NodeId {
+    let node = Self::with(|scene| scene.create(spec.kind(), annotation));
+
+    if !P::create(node, spec) {
+      Self::with(|scene| {
+        if let Some(record) = scene.record_mut(node) {
+          record.realized = false;
+        }
+      });
+    }
+
+    node
   }
 
   /// The live node created at `position`, if any.

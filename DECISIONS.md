@@ -8,6 +8,21 @@ supersedes.
 
 ## Decided against
 
+- **The prototype's index-placing `insert` and in-place `set_hidden`** (2026-10-24),
+  a realization told to place a child at an index among its parent's children and to
+  hide a view where it stands: the scene's model takes a hidden child out and gives it
+  back through `attach`, which an in-place flag cannot express, and neither realization
+  reads an index, the web inserting before a reference node and the terminal reading its
+  structure from the scene. `attach`, `relocate`, `hide` and `remove` name the nearest
+  made ancestor and the next made sibling. Revisit when a realization's toolkit can
+  place children by index alone or must hide a view in place.
+- **Seam constants for scope and segment nodes** (2026-10-24), the prototype's
+  `SCOPE_NODES` and `SEGMENT_NODES` declaring ahead of time whether a realization makes
+  a node for a scope or a segment's anchors: a constant per kind splits one fact across
+  the trait and the creation it governs, and holds nothing a realization cannot answer
+  as it creates the node. `create` answers whether it made one, and the scene records
+  it. Revisit when a realization must know before creating a node whether it will make
+  one.
 - **A per-node effect recompiling the whole record at `Keep::Nothing`** (2026-10-24), the
   prototype's shape: a render effect per node reading every signal its style reads and
   recompiling its record, resolved, whenever one changes, handing the realization a

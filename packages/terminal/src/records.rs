@@ -256,26 +256,21 @@ impl Records {
       picture_generation: 0,
     };
 
-    records.insert_laid_out(root, Kind::Box(BoxRecord::new(None, None, root_facts)));
+    records.insert(root, Kind::Box(BoxRecord::new(None, None, root_facts)));
 
     records
   }
 
-  /// Stores a record of `kind` as the record of `node`, outside the layout tree.
+  /// Stores a record of `kind` as the record of `node`, a fresh leaf of the layout
+  /// tree.
   pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
     let mut record = Record::new(kind);
 
     record.node = Some(node);
+    self.tree.insert(node);
     self.restyle.move_structure();
 
     let _replaced = self.by_node.insert(node, record);
-  }
-
-  /// Stores a record of `kind` as the record of `node`, a fresh leaf of the layout
-  /// tree.
-  pub(crate) fn insert_laid_out(&mut self, node: NodeId, kind: Kind) {
-    self.tree.insert(node);
-    self.insert(node, kind);
   }
 
   /// The record of `handle`, if it is live.

@@ -3,7 +3,12 @@
 
 use smallvec::SmallVec;
 
-use super::{Mirror, NodeRecord, Scene};
+use super::{
+  Mirror,
+  NodeRecord,
+  Scene,
+  placement::{Placing, Structural},
+};
 use crate::spine::{NodeId, NodeSpec, Part, Realization, dispatch::Crossing};
 
 /// The end of a segment and, while the segment is detached, the content waiting
@@ -11,13 +16,6 @@ use crate::spine::{NodeId, NodeSpec, Part, Realization, dispatch::Crossing};
 pub(super) struct SegmentRecord {
   pub(super) end: NodeId,
   pub(super) pending: Vec<NodeId>,
-}
-
-/// How a node comes to stand under a parent: from nowhere, or from under another.
-#[derive(Clone, Copy)]
-enum Arrival {
-  Attach,
-  Relocate,
 }
 
 /// Why a node leaves its parent: to return while it stays live, or for good.
@@ -29,28 +27,23 @@ enum Departure {
 
 impl<P: Realization> Scene<P> {
   /// Mints a detached segment: a start and an end anchor, attached and detached as one
-  /// with whatever is mounted between them. The platform realizes the anchors once the
-  /// scene is released.
+  /// with whatever is mounted between them, each created by the platform as
+  /// [`realize`](Self::realize) has it.
   ///
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment() -> (NodeId, NodeId) {
     let spec = NodeSpec::anchor();
-    let (start, end) = Self::with(|scene| {
-      let start = scene.create(spec.kind(), None);
-      let end = scene.create(spec.kind(), None);
+    let start = Self::realize(&spec, None);
+    let end = Self::realize(&spec, None);
 
+    Self::with(|scene| {
       if let Some(record) = scene.record_mut(start) {
         record.segment = Some(Box::new(SegmentRecord {
           end,
           pending: Vec::new(),
         }));
       }
-
-      (start, end)
     });
-
-    P::create(start, &spec);
-    P::create(end, &spec);
 
     (start, end)
   }
@@ -196,7 +189,7 @@ impl<P: Realization> Scene<P> {
   }
 
   /// Destroys `node` and its whole subtree, detaching it first if attached; the
-  /// platform releases the record of every node destroyed.
+  /// platform releases the record of every node destroyed it made.
   pub fn destroy(&mut self, node: NodeId) {
     self.unlink(node, Departure::Remove);
 
@@ -240,7 +233,9 @@ impl<P: Realization> Scene<P> {
         self.held.touch();
       }
 
-      self.mirrors.push(Mirror::Destroy(node));
+      if record.realized {
+        self.mirrors.push(Mirror::Destroy(node));
+      }
     }
 
     self.tokens.touch();
@@ -480,7 +475,7 @@ impl<P: Realization> Scene<P> {
     }
 
     self.unlink(child, Departure::Hide);
-    self.link(parent, child, before, Arrival::Attach);
+    self.link(parent, child, before, None);
 
     if let Some(record) = self.record_mut(child) {
       record.hidden = false;
@@ -496,7 +491,7 @@ impl<P: Realization> Scene<P> {
         self.place(parent, node, before);
       }
 
-      self.link(parent, end, before, Arrival::Attach);
+      self.link(parent, end, before, None);
     }
 
     self.return_kept_focus(child);
@@ -526,11 +521,15 @@ impl<P: Realization> Scene<P> {
     }
 
     for node in run {
-      if let Some(from) = self.parent(node) {
+      let from = self.parent(node);
+
+      if let Some(from) = from {
         self.sever(from, node);
       }
 
-      self.link(parent, node, before, Arrival::Relocate);
+      let held = from.and_then(|from| self.realized_ancestor(from));
+
+      self.link(parent, node, before, held);
     }
 
     self.tokens.touch();
@@ -591,8 +590,9 @@ impl<P: Realization> Scene<P> {
   }
 
   /// Inserts `child` into `parent`'s children before `before` (else last) and mirrors
-  /// its arrival; `child` must be detached.
-  fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>, arrival: Arrival) {
+  /// its arrival, `held` the node the platform held it under before, if any; `child`
+  /// must be detached.
+  fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>, held: Option<NodeId>) {
     if self.record(child).is_none() || self.record(parent).is_none() {
       return;
     }
@@ -639,18 +639,11 @@ impl<P: Realization> Scene<P> {
       }
     }
 
-    self.mirrors.push(match arrival {
-      Arrival::Attach => Mirror::Attach {
-        parent,
-        child,
-        before,
-      },
-      Arrival::Relocate => Mirror::Relocate {
-        parent,
-        child,
-        before,
-      },
-    });
+    let changes = Structural::arrival(self, child, held);
+
+    self
+      .mirrors
+      .extend(changes.into_iter().map(Mirror::Structure));
   }
 
   /// Removes `child` from under its parent, if any, and mirrors its departure, or from
@@ -688,10 +681,12 @@ impl<P: Realization> Scene<P> {
     self.sever(parent, child);
 
     if self.contains(parent) && self.contains(child) {
-      self.mirrors.push(match departure {
-        Departure::Hide => Mirror::Hide { parent, child },
-        Departure::Remove => Mirror::Remove { parent, child },
-      });
+      let removed = matches!(departure, Departure::Remove);
+      let changes = Structural::departure(self, parent, child, removed);
+
+      self
+        .mirrors
+        .extend(changes.into_iter().map(Mirror::Structure));
     }
   }
 

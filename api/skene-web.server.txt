@@ -312,7 +312,7 @@ pub fn skene_web::platform::web::Web::attach(skene_foundation::spine::node::Node
 pub fn skene_web::platform::web::Web::blur(skene_foundation::spine::node::NodeId)
 pub fn skene_web::platform::web::Web::cancel(skene_foundation::spine::realization::Timer)
 pub fn skene_web::platform::web::Web::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
-pub fn skene_web::platform::web::Web::create(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec)
+pub fn skene_web::platform::web::Web::create(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_web::platform::web::Web::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_web::platform::web::Web::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<skene_web::platform::web::WebTokenValue>)
 pub fn skene_web::platform::web::Web::destroy(skene_foundation::spine::node::NodeId)

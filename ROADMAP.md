@@ -376,9 +376,9 @@ in a code comment.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
-    - Structure: anchors exist in the scene alone, platforms receiving the next real
-    sibling and server output keeping comment pairs only where streaming needs a
-    marker.
+    - Structure: the web's anchors exist in the scene alone, as the terminal's do, its
+    `create` making no node for them, and its markup keeps comment pairs only where
+    streaming needs a marker.
     - The web's hydration: the server tier writes real pages that the browser tier
     hydrates with zero mismatches, where every browser test but one representative
     tree fakes the served markup today; structural hydration keys per scope replace the

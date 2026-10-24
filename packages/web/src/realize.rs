@@ -337,8 +337,9 @@ impl<S: Sink> Realizer<S> {
     (element, adopted)
   }
 
-  /// Realizes `node` as `spec` describes it.
-  pub(crate) fn create(&mut self, node: NodeId, spec: &NodeSpec) {
+  /// Realizes `node` as `spec` describes it, making a node of every kind, an anchor a
+  /// comment and a scope a layout-invisible element; always `true`.
+  pub(crate) fn create(&mut self, node: NodeId, spec: &NodeSpec) -> bool {
     match &spec.facts {
       NodeFacts::Box(boxed) => self.make_box(node, spec, boxed),
       NodeFacts::Control(control) => self.make_control(node, spec, control),
@@ -347,6 +348,8 @@ impl<S: Sink> Realizer<S> {
       NodeFacts::Anchor => self.make_anchor(node),
       NodeFacts::Scope => self.make_scope(node),
     }
+
+    true
   }
 
   /// Realizes the box `node`: an anchor where it has a destination, else the element

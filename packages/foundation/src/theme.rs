@@ -80,9 +80,7 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S> {
       return empty::<P>().build();
     };
     let spec = NodeSpec::scope();
-    let scope = Scene::<P>::with(|scene| scene.create(spec.kind(), None));
-
-    P::create(scope, &spec);
+    let scope = Scene::<P>::realize(&spec, None);
 
     let owner = Owner::current().child();
     let palette = self.palette;

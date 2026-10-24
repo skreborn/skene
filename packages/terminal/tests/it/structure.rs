@@ -1502,6 +1502,50 @@ fn a_segment_is_placed_against_its_first_box() {
   });
 }
 
+/// The terminal makes no node for an anchor or a scope: the scene records neither as
+/// realized and the platform holds no record of either, while what stands inside them
+/// lays out, paints and is read in place.
+#[test]
+fn anchors_and_scopes_are_made_no_node() {
+  with_platform(|| {
+    let held = testing::record_count();
+    let (stage, [scope, after]) = stage(|| {
+      [
+        Theme::new(SimplePalette::default())
+          .set_child_builder(|| Text::new("inside"))
+          .build(),
+        text("after"),
+      ]
+    });
+
+    assert_eq!(
+      testing::record_count(),
+      held + 3,
+      "the stage and its two runs, the scope none"
+    );
+
+    let (start, end) = Scene::<Terminal>::create_segment();
+
+    assert_eq!(testing::record_count(), held + 3, "the anchors none");
+    assert_eq!(
+      Scene::<Terminal>::read(|scene| {
+        [scope, start, end, after].map(|node| scene.record(node).map(NodeRecord::is_realized))
+      }),
+      [Some(false), Some(false), Some(false), Some(true)]
+    );
+
+    Scene::<Terminal>::with(|scene| {
+      scene.attach(stage, after, None);
+      scene.attach(stage, start, Some(after));
+      scene.insert_in_segment(start, scope, None);
+    });
+
+    assert_eq!(frame(2), "inside\nafter\n");
+    assert!(is_read(run("inside")));
+    assert!(is_read(after));
+  });
+}
+
 /// One structural change a platform's views make to the scene, over indices into a
 /// pool of boxes and segments.
 #[derive(Debug, Clone)]

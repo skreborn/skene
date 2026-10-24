@@ -324,6 +324,25 @@ impl Dom {
     true
   }
 
+  /// What a node placed under `parent` before `before` is inserted before: the caption
+  /// `<label>` `before` keeps beside it under `parent`, else its element; `None` to
+  /// append.
+  fn insertion_point(
+    &self,
+    parent: &web_sys::Node,
+    before: Option<NodeId>,
+  ) -> Option<web_sys::Node> {
+    let node = self.node(before?)?;
+
+    Some(
+      node
+        .caption
+        .clone()
+        .filter(|caption| caption.parent_node().as_ref() == Some(parent))
+        .unwrap_or_else(|| node.element.clone()),
+    )
+  }
+
   /// Takes `child` out of the caption `<label>` it sits in, removing the label from the
   /// document; `false` where it sits in none.
   fn lift_caption(&mut self, child: NodeId) -> bool {

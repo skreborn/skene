@@ -6541,6 +6541,7 @@ pub fn skene_foundation::NodeRecord<P>::annotation(&self) -> core::option::Optio
 pub const fn skene_foundation::NodeRecord<P>::container(&self) -> core::option::Option<skene_foundation::ContainerName>
 pub const fn skene_foundation::NodeRecord<P>::control_state(&self) -> core::option::Option<skene_foundation::ControlState>
 pub fn skene_foundation::NodeRecord<P>::definitions(&self) -> core::option::Option<&skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>>
+pub const fn skene_foundation::NodeRecord<P>::is_realized(&self) -> bool
 pub const fn skene_foundation::NodeRecord<P>::kind(&self) -> skene_foundation::NodeKind
 pub const fn skene_foundation::NodeRecord<P>::parent(&self) -> core::option::Option<skene_foundation::NodeId>
 pub const fn skene_foundation::NodeRecord<P>::part(&self) -> core::option::Option<skene_foundation::Part>
@@ -7254,6 +7255,7 @@ pub fn skene_foundation::Scene<P>::is_borrowed() -> bool
 pub fn skene_foundation::Scene<P>::new() -> Self
 pub fn skene_foundation::Scene<P>::node_at(&self, &skene_reactive::path::SnapshotPlace) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Scene<P>::read<R>(impl core::ops::function::FnOnce(&Self) -> R) -> R
+pub fn skene_foundation::Scene<P>::realize(&skene_foundation::NodeSpec, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::record(&self, skene_foundation::NodeId) -> core::option::Option<&skene_foundation::NodeRecord<P>>
 pub fn skene_foundation::Scene<P>::record_mut(&mut self, skene_foundation::NodeId) -> core::option::Option<&mut skene_foundation::NodeRecord<P>>
 pub fn skene_foundation::Scene<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
@@ -9664,7 +9666,7 @@ pub fn skene_foundation::Realization::chosen_scheme() -> core::option::Option<sk
 pub fn skene_foundation::Realization::clipboard(skene_foundation::ClipboardAction)
 pub fn skene_foundation::Realization::clipboard_availability(skene_foundation::ClipboardAction) -> skene_foundation::Availability
 pub fn skene_foundation::Realization::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
-pub fn skene_foundation::Realization::create(skene_foundation::NodeId, &skene_foundation::NodeSpec)
+pub fn skene_foundation::Realization::create(skene_foundation::NodeId, &skene_foundation::NodeSpec) -> bool
 pub fn skene_foundation::Realization::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Realization::define_tokens(skene_foundation::TokenScope, &skene_foundation::Definitions<Self::TokenValue>)
 pub fn skene_foundation::Realization::destroy(skene_foundation::NodeId)

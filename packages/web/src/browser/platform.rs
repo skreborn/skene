@@ -294,9 +294,9 @@ impl Realization for Web {
     &SCENE
   }
 
-  fn create(sink: NodeId, spec: &NodeSpec) {
+  fn create(sink: NodeId, spec: &NodeSpec) -> bool {
     with_dom(|dom| {
-      dom.realizer.create(sink, spec);
+      let made = dom.realizer.create(sink, spec);
 
       if let NodeFacts::Overlay(OverlayFacts { modal: true, .. }) = spec.facts
         && let Some(node) = dom.node_mut(sink)
@@ -314,7 +314,9 @@ impl Realization for Web {
           },
         ));
       }
-    });
+
+      made
+    })
   }
 
   fn apply_style(sink: NodeId, style: CompiledStyle<f32, WebStyle>) {
@@ -444,9 +446,7 @@ impl Realization for Web {
       let child_dom = child_node.element.clone();
       let caption = child_node.caption.clone();
       let saved = before.and_then(|before| dom.saved.remove(&before));
-      let before = before
-        .and_then(|before| dom.node(before))
-        .map(|node| node.element.clone());
+      let before = dom.insertion_point(&parent, before);
 
       Some((
         parent,
@@ -499,9 +499,7 @@ impl Realization for Web {
       let child_node = dom.node(child)?;
       let child_dom = child_node.element.clone();
       let caption = child_node.caption.clone();
-      let before = before
-        .and_then(|before| dom.node(before))
-        .map(|node| node.element.clone());
+      let before = dom.insertion_point(&parent, before);
 
       Some((parent, child_dom, caption, before, dom.mover.clone()))
     })

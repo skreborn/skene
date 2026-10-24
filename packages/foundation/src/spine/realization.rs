@@ -236,8 +236,15 @@ pub trait Realization: Copy + Default + 'static {
 
   /// Realizes `node` as `spec` describes it: a box, a control a platform may stand a
   /// native element in for, an overlay closed at first, a text run, or a
-  /// layout-invisible anchor or scope.
-  fn create(node: NodeId, spec: &NodeSpec);
+  /// layout-invisible anchor or scope; returns whether the platform made a node.
+  ///
+  /// A node the platform does not make joins its parent's layout in its place, its
+  /// children standing under its nearest made ancestor, and no structural mirror names
+  /// it: [`attach`](Self::attach), [`relocate`](Self::relocate), [`hide`](Self::hide)
+  /// and [`remove`](Self::remove) place the nodes made beneath it instead, and
+  /// [`destroy`](Self::destroy) does not reach it. Tokens defined on it still reach
+  /// [`define_tokens`](Self::define_tokens).
+  fn create(node: NodeId, spec: &NodeSpec) -> bool;
 
   /// Gives `node` its style: every property it sets, its own and the per-child layout a
   /// wrapper annotated it with, with its motion, as the shared half compiles its record
@@ -290,11 +297,16 @@ pub trait Realization: Copy + Default + 'static {
   /// Places `child`, standing under no parent, under `parent`, immediately before
   /// `before` when given, else last: a new node, or a hidden one, given back what the
   /// platform kept when it was hidden.
+  ///
+  /// `parent` is the nearest node the platform made above `child` in the scene, and
+  /// `before` the next node it made after `child` under that parent, a caption kept
+  /// beside its control passed over; so for every structural mirror.
   fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>);
 
   /// Moves `child` from under the parent it stands under to under `parent`, immediately
   /// before `before` when given, else last, keeping what it holds (focus, scroll
-  /// offsets, running animations) where the platform can.
+  /// offsets, running animations) where the platform can; `parent` and `before` as
+  /// [`attach`](Self::attach) has them.
   fn relocate(parent: NodeId, child: NodeId, before: Option<NodeId>);
 
   /// Takes `child` from under `parent` while it stays live, to be attached again,
@@ -304,7 +316,7 @@ pub trait Realization: Copy + Default + 'static {
   /// Takes `child` from under `parent` for good, keeping nothing: it is destroyed next.
   fn remove(parent: NodeId, child: NodeId);
 
-  /// Releases the record of a node the scene no longer holds.
+  /// Releases the record of a node the platform made and the scene no longer holds.
   fn destroy(node: NodeId);
 
   /// Defines tokens on a scope, replacing what the scope defined before: on a node for

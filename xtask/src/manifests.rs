@@ -270,7 +270,7 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
   item.as_bool() == Some(true)
 }
 
-/// The web's facade, which a package reaching it is built for one of the web's leaves.
+/// The web's facade: a package reaching it is built for the web's leaves alone.
 pub(crate) const WEB: &str = "skene-web";
 
 /// The workspace's packages and what each depends on among them, from which every step
@@ -280,14 +280,16 @@ pub(crate) struct Workspace {
   packages: Vec<Package>,
 }
 
-/// A member of the workspace and the members it depends on.
+/// A member of the workspace and the members it depends on, for any target.
 struct Package {
   /// Its package name.
   name: String,
-  /// The members it depends on in a `[dependencies]` table, for any target.
+  /// The members in its `[dependencies]` tables.
   normal: BTreeSet<String>,
-  /// The members it depends on in any dependency table, for any target.
-  any: BTreeSet<String>,
+  /// The members in its `[build-dependencies]` tables.
+  build: BTreeSet<String>,
+  /// The members in its `[dev-dependencies]` tables.
+  dev: BTreeSet<String>,
 }
 
 impl Workspace {
@@ -315,19 +317,22 @@ impl Workspace {
         let mut package = Package {
           name: name.to_owned(),
           normal: BTreeSet::new(),
-          any: BTreeSet::new(),
+          build: BTreeSet::new(),
+          dev: BTreeSet::new(),
         };
 
         for (kind, entries) in member_dependency_tables(manifest) {
+          let members = match kind {
+            "dependencies" => &mut package.normal,
+            "build-dependencies" => &mut package.build,
+            _ => &mut package.dev,
+          };
+
           for (key, entry) in entries.iter() {
             let dependency = entry.get("package").and_then(Item::as_str).unwrap_or(key);
 
             if names.contains(dependency) {
-              if kind == "dependencies" {
-                package.normal.insert(dependency.to_owned());
-              }
-
-              package.any.insert(dependency.to_owned());
+              members.insert(dependency.to_owned());
             }
           }
         }
@@ -339,27 +344,47 @@ impl Workspace {
     Self { packages }
   }
 
-  /// Whether the member `name` is `facade` or depends on it, directly or through other
-  /// members, in any dependency table.
-  fn reaches(&self, name: &str, facade: &str) -> bool {
-    let mut seen = BTreeSet::from([name]);
-    let mut pending = vec![name];
+  /// The members `seeds` are, and those each depends on through `edges`, directly or
+  /// through others.
+  fn closure<'a>(
+    &'a self,
+    seeds: impl IntoIterator<Item = &'a str>,
+    edges: impl Fn(&'a Package) -> Vec<&'a BTreeSet<String>>,
+  ) -> BTreeSet<&'a str> {
+    let mut reached = BTreeSet::new();
+    let mut pending: Vec<&str> = seeds.into_iter().collect();
 
     while let Some(next) = pending.pop() {
-      if next == facade {
-        return true;
+      if !reached.insert(next) {
+        continue;
       }
 
       for package in self.packages.iter().filter(|package| package.name == next) {
-        for dependency in &package.any {
-          if seen.insert(dependency) {
-            pending.push(dependency);
-          }
-        }
+        pending.extend(edges(package).into_iter().flatten().map(String::as_str));
       }
     }
 
-    false
+    reached
+  }
+
+  /// Whether a build of the member `name`, its tests included, compiles `facade`: it is
+  /// `facade`, or one of its dependencies of any kind is or builds it through normal and
+  /// build dependencies, a dependency's own dev-dependencies never being built.
+  fn reaches(&self, name: &str, facade: &str) -> bool {
+    let dependencies = self
+      .packages
+      .iter()
+      .filter(|package| package.name == name)
+      .flat_map(|package| [&package.normal, &package.build, &package.dev])
+      .flatten()
+      .map(String::as_str);
+
+    name == facade
+      || self
+        .closure(dependencies, |package| {
+          vec![&package.normal, &package.build]
+        })
+        .contains(facade)
   }
 
   /// The members the host's own build checks, documents and tests: those reaching no
@@ -387,18 +412,7 @@ impl Workspace {
   /// Every member a web build compiles for the web's leaf: those reaching [`WEB`], and
   /// every member they depend on in a `[dependencies]` table, directly or through others.
   pub(crate) fn web_build(&self) -> Vec<&str> {
-    let mut built: BTreeSet<&str> = self.web().into_iter().collect();
-    let mut pending: Vec<&str> = built.iter().copied().collect();
-
-    while let Some(next) = pending.pop() {
-      for package in self.packages.iter().filter(|package| package.name == next) {
-        for dependency in &package.normal {
-          if built.insert(dependency) {
-            pending.push(dependency);
-          }
-        }
-      }
-    }
+    let built = self.closure(self.web(), |package| vec![&package.normal]);
 
     self
       .packages
@@ -659,7 +673,7 @@ mod tests {
   }
 
   #[test]
-  fn a_member_reaches_the_web_through_any_kind_of_dependency() {
+  fn a_member_reaches_the_web_through_what_its_build_compiles() {
     let workspace = Workspace::new(&[
       manifest("[workspace]\nmembers = [\"*\"]\n"),
       manifest("[package]\nname = \"skene-web\"\n[dependencies]\nbase = { path = \"..\" }\n"),
@@ -672,13 +686,18 @@ mod tests {
         "[package]\nname = \"docs\"\n[dev-dependencies]\nweb = { package = \"skene-web\", path = \"..\" }\n",
       ),
       manifest("[package]\nname = \"tool\"\n[build-dependencies]\nbase = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"probe\"\n[dev-dependencies]\nskene-web = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"user\"\n[dependencies]\nprobe = { path = \"..\" }\n"),
     ]);
 
-    assert_eq!(workspace.web(), ["skene-web", "lib", "app", "docs"]);
-    assert_eq!(workspace.host(), ["base", "tool"]);
+    assert_eq!(
+      workspace.web(),
+      ["skene-web", "lib", "app", "docs", "probe"]
+    );
+    assert_eq!(workspace.host(), ["base", "tool", "user"]);
     assert_eq!(
       workspace.web_build(),
-      ["skene-web", "base", "lib", "app", "docs"]
+      ["skene-web", "base", "lib", "app", "docs", "probe"]
     );
   }
 }

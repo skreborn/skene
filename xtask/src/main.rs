@@ -450,24 +450,34 @@ impl Gate {
     }
   }
 
-  /// Fails unless the standard library for `target` is installed.
-  fn require_target(target: &str) -> Outcome {
-    let installed = Command::new("rustup")
-      .args(["target", "list", "--installed"])
-      .output()
-      .is_ok_and(|output| {
-        String::from_utf8_lossy(&output.stdout)
-          .lines()
-          .any(|line| line == target)
-      });
+  /// Fails unless the standard library for `target` is installed, in `toolchain` where
+  /// one is named and in the pinned toolchain otherwise.
+  fn require_target(target: &str, toolchain: Option<&str>) -> Outcome {
+    let mut list = Command::new("rustup");
+
+    list.args(["target", "list", "--installed"]);
+
+    if let Some(toolchain) = toolchain {
+      list.args(["--toolchain", toolchain]);
+    }
+
+    let installed = list.output().is_ok_and(|output| {
+      String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .any(|line| line == target)
+    });
 
     if installed {
       Ok(())
     }
     else {
-      Err(format!(
-        "the {target} target is missing: `rustup target add {target}`"
-      ))
+      Err(match toolchain {
+        Some(toolchain) => format!(
+          "the {target} target is missing from {toolchain}: `rustup target add --toolchain \
+           {toolchain} {target}`"
+        ),
+        None => format!("the {target} target is missing: `rustup target add {target}`"),
+      })
     }
   }
 
@@ -705,7 +715,7 @@ fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
 }
 
 fn clippy_apple(gate: &Gate, log: &mut Log) -> Outcome {
-  Gate::require_target(APPLE)?;
+  Gate::require_target(APPLE, None)?;
 
   let mut command = gate.cargo(["clippy", "--all-targets", "--locked", "--target", APPLE]);
 
@@ -782,6 +792,8 @@ fn msrv(gate: &Gate, log: &mut Log) -> Outcome {
   let toolchain = installed_toolchain(&version).ok_or_else(|| {
     format!("no toolchain for Rust {version} is installed: `rustup toolchain install {version}`")
   })?;
+  Gate::require_target(WASM, Some(&toolchain))?;
+
   let toolchain = format!("+{toolchain}");
   let workspace = Workspace::read(&gate.root)?;
   let check = ["check", "--all-targets", "--locked"];

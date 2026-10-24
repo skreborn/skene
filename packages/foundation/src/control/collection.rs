@@ -272,9 +272,9 @@ impl<C: CollectionPolicy> CollectionContext<C> {
 /// menu's member runs it. A collection whose members stand in a native toggle, a radio
 /// group, writes the chosen value as its [`Chosen`](crate::Content::Chosen) content,
 /// which a [`Controller`] holds: a choice the platform reports on a member asks for it,
-/// and one the truth then refuses is undone by the write of the chosen key. The collection takes no
-/// focus of its own; its members are [`Member`] controls under the same policy, at any depth inside
-/// it, tracked by its [`roster`](Self::roster).
+/// and one the truth then refuses is undone by the write of the chosen key. The
+/// collection takes no focus of its own; its members are [`Member`] controls under the
+/// same policy, at any depth inside it, tracked by its [`roster`](Self::roster).
 #[must_use]
 pub struct Collection<C: CollectionPolicy> {
   chosen: Controlled<Option<String>>,

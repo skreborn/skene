@@ -986,6 +986,71 @@ fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
   root.remove();
 }
 
+/// A slider the reader moved before the bundle arrived carries its value into the bound
+/// signal, even where an earlier control's replayed report rewrites its truth first,
+/// and the truth's new bounds follow onto the adopted range.
+#[wasm_bindgen_test]
+fn a_slider_carries_the_readers_value_past_an_earlier_replay() {
+  use skene_web::{BasicCheckbox, BasicSlider, Slider, SliderRange, Toggle, reactive::Signal};
+
+  // The checkbox widens the slider's range, so its report rewrites the slider's truth.
+  let app = |wide: Signal<bool>, value: Signal<f32>| {
+    Column::new().set_children((
+      BasicCheckbox::new(Toggle::new().bind_checked(wide)),
+      BasicSlider::new(
+        Slider::new()
+          .derive_range(move || SliderRange::new(0., if wide.get() { 200. } else { 100. }, 1.))
+          .bind_value(value),
+      ),
+    ))
+  };
+  let (markup, _) =
+    served(move || skene_web::View::into_any(app(Signal::new(false), Signal::new(50.))));
+  let root = server_root(&markup);
+  let input = |selector: &str| -> web_sys::HtmlInputElement {
+    root
+      .query_selector(selector)
+      .expect("query")
+      .expect("the input")
+      .unchecked_into()
+  };
+
+  // The server serializes the range's value as the attribute.
+  let _ = input("input[type=range]").set_attribute("value", "50");
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+  input("input[type=checkbox]").set_checked(true);
+  input("input[type=range]").set_value("80");
+
+  let (wide, value) = (Signal::new(false), Signal::new(50.0f32));
+
+  hydrate(root.clone(), "", move || app(wide, value));
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert!(wide.get(), "the reader's check reached its signal");
+  assert!(
+    (value.get() - 80.).abs() < f32::EPSILON,
+    "the reader's value reached its signal past the widened range: {}",
+    value.get()
+  );
+
+  let range = input("input[type=range]");
+
+  assert_eq!(range.value(), "80", "the reader's value stays shown");
+  assert_eq!(
+    range.get_attribute("max").as_deref(),
+    Some("200"),
+    "the truth's bounds follow"
+  );
+
+  web::uninstall();
+  root.remove();
+}
+
 #[wasm_bindgen_test]
 fn a_structural_mismatch_is_caught_not_silently_adopted() {
   // The server sent a <span> for marker 1, but the client builds a <div> there.

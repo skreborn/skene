@@ -186,6 +186,9 @@ pub(crate) enum Realized {
     membership: Option<Membership>,
     /// The key of the member a group has chosen, as its last chosen content said.
     chosen: Option<Rc<str>>,
+    /// The radios whose membership named the control as their group, in the order they
+    /// joined, a removed one until the next chosen key is written.
+    members: Vec<NodeId>,
   },
   /// An overlay.
   Overlay {
@@ -397,6 +400,7 @@ impl<S: Sink> Realizer<S> {
       native,
       membership: None,
       chosen: None,
+      members: Vec::new(),
     };
     let root = match native {
       Some(native) if native.is_bare() => {
@@ -837,21 +841,28 @@ impl<S: Sink> Realizer<S> {
   /// key it is, unchecking every other, but a member showing what the reader changed
   /// until it is reported.
   fn write_chosen(&mut self, group: NodeId, chosen: Option<&str>) {
-    let Some(record) = self.records.get_mut(group)
-    else {
-      return;
-    };
+    let members = self.members(group);
 
-    if let Realized::Control { chosen: held, .. } = &mut record.realized {
+    if let Some(Record {
+      realized:
+        Realized::Control {
+          chosen: held,
+          members: joined,
+          ..
+        },
+      ..
+    }) = self.records.get_mut(group)
+    {
       *held = chosen.map(Rc::from);
+      joined.clone_from(&members);
     }
 
-    for record in self.records.values() {
-      if let Realized::Control {
-        membership: Some(membership),
-        ..
-      } = &record.realized
-        && membership.group == group
+    for member in members {
+      if let Some(record) = self.records.get(member)
+        && let Realized::Control {
+          membership: Some(membership),
+          ..
+        } = &record.realized
         && !self.sink.composing(record.carrier())
       {
         self
@@ -861,16 +872,50 @@ impl<S: Sink> Realizer<S> {
     }
   }
 
+  /// The radios whose membership names `group` as their group, in the order they
+  /// joined it.
+  pub(crate) fn members(&self, group: NodeId) -> Vec<NodeId> {
+    let Some(Record {
+      realized: Realized::Control { members, .. },
+      ..
+    }) = self.records.get(group)
+    else {
+      return Vec::new();
+    };
+
+    members
+      .iter()
+      .copied()
+      .filter(|member| {
+        matches!(self.records.get(*member), Some(Record {
+          realized: Realized::Control {
+            membership: Some(membership),
+            ..
+          },
+          ..
+        }) if membership.group == group)
+      })
+      .collect()
+  }
+
   /// Gives the radio `node` its group's `name` and checks it where it is the member its
   /// group has chosen, unless it shows what the reader changed until it is reported.
   fn write_membership(&mut self, node: NodeId, membership: &Membership) {
-    let chosen = self
-      .records
-      .get(membership.group)
-      .and_then(|group| match &group.realized {
-        Realized::Control { chosen, .. } => chosen.clone(),
-        _ => None,
-      });
+    let chosen = match self.records.get_mut(membership.group) {
+      Some(Record {
+        realized: Realized::Control {
+          chosen, members, ..
+        },
+        ..
+      }) => {
+        if !members.contains(&node) {
+          members.push(node);
+        }
+
+        chosen.clone()
+      }
+      _ => None,
+    };
     let Some(record) = self.records.get_mut(node)
     else {
       return;

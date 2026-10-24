@@ -399,8 +399,8 @@ fn on_click(event: &web_sys::Event) {
     // never reaches the platform, whose flip `change` reports.
     if toggle_input(event).is_some() {
       let _ = dispatch_click_observed::<Web>(node, &click_event(event));
-      // A cancelled click's flip is restored once its dispatch ends, over whatever its
-      // handlers wrote, so the toggles it touched show the scene's state again after.
+      // Once the dispatch ends, the toggles a cancelled click touched show the scene's
+      // checked state.
       let event = event.clone();
 
       let _ = Web::schedule(
@@ -945,24 +945,11 @@ fn show_scene_checked(node: NodeId) {
       _ => None,
     });
 
-    match group {
-      Some(group) => dom
-        .realizer
-        .records
-        .iter()
-        .filter(|(_, record)| {
-          matches!(&record.realized, Realized::Control {
-            membership: Some(membership),
-            ..
-          } if membership.group == group)
-        })
-        .map(|(member, record)| (record.carrier().clone(), member))
-        .collect(),
-      None => dom
-        .node(node)
-        .map(|record| vec![(record.carrier().clone(), node)])
-        .unwrap_or_default(),
-    }
+    group
+      .map_or_else(|| vec![node], |group| dom.realizer.members(group))
+      .into_iter()
+      .filter_map(|member| Some((dom.node(member)?.carrier().clone(), member)))
+      .collect()
   });
 
   for (carrier, member) in shown {

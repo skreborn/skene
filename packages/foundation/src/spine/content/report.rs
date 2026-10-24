@@ -175,23 +175,6 @@ impl Asked {
   }
 }
 
-/// What an entry shows after a report of `proposed` answered `verdict`, as far as its
-/// controller knows, `applied` saying whether its toolkit showed the change already.
-///
-/// A toolkit that applied the change shows it while the verdict accepts it, and the
-/// truth it is repaired to otherwise; one that has not applied it shows it accepted, and
-/// what it shows instead of it is not known until the truth is written or reported.
-fn shown_after(proposed: &Edit, applied: bool, verdict: &Verdict) -> Option<Edit> {
-  match verdict {
-    Verdict::Accept => Some(proposed.clone()),
-    Verdict::Replace(truth) if applied => Some(Edit {
-      text: Rc::clone(&truth.text),
-      selection: truth.selection,
-    }),
-    Verdict::Replace(_) | Verdict::Refuse => None,
-  }
-}
-
 /// The answer to a reader's change: what it asks of the app, and the verdict on it once
 /// asked.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -363,9 +346,26 @@ impl EditController {
       )
     });
 
-    *self.shown.borrow_mut() = shown_after(proposed, applied, &answer.verdict);
+    *self.shown.borrow_mut() = Self::shown_after(proposed, applied, &answer.verdict);
 
     answer.verdict
+  }
+
+  /// What an entry shows after a report of `proposed` answered `verdict`, as far as its
+  /// controller knows, `applied` saying whether its toolkit showed the change already.
+  ///
+  /// A toolkit that applied the change shows it while the verdict accepts it, and the
+  /// truth it is repaired to otherwise; one that has not applied it shows it accepted, and
+  /// what it shows instead of it is not known until the truth is written or reported.
+  fn shown_after(proposed: &Edit, applied: bool, verdict: &Verdict) -> Option<Edit> {
+    match verdict {
+      Verdict::Accept => Some(proposed.clone()),
+      Verdict::Replace(truth) if applied => Some(Edit {
+        text: Rc::clone(&truth.text),
+        selection: truth.selection,
+      }),
+      Verdict::Replace(_) | Verdict::Refuse => None,
+    }
   }
 }
 
@@ -424,60 +424,6 @@ impl Controllable for Option<Rc<str>> {
   #[inline(always)]
   fn holds(&self, proposed: &Self) -> bool {
     self == proposed
-  }
-}
-
-/// What a content shows once the truth `truth` is written over `shown`: `None` where it
-/// shows the truth already, and while the reader's change is `composing`, the write
-/// waiting for the report that ends it.
-fn written_whole<T: PartialEq>(truth: T, shown: Option<&T>, composing: bool) -> Option<T> {
-  (!composing && shown != Some(&truth)).then_some(truth)
-}
-
-/// The verdict on a reader's `proposed` change of a content held whole, `truth` reading
-/// the truth as it stands, before the ask and after it, and `ask` asking the app.
-///
-/// A change reported while the truth is `writing` is its echo and stands, asking
-/// nothing; a change the truth holds stands, asking nothing; any other asks the app,
-/// unless the content is `disabled`, and stands where the truth then holds it, refused
-/// otherwise.
-fn answer_whole<T: Controllable>(
-  truth: impl Fn() -> T,
-  proposed: &T,
-  disabled: bool,
-  writing: bool,
-  ask: impl FnOnce(&T),
-) -> Verdict {
-  if writing || truth().holds(proposed) {
-    return Verdict::Accept;
-  }
-
-  if !disabled {
-    ask(proposed);
-  }
-
-  if truth().holds(proposed) {
-    Verdict::Accept
-  }
-  else {
-    Verdict::Refuse
-  }
-}
-
-/// What a content held whole shows after a report of `proposed` answered `verdict`,
-/// `applied` saying whether its toolkit showed the change already, where it showed
-/// `shown` before: the proposal where the toolkit shows it or applies it, else `shown`.
-fn shown_after_whole<T: Clone>(
-  shown: Option<T>,
-  proposed: &T,
-  applied: bool,
-  verdict: &Verdict,
-) -> Option<T> {
-  if applied || *verdict == Verdict::Accept {
-    Some(proposed.clone())
-  }
-  else {
-    shown
   }
 }
 
@@ -563,7 +509,7 @@ impl<T: Controllable> Controller<T> {
     let truth = (self.truth)();
 
     untrack(|| {
-      let Some(truth) = written_whole(truth, self.shown.borrow().as_ref(), P::composing(node))
+      let Some(truth) = Self::written(truth, self.shown.borrow().as_ref(), P::composing(node))
       else {
         return;
       };
@@ -588,7 +534,7 @@ impl<T: Controllable> Controller<T> {
       return Verdict::Accept;
     };
     let verdict = untrack(|| {
-      answer_whole(
+      Self::verdict(
         || (self.truth)(),
         &proposed,
         self.disabled.as_ref().is_some_and(|disabled| disabled()),
@@ -598,13 +544,62 @@ impl<T: Controllable> Controller<T> {
     });
     let shown = self.shown.take();
 
-    *self.shown.borrow_mut() = shown_after_whole(shown, &proposed, applied, &verdict);
+    *self.shown.borrow_mut() = Self::shown_after(shown, &proposed, applied, &verdict);
 
     if verdict == Verdict::Refuse {
       untrack(|| self.write::<P>(node));
     }
 
     verdict
+  }
+
+  /// What a content shows once the truth `truth` is written over `shown`: `None` where it
+  /// shows the truth already, and while the reader's change is `composing`, the write
+  /// waiting for the report that ends it.
+  fn written(truth: T, shown: Option<&T>, composing: bool) -> Option<T> {
+    (!composing && shown != Some(&truth)).then_some(truth)
+  }
+
+  /// The verdict on a reader's `proposed` change of a content held whole, `truth` reading
+  /// the truth as it stands, before the ask and after it, and `ask` asking the app.
+  ///
+  /// A change reported while the truth is `writing` is its echo and stands, asking
+  /// nothing; a change the truth holds stands, asking nothing; any other asks the app,
+  /// unless the content is `disabled`, and stands where the truth then holds it, refused
+  /// otherwise.
+  fn verdict(
+    truth: impl Fn() -> T,
+    proposed: &T,
+    disabled: bool,
+    writing: bool,
+    ask: impl FnOnce(&T),
+  ) -> Verdict {
+    if writing || truth().holds(proposed) {
+      return Verdict::Accept;
+    }
+
+    if !disabled {
+      ask(proposed);
+    }
+
+    if truth().holds(proposed) {
+      Verdict::Accept
+    }
+    else {
+      Verdict::Refuse
+    }
+  }
+
+  /// What a content held whole shows after a report of `proposed` answered `verdict`,
+  /// `applied` saying whether its toolkit showed the change already, where it showed
+  /// `shown` before: the proposal where the toolkit shows it or applies it, else `shown`.
+  fn shown_after(shown: Option<T>, proposed: &T, applied: bool, verdict: &Verdict) -> Option<T> {
+    if applied || *verdict == Verdict::Accept {
+      Some(proposed.clone())
+    }
+    else {
+      shown
+    }
   }
 }
 
@@ -654,16 +649,7 @@ mod tests {
     rc::Rc,
   };
 
-  use super::{
-    Answer,
-    Asked,
-    Controllable,
-    EditTruth,
-    answer_whole,
-    shown_after,
-    shown_after_whole,
-    written_whole,
-  };
+  use super::{Answer, Asked, Controllable, Controller, EditController, EditTruth};
   use crate::spine::{
     CheckState,
     ChoiceOption,
@@ -906,7 +892,7 @@ mod tests {
     );
     assert_eq!(asks.len(), 1);
     assert_eq!(
-      shown_after(&composed, true, &answered.verdict),
+      EditController::shown_after(&composed, true, &answered.verdict),
       Some(composed.clone()),
       "the entry shows the composed text"
     );
@@ -915,7 +901,7 @@ mod tests {
 
     assert_eq!(answered.verdict, Verdict::Replace(edit("AB", 2)));
     assert_eq!(
-      shown_after(&composed, true, &answered.verdict),
+      EditController::shown_after(&composed, true, &answered.verdict),
       Some(edit("AB", 2)),
       "the composition's end repairs it"
     );
@@ -969,7 +955,7 @@ mod tests {
       "the caret stays after the first dash"
     );
     assert_eq!(
-      shown_after(&typed, false, &Verdict::Replace(truth)),
+      EditController::shown_after(&typed, false, &Verdict::Replace(truth)),
       None,
       "what a toolkit applying the truth shows is known once written or reported"
     );
@@ -984,7 +970,7 @@ mod tests {
     writing: bool,
   ) -> (Verdict, Vec<T>) {
     let asks = RefCell::new(Vec::new());
-    let verdict = answer_whole(
+    let verdict = Controller::<T>::verdict(
       || truth.clone(),
       proposed,
       disabled,
@@ -1021,7 +1007,7 @@ mod tests {
     );
 
     let truth = Cell::new(CheckState::Off);
-    let verdict = answer_whole(
+    let verdict = Controller::verdict(
       || truth.get(),
       &CheckState::On,
       false,
@@ -1059,24 +1045,24 @@ mod tests {
   #[test]
   fn a_whole_write_of_what_is_shown_is_skipped() {
     assert_eq!(
-      written_whole(CheckState::On, Some(&CheckState::On), false),
+      Controller::written(CheckState::On, Some(&CheckState::On), false),
       None
     );
     assert_eq!(
-      written_whole(CheckState::On, Some(&CheckState::Off), false),
+      Controller::written(CheckState::On, Some(&CheckState::Off), false),
       Some(CheckState::On)
     );
     assert_eq!(
-      written_whole(CheckState::On, None, false),
+      Controller::written(CheckState::On, None, false),
       Some(CheckState::On)
     );
     assert_eq!(
-      written_whole(CheckState::On, None, true),
+      Controller::written(CheckState::On, None, true),
       None,
       "the write waits for the reader's change to be reported"
     );
     assert_eq!(
-      shown_after_whole(
+      Controller::shown_after(
         Some(CheckState::Off),
         &CheckState::On,
         true,
@@ -1086,7 +1072,7 @@ mod tests {
       "an applied change shows until the repair"
     );
     assert_eq!(
-      shown_after_whole(
+      Controller::shown_after(
         Some(CheckState::Off),
         &CheckState::On,
         false,

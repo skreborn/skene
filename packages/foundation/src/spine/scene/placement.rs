@@ -344,6 +344,122 @@ mod tests {
     nodes.iter().copied().collect()
   }
 
+  #[cfg(not(target_arch = "wasm32"))]
+  impl Tree {
+    /// Places `child` under `parent` at `index` among its children, last past them.
+    fn insert(&mut self, parent: NodeId, index: usize, child: NodeId) {
+      let children = self.children.entry(parent).or_default();
+
+      children.insert(index.min(children.len()), child);
+      self.parents.insert(child, parent);
+    }
+
+    /// `node` and every node beneath it.
+    fn subtree(&self, node: NodeId) -> Vec<NodeId> {
+      let mut nodes = vec![node];
+      let mut next = 0;
+
+      while let Some(current) = nodes.get(next).copied() {
+        nodes.extend(self.children.get(&current).into_iter().flatten());
+        next += 1;
+      }
+
+      nodes
+    }
+
+    /// The made nodes the platform holds under the made `node`, in order: each child
+    /// made, else those made beneath it in turn.
+    fn projection(&self, node: NodeId) -> Vec<NodeId> {
+      let mut out = Vec::new();
+
+      for child in self.children.get(&node).into_iter().flatten() {
+        if self.is_realized(*child) {
+          out.push(*child);
+        }
+        else {
+          out.extend(self.projection(*child));
+        }
+      }
+
+      out
+    }
+  }
+
+  /// The platform as the changes it is told leave it: each made node's children, in
+  /// order.
+  #[cfg(not(target_arch = "wasm32"))]
+  #[derive(Default)]
+  struct Held {
+    children: FxHashMap<NodeId, Vec<NodeId>>,
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  impl Held {
+    /// The node `child` stands under, if any.
+    fn holder(&self, child: NodeId) -> Option<NodeId> {
+      self
+        .children
+        .iter()
+        .find(|(_, children)| children.contains(&child))
+        .map(|(parent, _)| *parent)
+    }
+
+    /// Takes `child` from under `parent`.
+    fn take(&mut self, parent: NodeId, child: NodeId) {
+      if let Some(children) = self.children.get_mut(&parent) {
+        children.retain(|held| *held != child);
+      }
+    }
+
+    /// Places `child` under `parent` before `before`, which must stand there, else
+    /// last.
+    fn place(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+      let children = self.children.entry(parent).or_default();
+      let index = before.map_or(children.len(), |before| {
+        children
+          .iter()
+          .position(|held| *held == before)
+          .expect("`before` stands under `parent`")
+      });
+
+      children.insert(index, child);
+    }
+
+    /// Applies `change` as a platform does, checking it names what the platform holds.
+    fn apply(&mut self, change: Structural) {
+      match change {
+        Structural::Attach {
+          parent,
+          child,
+          before,
+        } => {
+          assert_eq!(self.holder(child), None, "an attached node stands nowhere");
+          self.place(parent, child, before);
+        }
+        Structural::Relocate {
+          parent,
+          child,
+          before,
+        } => {
+          let from = self
+            .holder(child)
+            .expect("a relocated node stands somewhere");
+
+          self.take(from, child);
+          self.place(parent, child, before);
+        }
+        Structural::Hide { parent, child } | Structural::Remove { parent, child } => {
+          assert_eq!(
+            self.holder(child),
+            Some(parent),
+            "a node leaves where it stands"
+          );
+          self.take(parent, child);
+        }
+      }
+    }
+  }
+
   /// A segment's content inside a scope the platform did not make is placed under the
   /// scope's realized parent, before what follows the scope there, its anchors standing
   /// for nothing; the scope stands for that content alone.
@@ -503,5 +619,112 @@ mod tests {
 
     assert!(Structural::arrival(&tree, inner, None).is_empty());
     assert!(Structural::departure(&tree, below, inner, false).is_empty());
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  use proptest::prelude::*;
+
+  #[cfg(not(target_arch = "wasm32"))]
+  proptest! {
+    /// Any run of creations, moves, hides and removals over nodes made or not tells the
+    /// platform only of the nodes it made, each change naming what it holds, and leaves
+    /// every made node holding the made nodes beneath it in the tree's order, and every
+    /// node standing under the nearest made node above it.
+    #[test]
+    fn any_run_of_changes_leaves_the_platform_holding_the_projection(
+      steps in proptest::collection::vec(
+        (0..5_u8, any::<usize>(), any::<usize>(), any::<usize>(), any::<bool>()),
+        0..48,
+      ),
+    ) {
+      let root = NodeId::plain(0);
+      let mut tree = Tree::default();
+      let mut held = Held::default();
+      let mut live = vec![root];
+      let mut minted = 1;
+
+      for (step, first, second, index, made) in steps {
+        let pick = |pool: &[NodeId], at: usize| pool[at % pool.len()];
+
+        match step {
+          0 | 1 => {
+            let child = NodeId::plain(minted);
+            let parent = pick(&live, first);
+
+            minted += 1;
+            live.push(child);
+
+            if !made {
+              tree.unrealized(&[child]);
+            }
+
+            if step == 0 {
+              tree.insert(parent, index, child);
+
+              for change in Structural::arrival(&tree, child, None) {
+                held.apply(change);
+              }
+            }
+          }
+          2 => {
+            let child = pick(&live, first);
+            let parent = pick(&live, second);
+
+            if child == root || tree.subtree(child).contains(&parent) {
+              continue;
+            }
+
+            let from = tree.parent_of(child);
+
+            tree.take(child);
+            tree.insert(parent, index, child);
+
+            let from = from.and_then(|from| tree.realized_ancestor(from));
+
+            for change in Structural::arrival(&tree, child, from) {
+              held.apply(change);
+            }
+          }
+          _ => {
+            let child = pick(&live, first);
+            let Some(parent) = tree.parent_of(child)
+            else {
+              continue;
+            };
+
+            tree.take(child);
+
+            for change in Structural::departure(&tree, parent, child, step == 4) {
+              held.apply(change);
+            }
+
+            if step == 4 {
+              let gone = tree.subtree(child);
+
+              live.retain(|node| !gone.contains(node));
+            }
+          }
+        }
+      }
+
+      for node in &live {
+        let expected = tree
+          .is_realized(*node)
+          .then(|| tree.parent_of(*node))
+          .flatten()
+          .and_then(|parent| tree.realized_ancestor(parent));
+
+        prop_assert_eq!(held.holder(*node), expected, "{:?} stands where it should", node);
+
+        if tree.is_realized(*node) {
+          prop_assert_eq!(
+            held.children.get(node).cloned().unwrap_or_default(),
+            tree.projection(*node),
+            "{:?} holds its projection",
+            node
+          );
+        }
+      }
+    }
   }
 }

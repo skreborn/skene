@@ -206,6 +206,10 @@ impl Records {
     let Some(record) = self.record(handle)
     else {
       for child in self.children_reversed(handle) {
+        if self.record(child).is_some_and(Record::is_overlay) {
+          continue;
+        }
+
         if self.hit_walk(child, offset_x, offset_y, x, y, path) {
           return true;
         }

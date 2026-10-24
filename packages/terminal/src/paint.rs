@@ -1105,6 +1105,10 @@ fn paint_node(
   let Some(record) = records.record(handle)
   else {
     for child in records.children(handle) {
+      if records.record(child).is_some_and(Record::is_overlay) {
+        continue;
+      }
+
       paint_node(records, buffer, child, offset_x, offset_y);
     }
 

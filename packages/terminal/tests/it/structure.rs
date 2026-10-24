@@ -1546,6 +1546,44 @@ fn anchors_and_scopes_are_made_no_node() {
   });
 }
 
+/// A box whose content stands inside a theme's scope paints as one holding the
+/// content itself: its background fills whole cells rather than running by eighths as
+/// a childless box's does, so the scope the terminal makes no node for changes nothing
+/// drawn.
+#[test]
+fn a_box_holding_a_scope_paints_as_one_holding_its_content() {
+  let painted = |scoped: bool| {
+    with_platform(|| {
+      let _ = terminal::mount(move || {
+        let inner = || Container::new().set_width(1).set_height(1).build();
+        let content = if scoped {
+          Theme::new(SimplePalette::default())
+            .set_child_builder(inner)
+            .build()
+        }
+        else {
+          inner()
+        };
+
+        Container::new()
+          .set_width(5)
+          .set_child(
+            Container::new()
+              .set_width(Dimension::Fraction(0.5))
+              .set_background(red())
+              .set_child(content),
+          )
+          .into_any()
+          .build()
+      });
+
+      testing::render_to_styled(5, 1)
+    })
+  };
+
+  assert_eq!(painted(true), painted(false));
+}
+
 /// One structural change a platform's views make to the scene, over indices into a
 /// pool of boxes and segments.
 #[derive(Debug, Clone)]

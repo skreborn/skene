@@ -43,8 +43,8 @@ platforms' builds and compiles empty in the other's.
 
 ## The scene and the platform
 
-**The spine owns the tree; a platform keeps a record per node it makes.** `Scene<P: Realization>` is a
-generational arena of node records—parent, children as a list of linked siblings (a move
+**The spine owns the tree; a platform keeps a record per node it makes.**
+`Scene<P: Realization>` is a generational arena of node records—parent, children as a list of linked siblings (a move
 relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
 the token definitions a theme placed on the node, the query-container name, the
 handlers. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
@@ -67,10 +67,10 @@ carrier and its caption's `<label>` the only elements it adds; the browser's tre
 DOM. The scene tells the platform what happens to each child, naming only the nodes it
 made: the parent is the nearest made ancestor, `before` the next node made after the
 child under it, a caption kept beside its control passed over, as the control stands for
-it among its siblings, and a node not made stands for the made nodes beneath it, each
-told in its place (the rule is `spine::scene::placement`'s, over plain data). A child
-is attached (new, or returning from being hidden), relocated (a move, which
-the web makes with `moveBefore` where the engine has it, keeping focus and animations,
+it among its siblings (the web inserting before the caption's `<label>`), and a node not
+made stands for the made nodes beneath it, each told in its place (the rule is
+`spine::scene::placement`'s, over plain data). A child is attached (new, or returning
+from being hidden), relocated (a move, which the web makes with `moveBefore` where the engine has it, keeping focus and animations,
 and with one `insertBefore` elsewhere), hidden (taken out live, to return) or removed
 (for good, destroyed next), and re-attaching a node where it already stands tells the
 platform nothing. Only a hidden child keeps what leaving loses: the scene keeps the
@@ -111,8 +111,7 @@ properties), `TokenValue` (the erased definition the medium accepts), with the c
 portable vocabulary over node ids: create every node, a box, a control, an overlay, a
 run, an anchor or a scope, from one `NodeSpec` (`create`: its role, its heading level,
 its drag axes and its kind's facts, a fact of another kind unrepresentable), answering
-whether it made a node, give a
-box, a control, an overlay or a run its style once as the shared half compiled its
+whether it made a node, give a box, a control, an overlay or a run its style once as the shared half compiled its
 record (`apply_style`), write a derived slot's erased leaf into it (`apply_slot`),
 mirror tree mutations, define tokens on a `TokenScope` (one call, a node's or the
 root's, the root a scope like any other), register event kinds, focus, set values,
@@ -286,8 +285,7 @@ and its cost unjustified.
 - **Anchors, not groups.** A reactive subtree—`derived`, `Suspense`, `ErrorBoundary`,
   `Deferred`, `AsyncView`, `empty`—mounts between two anchors (a comment pair on the web,
   in the scene alone in the terminal, which makes no node for them) rather than inside a
-  box of its own. Its nodes are
-  therefore its parent's children for layout, and a wrapper around it annotates the
+  box of its own. Its nodes are therefore its parent's children for layout, and a wrapper around it annotates the
   content, every rebuild's and each form of a two-form view's: a boundary's fallback,
   a switch's branches. A group node that is a real `<div>` and a real taffy node makes every
   derived subtree one flex item, which is why there is none.

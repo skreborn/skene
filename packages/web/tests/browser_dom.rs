@@ -3322,6 +3322,52 @@ fn a_text_fields_caption_is_a_label_before_the_input() {
   assert!(container.query_selector("input").expect("query").is_none());
 }
 
+/// A node placed before a text field whose caption stands beside it lands before the
+/// caption's `<label>`, never between the label and its input.
+#[wasm_bindgen_test]
+fn a_node_placed_before_a_captioned_field_lands_before_its_label() {
+  let (_installed, root) = fresh_root();
+  let items = Signal::new(vec![0]);
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        |item| {
+          if item == 0 {
+            BasicTextField::new(TextEntry::new())
+              .set_label("Name")
+              .build()
+          }
+          else {
+            Text::new(item.to_string()).build()
+          }
+        },
+      )
+      .build()
+  });
+
+  let column = only_child(&root);
+  let tags = |parent: &Element| {
+    let children = parent.children();
+
+    (0..children.length())
+      .map(|index| children.item(index).unwrap().tag_name())
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(tags(&column), ["LABEL", "INPUT"]);
+
+  items.set(vec![1, 0]);
+  web::end_turn();
+
+  assert_eq!(
+    tags(&column),
+    ["SPAN", "LABEL", "INPUT"],
+    "the new node stands before the caption"
+  );
+}
+
 /// A lazy column of estimated items measures each one it builds through the browser's
 /// size observation: taller measures shrink the window and grow the trailing spacer.
 #[wasm_bindgen_test]

@@ -9,6 +9,7 @@ use std::{
   rc::Rc,
 };
 
+use skene_simple_terminal::prelude::SimplePalette;
 use skene_terminal::{self as terminal, Activate, HasChild, prelude::*, testing};
 
 use crate::common::{black, blue, colors_at, red, rgb, with_platform};
@@ -180,6 +181,49 @@ fn a_derived_placement_re_places_an_open_popup() {
     let frame = testing::render_to_text(12, 6);
 
     assert_eq!(testing::locate(&frame, "popup"), (0, 1), "above: {frame}");
+  });
+}
+
+/// A popup standing directly in a theme's scope, which the terminal makes no node for,
+/// shows and takes presses where it is placed alone: never also where the scope stands
+/// in the flow, so a press on the page there dismisses it.
+#[test]
+fn a_popup_in_a_themes_scope_shows_where_it_is_placed_alone() {
+  with_platform(|| {
+    let open = Signal::new(true);
+    let anchor = NodeHandle::new();
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("top").into_any(),
+          Container::new()
+            .bind_handle(anchor)
+            .set_child(Text::new("anchor"))
+            .into_any(),
+          Theme::new(SimplePalette::default())
+            .set_child_builder(move || {
+              Overlay::popup()
+                .set_anchor(anchor)
+                .set_placement(Placement::Bottom)
+                .bind_open(open)
+                .set_child(Text::new("popup"))
+            })
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(12, 4);
+
+    assert_eq!(frame.matches("popup").count(), 1, "shown once: {frame}");
+    assert_eq!(testing::locate(&frame, "popup"), (0, 2), "below: {frame}");
+    assert_eq!(testing::locate(&frame, "top"), (0, 0), "{frame}");
+
+    testing::trigger_mouse_click(1, 0);
+
+    assert!(!open.get(), "a press on the page dismisses it");
   });
 }
 

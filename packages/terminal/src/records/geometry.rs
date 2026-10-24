@@ -80,16 +80,18 @@ impl Records {
 
   /// A childless box's laid-out span in eighth cells from its parent's origin: where
   /// it begins and how far it extends, unrounded, so boxes beside each other meet
-  /// where the layout put them. `None` for a box with laid-out children, or one of no
-  /// width.
+  /// where the layout put them. `None` for a box with laid-out children, those inside
+  /// an anchor or a scope among them, or one of no width.
   pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
     let record = self.record(handle)?;
-    if self
-      .children(handle)
-      .into_iter()
-      .any(|child| self.record(child).is_some())
-    {
-      return None;
+    let mut beneath = self.children(handle);
+
+    while let Some(child) = beneath.pop() {
+      if self.record(child).is_some() {
+        return None;
+      }
+
+      beneath.extend(self.children(child));
     }
 
     let layout = self.tree.unrounded_layout(record.node?)?;

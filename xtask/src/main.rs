@@ -28,6 +28,8 @@ use std::{
   time::Instant,
 };
 
+use crate::manifests::Workspace;
+
 /// What a step reports: nothing when it passes, why when it fails.
 type Outcome = Result<(), String>;
 
@@ -153,21 +155,6 @@ const APPLE_PACKAGES: &[&str] = &["skene-terminal"];
 
 /// The flag that names the web's server leaf in a build.
 const SERVER_CFG: &str = r#"--cfg skene_platform="server""#;
-
-/// The crates whose items depend on the server leaf.
-const SERVER_PACKAGES: &[&str] = &["skene-web"];
-
-/// The crates documented for the browser leaf: every crate an app there reaches, and the
-/// third-party proofs written for it.
-const WASM_DOCS: &[&str] = &[
-  "acme-map",
-  "skene-foundation",
-  "skene-reactive",
-  "skene-simple",
-  "skene-simple-web",
-  "skene-transport",
-  "skene-web",
-];
 
 /// The five project documents, which no crate compiles and no stamped step reads; every
 /// other file, every other document among them, is an input of a stamped step.
@@ -623,10 +610,10 @@ fn quote(word: &OsStr) -> String {
 }
 
 /// `-p` for each of `packages`.
-fn packages(packages: &[&str]) -> Vec<String> {
+fn packages<S: AsRef<str>>(packages: &[S]) -> Vec<String> {
   packages
     .iter()
-    .flat_map(|package| ["-p".to_owned(), (*package).to_owned()])
+    .flat_map(|package| ["-p".to_owned(), package.as_ref().to_owned()])
     .collect()
 }
 
@@ -653,28 +640,30 @@ fn licenses(gate: &Gate, log: &mut Log) -> Outcome {
 }
 
 fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {
-  log.check(gate.cargo([
-    "clippy",
-    "--workspace",
-    "--all-targets",
-    "--locked",
-    "--",
-    "-D",
-    "warnings",
-  ]))
+  let workspace = Workspace::read(&gate.root)?;
+  let mut command = gate.cargo(["clippy", "--all-targets", "--locked"]);
+
+  command
+    .args(packages(&workspace.host()))
+    .args(["--", "-D", "warnings"]);
+  log.check(command)
 }
 
 fn clippy_release(gate: &Gate, log: &mut Log) -> Outcome {
-  log.check(gate.cargo([
-    "clippy",
-    "--workspace",
-    "--all-targets",
-    "--locked",
-    "--release",
-    "--",
-    "-D",
-    "warnings",
-  ]))
+  let workspace = Workspace::read(&gate.root)?;
+  let mut host = gate.cargo(["clippy", "--all-targets", "--locked", "--release"]);
+
+  host
+    .args(packages(&workspace.host()))
+    .args(["--", "-D", "warnings"]);
+  log.check(host)?;
+
+  let mut server = gate.server_cargo(["clippy", "--all-targets", "--locked", "--release"]);
+
+  server
+    .args(packages(&workspace.web()))
+    .args(["--", "-D", "warnings"]);
+  log.check(server)
 }
 
 fn clippy_server(gate: &Gate, log: &mut Log) -> Outcome {
@@ -728,16 +717,20 @@ fn clippy_apple(gate: &Gate, log: &mut Log) -> Outcome {
 }
 
 fn doc_host(gate: &Gate, log: &mut Log) -> Outcome {
-  let mut command = gate.cargo(["doc", "--workspace", "--no-deps", "--locked"]);
+  let workspace = Workspace::read(&gate.root)?;
+  let mut command = gate.cargo(["doc", "--no-deps", "--locked"]);
 
-  command.env("RUSTDOCFLAGS", "-D warnings");
+  command
+    .args(packages(&workspace.host()))
+    .env("RUSTDOCFLAGS", "-D warnings");
   log.check(command)
 }
 
 fn doc_server(gate: &Gate, log: &mut Log) -> Outcome {
+  let workspace = Workspace::read(&gate.root)?;
   let mut command = gate.server_cargo(["doc", "--no-deps", "--locked"]);
 
-  command.args(packages(SERVER_PACKAGES)).env(
+  command.args(packages(&workspace.web())).env(
     Gate::target_flags(&gate.host, "RUSTDOCFLAGS"),
     format!("{SERVER_CFG} -D warnings"),
   );
@@ -745,31 +738,43 @@ fn doc_server(gate: &Gate, log: &mut Log) -> Outcome {
 }
 
 fn doc_wasm(gate: &Gate, log: &mut Log) -> Outcome {
+  let workspace = Workspace::read(&gate.root)?;
   let mut command = gate.cargo(["doc", "--no-deps", "--locked", "--target", WASM]);
 
   command
-    .args(packages(WASM_DOCS))
+    .args(packages(&workspace.web_build()))
     .env("RUSTDOCFLAGS", "-D warnings");
   log.check(command)
 }
 
 fn test_host(gate: &Gate, log: &mut Log) -> Outcome {
   gate.require("nextest", "cargo-nextest")?;
-  log.check(gate.cargo([
-    "nextest",
-    "run",
-    "--workspace",
-    "--locked",
-    "--no-fail-fast",
-  ]))?;
-  log.check(gate.cargo(["test", "--workspace", "--locked", "--no-fail-fast", "--doc"]))
+
+  let workspace = Workspace::read(&gate.root)?;
+  let mut tests = gate.cargo(["nextest", "run", "--locked", "--no-fail-fast"]);
+
+  tests.args(packages(&workspace.host()));
+  log.check(tests)?;
+
+  let mut doctests = gate.cargo(["test", "--locked", "--no-fail-fast", "--doc"]);
+
+  doctests.args(packages(&workspace.host()));
+  log.check(doctests)
 }
 
 fn test_server(gate: &Gate, log: &mut Log) -> Outcome {
-  let mut command = gate.server_cargo(["test", "--locked", "--no-fail-fast"]);
+  gate.require("nextest", "cargo-nextest")?;
 
-  command.args(packages(SERVER_PACKAGES));
-  log.check(command)
+  let workspace = Workspace::read(&gate.root)?;
+  let mut tests = gate.server_cargo(["nextest", "run", "--locked", "--no-fail-fast"]);
+
+  tests.args(packages(&workspace.web()));
+  log.check(tests)?;
+
+  let mut doctests = gate.server_cargo(["test", "--locked", "--no-fail-fast", "--doc"]);
+
+  doctests.args(packages(&workspace.web()));
+  log.check(doctests)
 }
 
 fn msrv(gate: &Gate, log: &mut Log) -> Outcome {
@@ -777,16 +782,31 @@ fn msrv(gate: &Gate, log: &mut Log) -> Outcome {
   let toolchain = installed_toolchain(&version).ok_or_else(|| {
     format!("no toolchain for Rust {version} is installed: `rustup toolchain install {version}`")
   })?;
-  let mut command = gate.cargo([
-    format!("+{toolchain}"),
-    "check".to_owned(),
-    "--workspace".to_owned(),
-    "--all-targets".to_owned(),
-    "--locked".to_owned(),
-  ]);
+  let toolchain = format!("+{toolchain}");
+  let workspace = Workspace::read(&gate.root)?;
+  let check = ["check", "--all-targets", "--locked"];
+  let mut host = gate.cargo([toolchain.as_str()]);
 
-  command.env("CARGO_TARGET_DIR", gate.target.join("msrv"));
-  log.check(command)
+  host
+    .args(check)
+    .args(packages(&workspace.host()))
+    .env("CARGO_TARGET_DIR", gate.target.join("msrv").join("host"));
+  log.check(host)?;
+
+  let mut server = gate.server_cargo([toolchain.as_str()].into_iter().chain(check));
+
+  server
+    .arg("--workspace")
+    .env("CARGO_TARGET_DIR", gate.target.join("msrv").join("server"));
+  log.check(server)?;
+
+  let mut browser = gate.cargo([toolchain.as_str()]);
+
+  browser
+    .args(check)
+    .args(["--workspace", "--target", WASM])
+    .env("CARGO_TARGET_DIR", gate.target.join("msrv").join("browser"));
+  log.check(browser)
 }
 
 /// The installed toolchain for Rust `version`, its first patch release preferred;

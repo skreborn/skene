@@ -13,7 +13,15 @@ use std::{
   process::Command,
 };
 
-use crate::{Gate, Log, Outcome, SERVER_CFG, WASM, describe};
+use crate::{
+  Gate,
+  Log,
+  Outcome,
+  SERVER_CFG,
+  WASM,
+  describe,
+  manifests::{WEB, Workspace},
+};
 
 /// The toolchain every surface is read with; a snapshot holds under this toolchain's
 /// rustdoc alone.
@@ -56,8 +64,8 @@ struct Snapshot {
   leaf: Leaf,
 }
 
-/// Every snapshot: each library crate on the host, and those whose surface differs by
-/// leaf on each of theirs.
+/// Every snapshot: each library crate reaching no web on the host, each reaching the web
+/// on the server leaf, and those whose surface differs by leaf on each of theirs.
 const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-build", Leaf::Host),
   Snapshot::new("skene-conformance", Leaf::Host),
@@ -70,12 +78,11 @@ const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-reactive", Leaf::Host),
   Snapshot::new("skene-simple", Leaf::Host),
   Snapshot::new("skene-simple-terminal", Leaf::Host),
-  Snapshot::new("skene-simple-web", Leaf::Host),
+  Snapshot::new("skene-simple-web", Leaf::Server),
   Snapshot::new("skene-simple-web", Leaf::Browser),
   Snapshot::new("skene-terminal", Leaf::Host),
   Snapshot::new("skene-transport", Leaf::Host),
   Snapshot::new("skene-transport", Leaf::Browser),
-  Snapshot::new("skene-web", Leaf::Host),
   Snapshot::new("skene-web", Leaf::Server),
   Snapshot::new("skene-web", Leaf::Browser),
 ];
@@ -183,9 +190,40 @@ fn require(gate: &Gate) -> Outcome {
   }
 }
 
+/// Fails where a snapshot's leaf is not one its crate builds on: a crate reaching the web
+/// is read on its leaves alone, and the server leaf reads no other.
+fn require_leaves(gate: &Gate) -> Outcome {
+  let workspace = Workspace::read(&gate.root)?;
+  let web = workspace.web();
+  let misplaced: Vec<String> = SNAPSHOTS
+    .iter()
+    .filter(|snapshot| match snapshot.leaf {
+      Leaf::Host => web.contains(&snapshot.package),
+      Leaf::Server => !web.contains(&snapshot.package),
+      Leaf::Browser => false,
+    })
+    .map(|snapshot| {
+      format!(
+        "`{}` is read on the {} leaf; a crate reaching `{WEB}` is read on the web's leaves \
+         alone, and the server leaf reads no other",
+        snapshot.package,
+        snapshot.leaf.name()
+      )
+    })
+    .collect();
+
+  if misplaced.is_empty() {
+    Ok(())
+  }
+  else {
+    Err(misplaced.join("\n"))
+  }
+}
+
 /// Checks every snapshot against the tree's surface.
 pub(crate) fn check(gate: &Gate, log: &mut Log) -> Outcome {
   require(gate)?;
+  require_leaves(gate)?;
 
   let mut differences = Vec::new();
 
@@ -212,6 +250,7 @@ pub(crate) fn check(gate: &Gate, log: &mut Log) -> Outcome {
 /// Rewrites every snapshot from the tree's surface, naming each one that changed.
 pub(crate) fn write(gate: &Gate, log: &mut Log) -> Outcome {
   require(gate)?;
+  require_leaves(gate)?;
   fs::create_dir_all(gate.root.join("api")).map_err(|error| format!("api: {error}"))?;
 
   for snapshot in SNAPSHOTS {

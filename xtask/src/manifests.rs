@@ -1,6 +1,7 @@
 //! What the gate reads from the workspace's manifests and its lockfile.
 
 use std::{
+  collections::BTreeSet,
   fs,
   path::{Component, Path, PathBuf},
 };
@@ -269,6 +270,145 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
   item.as_bool() == Some(true)
 }
 
+/// The web's facade, which a package reaching it is built for one of the web's leaves.
+pub(crate) const WEB: &str = "skene-web";
+
+/// The workspace's packages and what each depends on among them, from which every step
+/// reads the packages it builds.
+pub(crate) struct Workspace {
+  /// Every member, in the order the workspace lists them.
+  packages: Vec<Package>,
+}
+
+/// A member of the workspace and the members it depends on.
+struct Package {
+  /// Its package name.
+  name: String,
+  /// The members it depends on in a `[dependencies]` table, for any target.
+  normal: BTreeSet<String>,
+  /// The members it depends on in any dependency table, for any target.
+  any: BTreeSet<String>,
+}
+
+impl Workspace {
+  /// The workspace under `root`, read from its members' manifests.
+  pub(crate) fn read(root: &Path) -> Result<Self, String> {
+    let manifests = manifest_paths(root)?
+      .iter()
+      .map(|path| read(path))
+      .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Self::new(&manifests))
+  }
+
+  /// The workspace whose manifests are `manifests`, a manifest without a package (the
+  /// workspace's own) adding none.
+  fn new(manifests: &[DocumentMut]) -> Self {
+    let names: BTreeSet<&str> = manifests
+      .iter()
+      .filter_map(|manifest| manifest.get("package")?.get("name")?.as_str())
+      .collect();
+    let packages = manifests
+      .iter()
+      .filter_map(|manifest| {
+        let name = manifest.get("package")?.get("name")?.as_str()?;
+        let mut package = Package {
+          name: name.to_owned(),
+          normal: BTreeSet::new(),
+          any: BTreeSet::new(),
+        };
+
+        for (kind, entries) in member_dependency_tables(manifest) {
+          for (key, entry) in entries.iter() {
+            let dependency = entry.get("package").and_then(Item::as_str).unwrap_or(key);
+
+            if names.contains(dependency) {
+              if kind == "dependencies" {
+                package.normal.insert(dependency.to_owned());
+              }
+
+              package.any.insert(dependency.to_owned());
+            }
+          }
+        }
+
+        Some(package)
+      })
+      .collect();
+
+    Self { packages }
+  }
+
+  /// Whether the member `name` is `facade` or depends on it, directly or through other
+  /// members, in any dependency table.
+  fn reaches(&self, name: &str, facade: &str) -> bool {
+    let mut seen = BTreeSet::from([name]);
+    let mut pending = vec![name];
+
+    while let Some(next) = pending.pop() {
+      if next == facade {
+        return true;
+      }
+
+      for package in self.packages.iter().filter(|package| package.name == next) {
+        for dependency in &package.any {
+          if seen.insert(dependency) {
+            pending.push(dependency);
+          }
+        }
+      }
+    }
+
+    false
+  }
+
+  /// The members the host's own build checks, documents and tests: those reaching no
+  /// [`WEB`].
+  pub(crate) fn host(&self) -> Vec<&str> {
+    self
+      .packages
+      .iter()
+      .map(|package| package.name.as_str())
+      .filter(|name| !self.reaches(name, WEB))
+      .collect()
+  }
+
+  /// The members built for the web's leaves alone: those reaching [`WEB`], itself
+  /// included.
+  pub(crate) fn web(&self) -> Vec<&str> {
+    self
+      .packages
+      .iter()
+      .map(|package| package.name.as_str())
+      .filter(|name| self.reaches(name, WEB))
+      .collect()
+  }
+
+  /// Every member a web build compiles for the web's leaf: those reaching [`WEB`], and
+  /// every member they depend on in a `[dependencies]` table, directly or through others.
+  pub(crate) fn web_build(&self) -> Vec<&str> {
+    let mut built: BTreeSet<&str> = self.web().into_iter().collect();
+    let mut pending: Vec<&str> = built.iter().copied().collect();
+
+    while let Some(next) = pending.pop() {
+      for package in self.packages.iter().filter(|package| package.name == next) {
+        for dependency in &package.normal {
+          if built.insert(dependency) {
+            pending.push(dependency);
+          }
+        }
+      }
+    }
+
+    self
+      .packages
+      .iter()
+      .map(|package| package.name.as_str())
+      .filter(|name| built.contains(name))
+      .collect()
+  }
+}
+
 /// The Rust version the workspace declares as its minimum.
 pub(crate) fn rust_version(root: &Path) -> Result<String, String> {
   read(&root.join("Cargo.toml"))?
@@ -409,6 +549,26 @@ fn dependency_tables(manifest: &DocumentMut) -> Vec<(String, &dyn TableLike)> {
   tables
 }
 
+/// Every dependency table of the member `manifest`, for any target, each with its kind
+/// (`dependencies`, `dev-dependencies` or `build-dependencies`).
+fn member_dependency_tables(manifest: &DocumentMut) -> Vec<(&'static str, &dyn TableLike)> {
+  let mut scopes = vec![manifest.as_item()];
+
+  if let Some(targets) = manifest.get("target").and_then(Item::as_table_like) {
+    scopes.extend(targets.iter().map(|(_, target)| target));
+  }
+
+  DEPENDENCY_TABLES
+    .iter()
+    .flat_map(|kind| {
+      scopes
+        .iter()
+        .filter_map(move |scope| scope.get(kind).and_then(Item::as_table_like))
+        .map(move |table| (*kind, table))
+    })
+    .collect()
+}
+
 /// Every `[patch]` table of `manifest`, one per source it patches, named as its header
 /// spells it.
 fn patch_tables(manifest: &DocumentMut) -> Vec<(String, &dyn TableLike)> {
@@ -431,7 +591,7 @@ mod tests {
 
   use toml_edit::DocumentMut;
 
-  use super::{check_order, check_patches, dependency_tables};
+  use super::{Workspace, check_order, check_patches, dependency_tables};
 
   fn manifest(source: &str) -> DocumentMut {
     source.parse().expect("the manifest parses")
@@ -496,5 +656,29 @@ mod tests {
 
     assert_eq!(problems.len(), 1, "{problems:#?}");
     assert!(problems[0].contains("SKENE.md"), "{}", problems[0]);
+  }
+
+  #[test]
+  fn a_member_reaches_the_web_through_any_kind_of_dependency() {
+    let workspace = Workspace::new(&[
+      manifest("[workspace]\nmembers = [\"*\"]\n"),
+      manifest("[package]\nname = \"skene-web\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"base\"\n[dependencies]\nserde = \"1\"\n"),
+      manifest("[package]\nname = \"lib\"\n[dependencies]\nskene-web.workspace = true\n"),
+      manifest(
+        "[package]\nname = \"app\"\n[target.'cfg(unix)'.dependencies]\nlib = { path = \"..\" }\n",
+      ),
+      manifest(
+        "[package]\nname = \"docs\"\n[dev-dependencies]\nweb = { package = \"skene-web\", path = \"..\" }\n",
+      ),
+      manifest("[package]\nname = \"tool\"\n[build-dependencies]\nbase = { path = \"..\" }\n"),
+    ]);
+
+    assert_eq!(workspace.web(), ["skene-web", "lib", "app", "docs"]);
+    assert_eq!(workspace.host(), ["base", "tool"]);
+    assert_eq!(
+      workspace.web_build(),
+      ["skene-web", "base", "lib", "app", "docs"]
+    );
   }
 }

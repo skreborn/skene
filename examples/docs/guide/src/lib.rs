@@ -1,4 +1,4 @@
-//! The guide's examples, compiled as doctests on the host.
+//! The guide's examples, compiled and run as doctests on the web's server leaf.
 
 #[doc = include_str!("../../../../guide/src/introduction.md")]
 pub mod introduction {}

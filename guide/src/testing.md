@@ -98,20 +98,27 @@ fn a_click_counts() {
 itself is untrusted and runs no browser default, so what needs trusted input (hover, a
 real key) is a conformance scenario, whose web harness acts through WebDriver's actions.
 
-The server leaf is tested natively, in its own build: a test renders a page with
-`render_to_string` and reads the markup and the stylesheet the browser would receive,
-here for the same counter.
+The server leaf is tested natively, in its own build: a plain `#[test]` renders a page
+with `render_to_string` and reads the markup and the stylesheet the browser would
+receive, here for the same counter.
 
-```rust,ignore
+```rust
+# use skene_simple_web::prelude::*;
 use skene_web::{prelude::*, render_to_string};
+#
+# fn counter() -> impl View {
+#   let count = Signal::new(0u32);
+#
+#   Row::new().set_spacing(8).set_children((
+#     Text::derive(move || count.get().to_string()),
+#     SimpleButton::new("Add").handle_activate(move || count.update(|count| *count += 1)),
+#   ))
+# }
 
-#[test]
-fn the_counter_renders_its_count_and_its_button() {
-  let page = render_to_string(counter);
+let page = render_to_string(counter);
 
-  assert!(page.body().contains(">0</span>"), "{}", page.body());
-  assert!(page.body().contains("<button"), "{}", page.body());
-}
+assert!(page.body().contains(">0</span>"), "{}", page.body());
+assert!(page.body().contains("<button"), "{}", page.body());
 ```
 
 ## Shared logic

@@ -204,24 +204,27 @@ cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` 
 The gate checks formatting, manifest order, every patched crate vendored under
 `vendor/`, the house rules, unused dependencies, clippy and rustdoc on every leaf,
 clippy on the terminal's macOS paths, manifests free of cargo features, the minimum Rust
-version, and three test tiers, of which the host alone proves nothing about the web: the
-host tier runs the foundation's and the layout engine's unit tests and the terminal's
-in-process tests, which act through real input and read what a reader finds; the server
-tier builds the server leaf natively, a byte-exact render snapshot and the compile-fail
-suite (a program per rule the types enforce, beside the diagnostic it must raise) among
-its tests; the browser tier drives a real Firefox and a real Chromium, several sessions
-at once, the `gallery` example running axe-core over every built-in, acts the
-conformance suite out in both by trusted input over WebDriver, and on x86-64 Linux
-compares every page of the suite against its screenshot golden in a pinned Firefox it
-fetches into `target/browsers` (`SKENE_GOLDENS=overwrite` rewrites them). Each step logs
-to `target/gate/<step>.log`, and a step whose inputs are unchanged since it passed is
-skipped unless `--force` is given. The gate needs the stable toolchain
+version in the host's, the server's and the browser's builds, and three test tiers. A
+crate reaching `skene-web` is built for the web's leaves alone, and the host tier runs
+every other crate's tests: the foundation's and the layout engine's unit tests and the
+terminal's in-process tests, which act through real input and read what a reader finds.
+The server tier builds every crate reaching the web on the server leaf natively and runs
+their tests and doctests, the guide's and this README's examples, a byte-exact render
+snapshot and the compile-fail suite (a program per rule the types enforce, beside the
+diagnostic it must raise) among them; the browser tier drives a real Firefox and a real
+Chromium, several sessions at once, the `gallery` example running axe-core over every
+built-in, acts the conformance suite out in both by trusted input over WebDriver, and on
+x86-64 Linux compares every page of the suite against its screenshot golden in a pinned
+Firefox it fetches into `target/browsers` (`SKENE_GOLDENS=overwrite` rewrites them).
+Each step logs to `target/gate/<step>.log`, and a step whose inputs are unchanged since
+it passed is skipped unless `--force` is given. The gate needs the stable toolchain
 `rust-toolchain.toml` pins, which rustup installs with clippy and the
 `wasm32-unknown-unknown` and `aarch64-apple-darwin` targets, the nightly toolchain for
-`rustfmt`, the toolchain the workspace's `rust-version` names, `cargo-nextest`,
-`cargo-shear`, Firefox, a chromedriver matching the installed Chrome, `curl`, `tar` and
-`sha256sum` for the pinned Firefox, and a `wasm-bindgen-test-runner` matching the locked
-`wasm-bindgen`; a step lacking one fails naming it.
+`rustfmt`, the toolchain the workspace's `rust-version` names with the
+`wasm32-unknown-unknown` target, `cargo-nextest`, `cargo-shear`, Firefox, a chromedriver
+matching the installed Chrome, `curl`, `tar` and `sha256sum` for the pinned Firefox, and
+a `wasm-bindgen-test-runner` matching the locked `wasm-bindgen`; a step lacking one
+fails naming it.
 
 ## Extending
 

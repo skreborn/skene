@@ -37,7 +37,7 @@ jobs:
         run: |
           rustup toolchain install
           rustup toolchain install nightly --profile minimal --component rustfmt
-          rustup toolchain install "${{ steps.versions.outputs.msrv }}" --profile minimal
+          rustup toolchain install "${{ steps.versions.outputs.msrv }}" --profile minimal --target wasm32-unknown-unknown
           rustup toolchain install "${{ steps.versions.outputs.api_toolchain }}" --profile minimal --target wasm32-unknown-unknown
 
       - name: Install a software Vulkan driver, Firefox's WebGPU adapter without a GPU

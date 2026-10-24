@@ -69,12 +69,19 @@ fn about() -> impl View {
 ## Routes
 
 A route is a type that parses a path and prints one. The router reads the route in
-force, and a `Link` navigates to one: a real link a page without script follows, and
-an in-app navigation once the bundle runs. A route's view can load lazily, as its own
-module, through `#[lazy]` and `AsyncView`:
+force, and a `Link` navigates to one: a real link a page without script follows, and an
+in-app navigation once the bundle runs. A route's view can load lazily, as its own
+module, through `#[lazy]` and `AsyncView`. A route type that lists every route
+(`StaticRoutes`) takes the static router, so `skene build web --static` renders each
+without being told them:
 
-```rust,ignore
-use skene_web::{Link, install_static_router, prelude::*, router::Route};
+```rust
+use skene_web::{
+  Link,
+  install_static_router,
+  prelude::*,
+  router::{Route, StaticRoutes},
+};
 
 #[derive(Clone, Copy, PartialEq)]
 enum Page {
@@ -99,6 +106,12 @@ impl Route for Page {
   }
 }
 
+impl StaticRoutes for Page {
+  fn all() -> Vec<Self> {
+    vec![Self::Home, Self::About]
+  }
+}
+
 fn app() -> impl View {
   let router = install_static_router(Page::Home);
 
@@ -111,9 +124,6 @@ fn app() -> impl View {
   ))
 }
 ```
-
-Routing exists in the browser and server builds alone, so this example is not compiled
-on the host.
 
 ## Pixels
 

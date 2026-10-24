@@ -477,14 +477,14 @@ impl Pin {
 }
 
 /// Builds the conformance suite's app with the skene command, as an app is built, and
-/// its harness.
+/// its harness, on the server leaf.
 fn build_suite(gate: &Gate, log: &mut Log) -> Result<Binary, String> {
   let directory = manifests::package_directory(&gate.root, SUITE.package)?;
   let mut app = gate.cargo(["run", "--locked", "-p", "skene-cli", "--", "--dir"]);
 
   app.arg(&directory).args(["build", "web", "--debug"]);
   log.check(app)?;
-  log.check(gate.cargo([
+  log.check(gate.server_cargo([
     "build",
     "--locked",
     "-p",
@@ -498,6 +498,8 @@ fn build_suite(gate: &Gate, log: &mut Log) -> Result<Binary, String> {
     name: SUITE.harness.to_owned(),
     path: gate
       .target
+      .join("server")
+      .join(&gate.host)
       .join("debug")
       .join(format!("{}{}", SUITE.harness, env::consts::EXE_SUFFIX)),
     directory: directory.clone(),

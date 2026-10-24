@@ -621,14 +621,14 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     // A node whose presentation came out different from the last one repaints.
     let (repaint, active) = match &mut record.kind {
       Kind::Run {
-        props,
+        style,
         cache,
         motion,
         ..
       } => {
         let target = resolved_run.map(|target| (target, resolved_layout));
 
-        present_run(props, cache, motion, target, &run_keyframes, &frame)
+        present_run(style, cache, motion, target, &run_keyframes, &frame)
       }
       kind => match kind.box_record_mut() {
         Some(inner) => present_box(inner, resolved_box, &box_keyframes, &frame),
@@ -705,20 +705,18 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
   let box_keyframes = record
     .kind
     .box_record()
-    .map(|inner| &inner.props)
-    .map(|props| {
-      props
-        .dynamics
-        .animations
+    .map(|inner| {
+      inner
+        .style
+        .animations()
         .iter()
         .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
         .collect::<Vec<_>>()
     })
     .unwrap_or_default();
   let run_keyframes = match &record.kind {
-    Kind::Run { props, .. } => props
-      .dynamics
-      .animations
+    Kind::Run { style, .. } => style
+      .animations()
       .iter()
       .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
       .collect::<Vec<_>>(),
@@ -748,7 +746,7 @@ struct Frame {
 
 /// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
 fn present_run(
-  props: &skene_foundation::RunProps<crate::Terminal>,
+  style: &crate::records::KeptStyle,
   cache: &mut Option<RunCache>,
   motion: &mut crate::motion::RunMotion,
   resolved: Option<(PlainRun, PlainBox)>,
@@ -764,7 +762,7 @@ fn present_run(
     } = motion.present(
       previous,
       target.clone(),
-      &props.dynamics,
+      style.transitions(),
       keyframes,
       frame.clock,
     );
@@ -805,7 +803,7 @@ fn present_box(
   } = inner.motion.present(
     inner.cache.as_ref().map(|cache| &cache.target),
     target.clone(),
-    &inner.props.dynamics,
+    inner.style.transitions(),
     keyframes,
     frame.clock,
   );

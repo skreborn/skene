@@ -1,5 +1,6 @@
 //! What the records keep per node: its kind with the props its creation carried, its
-//! resolved style and motion, and what the frame last measured and painted of it.
+//! style kept as a record, its resolved style and motion, and what the frame last
+//! measured and painted of it.
 
 use std::rc::Rc;
 
@@ -8,14 +9,17 @@ use skene_foundation::{
   BoxProps,
   BoxStyle,
   Color,
+  CompiledStyle,
   ContainerName,
   Inset,
   Interaction,
+  Keeping,
   Layout,
   NativeElement,
   NodeId,
   Placement,
   Plain,
+  Record as StyleRecord,
   Role,
   RunProps,
   RunStyle,
@@ -39,6 +43,11 @@ pub(crate) type PlainRun = RunStyle<Plain, TerminalStyle>;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_foundation::SlotLeaf`].
 pub(crate) type SlotLeaf = skene_foundation::SlotLeaf<i32, TerminalStyle>;
+
+/// A node's style and motion as its record kept at
+/// [`Keep::Everything`](skene_foundation::Keep::Everything), which every restyle resolves
+/// through [`CompiledStyle::resolve`].
+pub(crate) type KeptStyle = CompiledStyle<i32, TerminalStyle>;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
@@ -72,17 +81,30 @@ pub(crate) struct RunCache {
   pub(crate) keyframes: Vec<skene_foundation::Animation<PlainRun>>,
 }
 
-/// A box-like node's props, its resolution and its motion.
+/// A box-like node's props, its kept style, its resolution and its motion.
 pub(crate) struct BoxRecord {
+  /// The props the node was created with, its style and motion taken into `style`.
   pub(crate) props: BoxProps<Terminal>,
+  /// The node's style and motion, kept whole.
+  pub(crate) style: KeptStyle,
+  /// The style last resolved and presented, once a frame resolved it.
   pub(crate) cache: Option<BoxCache>,
+  /// The node's running transitions and animations.
   pub(crate) motion: BoxMotion,
 }
 
 impl BoxRecord {
-  pub(crate) fn new(props: BoxProps<Terminal>) -> Self {
+  /// The record of a box created with `props`, its style and motion kept as their
+  /// record.
+  pub(crate) fn new(mut props: BoxProps<Terminal>) -> Self {
+    let mut record = StyleRecord::new();
+
+    record.add_box(&std::mem::take(&mut props.style));
+    record.add_box_dynamics(&std::mem::take(&mut props.dynamics));
+
     Self {
       props,
+      style: record.compile(Keeping::Everything),
       cache: None,
       motion: BoxMotion::default(),
     }
@@ -125,8 +147,13 @@ pub(crate) enum Kind {
     position: Option<(i64, i64)>,
   },
   Run {
+    /// The props the run was created with, its style and motion taken into `style`.
     props: RunProps<Terminal>,
+    /// The run's style and motion, kept whole.
+    style: KeptStyle,
+    /// The style last resolved and presented, once a frame resolved it.
     cache: Option<RunCache>,
+    /// The run's running transitions and animations.
     motion: RunMotion,
     /// An inline box's size in cells and rows, as last measured.
     extent: Option<(usize, usize)>,
@@ -136,6 +163,23 @@ pub(crate) enum Kind {
 }
 
 impl Kind {
+  /// The record of a run created with `props`, its style and motion kept as their
+  /// record.
+  pub(crate) fn run(mut props: RunProps<Terminal>) -> Self {
+    let mut record = StyleRecord::new();
+
+    record.add_run(&std::mem::take(&mut props.style));
+    record.add_run_dynamics(&std::mem::take(&mut props.dynamics));
+
+    Self::Run {
+      props,
+      style: record.compile(Keeping::Everything),
+      cache: None,
+      motion: RunMotion::default(),
+      extent: None,
+    }
+  }
+
   /// Forgets what the node presented and the motion it ran, so it presents afresh: its
   /// animations from their start, and no transition into its style.
   pub(crate) fn forget_presentation(&mut self) {

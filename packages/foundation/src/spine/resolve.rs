@@ -566,6 +566,50 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     self.run_leaf(leaf, |fixed| Some(fixed))
   }
 
+  /// The winning leaf of an erased box value for the property `key`, read as its type
+  /// `T` and resolved as [`box_value`](Self::box_value) resolves the typed value.
+  pub(in crate::spine) fn erased_box_value<T: IntoBoxValue<N, X>>(
+    &self,
+    key: PropertyKey<X::Property>,
+    value: &StaticValue<SlotValue<N, X>, Condition<N>>,
+  ) -> Option<T> {
+    match self.winning(value) {
+      KeptLeaf::Static(leaf) => self.box_leaf(key, leaf, SlotValue::read_box),
+      KeptLeaf::Slot(slot) => self.box_leaf(key, &(self.slot)(*slot)?, SlotValue::read_box),
+    }
+  }
+
+  /// The winning leaf of an erased run value, read as its type `T` and resolved as
+  /// [`run_value`](Self::run_value) resolves the typed value.
+  pub(in crate::spine) fn erased_run_value<T: IntoRunValue<X>>(
+    &self,
+    value: &StaticValue<SlotValue<N, X>, Condition<N>>,
+  ) -> Option<T> {
+    match self.winning(value) {
+      KeptLeaf::Static(leaf) => self.run_leaf(leaf, SlotValue::read_run),
+      KeptLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, SlotValue::read_run),
+    }
+  }
+
+  /// An erased keyframe leaf for the box property `key`, read as its type `T` and
+  /// resolved as [`keyframe_box_value`](Self::keyframe_box_value) resolves the typed one.
+  pub(in crate::spine) fn erased_keyframe_box_value<T: IntoBoxValue<N, X>>(
+    &self,
+    key: PropertyKey<X::Property>,
+    leaf: &SlotLeaf<N, X>,
+  ) -> Option<T> {
+    self.box_leaf(key, leaf, SlotValue::read_box)
+  }
+
+  /// An erased keyframe leaf of a run property, read as its type `T` and resolved as
+  /// [`keyframe_run_value`](Self::keyframe_run_value) resolves the typed one.
+  pub(in crate::spine) fn erased_keyframe_run_value<T: IntoRunValue<X>>(
+    &self,
+    leaf: &SlotLeaf<N, X>,
+  ) -> Option<T> {
+    self.run_leaf(leaf, SlotValue::read_run)
+  }
+
   fn box_leaf<V: Clone, T: IntoBoxValue<N, X>>(
     &self,
     key: PropertyKey<X::Property>,

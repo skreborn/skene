@@ -313,23 +313,16 @@ impl<N: Scalar, X: StyleExtension> Record<N, X> {
   pub fn compile(&self, keeping: Keeping<'_, '_, N, X>) -> CompiledStyle<N, X> {
     let entries = match keeping {
       Keeping::Everything => self.entries.clone(),
-      Keeping::Nothing(resolver) => {
-        let mut resolve = ResolveEntries {
-          record: self,
+      Keeping::Nothing(resolver) => self
+        .entries
+        .iter()
+        .zip(Resolve::all(
+          &self.entries,
           resolver,
-          resolved: vec![None; self.entries.len()],
-        };
-
-        BoxStyle::<N, Static<Condition<N>>, X>::for_each_field(&mut resolve);
-        RunStyle::<Static<Condition<N>>, X>::for_each_field(&mut resolve);
-
-        self
-          .entries
-          .iter()
-          .zip(resolve.resolved)
-          .filter_map(|((key, _), value)| Some((*key, StaticValue::from(value?))))
-          .collect()
-      }
+          vec![None; self.entries.len()],
+        ))
+        .filter_map(|((key, _), value)| Some((*key, StaticValue::from(value?))))
+        .collect(),
     };
     let animations = self
       .animations
@@ -432,23 +425,25 @@ impl<N: Scalar, X: StyleExtension> Frame<N, X> {
     else {
       return self.clone();
     };
-    let mut resolve = ResolveFrame {
-      frame: self,
-      resolver,
-      resolved: vec![None; self.entries.len()],
-    };
-
-    BoxStyle::<N, Keyframe, X>::for_each_field(&mut resolve);
-    RunStyle::<Keyframe, X>::for_each_field(&mut resolve);
-
     Self {
       entries: self
         .entries
         .iter()
-        .zip(resolve.resolved)
+        .zip(Resolve::all(
+          &self.entries,
+          resolver,
+          vec![None; self.entries.len()],
+        ))
         .filter_map(|((key, _), value)| Some((*key, StaticLeaf::Fixed(value?))))
         .collect(),
     }
+  }
+
+  /// The frame resolved at a node by `resolver`, every leaf as
+  /// [`compile`](Self::compile) at [`Keep::Nothing`] resolves it, straight into plain
+  /// values.
+  pub fn resolve(&self, resolver: &Resolver<'_, N, X>) -> ResolvedStyle<N, X> {
+    Resolve::all(&self.entries, resolver, ResolvedStyle::default())
   }
 
   /// The frame's fixed leaves as plain values: every leaf of a frame compiled at
@@ -579,6 +574,17 @@ impl<N: Scalar, X: StyleExtension> CompiledStyle<N, X> {
     self.address
   }
 
+  /// The style resolved at a node by `resolver`: every property as [`Record::compile`]
+  /// at [`Keep::Nothing`] resolves it, straight into plain values, with no compiled
+  /// style between; a property resolving to nothing is left unset.
+  ///
+  /// It is the entry a realization keeping nothing resolves a style kept at
+  /// [`Keep::Everything`] through, at every restyle of its node, each frame of its
+  /// animations through [`Frame::resolve`].
+  pub fn resolve(&self, resolver: &Resolver<'_, N, X>) -> ResolvedStyle<N, X> {
+    Resolve::all(&self.entries, resolver, ResolvedStyle::default())
+  }
+
   /// The properties whose value is one fixed leaf under no condition, as plain values:
   /// every property of a style compiled at [`Keep::Nothing`].
   pub fn resolved(&self) -> ResolvedStyle<N, X> {
@@ -630,99 +636,145 @@ impl<T: Fingerprint> Hash for Fed<'_, T> {
   }
 }
 
-struct ResolveEntries<'a, 'r, N: Scalar, X: StyleExtension> {
-  record: &'a Record<N, X>,
-  resolver: &'a Resolver<'r, N, X>,
-  resolved: Vec<Option<SlotValue<N, X>>>,
+/// A value a style's entry holds, which resolves at a node to its property's type.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is no entry of a style",
+  label = "a style's entry holds a record's value or a frame's leaf"
+)]
+trait Resolvable<N: Scalar, X: StyleExtension> {
+  /// The value of the box property `key`, resolved by `resolver` as its type `T`.
+  fn resolve_box<T: IntoBoxValue<N, X>>(
+    &self,
+    resolver: &Resolver<'_, N, X>,
+    key: PropertyKey<X::Property>,
+  ) -> Option<T>;
+
+  /// The value of a run property, resolved by `resolver` as its type `T`.
+  fn resolve_run<T: IntoRunValue<X>>(&self, resolver: &Resolver<'_, N, X>) -> Option<T>;
 }
 
-impl<N: Scalar, X: StyleExtension> ResolveEntries<'_, '_, N, X> {
-  fn index(&self, key: PropertyKey<X::Property>) -> Option<usize> {
-    self
-      .record
-      .entries
-      .iter()
-      .position(|(entry, _)| *entry == key)
+impl<N: Scalar, X: StyleExtension> Resolvable<N, X> for RecordValue<N, X> {
+  fn resolve_box<T: IntoBoxValue<N, X>>(
+    &self,
+    resolver: &Resolver<'_, N, X>,
+    key: PropertyKey<X::Property>,
+  ) -> Option<T> {
+    resolver.erased_box_value(key, self)
+  }
+
+  fn resolve_run<T: IntoRunValue<X>>(&self, resolver: &Resolver<'_, N, X>) -> Option<T> {
+    resolver.erased_run_value(self)
   }
 }
 
-impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveEntries<'_, '_, N, X> {
+impl<N: Scalar, X: StyleExtension> Resolvable<N, X> for SlotLeaf<N, X> {
+  fn resolve_box<T: IntoBoxValue<N, X>>(
+    &self,
+    resolver: &Resolver<'_, N, X>,
+    key: PropertyKey<X::Property>,
+  ) -> Option<T> {
+    resolver.erased_keyframe_box_value(key, self)
+  }
+
+  fn resolve_run<T: IntoRunValue<X>>(&self, resolver: &Resolver<'_, N, X>) -> Option<T> {
+    resolver.erased_keyframe_run_value(self)
+  }
+}
+
+/// Where a resolution writes each property's resolved value, by the property and its
+/// entry's index.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` holds no resolution of a style",
+  label = "a resolution is written into the entries' places or into the plain styles"
+)]
+trait Resolution<N: Scalar, X: StyleExtension> {
+  /// Writes the box property `F`'s value, the entry at `index`'s.
+  fn set_box<F: BoxField<N, X>>(&mut self, index: usize, value: Option<F::Value>);
+
+  /// Writes the run property `F`'s value, the entry at `index`'s.
+  fn set_run<F: RunField<X>>(&mut self, index: usize, value: Option<F::Value>);
+}
+
+impl<N: Scalar, X: StyleExtension> Resolution<N, X> for Vec<Option<SlotValue<N, X>>> {
+  fn set_box<F: BoxField<N, X>>(&mut self, index: usize, value: Option<F::Value>) {
+    self[index] = value.map(|value| SlotValue::Box(value.into_box_value()));
+  }
+
+  fn set_run<F: RunField<X>>(&mut self, index: usize, value: Option<F::Value>) {
+    self[index] = value.map(|value| SlotValue::Run(value.into_run_value()));
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> Resolution<N, X> for ResolvedStyle<N, X> {
+  fn set_box<F: BoxField<N, X>>(&mut self, _index: usize, value: Option<F::Value>) {
+    *F::get_mut(&mut self.boxed) = value;
+  }
+
+  fn set_run<F: RunField<X>>(&mut self, _index: usize, value: Option<F::Value>) {
+    *F::get_mut(&mut self.run) = value;
+  }
+}
+
+/// Resolves each of a style's entries at a node, writing every value into a
+/// [`Resolution`].
+struct Resolve<'a, 'r, N: Scalar, X: StyleExtension, E, R> {
+  entries: &'a [(PropertyKey<X::Property>, E)],
+  resolver: &'a Resolver<'r, N, X>,
+  into: R,
+}
+
+impl<'a, 'r, N: Scalar, X: StyleExtension, E: Resolvable<N, X>, R: Resolution<N, X>>
+  Resolve<'a, 'r, N, X, E, R>
+{
+  /// `into` with every one of `entries` resolved by `resolver` written into it, the box
+  /// properties then the run properties, each in its visitor's order.
+  fn all(
+    entries: &'a [(PropertyKey<X::Property>, E)],
+    resolver: &'a Resolver<'r, N, X>,
+    into: R,
+  ) -> R {
+    let mut resolve = Self {
+      entries,
+      resolver,
+      into,
+    };
+
+    BoxStyle::<N, Plain, X>::for_each_field(&mut resolve);
+    RunStyle::<Plain, X>::for_each_field(&mut resolve);
+
+    resolve.into
+  }
+
+  fn index(&self, key: PropertyKey<X::Property>) -> Option<usize> {
+    self.entries.iter().position(|(entry, _)| *entry == key)
+  }
+}
+
+impl<N: Scalar, X: StyleExtension, E: Resolvable<N, X>, R: Resolution<N, X>> BoxFieldVisitor<N, X>
+  for Resolve<'_, '_, N, X, E, R>
+{
   fn field<F: BoxField<N, X>>(&mut self) {
     let Some(index) = self.index(F::KEY)
     else {
       return;
     };
+    let value = self.entries[index].1.resolve_box(self.resolver, F::KEY);
 
-    self.resolved[index] = self.record.entries[index]
-      .1
-      .clone()
-      .try_map(|leaf| leaf.try_map(SlotValue::read_box::<F::Value>))
-      .and_then(|value| self.resolver.box_value(F::KEY, &value))
-      .map(|value| SlotValue::Box(value.into_box_value()));
+    self.into.set_box::<F>(index, value);
   }
 }
 
-impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ResolveEntries<'_, '_, N, X> {
+impl<N: Scalar, X: StyleExtension, E: Resolvable<N, X>, R: Resolution<N, X>> RunFieldVisitor<X>
+  for Resolve<'_, '_, N, X, E, R>
+{
   fn field<F: RunField<X>>(&mut self) {
     let Some(index) = self.index(F::KEY)
     else {
       return;
     };
+    let value = self.entries[index].1.resolve_run(self.resolver);
 
-    self.resolved[index] = self.record.entries[index]
-      .1
-      .clone()
-      .try_map(|leaf| leaf.try_map(SlotValue::read_run::<F::Value>))
-      .and_then(|value| self.resolver.run_value(&value))
-      .map(|value| SlotValue::Run(value.into_run_value()));
-  }
-}
-
-struct ResolveFrame<'a, 'r, N: Scalar, X: StyleExtension> {
-  frame: &'a Frame<N, X>,
-  resolver: &'a Resolver<'r, N, X>,
-  resolved: Vec<Option<SlotValue<N, X>>>,
-}
-
-impl<N: Scalar, X: StyleExtension> ResolveFrame<'_, '_, N, X> {
-  fn index(&self, key: PropertyKey<X::Property>) -> Option<usize> {
-    self
-      .frame
-      .entries
-      .iter()
-      .position(|(entry, _)| *entry == key)
-  }
-}
-
-impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for ResolveFrame<'_, '_, N, X> {
-  fn field<F: BoxField<N, X>>(&mut self) {
-    let Some(index) = self.index(F::KEY)
-    else {
-      return;
-    };
-
-    self.resolved[index] = self.frame.entries[index]
-      .1
-      .clone()
-      .try_map(SlotValue::read_box::<F::Value>)
-      .and_then(|leaf| self.resolver.keyframe_box_value(F::KEY, &leaf))
-      .map(|value| SlotValue::Box(value.into_box_value()));
-  }
-}
-
-impl<N: Scalar, X: StyleExtension> RunFieldVisitor<X> for ResolveFrame<'_, '_, N, X> {
-  fn field<F: RunField<X>>(&mut self) {
-    let Some(index) = self.index(F::KEY)
-    else {
-      return;
-    };
-
-    self.resolved[index] = self.frame.entries[index]
-      .1
-      .clone()
-      .try_map(SlotValue::read_run::<F::Value>)
-      .and_then(|leaf| self.resolver.keyframe_run_value(&leaf))
-      .map(|value| SlotValue::Run(value.into_run_value()));
+    self.into.set_run::<F>(index, value);
   }
 }
 
@@ -1699,6 +1751,83 @@ mod tests {
       idle.address(),
       probe_record().compile(Keeping::Everything).address()
     );
+  }
+
+  /// A style kept at `Keep::Everything` resolves at a node as the record compiled there
+  /// at `Keep::Nothing` reads, and each of its frames as the frame compiled there does,
+  /// reading the interaction alike.
+  #[test]
+  fn a_kept_style_resolves_as_one_compiled_at_nothing() {
+    let environment = Environment {
+      viewport: Size {
+        width: 1000.,
+        height: 800.,
+      },
+      scheme: ColorScheme::Dark,
+      reduced_motion: false,
+      reduced_transparency: false,
+      high_contrast: false,
+      pointer: PointerPrecision::Fine,
+      hover: true,
+      safe_area: Inset::all(0),
+    };
+    let token = |name: TokenName| match name.as_str() {
+      "wide" => Some(Resolved::Dimension(Dimension::Length(640.))),
+      "gutter" => Some(Resolved::Length(12.)),
+      "ratio" => Some(Resolved::Number(1.5)),
+      "ink" | "accent" => Some(Resolved::Color(Color::srgb(0., 1., 0.))),
+      _ => None,
+    };
+    let slot = |slot: Slot| match slot {
+      Slot(0) => Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Color(
+        Color::srgb(1., 1., 1.),
+      )))),
+      Slot(1) => Some(StaticLeaf::Token(TokenName::new("accent"))),
+      Slot(2) => Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Extension(
+        ProbeValue::Tint(4),
+      )))),
+      _ => None,
+    };
+    let record = probe_record();
+    let kept = record.compile(Keeping::Everything);
+
+    for interaction in [
+      Interaction::default(),
+      Interaction {
+        hovered: true,
+        pressed: true,
+        ..Default::default()
+      },
+    ] {
+      let read = Cell::new(false);
+      let resolver = Resolver::<f32, Probe> {
+        environment,
+        interaction,
+        interaction_read: &read,
+        containers: &[],
+        font_size: 16.,
+        token: &token,
+        slot: &slot,
+      };
+      let compiled = record.compile(Keeping::Nothing(&resolver));
+      let compiled_read = read.replace(false);
+      let direct = kept.resolve(&resolver);
+
+      assert_eq!(direct, compiled.resolved());
+      assert_eq!(read.get(), compiled_read, "the interaction is read alike");
+      assert_eq!(
+        direct.boxed.ext.tint,
+        Some(7),
+        "a dark scheme keeps the base"
+      );
+
+      for (kept, compiled) in kept.animations().iter().zip(compiled.animations()) {
+        for ((_, kept), (_, compiled)) in kept.keyframes.iter().zip(&compiled.keyframes) {
+          assert_eq!(kept.resolve(&resolver), compiled.resolved());
+          assert_eq!(compiled.resolve(&resolver), compiled.resolved());
+        }
+      }
+    }
   }
 
   /// Every shared property, condition, expression and leaf kind crosses a record whole and

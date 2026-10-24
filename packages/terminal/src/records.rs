@@ -36,6 +36,7 @@ pub(crate) use self::{
     BackdropKey,
     BoxCache,
     BoxRecord,
+    KeptStyle,
     Kind,
     PictureRecord,
     PlainBox,

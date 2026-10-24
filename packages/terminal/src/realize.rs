@@ -40,7 +40,6 @@ use crate::{
   Typography,
   cells::{CellPainter, Painter},
   interaction,
-  motion::RunMotion,
   platform::terminal::Terminal,
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
@@ -200,15 +199,7 @@ impl Realization for Terminal {
     let inline_box = props.placement == skene_foundation::RunPlacement::Embedded;
 
     with_records(|records| {
-      records.insert_laid_out(
-        node,
-        Kind::Run {
-          props: props.clone(),
-          cache: None,
-          motion: RunMotion::default(),
-          extent: None,
-        },
-      );
+      records.insert_laid_out(node, Kind::run(props.clone()));
 
       // An inline box flows as one placeholder cluster, as large as its own layout.
       if inline_box && let Some(record) = records.record_mut(node) {

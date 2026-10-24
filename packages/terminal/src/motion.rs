@@ -3,13 +3,11 @@
 
 use skene_foundation::{
   Animation,
-  BoxDynamics,
   BoxField,
   BoxFieldVisitor,
   BoxValue,
   IntoBoxValue,
   IntoRunValue,
-  RunDynamics,
   RunField,
   RunFieldVisitor,
   RunValue,
@@ -58,7 +56,7 @@ impl BoxMotion {
     &mut self,
     previous: Option<&PlainBox>,
     target: PlainBox,
-    dynamics: &BoxDynamics<i32, TerminalStyle>,
+    transitions: &[Transition<TerminalProperty>],
     keyframes: &[Animation<PlainBox>],
     clock: Clock,
   ) -> Presented<PlainBox> {
@@ -67,7 +65,7 @@ impl BoxMotion {
         motion: &mut self.properties,
         previous,
         target: &target,
-        transitions: &dynamics.transitions,
+        transitions,
         clock,
       });
     }
@@ -98,7 +96,7 @@ impl RunMotion {
     &mut self,
     previous: Option<&PlainRun>,
     target: PlainRun,
-    dynamics: &RunDynamics<TerminalStyle>,
+    transitions: &[Transition<TerminalProperty>],
     keyframes: &[Animation<PlainRun>],
     clock: Clock,
   ) -> Presented<PlainRun> {
@@ -107,7 +105,7 @@ impl RunMotion {
         motion: &mut self.properties,
         previous,
         target: &target,
-        transitions: &dynamics.transitions,
+        transitions,
         clock,
       });
     }
@@ -257,7 +255,7 @@ impl RunFieldVisitor<TerminalStyle> for PresentRun<'_> {
 
 #[cfg(test)]
 mod tests {
-  use skene_foundation::{Animation, BoxDynamics, Color, Easing, Property, Transition};
+  use skene_foundation::{Animation, Color, Easing, Property, Transition};
 
   use super::{BoxMotion, Clock};
   use crate::records::PlainBox;
@@ -282,12 +280,9 @@ mod tests {
   fn a_moved_target_tweens_under_its_transition() {
     let black = Color::srgb(0., 0., 0.);
     let white = Color::srgb(1., 1., 1.);
-    let dynamics = BoxDynamics {
-      transitions: vec![Transition::new(Property::Background, 1.).set_easing(Easing::Linear)],
-      animations: Vec::new(),
-    };
+    let transitions = [Transition::new(Property::Background, 1.).set_easing(Easing::Linear)];
     let mut motion = BoxMotion::default();
-    let first = motion.present(None, colored(black), &dynamics, &[], at(0.));
+    let first = motion.present(None, colored(black), &transitions, &[], at(0.));
 
     assert_eq!(first.style.background, Some(black));
     assert!(!first.active);
@@ -295,7 +290,7 @@ mod tests {
     let moved = motion.present(
       Some(&colored(black)),
       colored(white),
-      &dynamics,
+      &transitions,
       &[],
       at(0.),
     );
@@ -304,12 +299,12 @@ mod tests {
     assert!(moved.active);
 
     let held = colored(white);
-    let midway = motion.present(Some(&held), colored(white), &dynamics, &[], at(0.5));
+    let midway = motion.present(Some(&held), colored(white), &transitions, &[], at(0.5));
 
     assert_eq!(midway.style.background, Some(black.mix(white, 0.5)));
     assert!(midway.active);
 
-    let done = motion.present(Some(&held), colored(white), &dynamics, &[], at(1.));
+    let done = motion.present(Some(&held), colored(white), &transitions, &[], at(1.));
 
     assert_eq!(done.style.background, Some(white));
     assert!(!done.active);
@@ -317,7 +312,7 @@ mod tests {
     let reduced = motion.present(
       Some(&held),
       colored(black),
-      &dynamics,
+      &transitions,
       &[],
       Clock {
         now: 1.,
@@ -335,21 +330,14 @@ mod tests {
   fn an_animation_without_a_first_frame_starts_from_the_target() {
     let black = Color::srgb(0., 0., 0.);
     let white = Color::srgb(1., 1., 1.);
-    let dynamics = BoxDynamics::default();
     let fade = [Animation::new(1., [(100., colored(white))]).set_easing(Easing::Linear)];
     let mut motion = BoxMotion::default();
-    let first = motion.present(None, colored(black), &dynamics, &fade, at(0.));
+    let first = motion.present(None, colored(black), &[], &fade, at(0.));
 
     assert_eq!(first.style.background, Some(black));
     assert!(first.active);
 
-    let midway = motion.present(
-      Some(&colored(black)),
-      colored(black),
-      &dynamics,
-      &fade,
-      at(0.5),
-    );
+    let midway = motion.present(Some(&colored(black)), colored(black), &[], &fade, at(0.5));
 
     assert_eq!(midway.style.background, Some(black.mix(white, 0.5)));
   }

@@ -1,7 +1,8 @@
 //! Samples of every property, condition, expression and leaf kind, and the check that a
 //! record holds a style made of them whole and resolves it as the typed style does.
 //!
-//! Compiled at [`Keep::Everything`] the record keeps the style whole, and compiled at
+//! Compiled at [`Keep::Everything`] the record keeps the style whole and resolves
+//! through [`CompiledStyle::resolve`] as the typed style does, and compiled at
 //! [`Keep::Nothing`] it resolves as the typed style does.
 //!
 //! Each sampled enum is enumerated by a match naming every variant without a wildcard,
@@ -28,6 +29,7 @@ use crate::spine::{
   CheckState,
   Color,
   ColorScheme,
+  CompiledStyle,
   Condition,
   Conditional,
   ContainerName,
@@ -144,7 +146,8 @@ impl<N: Scalar, X: StyleExtension> Medium<N, X> {
 
   /// Proves that every property, condition, expression and leaf kind of the medium
   /// crosses a record whole, crosses it compiled at [`Keep::Everything`] whole, and
-  /// resolves through it compiled at [`Keep::Nothing`] as through the typed style.
+  /// resolves through it compiled at [`Keep::Nothing`], and kept at
+  /// [`Keep::Everything`], as through the typed style.
   ///
   /// # Panics
   ///
@@ -937,7 +940,8 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
   }
 
   /// Proves that `record`, holding the sampled styles and their motion, compiled at
-  /// [`Keep::Nothing`] resolves as they do in every reading, that every sampled condition both
+  /// [`Keep::Nothing`] resolves as they do in every reading, and kept at
+  /// [`Keep::Everything`] resolves through its one entry alike, that every sampled condition both
   /// holds and fails among the readings, and that every property, and every leaf of each,
   /// resolves to a value in some reading.
   fn assert_resolves(
@@ -953,15 +957,28 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
     let mut fingerprints = Vec::new();
     let mut held = vec![(false, false); self.conditions.len()];
 
+    let kept = record.compile(Keeping::Everything);
+
     for scenario in Scenario::<N>::all() {
       scenario.with_resolver(definitions, &self.slots, |resolver: &Resolver<'_, N, X>| {
         let compiled = record.compile(Keeping::Nothing(resolver));
         let resolved = compiled.resolved();
         let boxed = resolver.box_style(&self.boxed);
         let run = resolver.run_style(&self.run);
+        let direct = kept.resolve(resolver);
 
         assert_same(&resolved.boxed, &boxed, "a box resolves as its typed style");
         assert_same(&resolved.run, &run, "a run resolves as its typed style");
+        assert_same(
+          &direct.boxed,
+          &boxed,
+          "a box kept whole resolves as its typed style",
+        );
+        assert_same(
+          &direct.run,
+          &run,
+          "a run kept whole resolves as its typed style",
+        );
         assert_eq!(compiled.slots(), [], "no slot is left to bind");
         assert_eq!(
           compiled.transitions(),
@@ -969,29 +986,7 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
           "transitions cross as data"
         );
 
-        let (box_animations, run_animations) = compiled
-          .animations()
-          .split_at(box_dynamics.animations.len());
-
-        for (frames, animation) in box_animations.iter().zip(&box_dynamics.animations) {
-          for ((_, frame), (_, keyframe)) in frames.keyframes.iter().zip(&animation.keyframes) {
-            assert_same(
-              &frame.resolved().boxed,
-              &resolver.box_keyframe(keyframe),
-              "a box keyframe resolves as its typed keyframe",
-            );
-          }
-        }
-
-        for (frames, animation) in run_animations.iter().zip(&run_dynamics.animations) {
-          for ((_, frame), (_, keyframe)) in frames.keyframes.iter().zip(&animation.keyframes) {
-            assert_same(
-              &frame.resolved().run,
-              &resolver.run_keyframe(keyframe),
-              "a run keyframe resolves as its typed keyframe",
-            );
-          }
-        }
+        Self::assert_frames_resolve(resolver, &compiled, &kept, box_dynamics, run_dynamics);
 
         for ((holds, fails), condition) in held.iter_mut().zip(&self.conditions) {
           if *resolver.winning(&Conditional::new(false).when(condition.clone(), true)) {
@@ -1045,6 +1040,77 @@ impl<N: Scalar, X: StyleExtension> Sampler<N, X> {
         !fingerprints[..index].contains(fingerprint),
         "every reading resolves the style differently"
       );
+    }
+  }
+
+  /// Proves that every frame of `compiled`, a record compiled at [`Keep::Nothing`] by
+  /// `resolver`, and of `kept`, the record kept at [`Keep::Everything`] and resolved
+  /// through [`Frame::resolve`], resolves as the typed keyframe of `box_dynamics` or
+  /// `run_dynamics` it was made of does.
+  fn assert_frames_resolve(
+    resolver: &Resolver<'_, N, X>,
+    compiled: &CompiledStyle<N, X>,
+    kept: &CompiledStyle<N, X>,
+    box_dynamics: &BoxDynamics<N, X>,
+    run_dynamics: &RunDynamics<X>,
+  ) {
+    let (box_animations, run_animations) = compiled
+      .animations()
+      .split_at(box_dynamics.animations.len());
+
+    let (kept_box_animations, kept_run_animations) =
+      kept.animations().split_at(box_dynamics.animations.len());
+
+    for ((frames, kept), animation) in box_animations
+      .iter()
+      .zip(kept_box_animations)
+      .zip(&box_dynamics.animations)
+    {
+      for (((_, frame), (_, kept)), (_, keyframe)) in frames
+        .keyframes
+        .iter()
+        .zip(&kept.keyframes)
+        .zip(&animation.keyframes)
+      {
+        let typed = resolver.box_keyframe(keyframe);
+
+        assert_same(
+          &frame.resolved().boxed,
+          &typed,
+          "a box keyframe resolves as its typed keyframe",
+        );
+        assert_same(
+          &kept.resolve(resolver).boxed,
+          &typed,
+          "a box keyframe kept whole resolves as its typed keyframe",
+        );
+      }
+    }
+
+    for ((frames, kept), animation) in run_animations
+      .iter()
+      .zip(kept_run_animations)
+      .zip(&run_dynamics.animations)
+    {
+      for (((_, frame), (_, kept)), (_, keyframe)) in frames
+        .keyframes
+        .iter()
+        .zip(&kept.keyframes)
+        .zip(&animation.keyframes)
+      {
+        let typed = resolver.run_keyframe(keyframe);
+
+        assert_same(
+          &frame.resolved().run,
+          &typed,
+          "a run keyframe resolves as its typed keyframe",
+        );
+        assert_same(
+          &kept.resolve(resolver).run,
+          &typed,
+          "a run keyframe kept whole resolves as its typed keyframe",
+        );
+      }
     }
   }
 

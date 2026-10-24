@@ -778,7 +778,13 @@ Condition     = Media | State | And | Or
   resolves it (`box_value`, `run_value`, each frame's leaves as `keyframe_box_value`
   and `keyframe_run_value` resolve them), a fixed leaf under no condition in the
   record's order, one resolving to nothing left out, and `resolved` reads it back as a
-  `ResolvedStyle`; transitions and the animations' timing cross as data at both. Its
+  `ResolvedStyle`; transitions and the animations' timing cross as data at both. A style
+  kept at `Keep::Everything` also resolves at a node through the one `Keep::Nothing`
+  entry, `CompiledStyle::resolve` (each frame through `Frame::resolve`): every entry
+  resolved as `compile` at `Keep::Nothing` resolves it, by the same visitor over the
+  entries, straight into the `ResolvedStyle` with no compiled style or address between,
+  so a realization keeping nothing resolves a node's kept style at every restyle for what
+  a typed resolution costs. Its
   `address` is the 128-bit xxh3 of its static part (the level, the entries and the
   motion), a cache key alone: equal static parts share one, and a realization names
   nothing by it, the web's class names staying the hash of the template. A coverage
@@ -787,9 +793,10 @@ Condition     = Media | State | And | Or
   every `Media`, container query, `State` and `Condition` kind with every leaf and
   expression node kind among them, crosses whole, motion included, crosses compiled at
   `Keep::Everything` whole, every slot bound where it stands, and compiled at
-  `Keep::Nothing` resolves as the typed style does under readings where every condition
-  both holds and fails. The seam does not carry it yet: a realization receives the
-  typed styles in `BoxProps` and `RunProps`.
+  `Keep::Nothing`, or kept and resolved through `resolve`, resolves as the typed style
+  does under readings where every condition both holds and fails. The seam does not
+  carry it yet: a realization receives the typed styles in `BoxProps` and `RunProps`,
+  and the terminal builds each node's record from them when it creates the node.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.
@@ -820,14 +827,14 @@ Condition     = Media | State | And | Or
   `ResolutionContext` over the web's own scene (its themes, scopes, containers and the
   enclosing control's state), runs its motion through the foundation's `Motion`, and
   holds the value to the one the engine computes, so a divergence it finds is one every
-  platform resolving through the shared half shares. In debug builds the terminal
-  resolves every box, run, text entry and keyframe style through the node's record
-  compiled at `Keep::Nothing` as well, with the same resolver and before its own
-  fill-ins (rounded border glyphs, the typography's size and weight, `bold`), and
-  asserts the two resolutions equal by their `Fingerprint` and alike in whether they
-  read the node's interaction, the flag kept as the typed resolution alone sets it, as
-  it asserts the record's motion equal to the dynamics it was built from; a wrapper's
-  annotation resolves typed alone.
+  platform resolving through the shared half shares. The terminal keeps each box's,
+  control's, overlay's and run's record, compiled at `Keep::Everything` when the node is
+  created, and resolves it at every restyle through the shared `Keep::Nothing` entry
+  (`CompiledStyle::resolve`, each keyframe through `Frame::resolve`), the one resolution
+  setting whether the node's interaction was read, before its own fill-ins (rounded
+  border glyphs, the typography's size and weight, `bold`); its transitions and
+  animations are the kept record's. A text entry's value takes the typography's tokens
+  in force at the entry, and a wrapper's annotation resolves typed from the scene.
 
 ### Tokens and themes
 

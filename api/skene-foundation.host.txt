@@ -4948,6 +4948,7 @@ pub const fn skene_foundation::CompiledStyle<N, X>::entries(&self) -> &[skene_fo
 pub fn skene_foundation::CompiledStyle<N, X>::get(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> core::option::Option<&skene_foundation::RecordValue<N, X>>
 pub fn skene_foundation::CompiledStyle<N, X>::has(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> bool
 pub const fn skene_foundation::CompiledStyle<N, X>::keep(&self) -> skene_foundation::Keep
+pub fn skene_foundation::CompiledStyle<N, X>::resolve(&self, &skene_foundation::Resolver<'_, N, X>) -> skene_foundation::ResolvedStyle<N, X>
 pub fn skene_foundation::CompiledStyle<N, X>::resolved(&self) -> skene_foundation::ResolvedStyle<N, X>
 pub const fn skene_foundation::CompiledStyle<N, X>::slots(&self) -> &[skene_foundation::SlotBinding<<X as skene_foundation::StyleExtension>::Property>]
 pub const fn skene_foundation::CompiledStyle<N, X>::transitions(&self) -> &[skene_foundation::Transition<<X as skene_foundation::StyleExtension>::Property>]
@@ -5697,6 +5698,7 @@ pub fn skene_foundation::Frame<N, X>::compile(&self, skene_foundation::Keeping<'
 pub const fn skene_foundation::Frame<N, X>::entries(&self) -> &[skene_foundation::FrameEntry<N, X>]
 pub fn skene_foundation::Frame<N, X>::of_box(&skene_foundation::BoxStyle<N, skene_foundation::Keyframe, X>) -> Self
 pub fn skene_foundation::Frame<N, X>::of_run(&skene_foundation::RunStyle<skene_foundation::Keyframe, X>) -> Self
+pub fn skene_foundation::Frame<N, X>::resolve(&self, &skene_foundation::Resolver<'_, N, X>) -> skene_foundation::ResolvedStyle<N, X>
 pub fn skene_foundation::Frame<N, X>::resolved(&self) -> skene_foundation::ResolvedStyle<N, X>
 pub fn skene_foundation::Frame<N, X>::run_keyframe(&self) -> skene_foundation::RunStyle<skene_foundation::Keyframe, X>
 impl<N: core::clone::Clone + skene_foundation::Scalar, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::Frame<N, X>

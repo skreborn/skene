@@ -276,22 +276,6 @@ pub trait skene_terminal::platform::terminal::CellPainter: skene_foundation::spi
 pub fn skene_terminal::platform::terminal::CellPainter::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 impl skene_terminal::platform::terminal::CellPainter for skene_terminal::platform::terminal::Terminal
 pub fn skene_terminal::platform::terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
-pub enum skene_terminal::platform::Platform
-pub skene_terminal::platform::Platform::Terminal
-impl skene_terminal::platform::Platform
-pub const skene_terminal::platform::Platform::CURRENT: Self
-pub const fn skene_terminal::platform::Platform::name(self) -> &'static str
-impl core::clone::Clone for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::clone(&self) -> skene_terminal::platform::Platform
-impl core::cmp::Eq for skene_terminal::platform::Platform
-impl core::cmp::PartialEq for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::eq(&self, &skene_terminal::platform::Platform) -> bool
-impl core::fmt::Debug for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_terminal::platform::Platform
-impl core::marker::StructuralPartialEq for skene_terminal::platform::Platform
 pub mod skene_terminal::prelude
 pub use skene_terminal::prelude::AccessProp
 pub use skene_terminal::prelude::Alignment
@@ -476,20 +460,20 @@ pub fn skene_terminal::prelude::window::derive_title(impl core::ops::function::F
 pub fn skene_terminal::prelude::window::set_title(impl core::convert::Into<alloc::string::String>)
 pub enum skene_terminal::prelude::Platform
 pub skene_terminal::prelude::Platform::Terminal
-impl skene_terminal::platform::Platform
-pub const skene_terminal::platform::Platform::CURRENT: Self
-pub const fn skene_terminal::platform::Platform::name(self) -> &'static str
-impl core::clone::Clone for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::clone(&self) -> skene_terminal::platform::Platform
-impl core::cmp::Eq for skene_terminal::platform::Platform
-impl core::cmp::PartialEq for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::eq(&self, &skene_terminal::platform::Platform) -> bool
-impl core::fmt::Debug for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_terminal::platform::Platform
-impl core::marker::StructuralPartialEq for skene_terminal::platform::Platform
+impl skene_terminal::Platform
+pub const skene_terminal::Platform::CURRENT: Self
+pub const fn skene_terminal::Platform::name(self) -> &'static str
+impl core::clone::Clone for skene_terminal::Platform
+pub fn skene_terminal::Platform::clone(&self) -> skene_terminal::Platform
+impl core::cmp::Eq for skene_terminal::Platform
+impl core::cmp::PartialEq for skene_terminal::Platform
+pub fn skene_terminal::Platform::eq(&self, &skene_terminal::Platform) -> bool
+impl core::fmt::Debug for skene_terminal::Platform
+pub fn skene_terminal::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Platform
+pub fn skene_terminal::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Platform
+impl core::marker::StructuralPartialEq for skene_terminal::Platform
 pub struct skene_terminal::prelude::BasicPicker(_)
 impl skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::new() -> Self
@@ -1159,20 +1143,20 @@ impl core::marker::Copy for skene_terminal::Note
 impl core::marker::StructuralPartialEq for skene_terminal::Note
 pub enum skene_terminal::Platform
 pub skene_terminal::Platform::Terminal
-impl skene_terminal::platform::Platform
-pub const skene_terminal::platform::Platform::CURRENT: Self
-pub const fn skene_terminal::platform::Platform::name(self) -> &'static str
-impl core::clone::Clone for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::clone(&self) -> skene_terminal::platform::Platform
-impl core::cmp::Eq for skene_terminal::platform::Platform
-impl core::cmp::PartialEq for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::eq(&self, &skene_terminal::platform::Platform) -> bool
-impl core::fmt::Debug for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_terminal::platform::Platform
-pub fn skene_terminal::platform::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_terminal::platform::Platform
-impl core::marker::StructuralPartialEq for skene_terminal::platform::Platform
+impl skene_terminal::Platform
+pub const skene_terminal::Platform::CURRENT: Self
+pub const fn skene_terminal::Platform::name(self) -> &'static str
+impl core::clone::Clone for skene_terminal::Platform
+pub fn skene_terminal::Platform::clone(&self) -> skene_terminal::Platform
+impl core::cmp::Eq for skene_terminal::Platform
+impl core::cmp::PartialEq for skene_terminal::Platform
+pub fn skene_terminal::Platform::eq(&self, &skene_terminal::Platform) -> bool
+impl core::fmt::Debug for skene_terminal::Platform
+pub fn skene_terminal::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::Platform
+pub fn skene_terminal::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::Platform
+impl core::marker::StructuralPartialEq for skene_terminal::Platform
 pub struct skene_terminal::BasicPicker(_)
 impl skene_terminal::BasicPicker
 pub fn skene_terminal::BasicPicker::new() -> Self

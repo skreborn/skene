@@ -430,29 +430,6 @@ pub fn skene_web::platform::web::set_scheme(core::option::Option<skene_foundatio
 pub fn skene_web::platform::web::set_script_nonce(core::option::Option<&str>)
 pub fn skene_web::platform::web::sleep(core::time::Duration) -> impl core::future::future::Future<Output = ()>
 pub mod skene_web::platform::windows
-pub enum skene_web::platform::Platform
-pub skene_web::platform::Platform::Android
-pub skene_web::platform::Platform::Ios
-pub skene_web::platform::Platform::Linux
-pub skene_web::platform::Platform::Macos
-pub skene_web::platform::Platform::Web
-pub skene_web::platform::Platform::Windows
-impl skene_web::platform::Platform
-pub const skene_web::platform::Platform::CURRENT: Self
-pub const skene_web::platform::Platform::IS_APPLE: bool
-pub const skene_web::platform::Platform::IS_SERVER: bool
-pub const fn skene_web::platform::Platform::name(self) -> &'static str
-impl core::clone::Clone for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::clone(&self) -> skene_web::platform::Platform
-impl core::cmp::Eq for skene_web::platform::Platform
-impl core::cmp::PartialEq for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::eq(&self, &skene_web::platform::Platform) -> bool
-impl core::fmt::Debug for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_web::platform::Platform
-impl core::marker::StructuralPartialEq for skene_web::platform::Platform
 pub mod skene_web::prelude
 pub use skene_web::prelude::AccessProp
 pub use skene_web::prelude::Alignment
@@ -609,22 +586,22 @@ pub skene_web::prelude::Platform::Linux
 pub skene_web::prelude::Platform::Macos
 pub skene_web::prelude::Platform::Web
 pub skene_web::prelude::Platform::Windows
-impl skene_web::platform::Platform
-pub const skene_web::platform::Platform::CURRENT: Self
-pub const skene_web::platform::Platform::IS_APPLE: bool
-pub const skene_web::platform::Platform::IS_SERVER: bool
-pub const fn skene_web::platform::Platform::name(self) -> &'static str
-impl core::clone::Clone for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::clone(&self) -> skene_web::platform::Platform
-impl core::cmp::Eq for skene_web::platform::Platform
-impl core::cmp::PartialEq for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::eq(&self, &skene_web::platform::Platform) -> bool
-impl core::fmt::Debug for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_web::platform::Platform
-impl core::marker::StructuralPartialEq for skene_web::platform::Platform
+impl skene_web::Platform
+pub const skene_web::Platform::CURRENT: Self
+pub const skene_web::Platform::IS_APPLE: bool
+pub const skene_web::Platform::IS_SERVER: bool
+pub const fn skene_web::Platform::name(self) -> &'static str
+impl core::clone::Clone for skene_web::Platform
+pub fn skene_web::Platform::clone(&self) -> skene_web::Platform
+impl core::cmp::Eq for skene_web::Platform
+impl core::cmp::PartialEq for skene_web::Platform
+pub fn skene_web::Platform::eq(&self, &skene_web::Platform) -> bool
+impl core::fmt::Debug for skene_web::Platform
+pub fn skene_web::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::Platform
+pub fn skene_web::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_web::Platform
+impl core::marker::StructuralPartialEq for skene_web::Platform
 pub struct skene_web::prelude::BasicPicker(_)
 impl skene_web::BasicPicker
 pub fn skene_web::BasicPicker::new() -> Self
@@ -1123,22 +1100,22 @@ pub skene_web::Platform::Linux
 pub skene_web::Platform::Macos
 pub skene_web::Platform::Web
 pub skene_web::Platform::Windows
-impl skene_web::platform::Platform
-pub const skene_web::platform::Platform::CURRENT: Self
-pub const skene_web::platform::Platform::IS_APPLE: bool
-pub const skene_web::platform::Platform::IS_SERVER: bool
-pub const fn skene_web::platform::Platform::name(self) -> &'static str
-impl core::clone::Clone for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::clone(&self) -> skene_web::platform::Platform
-impl core::cmp::Eq for skene_web::platform::Platform
-impl core::cmp::PartialEq for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::eq(&self, &skene_web::platform::Platform) -> bool
-impl core::fmt::Debug for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_web::platform::Platform
-pub fn skene_web::platform::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_web::platform::Platform
-impl core::marker::StructuralPartialEq for skene_web::platform::Platform
+impl skene_web::Platform
+pub const skene_web::Platform::CURRENT: Self
+pub const skene_web::Platform::IS_APPLE: bool
+pub const skene_web::Platform::IS_SERVER: bool
+pub const fn skene_web::Platform::name(self) -> &'static str
+impl core::clone::Clone for skene_web::Platform
+pub fn skene_web::Platform::clone(&self) -> skene_web::Platform
+impl core::cmp::Eq for skene_web::Platform
+impl core::cmp::PartialEq for skene_web::Platform
+pub fn skene_web::Platform::eq(&self, &skene_web::Platform) -> bool
+impl core::fmt::Debug for skene_web::Platform
+pub fn skene_web::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::Platform
+pub fn skene_web::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_web::Platform
+impl core::marker::StructuralPartialEq for skene_web::Platform
 pub struct skene_web::AsyncView(_)
 impl core::fmt::Debug for skene_web::AsyncView
 pub fn skene_web::AsyncView::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

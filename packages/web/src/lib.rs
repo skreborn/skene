@@ -287,7 +287,6 @@ use crate::platform::web;
 pub use crate::{
   link_policy::{LinkAnnotation, LinkPolicy},
   media::{chosen_scheme, derive_scheme, set_scheme},
-  platform::Platform,
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,
@@ -342,6 +341,87 @@ pub type Active = web::Web;
 
 #[cfg(skene_platform = "web")]
 skene_foundation::facade!(Active, f32, "logical pixels");
+
+/// A pixel platform: what a build of this facade names by
+/// `--cfg skene_platform="<name>"`.
+///
+/// The web's two leaves are one platform: the server leaf is the web build with
+/// `--cfg skene_server` beside it, which [`IS_SERVER`](Self::IS_SERVER) answers. Each
+/// constant folds at compile time, so a match on [`CURRENT`](Self::CURRENT) costs the
+/// arms of every other platform nothing.
+///
+/// ```
+/// use skene_web::Platform;
+///
+/// let greeting = match Platform::CURRENT {
+///   Platform::Ios | Platform::Macos => "Hello from Apple",
+///   Platform::Web if Platform::IS_SERVER => "Hello from the server",
+///   platform => platform.name(),
+/// };
+///
+/// assert!(!greeting.is_empty());
+/// ```
+#[cfg(skene_platform = "web")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum Platform {
+  /// The web: the browser, and the server leaf that renders its pages.
+  Web,
+  /// iOS.
+  Ios,
+  /// Android.
+  Android,
+  /// macOS.
+  Macos,
+  /// Windows.
+  Windows,
+  /// Linux.
+  Linux,
+}
+
+#[cfg(skene_platform = "web")]
+impl Platform {
+  /// The platform the build names.
+  pub const CURRENT: Self = if cfg!(skene_platform = "ios") {
+    Self::Ios
+  }
+  else if cfg!(skene_platform = "android") {
+    Self::Android
+  }
+  else if cfg!(skene_platform = "macos") {
+    Self::Macos
+  }
+  else if cfg!(skene_platform = "windows") {
+    Self::Windows
+  }
+  else if cfg!(skene_platform = "linux") {
+    Self::Linux
+  }
+  else {
+    Self::Web
+  };
+
+  /// Whether the build is the web's server leaf (`--cfg skene_server`), rendering pages
+  /// rather than running in a browser.
+  pub const IS_SERVER: bool = cfg!(skene_server);
+
+  /// Whether the build's platform is one of Apple's, iOS or macOS, whose shared
+  /// vocabulary is [`platform::apple`].
+  pub const IS_APPLE: bool = matches!(Self::CURRENT, Self::Ios | Self::Macos);
+
+  /// The platform's name, as its build names it in `skene_platform`.
+  #[must_use]
+  pub const fn name(self) -> &'static str {
+    match self {
+      Self::Web => "web",
+      Self::Ios => "ios",
+      Self::Android => "android",
+      Self::Macos => "macos",
+      Self::Windows => "windows",
+      Self::Linux => "linux",
+    }
+  }
+}
 
 /// Wraps a view that only a client can realize.
 ///

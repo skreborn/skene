@@ -284,7 +284,6 @@ pub use crate::{
   launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
   media::{chosen_scheme, derive_scheme, set_scheme},
   paint::{CellDecoration, Picture},
-  platform::Platform,
   realize::{mount, uninstall},
   routing::install_router,
   text::CellScale,
@@ -341,6 +340,38 @@ pub type Active = Terminal;
 
 #[cfg(skene_platform = "terminal")]
 skene_foundation::facade!(Active, i32, "cells");
+
+/// A terminal platform: what a build of this facade names by
+/// `--cfg skene_platform="<name>"`.
+///
+/// ```
+/// use skene_terminal::Platform;
+///
+/// const NAME: &str = Platform::CURRENT.name();
+///
+/// assert_eq!(NAME, "terminal");
+/// ```
+#[cfg(skene_platform = "terminal")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum Platform {
+  /// A terminal, through its device.
+  Terminal,
+}
+
+#[cfg(skene_platform = "terminal")]
+impl Platform {
+  /// The platform the build names.
+  pub const CURRENT: Self = Self::Terminal;
+
+  /// The platform's name, as its build names it in `skene_platform`.
+  #[must_use]
+  pub const fn name(self) -> &'static str {
+    match self {
+      Self::Terminal => "terminal",
+    }
+  }
+}
 
 /// Runs `future` as a task of the current scope until it finishes, the scope goes or
 /// the returned handle cancels it; once it ends it is never polled again.

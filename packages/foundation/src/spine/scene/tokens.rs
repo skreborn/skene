@@ -8,8 +8,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::{Mirror, Scene};
 use crate::spine::{ContainerName, Definitions, NodeId, Realization, Resolved, Scalar, TokenName};
 
-/// Where token definitions are defined: on a node for its subtree, or at the root, the
-/// definitions every node falls back to.
+/// Where tokens are defined: on a node, for its subtree, or at the root, the definitions
+/// every node falls back to.
 ///
 /// A token in force at a node is defined on its nearest defining ancestor, else at the
 /// root.

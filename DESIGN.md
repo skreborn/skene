@@ -848,14 +848,14 @@ are an interned class on the scope element (with `@media` blocks and the scheme 
 emission where a definition conditions on the scheme) and each token kind registers its
 custom property with `@property`, so it interpolates and inherits as a typed value; a
 token set used with no theme above registers its default under `:root` once
-(`ThemedIn::current`/`watch`), reaching the realization through the same
-`define_tokens` call as a scope's definitions with `TokenScope::Root` as its scope,
-which the web writes as the root rule's class and the terminal re-resolves under as it
-does under a scope's. Any node defining tokens, a scope or a control defining
+(`ThemedIn::current`/`watch`). Any node defining tokens, a scope or a control defining
 its own look as a Simple button does, takes them as such a class, and a redefinition
 whose every token is unconditional writes them inline over it; a node adopted from the
 server's markup gives up the definitions the server wrote inline on it at its first
-definition. `Typography` (all text inheritance on both facades) and the Simple library's
+definition. The root's definitions reach the realization through the same
+`define_tokens` call as a scope's, their scope `TokenScope::Root`: the web writes them as
+the root rule's class, and the terminal re-resolves its styles as it does for a scope's.
+`Typography` (all text inheritance on both facades) and the Simple library's
 `SimpleGlyphs` (its terminal marks, a set only a platform with text tokens over cells can
 theme) are token sets, so the framework has one inheritance mechanism.
 Nothing below a component library knows what a palette is: `skene-simple` owns

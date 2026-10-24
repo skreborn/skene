@@ -649,10 +649,8 @@ impl<S: Sink> Realizer<S> {
     self.sink.set_text(&record.element, text);
   }
 
-  /// Defines tokens on `scope`: a node's as [`define_node_tokens`] does, the root's as
-  /// the root rule's class.
-  ///
-  /// [`define_node_tokens`]: Self::define_node_tokens
+  /// Defines tokens on `scope`, replacing what it defined before: a node's as its token
+  /// class or inline over it, the root's as the root rule's class.
   pub(crate) fn define_tokens(
     &mut self,
     scope: TokenScope,

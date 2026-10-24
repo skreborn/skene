@@ -40,6 +40,7 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
+  TokenScope,
   Unit,
   notify_dismiss,
   text::TextIndex,
@@ -629,12 +630,8 @@ impl Realization for Web {
     });
   }
 
-  fn define_tokens(scope: NodeId, definitions: &Definitions<WebTokenValue>) {
+  fn define_tokens(scope: TokenScope, definitions: &Definitions<WebTokenValue>) {
     with_dom(|dom| dom.realizer.define_tokens(scope, definitions));
-  }
-
-  fn define_root_tokens(definitions: &Definitions<WebTokenValue>) {
-    with_dom(|dom| dom.realizer.define_root_tokens(definitions));
   }
 
   fn listen(sink: NodeId, kind: EventKind) {

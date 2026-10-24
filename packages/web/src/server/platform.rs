@@ -29,6 +29,7 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
+  TokenScope,
   web::{HydrationSource, Painter, Painting, WebHydration, WebStyle},
 };
 use skene_reactive::{Memo, ReadSignal};
@@ -149,12 +150,8 @@ impl Realization for Web {
     });
   }
 
-  fn define_tokens(node: NodeId, definitions: &Definitions<WebTokenValue>) {
-    with_realizer(|realizer| realizer.define_tokens(node, definitions));
-  }
-
-  fn define_root_tokens(definitions: &Definitions<WebTokenValue>) {
-    with_realizer(|realizer| realizer.define_root_tokens(definitions));
+  fn define_tokens(scope: TokenScope, definitions: &Definitions<WebTokenValue>) {
+    with_realizer(|realizer| realizer.define_tokens(scope, definitions));
   }
 
   fn listen(_: NodeId, _: EventKind) {}

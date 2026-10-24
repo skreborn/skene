@@ -204,7 +204,7 @@ pub use run_style::{
 };
 pub use runtime::{end_turn, hold_flushes, lay_out, reset_thread};
 pub use scalar::{IntoScalar, Scalar};
-pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene};
+pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene, TokenScope};
 pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use task::{Boundary, count_pending};

@@ -32,6 +32,7 @@ use skene_foundation::{
   StaticLeaf,
   TextSelection,
   Timer,
+  TokenScope,
 };
 use skene_reactive::{Memo, ReadSignal, Set};
 
@@ -288,11 +289,7 @@ impl Realization for Terminal {
     with_records(|records| records.destroy(node));
   }
 
-  fn define_tokens(_scope: NodeId, _definitions: &Definitions<TokenValue>) {
-    with_records(Records::invalidate_styles);
-  }
-
-  fn define_root_tokens(_definitions: &Definitions<TokenValue>) {
+  fn define_tokens(_scope: TokenScope, _definitions: &Definitions<TokenValue>) {
     with_records(Records::invalidate_styles);
   }
 

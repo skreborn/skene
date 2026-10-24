@@ -26,6 +26,7 @@ use skene_foundation::{
   Slot,
   StaticBoxStyle,
   StaticLeaf,
+  TokenScope,
   web::WebStyle,
 };
 
@@ -648,13 +649,37 @@ impl<S: Sink> Realizer<S> {
     self.sink.set_text(&record.element, text);
   }
 
+  /// Defines tokens on `scope`: a node's as [`define_node_tokens`] does, the root's as
+  /// the root rule's class.
+  ///
+  /// [`define_node_tokens`]: Self::define_node_tokens
+  pub(crate) fn define_tokens(
+    &mut self,
+    scope: TokenScope,
+    definitions: &Definitions<WebTokenValue>,
+  ) {
+    match scope {
+      TokenScope::Node(node) => self.define_node_tokens(node, definitions),
+      TokenScope::Root => {
+        self.book.register_tokens(definitions);
+
+        let previous = self.root_class.take();
+        let class = self
+          .book
+          .swap_class(&compile_root_definitions(definitions), previous.as_deref());
+
+        self.root_class = Some(class);
+      }
+    }
+  }
+
   /// Defines `node`'s tokens: inline over its token class while every
   /// definition is unconditional and the class exists, else as a fresh class.
   ///
   /// The first definition of a node adopted from the server's markup gives up the
   /// definitions the server wrote inline on it: every custom property of a scope, and
   /// those naming one of `definitions` on any other node.
-  pub(crate) fn define_tokens(&mut self, node: NodeId, definitions: &Definitions<WebTokenValue>) {
+  fn define_node_tokens(&mut self, node: NodeId, definitions: &Definitions<WebTokenValue>) {
     let Some(record) = self.records.get_mut(node)
     else {
       return;
@@ -695,18 +720,6 @@ impl<S: Sink> Realizer<S> {
       .swap_class(&record.element, previous.as_deref(), &class);
     Self::write_inline_definitions(&mut self.sink, record, Vec::new());
     record.token_class = Some(class);
-  }
-
-  /// Defines the root's tokens as the root rule's class.
-  pub(crate) fn define_root_tokens(&mut self, definitions: &Definitions<WebTokenValue>) {
-    self.book.register_tokens(definitions);
-
-    let previous = self.root_class.take();
-    let class = self
-      .book
-      .swap_class(&compile_root_definitions(definitions), previous.as_deref());
-
-    self.root_class = Some(class);
   }
 
   /// Sets the value of the form element carrying `node`'s value.

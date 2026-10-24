@@ -14,7 +14,11 @@ use std::fmt::Debug;
 use rustc_hash::FxHashMap;
 use skene_reactive::SnapshotPlace;
 
-pub use self::annotation::{Annotated, Annotation};
+pub(in crate::spine) use self::interaction::Held;
+pub use self::{
+  annotation::{Annotated, Annotation},
+  tokens::TokenScope,
+};
 use self::{
   controls::AccessReports,
   drag::DragRecord,
@@ -22,7 +26,6 @@ use self::{
   structure::SegmentRecord,
   tokens::{ResolvedTokens, TokenCache, TokenState},
 };
-pub(in crate::spine) use self::{interaction::Held, tokens::TokenScope};
 use crate::spine::{
   ContainerName,
   ControlState,
@@ -183,10 +186,9 @@ enum Mirror<P: Realization> {
   },
   Destroy(NodeId),
   DefineTokens {
-    scope: NodeId,
+    scope: TokenScope,
     definitions: Definitions<P::TokenValue>,
   },
-  DefineRootTokens(Definitions<P::TokenValue>),
   ControlState {
     node: NodeId,
     state: ControlState,
@@ -225,7 +227,6 @@ impl<P: Realization> Mirror<P> {
       Self::Remove { parent, child } => P::remove(parent, child),
       Self::Destroy(node) => P::destroy(node),
       Self::DefineTokens { scope, definitions } => P::define_tokens(scope, &definitions),
-      Self::DefineRootTokens(definitions) => P::define_root_tokens(&definitions),
       Self::ControlState { node, state } => P::set_control_state(node, &state),
       Self::Listen { node, kind } => P::listen(node, kind),
       Self::FocusOrder { node, order } => P::update_focus_order(node, order),

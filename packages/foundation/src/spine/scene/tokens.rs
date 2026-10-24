@@ -8,12 +8,16 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::{Mirror, Scene};
 use crate::spine::{ContainerName, Definitions, NodeId, Realization, Resolved, Scalar, TokenName};
 
-/// Where a token in force at a node is defined.
+/// Where token definitions are defined: on a node for its subtree, or at the root, the
+/// definitions every node falls back to.
+///
+/// A token in force at a node is defined on its nearest defining ancestor, else at the
+/// root.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(in crate::spine) enum TokenScope {
-  /// On a node: the nearest defining ancestor.
+pub enum TokenScope {
+  /// On a node, for its subtree.
   Node(NodeId),
-  /// Among the root's definitions.
+  /// At the root, for every node.
   Root,
 }
 
@@ -231,7 +235,7 @@ impl<P: Realization> Scene<P> {
 
     if let Some(definitions) = self.tokens.define(&mut record.definitions, definitions) {
       self.mirrors.push(Mirror::DefineTokens {
-        scope: node,
+        scope: TokenScope::Node(node),
         definitions,
       });
     }
@@ -248,7 +252,10 @@ impl<P: Realization> Scene<P> {
     self.tokens.check_kinds(&definitions);
 
     if let Some(definitions) = self.tokens.define_root(definitions) {
-      self.mirrors.push(Mirror::DefineRootTokens(definitions));
+      self.mirrors.push(Mirror::DefineTokens {
+        scope: TokenScope::Root,
+        definitions,
+      });
     }
   }
 

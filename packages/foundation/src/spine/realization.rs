@@ -24,6 +24,7 @@ use super::{
   StaticBoxStyle,
   StaticLeaf,
   StyleExtension,
+  TokenScope,
 };
 use crate::spine::{
   AccessProp,
@@ -325,11 +326,9 @@ pub trait Realization: Copy + Default + 'static {
   /// Releases the record of a node the scene no longer holds.
   fn destroy(node: NodeId);
 
-  /// Defines tokens on a scope, replacing what the scope defined before.
-  fn define_tokens(scope: NodeId, definitions: &Definitions<Self::TokenValue>);
-
-  /// Defines the tokens every node falls back to, replacing the previous set.
-  fn define_root_tokens(definitions: &Definitions<Self::TokenValue>);
+  /// Defines tokens on a scope, replacing what the scope defined before: on a node for
+  /// its subtree, or at the root, the tokens every node falls back to.
+  fn define_tokens(scope: TokenScope, definitions: &Definitions<Self::TokenValue>);
 
   /// Notes that a node has a handler for `kind`; dispatch itself is core's, and a
   /// platform whose events need no listener ignores it.

@@ -296,8 +296,7 @@ pub fn skene_web::platform::web::Web::create_overlay(skene_foundation::spine::no
 pub fn skene_web::platform::web::Web::create_run(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::RunProps<Self>)
 pub fn skene_web::platform::web::Web::create_scope(skene_foundation::spine::node::NodeId)
 pub fn skene_web::platform::web::Web::current_path() -> core::option::Option<alloc::string::String>
-pub fn skene_web::platform::web::Web::define_root_tokens(&skene_foundation::spine::token::Definitions<skene_web::platform::web::WebTokenValue>)
-pub fn skene_web::platform::web::Web::define_tokens(skene_foundation::spine::node::NodeId, &skene_foundation::spine::token::Definitions<skene_web::platform::web::WebTokenValue>)
+pub fn skene_web::platform::web::Web::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<skene_web::platform::web::WebTokenValue>)
 pub fn skene_web::platform::web::Web::destroy(skene_foundation::spine::node::NodeId)
 pub fn skene_web::platform::web::Web::focus(skene_foundation::spine::node::NodeId)
 pub fn skene_web::platform::web::Web::focus_visible() -> bool

@@ -4238,6 +4238,20 @@ pub fn skene_foundation::TextDecorationStyle::fingerprint<H: core::hash::Hasher>
 impl<X: skene_foundation::StyleExtension> skene_foundation::IntoRunValue<X> for skene_foundation::TextDecorationStyle
 pub fn skene_foundation::TextDecorationStyle::from_run_value(skene_foundation::RunValue<X>) -> core::option::Option<Self>
 pub fn skene_foundation::TextDecorationStyle::into_run_value(self) -> skene_foundation::RunValue<X>
+pub enum skene_foundation::TokenScope
+pub skene_foundation::TokenScope::Node(skene_foundation::NodeId)
+pub skene_foundation::TokenScope::Root
+impl core::clone::Clone for skene_foundation::TokenScope
+pub fn skene_foundation::TokenScope::clone(&self) -> skene_foundation::TokenScope
+impl core::cmp::Eq for skene_foundation::TokenScope
+impl core::cmp::PartialEq for skene_foundation::TokenScope
+pub fn skene_foundation::TokenScope::eq(&self, &skene_foundation::TokenScope) -> bool
+impl core::fmt::Debug for skene_foundation::TokenScope
+pub fn skene_foundation::TokenScope::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::TokenScope
+pub fn skene_foundation::TokenScope::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::TokenScope
+impl core::marker::StructuralPartialEq for skene_foundation::TokenScope
 pub enum skene_foundation::TokenValue<N: skene_foundation::Scalar>
 pub skene_foundation::TokenValue::Color(skene_foundation::Definition<skene_foundation::Color, N>)
 pub skene_foundation::TokenValue::Dimension(skene_foundation::Definition<skene_foundation::Dimension<N>, N>)
@@ -9635,8 +9649,7 @@ pub fn skene_foundation::Realization::create_overlay(skene_foundation::NodeId, &
 pub fn skene_foundation::Realization::create_run(skene_foundation::NodeId, &skene_foundation::RunProps<Self>)
 pub fn skene_foundation::Realization::create_scope(skene_foundation::NodeId)
 pub fn skene_foundation::Realization::current_path() -> core::option::Option<alloc::string::String>
-pub fn skene_foundation::Realization::define_root_tokens(&skene_foundation::Definitions<Self::TokenValue>)
-pub fn skene_foundation::Realization::define_tokens(skene_foundation::NodeId, &skene_foundation::Definitions<Self::TokenValue>)
+pub fn skene_foundation::Realization::define_tokens(skene_foundation::TokenScope, &skene_foundation::Definitions<Self::TokenValue>)
 pub fn skene_foundation::Realization::destroy(skene_foundation::NodeId)
 pub fn skene_foundation::Realization::focus(skene_foundation::NodeId)
 pub fn skene_foundation::Realization::focus_visible() -> bool

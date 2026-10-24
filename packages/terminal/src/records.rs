@@ -44,7 +44,7 @@ pub(crate) use self::{
     RunCache,
   },
 };
-use crate::{Clipboard, layout::CellFlow, paint::Buffer, selection::Selection};
+use crate::{Clipboard, layout::CellLeaf, paint::Buffer, selection::Selection};
 
 /// The size the platform reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
@@ -69,7 +69,7 @@ pub(crate) struct Records {
   by_node: NodeMap<Record>,
   /// The layout tree; a text leaf carries its flow as context, which measures it and
   /// which painting and hit testing read the text's layout from.
-  pub(crate) tree: Tree<CellFlow>,
+  pub(crate) tree: Tree<CellLeaf>,
   /// The root box, filling the screen.
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
@@ -329,6 +329,11 @@ impl Records {
   /// Every live handle, in index order.
   pub(crate) fn handles(&self) -> Vec<Handle> {
     self.by_node.iter().map(|(handle, _)| handle).collect()
+  }
+
+  /// How many nodes the platform holds a record of.
+  pub(crate) fn record_count(&self) -> usize {
+    self.by_node.values().count()
   }
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.

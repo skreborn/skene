@@ -923,6 +923,7 @@ pub fn skene_terminal::testing::locate(&str, &str) -> (u16, u16)
 pub fn skene_terminal::testing::mouse_cursor() -> core::option::Option<skene_foundation::spine::values::mouse_cursor::MouseCursor>
 pub fn skene_terminal::testing::pending_timers() -> usize
 pub fn skene_terminal::testing::pump_tasks() -> bool
+pub fn skene_terminal::testing::record_count() -> usize
 pub fn skene_terminal::testing::render_to_bold(u16, u16) -> alloc::vec::Vec<bool>
 pub fn skene_terminal::testing::render_to_caret(u16, u16) -> core::option::Option<(u16, u16)>
 pub fn skene_terminal::testing::render_to_colors(u16, u16) -> alloc::vec::Vec<(core::option::Option<(u8, u8, u8)>, core::option::Option<(u8, u8, u8)>)>

@@ -468,8 +468,7 @@ mod tests {
   #[test]
   fn tokens_resolve_to_the_nearest_definer_and_cache() {
     let card = TokenName::new("card");
-    let [outer, inner, leaf] =
-      std::array::from_fn(|index| NodeId::new(u32::try_from(index).unwrap(), 0));
+    let [outer, inner, leaf] = std::array::from_fn(NodeId::plain);
     let root = definitions("card", Value::Color(0.));
     let at_outer = definitions("card", Value::Color(0.5));
     let at_inner = definitions("ink", Value::Color(1.));

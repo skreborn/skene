@@ -346,17 +346,12 @@ mod tests {
   use super::{OpenOverlay, OverlayStack};
   use crate::spine::NodeId;
 
-  /// A node id for plain data, by its index.
-  fn node(index: usize) -> NodeId {
-    NodeId::new(u32::try_from(index).unwrap(), 0)
-  }
-
   /// A press dismisses, from the top down, each overlay it lands outside of, until one
   /// it lands inside of or on the anchor of; a modal ends the descent, dismissed itself,
   /// and keeps what opened beneath it.
   #[test]
   fn a_press_dismisses_the_overlays_it_lands_outside_of() {
-    let [root, page, beneath, modal, menu, item, submenu] = std::array::from_fn(node);
+    let [root, page, beneath, modal, menu, item, submenu] = std::array::from_fn(NodeId::plain);
     let stack = OverlayStack::new([
       OpenOverlay {
         node: beneath,
@@ -394,7 +389,7 @@ mod tests {
   /// overlays opened after it; with no modal open, everything is reachable, unasked.
   #[test]
   fn the_modal_opened_last_holds_what_stays_reachable() {
-    let [root, page, earlier, later, popup, inside] = std::array::from_fn(node);
+    let [root, page, earlier, later, popup, inside] = std::array::from_fn(NodeId::plain);
     let overlay = |node, modal| OpenOverlay {
       node,
       modal,

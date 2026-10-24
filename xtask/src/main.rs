@@ -6,8 +6,8 @@
 //! step and, for a step that failed, why and the end of its log.
 //!
 //! A step that builds or runs anything is skipped while nothing it reads has changed since
-//! it last passed: every file of the workspace but the documents no crate compiles, the
-//! toolchain and the browser drivers. `--force`, or a `CI` variable, runs every selected
+//! it last passed: every file of the workspace but the five project documents (`PROSE`),
+//! the toolchain and the browser drivers. `--force`, or a `CI` variable, runs every selected
 //! step regardless.
 //!
 //! `cargo xtask api` rewrites the public API snapshots the `api` step checks.
@@ -169,8 +169,8 @@ const WASM_DOCS: &[&str] = &[
   "skene-web",
 ];
 
-/// The documents no crate compiles, which no stamped step reads; every other document,
-/// the README and the guide among them, is compiled into a doctest crate.
+/// The five project documents, which no crate compiles and no stamped step reads; every
+/// other file, every other document among them, is an input of a stamped step.
 const PROSE: &[&str] = &[
   "AGENTS.md",
   "CLAUDE.md",
@@ -363,7 +363,7 @@ impl Gate {
   }
 
   /// A hash of everything a stamped step reads: every file of the workspace, listed or
-  /// not ignored, but the documents no crate compiles ([`PROSE`]); the toolchain; and the
+  /// not ignored, but the five project documents ([`PROSE`]); the toolchain; and the
   /// browser drivers.
   fn inputs(&self) -> Result<String, String> {
     let listed = Command::new("git")

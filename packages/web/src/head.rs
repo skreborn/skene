@@ -9,8 +9,8 @@
 //! render the registrations in force serialize into the page's `<head>`, which a streamed render
 //! flushes with its shell, so a registration inside a `Deferred` reaches that page only once the
 //! client hydrates; in the browser they apply to the live document, adopting an identical
-//! element a server render left. Off the web the headless platform records them for a
-//! test to read back.
+//! element a server render left. On the host leaf they are recorded and nothing reads
+//! them.
 
 use skene_foundation::web::HeadId;
 #[cfg(skene_web_platform = "headless")]

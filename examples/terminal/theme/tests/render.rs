@@ -1,4 +1,4 @@
-//! The theme example rendered headlessly: every section paints, an accent switch
+//! The theme example in the terminal's in-process tier: every section paints, an accent switch
 //! re-inks the frame, and a scheme choice re-inks it again.
 
 #![cfg(not(target_arch = "wasm32"))]

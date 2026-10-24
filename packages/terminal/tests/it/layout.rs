@@ -1513,6 +1513,54 @@ fn a_text_entry_stretches_across_its_layout() {
   });
 }
 
+/// A text entry's native size is its flex basis as an `<input>`'s intrinsic size is: a
+/// field growing beside a growing sibling in a row takes its eight cells and half the
+/// free ones, and an editor beside one in a column its lines and half the free rows.
+#[test]
+fn a_text_entry_grows_from_its_native_size() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Row::new()
+        .set_children((
+          Flexible::new()
+            .set_flexibility(Flexibility::grow(1.))
+            .set_child(BasicTextField::new(TextEntry::new())),
+          Flexible::new()
+            .set_flexibility(Flexibility::grow(1.))
+            .set_child(Text::new("ab")),
+          Text::new("|"),
+        ))
+        .into_any()
+        .build()
+    });
+    let frame = testing::render_to_text(41, 1);
+
+    assert_eq!(locate(&frame, "ab"), (23, 0), "{frame}");
+    assert_eq!(locate(&frame, "|"), (40, 0), "{frame}");
+  });
+
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Flexible::new()
+            .set_flexibility(Flexibility::grow(1.))
+            .set_child(BasicTextEditor::new(TextEntry::new().set_lines(3))),
+          Flexible::new()
+            .set_flexibility(Flexibility::grow(1.))
+            .set_child(Text::new("ab")),
+          Text::new("|"),
+        ))
+        .into_any()
+        .build()
+    });
+    let frame = testing::render_to_text(10, 13);
+
+    assert_eq!(locate(&frame, "ab"), (0, 7), "{frame}");
+    assert_eq!(locate(&frame, "|"), (0, 12), "{frame}");
+  });
+}
+
 /// A text entry's native size gives way to its limits as an `<input>`'s intrinsic size
 /// does: a maximum below it holds the entry to the maximum, a minimum below it leaves it,
 /// and a minimum above it raises it.

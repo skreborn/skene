@@ -1,10 +1,15 @@
 //! # Headless platform
 //!
-//! The host platform: realizes the portable vocabulary into inspectable records, so
-//! view logic tests run without a platform. Every mirrored call is bookkeeping, not
-//! emulation: no platform response fires. Tests build views exactly as an app does, then
-//! inspect the records ([`outline`], [`box_props`], [`slot_leaf`], [`resolve_color`])
-//! and drive events through the `trigger_` seams, each bubbling as on every platform.
+//! The host leaf: the `Realization` `skene-web` selects off its targets, so the builds
+//! that only compile on the host have a platform to build against (the docs crates'
+//! doctests, the web examples' libraries, `#[main]`'s host arm and the compile-fail
+//! suite). No test runs on it: each platform's tests run on the platform itself. It
+//! leaves with item 1's selection (`ROADMAP.md`), its seams with it.
+//!
+//! Every mirrored call is bookkeeping, not emulation: no platform response fires. Each
+//! node's realized properties are kept as records ([`outline`], [`box_props`],
+//! [`slot_leaf`], [`resolve_color`]), and the `trigger_` seams deliver events, each
+//! bubbling as on every platform.
 //!
 //! The scene lays out through the shared layout (`skene-layout`) at the viewport on
 //! every frame ([`trigger_frame`], [`trigger_resize`]), each run measured in the pinned
@@ -30,16 +35,16 @@
 //! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
 //! its pointer handling maps a position onto. A painted box records the painter bound to
-//! it ([`is_painted`]), which [`render_to_pixels`] draws to pixels a test reads.
+//! it ([`is_painted`]), which [`render_to_pixels`] draws to pixels.
 //!
-//! [`find_by_role`], [`find_all_by_role`] and [`find_by_text`] find nodes as a reader
-//! does, by role and accessible name or by text, [`find_all_unnamed`] those a reader
-//! could not name, and [`user`] drives them as a user does: a click, a key or typed
-//! text becomes the sequence of events a browser dispatches for it.
+//! [`find_by_role`], [`find_all_by_role`] and [`find_by_text`] find nodes by role and
+//! accessible name or by text, [`find_all_unnamed`] those a reader could not name, and
+//! [`user`] turns a click, a key or typed text into the sequence of events a browser
+//! dispatches for it.
 //!
 //! Tasks run on an executor that stands still until [`pump_tasks`] drains it:
 //! [`install_executor`] makes it the thread's spawner ([`reset`] does too), so a
-//! `Resource` built in a test loads when the test pumps.
+//! `Resource` loads when the executor is pumped.
 
 mod font;
 mod layout;

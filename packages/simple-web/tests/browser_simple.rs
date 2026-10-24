@@ -663,9 +663,6 @@ async fn a_third_party_palette_works_under_theme_like_the_simple_one() {
 /// A picker wears the field chrome and rings while focused; its indicator follows the
 /// open state; its list surface is on the card; the chosen row fills in the primary
 /// look with its check and caption inked to match, and the focused row highlights.
-///
-/// Its rows are read while the face does not hold focus: on the web a focused face
-/// highlights every row inside it, a divergence `ROADMAP.md` lists.
 #[wasm_bindgen_test]
 fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   let _scheme = Scheme::choose(ColorScheme::Light);

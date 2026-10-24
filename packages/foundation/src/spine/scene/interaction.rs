@@ -342,8 +342,7 @@ mod tests {
   /// generation once.
   #[test]
   fn the_scene_holds_focus_press_and_their_rules() {
-    let [root, button, entry] =
-      std::array::from_fn(|index| NodeId::new(u32::try_from(index).unwrap(), 0));
+    let [root, button, entry] = std::array::from_fn(NodeId::plain);
     let ancestry = |node: NodeId| -> SmallVec<[NodeId; 16]> {
       if node == root {
         [root].into_iter().collect()

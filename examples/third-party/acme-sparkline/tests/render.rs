@@ -1,4 +1,4 @@
-//! The sparkline rendered headlessly: one bar per value, scaled to the range, in the
+//! The sparkline in the terminal's in-process tier: one bar per value, scaled to the range, in the
 //! color it was given; and the bars as pixels over the glyphs once the terminal proves
 //! its graphics.
 

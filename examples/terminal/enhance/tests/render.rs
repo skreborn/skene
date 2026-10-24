@@ -1,4 +1,4 @@
-//! The enhance example rendered headlessly: the clock's caption stands until the
+//! The enhance example in the terminal's in-process tier: the clock's caption stands until the
 //! first tick, the picture's fallback stands in for the pixels, and the stripes paint
 //! once the terminal proves its graphics.
 

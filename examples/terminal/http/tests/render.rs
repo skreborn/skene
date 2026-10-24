@@ -1,4 +1,4 @@
-//! The HTTP example rendered headlessly: the URL and the pending caption paint before
+//! The HTTP example in the terminal's in-process tier: the URL and the pending caption paint before
 //! anything lands.
 
 #![cfg(not(target_arch = "wasm32"))]

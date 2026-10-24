@@ -1,4 +1,4 @@
-//! The context menu example rendered headlessly: every section paints, a right click
+//! The context menu example in the terminal's in-process tier: every section paints, a right click
 //! on a note opens its menu in place of the standard one, running an item records it,
 //! and a right click on the plain text opens the standard menu.
 

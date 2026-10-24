@@ -448,6 +448,14 @@ pub fn pending_timers() -> usize {
   with_records(|records| records.timers.len())
 }
 
+/// How many nodes the platform holds a record of, for a test asserting that a destroyed
+/// node's record is released.
+#[must_use]
+pub fn record_count() -> usize {
+  end_turn();
+  with_records(|records| records.record_count())
+}
+
 /// How many layouts have been computed since the platform was installed, for a test
 /// asserting that a change repainted without a relayout.
 #[must_use]

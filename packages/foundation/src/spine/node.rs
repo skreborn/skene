@@ -66,6 +66,16 @@ impl NodeId {
         | line as u64,
     )
   }
+
+  /// A plain-data id for a test, of slot `index` in the first generation.
+  ///
+  /// # Panics
+  ///
+  /// Where `index` is past the largest slot, `u32::MAX`.
+  #[cfg(test)]
+  pub fn plain(index: usize) -> Self {
+    Self::new(u32::try_from(index).unwrap(), 0)
+  }
 }
 
 #[cfg(test)]

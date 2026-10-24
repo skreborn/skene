@@ -1,4 +1,4 @@
-//! The gallery rendered headlessly: every section paints and the controls respond.
+//! The gallery in the terminal's in-process tier: every section paints and the controls respond.
 
 #![cfg(not(target_arch = "wasm32"))]
 

@@ -1025,8 +1025,8 @@ fn a_caption_kept_beside_is_placed_before_its_control() {
   });
 }
 
-/// Destroying a node takes its whole subtree, which the frame and a reader lose, and
-/// retires every id.
+/// Destroying a node takes its whole subtree, which the frame and a reader lose, retires
+/// every id and releases every record the platform held of it.
 #[test]
 fn destroy_takes_the_subtree_and_releases_every_record() {
   with_platform(|| {
@@ -1040,8 +1040,11 @@ fn destroy_takes_the_subtree_and_releases_every_record() {
 
     assert_eq!(frame(1), "g\n");
 
+    let held = testing::record_count();
+
     Scene::<Terminal>::with(|scene| scene.destroy(parent));
 
+    assert_eq!(testing::record_count(), held - 3);
     assert_eq!(frame(1), "\n");
     assert_eq!(children(stage), []);
     assert!(

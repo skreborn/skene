@@ -233,7 +233,7 @@ mod tests {
       later,
       inside_earlier,
       inside_later,
-    ] = std::array::from_fn(|index| NodeId::new(u32::try_from(index).unwrap(), 0));
+    ] = std::array::from_fn(NodeId::plain);
     let parents: FxHashMap<NodeId, NodeId> = [
       (first, root),
       (second, root),

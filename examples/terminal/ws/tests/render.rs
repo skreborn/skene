@@ -1,4 +1,4 @@
-//! The WebSocket example rendered headlessly: the URL and the connecting caption
+//! The WebSocket example in the terminal's in-process tier: the URL and the connecting caption
 //! paint before anything lands.
 
 #![cfg(not(target_arch = "wasm32"))]

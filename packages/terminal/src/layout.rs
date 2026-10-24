@@ -54,7 +54,34 @@ const INTO_CELL: f32 = 1. / 16.;
 /// What one restyle of a node decided.
 struct Restyled {
   style: Style,
-  text: Option<CellFlow>,
+  leaf: Option<CellLeaf>,
+}
+
+/// What the layout measures a leaf by: a text leaf's flow, or a text entry's native
+/// extent, its content box's cells and rows, as an `<input>`'s intrinsic size.
+#[derive(Debug, PartialEq)]
+pub(crate) enum CellLeaf {
+  /// A text leaf, measured by its flow.
+  Flow(Box<CellFlow>),
+  /// A text entry, measured at its native extent.
+  Entry(Size<f32>),
+}
+
+impl Leaf for CellLeaf {
+  /// A flow's measure, or an entry's native extent in each dimension not `known`.
+  fn measure(
+    &self,
+    known: taffy::geometry::Size<Option<f32>>,
+    available: taffy::geometry::Size<AvailableSpace>,
+  ) -> Size<f32> {
+    match self {
+      Self::Flow(flow) => flow.measure(known, available),
+      Self::Entry(native) => Size::new(
+        known.width.unwrap_or(native.width),
+        known.height.unwrap_or(native.height),
+      ),
+    }
+  }
 }
 
 /// One item of a text leaf: a run, its node, where its text ends in the leaf's and its
@@ -286,7 +313,10 @@ impl Source {
 
 /// The flow the text node `handle` lays out as, when it holds one.
 pub(crate) fn flow_of(records: &Records, handle: Handle) -> Option<&CellFlow> {
-  records.tree.context(handle)
+  match records.tree.context(handle)? {
+    CellLeaf::Flow(flow) => Some(flow.as_ref()),
+    CellLeaf::Entry(_) => None,
+  }
 }
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
@@ -483,7 +513,7 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
       continue;
     };
 
-    if records.tree.set_context(handle, restyled.text) {
+    if records.tree.set_context(handle, restyled.leaf) {
       changed = true;
     }
 
@@ -852,11 +882,14 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         style.flex_wrap = taffy::style::FlexWrap::Wrap;
       }
 
-      Restyled { style, text }
+      Restyled {
+        style,
+        leaf: text.map(|flow| CellLeaf::Flow(Box::new(flow))),
+      }
     }
     Kind::Anchor | Kind::Scope => Restyled {
       style: Style::default(),
-      text: None,
+      leaf: None,
     },
     Kind::Box(inner) => {
       let resolved = inner.style().cloned().unwrap_or_default();
@@ -867,47 +900,26 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         style.flex_grow = 1.;
       }
 
-      let text = paragraph.then(|| paragraph_flow(records, handle));
+      let leaf = paragraph.then(|| CellLeaf::Flow(Box::new(paragraph_flow(records, handle))));
 
       if paragraph {
         style.display = Display::Block;
       }
 
-      Restyled { style, text }
+      Restyled { style, leaf }
     }
     Kind::Control { inner, field, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
       let mut style = resolved.taffy_style(inner.props.layout, place);
-
-      if let Some(field) = field {
-        let chrome = chrome(&resolved);
-        let columns = (field.widest() + 1)
-          .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
-          .max(8);
-
-        // An entry its style leaves unsized lays out at its native size, eight cells or
-        // one cell past its value's widest line and its lines tall, the least a layout
-        // stretching or shrinking it leaves it.
-        native_size(
-          &mut style.size.width,
-          &mut style.min_size.width,
-          style.max_size.width,
-          cell(u32::try_from(columns).unwrap_or(u32::MAX) + chrome.start + chrome.end),
-        );
-
-        native_size(
-          &mut style.size.height,
-          &mut style.min_size.height,
-          style.max_size.height,
-          cell(u32::from(field.lines) + chrome.top + chrome.bottom),
-        );
-      }
+      let leaf = field
+        .as_ref()
+        .map(|field| entry_leaf(&mut style, &resolved, field));
 
       if fills_root {
         style.flex_grow = 1.;
       }
 
-      Restyled { style, text: None }
+      Restyled { style, leaf }
     }
     Kind::Overlay { inner, open, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
@@ -919,7 +931,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         style.display = Display::None;
       }
 
-      Restyled { style, text: None }
+      Restyled { style, leaf: None }
     }
   }
 }
@@ -1049,6 +1061,37 @@ pub(crate) fn padding_cells(style: &PlainBox) -> Inset<u32> {
     bottom: cells(padding.bottom),
     start: cells(padding.start),
   }
+}
+
+/// The leaf the entry `field` measures as, at its native extent: eight cells or one cell
+/// past its value's widest line, and its lines tall; where `style` leaves it unsized, the
+/// native size, its chrome included, is the least a layout stretching or shrinking it
+/// leaves it.
+fn entry_leaf(style: &mut Style, resolved: &PlainBox, field: &Field) -> CellLeaf {
+  let chrome = chrome(resolved);
+  let columns = (field.widest() + 1)
+    .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
+    .max(8);
+  let native = Size::new(
+    cell(u32::try_from(columns).unwrap_or(u32::MAX)),
+    cell(u32::from(field.lines)),
+  );
+
+  native_size(
+    &mut style.size.width,
+    &mut style.min_size.width,
+    style.max_size.width,
+    native.width + cell(chrome.start + chrome.end),
+  );
+
+  native_size(
+    &mut style.size.height,
+    &mut style.min_size.height,
+    style.max_size.height,
+    native.height + cell(chrome.top + chrome.bottom),
+  );
+
+  CellLeaf::Entry(native)
 }
 
 /// Lays an entry out along one axis at its native extent `native` where its `size` is

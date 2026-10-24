@@ -1362,8 +1362,9 @@ and what it changed (damage, restyle, the window, a moved selection to report) i
 settled after, an operation reaching an editor another holds (a handler that moves
 focus, say) waiting for that one to end. Its box its style leaves unsized lays out at
 its native size, eight cells or its value's widest line and the caret's cell past it,
-and its lines tall, as an `<input>`'s intrinsic size: the least a layout stretching or
-shrinking it leaves it, held to its own maximum and raised to its own minimum (its size
+and its lines tall, as an `<input>`'s intrinsic size: its content size, so the basis it
+grows from beside a growing sibling, and the least a layout stretching or shrinking it
+leaves it, held to its own maximum and raised to its own minimum (its size
 outright where either is a fraction, which then bounds it). The value draws on the box's
 first row, where a browser centers it in a taller `<input>` (`ROADMAP.md`). Its edits
 are reported through `report_edit`, never applied ahead of the verdict, which it shows;

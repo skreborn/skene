@@ -35,7 +35,12 @@ use crate::spine::{
 
 /// Dispatches a click at `node`.
 pub fn dispatch_click<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
-  bubble::<P, _, _>(node, select_click, |_| (), |handler, ()| handler(event))
+  bubble::<P, _, _>(
+    node,
+    HandlerSet::select_click,
+    |_| (),
+    |handler, ()| handler(event),
+  )
 }
 
 /// Dispatches the second click of a double click at `node`, after the click itself.
@@ -58,7 +63,7 @@ pub fn dispatch_double_click<P: Realization>(node: NodeId, event: &ClickEvent) -
 pub fn dispatch_click_observed<P: Realization>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
-    select_observed_click,
+    HandlerSet::select_observed_click,
     |_| (),
     |handler, ()| handler(event),
   )
@@ -422,33 +427,35 @@ impl Verdict {
   }
 }
 
-/// The handlers a click runs on one node: its acting ones, then the rest, ending the
-/// climb nowhere.
-fn select_click(set: &HandlerSet, out: &mut Selected<ClickHandler>) -> bool {
-  out.extend(set.select(|handler| match handler {
-    Handler::ActingClick(run) => Some(run),
-    _ => None,
-  }));
-  out.extend(set.select(|handler| match handler {
-    Handler::Click(run) => Some(run),
-    _ => None,
-  }));
+impl HandlerSet {
+  /// The handlers a click runs on one node: its acting ones, then the rest, ending the
+  /// climb nowhere.
+  fn select_click(&self, out: &mut Selected<ClickHandler>) -> bool {
+    out.extend(self.select(|handler| match handler {
+      Handler::ActingClick(run) => Some(run),
+      _ => None,
+    }));
+    out.extend(self.select(|handler| match handler {
+      Handler::Click(run) => Some(run),
+      _ => None,
+    }));
 
-  false
-}
+    false
+  }
 
-/// The handlers a click the platform already acted on runs on one node: all but the
-/// acting ones, ending the climb at a node carrying acting ones.
-fn select_observed_click(set: &HandlerSet, out: &mut Selected<ClickHandler>) -> bool {
-  out.extend(set.select(|handler| match handler {
-    Handler::Click(run) => Some(run),
-    _ => None,
-  }));
+  /// The handlers a click the platform already acted on runs on one node: all but the
+  /// acting ones, ending the climb at a node carrying acting ones.
+  fn select_observed_click(&self, out: &mut Selected<ClickHandler>) -> bool {
+    out.extend(self.select(|handler| match handler {
+      Handler::Click(run) => Some(run),
+      _ => None,
+    }));
 
-  set.has(|handler| match handler {
-    Handler::ActingClick(run) => Some(run),
-    _ => None,
-  })
+    self.has(|handler| match handler {
+      Handler::ActingClick(run) => Some(run),
+      _ => None,
+    })
+  }
 }
 
 /// A selection taking every handler `pick` takes, ending the climb nowhere.
@@ -512,7 +519,7 @@ mod tests {
 
   use smallvec::SmallVec;
 
-  use super::{Crossing, HandlerSet, Selected, select_click, select_observed_click};
+  use super::{Crossing, HandlerSet, Selected};
   use crate::spine::{
     Bubbling,
     ClickEvent,
@@ -560,11 +567,6 @@ mod tests {
     );
 
     (prevented, ran.into_inner())
-  }
-
-  /// A node id for plain data, by its index.
-  fn plain(index: usize) -> NodeId {
-    NodeId::new(u32::try_from(index).unwrap(), 0)
   }
 
   /// The handlers `select` picks out of `set`, run on a click, their names in the order
@@ -615,7 +617,7 @@ mod tests {
     set.push(Handler::Click(record(&log, "second")));
 
     assert_eq!(
-      clicked(&set, select_click, &log),
+      clicked(&set, HandlerSet::select_click, &log),
       (vec!["acting", "first", "second"], false)
     );
   }
@@ -709,7 +711,7 @@ mod tests {
     };
 
     assert_eq!(
-      dispatch(select_click),
+      dispatch(HandlerSet::select_click),
       (
         Prevented {
           platform: false,
@@ -719,11 +721,11 @@ mod tests {
       )
     );
     assert_eq!(
-      dispatch(select_observed_click),
+      dispatch(HandlerSet::select_observed_click),
       (Prevented::default(), vec!["inner", "observer"])
     );
     assert_eq!(
-      clicked(&middle, select_observed_click, &log),
+      clicked(&middle, HandlerSet::select_observed_click, &log),
       (vec!["observer"], true)
     );
   }
@@ -733,7 +735,7 @@ mod tests {
   /// pointer throughout hears nothing and stays hovered.
   #[test]
   fn a_pointer_move_notifies_the_subtrees_it_crosses() {
-    let [outer, middle, inner, sibling] = std::array::from_fn(plain);
+    let [outer, middle, inner, sibling] = std::array::from_fn(NodeId::plain);
     let ancestry = |node: NodeId| -> SmallVec<[NodeId; 16]> {
       match node {
         node if node == inner => [inner, middle, outer].into_iter().collect(),
@@ -776,7 +778,7 @@ mod tests {
   /// throughout hears nothing.
   #[test]
   fn a_focus_move_notifies_the_subtrees_it_crosses() {
-    let [outer, middle, inner, sibling] = std::array::from_fn(plain);
+    let [outer, middle, inner, sibling] = std::array::from_fn(NodeId::plain);
     let ancestry = |node: Option<NodeId>| -> SmallVec<[NodeId; 16]> {
       match node {
         None => SmallVec::new(),

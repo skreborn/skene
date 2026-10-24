@@ -1,4 +1,4 @@
-//! The terminal platform rendered headlessly: the built-in views laid out and painted to a
+//! The terminal's in-process tier: the built-in views laid out and painted to a
 //! text grid, resolved through tokens and conditions, and driven through the seams.
 
 use std::{cell::Cell, rc::Rc};

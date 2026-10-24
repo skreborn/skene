@@ -3,7 +3,7 @@ name = "skene-headless"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The host platform skene's web facade compiles against off its target, driven by tests"
+description = "The host leaf skene's web facade compiles against off its target"
 license.workspace = true
 repository.workspace = true
 

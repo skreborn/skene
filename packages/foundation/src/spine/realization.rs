@@ -301,10 +301,11 @@ pub trait Realization: Copy + Default + 'static {
     None
   }
 
-  /// Whether the reader's text in the entry `node` is the reader's until it is reported,
-  /// as while an input method composes in it: a write of its content waits, and so does
-  /// a repair, until the report that ends it. `false`, the default, for a platform where
-  /// nothing composes.
+  /// Whether what the control `node` shows is the reader's until it is reported, as an
+  /// entry's text while an input method composes in it, or a control the reader changed
+  /// before the platform adopted it: a write of its content waits, and so does a repair,
+  /// until the report that ends it. `false`, the default, for a platform where nothing
+  /// composes.
   #[inline(always)]
   #[must_use]
   fn composing(_node: NodeId) -> bool {

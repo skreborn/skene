@@ -502,6 +502,7 @@ impl<E: TextEngine> Editor<E> {
         (text, Position::new(anchor), Position::new(focus))
       }
       Verdict::Accept => (text, anchor, focus),
+      Verdict::Refuse => (self.text.clone(), self.anchor, self.focus),
     };
     let text_changed = text != self.text;
 
@@ -852,13 +853,14 @@ impl<E: TextEngine> Editor<E> {
           (text, Position::new(anchor), Position::new(focus))
         }
         Verdict::Accept => (state.text.clone(), state.anchor, state.focus),
+        Verdict::Refuse => (self.text.clone(), self.anchor, self.focus),
       };
 
       if text != self.text {
         break (text, anchor, focus);
       }
 
-      if let Verdict::Replace(_) = verdict {
+      if let Verdict::Replace(_) | Verdict::Refuse = verdict {
         if back {
           self.history.push_undo(state);
         }

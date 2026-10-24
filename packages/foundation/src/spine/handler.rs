@@ -22,10 +22,6 @@ use crate::spine::{
 pub type PlainHandler = dyn Fn();
 /// A scroll handler: the container's new offsets.
 pub type ScrollHandler = dyn Fn(&ScrollEvent);
-/// A change handler: a control's new textual value.
-pub type ChangeHandler = dyn Fn(&str);
-/// A toggle handler: a control's new checked state.
-pub type ToggleHandler = dyn Fn(bool);
 /// A report handler: a reader's change of a content the node controls, with whether its
 /// toolkit shows the change already, answered with the verdict on it.
 pub type ReportHandler = dyn Fn(ContentValue<'_>, bool) -> Verdict;
@@ -67,12 +63,8 @@ pub enum Handler {
   Wheel(Rc<WheelHandler>),
   /// Runs with the node's new scroll offsets.
   Scroll(Rc<ScrollHandler>),
-  /// Runs with a control's new textual value.
-  Change(Rc<ChangeHandler>),
   /// Answers a reader's change of the content the node controls: its controller's.
   Report(Content, Rc<ReportHandler>),
-  /// Runs with a control's new checked state.
-  Toggle(Rc<ToggleHandler>),
   /// Runs when the platform dismisses the overlay.
   Dismiss(Rc<PlainHandler>),
   /// Builds what a drag from the node carries; the node's last is offered.
@@ -102,9 +94,7 @@ impl Handler {
       Self::Blur(_) => EventKind::Blur,
       Self::Wheel(_) => EventKind::Wheel,
       Self::Scroll(_) => EventKind::Scroll,
-      Self::Change(_) => EventKind::Change,
       Self::Report(content, _) => EventKind::Report(*content),
-      Self::Toggle(_) => EventKind::Toggle,
       Self::Dismiss(_) => EventKind::Dismiss,
       Self::DragStart(_) => EventKind::DragStart,
       Self::Drop(_) => EventKind::Drop,

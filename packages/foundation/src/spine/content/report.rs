@@ -1,5 +1,7 @@
 //! A controlled content's two paths, written once for every platform: the truth
-//! written to the platform, and a reader's change reported back and answered.
+//! written to the platform, and a reader's change reported back and answered, by a
+//! [`Controller`] for a content held whole and an [`EditController`] for an entry's
+//! [`Edit`].
 
 use std::{
   cell::{Cell, RefCell},
@@ -8,12 +10,14 @@ use std::{
 
 use skene_reactive::{Effect, batch, untrack};
 
-use super::{Content, ContentValue, contents};
+use super::{Choices, Content, ContentKey, ContentType, ContentValue, Range, contents};
 use crate::spine::{
+  CheckState,
   Edit,
   Handler,
   NodeId,
   Realization,
+  ReportHandler,
   Scene,
   TextSelection,
   Verdict,
@@ -39,10 +43,11 @@ pub enum Report<'a> {
 
 /// Reports `report` at `node` and answers with the verdict the realization applies.
 ///
-/// The node's [`Controller`] of the content answers, alone and in one batch: a toolkit
-/// that has not applied the change applies the verdict in its place, and one that has
-/// is repaired to the verdict's truth as the smallest edit. A content no controller
-/// holds stands as [`Verdict::Accept`].
+/// The node's controller of the content answers, alone and in one batch: a toolkit
+/// that has not applied an edit applies the verdict in its place, and one that has is
+/// repaired to the verdict's truth as the smallest edit; a content held whole is
+/// repaired by its [`Controller`]'s own write of the truth, answered
+/// [`Verdict::Refuse`]. A content no controller holds stands as [`Verdict::Accept`].
 pub fn report<P: Realization>(node: NodeId, report: Report<'_>) -> Verdict {
   let Report::Change {
     content,
@@ -183,7 +188,7 @@ fn shown_after(proposed: &Edit, applied: bool, verdict: &Verdict) -> Option<Edit
       text: Rc::clone(&truth.text),
       selection: truth.selection,
     }),
-    Verdict::Replace(_) => None,
+    Verdict::Replace(_) | Verdict::Refuse => None,
   }
 }
 
@@ -253,7 +258,7 @@ impl Answer {
 /// selection, and stands where the truth then holds it, replaced by the truth otherwise
 /// ([`Verdict`]). A disabled entry asks nothing and is answered with its truth.
 #[must_use]
-pub struct Controller {
+pub struct EditController {
   truth: Box<dyn Fn() -> EditTruth>,
   ask: Box<dyn Fn(&Asked)>,
   disabled: Option<Box<dyn Fn() -> bool>>,
@@ -261,16 +266,16 @@ pub struct Controller {
   writing: Cell<bool>,
 }
 
-impl std::fmt::Debug for Controller {
+impl std::fmt::Debug for EditController {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
-      .debug_struct("Controller")
+      .debug_struct("EditController")
       .field("shown", &self.shown)
       .finish_non_exhaustive()
   }
 }
 
-impl Controller {
+impl EditController {
   /// The controller of an entry whose truth `truth` reads, tracking what it reads, and
   /// whose reader's changes `ask` asks the app for.
   pub fn new(truth: impl Fn() -> EditTruth + 'static, ask: impl Fn(&Asked) + 'static) -> Self {
@@ -299,22 +304,11 @@ impl Controller {
     let answering = Rc::clone(&controller);
 
     *controller.shown.borrow_mut() = contents::EDIT.read::<P>(node);
-    Scene::<P>::with(|scene| {
-      debug_assert!(
-        scene
-          .handlers(node)
-          .and_then(|handlers| handlers.reporter(Content::Edit))
-          .is_none(),
-        "a node's content has one controller"
-      );
-      scene.handle(
-        node,
-        Handler::Report(
-          Content::Edit,
-          Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
-        ),
-      );
-    });
+    install::<P>(
+      node,
+      Content::Edit,
+      Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
+    );
     Effect::render(move |_: Option<()>| controller.write::<P>(node));
   }
 
@@ -375,12 +369,311 @@ impl Controller {
   }
 }
 
+/// Installs `answer` as the answer to `node`'s reports of `content`, as the current
+/// owner; a second controller of the content is a debug assertion.
+fn install<P: Realization>(node: NodeId, content: Content, answer: Rc<ReportHandler>) {
+  Scene::<P>::with(|scene| {
+    debug_assert!(
+      scene
+        .handlers(node)
+        .and_then(|handlers| handlers.reporter(content))
+        .is_none(),
+      "a node's content has one controller"
+    );
+    scene.handle(node, Handler::Report(content, answer));
+  });
+}
+
+/// A content a [`Controller`] holds whole, written at once: what of a reader's change of
+/// it the truth must hold for the change to stand.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a content a controller holds whole",
+  label = "a controller holds a checked state, a range, choices or a group's chosen key",
+  note = "a text entry's `Edit` is controlled by an `EditController`"
+)]
+pub trait Controllable: ContentType {
+  /// Whether the truth `self` holds a reader's `proposed` change: every part of it a
+  /// reader changes is the truth's.
+  fn holds(&self, proposed: &Self) -> bool;
+}
+
+impl Controllable for CheckState {
+  #[inline(always)]
+  fn holds(&self, proposed: &Self) -> bool {
+    self == proposed
+  }
+}
+
+/// A reader changes a range's value; its bounds and its step are the app's.
+impl Controllable for Range {
+  #[inline(always)]
+  fn holds(&self, proposed: &Self) -> bool {
+    (self.value - proposed.value).abs() <= f32::EPSILON
+  }
+}
+
+/// A reader changes which option is chosen; the options are the app's.
+impl Controllable for Choices {
+  #[inline(always)]
+  fn holds(&self, proposed: &Self) -> bool {
+    self.chosen == proposed.chosen
+  }
+}
+
+impl Controllable for Option<Rc<str>> {
+  #[inline(always)]
+  fn holds(&self, proposed: &Self) -> bool {
+    self == proposed
+  }
+}
+
+/// What a content shows once the truth `truth` is written over `shown`: `None` where it
+/// shows the truth already, and while the reader's change is `composing`, the write
+/// waiting for the report that ends it.
+fn written_whole<T: PartialEq>(truth: T, shown: Option<&T>, composing: bool) -> Option<T> {
+  (!composing && shown != Some(&truth)).then_some(truth)
+}
+
+/// The verdict on a reader's `proposed` change of a content held whole, `truth` reading
+/// the truth as it stands, before the ask and after it, and `ask` asking the app.
+///
+/// A change reported while the truth is `writing` is its echo and stands, asking
+/// nothing; a change the truth holds stands, asking nothing; any other asks the app,
+/// unless the content is `disabled`, and stands where the truth then holds it, refused
+/// otherwise.
+fn answer_whole<T: Controllable>(
+  truth: impl Fn() -> T,
+  proposed: &T,
+  disabled: bool,
+  writing: bool,
+  ask: impl FnOnce(&T),
+) -> Verdict {
+  if writing || truth().holds(proposed) {
+    return Verdict::Accept;
+  }
+
+  if !disabled {
+    ask(proposed);
+  }
+
+  if truth().holds(proposed) {
+    Verdict::Accept
+  }
+  else {
+    Verdict::Refuse
+  }
+}
+
+/// What a content held whole shows after a report of `proposed` answered `verdict`,
+/// `applied` saying whether its toolkit showed the change already, where it showed
+/// `shown` before: the proposal where the toolkit shows it or applies it, else `shown`.
+fn shown_after_whole<T: Clone>(
+  shown: Option<T>,
+  proposed: &T,
+  applied: bool,
+  verdict: &Verdict,
+) -> Option<T> {
+  if applied || *verdict == Verdict::Accept {
+    Some(proposed.clone())
+  }
+  else {
+    shown
+  }
+}
+
+/// A controlled content held whole, a checked state, a range, a choice's options or a
+/// group's chosen key: the truth the platform is brought back to, and the ask a
+/// reader's change makes of the app.
+///
+/// [`register`](Self::register) writes the truth as the node's content whenever what it
+/// reads changes, skipping a write of what the node shows already, which it reads once
+/// through [`Realization::read`] and then keeps from what it writes and what is
+/// reported, and holding one back while the reader's change is
+/// [composing](Realization::composing); and it answers every reader's change
+/// [`report`]ed at the node: one the truth holds ([`Controllable::holds`]) asks
+/// nothing and stands, and so does one made while it writes; any other asks the app,
+/// and stands where the truth then holds it, else is refused and repaired by the write
+/// of the truth ([`Verdict::Refuse`]). A disabled control asks nothing and is answered
+/// with its truth.
+#[must_use]
+pub struct Controller<T: Controllable> {
+  key: ContentKey<T>,
+  truth: Box<dyn Fn() -> T>,
+  ask: Box<dyn Fn(&T)>,
+  disabled: Option<Box<dyn Fn() -> bool>>,
+  shown: RefCell<Option<T>>,
+  writing: Cell<bool>,
+}
+
+impl<T: Controllable> std::fmt::Debug for Controller<T> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("Controller")
+      .field("key", &self.key)
+      .field("shown", &self.shown)
+      .finish_non_exhaustive()
+  }
+}
+
+impl<T: Controllable> Controller<T> {
+  /// The controller of the content `key` writes, whose truth `truth` reads, tracking
+  /// what it reads, and whose reader's changes `ask` asks the app for.
+  pub fn new(
+    key: ContentKey<T>,
+    truth: impl Fn() -> T + 'static,
+    ask: impl Fn(&T) + 'static,
+  ) -> Self {
+    Self {
+      key,
+      truth: Box::new(truth),
+      ask: Box::new(ask),
+      disabled: None,
+      shown: RefCell::new(None),
+      writing: Cell::new(false),
+    }
+  }
+
+  /// Answers every change with the truth, asking nothing, while `disabled` says so.
+  pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
+    self.disabled = Some(Box::new(disabled));
+
+    self
+  }
+
+  /// Controls the content of `node` through `P`, as the current owner: the truth is
+  /// written now and whenever it changes, and the node's reports of the content are
+  /// answered by this controller from now on; a second controller of the content is a
+  /// debug assertion.
+  pub fn register<P: Realization>(self, node: NodeId) {
+    let controller = Rc::new(self);
+    let answering = Rc::clone(&controller);
+
+    *controller.shown.borrow_mut() = controller.key.read::<P>(node);
+    install::<P>(
+      node,
+      controller.key.content(),
+      Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
+    );
+    Effect::render(move |_: Option<()>| controller.write::<P>(node));
+  }
+
+  /// Writes the truth to `node` unless it is shown already or held back while the
+  /// reader's change is composing.
+  fn write<P: Realization>(&self, node: NodeId) {
+    let truth = (self.truth)();
+
+    untrack(|| {
+      let Some(truth) = written_whole(truth, self.shown.borrow().as_ref(), P::composing(node))
+      else {
+        return;
+      };
+
+      self.writing.set(true);
+      self.key.write::<P>(node, &truth);
+      self.writing.set(false);
+      *self.shown.borrow_mut() = Some(truth);
+    });
+  }
+
+  /// The verdict on the reader's change `proposed` of `node`, which its toolkit shows
+  /// already where `applied`; a refused change is repaired by the write of the truth.
+  fn answer<P: Realization>(
+    &self,
+    node: NodeId,
+    proposed: ContentValue<'_>,
+    applied: bool,
+  ) -> Verdict {
+    let Some(proposed) = self.key.own(proposed)
+    else {
+      return Verdict::Accept;
+    };
+    let verdict = untrack(|| {
+      answer_whole(
+        || (self.truth)(),
+        &proposed,
+        self.disabled.as_ref().is_some_and(|disabled| disabled()),
+        self.writing.get(),
+        |asked| (self.ask)(asked),
+      )
+    });
+    let shown = self.shown.take();
+
+    *self.shown.borrow_mut() = shown_after_whole(shown, &proposed, applied, &verdict);
+
+    if verdict == Verdict::Refuse {
+      untrack(|| self.write::<P>(node));
+    }
+
+    verdict
+  }
+}
+
+/// What controls a node's content: a [`Controller`] of a content held whole, or a text
+/// entry's [`EditController`].
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` does not control a node's content",
+  label = "a content is controlled by a `Controller`, or an entry's edit by an `EditController`"
+)]
+pub trait Controls: Sized + 'static {
+  /// Answers every change with the truth, asking nothing, while `disabled` says so.
+  #[must_use]
+  fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self;
+
+  /// Controls the content of `node` through `P`, as the current owner.
+  fn register<P: Realization>(self, node: NodeId);
+}
+
+impl<T: Controllable> Controls for Controller<T> {
+  #[inline(always)]
+  fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
+    Self::derive_disabled(self, disabled)
+  }
+
+  #[inline(always)]
+  fn register<P: Realization>(self, node: NodeId) {
+    Self::register::<P>(self, node);
+  }
+}
+
+impl Controls for EditController {
+  #[inline(always)]
+  fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
+    Self::derive_disabled(self, disabled)
+  }
+
+  #[inline(always)]
+  fn register<P: Realization>(self, node: NodeId) {
+    Self::register::<P>(self, node);
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use std::{cell::RefCell, rc::Rc};
+  use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+  };
 
-  use super::{Answer, Asked, EditTruth, shown_after};
-  use crate::spine::{Edit, TextSelection, Unit, Verdict};
+  use super::{
+    Answer,
+    Asked,
+    Controllable,
+    EditTruth,
+    answer_whole,
+    shown_after,
+    shown_after_whole,
+    written_whole,
+  };
+  use crate::spine::{
+    CheckState,
+    ChoiceOption,
+    Choices,
+    Edit,
+    Range,
+    TextSelection,
+    Unit,
+    Verdict,
+  };
 
   /// The truth of an entry deriving `text`, and `caret` where given.
   fn truth(text: &str, caret: Option<usize>) -> EditTruth {
@@ -679,6 +972,128 @@ mod tests {
       shown_after(&typed, false, &Verdict::Replace(truth)),
       None,
       "what a toolkit applying the truth shows is known once written or reported"
+    );
+  }
+
+  /// The verdict on `proposed` while the truth reads `truth`, with the asks collected
+  /// rather than run.
+  fn whole<T: Controllable>(
+    truth: &T,
+    proposed: &T,
+    disabled: bool,
+    writing: bool,
+  ) -> (Verdict, Vec<T>) {
+    let asks = RefCell::new(Vec::new());
+    let verdict = answer_whole(
+      || truth.clone(),
+      proposed,
+      disabled,
+      writing,
+      |asked| asks.borrow_mut().push(asked.clone()),
+    );
+
+    (verdict, asks.into_inner())
+  }
+
+  /// A change of a content held whole that the truth holds, or one reported while the
+  /// truth is written, asks nothing and stands.
+  #[test]
+  fn a_whole_change_the_truth_holds_or_its_echo_asks_nothing() {
+    assert_eq!(
+      whole(&CheckState::On, &CheckState::On, false, false),
+      (Verdict::Accept, Vec::new())
+    );
+    assert_eq!(
+      whole(&CheckState::Off, &CheckState::On, false, true),
+      (Verdict::Accept, Vec::new()),
+      "the echo of a write"
+    );
+  }
+
+  /// A change the truth does not hold asks the app, and stands where the truth then
+  /// holds it, refused otherwise; a disabled control asks nothing and refuses it.
+  #[test]
+  fn a_whole_change_is_asked_for_and_refused_where_the_truth_keeps_it_out() {
+    assert_eq!(
+      whole(&CheckState::Off, &CheckState::On, false, false),
+      (Verdict::Refuse, vec![CheckState::On]),
+      "a handler that keeps the truth refuses it"
+    );
+
+    let truth = Cell::new(CheckState::Off);
+    let verdict = answer_whole(
+      || truth.get(),
+      &CheckState::On,
+      false,
+      false,
+      |asked| truth.set(*asked),
+    );
+
+    assert_eq!(verdict, Verdict::Accept, "a handler that takes it");
+    assert_eq!(
+      whole(&CheckState::Off, &CheckState::On, true, false),
+      (Verdict::Refuse, Vec::new()),
+      "a disabled control"
+    );
+  }
+
+  /// A range is held by its value, the reader's, and a choice by the key chosen, the
+  /// bounds and the options being the app's.
+  #[test]
+  fn a_range_holds_its_value_and_a_choice_its_key() {
+    let truth = Range::new(5., 0., 10., 1.);
+
+    assert!(truth.holds(&Range::new(5., 0., 100., 0.)));
+    assert!(!truth.holds(&Range::new(6., 0., 10., 1.)));
+
+    let options: Rc<[ChoiceOption]> = Rc::from([ChoiceOption::new("a", "A")]);
+    let chosen = Choices::new(Rc::clone(&options), Some(Rc::from("a")));
+
+    assert!(chosen.holds(&Choices::new(Rc::from([]), Some(Rc::from("a")))));
+    assert!(!chosen.holds(&Choices::new(options, None)));
+  }
+
+  /// The truth is written only where the content does not show it already, and waits
+  /// while the reader's change composes; a report leaves the proposal shown where the
+  /// toolkit shows or applies it.
+  #[test]
+  fn a_whole_write_of_what_is_shown_is_skipped() {
+    assert_eq!(
+      written_whole(CheckState::On, Some(&CheckState::On), false),
+      None
+    );
+    assert_eq!(
+      written_whole(CheckState::On, Some(&CheckState::Off), false),
+      Some(CheckState::On)
+    );
+    assert_eq!(
+      written_whole(CheckState::On, None, false),
+      Some(CheckState::On)
+    );
+    assert_eq!(
+      written_whole(CheckState::On, None, true),
+      None,
+      "the write waits for the reader's change to be reported"
+    );
+    assert_eq!(
+      shown_after_whole(
+        Some(CheckState::Off),
+        &CheckState::On,
+        true,
+        &Verdict::Refuse
+      ),
+      Some(CheckState::On),
+      "an applied change shows until the repair"
+    );
+    assert_eq!(
+      shown_after_whole(
+        Some(CheckState::Off),
+        &CheckState::On,
+        false,
+        &Verdict::Refuse
+      ),
+      Some(CheckState::Off),
+      "a refused change never applied leaves what was shown"
     );
   }
 }

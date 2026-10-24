@@ -6,7 +6,7 @@ use skene_reactive::Signal;
 
 use super::{Behavior, ControlHandle, Controlled};
 use crate::{
-  Controller,
+  EditController,
   EditTruth,
   EventKind,
   NativeElement,
@@ -20,7 +20,7 @@ use crate::{
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
 /// Editing keys are the platform's; the behavior only controls the entry's [`Edit`]
-/// content through a [`Controller`]. A reader's change is reported with whether its
+/// content through a [`EditController`]. A reader's change is reported with whether its
 /// toolkit shows it already, and answered with the verdict, which is the only
 /// write-back: a change the truth holds already is accepted unasked; otherwise the text
 /// it changes is asked for first, then the selection it moves, and a change the truth
@@ -195,7 +195,7 @@ impl<P: Realization> Behavior<P> for TextEntry {
     let (value, selection) = (self.value.clone(), self.selection.clone());
     let (asks_value, asks_selection) = (self.value.clone(), self.selection.clone());
 
-    control.register(Controller::new(
+    control.register(EditController::new(
       move || EditTruth::new(value.read().map(Rc::from), selection.read()),
       move |asked| {
         if let Some(text) = &asked.text {

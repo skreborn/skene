@@ -204,7 +204,11 @@ impl Realization for Terminal {
         with_records(|records| records.show_entry(node, edit));
         crate::field::report_selections();
       }
-      ContentValue::Checked(_) | ContentValue::Range(_) | ContentValue::Choice(_) => {
+      ContentValue::Checked(_)
+      | ContentValue::Range(_)
+      | ContentValue::Choice(_)
+      | ContentValue::Chosen(_)
+      | ContentValue::Membership(_) => {
         with_records(|records| {
           records.layout_dirty = true;
           records.damage(node);

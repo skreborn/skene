@@ -427,12 +427,8 @@ pub enum EventKind {
   Wheel,
   /// The node's scroll offsets changed.
   Scroll,
-  /// A control's textual value changed.
-  Change,
   /// A reader changed a content the node controls, which awaits the verdict on it.
   Report(Content),
-  /// A control's checked state changed.
-  Toggle,
   /// An overlay was dismissed by the platform: a light dismiss, or `Escape`.
   Dismiss,
   /// A drag started from the node, which offers what it carries.
@@ -506,7 +502,6 @@ mod tests {
       label: None,
       lines: 1,
       label_beside: false,
-      group: None,
     });
 
     for (facts, kind) in [

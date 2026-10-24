@@ -3,29 +3,21 @@
 
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use skene_reactive::{
-  Effect,
-  Memo,
-  Signal,
-  Trigger,
-  With,
-  on_cleanup,
-  provide_context,
-  use_context,
-};
+use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, use_context};
 
 use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster, TypeAhead};
 use crate::{
   AccessProp,
   CheckState,
   ControlState,
+  Controller,
   EventKind,
   FocusOrder,
   Key,
   KeyEvent,
+  Membership,
   NamedKey,
   NativeElement,
-  NodeId,
   Prevent,
   Realization,
   Role,
@@ -72,8 +64,7 @@ impl CollectionPolicy for RadioPolicy {
   const HORIZONTAL: bool = true;
   const LISTS: bool = false;
   const MARKS_CHOSEN: bool = true;
-  const MEMBER_EVENTS: &'static [EventKind] =
-    &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle];
+  const MEMBER_EVENTS: &'static [EventKind] = &[EventKind::Click, EventKind::KeyDown];
   const MEMBER_NATIVE: Option<NativeElement> = Some(NativeElement::Radio);
   const MEMBER_ROLE: Role = Role::RadioButton;
   const ROLE: Role = Role::RadioGroup;
@@ -139,7 +130,6 @@ pub struct CollectionContext<C: CollectionPolicy> {
   tab_stop: Memo<Option<String>>,
   type_ahead: Rc<TypeAhead>,
   commit_on_tab: bool,
-  reasserted: Trigger,
   policy: PhantomData<C>,
 }
 
@@ -152,7 +142,6 @@ impl<C: CollectionPolicy> Clone for CollectionContext<C> {
       tab_stop: self.tab_stop,
       type_ahead: Rc::clone(&self.type_ahead),
       commit_on_tab: self.commit_on_tab,
-      reasserted: self.reasserted,
       policy: PhantomData,
     }
   }
@@ -189,7 +178,6 @@ impl<C: CollectionPolicy> CollectionContext<C> {
       tab_stop,
       type_ahead: Rc::new(TypeAhead::new()),
       commit_on_tab: false,
-      reasserted: Trigger::new(),
       policy: PhantomData,
     }
   }
@@ -281,9 +269,12 @@ impl<C: CollectionPolicy> CollectionContext<C> {
 /// Controlled: the chosen member's value is what [`derive_chosen`](Self::derive_chosen)
 /// reads, and choosing only calls [`handle_choose`](Self::handle_choose) with the value
 /// asked for; [`bind_chosen`](Self::bind_chosen) wires both to one signal. Choosing a
-/// menu's member runs it. The collection takes no focus of its own; its members are
-/// [`Member`] controls under the same policy, at any depth inside it, tracked by its
-/// [`roster`](Self::roster).
+/// menu's member runs it. A collection whose members stand in a native toggle, a radio
+/// group, writes the chosen value as its [`Chosen`](crate::Content::Chosen) content,
+/// which a [`Controller`] holds: a choice the platform reports on a member asks for it,
+/// and one the truth then refuses is undone by the write of the chosen key. The collection takes no
+/// focus of its own; its members are [`Member`] controls under the same policy, at any depth inside
+/// it, tracked by its [`roster`](Self::roster).
 #[must_use]
 pub struct Collection<C: CollectionPolicy> {
   chosen: Controlled<Option<String>>,
@@ -398,6 +389,21 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
     let roster = self.roster.clone();
 
     roster.root_at(control.node());
+
+    if C::MEMBER_NATIVE.is_some() {
+      let (chosen, asks) = (self.chosen.clone(), self.chosen.clone());
+
+      control.register(Controller::new(
+        contents::CHOSEN,
+        move || chosen.read().flatten().map(Rc::from),
+        move |proposed: &Option<Rc<str>>| {
+          if let Some(key) = proposed {
+            asks.ask(Some(key.to_string()));
+          }
+        },
+      ));
+    }
+
     provide_context(
       CollectionContext::<C>::new::<P>(
         move || chosen.read().flatten(),
@@ -422,11 +428,12 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
 /// reach the ends and a typed character the member the type-ahead picks; and it is the
 /// collection's tab stop while it is chosen or, with nothing chosen, while first.
 ///
-/// Inside a collection it names the collection as its [`group`](Behavior::group), and
-/// a toggle the platform reports on one member re-reads and rewrites every member's
-/// state. A member standing in a native toggle writes whether it is chosen as its
-/// [`Checked`](crate::Content::Checked) content. Outside a collection it reports its
-/// role, is never chosen and takes focus like any control.
+/// Its state reads its collection's chosen value, tracked. A member standing in a native
+/// toggle writes its collection and its value as its
+/// [`Membership`](crate::Content::Membership) content, so the platform groups the
+/// collection's members as one and checks the one its chosen key names. Outside a
+/// collection it reports its role, is never chosen and takes focus like any control, a
+/// native one holding its [`Checked`](crate::Content::Checked) content unchecked.
 #[must_use]
 pub struct Member<C: CollectionPolicy> {
   value: String,
@@ -488,13 +495,17 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     C::MEMBER_EVENTS
   }
 
-  fn group(&self) -> Option<NodeId> {
-    use_context::<CollectionContext<C>>().and_then(|group| group.roster.root())
-  }
-
   fn attach(&self, control: &ControlHandle<P>) {
     let Some(group) = use_context::<CollectionContext<C>>()
     else {
+      if C::MEMBER_NATIVE.is_some() {
+        control.register(Controller::new(
+          contents::CHECKED,
+          || CheckState::Off,
+          |_| {},
+        ));
+      }
+
       return;
     };
     let node = control.node();
@@ -510,17 +521,10 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
 
     on_cleanup(move || roster.leave(node));
 
-    if C::MEMBER_NATIVE.is_some() {
-      let group = group.clone();
-      let value = self.value.clone();
-
-      Effect::render(move |_: Option<()>| {
-        group.reasserted.track();
-
-        let chosen = group.chosen().as_deref() == Some(value.as_str());
-
-        contents::CHECKED.write::<P>(node, &CheckState::from(chosen));
-      });
+    if C::MEMBER_NATIVE.is_some()
+      && let Some(root) = group.roster.root()
+    {
+      contents::MEMBERSHIP.write::<P>(node, &Membership::new(root, Rc::from(self.value.as_str())));
     }
 
     *self.collection.borrow_mut() = Some(group);
@@ -563,26 +567,6 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     Prevent::All
   }
 
-  fn on_toggle(&self, checked: bool, _control: &ControlHandle<P>) {
-    if !checked {
-      return;
-    }
-
-    if let Some(group) = self.collection() {
-      group.choose(self.value.clone());
-    }
-  }
-
-  fn reconcile(&self, control: &ControlHandle<P>) {
-    match self.collection() {
-      Some(group) => group.reasserted.notify(),
-      None if C::MEMBER_NATIVE.is_some() => {
-        contents::CHECKED.write::<P>(control.node(), &CheckState::Off);
-      }
-      None => {}
-    }
-  }
-
   fn access(&self) -> Vec<AccessProp> {
     C::member_access(self.is_chosen())
   }
@@ -595,10 +579,6 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
   }
 
   fn state(&self) -> ControlState {
-    if let Some(group) = self.collection() {
-      group.reasserted.track();
-    }
-
     ControlState {
       checked: (C::MARKS_CHOSEN && self.is_chosen()).into(),
       ..ControlState::DEFAULT

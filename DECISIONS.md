@@ -8,6 +8,21 @@ supersedes.
 
 ## Decided against
 
+- **A radio group's choice crossing as `Choices`** (2026-10-24), the group writing
+  its members as the options of one `Choice` content beside the chosen key, as the
+  `<select>` does: a group's options are its members, each a node of its own carrying
+  its group and its key as its `Membership`, so the group's own content is the chosen
+  key alone (`Chosen`), and a copy of the members' keys in the group's value would be
+  a second path for one fact. Revisit when a platform realizes a group as one native
+  control listing its options, as a `<select>` lists them.
+- **The platform applying a refused content held whole** (2026-10-24), the verdict on
+  a checked state, a range or a choice carrying the truth for the realization to write,
+  as `Replace` carries an edit's: the repair of a value held whole is the write of the
+  value, which the controller makes already on its write path, so it repairs through
+  that path and answers `Verdict::Refuse`, and a platform reporting a toggle, a range
+  or a choice applies nothing and decides nothing, a third party's native view included.
+  Revisit when a toolkit's repair of a value held whole must be smaller than the write
+  of it.
 - **A caret move reported apart from its text** (2026-10-24), a `SelectionChange`
   report beside the edit, as the web's `selectionchange` and the terminal's moved
   selections were notified until then: a selection that meets a text it was not read
@@ -148,13 +163,6 @@ supersedes.
   the anchor where an edit around it would move the place. Revisit when the positional
   opt-in misleads more than it helps, a saved signal restoring another's value after
   an edit often enough that apps tag every one.
-- **The web re-checking a radio group's chosen radio itself** (2026-10-23), the
-  browser realization writing a group's checked states back after the browser
-  unchecked the chosen radio for one whose choice the handler refused: the chosen
-  member is a fact of the collection in the shared half, so a toggle report on one
-  member re-reads every member's state there, every platform alike, and the web keeps
-  no copy of who is chosen. Revisit when re-reading a group's members on a report shows
-  in a profile.
 - **`Unit::Utf8`** (2026-10-22), a third unit beside `Unit::CodePoint` and
   `Unit::Utf16` for the offsets a text crosses the seam in, since text-input-v3 and
   AccessKit count in bytes: a byte is the editing core's own index, and the core's
@@ -766,3 +774,11 @@ supersedes.
   margin and an inset keep their sign, and layout takes any other length below zero
   as CSS does, a size as auto, a track list as dropped, a padding, a border or a
   spacing as none. Not revisited while lengths are signed.
+- **The web re-checking a radio group's chosen radio itself, set aside for a re-read
+  of every member** (2026-10-24): since 2026-10-23 a toggle report on one member
+  re-read and rewrote every member's checked state in the shared half, so the web
+  kept no copy of who is chosen. The group's chosen key now crosses as its `Chosen`
+  content and each radio's group and key as its `Membership`, so the web applies the one
+  write of the chosen key that checks the truth's radio, a refused choice repaired by
+  that write, keeping no decision of its own, and nothing is re-read. Revisit when a
+  platform's grouping of its members cannot be told through those two contents.

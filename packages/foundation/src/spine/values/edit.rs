@@ -108,7 +108,8 @@ impl Edit {
   }
 }
 
-/// The answer to an edit a reader proposes to a controlled text entry.
+/// The answer to a change a reader proposes to a controlled content: an edit of a text
+/// entry, or a content held whole.
 ///
 /// A proposal the truth already holds is answered [`Verdict::Accept`]: it is no change.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -123,6 +124,11 @@ pub enum Verdict {
   /// grapheme clusters: an offset inside the replaced range keeps its distance into the
   /// replacement, clamped to its end).
   Replace(Edit),
+  /// The proposal does not stand, and the truth its controller wrote is shown in its
+  /// place, as a content held whole (a checked state, a range, a choice) is repaired by
+  /// the write of its truth: a toolkit that asks before applying drops the proposal and
+  /// keeps what it shows, and one that applied first shows the truth already.
+  Refuse,
 }
 
 #[cfg(test)]

@@ -36,17 +36,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use skene_dev::STATE_SCRIPT_ID;
-use skene_foundation::{
-  EventKind,
-  NodeId,
-  NodeKind,
-  Scene,
-  Size,
-  Timer,
-  View,
-  notify_change,
-  notify_toggle,
-};
+use skene_foundation::{EventKind, NodeId, NodeKind, Scene, Size, Timer, View};
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{Document, Element, HtmlElement, ResizeObserver, ResizeObserverEntry};
 
@@ -60,9 +50,9 @@ pub use self::{
   view_transition::{commit_navigation, enable_view_transitions, view_transitions_enabled},
 };
 use self::{
-  events::{Entry, Events, Listener},
+  events::{Entry, Events, Listener, report_shown},
   keep::{Kept, Mover, Saved},
-  page::{Hydration, Page, Pending},
+  page::{Hydration, Page},
   sheet::Sheet,
 };
 use super::{
@@ -443,7 +433,7 @@ impl Dom {
   /// built differently, removes it, so the page converges on the client's tree, gives
   /// each adopted element exactly the client's classes, and forgets which nodes were
   /// adopted.
-  fn finish_hydration(&mut self) -> Vec<(NodeId, Pending)> {
+  fn finish_hydration(&mut self) -> Vec<NodeId> {
     let Some(hydration) = self.realizer.sink.hydration.take()
     else {
       return Vec::new();
@@ -551,10 +541,12 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 /// resource `state` serialized alongside them.
 ///
 /// A native element whose live value or checked state differs from the serialized one
-/// reports the difference once the tree is built: a text entry's text and selection as
-/// an edit its toolkit applied, repaired in place to the truth the verdict answers with,
-/// and any other control's through its change or toggle path. Every mismatch is reported
-/// to the console and counted in [`hydration_mismatches`].
+/// is the reader's until the tree is built, every write of its content held back, and
+/// then reports what it shows as a change its toolkit applied: a text entry's text and
+/// selection as an edit, repaired in place to the truth the verdict answers with, and
+/// any other control's content, a radio's as its group's choice, repaired by its
+/// controller's write where the truth refuses it. Every mismatch is reported to the
+/// console and counted in [`hydration_mismatches`].
 ///
 /// # Panics
 ///
@@ -570,27 +562,15 @@ where
 
   let pending = with_dom(Dom::finish_hydration);
 
-  for (sink, pending) in pending {
-    let Some(node) = with_dom(|dom| dom.node(sink).map(|_| sink))
+  for node in pending {
+    let Some(carrier) = with_dom(|dom| dom.node(node).and_then(Node::carrier_element).cloned())
     else {
       continue;
     };
 
-    match pending {
-      Pending::Toggle(checked) => notify_toggle::<Web>(node, checked),
-      Pending::Change(value) => notify_change::<Web>(node, &value),
-      Pending::Edit => {
-        let entry = with_dom(|dom| {
-          dom
-            .node(node)
-            .and_then(Node::carrier_element)
-            .and_then(|element| Entry::of(element))
-        });
-
-        if let Some(entry) = entry {
-          entry.report(node);
-        }
-      }
+    match Entry::of(&carrier) {
+      Some(entry) => entry.report(node),
+      None => report_shown(node, &carrier),
     }
   }
 

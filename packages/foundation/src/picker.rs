@@ -37,7 +37,6 @@ use crate::{
   TypeAhead,
   View,
   Wraps,
-  contents,
   empty,
   realize::Source,
 };
@@ -455,9 +454,8 @@ impl<P: Realization> View<P> for BasicPicker<P> {
 }
 
 /// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
-/// and disabled setting, its options read from the option views, which attach
-/// nowhere, and written with the chosen value as one [`Choices`] content whenever
-/// either changes; the parts stay for the drawn form.
+/// and disabled setting, its choices the options read from the option views, which
+/// attach nowhere, with the chosen value; the parts stay for the drawn form.
 fn build_native<P: Realization>(
   parts: &mut Option<Parts<P>>,
   shared: &Rc<Shared<P>>,
@@ -471,29 +469,23 @@ fn build_native<P: Realization>(
   };
 
   *shared.choose.borrow_mut() = Rc::new(choose.clone());
+  shared.roster.root_at(shared.options);
 
-  let mut control = Control::<P, _>::new(NativePicker::new().handle_choose(choose));
+  let chosen = Rc::clone(&shared.chosen);
+  let roster = shared.roster.clone();
+  let picker = NativePicker::new()
+    .derive_choices(move || {
+      Choices::new(
+        Rc::from(roster.options::<P>()),
+        Some(Rc::from(chosen().unwrap_or_default())),
+      )
+    })
+    .handle_choose(choose);
+  let mut control = Control::<P, _>::new(picker);
 
   *control.box_style_mut() = (*parts.face_style).clone();
 
-  let node = parts.settings.apply(control).build();
-
-  shared.roster.root_at(shared.options);
-  Effect::render({
-    let chosen = Rc::clone(&shared.chosen);
-    let roster = shared.roster.clone();
-
-    move |_: Option<()>| {
-      let choices = Choices::new(
-        Rc::from(roster.options::<P>()),
-        Some(Rc::from(chosen().unwrap_or_default())),
-      );
-
-      contents::CHOICE.write::<P>(node, &choices);
-    }
-  });
-
-  node
+  parts.settings.apply(control).build()
 }
 
 /// Builds the drawn form: the [`Popup`] face over the [`Listbox`] in its overlay.

@@ -2,13 +2,14 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::{Effect, Signal, untrack};
+use skene_reactive::Signal;
 
 use super::{Behavior, ControlHandle, Controlled};
 use crate::{
   AccessProp,
   CheckState,
   ControlState,
+  Controller,
   EventKind,
   KeyEvent,
   NativeElement,
@@ -27,7 +28,9 @@ use crate::{
 /// [`derive_checked`](Self::derive_checked) reads, and a flip only calls
 /// [`handle_toggle`](Self::handle_toggle) with the state it asks for. With no handler
 /// nothing changes; [`bind_checked`](Self::bind_checked) wires both to one signal. The
-/// state crosses to the platform as its [`Checked`](crate::Content::Checked) content.
+/// state crosses to the platform as its [`Checked`](crate::Content::Checked) content,
+/// which a [`Controller`] holds: a flip the platform reports applied asks for the state
+/// it shows, and one the truth then refuses is undone.
 #[derive(Default)]
 #[must_use]
 pub struct Toggle {
@@ -42,14 +45,13 @@ impl std::fmt::Debug for Toggle {
 }
 
 impl Toggle {
-  /// The events a checkbox acts on: a click, the keys that flip it, the blur that
-  /// disarms a `Space` press, and the platform's own toggle.
+  /// The events a checkbox acts on: a click, the keys that flip it and the blur that
+  /// disarms a `Space` press.
   const EVENTS: &'static [EventKind] = &[
     EventKind::Click,
     EventKind::KeyDown,
     EventKind::KeyUp,
     EventKind::Blur,
-    EventKind::Toggle,
   ];
 
   /// An unchecked checkbox with no handler.
@@ -130,12 +132,14 @@ impl<P: Realization> Behavior<P> for Toggle {
   }
 
   fn attach(&self, control: &ControlHandle<P>) {
-    let node = control.node();
     let checked = self.reads_checked();
+    let asks = self.checked.clone();
 
-    Effect::render(move |_: Option<()>| {
-      contents::CHECKED.write::<P>(node, &CheckState::from(checked()));
-    });
+    control.register(Controller::new(
+      contents::CHECKED,
+      move || CheckState::from(checked()),
+      move |next| asks.ask(*next == CheckState::On),
+    ));
   }
 
   fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
@@ -171,16 +175,6 @@ impl<P: Realization> Behavior<P> for Toggle {
     self.armed.set(false);
   }
 
-  fn on_toggle(&self, checked: bool, _control: &ControlHandle<P>) {
-    self.ask(checked);
-  }
-
-  fn reconcile(&self, control: &ControlHandle<P>) {
-    let checked = untrack(|| self.read());
-
-    contents::CHECKED.write::<P>(control.node(), &checked.into());
-  }
-
   fn access(&self) -> Vec<AccessProp> {
     vec![AccessProp::Checked(self.read().into())]
   }
@@ -198,8 +192,8 @@ mod tests {
   use super::Toggle;
   use crate::EventKind;
 
-  /// A checkbox listens to the click, the keys, the blur and the platform's toggle it
-  /// acts on, and nothing else.
+  /// A checkbox listens to the click, the keys and the blur it acts on, and nothing
+  /// else; the platform's own flip is a report of its content.
   #[test]
   fn a_checkbox_listens_to_what_flips_it() {
     assert_eq!(
@@ -209,7 +203,6 @@ mod tests {
         EventKind::KeyDown,
         EventKind::KeyUp,
         EventKind::Blur,
-        EventKind::Toggle,
       ]
     );
   }

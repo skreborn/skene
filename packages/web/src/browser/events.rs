@@ -9,11 +9,14 @@
 //! press and the behavior, whose flip the platform performed, is skipped. The only
 //! per-node listener is a `<dialog>`'s `cancel`.
 
-use std::{cell::Cell, rc::Rc, str::FromStr};
+use std::{cell::Cell, rc::Rc, str::FromStr, time::Duration};
 
 use rustc_hash::FxHashMap;
 use skene_foundation::{
   Axes,
+  CheckState,
+  ChoiceOption,
+  Choices,
   ClickEvent,
   Code,
   Content,
@@ -26,6 +29,7 @@ use skene_foundation::{
   Modifiers,
   NamedKey,
   NodeId,
+  NodeRecord,
   PointerButton,
   PointerButtons,
   PointerEvent,
@@ -33,6 +37,8 @@ use skene_foundation::{
   PointerInfo,
   PointerType,
   Prevented,
+  Range,
+  Realization,
   Report,
   Scene,
   ScrollEvent,
@@ -54,12 +60,10 @@ use skene_foundation::{
   drop_drag,
   end_drag,
   move_drag,
-  notify_change,
   notify_dismiss,
   notify_focus_moved,
   notify_pointer_moved,
   notify_scroll,
-  notify_toggle,
   report,
   start_drag,
   text::{Round, TextIndex},
@@ -70,6 +74,7 @@ use web_sys::{
   Element,
   EventTarget,
   HtmlInputElement,
+  HtmlOptionElement,
   HtmlSelectElement,
   HtmlTextAreaElement,
   InputEvent,
@@ -217,10 +222,10 @@ impl Events {
       EventKind::Blur => &["focusout"],
       EventKind::Wheel => &["wheel"],
       EventKind::Scroll => &["scroll"],
-      EventKind::Change => &["input"],
       EventKind::Report(Content::Edit) => &["input", "compositionend", "selectionchange"],
+      EventKind::Report(Content::Checked | Content::Chosen) => &["change"],
+      EventKind::Report(Content::Range | Content::Choice) => &["input"],
       EventKind::Report(_) => &[],
-      EventKind::Toggle => &["change"],
       EventKind::Dismiss => &["click", "keydown", "pointerdown"],
       EventKind::ContextMenu => &["contextmenu"],
       EventKind::DragStart => &["dragstart", "dragend"],
@@ -394,6 +399,18 @@ fn on_click(event: &web_sys::Event) {
     // never reaches the platform, whose flip `change` reports.
     if toggle_input(event).is_some() {
       let _ = dispatch_click_observed::<Web>(node, &click_event(event));
+      // A cancelled click's flip is restored once its dispatch ends, over whatever its
+      // handlers wrote, so the toggles it touched show the scene's state again after.
+      let event = event.clone();
+
+      let _ = Web::schedule(
+        Duration::ZERO,
+        Box::new(move || {
+          if event.default_prevented() {
+            show_scene_checked(node);
+          }
+        }),
+      );
     }
 
     return;
@@ -916,9 +933,132 @@ fn toggle_input(event: &web_sys::Event) -> Option<HtmlInputElement> {
     .filter(|input| matches!(input.type_().as_str(), "checkbox" | "radio"))
 }
 
+/// Writes the checked state the scene holds on the native toggle of `node` and, where it
+/// is a member of a group, on every member's.
+fn show_scene_checked(node: NodeId) {
+  let shown: Vec<(web_sys::Node, NodeId)> = with_dom(|dom| {
+    let group = dom.node(node).and_then(|record| match &record.realized {
+      Realized::Control {
+        membership: Some(membership),
+        ..
+      } => Some(membership.group),
+      _ => None,
+    });
+
+    match group {
+      Some(group) => dom
+        .realizer
+        .records
+        .iter()
+        .filter(|(_, record)| {
+          matches!(&record.realized, Realized::Control {
+            membership: Some(membership),
+            ..
+          } if membership.group == group)
+        })
+        .map(|(member, record)| (record.carrier().clone(), member))
+        .collect(),
+      None => dom
+        .node(node)
+        .map(|record| vec![(record.carrier().clone(), node)])
+        .unwrap_or_default(),
+    }
+  });
+
+  for (carrier, member) in shown {
+    let checked = Scene::<Web>::read(|scene| {
+      scene
+        .record(member)
+        .and_then(NodeRecord::control_state)
+        .map(|state| state.checked)
+    });
+
+    if let (Some(input), Some(checked)) = (carrier.dyn_ref::<HtmlInputElement>(), checked) {
+      input.set_checked(checked == CheckState::On);
+    }
+  }
+}
+
+/// What the native control `element` of `node` shows, reported as the reader's change
+/// its toolkit applied: a checkbox's checked state, a checked radio's choice at its
+/// group's node, a lone radio's checked state, a range's value with its bounds, a
+/// `<select>`'s choice among its options. The controller repairs what it refuses.
+pub(super) fn report_shown(node: NodeId, element: &Element) {
+  let applied = |at: NodeId, proposed: ContentValue<'_>| {
+    let _ = report::<Web>(
+      at,
+      Report::Change {
+        content: proposed.content(),
+        proposed,
+        applied: true,
+      },
+    );
+  };
+
+  if let Some(select) = element.dyn_ref::<HtmlSelectElement>() {
+    return applied(node, ContentValue::Choice(&shown_choices(select)));
+  }
+
+  let Some(input) = element.dyn_ref::<HtmlInputElement>()
+  else {
+    return;
+  };
+  let checked = CheckState::from(input.checked());
+
+  match input.type_().as_str() {
+    "checkbox" => applied(node, ContentValue::Checked(checked)),
+    "radio" => {
+      let membership = with_dom(|dom| match &dom.node(node)?.realized {
+        Realized::Control { membership, .. } => membership.clone(),
+        _ => None,
+      });
+
+      match membership {
+        Some(membership) if input.checked() => applied(
+          membership.group,
+          ContentValue::Chosen(Some(&membership.key)),
+        ),
+        Some(_) => {}
+        None => applied(node, ContentValue::Checked(checked)),
+      }
+    }
+    "range" => applied(node, ContentValue::Range(&shown_range(input))),
+    _ => {}
+  }
+}
+
+/// The value a range `input` shows, with the bounds and the step it carries; a step of
+/// `any` is continuous.
+fn shown_range(input: &HtmlInputElement) -> Range {
+  let number = |name: &str| {
+    input
+      .get_attribute(name)
+      .and_then(|value| value.parse::<f32>().ok())
+  };
+
+  Range::new(
+    input.value().parse().unwrap_or_default(),
+    number("min").unwrap_or(0.),
+    number("max").unwrap_or(100.),
+    number("step").unwrap_or(0.),
+  )
+}
+
+/// The options a `<select>` shows, with the one chosen; none where nothing is selected.
+fn shown_choices(select: &HtmlSelectElement) -> Choices {
+  let shown = select.options();
+  let options: Vec<ChoiceOption> = (0..shown.length())
+    .filter_map(|index| shown.item(index)?.dyn_into::<HtmlOptionElement>().ok())
+    .map(|option| ChoiceOption::new(option.value(), option.text()).set_disabled(option.disabled()))
+    .collect();
+  let chosen = (select.selected_index() >= 0).then(|| Rc::from(select.value()));
+
+  Choices::new(Rc::from(options), chosen)
+}
+
 /// A text entry's edit reported at its node as one its toolkit applied, an input method
 /// composing in it noted first, and repaired to the truth the verdict answers with; any
-/// other control's new value reported as a change.
+/// other control's value reported as what it shows.
 fn on_input(event: &web_sys::Event) {
   if toggle_input(event).is_some() {
     return;
@@ -945,18 +1085,9 @@ fn on_input(event: &web_sys::Event) {
     return;
   }
 
-  let value = if let Some(input) = target.dyn_ref::<HtmlInputElement>() {
-    input.value()
-  }
-  else if let Some(select) = target.dyn_ref::<HtmlSelectElement>() {
-    select.value()
-  }
-  else {
-    return;
-  };
-
-  if let Some(node) = node_at(Some(target)) {
-    notify_change::<Web>(node, &value);
+  if let (Some(element), Some(node)) = (target.dyn_ref::<Element>(), node_at(Some(target.clone())))
+  {
+    report_shown(node, element);
   }
 }
 
@@ -1167,6 +1298,7 @@ impl Entry {
   }
 }
 
+/// A native toggle's flip, reported as what it shows.
 fn on_change(event: &web_sys::Event) {
   let Some(input) = toggle_input(event)
   else {
@@ -1174,6 +1306,6 @@ fn on_change(event: &web_sys::Event) {
   };
 
   if let Some(node) = node_at(Some(input.clone().into())) {
-    notify_toggle::<Web>(node, input.checked());
+    report_shown(node, &input);
   }
 }

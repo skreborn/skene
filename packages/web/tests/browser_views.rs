@@ -1399,6 +1399,161 @@ fn a_rejected_toggle_is_undone_on_the_platform() {
   assert!(!input.checked(), "the rejected toggle is undone");
 }
 
+/// A slider's native `input` reports the value it shows: one the handler takes is
+/// accepted and left shown, and one it refuses is undone on the `<input>` inside the
+/// event.
+#[wasm_bindgen_test]
+fn a_sliders_native_value_is_answered_and_a_refused_one_undone() {
+  let (_guard, root) = fresh_root();
+  let bound = Signal::new(50.0f32);
+  let asked = Rc::new(RefCell::new(Vec::new()));
+
+  let _ = mount({
+    let asked = Rc::clone(&asked);
+
+    move || {
+      Column::new()
+        .set_children([
+          BasicSlider::new(Slider::new().bind_value(bound)),
+          BasicSlider::new(
+            Slider::new()
+              .set_value(20.)
+              .handle_change(move |value| asked.borrow_mut().push(value)),
+          ),
+        ])
+        .build()
+    }
+  });
+
+  let inputs = root
+    .query_selector_all("input[type=range]")
+    .expect("query the ranges");
+  let input = |index: u32| -> HtmlInputElement {
+    inputs
+      .item(index)
+      .and_then(|node| node.dyn_into().ok())
+      .expect("a range")
+  };
+
+  input(0).set_value("70");
+  dispatch(&input(0), "input");
+  web::end_turn();
+
+  assert!(
+    (bound.get() - 70.).abs() < f32::EPSILON,
+    "the value is taken"
+  );
+  assert_eq!(input(0).value(), "70");
+
+  input(1).set_value("30");
+  dispatch(&input(1), "input");
+
+  assert_eq!(*asked.borrow(), [30.], "the value is asked for");
+  assert_eq!(input(1).value(), "20", "and undone inside the event");
+
+  web::end_turn();
+
+  assert_eq!(input(1).value(), "20");
+}
+
+/// A radio choice the handler answers with another key is repaired by one write of the
+/// group's chosen key: exactly the truth's radio is checked, neither the one the reader
+/// chose nor the one chosen before.
+#[wasm_bindgen_test]
+fn a_refused_radio_choice_checks_exactly_the_truths_radio() {
+  let (_guard, root) = fresh_root();
+  let chosen: Signal<Option<String>> = Signal::new(Some(String::from("mint")));
+  let asked = Rc::new(RefCell::new(Vec::new()));
+
+  let _ = mount({
+    let asked = Rc::clone(&asked);
+
+    move || {
+      BasicRadioGroup::new(
+        RadioGroup::new()
+          .derive_chosen(move || chosen.get())
+          .handle_choose(move |value| {
+            asked.borrow_mut().push(value);
+            chosen.set(Some(String::from("plum")));
+          }),
+      )
+      .set_child(
+        Column::new()
+          .set_children(["mint", "fig", "plum"].map(|flavor| BasicRadio::new(Radio::new(flavor)))),
+      )
+      .build()
+    }
+  });
+
+  let radios = root
+    .query_selector_all("input[type=radio]")
+    .expect("query the radios");
+  let checked = || {
+    (0..radios.length())
+      .filter_map(|index| radios.item(index)?.dyn_into::<HtmlInputElement>().ok())
+      .map(|radio| radio.checked())
+      .collect::<Vec<_>>()
+  };
+  let radio = |index: u32| -> HtmlInputElement {
+    radios
+      .item(index)
+      .and_then(|node| node.dyn_into().ok())
+      .expect("a radio")
+  };
+
+  assert_eq!(checked(), [true, false, false]);
+
+  radio(1).click();
+
+  assert_eq!(*asked.borrow(), ["fig"], "the choice was asked for");
+  assert_eq!(
+    checked(),
+    [false, false, true],
+    "the truth's radio alone, inside the event"
+  );
+
+  web::end_turn();
+
+  assert_eq!(checked(), [false, false, true]);
+  assert_eq!(chosen.get().as_deref(), Some("plum"));
+}
+
+/// A click on a native toggle that something cancels has its flip restored by the
+/// browser once the dispatch ends, over the truth its handlers wrote; the checkbox then
+/// shows the truth again.
+#[wasm_bindgen_test]
+async fn a_cancelled_click_shows_the_truth_its_handlers_wrote() {
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+
+  let _ = mount(move || {
+    BasicCheckbox::new(Toggle::new().bind_checked(checked))
+      .handle_activate(move || checked.set(true))
+      .build()
+  });
+
+  let input = input_of(&root);
+  let cancel = Closure::<dyn Fn(web_sys::Event)>::new(|event: web_sys::Event| {
+    event.prevent_default();
+  });
+  let window = web_sys::window().expect("a window");
+
+  window
+    .add_event_listener_with_callback("click", cancel.as_ref().unchecked_ref())
+    .expect("listen for the click");
+  input.click();
+  window
+    .remove_event_listener_with_callback("click", cancel.as_ref().unchecked_ref())
+    .expect("stop listening");
+
+  assert!(checked.get(), "the handler wrote the truth");
+  assert!(!input.checked(), "the browser restored the cancelled flip");
+  assert!(
+    frames_until(|| input.checked()).await,
+    "the checkbox shows the truth again"
+  );
+}
+
 /// A key an input method is composing leaves the behavior alone and its default to the
 /// platform; the same key composed acts.
 #[wasm_bindgen_test]

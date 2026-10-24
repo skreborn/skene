@@ -56,7 +56,7 @@ use crate::{
   ContainerName,
   ControlFacts,
   ControlState,
-  Controller,
+  Controls,
   DeclaredBoxStyle,
   DecorationBase,
   DragAxes,
@@ -184,13 +184,6 @@ pub trait Behavior<P: Realization>: 'static {
     }
   }
 
-  /// The collection whose members the platform groups as one, where the control is a
-  /// member of one; `None`, the default, for a control no group holds.
-  #[inline(always)]
-  fn group(&self) -> Option<NodeId> {
-    None
-  }
-
   /// Runs once the control's node exists and its reports have been read, before its
   /// parts and child build, under the control's owner: what a behavior binds to the
   /// node, provides to its subtree or joins goes here, and a content it controls is
@@ -244,20 +237,6 @@ pub trait Behavior<P: Realization>: 'static {
   ) -> Prevent {
     Prevent::None
   }
-
-  /// What the behavior does when the platform reports a new textual value.
-  #[inline(always)]
-  fn on_change(&self, _value: &str, _control: &ControlHandle<P>) {}
-
-  /// What the behavior does when the platform reports a new checked state.
-  #[inline(always)]
-  fn on_toggle(&self, _checked: bool, _control: &ControlHandle<P>) {}
-
-  /// Writes what the behavior holds back to the platform after a report of a change
-  /// the platform made itself, so the platform shows it whatever the report's handler
-  /// did; the control's state and accessibility are re-read beside it.
-  #[inline(always)]
-  fn reconcile(&self, _control: &ControlHandle<P>) {}
 
   /// What the control reports to assistive technology, beside its role.
   #[inline(always)]
@@ -348,8 +327,9 @@ impl<P: Realization> ControlHandle<P> {
 
   /// Registers `controller` for the control's content: the truth it reads is written to
   /// the platform, and a reader's change of the content is answered by it, with the
-  /// truth alone while the control is disabled; see [`Controller`].
-  pub fn register(&self, controller: Controller) {
+  /// truth alone while the control is disabled; see [`Controller`](crate::Controller)
+  /// and [`EditController`](crate::EditController).
+  pub fn register(&self, controller: impl Controls) {
     let disabled = Rc::clone(&self.disabled);
 
     controller
@@ -838,7 +818,6 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
             label: name.as_ref().map(|name| untrack(|| name())),
             lines,
             label_beside: placement == LabelPlacement::Beside,
-            group: behavior.group(),
           })
         },
         |_, _, _| {},
@@ -1080,17 +1059,6 @@ impl<P: Realization, B: Behavior<P>> Clone for Actor<P, B> {
 }
 
 impl<P: Realization, B: Behavior<P>> Actor<P, B> {
-  /// Runs `report`, the behavior hearing a change the platform made itself, unless the
-  /// control is disabled, then reconciles the platform with what the behavior holds.
-  fn report(&self, report: impl FnOnce(&B, &ControlHandle<P>)) {
-    if !(self.disabled)() {
-      report(&self.behavior, &self.handle);
-    }
-
-    self.handle.refresh();
-    self.behavior.reconcile(&self.handle);
-  }
-
   /// The behavior's handler for an event of `kind`, `None` for a kind no behavior
   /// acts on: a disabled control answers without acting, and a key an input method is
   /// composing never reaches the behavior.
@@ -1132,20 +1100,6 @@ impl<P: Realization, B: Behavior<P>> Actor<P, B> {
       EventKind::Wheel => Handler::Wheel(self.act(kind, |behavior, event: &WheelEvent, handle| {
         behavior.on_wheel(event, handle)
       })),
-      EventKind::Change => {
-        let actor = self.clone();
-
-        Handler::Change(Rc::new(move |value: &str| {
-          actor.report(|behavior, handle| behavior.on_change(value, handle));
-        }))
-      }
-      EventKind::Toggle => {
-        let actor = self.clone();
-
-        Handler::Toggle(Rc::new(move |checked: bool| {
-          actor.report(|behavior, handle| behavior.on_toggle(checked, handle));
-        }))
-      }
       EventKind::Blur => {
         let actor = self.clone();
 

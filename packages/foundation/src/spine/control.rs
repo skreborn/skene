@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 use super::{BoxFacts, State};
-use crate::spine::{CheckState, NodeId, Role};
+use crate::spine::{CheckState, Role};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
 /// conditions of the control and everything inside it resolve against.
@@ -122,9 +122,6 @@ pub struct ControlFacts {
   /// Whether the control's [`Part::Label`] sits before its box among its siblings,
   /// answering to the control, rather than inside it.
   pub label_beside: bool,
-  /// The collection whose members the platform groups as one, as a radio group's
-  /// choices; `None` for a control no group holds.
-  pub group: Option<NodeId>,
 }
 
 /// A styling target a control exposes: the node a part is recorded on is that part of

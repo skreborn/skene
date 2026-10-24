@@ -315,9 +315,8 @@ pub(crate) fn range_attributes(range: &Range) -> [(&'static str, String); 4] {
   ]
 }
 
-/// The attributes a control's native element carries: its `type`, the `name` a radio
-/// shares with its group's other radios, the lines of a text editor, and the accessible
-/// name when nothing visible supplies one.
+/// The attributes a control's native element carries: its `type`, the lines of a text
+/// editor, and the accessible name when nothing visible supplies one.
 pub(crate) fn native_attributes(
   native: FormElement,
   control: &ControlFacts,
@@ -326,10 +325,6 @@ pub(crate) fn native_attributes(
 
   if let Some(kind) = native.kind {
     attributes.push(("type", kind.to_owned()));
-  }
-
-  if let (Some("radio"), Some(group)) = (native.kind, control.group) {
-    attributes.push(("name", element_id(group)));
   }
 
   if native.tag == "textarea" {

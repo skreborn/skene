@@ -1,14 +1,24 @@
 //! What a node shows that a view writes as one typed value: its text, an entry's text
 //! with its selection, a toggle's checked state, a range's value within its bounds, a
-//! choice's options with the chosen one, a link's destination, an entry's placeholder,
-//! an overlay's placement. A content a behavior controls is answered by its
-//! [`Controller`] when a reader changes it.
+//! choice's options with the chosen one, a group's chosen key and a member's place in
+//! its group, a link's destination, an entry's placeholder, an overlay's placement. A
+//! content a behavior controls is answered by its [`Controller`], or an entry's by its
+//! [`EditController`], when a reader changes it.
 
 #[cfg(debug_assertions)]
 use std::cell::Ref;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 
-pub use self::report::{Asked, Controller, EditTruth, Report, report};
+pub use self::report::{
+  Asked,
+  Controllable,
+  Controller,
+  Controls,
+  EditController,
+  EditTruth,
+  Report,
+  report,
+};
 use crate::spine::{CheckState, Edit, NodeId, NodeKind, Placement, Point, Realization};
 #[cfg(debug_assertions)]
 use crate::spine::{NodeRecord, Scene};
@@ -29,6 +39,10 @@ pub enum Content {
   Range,
   /// A choice's options with the chosen one.
   Choice,
+  /// The key of the member a group has chosen, or none.
+  Chosen,
+  /// The group a member belongs to, with its key there.
+  Membership,
   /// The path a link navigates to when followed.
   Destination,
   /// The hint a text entry shows while its value is empty.
@@ -49,6 +63,8 @@ impl NodeKind {
         Content::Checked,
         Content::Range,
         Content::Choice,
+        Content::Chosen,
+        Content::Membership,
         Content::Placeholder,
       ],
       Self::Overlay => &[Content::Placement],
@@ -72,6 +88,10 @@ pub enum ContentValue<'a> {
   Range(&'a Range),
   /// A choice's options with the chosen one.
   Choice(&'a Choices),
+  /// The key of the member a group has chosen, or none.
+  Chosen(Option<&'a str>),
+  /// The group a member belongs to, with its key there.
+  Membership(&'a Membership),
   /// The path a link navigates to when followed.
   Destination(&'a str),
   /// The hint a text entry shows while its value is empty.
@@ -90,6 +110,8 @@ impl ContentValue<'_> {
       Self::Checked(_) => Content::Checked,
       Self::Range(_) => Content::Range,
       Self::Choice(_) => Content::Choice,
+      Self::Chosen(_) => Content::Chosen,
+      Self::Membership(_) => Content::Membership,
       Self::Destination(_) => Content::Destination,
       Self::Placeholder(_) => Content::Placeholder,
       Self::Placement(_) => Content::Placement,
@@ -100,7 +122,7 @@ impl ContentValue<'_> {
 /// A value a content holds: what a view writes through a [`ContentKey`] of its type.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a value a node's content holds",
-  label = "a content holds a text, an edit, a checked state, a range, choices or an overlay's placement",
+  label = "a content holds a text, an edit, a checked state, a range, choices, a chosen key, a membership or an overlay's placement",
   note = "write a content through its key in `contents`, with the value of the key's type"
 )]
 pub trait ContentType: Clone + PartialEq + Debug + 'static {}
@@ -114,6 +136,10 @@ impl ContentType for CheckState {}
 impl ContentType for Range {}
 
 impl ContentType for Choices {}
+
+impl ContentType for Option<Rc<str>> {}
+
+impl ContentType for Membership {}
 
 impl ContentType for OverlayPlacement {}
 
@@ -326,6 +352,26 @@ impl Choices {
   }
 }
 
+/// The group a member belongs to, with the key it goes by there, as one value: a radio
+/// carries it, and its group's [`Chosen`](Content::Chosen) key checks the member whose
+/// key it is.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct Membership {
+  /// The group's node.
+  pub group: NodeId,
+  /// The key the member goes by in its group.
+  pub key: Rc<str>,
+}
+
+impl Membership {
+  /// The member of `group` going by `key`.
+  #[inline(always)]
+  pub const fn new(group: NodeId, key: Rc<str>) -> Self {
+    Self { group, key }
+  }
+}
+
 /// Where an overlay sits, or the point it is pinned at, as one value: a pinned overlay
 /// ignores its placement and its anchor.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -354,7 +400,7 @@ impl OverlayPlacement {
 pub mod contents {
   use std::rc::Rc;
 
-  use super::{Choices, Content, ContentKey, ContentValue, OverlayPlacement, Range};
+  use super::{Choices, Content, ContentKey, ContentValue, Membership, OverlayPlacement, Range};
   use crate::spine::{CheckState, Edit};
 
   /// A run's text.
@@ -402,6 +448,24 @@ pub mod contents {
       _ => None,
     },
   );
+  /// The key of the member a group has chosen, or none.
+  pub const CHOSEN: ContentKey<Option<Rc<str>>> = ContentKey::new(
+    Content::Chosen,
+    |chosen| ContentValue::Chosen(chosen.as_deref()),
+    |value| match value {
+      ContentValue::Chosen(chosen) => Some(chosen.map(Rc::from)),
+      _ => None,
+    },
+  );
+  /// The group a member belongs to, with its key there.
+  pub const MEMBERSHIP: ContentKey<Membership> = ContentKey::new(
+    Content::Membership,
+    |membership| ContentValue::Membership(membership),
+    |value| match value {
+      ContentValue::Membership(membership) => Some(membership.clone()),
+      _ => None,
+    },
+  );
   /// The path a box or a run that is a link navigates to when followed.
   pub const DESTINATION: ContentKey<Rc<str>> = ContentKey::new(
     Content::Destination,
@@ -435,8 +499,17 @@ pub mod contents {
 mod tests {
   use std::rc::Rc;
 
-  use super::{ChoiceOption, Choices, Content, ContentValue, OverlayPlacement, Range, contents};
-  use crate::spine::{CheckState, Edit, NodeKind, Placement, Point};
+  use super::{
+    ChoiceOption,
+    Choices,
+    Content,
+    ContentValue,
+    Membership,
+    OverlayPlacement,
+    Range,
+    contents,
+  };
+  use crate::spine::{CheckState, Edit, NodeId, NodeKind, Placement, Point};
 
   /// A control takes every control content, a run its text and its destination, a box
   /// its destination, an overlay its placement, and the layout-invisible nodes none.
@@ -454,6 +527,8 @@ mod tests {
         Content::Checked,
         Content::Range,
         Content::Choice,
+        Content::Chosen,
+        Content::Membership,
         Content::Placeholder,
       ]
     );
@@ -500,12 +575,27 @@ mod tests {
       ContentValue::Placement(pinned)
     );
 
+    let chosen = Some(Rc::from("m"));
+    let membership = Membership::new(NodeId::new(3, 1), Rc::from("m"));
+
+    assert_eq!(
+      contents::CHOSEN.erase(&chosen),
+      ContentValue::Chosen(Some("m"))
+    );
+    assert_eq!(contents::CHOSEN.erase(&None), ContentValue::Chosen(None));
+    assert_eq!(
+      contents::MEMBERSHIP.erase(&membership),
+      ContentValue::Membership(&membership)
+    );
+
     for (key, content) in [
       (contents::TEXT.content(), Content::Text),
       (contents::EDIT.content(), Content::Edit),
       (contents::CHECKED.content(), Content::Checked),
       (contents::RANGE.content(), Content::Range),
       (contents::CHOICE.content(), Content::Choice),
+      (contents::CHOSEN.content(), Content::Chosen),
+      (contents::MEMBERSHIP.content(), Content::Membership),
       (contents::DESTINATION.content(), Content::Destination),
       (contents::PLACEHOLDER.content(), Content::Placeholder),
       (contents::PLACEMENT.content(), Content::Placement),

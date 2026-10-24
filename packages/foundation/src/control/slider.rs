@@ -2,12 +2,13 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::{Effect, Signal};
+use skene_reactive::Signal;
 
 use super::{Behavior, ControlHandle, Controlled, PointerPhase};
 use crate::{
   AccessProp,
   Axis,
+  Controller,
   DragAxes,
   EventKind,
   Key,
@@ -43,7 +44,9 @@ use crate::{
 /// it asks for; [`bind_value`](Self::bind_value) wires both to one signal. A
 /// non-positive step leaves the range continuous, and an arrow then moves by a
 /// hundredth of the span. The value crosses to the platform with the range as one
-/// [`Range`](crate::Range) content.
+/// [`Range`](crate::Range) content, which a [`Controller`] holds: a value the platform
+/// reports applied, as its native input's, asks for that value, and one the truth then
+/// refuses is undone.
 #[must_use]
 pub struct Slider {
   range: Source<SliderRange>,
@@ -244,16 +247,18 @@ impl<P: Realization> Behavior<P> for Slider {
   }
 
   fn attach(&self, control: &ControlHandle<P>) {
-    let node = control.node();
     let range = self.range.clone();
-    let value = self.value.clone();
+    let (value, asks) = (self.value.clone(), self.value.clone());
 
-    Effect::render(move |_: Option<()>| {
-      let range = range.get();
-      let value = value.read().unwrap_or_else(|| range.min());
+    control.register(Controller::new(
+      contents::RANGE,
+      move || {
+        let range = range.get();
 
-      contents::RANGE.write::<P>(node, &range.with_value(value));
-    });
+        range.with_value(value.read().unwrap_or_else(|| range.min()))
+      },
+      move |proposed| asks.ask(proposed.value),
+    ));
   }
 
   fn mounted(&self, control: &ControlHandle<P>) {

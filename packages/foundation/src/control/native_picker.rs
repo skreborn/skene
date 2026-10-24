@@ -3,19 +3,20 @@
 use std::rc::Rc;
 
 use super::{Behavior, ControlHandle};
-use crate::{EventKind, NativeElement, Realization, Role};
+use crate::{Choices, Controller, EventKind, NativeElement, Realization, Role, contents};
 
 /// A picker the platform draws and lists itself: the scriptless form of a
 /// [`BasicPicker`](crate::BasicPicker), realized as the platform's own choice control
 /// where it has one.
 ///
-/// The options are written to the platform with the chosen value as one
-/// [`Choices`](crate::Choices) content by whoever builds the control, from the
-/// [`Roster`](super::Roster) the option controls join; the platform's choice arrives
-/// as a change and only calls [`handle_choose`](Self::handle_choose), so the bound
-/// value stays the truth.
+/// Controlled: the options and the chosen key it shows are what
+/// [`derive_choices`](Self::derive_choices) reads, written to the platform as one
+/// [`Choices`] content a [`Controller`] holds, and the platform's choice only calls
+/// [`handle_choose`](Self::handle_choose) with the key it asks for, a choice the truth
+/// then refuses being undone. A picker deriving no choices controls nothing.
 #[must_use]
 pub struct NativePicker {
+  choices: Option<Rc<dyn Fn() -> Choices>>,
   on_change: Option<Rc<dyn Fn(String)>>,
 }
 
@@ -28,13 +29,23 @@ impl std::fmt::Debug for NativePicker {
 }
 
 impl NativePicker {
-  /// A picker with no handler.
+  /// A picker with no choices and no handler.
   #[inline(always)]
   pub const fn new() -> Self {
-    Self { on_change: None }
+    Self {
+      choices: None,
+      on_change: None,
+    }
   }
 
-  /// Runs `action` with the value the platform's choice asks for.
+  /// Derives the options and the chosen key from the signals `choices` reads.
+  pub fn derive_choices(mut self, choices: impl Fn() -> Choices + 'static) -> Self {
+    self.choices = Some(Rc::new(choices));
+
+    self
+  }
+
+  /// Runs `action` with the key the platform's choice asks for.
   pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
     self.on_change = Some(Rc::new(action));
 
@@ -62,12 +73,24 @@ impl<P: Realization> Behavior<P> for NativePicker {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[EventKind::Change]
+    &[]
   }
 
-  fn on_change(&self, value: &str, _control: &ControlHandle<P>) {
-    if let Some(action) = &self.on_change {
-      action(value.to_owned());
-    }
+  fn attach(&self, control: &ControlHandle<P>) {
+    let Some(choices) = self.choices.clone()
+    else {
+      return;
+    };
+    let on_change = self.on_change.clone();
+
+    control.register(Controller::new(
+      contents::CHOICE,
+      move || choices(),
+      move |proposed: &Choices| {
+        if let (Some(action), Some(chosen)) = (&on_change, &proposed.chosen) {
+          action(chosen.to_string());
+        }
+      },
+    ));
   }
 }

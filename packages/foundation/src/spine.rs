@@ -74,8 +74,12 @@ pub use content::{
   ContentKey,
   ContentType,
   ContentValue,
+  Controllable,
   Controller,
+  Controls,
+  EditController,
   EditTruth,
+  Membership,
   OverlayPlacement,
   Range,
   Report,
@@ -96,12 +100,10 @@ pub use dispatch::{
   dispatch_pointer_move,
   dispatch_pointer_up,
   dispatch_wheel,
-  notify_change,
   notify_dismiss,
   notify_focus_moved,
   notify_pointer_moved,
   notify_scroll,
-  notify_toggle,
 };
 pub use drag::{
   DragData,
@@ -135,15 +137,7 @@ pub use events::{
 pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
 pub use extension::{NoProperty, NoValue, StyleExtension};
 pub use fingerprint::Fingerprint;
-pub use handler::{
-  ChangeHandler,
-  Handler,
-  PlainHandler,
-  Registered,
-  ReportHandler,
-  ScrollHandler,
-  ToggleHandler,
-};
+pub use handler::{Handler, PlainHandler, Registered, ReportHandler, ScrollHandler};
 pub use keyboard_types::{Code, Key, NamedKey};
 pub use keyed::Keyed;
 pub use leaf::{

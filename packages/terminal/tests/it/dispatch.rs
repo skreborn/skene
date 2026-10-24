@@ -13,8 +13,8 @@ use skene_foundation::{
   Content,
   ContentValue,
   ControlHandle,
-  Controller,
   Edit,
+  EditController,
   EditTruth,
   EventKind,
   Handler,
@@ -319,7 +319,7 @@ impl Behavior<Terminal> for Noted {
   fn attach(&self, control: &ControlHandle<Terminal>) {
     let (truth, asked) = (self.truth, Rc::clone(&self.asked));
 
-    control.register(Controller::new(
+    control.register(EditController::new(
       move || EditTruth::new(Some(Rc::from(truth.get())), None),
       move |change| {
         if let Some(text) = &change.text {

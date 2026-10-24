@@ -138,8 +138,9 @@ over node ids:
   `destroy`, releasing a made node's record.
 - **Write contents** through one call, `write`, which reports nothing: what a node
   shows that a view writes is one typed value (`Content`: a run's `Text`, an entry's
-  `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`, a link's
-  `Destination`, an entry's `Placeholder`, an overlay's `Placement`), written through
+  `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`, a group's
+  `Chosen` key, a member's `Membership` of its group, a link's `Destination`, an
+  entry's `Placeholder`, an overlay's `Placement`), written through
   its key in `contents` (`contents::RANGE.write::<P>(node, &range)`), the key typed by
   its value so a value of another type does not compile, and erased into a borrowed
   `ContentValue` the realization dispatches on. A value constrained by another crosses
@@ -153,9 +154,9 @@ over node ids:
   overlay's margins against the viewport from its first placement. A box's
   `set_destination`, a run's `set_link` and an entry's `set_placeholder` each have their
   `derive_` twin. What an entry shows is read back through `read` (its `Edit`,
-  where the platform keeps one), and `composing` says whether its text is still the
-  reader's, as while an input method composes; a controlled content's `Controller`
-  reads both.
+  where the platform keeps one), and `composing` says whether what a control shows is
+  still the reader's, as while an input method composes or before the client adopted
+  a changed control; a controlled content's controller reads both.
 - **The rest**: register event kinds, focus, observe sizes, report media, schedule on
   the clock, route, and reach the clipboard.
 
@@ -210,9 +211,13 @@ toolkit's keeps the default, which does nothing.
   the scene holds, which every platform moves.
 - **Reports are the spine's too.** A reader's change of a content a node controls
   (`report`, a `Report::Change` saying whether the toolkit applied it) is answered by
-  the node's own `Controller` alone, with no climb: one controller per content, holding
-  the echo rule, the skip of an equal write, the composition hold and the disabled
-  answer once for every platform, which reports and applies the verdict.
+  the node's own controller alone, with no climb: one controller per content, a
+  `Controller<T>` for a content held whole and an `EditController` for an entry's
+  edit, holding the echo rule, the skip of an equal write, the composition hold and the
+  disabled answer once for every platform, which reports and applies the verdict. A
+  content held whole is repaired by its controller's own write of the truth, answered
+  `Verdict::Refuse`, so a platform reporting a checked state, a range's value or a
+  choice decides nothing.
 - **Events are the W3C's, typed.** A key event carries `keyboard-types`' `Key` and
   `Code`, and a pointer event `ui-events`' pointer vocabulary beside the platform's own
   positions: the pointer (`PointerInfo`: its id, `PointerId::PRIMARY` for the primary
@@ -526,23 +531,30 @@ re-export.
   `Controlled<T>` that every shipped behavior, and a third party's, keeps its value in:
   `set`, `derive`, `handle` and `bind` for the behavior's own setters, `read` and `ask`
   for its logic. A content a behavior controls is registered in its `attach` through
-  `ControlHandle::register` as a `Controller` (the text entry's `Edit` today), which
-  holds both paths of the contract once, in the spine: the truth it reads, tracked by
-  its render effect, is written as the node's content whenever it changes, and a
-  reader's change of the content is reported through `report::<P>(node,
-  Report::Change { content, proposed, applied })` and answered by that controller alone,
-  whatever handlers the node or its ancestors carry. The controller keeps what the entry
-  shows (read once through `Realization::read`, then what it wrote and what was
-  reported) and decides over it in plain functions the spine unit-tests: a report the
-  truth already holds asks nothing and stands, and so does one made while it writes,
-  its echo, but for a selection the write moved, which it asks for as the reader's move
-  would (the terminal reports the caret its write collapses inside the write); a write of
-  what is shown is skipped; while `Realization::composing` says the reader's text is
-  still the reader's, a write waits and a refused change stands with its repair held
-  back, until the report that ends the composition is answered with the truth; and a
-  disabled control asks nothing and answers with its truth. Registering a content
-  listens for its reports (`EventKind::Report`), so a platform installs what it needs
-  from the registration alone.
+  `ControlHandle::register` as a controller (`Controls`): a `Controller<T>` for a
+  content held whole (`Controllable`: the checkbox's `Checked`, the slider's `Range`,
+  the scriptless picker's `Choices`, a radio group's `Chosen` key) and an
+  `EditController` for the text entry's `Edit`. Either holds both paths of the
+  contract once, in the spine: the truth it reads, tracked by its render effect, is
+  written as the node's content whenever it changes, and a reader's change of the
+  content is reported through `report::<P>(node, Report::Change { content, proposed,
+  applied })` and answered by that controller alone, whatever handlers the node or its
+  ancestors carry. The controller keeps what the node shows (read once through
+  `Realization::read`, then what it wrote and what was reported) and decides over it in
+  plain functions the spine unit-tests: a report the truth already holds asks nothing
+  and stands, and so does one made while it writes, its echo, but for a selection the
+  write moved, which it asks for as the reader's move would (the terminal reports the
+  caret its write collapses inside the write); a write of what is shown is skipped;
+  while `Realization::composing` says what the node shows is still the reader's, a
+  write waits and a refused change stands with its repair held back, until the report
+  that ends it is answered with the truth; and a disabled control asks nothing and
+  answers with its truth. A content held whole is the reader's in the parts
+  `Controllable::holds` names (a range's value, not its bounds; a choice's key, not
+  its options): a change the truth then refuses is repaired by the controller writing
+  the truth whole, answered `Verdict::Refuse`, where an edit's verdict is the
+  platform's to apply. Registering a content listens for its reports
+  (`EventKind::Report`), so a platform installs what it needs from the registration
+  alone: the web its `input`, `change`, `compositionend` and `selectionchange`.
 - **A drawn entry reports an edit whole and applies its verdict.** A text entry
   reports a reader's edit as one `Edit`, its text and its selection together, with
   whether its toolkit shows it already, and a moved caret as the same change of the
@@ -591,23 +603,29 @@ re-export.
   the parts that draw it, which take the press it lets through, as a run inside any
   control leaves a press to the box it falls in. So keyboard, form participation and
   accessibility are the browser's before and after hydration and nothing is swapped. A
-  radio group's radios share the group's element id as their `name` (a member names its
-  collection through `Behavior::group`, carried to the platform as the `group` of its
-  spec's `ControlFacts`), so before the bundle the browser keeps one of them chosen and
-  submits them as one field, and a choice made there reaches the signal as any adopted
-  toggle does; since the browser unchecks the others with the one it checks, a toggle
-  reported on one member re-reads every member's state, each radio writing whether it
-  is chosen as its `Checked` content. The picker alone is drawn (no engine but Chromium
+  radio group's radios share the group's element id as their `name`, which each radio
+  takes from its `Membership` content (its group's node and its key there), so before
+  the bundle the browser keeps one of them chosen and submits them as one field, and a
+  choice made there reaches the signal as any adopted control's does. The group writes
+  its chosen key as its `Chosen` content, which checks the member whose key it is and
+  unchecks the rest; a radio's `change` is reported at its group's node as a choice of
+  its key, applied, and a choice the truth refuses is repaired by one write of the
+  group's chosen key, so the web keeps no decision of its own and no member is re-read.
+  A checkbox's `change` reports its `Checked` content applied, and a range's or a
+  select's `input` its `Range` or `Choices`. A click on a native toggle that something
+  cancels has its flip restored by the browser once the dispatch ends, over whatever
+  its handlers wrote, so the toggles it touched are given the scene's checked state
+  again after it. The picker alone is drawn (no engine but Chromium
   restyles an open `<select>` yet), so it is an `Enhance` of its own: its scriptless
   form is a `NativePicker` control, a `<select>` on the web, listing the options the
   option views name, its caption a `<label for>` beside it and the chosen value
-  selected, the options and the chosen key written as one `Choices` content whenever
-  either changes; the option views build once, under the group both forms answer
-  through, and attach nowhere until the drawn form lists them, and the caption builds
-  once and each form mounts it with its name and the disabled setting, so a swap
-  rebuilds nothing but the face; a choice the reader made in the `<select>` before the
-  bundle arrived reaches the signal as any adopted live value does, and the drawn face
-  that takes the select's place shows it.
+  selected, the options and the chosen key derived as one `Choices` content its
+  controller writes whenever either changes; the option views build once, under the
+  group both forms answer through, and attach nowhere until the drawn form lists them,
+  and the caption builds once and each form mounts it with its name and the disabled
+  setting, so a swap rebuilds nothing but the face; a choice the reader made in the
+  `<select>` before the bundle arrived reaches the signal as any adopted live value
+  does, and the drawn face that takes the select's place shows it.
 - **Accessibility is reported, never spelled.** A behavior reports what it is
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
@@ -1294,10 +1312,11 @@ adds only what is its own:
   `scroll` and enter/leave included, an event a handler causes, as the `focusin` of a
   focus it moves, delivered at once inside it), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted
-  rather than duplicated, text typed in an entry before the client arrived replayed as
-  an applied edit and repaired in place, any other live input value that differs from
-  the serialized one written into its signal, a toggle's checked state read as the
-  hydration begins, before the client writes any radio of its group, and convergence
+  rather than duplicated, a control the reader changed before the client arrived held
+  as the reader's, every write of its content waiting, until hydration replays what it
+  shows as an applied report, an entry's edit repaired in place and any other
+  content by its controller's write, a toggle's checked state read as the hydration
+  begins, before the client writes any radio of its group, and convergence
   once the tree is built: every server node the client built differently or never built removed, every adopted
   element given exactly the client's classes, and the order-keyed resource values no
   resource adopted dropped), scroll and focus restoration keyed by a segment's end

@@ -40,11 +40,9 @@ in a code comment.
     own type, each option carrying one (`Picker<T>`), where today's collections hold
     strings, and the web's scriptless form names each option by a key of its own, the
     server leaf's and the browser's alike even for a value holding a slice of `usize` or
-    `isize`, which `wide_of` hashes at the target's width; the group whose radios share
-    a `name` crosses in that content, replacing `ControlFacts::group` and the re-read of
-    every member's state a toggle report on one sets off. A text entry's
-    secure flag (`set_secure`), the web's `type=password` and every drawn field masked
-    through the core's `Masked` engine, which has no client until then;
+    `isize`, which `wide_of` hashes at the target's width. A text entry's secure flag
+    (`set_secure`), the web's `type=password` and every drawn field masked through the
+    core's `Masked` engine, which has no client until then;
     `TextEntry::on_key` takes the core's `Binding` table once every field is drawn, the
     terminal's key default consulting it until then, and the engine and editor move from
     the drawing realization onto the platform's seam.
@@ -56,7 +54,6 @@ in a code comment.
     `Widget`). `skene new`'s app and library scaffolds take that shape, and the gate
     compiles what they write on every platform they name, so a scaffold cannot fall
     behind the surface it teaches.
-    - The seam: each report says whether the toolkit applied it.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.

@@ -246,30 +246,6 @@ pub fn notify_scroll<P: Realization>(node: NodeId, event: &ScrollEvent) {
   );
 }
 
-/// Notifies `node` of its new textual value.
-pub fn notify_change<P: Realization>(node: NodeId, value: &str) {
-  notify::<P, _>(
-    node,
-    |handler| match handler {
-      Handler::Change(run) => Some(run),
-      _ => None,
-    },
-    |handler| handler(value),
-  );
-}
-
-/// Notifies `node` of its new checked state.
-pub fn notify_toggle<P: Realization>(node: NodeId, checked: bool) {
-  notify::<P, _>(
-    node,
-    |handler| match handler {
-      Handler::Toggle(run) => Some(run),
-      _ => None,
-    },
-    |handler| handler(checked),
-  );
-}
-
 /// Notifies the overlay `node` that the platform dismissed it.
 pub fn notify_dismiss<P: Realization>(node: NodeId) {
   notify::<P, _>(

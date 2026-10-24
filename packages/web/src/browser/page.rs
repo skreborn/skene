@@ -20,16 +20,6 @@ use crate::{
   realize::Sink,
 };
 
-/// What the reader changed on a native element before the client arrived.
-pub(super) enum Pending {
-  /// A checkbox or a radio, checked or not.
-  Toggle(bool),
-  /// A slider's or a picker's new value.
-  Change(String),
-  /// Text typed in a text entry, which reports what it shows.
-  Edit,
-}
-
 /// The server's nodes awaiting adoption, and what adoption found.
 pub(super) struct Hydration {
   /// The server's elements not yet adopted, by marker.
@@ -40,11 +30,12 @@ pub(super) struct Hydration {
   pub(super) stale: Vec<Element>,
   /// How many nodes failed to adopt so far.
   pub(super) mismatches: u32,
-  /// What the reader changed before the client arrived, by control.
-  pub(super) pending: Vec<(NodeId, Pending)>,
-  /// The adopted text entries holding text typed before the client arrived, the
-  /// reader's until it is reported.
-  pub(super) typed: Vec<web_sys::Node>,
+  /// The controls whose native element shows what the reader changed before the client
+  /// arrived, each to report what it shows once the tree is built.
+  pub(super) pending: Vec<NodeId>,
+  /// The adopted native elements showing what the reader changed before the client
+  /// arrived, the reader's until it is reported.
+  pub(super) held: Vec<web_sys::Node>,
   /// Whether each of the server's checkboxes and radios was checked as the hydration
   /// began, before the client wrote any.
   pub(super) checked: Vec<(web_sys::Node, bool)>,
@@ -106,7 +97,7 @@ impl Hydration {
       stale: Vec::new(),
       mismatches: 0,
       pending: Vec::new(),
-      typed: Vec::new(),
+      held: Vec::new(),
       checked,
     }
   }
@@ -318,14 +309,14 @@ impl Sink for Page {
     events::Entry::of(element).map(|entry| entry.shown())
   }
 
-  /// Whether an input method is composing in `element`, or it holds text typed before
-  /// the client arrived, which the reader's report of its text ends.
+  /// Whether an input method is composing in `element`, or it shows what the reader
+  /// changed before the client arrived, which the reader's report of it ends.
   fn composing(&self, element: &web_sys::Node) -> bool {
     self.composing.as_ref() == Some(element)
       || self
         .hydration
         .as_ref()
-        .is_some_and(|hydration| hydration.typed.contains(element))
+        .is_some_and(|hydration| hydration.held.contains(element))
   }
 
   /// Rebuilds the options where they differ from those shown, then selects the chosen
@@ -360,28 +351,23 @@ impl Sink for Page {
     }
   }
 
-  /// Notes the change against what the server serialized, for the control to report
-  /// once the tree is built: a toggle's as it was checked when the hydration began.
+  /// Notes a change against what the server serialized, for the control to report once
+  /// the tree is built, its element the reader's until then: a toggle's as it was
+  /// checked when the hydration began.
   fn note_live_state(&mut self, node: NodeId, input: &web_sys::Node, native: FormElement) {
-    let pending = if native.is_text_entry() {
-      let (value, serialized) = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
-        (
-          input.value(),
-          input.get_attribute("value").unwrap_or_default(),
-        )
+    let changed = if native.is_text_entry() {
+      if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
+        input.value() != input.get_attribute("value").unwrap_or_default()
       }
       else if let Some(area) = input.dyn_ref::<HtmlTextAreaElement>() {
-        (area.value(), area.text_content().unwrap_or_default())
+        area.value() != area.text_content().unwrap_or_default()
       }
       else {
-        return;
-      };
-
-      (value != serialized).then_some(Pending::Edit)
+        false
+      }
     }
     else if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
       if native.is_toggle() {
-        let serialized = input.has_attribute("checked");
         let live = self
           .hydration
           .as_ref()
@@ -394,12 +380,10 @@ impl Sink for Page {
           })
           .unwrap_or_else(|| input.checked());
 
-        (live != serialized).then_some(Pending::Toggle(live))
+        live != input.has_attribute("checked")
       }
       else {
-        let serialized = input.get_attribute("value").unwrap_or_default();
-
-        (input.value() != serialized).then(|| Pending::Change(input.value()))
+        input.value() != input.get_attribute("value").unwrap_or_default()
       }
     }
     else if let Some(select) = input.dyn_ref::<HtmlSelectElement>() {
@@ -410,18 +394,15 @@ impl Sink for Page {
         .and_then(|option| option.get_attribute("value"))
         .unwrap_or_default();
 
-      (select.value() != serialized).then(|| Pending::Change(select.value()))
+      select.value() != serialized
     }
     else {
-      None
+      false
     };
 
-    if let (Some(pending), Some(hydration)) = (pending, &mut self.hydration) {
-      if matches!(pending, Pending::Edit) {
-        hydration.typed.push(input.clone());
-      }
-
-      hydration.pending.push((node, pending));
+    if changed && let Some(hydration) = &mut self.hydration {
+      hydration.held.push(input.clone());
+      hydration.pending.push(node);
     }
   }
 }

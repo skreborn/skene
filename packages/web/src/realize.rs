@@ -18,6 +18,7 @@ use skene_foundation::{
   DragAxes,
   Edit,
   FocusOrder,
+  Membership,
   NodeFacts,
   NodeId,
   NodeMap,
@@ -160,8 +161,8 @@ pub(crate) trait Sink {
   /// keeps one.
   fn shown(&self, element: &Self::Element) -> Option<Edit>;
 
-  /// Whether the text the text entry `element` shows is the reader's until it is
-  /// reported; see [`Realization::composing`](skene_foundation::Realization::composing).
+  /// Whether what the native `element` shows is the reader's until it is reported; see
+  /// [`Realization::composing`](skene_foundation::Realization::composing).
   fn composing(&self, element: &Self::Element) -> bool;
 
   /// Shows `choices` on the `<select>` `element`: its options, and the chosen one
@@ -181,6 +182,10 @@ pub(crate) enum Realized {
   Control {
     /// The form element, where the control has one.
     native: Option<FormElement>,
+    /// The group a radio belongs to and its key there, as its last membership said.
+    membership: Option<Membership>,
+    /// The key of the member a group has chosen, as its last chosen content said.
+    chosen: Option<Rc<str>>,
   },
   /// An overlay.
   Overlay {
@@ -258,6 +263,7 @@ impl<S: Sink> Record<S> {
     match self.realized {
       Realized::Control {
         native: Some(native),
+        ..
       } => native.tag,
       _ => self.tag,
     }
@@ -275,7 +281,7 @@ impl<S: Sink> Record<S> {
   pub(crate) fn is_bare(&self) -> bool {
     matches!(
       self.realized,
-      Realized::Control { native: Some(native) } if native.is_bare()
+      Realized::Control { native: Some(native), .. } if native.is_bare()
     )
   }
 }
@@ -387,7 +393,11 @@ impl<S: Sink> Realizer<S> {
   /// stands in one, else the element it is drawn as.
   fn make_control(&mut self, node: NodeId, spec: &NodeSpec, control: &ControlFacts) {
     let native = form_element(control.native);
-    let realized = Realized::Control { native };
+    let realized = Realized::Control {
+      native,
+      membership: None,
+      chosen: None,
+    };
     let root = match native {
       Some(native) if native.is_bare() => {
         let (root, adopted) = self.create_element(node, native.tag, realized);
@@ -730,13 +740,17 @@ impl<S: Sink> Realizer<S> {
 
   /// Shows `value` as `node`'s content, whole: a run's text as its own, a link's
   /// destination as its `href` under its policy, an overlay's placement where it opens,
-  /// and a control's on the form element carrying it, a range's bounds and step before
-  /// its value; a control drawn without one shows its content through its parts.
+  /// a group's chosen key as the checked state of its members, and a control's on the
+  /// form element carrying it, a range's bounds and step before its value and a radio's
+  /// membership as its `name`; a control drawn without one shows its content through
+  /// its parts.
   pub(crate) fn write(&mut self, node: NodeId, value: ContentValue<'_>) {
     match value {
       ContentValue::Text(text) => return self.set_text(node, text),
       ContentValue::Destination(path) => return self.write_destination(node, path),
       ContentValue::Placement(placement) => return self.place_overlay(node, placement),
+      ContentValue::Chosen(chosen) => return self.write_chosen(node, chosen),
+      ContentValue::Membership(membership) => return self.write_membership(node, membership),
       _ => {}
     }
 
@@ -744,14 +758,20 @@ impl<S: Sink> Realizer<S> {
     else {
       return;
     };
-    let Realized::Control { native: Some(_) } = record.realized
+    let Realized::Control {
+      native: Some(_), ..
+    } = record.realized
     else {
       return;
     };
     let carrier = record.carrier();
 
     match value {
-      ContentValue::Text(_) | ContentValue::Destination(_) | ContentValue::Placement(_) => {}
+      ContentValue::Text(_)
+      | ContentValue::Destination(_)
+      | ContentValue::Placement(_)
+      | ContentValue::Chosen(_)
+      | ContentValue::Membership(_) => {}
       ContentValue::Edit(edit) => {
         self.sink.set_value(carrier, &edit.text);
 
@@ -790,6 +810,7 @@ impl<S: Sink> Realizer<S> {
     let record = self.records.get(node)?;
     let Realized::Control {
       native: Some(native),
+      ..
     } = record.realized
     else {
       return None;
@@ -804,12 +825,75 @@ impl<S: Sink> Realizer<S> {
     Some(read(ContentValue::Edit(&shown)))
   }
 
-  /// Whether the text the text entry `node` shows is the reader's until it is reported.
+  /// Whether what the control `node` shows is the reader's until it is reported.
   pub(crate) fn composing(&self, node: NodeId) -> bool {
     self
       .records
       .get(node)
       .is_some_and(|record| self.sink.composing(record.carrier()))
+  }
+
+  /// Notes `chosen` as the key the group `group` has chosen and checks the member whose
+  /// key it is, unchecking every other, but a member showing what the reader changed
+  /// until it is reported.
+  fn write_chosen(&mut self, group: NodeId, chosen: Option<&str>) {
+    let Some(record) = self.records.get_mut(group)
+    else {
+      return;
+    };
+
+    if let Realized::Control { chosen: held, .. } = &mut record.realized {
+      *held = chosen.map(Rc::from);
+    }
+
+    for record in self.records.values() {
+      if let Realized::Control {
+        membership: Some(membership),
+        ..
+      } = &record.realized
+        && membership.group == group
+        && !self.sink.composing(record.carrier())
+      {
+        self
+          .sink
+          .set_checked(record.carrier(), chosen == Some(&*membership.key));
+      }
+    }
+  }
+
+  /// Gives the radio `node` its group's `name` and checks it where it is the member its
+  /// group has chosen, unless it shows what the reader changed until it is reported.
+  fn write_membership(&mut self, node: NodeId, membership: &Membership) {
+    let chosen = self
+      .records
+      .get(membership.group)
+      .and_then(|group| match &group.realized {
+        Realized::Control { chosen, .. } => chosen.clone(),
+        _ => None,
+      });
+    let Some(record) = self.records.get_mut(node)
+    else {
+      return;
+    };
+
+    if let Realized::Control {
+      membership: held, ..
+    } = &mut record.realized
+    {
+      *held = Some(membership.clone());
+    }
+
+    let carrier = record.carrier().clone();
+
+    self
+      .sink
+      .set_attribute(&carrier, "name", &element_id(membership.group));
+
+    if !self.sink.composing(&carrier) {
+      self
+        .sink
+        .set_checked(&carrier, chosen.as_deref() == Some(&*membership.key));
+    }
   }
 
   /// Gives the link `node` the destination `path`: a run's `href`, `target` and `rel`

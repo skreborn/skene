@@ -130,8 +130,9 @@ over node ids:
   the root a scope like any other), which reaches the realization for a scope it did not
   make as well.
 - **Mirror structure** through four calls, `attach`, `relocate`, `hide` and `remove`,
-  each naming the nearest made ancestor as the parent and the next made sibling as
-  `before`, as the scene places them above, and `destroy`, releasing a made node's record.
+  each naming the nearest made ancestor as the parent and the next node made after the
+  child under it as `before`, a caption kept beside its control passed over, and
+  `destroy`, releasing a made node's record.
 - **The rest**: register event kinds, focus, set values, observe sizes, report media,
   schedule on the clock, route, and reach the clipboard.
 
@@ -144,7 +145,8 @@ realizing it in its own form: a navigation commits under a view transition in th
 browser and at once on the server leaf and in the terminal, and a pointer event is
 localized against its node's laid-out box, except on the server leaf, which lays nothing
 out and hands it back unchanged.
-`Painted` and embeds are deliberately outside it—their payloads never cross a crate
+
+`Painted` and embeds are deliberately outside the trait—their payloads never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
 functions in the platform crate, since it is not a shared contract. One entry is
@@ -909,8 +911,9 @@ token set used with no theme above registers its default under `:root` once
 its own look as a Simple button does, takes them as such a class, and a redefinition
 whose every token is unconditional writes them inline over it; a node adopted from the
 server's markup gives up the definitions the server wrote inline on it at its first
-definition. The root's definitions reach the realization through the same
-`define_tokens` call as a scope's, their scope `TokenScope::Root`: the web writes them as
+definition. The root's definitions are defined in the scene and reach the realization
+through the same `define_tokens` call as a scope's (`Scene::define_tokens` and the
+seam's alike), their scope `TokenScope::Root`: the web writes them as
 the root rule's class, and the terminal re-resolves its styles as it does for a scope's.
 `Typography` (all text inheritance on both facades) and the Simple library's
 `SimpleGlyphs` (its terminal marks, a set only a platform with text tokens over cells can

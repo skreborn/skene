@@ -12,6 +12,7 @@ use crate::{
   NodeSpec,
   Realization,
   Scene,
+  TokenScope,
   TokenSet,
   View,
   Wraps,
@@ -96,7 +97,7 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S> {
       Effect::render(move |_: Option<()>| {
         let definitions = memo.with(Definitions::of);
 
-        Scene::<P>::with(|scene| scene.define_tokens(scope, definitions));
+        Scene::<P>::with(|scene| scene.define_tokens(TokenScope::Node(scope), definitions));
       });
 
       let child = child.build();
@@ -163,7 +164,7 @@ impl<P: Realization, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
 
     let definitions = Definitions::of(&Self::default());
 
-    Scene::<P>::with(|scene| scene.define_root_tokens_once(set, definitions));
+    Scene::<P>::with(|scene| scene.define_root_set(set, definitions));
   }
 }
 

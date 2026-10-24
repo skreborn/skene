@@ -119,6 +119,7 @@ pub use skene_web::ThemeBase
 pub use skene_web::Toggle
 pub use skene_web::TokenName
 pub use skene_web::TokenRef
+pub use skene_web::TokenScope
 pub use skene_web::TokenSet
 pub use skene_web::TooltipBase
 pub use skene_web::TypeMetrics

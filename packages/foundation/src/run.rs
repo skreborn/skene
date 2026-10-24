@@ -28,6 +28,7 @@ use crate::{
   StyleExtension,
   TokenName,
   TokenRef,
+  TokenScope,
   Tokenable,
   Transition,
   TypeMetrics,
@@ -301,13 +302,13 @@ impl<V: 'static> Redefinition<V> {
       Effect::render(move |_: Option<()>| {
         let definitions = define();
 
-        Scene::<P>::with(|scene| scene.define_tokens(node, definitions));
+        Scene::<P>::with(|scene| scene.define_tokens(TokenScope::Node(node), definitions));
       });
     }
     else {
       let definitions = define();
 
-      Scene::<P>::with(|scene| scene.define_tokens(node, definitions));
+      Scene::<P>::with(|scene| scene.define_tokens(TokenScope::Node(node), definitions));
     }
   }
 }

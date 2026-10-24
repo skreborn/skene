@@ -23,6 +23,7 @@ use skene_foundation::{
   State,
   Text,
   TokenRef,
+  TokenScope,
   Transition,
   View,
   Wraps,
@@ -222,7 +223,7 @@ where
         }
       });
 
-      Scene::<P>::with(|scene| scene.define_tokens(node, definitions));
+      Scene::<P>::with(|scene| scene.define_tokens(TokenScope::Node(node), definitions));
     });
 
     node

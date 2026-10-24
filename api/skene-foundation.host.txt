@@ -7260,9 +7260,8 @@ pub fn skene_foundation::Scene<P>::record(&self, skene_foundation::NodeId) -> co
 pub fn skene_foundation::Scene<P>::record_mut(&mut self, skene_foundation::NodeId) -> core::option::Option<&mut skene_foundation::NodeRecord<P>>
 pub fn skene_foundation::Scene<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
-pub fn skene_foundation::Scene<P>::define_root_tokens(&mut self, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>)
-pub fn skene_foundation::Scene<P>::define_root_tokens_once(&mut self, core::any::TypeId, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>) -> bool
-pub fn skene_foundation::Scene<P>::define_tokens(&mut self, skene_foundation::NodeId, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>)
+pub fn skene_foundation::Scene<P>::define_root_set(&mut self, core::any::TypeId, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>) -> bool
+pub fn skene_foundation::Scene<P>::define_tokens(&mut self, skene_foundation::TokenScope, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>)
 pub fn skene_foundation::Scene<P>::defines_root_set(&self, core::any::TypeId) -> bool
 pub fn skene_foundation::Scene<P>::resolve_scoped_token(&mut self, skene_foundation::NodeId, skene_foundation::TokenName) -> core::option::Option<(core::option::Option<skene_foundation::NodeId>, <P as skene_foundation::Realization>::TokenValue)>
 pub fn skene_foundation::Scene<P>::resolve_token(&mut self, skene_foundation::NodeId, skene_foundation::TokenName) -> core::option::Option<<P as skene_foundation::Realization>::TokenValue>

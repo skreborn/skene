@@ -218,44 +218,33 @@ impl<V: Clone + PartialEq> TokenState<V> {
 }
 
 impl<P: Realization> Scene<P> {
-  /// Defines tokens on `node`, replacing what it defined before; definitions equal to
-  /// those in force change nothing.
+  /// Defines tokens on a scope, replacing what the scope defined before: on a node for
+  /// its subtree, or at the root, the tokens every node falls back to; definitions equal
+  /// to those in force change nothing.
   ///
   /// # Panics
   ///
   /// Panics, in a debug build, when a token was defined before as another kind.
-  pub fn define_tokens(&mut self, node: NodeId, definitions: Definitions<P::TokenValue>) {
+  pub fn define_tokens(&mut self, scope: TokenScope, definitions: Definitions<P::TokenValue>) {
     #[cfg(debug_assertions)]
     self.tokens.check_kinds(&definitions);
 
-    let Some(record) = self.nodes.get_mut(node)
-    else {
-      return;
+    let definitions = match scope {
+      TokenScope::Node(node) => {
+        let Some(record) = self.nodes.get_mut(node)
+        else {
+          return;
+        };
+
+        self.tokens.define(&mut record.definitions, definitions)
+      }
+      TokenScope::Root => self.tokens.define_root(definitions),
     };
 
-    if let Some(definitions) = self.tokens.define(&mut record.definitions, definitions) {
-      self.mirrors.push(Mirror::DefineTokens {
-        scope: TokenScope::Node(node),
-        definitions,
-      });
-    }
-  }
-
-  /// Defines the tokens every node falls back to, replacing the previous set;
-  /// definitions equal to those in force change nothing.
-  ///
-  /// # Panics
-  ///
-  /// Panics, in a debug build, when a token was defined before as another kind.
-  pub fn define_root_tokens(&mut self, definitions: Definitions<P::TokenValue>) {
-    #[cfg(debug_assertions)]
-    self.tokens.check_kinds(&definitions);
-
-    if let Some(definitions) = self.tokens.define_root(definitions) {
-      self.mirrors.push(Mirror::DefineTokens {
-        scope: TokenScope::Root,
-        definitions,
-      });
+    if let Some(definitions) = definitions {
+      self
+        .mirrors
+        .push(Mirror::DefineTokens { scope, definitions });
     }
   }
 
@@ -271,11 +260,7 @@ impl<P: Realization> Scene<P> {
   ///
   /// [`defines_root_set`](Self::defines_root_set) tells a caller whether the set's
   /// definitions are wanted before it builds them, outside the scene's borrow.
-  pub fn define_root_tokens_once(
-    &mut self,
-    set: TypeId,
-    definitions: Definitions<P::TokenValue>,
-  ) -> bool {
+  pub fn define_root_set(&mut self, set: TypeId, definitions: Definitions<P::TokenValue>) -> bool {
     if !self.tokens.claim_root_set(set) {
       return false;
     }
@@ -283,7 +268,7 @@ impl<P: Realization> Scene<P> {
     let mut root = self.tokens.take_root();
 
     root.overlay(definitions);
-    self.define_root_tokens(root);
+    self.define_tokens(TokenScope::Root, root);
 
     true
   }

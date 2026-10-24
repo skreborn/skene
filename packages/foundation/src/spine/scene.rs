@@ -230,7 +230,6 @@ impl<P: Realization> Mirror<P> {
 /// callback or a platform's mutation runs: the mutations the scene mirrors into the
 /// platform ([`attach`](Self::attach), [`detach`](Self::detach),
 /// [`destroy`](Self::destroy), [`define_tokens`](Self::define_tokens),
-/// [`define_root_tokens`](Self::define_root_tokens),
 /// [`set_control_state`](Self::set_control_state)) reach it in order once the borrow
 /// that recorded them is released.
 #[must_use]

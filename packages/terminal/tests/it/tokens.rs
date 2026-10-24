@@ -18,6 +18,7 @@ use skene_terminal::{
   StaticLeaf,
   Token,
   TokenName,
+  TokenScope,
   TokenValue,
   platform::terminal::Terminal,
   prelude::*,
@@ -372,7 +373,7 @@ fn a_token_resolves_to_its_nearest_definer_as_the_tree_stands() {
       );
 
       scene.define_tokens(
-        column,
+        TokenScope::Node(column),
         Definitions::from(vec![(
           CARD.name(),
           TokenValue::Color(Definition::from(blue())),

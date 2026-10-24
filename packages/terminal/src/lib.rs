@@ -260,6 +260,7 @@ pub use skene_foundation::{
   Toggle,
   TokenName,
   TokenRef,
+  TokenScope,
   TokenSet,
   TooltipBase,
   TypeMetrics,

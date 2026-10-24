@@ -61,9 +61,6 @@ pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Realization>::StyleExt>;
 /// It holds what a reader takes the node for, the heading level its element is fixed
 /// at, whether a press drags it, and the facts of its kind; the style arrives through
 /// [`Realization::apply_style`].
-///
-/// A box's destination, a run's link, a control's placeholder and group, and an
-/// overlay's placement ride the spec until each crosses as a typed content of its own.
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct NodeSpec {
@@ -127,7 +124,6 @@ impl NodeSpec {
   }
 
   /// The kind of node the spec creates, as the scene records it.
-  #[inline(always)]
   pub const fn kind(&self) -> NodeKind {
     match self.facts {
       NodeFacts::Box(_) => NodeKind::Box,
@@ -197,7 +193,6 @@ pub struct OverlayFacts {
 impl OverlayFacts {
   /// The role the overlay carries where its box states `stated`: a hint's tooltip, a
   /// modal's dialog unless its box states another, else the one its box states.
-  #[inline(always)]
   #[must_use]
   pub const fn role(&self, stated: Option<Role>) -> Option<Role> {
     if self.hint {

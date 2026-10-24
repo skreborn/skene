@@ -56,7 +56,9 @@ in a code comment.
     `Widget`). `skene new`'s app and library scaffolds take that shape, and the gate
     compiles what they write on every platform they name, so a scaffold cannot fall
     behind the surface it teaches.
-    - The seam: contents typed and atomic, and each write reported applied or not.
+    - The seam: contents typed and atomic (a box's destination, a run's link, a
+    control's placeholder and an overlay's placement leaving `NodeSpec`'s facts for
+    contents of their own), and each write reported applied or not.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.

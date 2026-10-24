@@ -137,6 +137,7 @@ impl Realization for Terminal {
             position: None,
           },
         );
+
         records.overlays.push(node);
       }),
       NodeFacts::Run(run) => {

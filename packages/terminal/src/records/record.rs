@@ -129,7 +129,9 @@ impl BoxRecord {
 
 /// What a record is, with everything its creation carried.
 pub(crate) enum Kind {
+  /// A box.
   Box(BoxRecord),
+  /// A control: a box a native element may stand in for.
   Control {
     /// The native element the control stands in; `None` for one its view draws.
     native: Option<NativeElement>,
@@ -140,6 +142,7 @@ pub(crate) enum Kind {
     /// The editing state of a text entry; `None` for every other control.
     field: Option<Box<Field>>,
   },
+  /// An overlay: a box shown above the app while open.
   Overlay {
     /// The overlay's own box, carrying the overlay's role.
     inner: BoxRecord,
@@ -152,6 +155,7 @@ pub(crate) enum Kind {
     /// The cell the overlay's top-start corner is pinned to, if it is.
     position: Option<(i64, i64)>,
   },
+  /// A text run.
   Run {
     /// The facts the run was created with.
     facts: RunFacts,

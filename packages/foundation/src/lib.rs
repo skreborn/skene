@@ -13,9 +13,9 @@
 //! or derived from signals—under conditions ([`Condition`]) that pick a variant. A
 //! [`Token`]'s [`Definition`] is the same shape without the derived leaf and with only
 //! [`Media`] conditions, so a palette is plain data. A style ([`BoxStyle`], [`RunStyle`])
-//! holds one field per property in a [`Shape`]: what a builder collects, what a platform
-//! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
-//! in and the [`StyleExtension`] holding the properties only its medium has, which its
+//! holds one field per property in a [`Shape`]: what a builder collects, what a node's
+//! record is built from, or plain values. Every facade fixes the [`Scalar`] its lengths are
+//! measured in and the [`StyleExtension`] holding the properties only its medium has, which its
 //! medium's module here defines. A style's [`Fingerprint`] keys what a
 //! platform compiled from it. Motion ([`Transition`], [`Animation`]) is data every
 //! platform compiles or runs, and the universal values ([`Color`], the geometry, the
@@ -33,9 +33,11 @@
 //! text to assistive technology as an [`AccessText`], read from its editor.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
-//! splits the style into the static part a platform compiles and the derived slots render
-//! effects write, creates its node, registers it in the [`Scene`], binds each slot,
-//! registers its handlers, mounts its children and returns its id. [`LayoutBox`] is that
+//! splits the style into the static part its record is built from (compiled at
+//! [`Keep::Everything`] and handed over by [`Realization::apply_style`]) and the derived
+//! slots render effects write through [`Realization::apply_slot`], creates its node,
+//! registers it in the [`Scene`], binds each slot, registers its handlers, mounts its
+//! children and returns its id. [`LayoutBox`] is that
 //! build for a box; [`Container`], [`Row`], [`Column`], [`Grid`] and [`Stack`] are thin
 //! vocabularies over it, and a third party's layout view is built from it the same way.
 //! [`Flexible`], [`Pinned`] and [`GridCell`] annotate the box built under them. A run

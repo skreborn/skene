@@ -9,6 +9,10 @@ use crate::spine::{NodeId, Realization};
 
 /// A tree as the platform's placement reads it: each node's parent and children, which
 /// nodes the platform made, and which caption a control keeps beside it.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is no tree the platform's placement reads",
+  label = "a placing tree answers each node's parent, children, whether the platform made it and whether it is a caption kept beside its control"
+)]
 pub(in crate::spine) trait Placing {
   /// The node `node` stands under.
   fn parent_of(&self, node: NodeId) -> Option<NodeId>;
@@ -454,6 +458,7 @@ mod tests {
             Some(parent),
             "a node leaves where it stands"
           );
+
           self.take(parent, child);
         }
       }
@@ -533,6 +538,7 @@ mod tests {
     tree
       .add(root, &[first, control, last])
       .add(control, &[inner, caption, face]);
+
     tree.beside.insert(caption);
 
     assert_eq!(tree.realized_after(inner), Some(face));

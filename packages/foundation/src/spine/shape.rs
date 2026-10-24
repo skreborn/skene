@@ -7,7 +7,7 @@ use super::{Conditional, KeptLeaf, StaticLeaf, Value};
 /// The stage a style is at, fixing what each of its fields holds.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a style shape",
-  label = "a style is `Declared` by a builder, `Static` for a platform, a `Keyframe` of an animation, or `Plain`"
+  label = "a style is `Declared` by a builder, `Static` for a record, a `Keyframe` of an animation, or `Plain`"
 )]
 pub trait Shape: Copy + Default + PartialEq + Debug + 'static {
   /// A field holding a `T`.

@@ -1623,19 +1623,20 @@ patches and starts from the checkout's lock.
 (`packages/cli/src/flags.rs`). It reads the flags cargo would use for the build's
 target in cargo's own order: `CARGO_ENCODED_RUSTFLAGS`, `RUSTFLAGS`,
 `target.<triple>.rustflags` followed by every matching `target.'cfg(..)'.rustflags` in
-the order of their keys, then `build.rustflags`, and rustdoc's the same with
-`rustdocflags` and no `cfg(..)` table, over `$CARGO_HOME/config.toml` and each
-`.cargo/config.toml` down to the directory cargo runs in, merged as cargo merges them,
-`host-tuple` resolved to the host's triple. It replaces `skene_platform`'s value where
+the order of their keys, a table matched against the target's cfg as rustc prints it
+under the flags found before it until they settle, then `build.rustflags`, and rustdoc's
+the same with `rustdocflags` and no `cfg(..)` table, over each `.cargo/config.toml` from
+the directory cargo runs in up to the root and `$CARGO_HOME/config.toml` beneath them,
+merged as cargo merges them, `host-tuple` resolved to the host's triple. It replaces `skene_platform`'s value where
 it stands, keeps, removes or adds `skene_server` beside it, appends both where the
 flags name no platform, and hands the result to cargo as `CARGO_ENCODED_RUSTFLAGS` and
 `CARGO_ENCODED_RUSTDOCFLAGS` with the target named. A build for the platform the
 configuration names therefore keeps its flags byte for byte and recompiles nothing
 plain cargo compiled. What it cannot read exactly is a refusal naming it, never a
 guess: a configuration `include`, the `CARGO_BUILD_*` and `CARGO_TARGET_*` variables
-cargo merges with the configuration, a `cfg(..)` table naming a platform cfg or one it
-cannot evaluate, an array merged with a string, and a platform cfg in a form it does
-not know.
+cargo merges with the configuration, a `cfg(..)` table naming a platform cfg, one it
+cannot evaluate and one whose flags never settle, an array merged with a string, and a
+platform cfg in a form it does not know.
 
 **This repository names no default platform.** Plain cargo at its root builds its
 default members, the crates reaching neither facade, which the gate's `manifests` step

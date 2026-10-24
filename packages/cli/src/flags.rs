@@ -1,16 +1,20 @@
 //! The flags cargo would hand rustc or rustdoc for a target, read from cargo's own sources
 //! in cargo's order, and the build's platform named among them in place.
 //!
-//! Cargo takes rustc's flags from the first of these that is set:
+//! Cargo takes rustc's flags from the first of these that gives any:
 //! `CARGO_ENCODED_RUSTFLAGS`; `RUSTFLAGS`; `target.<triple>.rustflags` followed by every
 //! matching `target.'cfg(..)'.rustflags` in the order of their keys; `build.rustflags`.
-//! Rustdoc's are the same with `rustdocflags`, which no `cfg(..)` table carries. A
-//! configuration is `$CARGO_HOME/config.toml` and each `.cargo/config.toml` from the
-//! filesystem root down to the directory cargo runs in, merged as cargo merges them: an
-//! array joined across the files with the deeper file's last, a string the deeper file's.
+//! A `cfg(..)` table matches against the target's cfg as rustc prints it under the flags
+//! found without the tables, then under the flags found with them, until the flags stay
+//! the same. Rustdoc's are the same with `rustdocflags`, which no `cfg(..)` table
+//! carries. A configuration is each `.cargo/config.toml` from the directory cargo runs in
+//! up to the filesystem root, the nearer taking precedence, and beneath them all
+//! `$CARGO_HOME/config.toml` where no ancestor's is that file, merged as cargo merges
+//! them: an array joined across the files with the higher's last, a string the higher's.
 //! What the resolver cannot read exactly (a configuration `include`, the
-//! `CARGO_BUILD_*`/`CARGO_TARGET_*` variables, a `cfg(..)` table it cannot evaluate, a flag
-//! naming a platform cfg in a form it does not know) is a refusal, never a guess.
+//! `CARGO_BUILD_*`/`CARGO_TARGET_*` variables, a `cfg(..)` table it cannot evaluate or
+//! whose flags never settle, a flag naming a platform cfg in a form it does not know) is a
+//! refusal, never a guess.
 
 use std::{
   collections::{BTreeMap, BTreeSet},
@@ -163,7 +167,7 @@ impl Flags {
       return Ok(flags);
     }
 
-    Config::read(dir)?.flags(triple, kind, || TargetCfg::of(triple))
+    Config::read(dir)?.flags(triple, kind, |flags| TargetCfg::of(dir, triple, flags))
   }
 
   /// The flags the environment `variable` reads gives, where it gives them; a variable
@@ -188,7 +192,12 @@ impl Flags {
 
     if let Some(flags) = variable(plain) {
       return Ok(Some(Self {
-        flags: flags.split_whitespace().map(str::to_owned).collect(),
+        flags: flags
+          .split(' ')
+          .map(str::trim)
+          .filter(|flag| !flag.is_empty())
+          .map(str::to_owned)
+          .collect(),
         source: plain.to_owned(),
       }));
     }
@@ -399,15 +408,23 @@ impl Config {
     let home = env::var_os("CARGO_HOME")
       .map(PathBuf::from)
       .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
+
+    Self::merge(Self::files(dir, home.as_deref())?)
+  }
+
+  /// The configuration files cargo run in `dir` reads, `home` its `$CARGO_HOME`, each
+  /// with its table, lowest precedence first: `home`'s, where no ancestor's `.cargo` is
+  /// `home`, then each ancestor's from the filesystem root down to `dir`.
+  fn files(dir: &Path, home: Option<&Path>) -> Result<Vec<(PathBuf, toml::Table)>, String> {
     let mut dirs: Vec<PathBuf> = dir.ancestors().map(|dir| dir.join(".cargo")).collect();
 
-    dirs.reverse();
-
-    // `$CARGO_HOME` is read once, first, even where it is also an ancestor's `.cargo`.
-    if let Some(home) = home {
-      dirs.retain(|dir| *dir != home);
-      dirs.insert(0, home);
+    if let Some(home) = home
+      && !dirs.iter().any(|dir| dir == home)
+    {
+      dirs.push(home.to_owned());
     }
+
+    dirs.reverse();
 
     let mut files = Vec::new();
 
@@ -432,7 +449,7 @@ impl Config {
       }
     }
 
-    Self::merge(files)
+    Ok(files)
   }
 
   /// `files`, lowest precedence first, merged as cargo merges them: tables key by key,
@@ -488,20 +505,72 @@ impl Config {
     Ok(())
   }
 
-  /// The flags of `kind` the configuration gives `triple`, `cfg` its cfg where a
-  /// `cfg(..)` table asks.
+  /// The flags of `kind` the configuration gives `triple`, `cfg` the target's cfg under
+  /// the flags it is given, asked where a `cfg(..)` table might match.
   fn flags(
     &self,
     triple: &str,
     kind: Kind,
-    cfg: impl FnOnce() -> Result<TargetCfg, String>,
+    cfg: impl Fn(&[String]) -> Result<TargetCfg, String>,
+  ) -> Result<Flags, String> {
+    let mut flags = self.flags_under(triple, kind, None)?;
+
+    if self.cfg_tables(kind).is_empty() {
+      return Ok(flags);
+    }
+
+    // At most the turns cargo takes before it stops.
+    for _ in 0..=20 {
+      let next = self.flags_under(triple, kind, Some(&cfg(&flags.flags)?))?;
+
+      if next.flags == flags.flags {
+        return Ok(next);
+      }
+
+      flags = next;
+    }
+
+    Err(format!(
+      "cannot tell which `[target.'cfg(..)']` tables apply to {triple}: the flags they \
+       give change which apply; name the triple instead"
+    ))
+  }
+
+  /// The `cfg(..)` tables giving flags of `kind`, by key in the order of their keys.
+  fn cfg_tables(&self, kind: Kind) -> BTreeMap<&str, &toml::Value> {
+    let key = kind.key();
+
+    // `cfg(..)` tables carry rustc's flags alone.
+    match kind {
+      Kind::Rust => self
+        .table
+        .get("target")
+        .and_then(toml::Value::as_table)
+        .into_iter()
+        .flatten()
+        .filter(|(name, _)| name.starts_with("cfg("))
+        .filter_map(|(name, section)| Some((name.as_str(), section.get(key)?)))
+        .collect(),
+      Kind::Rustdoc => BTreeMap::new(),
+    }
+  }
+
+  /// The flags of `kind` the configuration gives `triple`, the `cfg(..)` tables matched
+  /// against `cfg` where it is given and left out where it is not: the triple's and the
+  /// matching tables', joined, or `build`'s where those give none.
+  fn flags_under(
+    &self,
+    triple: &str,
+    kind: Kind,
+    cfg: Option<&TargetCfg>,
   ) -> Result<Flags, String> {
     let key = kind.key();
     let mut flags = Vec::new();
     let mut sources = Vec::new();
-    let targets = self.table.get("target").and_then(toml::Value::as_table);
 
-    if let Some(value) = targets
+    if let Some(value) = self
+      .table
+      .get("target")
       .and_then(|targets| targets.get(triple))
       .and_then(|section| section.get(key))
     {
@@ -509,21 +578,8 @@ impl Config {
       sources.push(format!("target.{triple}.{key}"));
     }
 
-    // `cfg(..)` tables carry rustc's flags alone, in the order of their keys.
-    let tables: BTreeMap<&str, &toml::Value> = match kind {
-      Kind::Rust => targets
-        .into_iter()
-        .flatten()
-        .filter(|(name, _)| name.starts_with("cfg("))
-        .filter_map(|(name, section)| Some((name.as_str(), section.get(key)?)))
-        .collect(),
-      Kind::Rustdoc => BTreeMap::new(),
-    };
-
-    if !tables.is_empty() {
-      let cfg = cfg()?;
-
-      for (name, value) in tables {
+    if let Some(cfg) = cfg {
+      for (name, value) in self.cfg_tables(kind) {
         if cfg.holds(name)? {
           flags.extend(Flags::list(value, &format!("target.'{name}'.{key}"))?);
           sources.push(format!("target.'{name}'.{key}"));
@@ -531,7 +587,7 @@ impl Config {
       }
     }
 
-    if !sources.is_empty() {
+    if !flags.is_empty() {
       return Ok(Flags {
         flags,
         source: sources.join(", "),
@@ -557,10 +613,15 @@ impl Config {
 struct TargetCfg(BTreeSet<String>);
 
 impl TargetCfg {
-  /// What `rustc --print cfg --target <triple>` prints.
-  fn of(triple: &str) -> Result<Self, String> {
+  /// What `rustc --print cfg --target <triple>` prints under `flags`, run in `dir` as
+  /// cargo runs it, through `RUSTC` where it is set.
+  fn of(dir: &Path, triple: &str, flags: &[String]) -> Result<Self, String> {
+    let rustc = env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
     let printed = run(
-      Command::new("rustc").args(["--print", "cfg", "--target", triple]),
+      Command::new(rustc)
+        .current_dir(dir)
+        .args(["--print", "cfg", "--target", triple])
+        .args(flags),
       "rustc --print cfg",
     )?;
 
@@ -701,7 +762,10 @@ impl Token {
 
 #[cfg(test)]
 mod tests {
-  use std::path::PathBuf;
+  use std::{
+    fs,
+    path::{Path, PathBuf},
+  };
 
   use super::{Config, Flags, Kind, Selection, TargetCfg, triple};
 
@@ -905,6 +969,13 @@ mod tests {
         .map(|flags| flags.flags),
       Some(vec!["--cfg".to_owned(), "y".to_owned()])
     );
+    assert_eq!(
+      read(&[("RUSTFLAGS", " -C\topt-level=1 ")], Kind::Rust)
+        .expect("read")
+        .map(|flags| flags.flags),
+      Some(vec!["-C\topt-level=1".to_owned()]),
+      "`RUSTFLAGS` splits at spaces alone, as cargo splits it"
+    );
     assert_eq!(read(&[("RUSTFLAGS", "x")], Kind::Rustdoc), Ok(None));
 
     for merged in [
@@ -922,7 +993,7 @@ mod tests {
   fn the_configuration_is_read_in_cargos_order() {
     let read = |text: &str, kind| {
       config(&[("config.toml", text)])
-        .flags("x86_64-unknown-linux-gnu", kind, || Ok(linux()))
+        .flags("x86_64-unknown-linux-gnu", kind, |_| Ok(linux()))
         .expect("read")
         .flags
     };
@@ -945,15 +1016,130 @@ mod tests {
       ["-Dbuild"]
     );
     assert_eq!(read("", Kind::Rust), Vec::<String>::new());
+    assert_eq!(
+      read(
+        "build.rustflags = ['-Dbuild']\ntarget.x86_64-unknown-linux-gnu.rustflags = []",
+        Kind::Rust
+      ),
+      ["-Dbuild"],
+      "a triple giving no flags falls back to `build`'s"
+    );
     assert!(
       config(&[(
         "config.toml",
         "[target.'cfg(skene_server)']\nrustflags = []"
       )])
-      .flags("x86_64-unknown-linux-gnu", Kind::Rust, || Ok(linux()))
+      .flags("x86_64-unknown-linux-gnu", Kind::Rust, |_| Ok(linux()))
       .is_err(),
       "a table on a platform cfg is refused"
     );
+  }
+
+  /// A `cfg(..)` table matches against the cfg rustc prints under the flags found before
+  /// it, until the flags settle, and flags that never settle are refused.
+  #[test]
+  fn a_cfg_table_matches_under_the_flags_found_before_it() {
+    // The target's cfg as rustc prints it under `flags`: Linux's, and each `--cfg` named.
+    let cfg = |flags: &[String]| {
+      let mut cfg = linux();
+
+      cfg.0.extend(
+        flags
+          .windows(2)
+          .filter(|pair| pair[0] == "--cfg")
+          .map(|pair| pair[1].clone()),
+      );
+
+      Ok(cfg)
+    };
+    let read = |text: &str| {
+      config(&[("config.toml", text)]).flags("x86_64-unknown-linux-gnu", Kind::Rust, cfg)
+    };
+
+    assert_eq!(
+      read(
+        "target.x86_64-unknown-linux-gnu.rustflags = ['--cfg', 'simd']\n\
+         target.'cfg(simd)'.rustflags = ['-Dsimd']"
+      )
+      .expect("read")
+      .flags,
+      ["--cfg", "simd", "-Dsimd"]
+    );
+    assert_eq!(
+      read("build.rustflags = ['--cfg', 'simd']\ntarget.'cfg(not(simd))'.rustflags = ['-Dno']")
+        .expect("read")
+        .flags,
+      ["--cfg", "simd"],
+      "`build`'s flags decide which tables match"
+    );
+    assert!(
+      read("build.rustflags = ['--cfg', 'simd']\ntarget.'cfg(simd)'.rustflags = ['-Dsimd']")
+        .is_err(),
+      "a table whose flags unmatch it never settles"
+    );
+  }
+
+  /// Cargo reads each ancestor's `.cargo`, nearer first, then `$CARGO_HOME` where no
+  /// ancestor's is it, and refuses a directory holding both `config` and `config.toml`.
+  #[test]
+  fn configuration_files_are_found_as_cargo_finds_them() {
+    let root = std::env::temp_dir().join(format!("skene-flags-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    let write = |dir: &Path, file: &str, flag: &str| {
+      fs::create_dir_all(dir.join(".cargo")).expect("created");
+      fs::write(
+        dir.join(".cargo").join(file),
+        format!("build.rustflags = ['{flag}']"),
+      )
+      .expect("written");
+    };
+    let home = root.join("user");
+    let app = home.join("work/app");
+    // The files found within `root`, by their paths below it, lowest precedence first.
+    let found = |home: &Path| -> Vec<PathBuf> {
+      Config::files(&app, Some(home))
+        .expect("found")
+        .into_iter()
+        .filter_map(|(path, _)| Some(path.strip_prefix(&root).ok()?.to_owned()))
+        .collect()
+    };
+
+    write(&root, "config.toml", "-Droot");
+    write(&home, "config.toml", "-Dhome");
+    write(&app, "config", "-Dapp");
+
+    assert_eq!(
+      found(&home.join(".cargo")),
+      [
+        ".cargo/config.toml",
+        "user/.cargo/config.toml",
+        "user/work/app/.cargo/config"
+      ]
+      .map(PathBuf::from),
+      "a home among the ancestors is read where it stands"
+    );
+
+    let elsewhere = root.join("elsewhere");
+
+    write(&elsewhere, "config.toml", "-Delsewhere");
+
+    assert_eq!(
+      found(&elsewhere.join(".cargo")),
+      [
+        "elsewhere/.cargo/config.toml",
+        ".cargo/config.toml",
+        "user/.cargo/config.toml",
+        "user/work/app/.cargo/config"
+      ]
+      .map(PathBuf::from),
+      "a home elsewhere is read first"
+    );
+
+    write(&app, "config.toml", "-Dapp");
+
+    assert!(Config::files(&app, None).is_err(), "both files are refused");
+
+    fs::remove_dir_all(&root).expect("removed");
   }
 
   /// Files merge as cargo merges them: arrays joined with the deeper file's last, a
@@ -973,7 +1159,7 @@ mod tests {
     ]);
     let read = |kind| {
       merged
-        .flags("wasm32-unknown-unknown", kind, || Ok(linux()))
+        .flags("wasm32-unknown-unknown", kind, |_| Ok(linux()))
         .expect("read")
         .flags
     };

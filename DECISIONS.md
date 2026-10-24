@@ -8,6 +8,21 @@ supersedes.
 
 ## Decided against
 
+- **A secure editor** (2026-10-24), `set_secure` masking a multi-line entry as it masks
+  a field: no platform's secure entry is more than one line, Chromium's password field
+  and Apple's and Android's secure text fields among them, and the web's `<textarea>` has
+  no password form, its masking (`-webkit-text-security`) nonstandard and unknown to
+  form autofill, so the flag holds on a single-line field alone and an editor is never
+  secure. Revisit when a platform's input protocol offers a secure entry of several
+  lines, or CSS standardizes masking a text control's text.
+- **A keyboard's `type="email"` and `type="number"` on the web** (2026-10-24), the
+  field's `<input>` taking the type of the keyboard it asks for, as it takes `tel`,
+  `url` and `search`: an email or number input has no selection API, its
+  `selectionStart` throwing, and an edit's report reads it, so those keyboards are
+  `inputmode="email"` and `inputmode="numeric"` (or `decimal`) over a text input, which
+  brings the same keyboard without the type's validation. Revisit when the web's entry
+  stops reading the selection from the element, as an `EditContext` client would, or
+  the HTML standard gives those types the selection API.
 - **A radio group's choice crossing as `Choices`** (2026-10-24), the group writing
   its members as the options of one `Choice` content beside the chosen key, as the
   `<select>` does: a group's options are its members, each a node of its own carrying

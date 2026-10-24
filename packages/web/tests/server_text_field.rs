@@ -1,9 +1,12 @@
 //! Server rendering of the text field: the input as the control's own element, the
-//! void-tag form, value and placeholder serialization, styling, and inert handlers.
+//! void-tag form, value and placeholder serialization, the secure flag and the keyboard,
+//! styling, and inert handlers.
 
 #![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::{
+  Autofill,
+  BasicTextEditor,
   BasicTextField,
   Condition,
   Container,
@@ -15,9 +18,11 @@ use skene_web::{
   HasChild,
   HasChildren,
   Inset,
+  Keyboard,
   Row,
   RowBase,
   State,
+  SubmitLabel,
   Text,
   TextBase,
   TextEntry,
@@ -100,6 +105,87 @@ fn placeholder_and_value_serialize_as_attributes() {
   );
 
   assert!(rendered.body().contains("value=\"a &amp; b\""));
+}
+
+/// A secure field renders as a password input, its value kept, and an editor, which is
+/// never secure, renders as a plain `<textarea>`.
+#[test]
+fn a_secure_field_renders_as_a_password_input() {
+  let rendered = render_to_string(|| {
+    Container::new().set_child(Row::new().set_children((
+      BasicTextField::new(TextEntry::new().set_secure(true).set_value("hunter2")),
+      BasicTextEditor::new(TextEntry::new().set_lines(3).set_secure(true)),
+    )))
+  });
+  let body = rendered.body();
+
+  assert!(body.contains("type=\"password\""), "{body}");
+  assert!(!body.contains("type=\"text\""), "{body}");
+  assert!(body.contains("value=\"hunter2\""), "{body}");
+  assert!(body.contains("<textarea "), "{body}");
+  assert_eq!(body.matches("type=").count(), 1, "{body}");
+}
+
+/// A keyboard renders as the attributes its parts name, a number's as `inputmode` over a
+/// text input and a URL's as its own input type, and a part left to the platform renders
+/// nothing.
+#[test]
+fn a_keyboard_renders_its_input_mode_and_autofill() {
+  let number = render_to_string(|| {
+    BasicTextField::new(
+      TextEntry::new().set_keyboard(Keyboard::NUMBER.with_autofill(Autofill::OneTimeCode)),
+    )
+  });
+  let body = number.body();
+
+  assert!(body.contains("type=\"text\""), "{body}");
+  assert!(body.contains("inputmode=\"numeric\""), "{body}");
+  assert!(body.contains("autocomplete=\"one-time-code\""), "{body}");
+
+  for absent in [
+    "autocorrect",
+    "spellcheck",
+    "autocapitalize",
+    "enterkeyhint",
+  ] {
+    assert!(!body.contains(absent), "{absent}: {body}");
+  }
+
+  let url = render_to_string(|| {
+    BasicTextField::new(
+      TextEntry::new()
+        .set_keyboard(
+          Keyboard::URL
+            .with_autocorrect(false)
+            .with_submit(SubmitLabel::Go),
+        )
+        .set_secure(false),
+    )
+  });
+  let body = url.body();
+
+  assert!(body.contains("type=\"url\""), "{body}");
+  assert!(body.contains("inputmode=\"url\""), "{body}");
+  assert!(body.contains("autocorrect=\"off\""), "{body}");
+  assert!(body.contains("spellcheck=\"false\""), "{body}");
+  assert!(body.contains("enterkeyhint=\"go\""), "{body}");
+  assert!(!body.contains("autocomplete"), "{body}");
+
+  let login = render_to_string(|| {
+    BasicTextField::new(
+      TextEntry::new()
+        .set_secure(true)
+        .set_keyboard(Keyboard::TEXT.with_autofill(Autofill::Password)),
+    )
+  });
+  let body = login.body();
+
+  assert!(
+    body.contains("type=\"password\""),
+    "the secure flag wins: {body}"
+  );
+  assert!(body.contains("autocomplete=\"current-password\""), "{body}");
+  assert!(!body.contains("inputmode"), "{body}");
 }
 
 /// A text field's styling interns like a box's, its focus variant observed on the

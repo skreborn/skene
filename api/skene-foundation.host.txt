@@ -669,10 +669,12 @@ pub const skene_foundation::contents::CHOICE: skene_foundation::ContentKey<skene
 pub const skene_foundation::contents::CHOSEN: skene_foundation::ContentKey<core::option::Option<alloc::rc::Rc<str>>>
 pub const skene_foundation::contents::DESTINATION: skene_foundation::ContentKey<alloc::rc::Rc<str>>
 pub const skene_foundation::contents::EDIT: skene_foundation::ContentKey<skene_foundation::Edit>
+pub const skene_foundation::contents::KEYBOARD: skene_foundation::ContentKey<skene_foundation::Keyboard>
 pub const skene_foundation::contents::MEMBERSHIP: skene_foundation::ContentKey<skene_foundation::Membership>
 pub const skene_foundation::contents::PLACEHOLDER: skene_foundation::ContentKey<alloc::rc::Rc<str>>
 pub const skene_foundation::contents::PLACEMENT: skene_foundation::ContentKey<skene_foundation::OverlayPlacement>
 pub const skene_foundation::contents::RANGE: skene_foundation::ContentKey<skene_foundation::Range>
+pub const skene_foundation::contents::SECURE: skene_foundation::ContentKey<bool>
 pub const skene_foundation::contents::TEXT: skene_foundation::ContentKey<alloc::rc::Rc<str>>
 pub mod skene_foundation::interpolate
 pub struct skene_foundation::interpolate::Motion<P, V>
@@ -2900,6 +2902,26 @@ pub fn skene_foundation::Arrangement::fingerprint<H: core::hash::Hasher>(&self, 
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::IntoBoxValue<N, X> for skene_foundation::Arrangement
 pub fn skene_foundation::Arrangement::from_box_value(skene_foundation::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_foundation::Arrangement::into_box_value(self) -> skene_foundation::BoxValue<N, X>
+pub enum skene_foundation::Autofill
+pub skene_foundation::Autofill::Email
+pub skene_foundation::Autofill::Name
+pub skene_foundation::Autofill::NewPassword
+pub skene_foundation::Autofill::OneTimeCode
+pub skene_foundation::Autofill::Password
+pub skene_foundation::Autofill::Phone
+pub skene_foundation::Autofill::Url
+pub skene_foundation::Autofill::Username
+impl core::clone::Clone for skene_foundation::Autofill
+pub fn skene_foundation::Autofill::clone(&self) -> skene_foundation::Autofill
+impl core::cmp::Eq for skene_foundation::Autofill
+impl core::cmp::PartialEq for skene_foundation::Autofill
+pub fn skene_foundation::Autofill::eq(&self, &skene_foundation::Autofill) -> bool
+impl core::fmt::Debug for skene_foundation::Autofill
+pub fn skene_foundation::Autofill::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Autofill
+pub fn skene_foundation::Autofill::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Autofill
+impl core::marker::StructuralPartialEq for skene_foundation::Autofill
 pub enum skene_foundation::Availability
 pub skene_foundation::Availability::Absent
 pub skene_foundation::Availability::Disabled
@@ -2983,6 +3005,25 @@ impl core::fmt::Debug for skene_foundation::Bubbling
 pub fn skene_foundation::Bubbling::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::Bubbling
 impl core::marker::StructuralPartialEq for skene_foundation::Bubbling
+pub enum skene_foundation::Capitalization
+pub skene_foundation::Capitalization::Automatic
+pub skene_foundation::Capitalization::Characters
+pub skene_foundation::Capitalization::Never
+pub skene_foundation::Capitalization::Sentences
+pub skene_foundation::Capitalization::Words
+impl core::clone::Clone for skene_foundation::Capitalization
+pub fn skene_foundation::Capitalization::clone(&self) -> skene_foundation::Capitalization
+impl core::cmp::Eq for skene_foundation::Capitalization
+impl core::cmp::PartialEq for skene_foundation::Capitalization
+pub fn skene_foundation::Capitalization::eq(&self, &skene_foundation::Capitalization) -> bool
+impl core::default::Default for skene_foundation::Capitalization
+pub fn skene_foundation::Capitalization::default() -> skene_foundation::Capitalization
+impl core::fmt::Debug for skene_foundation::Capitalization
+pub fn skene_foundation::Capitalization::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Capitalization
+pub fn skene_foundation::Capitalization::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Capitalization
+impl core::marker::StructuralPartialEq for skene_foundation::Capitalization
 pub enum skene_foundation::CheckState
 pub skene_foundation::CheckState::Mixed
 pub skene_foundation::CheckState::Off
@@ -3095,10 +3136,12 @@ pub skene_foundation::Content::Choice
 pub skene_foundation::Content::Chosen
 pub skene_foundation::Content::Destination
 pub skene_foundation::Content::Edit
+pub skene_foundation::Content::Keyboard
 pub skene_foundation::Content::Membership
 pub skene_foundation::Content::Placeholder
 pub skene_foundation::Content::Placement
 pub skene_foundation::Content::Range
+pub skene_foundation::Content::Secure
 pub skene_foundation::Content::Text
 impl core::clone::Clone for skene_foundation::Content
 pub fn skene_foundation::Content::clone(&self) -> skene_foundation::Content
@@ -3121,10 +3164,12 @@ pub skene_foundation::ContentValue::Choice(&'a skene_foundation::Choices)
 pub skene_foundation::ContentValue::Chosen(core::option::Option<&'a str>)
 pub skene_foundation::ContentValue::Destination(&'a str)
 pub skene_foundation::ContentValue::Edit(&'a skene_foundation::Edit)
+pub skene_foundation::ContentValue::Keyboard(skene_foundation::Keyboard)
 pub skene_foundation::ContentValue::Membership(&'a skene_foundation::Membership)
 pub skene_foundation::ContentValue::Placeholder(&'a str)
 pub skene_foundation::ContentValue::Placement(skene_foundation::OverlayPlacement)
 pub skene_foundation::ContentValue::Range(&'a skene_foundation::Range)
+pub skene_foundation::ContentValue::Secure(bool)
 pub skene_foundation::ContentValue::Text(&'a str)
 impl skene_foundation::ContentValue<'_>
 pub const fn skene_foundation::ContentValue<'_>::content(&self) -> skene_foundation::Content
@@ -3567,6 +3612,27 @@ impl core::fmt::Debug for skene_foundation::KeyDefault
 pub fn skene_foundation::KeyDefault::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_foundation::KeyDefault
 impl core::marker::StructuralPartialEq for skene_foundation::KeyDefault
+pub enum skene_foundation::KeyboardType
+pub skene_foundation::KeyboardType::Decimal
+pub skene_foundation::KeyboardType::Email
+pub skene_foundation::KeyboardType::Number
+pub skene_foundation::KeyboardType::Phone
+pub skene_foundation::KeyboardType::Search
+pub skene_foundation::KeyboardType::Text
+pub skene_foundation::KeyboardType::Url
+impl core::clone::Clone for skene_foundation::KeyboardType
+pub fn skene_foundation::KeyboardType::clone(&self) -> skene_foundation::KeyboardType
+impl core::cmp::Eq for skene_foundation::KeyboardType
+impl core::cmp::PartialEq for skene_foundation::KeyboardType
+pub fn skene_foundation::KeyboardType::eq(&self, &skene_foundation::KeyboardType) -> bool
+impl core::default::Default for skene_foundation::KeyboardType
+pub fn skene_foundation::KeyboardType::default() -> skene_foundation::KeyboardType
+impl core::fmt::Debug for skene_foundation::KeyboardType
+pub fn skene_foundation::KeyboardType::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::KeyboardType
+pub fn skene_foundation::KeyboardType::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::KeyboardType
+impl core::marker::StructuralPartialEq for skene_foundation::KeyboardType
 pub enum skene_foundation::LabelPlacement
 pub skene_foundation::LabelPlacement::Beside
 pub skene_foundation::LabelPlacement::Leading
@@ -4261,6 +4327,24 @@ impl<P> core::convert::From<skene_foundation::Property> for skene_foundation::St
 pub fn skene_foundation::StyleProperty<P>::from(skene_foundation::Property) -> Self
 impl<P> core::convert::From<skene_foundation::PropertyKey<P>> for skene_foundation::StyleProperty<P>
 pub fn skene_foundation::StyleProperty<P>::from(skene_foundation::PropertyKey<P>) -> Self
+pub enum skene_foundation::SubmitLabel
+pub skene_foundation::SubmitLabel::Done
+pub skene_foundation::SubmitLabel::Go
+pub skene_foundation::SubmitLabel::Next
+pub skene_foundation::SubmitLabel::Previous
+pub skene_foundation::SubmitLabel::Search
+pub skene_foundation::SubmitLabel::Send
+impl core::clone::Clone for skene_foundation::SubmitLabel
+pub fn skene_foundation::SubmitLabel::clone(&self) -> skene_foundation::SubmitLabel
+impl core::cmp::Eq for skene_foundation::SubmitLabel
+impl core::cmp::PartialEq for skene_foundation::SubmitLabel
+pub fn skene_foundation::SubmitLabel::eq(&self, &skene_foundation::SubmitLabel) -> bool
+impl core::fmt::Debug for skene_foundation::SubmitLabel
+pub fn skene_foundation::SubmitLabel::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::SubmitLabel
+pub fn skene_foundation::SubmitLabel::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::SubmitLabel
+impl core::marker::StructuralPartialEq for skene_foundation::SubmitLabel
 pub enum skene_foundation::TemplateEntry<T>
 pub skene_foundation::TemplateEntry::Line(skene_foundation::GridName)
 pub skene_foundation::TemplateEntry::Track(skene_foundation::GridTrack<T>)
@@ -6147,6 +6231,39 @@ pub fn skene_foundation::KeyEvent::eq(&self, &skene_foundation::KeyEvent) -> boo
 impl core::fmt::Debug for skene_foundation::KeyEvent
 pub fn skene_foundation::KeyEvent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_foundation::KeyEvent
+pub struct skene_foundation::Keyboard
+pub skene_foundation::Keyboard::autocorrect: bool
+pub skene_foundation::Keyboard::autofill: core::option::Option<skene_foundation::Autofill>
+pub skene_foundation::Keyboard::capitalization: skene_foundation::Capitalization
+pub skene_foundation::Keyboard::kind: skene_foundation::KeyboardType
+pub skene_foundation::Keyboard::submit: core::option::Option<skene_foundation::SubmitLabel>
+impl skene_foundation::Keyboard
+pub const skene_foundation::Keyboard::DECIMAL: Self
+pub const skene_foundation::Keyboard::EMAIL: Self
+pub const skene_foundation::Keyboard::NUMBER: Self
+pub const skene_foundation::Keyboard::PHONE: Self
+pub const skene_foundation::Keyboard::SEARCH: Self
+pub const skene_foundation::Keyboard::TEXT: Self
+pub const skene_foundation::Keyboard::URL: Self
+pub const fn skene_foundation::Keyboard::new(skene_foundation::KeyboardType) -> Self
+pub const fn skene_foundation::Keyboard::with_autocorrect(self, bool) -> Self
+pub const fn skene_foundation::Keyboard::with_autofill(self, skene_foundation::Autofill) -> Self
+pub const fn skene_foundation::Keyboard::with_capitalization(self, skene_foundation::Capitalization) -> Self
+pub const fn skene_foundation::Keyboard::with_submit(self, skene_foundation::SubmitLabel) -> Self
+impl core::clone::Clone for skene_foundation::Keyboard
+pub fn skene_foundation::Keyboard::clone(&self) -> skene_foundation::Keyboard
+impl core::cmp::Eq for skene_foundation::Keyboard
+impl core::cmp::PartialEq for skene_foundation::Keyboard
+pub fn skene_foundation::Keyboard::eq(&self, &skene_foundation::Keyboard) -> bool
+impl core::default::Default for skene_foundation::Keyboard
+pub fn skene_foundation::Keyboard::default() -> Self
+impl core::fmt::Debug for skene_foundation::Keyboard
+pub fn skene_foundation::Keyboard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Keyboard
+pub fn skene_foundation::Keyboard::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Keyboard
+impl core::marker::StructuralPartialEq for skene_foundation::Keyboard
+impl skene_foundation::ContentType for skene_foundation::Keyboard
 pub struct skene_foundation::Keyed<P: skene_foundation::Realization, V>
 impl<P: core::fmt::Debug + skene_foundation::Realization, V: core::fmt::Debug> core::fmt::Debug for skene_foundation::Keyed<P, V>
 pub fn skene_foundation::Keyed<P, V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -7824,14 +7941,18 @@ pub struct skene_foundation::TextEntry
 impl skene_foundation::TextEntry
 pub fn skene_foundation::TextEntry::bind_selection(self, skene_reactive::signal::Signal<skene_foundation::TextSelection>) -> Self
 pub fn skene_foundation::TextEntry::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::TextEntry::derive_keyboard(self, impl core::ops::function::Fn() -> skene_foundation::Keyboard + 'static) -> Self
 pub fn skene_foundation::TextEntry::derive_placeholder(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_foundation::TextEntry::derive_secure(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::TextEntry::derive_selection(self, impl core::ops::function::Fn() -> skene_foundation::TextSelection + 'static) -> Self
 pub fn skene_foundation::TextEntry::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::TextEntry::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
 pub fn skene_foundation::TextEntry::handle_selection_change(self, impl core::ops::function::Fn(skene_foundation::TextSelection) + 'static) -> Self
 pub const fn skene_foundation::TextEntry::new() -> Self
+pub fn skene_foundation::TextEntry::set_keyboard(self, skene_foundation::Keyboard) -> Self
 pub const fn skene_foundation::TextEntry::set_lines(self, u16) -> Self
 pub fn skene_foundation::TextEntry::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::TextEntry::set_secure(self, bool) -> Self
 pub fn skene_foundation::TextEntry::set_selection(self, skene_foundation::TextSelection) -> Self
 pub fn skene_foundation::TextEntry::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl core::default::Default for skene_foundation::TextEntry
@@ -8754,10 +8875,12 @@ pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::N
 pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
 pub trait skene_foundation::ContentType: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static
 impl skene_foundation::ContentType for alloc::rc::Rc<str>
+impl skene_foundation::ContentType for bool
 impl skene_foundation::ContentType for core::option::Option<alloc::rc::Rc<str>>
 impl skene_foundation::ContentType for skene_foundation::CheckState
 impl skene_foundation::ContentType for skene_foundation::Choices
 impl skene_foundation::ContentType for skene_foundation::Edit
+impl skene_foundation::ContentType for skene_foundation::Keyboard
 impl skene_foundation::ContentType for skene_foundation::Membership
 impl skene_foundation::ContentType for skene_foundation::OverlayPlacement
 impl skene_foundation::ContentType for skene_foundation::Range

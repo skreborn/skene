@@ -322,6 +322,30 @@ impl Records {
     });
   }
 
+  /// Makes `entry` secure where `secure`: its value drawn masked, a mark a cluster, its
+  /// selection kept from the clipboard and its history dropped, as the editing core keeps
+  /// a secure text.
+  pub(crate) fn set_entry_secure(&mut self, entry: Handle, secure: bool) {
+    let Some(mask) = self.field(entry).map(|field| Rc::clone(&field.mask))
+    else {
+      return;
+    };
+
+    self.with_entry(entry, move |editor| {
+      mask.set_masked(secure);
+      editor.set_secure(secure);
+      editor.relayout();
+    });
+    self.queue_restyle(entry);
+    self.layout_dirty = true;
+    self.damage(entry);
+  }
+
+  /// Whether `entry` is a secure text entry.
+  pub(crate) fn is_secure_entry(&self, entry: Handle) -> bool {
+    self.field(entry).is_some_and(Field::is_secure)
+  }
+
   /// Whether the caret position at an entry's local cell lies inside its selection.
   pub(crate) fn entry_selection_contains(
     &self,

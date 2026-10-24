@@ -4,13 +4,17 @@
 
 use skene_foundation::{
   AccessProp,
+  Autofill,
   Axis,
   BoxValue,
+  Capitalization,
   CheckState,
   Conditional,
   ControlFacts,
   FocusOrder,
   KeptLeaf,
+  Keyboard,
+  KeyboardType,
   NativeElement,
   NodeId,
   PopupKind,
@@ -20,6 +24,7 @@ use skene_foundation::{
   Role,
   SlotValue,
   StaticLeaf,
+  SubmitLabel,
 };
 
 use crate::compile::KeptStyle;
@@ -98,6 +103,29 @@ impl FormElement {
       (self.tag, self.kind),
       ("textarea", _) | ("input", Some("text"))
     )
+  }
+
+  /// The `type` a text field's `<input>` takes, `password` where it is `secure` and
+  /// else what `keyboard` takes, among the types keeping the selection API; `None` for
+  /// any other element.
+  pub(crate) fn entry_type(self, secure: bool, keyboard: Keyboard) -> Option<&'static str> {
+    if !matches!((self.tag, self.kind), ("input", Some("text"))) {
+      return None;
+    }
+
+    Some(if secure {
+      "password"
+    }
+    else {
+      match keyboard.kind {
+        KeyboardType::Phone => "tel",
+        KeyboardType::Url => "url",
+        KeyboardType::Search => "search",
+        KeyboardType::Text | KeyboardType::Email | KeyboardType::Number | KeyboardType::Decimal => {
+          "text"
+        }
+      }
+    })
   }
 
   /// Whether the element is a checkbox or a radio: one the platform toggles itself.
@@ -336,6 +364,65 @@ pub(crate) fn native_attributes(
   }
 
   attributes
+}
+
+/// The attributes a text entry's element carries for `keyboard`, each `None` where the
+/// keyboard leaves it to the platform: the keyboard an input method shows, the autofill
+/// it offers, its corrections, its capitalization and its `Enter` key's label.
+pub(crate) const fn keyboard_attributes(
+  keyboard: Keyboard,
+) -> [(&'static str, Option<&'static str>); 6] {
+  let mode = match keyboard.kind {
+    KeyboardType::Text => None,
+    KeyboardType::Email => Some("email"),
+    KeyboardType::Number => Some("numeric"),
+    KeyboardType::Decimal => Some("decimal"),
+    KeyboardType::Phone => Some("tel"),
+    KeyboardType::Url => Some("url"),
+    KeyboardType::Search => Some("search"),
+  };
+  let autocomplete = match keyboard.autofill {
+    None => None,
+    Some(Autofill::Name) => Some("name"),
+    Some(Autofill::Username) => Some("username"),
+    Some(Autofill::Email) => Some("email"),
+    Some(Autofill::Phone) => Some("tel"),
+    Some(Autofill::Url) => Some("url"),
+    Some(Autofill::Password) => Some("current-password"),
+    Some(Autofill::NewPassword) => Some("new-password"),
+    Some(Autofill::OneTimeCode) => Some("one-time-code"),
+  };
+  let (autocorrect, spellcheck) = if keyboard.autocorrect {
+    (None, None)
+  }
+  else {
+    (Some("off"), Some("false"))
+  };
+  let capitalize = match keyboard.capitalization {
+    Capitalization::Automatic => None,
+    Capitalization::Never => Some("none"),
+    Capitalization::Characters => Some("characters"),
+    Capitalization::Words => Some("words"),
+    Capitalization::Sentences => Some("sentences"),
+  };
+  let enter = match keyboard.submit {
+    None => None,
+    Some(SubmitLabel::Done) => Some("done"),
+    Some(SubmitLabel::Go) => Some("go"),
+    Some(SubmitLabel::Next) => Some("next"),
+    Some(SubmitLabel::Previous) => Some("previous"),
+    Some(SubmitLabel::Search) => Some("search"),
+    Some(SubmitLabel::Send) => Some("send"),
+  };
+
+  [
+    ("inputmode", mode),
+    ("autocomplete", autocomplete),
+    ("autocorrect", autocorrect),
+    ("spellcheck", spellcheck),
+    ("autocapitalize", capitalize),
+    ("enterkeyhint", enter),
+  ]
 }
 
 /// Whether `tag` is an element the `disabled` attribute disables natively.

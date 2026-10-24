@@ -32,20 +32,17 @@ in a code comment.
     on the web over the form element CSS styles; a platform's own controls take Skene's
     names where the meaning matches, the toolkit's names in their doc line and as doc
     aliases of the type and its members; a shared option is semantic
-    (`Button::set_prominent`) rather than a per-platform preset; `TextField::set_keyboard`
-    and a shared `set_shortcut` join them. A clickable `Container` is an activatable row
-    (focusable, `Enter` and `Space` activating it, holding controls that own their
-    presses), focus order follows the scene's child order, and a window opens with
-    nothing focused but a control set to `set_autofocus`. A choice's value is the app's
-    own type, each option carrying one (`Picker<T>`), where today's collections hold
-    strings, and the web's scriptless form names each option by a key of its own, the
-    server leaf's and the browser's alike even for a value holding a slice of `usize` or
-    `isize`, which `wide_of` hashes at the target's width. A text entry's secure flag
-    (`set_secure`), the web's `type=password` and every drawn field masked through the
-    core's `Masked` engine, which has no client until then;
-    `TextEntry::on_key` takes the core's `Binding` table once every field is drawn, the
-    terminal's key default consulting it until then, and the engine and editor move from
-    the drawing realization onto the platform's seam.
+    (`Button::set_prominent`) rather than a per-platform preset; a shared `set_shortcut`
+    joins them. A clickable `Container` is an activatable row (focusable, `Enter` and
+    `Space` activating it, holding controls that own their presses), focus order follows
+    the scene's child order, and a window opens with nothing focused but a control set
+    to `set_autofocus`. A choice's value is the app's own type, each option carrying one
+    (`Picker<T>`), where today's collections hold strings, and the web's scriptless form
+    names each option by a key of its own, the server leaf's and the browser's alike
+    even for a value holding a slice of `usize` or `isize`, which `wide_of` hashes at
+    the target's width. `TextEntry::on_key` takes the core's `Binding` table once every
+    field is drawn, the terminal's key default consulting it until then, and the engine
+    and editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), a preset a constructor per variant and a `derive_variant`
     re-inking its built-in, and the native door, `platform::<p>::NativeView` with its
@@ -455,16 +452,15 @@ in a code comment.
     is keyed per app and tab; the `pagehide` session-storage copy restores on reloads
     alone and is cleared at boot.
 16. **The app layer before 1.0.** Every surveyed framework treats these as table stakes.
-    - Forms: text-entry purposes (password, email, number, search, tel, url) and
-    autocomplete as reported properties on `ControlFacts`, the `set_keyboard` of item 1
-    choosing the keyboard, mapped on the web to `type`, `autocomplete`, `inputmode` and
-    `enterkeyhint`, a password entry secure in the terminal and, on every other
-    platform, the one field masked under the platform's secure-entry flag; an entry's
-    `Edit` content written as a contract, a no-op when equal and never while an IME
-    composes; a `Form` view emitting a real `<form>` with field names and typed buttons,
-    its GET submission a route with a query, so constraints such as `required` hold
-    without script, and elsewhere its explicit submit and cancel drive the platform's
-    credential commit (Android's autofill, app-initiated saving on Apple);
+    - Forms: an entry's `Secure` and `Keyboard` contents carried by every further
+    platform's input protocol as it lands, the one field masked under the platform's
+    secure-entry flag and its keyboard, autofill and hints in the protocol's own terms
+    (text-input-v3's content purpose and hints, `UITextInputTraits`, `EditorInfo`); an
+    entry's `Edit` content written as a contract, a no-op when equal and never while an
+    IME composes; a `Form` view emitting a real `<form>` with field names and typed
+    buttons, its GET submission a route with a query, so constraints such as `required`
+    hold without script, and elsewhere its explicit submit and cancel drive the
+    platform's credential commit (Android's autofill, app-initiated saving on Apple);
     `Action<I, O>` with pending, error and an optimistic overlay; a `Validate` trait
     feeding `Invalid` and `:user-invalid`.
     - Images and assets: `asset!()` handles checked at compile time, fingerprinted and

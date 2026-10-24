@@ -1133,10 +1133,15 @@ pub(super) enum Entry {
 }
 
 impl Entry {
-  /// `element` as a text entry; `None` for any other element.
+  /// `element` as a text entry, a field's `<input>` of any type its secure flag and
+  /// keyboard give it; `None` for any other element.
   pub(super) fn of(element: &JsValue) -> Option<Self> {
     if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
-      return (input.type_() == "text").then(|| Self::Field(input.clone()));
+      return matches!(
+        input.type_().as_str(),
+        "text" | "password" | "search" | "url" | "tel"
+      )
+      .then(|| Self::Field(input.clone()));
     }
 
     element

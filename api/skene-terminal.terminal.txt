@@ -1,12 +1,14 @@
 pub mod skene_terminal
 pub use skene_terminal::Activate
 pub use skene_terminal::AnyKind
+pub use skene_terminal::Autofill
 pub use skene_terminal::BOLD_WEIGHT
 pub use skene_terminal::BasicPickerBase
 pub use skene_terminal::Behavior
 pub use skene_terminal::BorderGlyphs
 pub use skene_terminal::Bubbling
 pub use skene_terminal::Canvas
+pub use skene_terminal::Capitalization
 pub use skene_terminal::Children
 pub use skene_terminal::ClickEvent
 pub use skene_terminal::Code
@@ -46,6 +48,8 @@ pub use skene_terminal::IntoScalar
 pub use skene_terminal::ItemExtent
 pub use skene_terminal::Key
 pub use skene_terminal::KeyEvent
+pub use skene_terminal::Keyboard
+pub use skene_terminal::KeyboardType
 pub use skene_terminal::KeymapBase
 pub use skene_terminal::LazyColumnBase
 pub use skene_terminal::LazyRowBase
@@ -105,6 +109,7 @@ pub use skene_terminal::SpanBase
 pub use skene_terminal::StackBase
 pub use skene_terminal::State
 pub use skene_terminal::StaticLeaf
+pub use skene_terminal::SubmitLabel
 pub use skene_terminal::SuspenseBase
 pub use skene_terminal::TOOLTIP_DELAY
 pub use skene_terminal::TOOLTIP_GRACE
@@ -276,11 +281,13 @@ pub use skene_terminal::prelude::Animation
 pub use skene_terminal::prelude::Apply
 pub use skene_terminal::prelude::Arrangement
 pub use skene_terminal::prelude::AspectRatio
+pub use skene_terminal::prelude::Autofill
 pub use skene_terminal::prelude::Axes
 pub use skene_terminal::prelude::Axis
 pub use skene_terminal::prelude::BasicPickerBase
 pub use skene_terminal::prelude::BorderGlyphs
 pub use skene_terminal::prelude::Bubbling
+pub use skene_terminal::prelude::Capitalization
 pub use skene_terminal::prelude::Color
 pub use skene_terminal::prelude::ColorScheme
 pub use skene_terminal::prelude::ColumnBase
@@ -322,6 +329,8 @@ pub use skene_terminal::prelude::ItemExtent
 pub use skene_terminal::prelude::Iterations
 pub use skene_terminal::prelude::Key
 pub use skene_terminal::prelude::KeyEvent
+pub use skene_terminal::prelude::Keyboard
+pub use skene_terminal::prelude::KeyboardType
 pub use skene_terminal::prelude::KeyedField
 pub use skene_terminal::prelude::KeymapBase
 pub use skene_terminal::prelude::Layout
@@ -364,6 +373,7 @@ pub use skene_terminal::prelude::State
 pub use skene_terminal::prelude::Store
 pub use skene_terminal::prelude::Store
 pub use skene_terminal::prelude::StoreField
+pub use skene_terminal::prelude::SubmitLabel
 pub use skene_terminal::prelude::SuspenseBase
 pub use skene_terminal::prelude::TextBase
 pub use skene_terminal::prelude::TextDecoration

@@ -140,7 +140,8 @@ over node ids:
   shows that a view writes is one typed value (`Content`: a run's `Text`, an entry's
   `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`, a group's
   `Chosen` key, a member's `Membership` of its group, a link's `Destination`, an
-  entry's `Placeholder`, an overlay's `Placement`), written through
+  entry's `Placeholder`, its `Secure` flag and its `Keyboard`, an overlay's
+  `Placement`), written through
   its key in `contents` (`contents::RANGE.write::<P>(node, &range)`), the key typed by
   its value so a value of another type does not compile, and erased into a borrowed
   `ContentValue` the realization dispatches on. A value constrained by another crosses
@@ -152,8 +153,8 @@ over node ids:
   destination and an overlay's first placement are written between its `create` and its
   `apply_style`, so the web writes a link's `href` where it stood and compiles an
   overlay's margins against the viewport from its first placement. A box's
-  `set_destination`, a run's `set_link` and an entry's `set_placeholder` each have their
-  `derive_` twin. What an entry shows is read back through `read` (its `Edit`,
+  `set_destination`, a run's `set_link` and an entry's `set_placeholder`, `set_secure`
+  and `set_keyboard` each have their `derive_` twin. What an entry shows is read back through `read` (its `Edit`,
   where the platform keeps one), and `composing` says whether what a control shows is
   still the reader's, as while an input method composes or before the client adopted
   a changed control; a controlled content's controller reads both.
@@ -590,6 +591,25 @@ re-export.
   platform's protocol counts in code points or UTF-16 code units it names its unit
   (`Unit::CodePoint`, `Unit::Utf16`) and converts through one index per text
   (`TextIndex`), as the web does for its `<input>`.
+- **A secure flag and a keyboard cross as contents.** `TextEntry::set_secure` writes a
+  single-line field's `Secure` content (an editor is never secure), and the field masks
+  its text and keeps it from the clipboard: `Copy` and `Cut` are disabled in it, through
+  `clipboard_availability`, so the standard context menu lists them disabled, as
+  Chromium's password field does, while `Paste` stays. `TextEntry::set_keyboard` writes
+  its `Keyboard` content, one value naming what the entry takes (`KeyboardType`: text,
+  an email address, a whole or a decimal number, a telephone number, a URL, a query),
+  what the platform may fill it from (`Autofill`, the purposes the web's `autocomplete`
+  and text-input-v3's content purpose share, with the username and the new password
+  beside them), whether the input method corrects what is typed, how it capitalizes
+  (`Capitalization`) and what its `Enter` key says (`SubmitLabel`), each part a
+  platform's protocol has no word for left to the platform. The web realizes both on the
+  field's `<input>`: the secure flag is `type="password"`, and the keyboard is
+  `inputmode`, `autocomplete`, `autocorrect` with `spellcheck`, `autocapitalize` and
+  `enterkeyhint`, changing the `type` only to one that keeps the selection API (`tel`,
+  `url`, `search`; `email` and `number` throw on the `selectionStart` an edit's report
+  reads), a change of `type` keeping the value and the selection shown, and the server
+  rendering the same attributes. The terminal draws a secure field through the core's
+  `Masked` engine and has no keyboard to offer.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,
@@ -1105,7 +1125,9 @@ engine, over the geometry it reports.
   clusters and maps everything back, so every position it reports and takes is a byte
   of the real text and its inline boxes keep their places: the terminal's stand-ins
   are one use, and a secure entry's marks (`Masked<E>` over a shared `MaskState`, its
-  word the whole text) the other, which no entry is yet.
+  word the whole text) the other, the terminal's field its client: its editor runs over
+  `Masked<CellEngine>`, and the field draws each cluster of what the masked layout shows
+  (`MaskState::shown`), mapped back to the value's bytes.
 - **The editing core** (`text::editing`). `Editor<E>` runs Parley's cursor and
   selection model over any engine: a position a byte and an affinity, a selection an
   anchor and a focus, a vertical move keeping a horizontal goal. It performs
@@ -1328,6 +1350,13 @@ adds only what is its own:
   adopt; takes client hints as render input. The raw handles do not exist here, painted
   content renders empty, and handlers are inert.
 
+A text field's secure flag and keyboard are the shared realizer's
+(`FormElement::entry_type`, `keyboard_attributes`), so both leaves write the same `type`
+and attributes and the server's markup is the browser's; the browser leaf takes an
+`<input>` of every type they give a field (`text`, `password`, `tel`, `url`, `search`)
+as a text entry, and its `clipboard_availability` disables copying and cutting in a
+password input, whose selection its clipboard never reads.
+
 The crate's `platform` module holds each pixel platform's own vocabulary, a module per
 platform: `platform::web` is the web platform itself (`Web`, the `WebMarkup` and
 `WebDom` escape traits, `Declarations`, `RenderHints`, the re-exported `Document`, and
@@ -1504,7 +1533,12 @@ outright where either is a fraction, which then bounds it). The value draws on t
 first row, where a browser centers it in a taller `<input>` (`ROADMAP.md`). Its edits
 are reported through `report`, never applied ahead of the verdict, which it shows;
 it takes its read-only state from the scene before each operation, and a key command
-lays the scene out first (`lay_out`).
+lays the scene out first (`lay_out`). A secure field's `Secure` content masks its
+engine (`MaskState::set_masked`) and its editor (`Editor::set_secure`, which keeps no
+history and offers no copy or cut), so it draws one `•` a cluster, a wide cluster's
+mark one cell, its natural width its marks', its access runs and value read the marks
+and its role is a password input; its selection copies nothing and its `Copy` and
+`Cut` are disabled, and its `Keyboard` content is ignored.
 Its selection is the core's—an anchor beside the caret over the value,
 reported after every move as a change of the `Edit` it shows, applied, its selection a
 `TextSelection` in clusters, and written from its bound signal, each index clamped into

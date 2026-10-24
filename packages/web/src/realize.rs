@@ -18,6 +18,7 @@ use skene_foundation::{
   DragAxes,
   Edit,
   FocusOrder,
+  Keyboard,
   Membership,
   NodeFacts,
   NodeId,
@@ -64,6 +65,7 @@ use crate::{
     focus_order_attribute,
     form_element,
     is_form_element,
+    keyboard_attributes,
     native_attributes,
     range_attributes,
     referenced_nodes,
@@ -189,6 +191,10 @@ pub(crate) enum Realized {
     /// The radios whose membership named the control as their group, in the order they
     /// joined, a removed one until the next chosen key is written.
     members: Vec<NodeId>,
+    /// Whether a text entry is secure, as its last secure content said.
+    secure: bool,
+    /// The keyboard a text entry asks for, as its last keyboard content said.
+    keyboard: Keyboard,
   },
   /// An overlay.
   Overlay {
@@ -401,6 +407,8 @@ impl<S: Sink> Realizer<S> {
       membership: None,
       chosen: None,
       members: Vec::new(),
+      secure: false,
+      keyboard: Keyboard::TEXT,
     };
     let root = match native {
       Some(native) if native.is_bare() => {
@@ -746,10 +754,12 @@ impl<S: Sink> Realizer<S> {
   /// destination as its `href` under its policy, an overlay's placement where it opens,
   /// a group's chosen key as the checked state of its members, and a control's on the
   /// form element carrying it, a range's bounds and step before its value and a radio's
-  /// membership as its `name`; a control drawn without one shows its content through
+  /// membership as its `name`, an entry's secure flag and keyboard as its `type` and its
+  /// input method's attributes; a control drawn without one shows its content through
   /// its parts.
   pub(crate) fn write(&mut self, node: NodeId, value: ContentValue<'_>) {
     match value {
+      ContentValue::Secure(_) | ContentValue::Keyboard(_) => return self.write_entry(node, value),
       ContentValue::Text(text) => return self.set_text(node, text),
       ContentValue::Destination(path) => return self.write_destination(node, path),
       ContentValue::Placement(placement) => return self.place_overlay(node, placement),
@@ -775,7 +785,9 @@ impl<S: Sink> Realizer<S> {
       | ContentValue::Destination(_)
       | ContentValue::Placement(_)
       | ContentValue::Chosen(_)
-      | ContentValue::Membership(_) => {}
+      | ContentValue::Membership(_)
+      | ContentValue::Secure(_)
+      | ContentValue::Keyboard(_) => {}
       ContentValue::Edit(edit) => {
         self.sink.set_value(carrier, &edit.text);
 
@@ -938,6 +950,56 @@ impl<S: Sink> Realizer<S> {
       self
         .sink
         .set_checked(&carrier, chosen.as_deref() == Some(&*membership.key));
+    }
+  }
+
+  /// Shows the text entry `node`'s secure flag or keyboard, as `value` says, on its form
+  /// element: its `type` where it changes, keeping the value and the selection shown, and
+  /// the keyboard's attributes beside it.
+  fn write_entry(&mut self, node: NodeId, value: ContentValue<'_>) {
+    let Some(record) = self.records.get_mut(node)
+    else {
+      return;
+    };
+    let Realized::Control {
+      native: Some(native),
+      secure,
+      keyboard,
+      ..
+    } = &mut record.realized
+    else {
+      return;
+    };
+    let before = native.entry_type(*secure, *keyboard);
+
+    match value {
+      ContentValue::Secure(written) => *secure = written,
+      ContentValue::Keyboard(written) => *keyboard = written,
+      _ => return,
+    }
+
+    let after = native.entry_type(*secure, *keyboard);
+    let attributes =
+      matches!(value, ContentValue::Keyboard(_)).then(|| keyboard_attributes(*keyboard));
+    let carrier = record.carrier().clone();
+
+    if let Some(kind) = after.filter(|_| after != before) {
+      let shown = self.sink.shown(&carrier).and_then(|shown| shown.selection);
+
+      self.sink.set_attribute(&carrier, "type", kind);
+
+      if let Some(selection) = shown
+        && self.sink.shown(&carrier).and_then(|now| now.selection) != Some(selection)
+      {
+        self.sink.select(&carrier, selection);
+      }
+    }
+
+    for (name, value) in attributes.into_iter().flatten() {
+      match value {
+        Some(value) => self.sink.set_attribute(&carrier, name, value),
+        None => self.sink.remove_attribute(&carrier, name),
+      }
     }
   }
 

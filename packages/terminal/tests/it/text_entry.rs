@@ -1347,3 +1347,135 @@ fn a_written_value_reports_the_caret_it_moves() {
     );
   });
 }
+
+/// A secure field draws one mark a cluster, a wide one and a combining sequence each
+/// one mark of one cell, while its value stays the real text; derived, it draws its text
+/// again once it is not secure.
+#[test]
+fn a_secure_field_draws_a_mark_a_cluster_and_keeps_its_value() {
+  with_platform(|| {
+    let value = Signal::new("日e\u{301}x".to_owned());
+    let secure = Signal::new(true);
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(
+        TextEntry::new()
+          .derive_secure(move || secure.get())
+          .bind_value(value),
+      )
+      .set_width(8)
+      .into_any()
+      .build()
+    });
+
+    assert_eq!(testing::render_to_styled(8, 1), "•••\n\n\n\n");
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::render_to_styled(8, 1),
+      "•••\n\naaa\n\na reverse\n",
+      "focus selects the value, a mark a cluster"
+    );
+
+    testing::trigger_key("End");
+    testing::trigger_key("y");
+
+    assert_eq!(
+      value.get_untracked(),
+      "日e\u{301}xy",
+      "the value is the real text"
+    );
+    assert!(
+      testing::render_to_text(8, 1) == "\u{2022}\u{2022}\u{2022}\u{2022}\n",
+      "{}",
+      testing::render_to_text(8, 1)
+    );
+
+    secure.set(false);
+
+    assert!(
+      testing::render_to_text(8, 1).starts_with("日e\u{301}xy"),
+      "{}",
+      testing::render_to_text(8, 1)
+    );
+  });
+}
+
+/// A secure field keeps its text from the clipboard as Chromium's password field does:
+/// its context menu lists copying and cutting disabled and pasting live, and the copy key
+/// copies nothing.
+#[test]
+fn a_secure_fields_menu_disables_copying_and_cutting() {
+  with_platform(|| {
+    let value = Signal::new("hunter2".to_owned());
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(TextEntry::new().set_secure(true).bind_value(value))
+        .set_width(20)
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(30, 8);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("Ctrl+c");
+
+    assert_eq!(testing::take_copied(), None, "the copy key copies nothing");
+
+    testing::trigger_mouse_right_click(2, 0);
+
+    let items = testing::find_all_by_role(Role::MenuItem);
+    let names: Vec<_> = items
+      .iter()
+      .map(|item| testing::accessible_name(*item).unwrap_or_default())
+      .collect();
+    let disabled: Vec<_> = items
+      .iter()
+      .map(|item| crate::common::read(*item).is_disabled())
+      .collect();
+
+    assert_eq!(names, ["Cut", "Copy", "Paste"]);
+    assert_eq!(
+      disabled,
+      [true, true, false],
+      "the selection is all the value"
+    );
+  });
+}
+
+/// A secure field reports itself as a password input, its value and its text runs a mark
+/// a cluster.
+#[test]
+fn a_secure_fields_runs_read_marks() {
+  with_platform(|| {
+    let _ = terminal::mount(move || {
+      BasicTextField::new(TextEntry::new().set_secure(true).set_value("pä55"))
+        .set_width(10)
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(10, 1);
+
+    let tree = testing::access_tree();
+    let (_, entry) = tree
+      .nodes
+      .iter()
+      .find(|(_, node)| node.role() == Role::PasswordInput)
+      .expect("the field is a password input");
+    let runs: Vec<_> = entry
+      .children()
+      .iter()
+      .filter_map(|id| {
+        tree
+          .nodes
+          .iter()
+          .find(|(held, node)| held == id && node.role() == Role::TextRun)
+          .and_then(|(_, node)| node.value().map(str::to_owned))
+      })
+      .collect();
+
+    assert_eq!(runs, ["\u{2022}\u{2022}\u{2022}\u{2022}"]);
+    assert_eq!(entry.value(), Some("\u{2022}\u{2022}\u{2022}\u{2022}"));
+  });
+}

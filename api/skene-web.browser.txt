@@ -2,10 +2,12 @@ pub mod skene_web
 pub use skene_web::Activate
 pub use skene_web::AnyKind
 pub use skene_web::AsyncViewBase
+pub use skene_web::Autofill
 pub use skene_web::BasicPickerBase
 pub use skene_web::Behavior
 pub use skene_web::Bubbling
 pub use skene_web::Canvas
+pub use skene_web::Capitalization
 pub use skene_web::Children
 pub use skene_web::ClickEvent
 pub use skene_web::Code
@@ -46,6 +48,8 @@ pub use skene_web::IntoScalar
 pub use skene_web::ItemExtent
 pub use skene_web::Key
 pub use skene_web::KeyEvent
+pub use skene_web::Keyboard
+pub use skene_web::KeyboardType
 pub use skene_web::KeymapBase
 pub use skene_web::LazyColumnBase
 pub use skene_web::LazyRowBase
@@ -103,6 +107,7 @@ pub use skene_web::SpanBase
 pub use skene_web::StackBase
 pub use skene_web::State
 pub use skene_web::StaticLeaf
+pub use skene_web::SubmitLabel
 pub use skene_web::SuspenseBase
 pub use skene_web::TOOLTIP_DELAY
 pub use skene_web::TOOLTIP_GRACE
@@ -425,10 +430,12 @@ pub use skene_web::prelude::Apply
 pub use skene_web::prelude::Arrangement
 pub use skene_web::prelude::AspectRatio
 pub use skene_web::prelude::AsyncViewBase
+pub use skene_web::prelude::Autofill
 pub use skene_web::prelude::Axes
 pub use skene_web::prelude::Axis
 pub use skene_web::prelude::BasicPickerBase
 pub use skene_web::prelude::Bubbling
+pub use skene_web::prelude::Capitalization
 pub use skene_web::prelude::Color
 pub use skene_web::prelude::ColorScheme
 pub use skene_web::prelude::ColumnBase
@@ -471,6 +478,8 @@ pub use skene_web::prelude::ItemExtent
 pub use skene_web::prelude::Iterations
 pub use skene_web::prelude::Key
 pub use skene_web::prelude::KeyEvent
+pub use skene_web::prelude::Keyboard
+pub use skene_web::prelude::KeyboardType
 pub use skene_web::prelude::KeyedField
 pub use skene_web::prelude::KeymapBase
 pub use skene_web::prelude::Layout
@@ -511,6 +520,7 @@ pub use skene_web::prelude::State
 pub use skene_web::prelude::Store
 pub use skene_web::prelude::Store
 pub use skene_web::prelude::StoreField
+pub use skene_web::prelude::SubmitLabel
 pub use skene_web::prelude::SuspenseBase
 pub use skene_web::prelude::TextBase
 pub use skene_web::prelude::TextDecoration

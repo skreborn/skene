@@ -42,6 +42,42 @@ fn digits(code: Signal<String>) -> impl View {
 }
 ```
 
+## Secure fields and keyboards
+
+`set_secure` makes a field hold a secret: its text is masked, a mark for each character,
+and kept from the clipboard, copying and cutting disabled in it as in a browser's
+password field, while pasting stays. `set_keyboard` tells the platform what the field
+takes, so its input method offers the keyboard, the autofill and the corrections that
+suit it: an email address, a number, a telephone number, a URL or a query, what the
+platform may fill it from (`Autofill`), whether what is typed is corrected and
+capitalized, and what the `Enter` key says. Each platform carries what its input
+protocol has a word for: the web's `<input>` becomes a password input and takes the
+keyboard as `inputmode`, `autocomplete` and `enterkeyhint`, and the terminal masks a
+secure field in its cells and has no keyboard to offer.
+
+```rust
+use skene_simple_web::prelude::*;
+use skene_web::prelude::*;
+
+fn sign_in(email: Signal<String>, password: Signal<String>) -> impl View {
+  Column::new().set_spacing(12).set_children((
+    SimpleTextField::new()
+      .set_label("Email")
+      .set_keyboard(Keyboard::EMAIL.with_autofill(Autofill::Email))
+      .bind_value(email),
+    SimpleTextField::new()
+      .set_label("Password")
+      .set_secure(true)
+      .set_keyboard(
+        Keyboard::TEXT
+          .with_autofill(Autofill::Password)
+          .with_submit(SubmitLabel::Go),
+      )
+      .bind_value(password),
+  ))
+}
+```
+
 ## A control owns its events
 
 A control consumes the events it acts on: a press on a button is a press on that button,

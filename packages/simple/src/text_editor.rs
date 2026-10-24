@@ -6,6 +6,7 @@ use skene_foundation::{
   AnyKind,
   BasicTextEditor,
   CornerRadius,
+  Keyboard,
   NodeId,
   Realization,
   TextEntry,
@@ -76,6 +77,21 @@ impl<P: Realization> SimpleTextEditor<P> {
   /// reads.
   pub fn derive_placeholder(mut self, placeholder: impl Fn() -> String + 'static) -> Self {
     self.entry = self.entry.derive_placeholder(placeholder);
+
+    self
+  }
+
+  /// Sets the keyboard the entry asks the platform for.
+  pub fn set_keyboard(mut self, keyboard: Keyboard) -> Self {
+    self.entry = self.entry.set_keyboard(keyboard);
+
+    self
+  }
+
+  /// Derives the keyboard the entry asks the platform for from the signals `keyboard`
+  /// reads.
+  pub fn derive_keyboard(mut self, keyboard: impl Fn() -> Keyboard + 'static) -> Self {
+    self.entry = self.entry.derive_keyboard(keyboard);
 
     self
   }
@@ -168,6 +184,19 @@ pub trait SimpleTextEditorBase<P: Realization>: Wraps<Inner = SimpleTextEditor<P
   #[must_use]
   fn derive_placeholder(self, placeholder: impl Fn() -> String + 'static) -> Self {
     Self::wrap(self.into_inner().derive_placeholder(placeholder))
+  }
+
+  /// Sets the keyboard the entry asks the platform for.
+  #[must_use]
+  fn set_keyboard(self, keyboard: Keyboard) -> Self {
+    Self::wrap(self.into_inner().set_keyboard(keyboard))
+  }
+
+  /// Derives the keyboard the entry asks the platform for from the signals `keyboard`
+  /// reads.
+  #[must_use]
+  fn derive_keyboard(self, keyboard: impl Fn() -> Keyboard + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_keyboard(keyboard))
   }
 
   /// Sets the lines shown at once; at least two.

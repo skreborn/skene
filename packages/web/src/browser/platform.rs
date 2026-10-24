@@ -139,6 +139,14 @@ fn clipboard_entry(dom: &Dom) -> Option<Element> {
   in_popup.then(|| dom.events.last_entry.clone()).flatten()
 }
 
+/// Whether `entry` is a secure field's `<input>`, whose text no clipboard action copies
+/// or cuts.
+fn is_secure(entry: &Element) -> bool {
+  entry
+    .dyn_ref::<HtmlInputElement>()
+    .is_some_and(|input| input.type_() == "password")
+}
+
 /// The selection of an `<input>` or `<textarea>`: its start and end in UTF-16 units,
 /// and the text between them.
 fn entry_selection(entry: &Element) -> Option<(u32, u32, String)> {
@@ -760,7 +768,9 @@ impl Realization for Web {
       // cut or pasted; inside one, every action is listed and applies to its selection.
       match (clipboard_entry(dom), action) {
         (Some(entry), ClipboardAction::Copy | ClipboardAction::Cut) => {
-          if entry_selection(&entry).is_some_and(|(start, end, _)| start != end) {
+          if !is_secure(&entry)
+            && entry_selection(&entry).is_some_and(|(start, end, _)| start != end)
+          {
             Availability::Enabled
           }
           else {
@@ -786,6 +796,7 @@ impl Realization for Web {
       let clipboard = clipboard(dom)?;
       let entry = clipboard_entry(dom);
       let text = match &entry {
+        Some(entry) if is_secure(entry) => None,
         Some(entry) => entry_selection(entry).map(|(_, _, text)| text),
         None => document_selection(dom),
       };

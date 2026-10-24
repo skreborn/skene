@@ -6,6 +6,7 @@ use skene_foundation::{
   AnyKind,
   BasicTextField,
   CornerRadius,
+  Keyboard,
   NodeId,
   Realization,
   TextEntry,
@@ -73,6 +74,36 @@ impl<P: Realization> SimpleTextField<P> {
   /// reads.
   pub fn derive_placeholder(mut self, placeholder: impl Fn() -> String + 'static) -> Self {
     self.entry = self.entry.derive_placeholder(placeholder);
+
+    self
+  }
+
+  /// Makes the field secure where `secure`: its text masked, and kept from the
+  /// clipboard.
+  pub fn set_secure(mut self, secure: bool) -> Self {
+    self.entry = self.entry.set_secure(secure);
+
+    self
+  }
+
+  /// Derives whether the field is secure from the signals `secure` reads.
+  pub fn derive_secure(mut self, secure: impl Fn() -> bool + 'static) -> Self {
+    self.entry = self.entry.derive_secure(secure);
+
+    self
+  }
+
+  /// Sets the keyboard the entry asks the platform for.
+  pub fn set_keyboard(mut self, keyboard: Keyboard) -> Self {
+    self.entry = self.entry.set_keyboard(keyboard);
+
+    self
+  }
+
+  /// Derives the keyboard the entry asks the platform for from the signals `keyboard`
+  /// reads.
+  pub fn derive_keyboard(mut self, keyboard: impl Fn() -> Keyboard + 'static) -> Self {
+    self.entry = self.entry.derive_keyboard(keyboard);
 
     self
   }
@@ -157,6 +188,32 @@ pub trait SimpleTextFieldBase<P: Realization>: Wraps<Inner = SimpleTextField<P>>
   #[must_use]
   fn derive_placeholder(self, placeholder: impl Fn() -> String + 'static) -> Self {
     Self::wrap(self.into_inner().derive_placeholder(placeholder))
+  }
+
+  /// Makes the field secure where `secure`: its text masked, and kept from the
+  /// clipboard.
+  #[must_use]
+  fn set_secure(self, secure: bool) -> Self {
+    Self::wrap(self.into_inner().set_secure(secure))
+  }
+
+  /// Derives whether the field is secure from the signals `secure` reads.
+  #[must_use]
+  fn derive_secure(self, secure: impl Fn() -> bool + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_secure(secure))
+  }
+
+  /// Sets the keyboard the entry asks the platform for.
+  #[must_use]
+  fn set_keyboard(self, keyboard: Keyboard) -> Self {
+    Self::wrap(self.into_inner().set_keyboard(keyboard))
+  }
+
+  /// Derives the keyboard the entry asks the platform for from the signals `keyboard`
+  /// reads.
+  #[must_use]
+  fn derive_keyboard(self, keyboard: impl Fn() -> Keyboard + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_keyboard(keyboard))
   }
 
   /// Runs `action` with the text an edit asks for.

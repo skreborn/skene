@@ -232,6 +232,10 @@ impl Realization for Terminal {
           records.damage(node);
         }
       }),
+      ContentValue::Secure(secure) => {
+        with_records(|records| records.set_entry_secure(node, secure));
+      }
+      ContentValue::Keyboard(_) => {}
       ContentValue::Placement(placement) => with_records(|records| {
         if let Some(Kind::Overlay {
           placement: held,
@@ -405,13 +409,15 @@ impl Realization for Terminal {
 
       // Outside an entry, only the document's selection is copyable, and nothing is
       // cut or pasted; inside one, every action is listed, copying its selection, and
-      // cutting and pasting where it takes edits.
+      // cutting and pasting where it takes edits, a secure entry neither copying nor
+      // cutting.
       let entry = records.clipboard_entry();
       let editable = entry.is_some_and(|entry| records.is_editable(entry));
+      let secure = entry.is_some_and(|entry| records.is_secure_entry(entry));
       let applies = match action {
-        ClipboardAction::Copy => records.has_selection(),
+        ClipboardAction::Copy => !secure && records.has_selection(),
         ClipboardAction::Cut => {
-          editable && entry.is_some_and(|entry| records.entry_has_selection(entry))
+          !secure && editable && entry.is_some_and(|entry| records.entry_has_selection(entry))
         }
         ClipboardAction::Paste => editable,
       };

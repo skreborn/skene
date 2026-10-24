@@ -453,16 +453,24 @@ impl MaskState {
     self.mark.set(mark);
   }
 
-  /// What `text` shows as under the state: a mark per grapheme cluster where it masks, the
-  /// text itself otherwise.
+  /// What `text` shows as under the state, as a [`Masked`] engine lays it out: a mark per
+  /// grapheme cluster but the revealed one where it masks, the text itself otherwise.
   #[must_use]
   pub fn shown(&self, text: &str) -> String {
-    if self.is_masked() {
-      std::iter::repeat_n(self.mark(), text.graphemes(true).count()).collect()
+    if !self.is_masked() {
+      return text.to_owned();
     }
-    else {
-      text.to_owned()
+
+    let mut shown = String::with_capacity(text.len());
+
+    for (start, cluster) in text.grapheme_indices(true) {
+      match self.substitute(cluster, start) {
+        Some(mark) => shown.push(mark),
+        None => shown.push_str(cluster),
+      }
     }
+
+    shown
   }
 
   /// Whether the text is masked.
@@ -583,6 +591,8 @@ mod tests {
     );
 
     state.reveal(Some(3));
+
+    assert_eq!(state.shown(SECRET), "\u{2022}\u{1F600}\u{2022}\u{2022}");
 
     let revealed = engine.paragraph(&text, &style).layout(None);
 

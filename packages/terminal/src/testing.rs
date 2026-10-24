@@ -21,6 +21,7 @@ use skene_foundation::{
   NameFacts,
   NodeId,
   PointerButton,
+  Role,
   Scene,
 };
 
@@ -216,12 +217,23 @@ fn name_facts(node: NodeId) -> NameFacts {
         label,
         inner,
         field,
-      } => NameFacts::of_box(inner.role, &inner.facts, access()).with_control(
-        *native,
-        label.clone(),
-        field.as_ref().and_then(|field| field.placeholder.clone()),
-        field.as_ref().and_then(|field| field.value()),
-      ),
+      } => {
+        let facts = NameFacts::of_box(inner.role, &inner.facts, access()).with_control(
+          *native,
+          label.clone(),
+          field.as_ref().and_then(|field| field.placeholder.clone()),
+          field.as_ref().and_then(|field| field.value()),
+        );
+        let secure = field.as_ref().is_some_and(|field| field.is_secure());
+
+        match facts.role {
+          Some(Role::TextInput) if secure => NameFacts {
+            role: Some(Role::PasswordInput),
+            ..facts
+          },
+          _ => facts,
+        }
+      }
     };
 
     let facts = NameFacts {

@@ -1,7 +1,8 @@
 //! What a node shows that a view writes as one typed value: its text, an entry's text
 //! with its selection, a toggle's checked state, a range's value within its bounds, a
 //! choice's options with the chosen one, a group's chosen key and a member's place in
-//! its group, a link's destination, an entry's placeholder, an overlay's placement. A
+//! its group, a link's destination, an entry's placeholder, whether it is secure and the
+//! keyboard it asks for, an overlay's placement. A
 //! content a behavior controls is answered by its [`Controller`], or an entry's by its
 //! [`EditController`], when a reader changes it.
 
@@ -19,7 +20,7 @@ pub use self::report::{
   Report,
   report,
 };
-use crate::spine::{CheckState, Edit, NodeId, NodeKind, Placement, Point, Realization};
+use crate::spine::{CheckState, Edit, Keyboard, NodeId, NodeKind, Placement, Point, Realization};
 #[cfg(debug_assertions)]
 use crate::spine::{NodeRecord, Scene};
 
@@ -47,6 +48,10 @@ pub enum Content {
   Destination,
   /// The hint a text entry shows while its value is empty.
   Placeholder,
+  /// Whether a text entry is secure: its text masked, and kept from the clipboard.
+  Secure,
+  /// The keyboard a text entry asks the platform for.
+  Keyboard,
   /// Where an overlay sits, or the point it is pinned at.
   Placement,
 }
@@ -66,6 +71,8 @@ impl NodeKind {
         Content::Chosen,
         Content::Membership,
         Content::Placeholder,
+        Content::Secure,
+        Content::Keyboard,
       ],
       Self::Overlay => &[Content::Placement],
       Self::Anchor | Self::Scope => &[],
@@ -96,6 +103,10 @@ pub enum ContentValue<'a> {
   Destination(&'a str),
   /// The hint a text entry shows while its value is empty.
   Placeholder(&'a str),
+  /// Whether a text entry is secure: its text masked, and kept from the clipboard.
+  Secure(bool),
+  /// The keyboard a text entry asks the platform for.
+  Keyboard(Keyboard),
   /// Where an overlay sits, or the point it is pinned at.
   Placement(OverlayPlacement),
 }
@@ -114,6 +125,8 @@ impl ContentValue<'_> {
       Self::Membership(_) => Content::Membership,
       Self::Destination(_) => Content::Destination,
       Self::Placeholder(_) => Content::Placeholder,
+      Self::Secure(_) => Content::Secure,
+      Self::Keyboard(_) => Content::Keyboard,
       Self::Placement(_) => Content::Placement,
     }
   }
@@ -122,7 +135,7 @@ impl ContentValue<'_> {
 /// A value a content holds: what a view writes through a [`ContentKey`] of its type.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a value a node's content holds",
-  label = "a content holds a text, an edit, a checked state, a range, choices, a chosen key, a membership or an overlay's placement",
+  label = "a content holds a text, an edit, a checked state, a range, choices, a chosen key, a membership, a flag, a keyboard or an overlay's placement",
   note = "write a content through its key in `contents`, with the value of the key's type"
 )]
 pub trait ContentType: Clone + PartialEq + Debug + 'static {}
@@ -140,6 +153,10 @@ impl ContentType for Choices {}
 impl ContentType for Option<Rc<str>> {}
 
 impl ContentType for Membership {}
+
+impl ContentType for bool {}
+
+impl ContentType for Keyboard {}
 
 impl ContentType for OverlayPlacement {}
 
@@ -401,7 +418,7 @@ pub mod contents {
   use std::rc::Rc;
 
   use super::{Choices, Content, ContentKey, ContentValue, Membership, OverlayPlacement, Range};
-  use crate::spine::{CheckState, Edit};
+  use crate::spine::{CheckState, Edit, Keyboard};
 
   /// A run's text.
   pub const TEXT: ContentKey<Rc<str>> = ContentKey::new(
@@ -484,6 +501,24 @@ pub mod contents {
       _ => None,
     },
   );
+  /// Whether a text entry is secure: its text masked, and kept from the clipboard.
+  pub const SECURE: ContentKey<bool> = ContentKey::new(
+    Content::Secure,
+    |secure| ContentValue::Secure(*secure),
+    |value| match value {
+      ContentValue::Secure(secure) => Some(secure),
+      _ => None,
+    },
+  );
+  /// The keyboard a text entry asks the platform for.
+  pub const KEYBOARD: ContentKey<Keyboard> = ContentKey::new(
+    Content::Keyboard,
+    |keyboard| ContentValue::Keyboard(*keyboard),
+    |value| match value {
+      ContentValue::Keyboard(keyboard) => Some(keyboard),
+      _ => None,
+    },
+  );
   /// Where an overlay sits, or the point it is pinned at.
   pub const PLACEMENT: ContentKey<OverlayPlacement> = ContentKey::new(
     Content::Placement,
@@ -509,7 +544,7 @@ mod tests {
     Range,
     contents,
   };
-  use crate::spine::{CheckState, Edit, NodeId, NodeKind, Placement, Point};
+  use crate::spine::{Autofill, CheckState, Edit, Keyboard, NodeId, NodeKind, Placement, Point};
 
   /// A control takes every control content, a run its text and its destination, a box
   /// its destination, an overlay its placement, and the layout-invisible nodes none.
@@ -530,6 +565,8 @@ mod tests {
         Content::Chosen,
         Content::Membership,
         Content::Placeholder,
+        Content::Secure,
+        Content::Keyboard,
       ]
     );
     assert_eq!(NodeKind::Overlay.contents(), [Content::Placement]);
@@ -588,6 +625,14 @@ mod tests {
       ContentValue::Membership(&membership)
     );
 
+    let keyboard = Keyboard::EMAIL.with_autofill(Autofill::Email);
+
+    assert_eq!(contents::SECURE.erase(&true), ContentValue::Secure(true));
+    assert_eq!(
+      contents::KEYBOARD.erase(&keyboard),
+      ContentValue::Keyboard(keyboard)
+    );
+
     for (key, content) in [
       (contents::TEXT.content(), Content::Text),
       (contents::EDIT.content(), Content::Edit),
@@ -598,6 +643,8 @@ mod tests {
       (contents::MEMBERSHIP.content(), Content::Membership),
       (contents::DESTINATION.content(), Content::Destination),
       (contents::PLACEHOLDER.content(), Content::Placeholder),
+      (contents::SECURE.content(), Content::Secure),
+      (contents::KEYBOARD.content(), Content::Keyboard),
       (contents::PLACEMENT.content(), Content::Placement),
     ] {
       assert_eq!(key, content);
@@ -626,6 +673,15 @@ mod tests {
     );
     assert_eq!(contents::TEXT.own(ContentValue::Placeholder("a")), None);
     assert_eq!(contents::CHECKED.own(ContentValue::Edit(&edit)), None);
+    assert_eq!(contents::SECURE.own(ContentValue::Secure(true)), Some(true));
+    assert_eq!(
+      contents::KEYBOARD.own(ContentValue::Keyboard(Keyboard::URL)),
+      Some(Keyboard::URL)
+    );
+    assert_eq!(
+      contents::SECURE.own(ContentValue::Checked(CheckState::On)),
+      None
+    );
   }
 
   /// The chosen option is the one its key names, and a key naming none chooses none.

@@ -9,6 +9,7 @@ use crate::{
   EditController,
   EditTruth,
   EventKind,
+  Keyboard,
   NativeElement,
   Realization,
   Role,
@@ -40,12 +41,21 @@ use crate::{
 /// change, and a derived selection is placed in the text it is written with, or in the
 /// text the entry shows where no text is derived.
 ///
+/// A secure field ([`set_secure`](Self::set_secure)) masks its text, each cluster drawn
+/// as a mark, and keeps it from the clipboard: copying and cutting are disabled in it,
+/// pasting is not. The flag holds on a single-line field alone; an editor is never
+/// secure. The keyboard ([`set_keyboard`](Self::set_keyboard)) names what the entry takes
+/// and how the input method treats what is typed, for the platform's input protocol to
+/// carry; a platform without one, as the terminal, has no keyboard to offer.
+///
 /// [`Edit`]: crate::Edit
 #[must_use]
 pub struct TextEntry {
   value: Controlled<String>,
   selection: Controlled<TextSelection>,
   placeholder: Option<Source<Rc<str>>>,
+  secure: Option<Source<bool>>,
+  keyboard: Option<Source<Keyboard>>,
   lines: u16,
 }
 
@@ -63,6 +73,8 @@ impl TextEntry {
       value: Controlled::new(),
       selection: Controlled::new(),
       placeholder: None,
+      secure: None,
+      keyboard: None,
       lines: 1,
     }
   }
@@ -86,6 +98,38 @@ impl TextEntry {
   /// reads.
   pub fn derive_placeholder(mut self, placeholder: impl Fn() -> String + 'static) -> Self {
     self.placeholder = Some(Source::derive(move || Rc::from(placeholder())));
+
+    self
+  }
+
+  /// Makes the field secure where `secure`: its text masked, and kept from the
+  /// clipboard.
+  #[inline(always)]
+  pub fn set_secure(mut self, secure: bool) -> Self {
+    self.secure = Some(Source::Fixed(secure));
+
+    self
+  }
+
+  /// Derives whether the field is secure from the signals `secure` reads.
+  pub fn derive_secure(mut self, secure: impl Fn() -> bool + 'static) -> Self {
+    self.secure = Some(Source::derive(secure));
+
+    self
+  }
+
+  /// Sets the keyboard the entry asks the platform for.
+  #[inline(always)]
+  pub fn set_keyboard(mut self, keyboard: Keyboard) -> Self {
+    self.keyboard = Some(Source::Fixed(keyboard));
+
+    self
+  }
+
+  /// Derives the keyboard the entry asks the platform for from the signals `keyboard`
+  /// reads.
+  pub fn derive_keyboard(mut self, keyboard: impl Fn() -> Keyboard + 'static) -> Self {
+    self.keyboard = Some(Source::derive(keyboard));
 
     self
   }
@@ -189,6 +233,18 @@ impl<P: Realization> Behavior<P> for TextEntry {
     if let Some(placeholder) = self.placeholder.clone() {
       placeholder.bind(node, |node, hint| {
         contents::PLACEHOLDER.write::<P>(node, hint);
+      });
+    }
+
+    if let Some(secure) = self.secure.clone().filter(|_| self.lines == 1) {
+      secure.bind(node, |node, secure| {
+        contents::SECURE.write::<P>(node, secure);
+      });
+    }
+
+    if let Some(keyboard) = self.keyboard.clone() {
+      keyboard.bind(node, |node, keyboard| {
+        contents::KEYBOARD.write::<P>(node, keyboard);
       });
     }
 

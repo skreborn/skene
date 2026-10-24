@@ -67,6 +67,7 @@ use skene_web::{
   AnyView,
   AsyncView,
   AsyncViewBase,
+  Autofill,
   BasicButton,
   BasicCheckbox,
   BasicListboxOption,
@@ -87,6 +88,7 @@ use skene_web::{
   Grid,
   HasChild,
   HasChildren,
+  Keyboard,
   LayoutBox,
   Length,
   Link,
@@ -1630,6 +1632,113 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
     .expect("the editor's textarea");
 
   assert_eq!(editor.get_attribute("rows").as_deref(), Some("4"));
+}
+
+/// A field whose secure flag flips keeps what it shows: its `type` switches between
+/// `text` and `password` with the value and the caret where they were, and an edit made
+/// while secure reports its text and selection as any field's does.
+#[wasm_bindgen_test]
+fn a_fields_secure_flag_keeps_its_value_and_caret() {
+  let (_guard, root) = fresh_root();
+  let text = Signal::new("secret".to_owned());
+  let caret = Signal::new(TextSelection::collapsed(3));
+  let secure = Signal::new(false);
+
+  let _ = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_secure(move || secure.get())
+        .bind_value(text)
+        .bind_selection(caret),
+    )
+    .build()
+  });
+
+  let input = input_of(&root);
+  let range = |input: &HtmlInputElement| {
+    (
+      input.selection_start().expect("a selection API"),
+      input.selection_end().expect("a selection API"),
+    )
+  };
+
+  html(&input).focus().expect("focus the field");
+
+  assert_eq!(input.type_(), "text");
+  assert_eq!(range(&input), (Some(3), Some(3)));
+
+  secure.set(true);
+  web::end_turn();
+
+  assert_eq!(input.type_(), "password");
+  assert_eq!(input.value(), "secret");
+  assert_eq!(range(&input), (Some(3), Some(3)), "the caret stays");
+
+  input.set_value("secrets");
+  input
+    .set_selection_range(7, 7)
+    .expect("a password input selects");
+  dispatch(&input, "input");
+
+  assert_eq!(text.get(), "secrets");
+  assert_eq!(caret.get(), TextSelection::collapsed(7));
+
+  secure.set(false);
+  web::end_turn();
+
+  assert_eq!(input.type_(), "text");
+  assert_eq!(input.value(), "secrets");
+  assert_eq!(range(&input), (Some(7), Some(7)));
+}
+
+/// A number's keyboard keeps the field a text input, the keyboard named by
+/// `inputmode`, so an edit still reports its selection; a URL's switches the input to
+/// its own type, which keeps the selection API too.
+#[wasm_bindgen_test]
+fn a_number_keyboard_keeps_a_text_input_reporting_its_selection() {
+  let (_guard, root) = fresh_root();
+  let text = Signal::new(String::new());
+  let caret = Signal::new(TextSelection::collapsed(0));
+  let keyboard = Signal::new(Keyboard::NUMBER);
+
+  let _ = mount(move || {
+    BasicTextField::new(
+      TextEntry::new()
+        .derive_keyboard(move || keyboard.get())
+        .bind_value(text)
+        .bind_selection(caret),
+    )
+    .build()
+  });
+
+  let input = input_of(&root);
+
+  assert_eq!(input.type_(), "text");
+  assert_eq!(input.get_attribute("inputmode").as_deref(), Some("numeric"));
+
+  input.set_value("42");
+  input
+    .set_selection_range(1, 2)
+    .expect("a text input selects");
+  dispatch(&input, "input");
+
+  assert_eq!(text.get(), "42");
+  assert_eq!(caret.get(), TextSelection::new(1, 2));
+
+  keyboard.set(Keyboard::URL.with_autofill(Autofill::Url));
+  web::end_turn();
+
+  assert_eq!(input.type_(), "url");
+  assert_eq!(input.get_attribute("autocomplete").as_deref(), Some("url"));
+
+  input.set_value("a.b");
+  input
+    .set_selection_range(0, 1)
+    .expect("a URL input selects");
+  dispatch(&input, "input");
+
+  assert_eq!(text.get(), "a.b");
+  assert_eq!(caret.get(), TextSelection::new(0, 1));
 }
 
 /// A text entry keeping its label inside its box.

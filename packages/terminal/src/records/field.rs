@@ -1,6 +1,6 @@
-//! A text entry's editing state: the shared editing core over the cell engine, held apart
-//! from the records so it runs with none of them borrowed, and the window the entry shows
-//! its value through.
+//! A text entry's editing state: the shared editing core over the cell engine, masked
+//! where the entry is secure, held apart from the records so it runs with none of them
+//! borrowed, and the window the entry shows its value through.
 
 use std::{
   cell::{Cell, RefCell},
@@ -18,7 +18,10 @@ use skene_foundation::{
   report,
   text::{
     Laid as _,
+    MaskState,
+    Masked,
     Position,
+    TextIndex,
     TextWrap,
     editing::{Arbiter, Editor, Notice},
   },
@@ -27,14 +30,17 @@ use skene_foundation::{
 use super::Records;
 use crate::{
   Terminal,
-  engine::{CellEngine, drawn, engine, paragraph_style, whole, wrap_spans},
+  engine::{CellEngine, Drawn, drawn, engine, paragraph_style, whole, wrap_spans},
   field::{Area, settled_window},
   layout::{cell_point, cells_of},
   text::{self, CellScale},
 };
 
-/// An entry's editing core, over the cell engine.
-pub(crate) type EntryEditor = Editor<CellEngine>;
+/// An entry's editing core, over the cell engine masked as its [`MaskState`] says.
+pub(crate) type EntryEditor = Editor<Masked<CellEngine>>;
+
+/// What a secure entry draws each cluster of its value as.
+const MARK: char = '\u{2022}';
 
 /// An operation on an entry's editor that waits for the operation under way on it to end.
 pub(crate) type Deferred = Box<dyn FnOnce(&mut EntryEditor)>;
@@ -102,6 +108,8 @@ pub(crate) struct Visible {
 pub(crate) struct Field {
   /// The editing core; borrowed only by an operation on it, and by readers between them.
   pub(crate) editor: Rc<RefCell<EntryEditor>>,
+  /// Whether the editor's engine masks the value, shared with the engine.
+  pub(crate) mask: Rc<MaskState>,
   /// What the editor changed since the last [`take_changed`](Self::take_changed).
   changed: Rc<Cell<Changed>>,
   /// The selection last reported, or written from outside.
@@ -131,7 +139,8 @@ impl Field {
     let multiline = lines > 1;
     let changed = Rc::new(Cell::new(Changed::default()));
     let reported = Rc::new(Cell::new(TextSelection::collapsed(0)));
-    let mut editor = Self::editor_of(multiline);
+    let mask = Rc::new(MaskState::new(MARK));
+    let mut editor = Self::editor_of(multiline, Rc::clone(&mask));
     let notices = Rc::clone(&changed);
 
     editor.set_arbiter(Reporter {
@@ -149,6 +158,7 @@ impl Field {
 
     Self {
       editor: Rc::new(RefCell::new(editor)),
+      mask,
       changed,
       reported,
       deferred: Vec::new(),
@@ -160,16 +170,16 @@ impl Field {
     }
   }
 
-  /// An editing core over the cell engine, at one cell's scale: of several lines wrapping
-  /// at its width where `multiline`, else of one unwrapped line.
-  pub(crate) fn editor_of(multiline: bool) -> EntryEditor {
+  /// An editing core over the cell engine masked as `mask` says, at one cell's scale: of
+  /// several lines wrapping at its width where `multiline`, else of one unwrapped line.
+  pub(crate) fn editor_of(multiline: bool, mask: Rc<MaskState>) -> EntryEditor {
     let style = if multiline {
       paragraph_style()
     }
     else {
       paragraph_style().with_wrap(TextWrap::None)
     };
-    let mut editor = Editor::new(engine(), CellScale::ONE.style(), style);
+    let mut editor = Editor::new(Masked::new(engine(), mask), CellScale::ONE.style(), style);
 
     editor.set_multiline(multiline);
 
@@ -209,18 +219,24 @@ impl Field {
     Some(Edit::new(editor.text()).with_selection(editor.selection()))
   }
 
-  /// The value, `None` while an operation holds the editor.
+  /// The value as it shows, a mark a cluster where the entry is secure; `None` while an
+  /// operation holds the editor.
   pub(crate) fn value(&self) -> Option<String> {
-    Some(self.editor.try_borrow().ok()?.text().to_owned())
+    Some(self.mask.shown(self.editor.try_borrow().ok()?.text()))
   }
 
-  /// The selected text, `None` while the selection is collapsed or an operation holds the
-  /// editor.
+  /// Whether the entry is secure: its value masked, and kept from the clipboard.
+  pub(crate) fn is_secure(&self) -> bool {
+    self.mask.is_masked()
+  }
+
+  /// The selected text, `None` while the selection is collapsed, the entry is secure or an
+  /// operation holds the editor.
   pub(crate) fn selected_text(&self) -> Option<String> {
     let editor = self.editor.try_borrow().ok()?;
     let selected = editor.selected();
 
-    (!selected.is_empty()).then(|| editor.text()[selected].to_owned())
+    (!selected.is_empty() && !editor.is_secure()).then(|| editor.text()[selected].to_owned())
   }
 
   /// Whether a range of the value is selected.
@@ -235,7 +251,9 @@ impl Field {
   /// last read.
   pub(crate) fn widest(&self) -> usize {
     if let Ok(editor) = self.editor.try_borrow() {
-      self.widest.set(Self::widest_of(editor.text()));
+      self
+        .widest
+        .set(Self::widest_of(&self.mask.shown(editor.text())));
     }
 
     self.widest.get()
@@ -276,18 +294,46 @@ impl Field {
     )
   }
 
+  /// Every cluster the editor's value draws, in bytes of the value, with what it shows:
+  /// the cluster itself, or a secure entry's mark.
+  fn drawn_value(&self, editor: &EntryEditor) -> Vec<(Drawn, String)> {
+    let laid = editor.laid();
+    let value = editor.text();
+
+    if !laid.is_substituted() {
+      return drawn(laid.inner(), value, editor.index())
+        .into_iter()
+        .map(|cluster| (cluster, value[cluster.at..cluster.end].to_owned()))
+        .collect();
+    }
+
+    let shown = self.mask.shown(value);
+
+    drawn(laid.inner(), &shown, &TextIndex::new(&shown))
+      .into_iter()
+      .map(|cluster| {
+        let real = Drawn {
+          at: laid.real_index(cluster.at),
+          end: laid.real_index(cluster.end),
+          ..cluster
+        };
+
+        (real, shown[cluster.at..cluster.end].to_owned())
+      })
+      .collect()
+  }
+
   /// `window` moved past the wide cluster of a field's value it starts inside, if any.
   fn past_split(&self, editor: &EntryEditor, window: usize) -> usize {
     if self.is_editor() {
       return window;
     }
 
-    let laid = editor.laid();
-
-    drawn(&laid, editor.text(), editor.index())
+    self
+      .drawn_value(editor)
       .into_iter()
-      .find(|cluster| cluster.column < window && window < cluster.column + cluster.advance)
-      .map_or(window, |cluster| cluster.column + cluster.advance)
+      .find(|(cluster, _)| cluster.column < window && window < cluster.column + cluster.advance)
+      .map_or(window, |(cluster, _)| cluster.column + cluster.advance)
   }
 
   /// How far the window can scroll from its start in `area`.
@@ -460,10 +506,9 @@ impl Field {
       }
     }
     else {
-      let laid = editor.laid();
       let selected = editor.selected();
 
-      for cluster in drawn(&laid, value, editor.index()) {
+      for (cluster, shown) in self.drawn_value(&editor) {
         let (Some(column), Some(row)) = (
           cluster.column.checked_sub(shift_x),
           cluster.top.checked_sub(shift_y),
@@ -479,7 +524,7 @@ impl Field {
         clusters.push(VisibleCluster {
           column,
           row,
-          text: value[cluster.at..cluster.end].to_owned(),
+          text: shown,
           advance: cluster.advance,
           selected: focused && selected.contains(&cluster.at),
         });
@@ -531,11 +576,13 @@ impl Records {
 
 #[cfg(test)]
 mod properties {
+  use std::rc::Rc;
+
   use proptest::prelude::*;
   use skene_foundation::{
     Edit,
     TextSelection,
-    text::{Direction, Round, TextBoundary, TextIndex, editing::Command},
+    text::{Direction, MaskState, Round, TextBoundary, TextIndex, editing::Command},
   };
 
   use super::{EntryEditor, Field};
@@ -618,7 +665,7 @@ mod properties {
     ) {
       text::reset();
 
-      let mut editor = Field::editor_of(false);
+      let mut editor = Field::editor_of(false, Rc::new(MaskState::new('*')));
 
       editor.set_arbiter(Accepting);
 
@@ -640,7 +687,7 @@ mod properties {
         prop_assert_eq!(editor.index().grapheme_count(), index.grapheme_count());
 
         let laid = editor.laid();
-        let cells: usize = drawn(&laid, editor.text(), editor.index())
+        let cells: usize = drawn(laid.inner(), editor.text(), editor.index())
           .iter()
           .map(|cluster| cluster.advance)
           .sum();

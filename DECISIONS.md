@@ -8,6 +8,22 @@ supersedes.
 
 ## Decided against
 
+- **A `.cargo/config.toml` per shell** (2026-10-24), `skene new` writing each shell's
+  own configuration naming its platform, so plain cargo in a shell's directory builds
+  that shell's platform: cargo reads its configuration from the directory it runs in, so
+  cargo and rust-analyzer at the project's root would see no platform and fail on every
+  crate reaching a facade. One configuration at the project's root names the first
+  platform given, each shell is gated on its platform, and the CLI substitutes the cfg
+  for the others. Revisit with a multi-root workspace, an editor opening each shell as a
+  project of its own.
+- **A default platform at this repository's root** (2026-10-23), the root's
+  `.cargo/config.toml` naming one platform so plain cargo and an editor work there
+  unconfigured: plain cargo would build that platform alone while looking like the
+  whole repository, its tests passing for platforms nothing ran, and the platform-free
+  crates would build for it rather than natively. The root names none: plain cargo
+  builds the crates reaching neither facade, a cargo alias per platform carries its cfgs
+  and triple, and the checked-in rust-analyzer settings name one. Revisit if a
+  contributor workflow cannot work through the aliases.
 - **A `server` value of `skene_platform`** (2026-10-23), the server leaf named as a
   platform of its own (`--cfg skene_platform="server"`, a `Platform::Server` variant):
   the server leaf is the web platform's leaf, rendering the web's markup from the same

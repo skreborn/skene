@@ -11,3 +11,4 @@
 - [The terminal](terminal.md)
 - [Testing](testing.md)
 - [Component libraries](libraries.md)
+- [Contributing](contributing.md)

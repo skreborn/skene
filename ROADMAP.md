@@ -24,9 +24,6 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - Selection: this repository's root names no default platform, a cargo alias per
-    platform and the checked-in rust-analyzer settings naming one. Every
-    `P: Realization` above the realizations goes.
     - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
     come from the macro the shared properties come from, with their `derive_` twins and
     their backing fields cfg-gated; another platform's setter compiles and does nothing.
@@ -60,8 +57,9 @@ in a code comment.
     - The seam: a realization receives properties under Skene's own names as one generic
     record, at the `Keep` level it declares, contents typed and atomic, and reports each
     write applied or not.
-    - Behaviors name no realization, reaching the build's one realization through a
-    table of plain functions filled from it once per build.
+    - No signature above the realizations names one, every `P: Realization` there
+    going: behaviors reach the build's one realization through a table of plain
+    functions filled from it once per build.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.
@@ -305,12 +303,9 @@ in a code comment.
     - The web: `EditContext` or a rendering of its own a progressive enhancement over
     its form elements, never a replacement.
 10. **The CLI for every platform.**
-    - Configuration: `skene new` writes `.cargo/config.toml`, `[build] target` the real
-    triple, the platform cfg under `[target.'cfg(all())'] rustflags` and
-    `build.rustdocflags`, and a runner, refusing where the runner it names does not
-    exist; the CLI substitutes the platform cfg by reading cargo's rustflags sources in
-    cargo's order, refusing where it cannot tell how cargo merges them; `skene check`
-    fails when a declared platform is not realized.
+    - Configuration: `skene check` fails when a declared platform is not realized, and a
+    command passing arguments on to cargo (`skene test`) refuses a `--config` among
+    them that may change the flags it substitutes the platform's cfg in.
     - `skene build`, `run`, `test` and `check` for every platform from `web` and
     `terminal` to `ios`, `android`, `macos`, `windows` and `linux`, landing under
     `dist/<target>`, with `skene devices`, `skene doctor` and `skene eject`; native

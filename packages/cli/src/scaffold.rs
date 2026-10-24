@@ -1,6 +1,8 @@
-//! `skene new`: a project from a template.
+//! `skene new`: a project from a template, which plain cargo builds for the first
+//! platform it is given.
 
 use std::{
+  env,
   fs,
   path::{Path, PathBuf},
 };
@@ -17,12 +19,15 @@ pub(crate) enum Kind {
 
 impl Kind {
   /// Creates the project at `path`, named for its last component: the common crate,
-  /// and a crate for each of `platforms`, the skene crates taken from `source`.
+  /// and a crate for each of `platforms`, the skene crates taken from `source`, plain
+  /// cargo building it for the first of `platforms`. Refuses where that platform's
+  /// tests run through a program `installed` does not find.
   pub(crate) fn create(
     self,
     path: &Path,
     platforms: &[Platform],
     source: &Source,
+    installed: impl Fn(&str) -> bool,
   ) -> Result<(), String> {
     let name = path
       .file_name()
@@ -35,12 +40,25 @@ impl Kind {
       return Err(format!("{} already exists", path.display()));
     }
 
+    let configured = *platforms.first().ok_or("name a platform")?;
+
+    if let Some(runner) = configured.runner()
+      && !installed(runner)
+    {
+      return Err(format!(
+        "`{runner}`, which cargo runs the {} build's tests through, is not installed: \
+         install it (`cargo install wasm-bindgen-cli`, at the version of `wasm-bindgen` the \
+         project locks), then run skene new again",
+        configured.cfg()
+      ));
+    }
+
     let mut platforms = platforms.to_vec();
 
     platforms.sort_by_key(|platform| platform.directory());
     platforms.dedup();
 
-    for (file, contents) in self.files(name, &platforms, source) {
+    for (file, contents) in self.files(name, &platforms, configured, source) {
       let file = path.join(file);
 
       if let Some(parent) = file.parent() {
@@ -48,6 +66,11 @@ impl Kind {
       }
 
       fs::write(&file, contents).map_err(|error| format!("{}: {error}", file.display()))?;
+    }
+
+    if let Some(lock) = source.lock() {
+      fs::copy(&lock, path.join("Cargo.lock"))
+        .map_err(|error| format!("{}: {error}", lock.display()))?;
     }
 
     Ok(())
@@ -94,8 +117,15 @@ impl Kind {
     }
   }
 
-  /// Every file of the project named `name`, by its path within the project.
-  fn files(self, name: &str, platforms: &[Platform], source: &Source) -> Vec<(PathBuf, String)> {
+  /// Every file of the project named `name`, by its path within the project, plain
+  /// cargo building it for `configured`.
+  fn files(
+    self,
+    name: &str,
+    platforms: &[Platform],
+    configured: Platform,
+    source: &Source,
+  ) -> Vec<(PathBuf, String)> {
     let type_name = type_name(name);
     let fill = |template: &str| {
       template
@@ -137,9 +167,14 @@ impl Kind {
 
     let workspace = include_str!("../templates/Cargo.toml.tmpl")
       .replace("{members}", &members.join(", "))
-      .replace("{dependencies}", &dependencies.join("\n"));
+      .replace("{dependencies}", &dependencies.join("\n"))
+      .replace("{patches}", &source.patches());
 
     files.insert(0, (PathBuf::from("Cargo.toml"), workspace));
+    files.insert(
+      1,
+      (PathBuf::from(".cargo/config.toml"), configured.config()),
+    );
 
     files
   }
@@ -161,6 +196,51 @@ impl Platform {
       Self::Web => "web",
       Self::Terminal => "terminal",
     }
+  }
+
+  /// The value of `skene_platform` naming the platform.
+  const fn cfg(self) -> &'static str {
+    match self {
+      Self::Web => "web",
+      Self::Terminal => "terminal",
+    }
+  }
+
+  /// The target triple plain cargo builds the platform for.
+  const fn triple(self) -> &'static str {
+    match self {
+      Self::Web => "wasm32-unknown-unknown",
+      Self::Terminal => "host-tuple",
+    }
+  }
+
+  /// The program cargo runs the platform's tests through, where it needs one.
+  const fn runner(self) -> Option<&'static str> {
+    match self {
+      Self::Web => Some("wasm-bindgen-test-runner"),
+      Self::Terminal => None,
+    }
+  }
+
+  /// The `.cargo/config.toml` naming the platform for plain cargo: its triple as the
+  /// build's target, its cfg in the target's rustflags and in rustdoc's, and the
+  /// runner its tests need.
+  fn config(self) -> String {
+    let flags = format!("[\"--cfg\", 'skene_platform=\"{}\"']", self.cfg());
+    let runner = match self.runner() {
+      Some(runner) => format!(
+        "\n# Every test of the {} build runs through its test runner.\n[target.{}]\nrunner = \"{runner}\"\n",
+        self.cfg(),
+        self.triple()
+      ),
+      None => String::new(),
+    };
+
+    include_str!("../templates/config.toml.tmpl")
+      .replace("{platform}", self.cfg())
+      .replace("{triple}", self.triple())
+      .replace("{flags}", &flags)
+      .replace("{runner}", &runner)
   }
 
   /// The skene crates the platform crate of a project of `kind` depends on.
@@ -201,11 +281,72 @@ impl Platform {
 pub(crate) enum Source {
   /// crates.io, at the version of this command.
   Registry,
-  /// The skene checkout at this path.
-  Checkout(PathBuf),
+  /// A skene checkout.
+  Checkout {
+    /// The checkout's root.
+    root: PathBuf,
+    /// The crates its workspace patches, each with the directory of its patched copy.
+    patches: Vec<(String, PathBuf)>,
+  },
 }
 
 impl Source {
+  /// The checkout at `root`, with the patches its workspace's manifest makes.
+  pub(crate) fn checkout(root: &Path) -> Result<Self, String> {
+    let root = root
+      .canonicalize()
+      .map_err(|error| format!("{}: {error}", root.display()))?;
+    let path = root.join("Cargo.toml");
+    let manifest = fs::read_to_string(&path)
+      .map_err(|error| format!("{}: {error}", path.display()))?
+      .parse::<toml::Table>()
+      .map_err(|error| format!("{}: {error}", path.display()))?;
+    let patches = manifest
+      .get("patch")
+      .and_then(|patch| patch.get("crates-io"))
+      .and_then(toml::Value::as_table)
+      .into_iter()
+      .flatten()
+      .filter_map(|(name, patch)| {
+        let directory = patch.get("path")?.as_str()?;
+
+        Some((name.clone(), root.join(directory)))
+      })
+      .collect();
+
+    Ok(Self::Checkout { root, patches })
+  }
+
+  /// The project's `[patch.crates-io]` section: the checkout's patches, so the project
+  /// builds the crates the checkout carries its own changes to as the checkout does.
+  fn patches(&self) -> String {
+    match self {
+      Self::Checkout { patches, .. } if !patches.is_empty() => {
+        let mut section = String::from(
+          "\n# The crates the skene checkout carries its own changes to, patched as it patches them.\n[patch.crates-io]\n",
+        );
+
+        section.extend(
+          patches.iter().map(|(name, directory)| {
+            format!("{name} = {{ path = \"{}\" }}\n", directory.display())
+          }),
+        );
+
+        section
+      }
+      Self::Registry | Self::Checkout { .. } => String::new(),
+    }
+  }
+
+  /// The lock file the project starts from: the checkout's, so it builds against the
+  /// versions the checkout was built and tested with.
+  fn lock(&self) -> Option<PathBuf> {
+    match self {
+      Self::Registry => None,
+      Self::Checkout { root, .. } => Some(root.join("Cargo.lock")).filter(|lock| lock.is_file()),
+    }
+  }
+
   /// The dependency entry naming `name`.
   fn entry(&self, name: &str) -> String {
     match self {
@@ -214,7 +355,7 @@ impl Source {
         env!("CARGO_PKG_VERSION_MAJOR"),
         env!("CARGO_PKG_VERSION_MINOR")
       ),
-      Self::Checkout(root) => {
+      Self::Checkout { root, .. } => {
         let directory = name.strip_prefix("skene-").unwrap_or(name);
 
         format!(
@@ -224,6 +365,18 @@ impl Source {
       }
     }
   }
+}
+
+/// Whether `program` is a file in a directory of the `PATH`.
+pub(crate) fn on_path(program: &str) -> bool {
+  env::var_os("PATH").is_some_and(|path| {
+    env::split_paths(&path).any(|directory| {
+      directory
+        .join(program)
+        .with_extension(env::consts::EXE_EXTENSION)
+        .is_file()
+    })
+  })
 }
 
 /// Checks that `name` makes a crate name: a lowercase letter, then lowercase letters,
@@ -266,7 +419,10 @@ fn type_name(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-  use std::path::{Path, PathBuf};
+  use std::{
+    fs,
+    path::{Path, PathBuf},
+  };
 
   use super::{Kind, Platform, Source, check_name, type_name};
 
@@ -287,20 +443,38 @@ mod tests {
       .collect()
   }
 
+  /// A fresh directory for a test named `name`, gone first if a run left it.
+  fn scratch(name: &str) -> PathBuf {
+    let directory = std::env::temp_dir().join(format!("skene-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&directory);
+
+    directory
+  }
+
   /// An app holds its shared crate and a shell per platform named, each depending on the
-  /// shared crate and on its platform's skene crates alone, and every crate declares the
-  /// cfgs naming the build's platform.
+  /// shared crate and on its platform's skene crates alone, each shell gated on its
+  /// platform, every crate declaring the cfgs naming the build's platform, and the
+  /// configuration naming the first platform for plain cargo.
   #[test]
   fn an_app_has_a_shell_per_platform() {
-    let files = Kind::App.files("my-app", &[Platform::Web], &Source::Registry);
+    let files = Kind::App.files(
+      "my-app",
+      &[Platform::Terminal, Platform::Web],
+      Platform::Web,
+      &Source::Registry,
+    );
 
     assert_eq!(
       paths(&files),
       [
         "Cargo.toml",
+        ".cargo/config.toml",
         ".gitignore",
         "shared/Cargo.toml",
         "shared/src/lib.rs",
+        "terminal/Cargo.toml",
+        "terminal/src/lib.rs",
+        "terminal/skene.toml",
         "web/Cargo.toml",
         "web/src/lib.rs",
         "web/skene.toml",
@@ -310,32 +484,82 @@ mod tests {
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
-      workspace.contains("members = [\"shared\", \"web\"]"),
+      workspace.contains("members = [\"shared\", \"terminal\", \"web\"]"),
+      "{workspace}"
+    );
+    assert!(
+      workspace.contains("my-app-shared = { path = \"shared\" }"),
+      "{workspace}"
+    );
+    assert!(
+      workspace.contains("skene-reactive = \"0.1\""),
       "{workspace}"
     );
     assert!(workspace.contains("skene-web = \"0.1\""), "{workspace}");
-    assert!(!workspace.contains("skene-terminal"), "{workspace}");
+    assert!(
+      workspace.contains("skene-simple-terminal = \"0.1\""),
+      "{workspace}"
+    );
     assert!(workspace.contains("'cfg(skene_server)'"), "{workspace}");
     assert!(
-      ["shared/Cargo.toml", "web/Cargo.toml"]
-        .iter()
-        .all(|member| file(&files, member).contains("[lints]\nworkspace = true")),
+      workspace.contains(r#"'cfg(skene_platform, values("android", "ios", "linux", "macos", "terminal", "web", "windows"))'"#),
+      "{workspace}"
+    );
+    assert!(!workspace.contains("[patch"), "{workspace}");
+    assert_eq!(file(&files, ".cargo/config.toml"), Platform::Web.config());
+    assert_eq!(file(&files, ".gitignore"), "/target\n/*/dist\n");
+    assert!(
+      file(&files, "shared/src/lib.rs").contains("pub struct Counter"),
+      "the shared crate holds the state"
+    );
+    assert!(file(&files, "shared/Cargo.toml").contains("name = \"my-app-shared\""));
+
+    for (shell, platform, facade) in [
+      ("terminal", "terminal", "skene_terminal"),
+      ("web", "web", "skene_web"),
+    ] {
+      let manifest = file(&files, &format!("{shell}/Cargo.toml"));
+      let library = file(&files, &format!("{shell}/src/lib.rs"));
+
+      assert!(
+        manifest.contains(&format!("name = \"my-app-{shell}\"")),
+        "{manifest}"
+      );
+      assert!(
+        manifest.contains("my-app-shared.workspace = true"),
+        "{manifest}"
+      );
+      assert!(
+        library.contains(&format!("#![cfg(skene_platform = \"{platform}\")]")),
+        "{library}"
+      );
+      assert!(library.contains("use my_app_shared::Counter;"), "{library}");
+      assert!(
+        library.contains(&format!("use {facade}::prelude::*;")),
+        "{library}"
+      );
+      assert!(library.contains("#[main]"), "{library}");
+      assert!(file(&files, &format!("{shell}/skene.toml")).starts_with('#'));
+    }
+
+    assert!(
+      ["shared", "terminal", "web"].iter().all(|member| file(
+        &files,
+        &format!("{member}/Cargo.toml")
+      )
+      .contains("[lints]\nworkspace = true")),
       "every member declares the platform's cfgs"
     );
-    assert!(
-      file(&files, "web/src/lib.rs").contains("use my_app_shared::Counter;"),
-      "the shell names the shared crate by its Rust name"
-    );
-    assert!(file(&files, "web/Cargo.toml").contains("name = \"my-app-web\""));
   }
 
   /// A library holds its core and a crate per platform named, its types named for the
-  /// library.
+  /// library, each platform's crate gated on its platform.
   #[test]
   fn a_library_has_a_crate_per_platform() {
     let files = Kind::Library.files(
       "acme-ui",
       &[Platform::Terminal, Platform::Web],
+      Platform::Terminal,
       &Source::Registry,
     );
 
@@ -343,6 +567,7 @@ mod tests {
       paths(&files),
       [
         "Cargo.toml",
+        ".cargo/config.toml",
         ".gitignore",
         "core/Cargo.toml",
         "core/src/lib.rs",
@@ -363,23 +588,145 @@ mod tests {
       workspace.contains("acme-ui = { path = \"core\", version = \"0.1.0\" }"),
       "{workspace}"
     );
-    assert!(!workspace.contains("skene-simple"), "{workspace}");
-    assert!(file(&files, "core/src/lib.rs").contains("pub struct AcmeUiBadge<P: Realization>"));
     assert!(
-      file(&files, "web/src/lib.rs")
-        .contains("pub struct AcmeUiBadge(acme_ui::AcmeUiBadge<Active>);")
+      workspace.contains("skene-foundation = \"0.1\""),
+      "{workspace}"
     );
-    assert!(file(&files, "terminal/Cargo.toml").contains("name = \"acme-ui-terminal\""));
+    assert!(!workspace.contains("skene-simple"), "{workspace}");
+    assert!(workspace.contains("'cfg(skene_server)'"), "{workspace}");
+    assert_eq!(
+      file(&files, ".cargo/config.toml"),
+      Platform::Terminal.config()
+    );
+    assert_eq!(file(&files, ".gitignore"), "/target\n");
+    assert!(file(&files, "core/Cargo.toml").contains("name = \"acme-ui\""));
+    assert!(file(&files, "core/src/lib.rs").contains("pub struct AcmeUiBadge<P: Realization>"));
+
+    for (directory, platform) in [("terminal", "terminal"), ("web", "web")] {
+      let library = file(&files, &format!("{directory}/src/lib.rs"));
+
+      assert!(
+        file(&files, &format!("{directory}/Cargo.toml"))
+          .contains(&format!("name = \"acme-ui-{directory}\"")),
+      );
+      assert!(
+        library.contains(&format!("#![cfg(skene_platform = \"{platform}\")]")),
+        "{library}"
+      );
+      assert!(
+        library.contains("pub struct AcmeUiBadge(acme_ui::AcmeUiBadge<Active>);"),
+        "{library}"
+      );
+    }
+
+    assert!(
+      ["core", "terminal", "web"].iter().all(|member| file(
+        &files,
+        &format!("{member}/Cargo.toml")
+      )
+      .contains("[lints]\nworkspace = true")),
+      "every member declares the platform's cfgs"
+    );
   }
 
-  /// A checkout source names each skene crate by its path in the checkout.
+  /// The configuration names the platform for plain cargo: its triple as the build's
+  /// target, its cfg in the target's rustflags and rustdoc's, and the browser's runner.
+  #[test]
+  fn the_configuration_names_one_platform() {
+    let web = Platform::Web.config();
+    let terminal = Platform::Terminal.config();
+
+    for (config, triple, cfg) in [
+      (&web, "wasm32-unknown-unknown", "web"),
+      (&terminal, "host-tuple", "terminal"),
+    ] {
+      let table: toml::Table = config.parse().expect("the configuration is TOML");
+      let flags = toml::Value::Array(vec![
+        "--cfg".into(),
+        format!("skene_platform=\"{cfg}\"").into(),
+      ]);
+
+      assert_eq!(table["build"]["target"].as_str(), Some(triple), "{config}");
+      assert_eq!(table["build"]["rustdocflags"], flags, "{config}");
+      assert_eq!(
+        table["target"]["cfg(all())"]["rustflags"], flags,
+        "{config}"
+      );
+    }
+
+    let web: toml::Table = web.parse().expect("TOML");
+    let terminal: toml::Table = terminal.parse().expect("TOML");
+
+    assert_eq!(
+      web["target"]["wasm32-unknown-unknown"]["runner"].as_str(),
+      Some("wasm-bindgen-test-runner")
+    );
+    assert_eq!(terminal["target"].as_table().map(toml::Table::len), Some(1));
+  }
+
+  /// A project is written where its runner is installed, the first platform named the
+  /// configured one, and refused, writing nothing, where it is not.
+  #[test]
+  fn a_project_needs_its_platforms_runner() {
+    let directory = scratch("runner");
+    let app = directory.join("demo");
+
+    assert!(
+      Kind::App
+        .create(
+          &app,
+          &[Platform::Web, Platform::Terminal],
+          &Source::Registry,
+          |_| false
+        )
+        .is_err()
+    );
+    assert!(!app.exists(), "a refused project writes nothing");
+
+    Kind::App
+      .create(
+        &app,
+        &[Platform::Terminal, Platform::Web],
+        &Source::Registry,
+        |_| false,
+      )
+      .expect("the terminal needs no runner");
+
+    assert_eq!(
+      fs::read_to_string(app.join(".cargo/config.toml")).expect("written"),
+      Platform::Terminal.config()
+    );
+    assert!(app.join("web/src/lib.rs").is_file());
+    assert!(!app.join("Cargo.lock").exists(), "the registry has no lock");
+
+    let library = directory.join("acme");
+
+    Kind::Library
+      .create(&library, &[Platform::Web], &Source::Registry, |runner| {
+        runner == "wasm-bindgen-test-runner"
+      })
+      .expect("the runner is found");
+
+    assert_eq!(
+      fs::read_to_string(library.join(".cargo/config.toml")).expect("written"),
+      Platform::Web.config()
+    );
+
+    fs::remove_dir_all(&directory).expect("removed");
+  }
+
+  /// A checkout source names each skene crate by its path in the checkout, patches what
+  /// the checkout patches and starts from its lock.
   #[test]
   fn a_checkout_source_takes_paths() {
-    let files = Kind::App.files(
-      "demo",
-      &[Platform::Terminal],
-      &Source::Checkout(PathBuf::from("/src/skene")),
-    );
+    let source = Source::Checkout {
+      root: PathBuf::from("/src/skene"),
+      patches: vec![(
+        "parley".to_owned(),
+        PathBuf::from("/src/skene/vendor/parley"),
+      )],
+    };
+    let files = Kind::App.files("demo", &[Platform::Terminal], Platform::Terminal, &source);
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
@@ -391,6 +738,25 @@ mod tests {
         .contains("skene-simple-terminal = { path = \"/src/skene/packages/simple-terminal\" }"),
       "{workspace}"
     );
+    assert!(
+      workspace.contains("[patch.crates-io]\nparley = { path = \"/src/skene/vendor/parley\" }\n"),
+      "{workspace}"
+    );
+
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let checkout = Source::checkout(&root).expect("this checkout");
+    let Source::Checkout { root, patches } = &checkout
+    else {
+      panic!("a checkout");
+    };
+
+    assert!(
+      patches
+        .iter()
+        .any(|(name, directory)| name == "parley" && *directory == root.join("vendor/parley")),
+      "{patches:?}"
+    );
+    assert_eq!(checkout.lock(), Some(root.join("Cargo.lock")));
   }
 
   /// A name is a crate name or nothing.

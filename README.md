@@ -130,7 +130,7 @@ with the mouse off a plain drag is the terminal's.
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-dev` | `packages/dev` | The dev loop's protocol between the `skene` command and the app it runs, and the `Document` a web page is served as, the server leaf's pages and the command's client-rendered shell alike. |
-| `skene-cli` | `packages/cli` | `skene new app <name> <platform>...`, `skene new lib <name> <platform>...`, `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets, and the `public` directory served at the site's root; it depends on no facade, writing its shell through `skene-dev`'s `Document`. |
+| `skene-cli` | `packages/cli` | `skene new app <name> <platform>...`, `skene new lib <name> <platform>...`, `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets, and the `public` directory served at the site's root; a new project's `.cargo/config.toml` names its first platform for plain cargo, and the command builds every other by substituting that platform's cfg where cargo reads it; it depends on no facade, writing its shell through `skene-dev`'s `Document`. |
 
 ## Views, controls, themes
 
@@ -234,6 +234,10 @@ it passed is skipped unless `--force` is given. The gate needs the stable toolch
 matching the installed Chrome, `curl`, `tar` and `sha256sum` for the pinned Firefox, and
 a `wasm-bindgen-test-runner` matching the locked `wasm-bindgen`; a step lacking one
 fails naming it.
+
+The repository names no default platform: the guide's
+[contributing chapter](guide/src/contributing.md) has the cargo alias each platform's
+build takes at the root, the editor settings rust-analyzer reads and the gate's workflow.
 
 ## Extending
 

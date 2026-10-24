@@ -5,13 +5,12 @@ use std::{
   io::{BufReader, Read as _},
   path::{Path, PathBuf},
   process::{Command, Stdio},
-  sync::OnceLock,
   thread,
 };
 
 use cargo_metadata::{Artifact, Message};
 
-use crate::manifest::App;
+use crate::{flags::Selection, manifest::App};
 
 /// The message format a build reports its artifacts in, its diagnostics rendered.
 const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
@@ -147,27 +146,6 @@ fn write_page(app: &App, dev: bool, out: &Path) -> Result<(), String> {
   fs::write(out.join("index.html"), page).map_err(|error| error.to_string())
 }
 
-/// The host's target triple, as rustc reports it.
-fn host_triple() -> Result<&'static str, String> {
-  static HOST: OnceLock<Result<String, String>> = OnceLock::new();
-
-  HOST
-    .get_or_init(|| {
-      let output = Command::new("rustc")
-        .arg("-vV")
-        .output()
-        .map_err(|error| format!("failed to run rustc -vV: {error}"))?;
-
-      String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .find_map(|line| line.strip_prefix("host: "))
-        .map(str::to_owned)
-        .ok_or_else(|| "rustc -vV names no host".to_owned())
-    })
-    .as_deref()
-    .map_err(Clone::clone)
-}
-
 /// Runs the cargo build `command`, which asks for [`MESSAGE_FORMAT`], and returns the
 /// artifacts it reports; its diagnostics go to the terminal, or, `quiet`, into the
 /// error it fails with.
@@ -233,8 +211,9 @@ fn binary(app: &App, artifacts: &[Artifact]) -> Result<Built, String> {
     .ok_or_else(|| format!("cargo built no binary for {}", app.package))
 }
 
-/// A command building the app's library as the crate type `crate_type` for `target`.
-fn build_library(app: &App, crate_type: &str, target: &str) -> Command {
+/// A command building the app's library as the crate type `crate_type` for
+/// `selection`'s platform, named as cargo in the workspace's root would name it.
+fn build_library(app: &App, crate_type: &str, selection: Selection) -> Result<Command, String> {
   let mut command = Command::new("cargo");
 
   command.current_dir(&app.workspace_root).args([
@@ -242,23 +221,19 @@ fn build_library(app: &App, crate_type: &str, target: &str) -> Command {
     "--lib",
     "--crate-type",
     crate_type,
-    "--target",
-    target,
     "-p",
     &app.package,
     MESSAGE_FORMAT,
   ]);
+  selection.name(&mut command, &app.workspace_root)?;
 
-  command
+  Ok(command)
 }
 
 /// Builds the app's terminal binary for the host, with the terminal named, quietly, and
 /// returns its path; on failure returns cargo's diagnostics.
 pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<Built, String> {
-  let host = host_triple()?;
-  let mut command = build_library(app, "bin", host);
-
-  name_platform(&mut command, host, TERMINAL);
+  let mut command = build_library(app, "bin", Selection::Terminal)?;
 
   if release {
     command.arg("--release");
@@ -289,10 +264,7 @@ pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
 
 /// Builds the app's browser wasm.
 fn build_wasm(app: &App, release: bool) -> Result<Built, String> {
-  let target = "wasm32-unknown-unknown";
-  let mut command = build_library(app, "cdylib", target);
-
-  name_platform(&mut command, target, WEB);
+  let mut command = build_library(app, "cdylib", Selection::Web)?;
 
   // A split build keeps what the split tool reads—relocations, symbol names, unfused
   // functions—with the extra flags scoped to the app's own compile.
@@ -380,72 +352,10 @@ fn optimize(app: &App, out: &Path) -> Result<(), String> {
   }
 }
 
-/// The cfg naming the web, the browser's alone.
-const WEB: &[&str] = &["skene_platform=\"web\""];
-
-/// The cfgs naming the web's server leaf.
-const SERVER: &[&str] = &["skene_platform=\"web\"", "skene_server"];
-
-/// The cfg naming the terminal.
-const TERMINAL: &[&str] = &["skene_platform=\"terminal\""];
-
-/// Names `cfgs` for what the build `command` compiles for `target` alone, never its
-/// build scripts or proc macros: through the target's rustflags, or, where `RUSTFLAGS`
-/// or `CARGO_ENCODED_RUSTFLAGS` supersedes those, joined to it.
-fn name_platform(command: &mut Command, target: &str, cfgs: &[&str]) {
-  if let Ok(mut flags) = std::env::var("CARGO_ENCODED_RUSTFLAGS") {
-    for cfg in cfgs {
-      if !flags.is_empty() {
-        flags.push('\x1f');
-      }
-
-      flags.push_str("--cfg\x1f");
-      flags.push_str(cfg);
-    }
-
-    command.env("CARGO_ENCODED_RUSTFLAGS", flags);
-
-    return;
-  }
-
-  if let Ok(mut flags) = std::env::var("RUSTFLAGS") {
-    for cfg in cfgs {
-      let flag = format!("--cfg {cfg}");
-
-      if !flags.contains(&flag) {
-        if !flags.is_empty() {
-          flags.push(' ');
-        }
-
-        flags.push_str(&flag);
-      }
-    }
-
-    command.env("RUSTFLAGS", flags);
-
-    return;
-  }
-
-  command.arg("--config").arg(rustflags_config(target, cfgs));
-}
-
-/// The `--config` value setting `target`'s rustflags to `cfgs`.
-fn rustflags_config(target: &str, cfgs: &[&str]) -> String {
-  let flags: Vec<String> = cfgs
-    .iter()
-    .map(|cfg| format!(r#""--cfg", "{}""#, cfg.replace('"', "\\\"")))
-    .collect();
-
-  format!("target.{target}.rustflags=[{}]", flags.join(", "))
-}
-
 /// Builds the app's server binary for the host, with the web's server leaf named, and
 /// returns its path.
 pub(crate) fn build_server(app: &App, release: bool) -> Result<Built, String> {
-  let host = host_triple()?;
-  let mut command = build_library(app, "bin", host);
-
-  name_platform(&mut command, host, SERVER);
+  let mut command = build_library(app, "bin", Selection::Server)?;
 
   if release {
     command.arg("--release");
@@ -526,7 +436,7 @@ fn route_file(route: &str) -> PathBuf {
 mod tests {
   use std::fs;
 
-  use super::{SERVER, TERMINAL, WEB, WebOut, rustflags_config};
+  use super::WebOut;
 
   /// A build dropped unpublished leaves the output standing and its staging gone, and a
   /// published one replaces the output whole.
@@ -556,24 +466,5 @@ mod tests {
     assert_eq!(fs::read_to_string(web.join("index.html")).unwrap(), "new");
 
     fs::remove_dir_all(&dist).unwrap();
-  }
-
-  /// The browser's build names the web, the server's names its leaf beside it and the
-  /// terminal's names the terminal, each as a TOML array cargo reads for the target
-  /// alone.
-  #[test]
-  fn a_build_names_its_platform_in_the_targets_rustflags() {
-    assert_eq!(
-      rustflags_config("wasm32-unknown-unknown", WEB),
-      r#"target.wasm32-unknown-unknown.rustflags=["--cfg", "skene_platform=\"web\""]"#
-    );
-    assert_eq!(
-      rustflags_config("x86_64-unknown-linux-gnu", SERVER),
-      r#"target.x86_64-unknown-linux-gnu.rustflags=["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]"#
-    );
-    assert_eq!(
-      rustflags_config("x86_64-unknown-linux-gnu", TERMINAL),
-      r#"target.x86_64-unknown-linux-gnu.rustflags=["--cfg", "skene_platform=\"terminal\""]"#
-    );
   }
 }

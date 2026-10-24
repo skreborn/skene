@@ -17,6 +17,7 @@ skene new app counter web terminal
 
 ```text
 counter
+├── .cargo         config.toml: the platform plain cargo builds, the web
 ├── Cargo.toml     the workspace
 ├── shared         counter-shared: the state and logic every shell shares
 ├── terminal       counter-terminal: the terminal's shell
@@ -48,6 +49,35 @@ fn app() -> impl View {
 `#[main]` expands to the entry the build has: in the browser it hydrates the page the
 server rendered, and on the server it renders the requested path. A build for neither
 fails, naming the two.
+
+## One platform per build
+
+A build names its platform by a cfg, `--cfg skene_platform="web"` or
+`--cfg skene_platform="terminal"`, the web's server leaf being the `web` build with
+`--cfg skene_server` beside it. The first platform `skene new` is given is the one
+plain cargo builds: the project's `.cargo/config.toml` names it, with its target as the
+build's and its cfg in the target's rustflags and in rustdoc's.
+
+```toml
+[build]
+target = "wasm32-unknown-unknown"
+rustdocflags = ["--cfg", 'skene_platform="web"']
+
+[target.'cfg(all())']
+rustflags = ["--cfg", 'skene_platform="web"']
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-bindgen-test-runner"
+```
+
+So `cargo check`, `cargo test`, `cargo clippy`, `cargo doc` and rust-analyzer work at
+the project's root with no other setup, the browser's tests running through
+wasm-bindgen's test runner, which `skene new` asks to be installed first. Each shell
+is gated on its platform (`#![cfg(skene_platform = "web")]`), so in the terminal's build
+the web's shell compiles empty, and the other way round. The `skene` command builds
+every other platform by naming that platform's cfg where the configuration names this
+one: `skene run terminal` in this project builds the terminal, and `skene run web`
+shares what plain cargo compiled, its flags being the configuration's own.
 
 ## Running it
 

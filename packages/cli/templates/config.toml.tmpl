@@ -1,0 +1,10 @@
+# The platform plain cargo, clippy, rustdoc and rust-analyzer build for: `{platform}`.
+# The skene command builds any other platform the project has a crate for by naming
+# that platform's cfg in place of this one.
+[build]
+target = "{triple}"
+rustdocflags = {flags}
+
+[target.'cfg(all())']
+rustflags = {flags}
+{runner}

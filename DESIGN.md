@@ -1224,23 +1224,25 @@ stylesheet, holding every rule the browser interns.
 
 ### Native (planned)
 
-One shell per OS—`skene-ios`, `skene-android`, `skene-windows`, `skene-macos` and
-`skene-linux`—each its own crate and facade, with a vocabulary for that OS's controls,
-structure and navigation. An app's shell depends on its OS's crate, which builds for that
-OS's triples alone, so no cfg names the platform. Where the OS composites views (iOS,
-Android, macOS) a shell realizes the tree into the OS's own view hierarchy, a box a view
-with its layers, and where it composites windows alone (Linux, Windows) it draws the
-whole window. Every text is laid out and drawn by the OS's own engine behind
-`TextEngine` (TextKit 2, `android.text` over Minikin, DirectWrite, and on Linux
-`skene-parley` over the system's fonts), and a text entry is Skene's own field over the
-editing core, speaking the OS's text-input protocol itself and reporting its text to
-AccessKit from the core; the OS's own controls stay reachable as its own. No
-realization is a hybrid of drawn content around a toolkit's controls inside a window
-Skene draws. Layout is taffy, the OS's measure its leaves; the resolution cache tells a
-shell whether a layout-affecting value moved, so a palette write relays out only when it
-must. Off-thread work uses the engine's scheduler wired to the event-loop
-proxy, and a loop-integrated timer is fair game there, the loop being the shell's. The
-plan, its prerequisites and its order are in `ROADMAP.md`.
+Each OS joins the pixel facade as a platform under its cfg (`ios`, `android`, `macos`,
+`windows` and `linux`), the facade `skene-web` today and `skene-gui` once item 1 splits
+it: its realization a crate of its own compiled in that platform's build alone, its own
+vocabulary for its controls, structure and navigation in the facade's `platform::<p>`
+module, and an app's pixel shell one crate built once per platform it declares, where
+`skene-web` refuses each of these builds today with a `compile_error!` naming the
+platform. Where the OS composites views (iOS, Android, macOS) a shell realizes the tree
+into the OS's own view hierarchy, a box a view with its layers, and where it composites
+windows alone (Linux, Windows) it draws the whole window. Every text is laid out and
+drawn by the OS's own engine behind `TextEngine` (TextKit 2, `android.text` over
+Minikin, DirectWrite, and on Linux `skene-parley` over the system's fonts), and a text
+entry is Skene's own field over the editing core, speaking the OS's text-input protocol
+itself and reporting its text to AccessKit from the core; the OS's own controls stay
+reachable as its own. No realization is a hybrid of drawn content around a toolkit's
+controls inside a window Skene draws. Layout is taffy, the OS's measure its leaves; the
+resolution cache tells a shell whether a layout-affecting value moved, so a palette
+write relays out only when it must. Off-thread work uses the engine's scheduler wired to
+the event-loop proxy, and a loop-integrated timer is fair game there, the loop being the
+shell's. The plan, its prerequisites and its order are in `ROADMAP.md`.
 
 ### The terminal (`skene-terminal`)
 
@@ -1564,45 +1566,90 @@ extension traits.
 
 ## Selection and entry
 
-Selection is by **facade dependency** first—a web app depends on `skene-web`, a
-terminal app on `skene-terminal`—and by the build's cfg, which every build names:
-`skene-web` compiles under `--cfg skene_platform="web"`, its browser leaf on
-`wasm32-unknown-unknown` and its server leaf, on any target, where `--cfg skene_server`
-stands beside it, and it refuses every other build with a `compile_error!` of its own:
-one naming no platform, the web without `skene_server` off `wasm32-unknown-unknown`,
-and each pixel platform it does not realize yet, while a terminal build compiles it
-empty. `skene-terminal` compiles under `--cfg skene_platform="terminal"` on the host's
-target, refuses a build naming no platform with its own `compile_error!`, and compiles
-empty in every other platform's build. Each facade's `Platform` answers the build's
-platform as a const (`Platform::CURRENT`; the web's `Platform::IS_SERVER` the server
-leaf and `Platform::IS_APPLE` Apple's two), so an app that diverges per platform
-matches on it, and its `platform::<p>` modules hold each platform's own vocabulary, a
-platform's data types in every build and its controls in its own. A crate reaching a
-facade—its Simple crate, a low-level view's, an example—is gated on that facade's
-platform, so a build of the whole workspace for one platform compiles the other
+**A build names its platform by a cfg**, `--cfg skene_platform="<p>"` with `<p>` one
+of `web`, `ios`, `android`, `macos`, `windows`, `linux` and `terminal`: a build fact
+like the triple, chosen once and unifying nothing, as `getrandom` names its backend. No
+build script infers a platform or a leaf and no cargo feature selects one. The web's
+two leaves are one platform: the browser leaf is the `web` build on
+`wasm32-unknown-unknown`, and the server leaf the `web` build with `--cfg skene_server`
+beside it, on any target. Selection is by facade dependency first, a web app depending
+on `skene-web` and a terminal app on `skene-terminal`, and the cfg selects within the
+facade. `skene-web` compiles under `web`, compiles empty in a terminal build, and
+refuses every other build with a `compile_error!` of its own: one naming no platform,
+the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
+does not realize yet, named. `skene-terminal` compiles under `terminal` on the host's
+target, refuses a build naming no platform, and compiles empty in every other
+platform's. Every root item that reaches a leaf is gated on its leaf's cfgs, so each
+refusal is its build's one error, which the gate's `selection` step holds. A crate
+reaching a facade (its Simple crate, a low-level view's, an example) is gated on that
+facade's platform, so a build of a whole workspace for one platform compiles the other
 facade's crates empty, and one naming no platform fails with both facades' messages.
-No build script infers a platform or a leaf and no cargo feature selects one. `#[main]`
-and `#[lazy]` expand per leaf on the same cfgs, so a server build never emits the
-browser entry or splits a lazy body, and the
-terminal's `#[main]` emits its `main` in the terminal's build alone; the gate's
-`selection` step holds each refusal to its message alone. The CLI names the cfgs for
-the target it builds, through the target's rustflags; this repository's root names no
-platform: plain cargo there builds its default members, the crates reaching neither
-facade, which the gate's `manifests` step holds the list to, and its cargo aliases
-(`cargo check-web`, `cargo check-server`, `cargo check-terminal` and their `clippy`,
-`doc` and `test` kin) carry each platform's cfgs and triple, each over the whole
-workspace in the target directory the gate builds it in. docs.rs documents each leaf of
-`skene-web` and `skene-simple-web` from their metadata's `cargo-args`, which name the
-browser in `wasm32-unknown-unknown`'s rustflags and rustdocflags and the server leaf in
-`x86_64-unknown-linux-gnu`'s, and `skene-terminal` and `skene-simple-terminal` from
-theirs, naming the terminal in `x86_64-unknown-linux-gnu`'s. A project `skene new`
-writes declares both cfgs in its workspace's `check-cfg`, which every crate of it
-inherits, so an app's code and its entry's expansion name them without a warning.
-Where one triple hosts several platforms the build names the platform by a cfg, chosen
-once and unifying nothing, as `getrandom` names its backend. Target-gating stays the
-enforcement layer where it applies. A cargo feature is an opt-in upgrade that enables
-optional dependencies alone, never a bound, a type, a variant or a platform, and none
-is on by default: `skene-web`'s `gpu` is the one there is.
+Target-gating stays the enforcement layer where it applies: each leaf's dependencies
+are keyed on its cfgs, so the server leaf cannot reach the DOM. A cargo feature is an
+opt-in upgrade that enables optional dependencies alone, never a bound, a type, a
+variant or a platform, and none is on by default: `skene-web`'s `gpu` is the one there
+is.
+
+**`Platform` answers the build's platform as a const.** Each facade's `Platform`, at
+its root and in its prelude, has `Platform::CURRENT`. The web's lists the pixel
+platforms (`Web`, `Ios`, `Android`, `Macos`, `Windows`, `Linux`), `CURRENT` answering
+`Web` on both leaves, `Platform::IS_SERVER` the server leaf and `Platform::IS_APPLE`
+Apple's two; the terminal's is `Terminal` alone. An app that diverges per platform
+matches on it, writing `#[cfg(skene_platform = "<p>")]` only around an arm that names
+a platform's own control. A platform's own vocabulary lives in its `platform::<p>`
+module, its data types in every build and its controls in its own: `platform::web` and
+`platform::terminal` hold each leaf's realization and escape traits, and
+`platform::{android, apple, ios, linux, macos, windows}` are empty until their
+platforms land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a server
+build never emits the browser entry or splits a lazy body, the terminal's `#[main]`
+emits its `main` in the terminal's build alone, and an entry taking arguments,
+parameters or generics is refused.
+
+**An app's configuration names one platform for plain cargo.** `skene new` writes one
+`.cargo/config.toml` at the project's root naming the first platform it is given:
+`[build] target` its triple (`wasm32-unknown-unknown`, or `host-tuple` for the
+terminal), its cfg in `[target.'cfg(all())'] rustflags`, which reach what is compiled
+for the target and never a build script or a proc macro, and in `build.rustdocflags`,
+which doctests see, and for the web its test runner, `wasm-bindgen-test-runner`, which
+`skene new` refuses to name where it is not installed. So `cargo check`, `cargo test`,
+`cargo clippy`, `cargo doc` and rust-analyzer work at the project's root with no CLI.
+Each shell's crate root is gated on its platform, so the whole project builds under
+each platform, and the project's workspace declares both cfgs in its `check-cfg`, which
+every crate of it inherits, so an app's code and its entry's expansion name them
+without a warning. A project made from a checkout patches the crates the checkout
+patches and starts from the checkout's lock.
+
+**The CLI builds any platform by substituting the cfg where cargo reads it**
+(`packages/cli/src/flags.rs`). It reads the flags cargo would use for the build's
+target in cargo's own order: `CARGO_ENCODED_RUSTFLAGS`, `RUSTFLAGS`,
+`target.<triple>.rustflags` followed by every matching `target.'cfg(..)'.rustflags` in
+the order of their keys, then `build.rustflags`, and rustdoc's the same with
+`rustdocflags` and no `cfg(..)` table, over `$CARGO_HOME/config.toml` and each
+`.cargo/config.toml` down to the directory cargo runs in, merged as cargo merges them,
+`host-tuple` resolved to the host's triple. It replaces `skene_platform`'s value where
+it stands, keeps, removes or adds `skene_server` beside it, appends both where the
+flags name no platform, and hands the result to cargo as `CARGO_ENCODED_RUSTFLAGS` and
+`CARGO_ENCODED_RUSTDOCFLAGS` with the target named. A build for the platform the
+configuration names therefore keeps its flags byte for byte and recompiles nothing
+plain cargo compiled. What it cannot read exactly is a refusal naming it, never a
+guess: a configuration `include`, the `CARGO_BUILD_*` and `CARGO_TARGET_*` variables
+cargo merges with the configuration, a `cfg(..)` table naming a platform cfg or one it
+cannot evaluate, an array merged with a string, and a platform cfg in a form it does
+not know.
+
+**This repository names no default platform.** Plain cargo at its root builds its
+default members, the crates reaching neither facade, which the gate's `manifests` step
+holds the list to. Its cargo aliases (`cargo check-web`, `cargo check-server`, `cargo
+check-terminal` and their `clippy`, `doc` and `test` kin) carry each platform's cfgs and
+triple, each over the whole workspace in the target directory the gate builds it in, and
+the checked-in rust-analyzer settings (`.zed/settings.json`) name the browser leaf:
+`cargo.target` its triple, and the cfg in `cargo.extraEnv`'s
+`CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS`. The guide's contributing chapter
+teaches them. docs.rs documents each leaf of `skene-web` and `skene-simple-web` from
+their metadata's `cargo-args`, which name the browser in `wasm32-unknown-unknown`'s
+rustflags and rustdocflags and the server leaf in `x86_64-unknown-linux-gnu`'s, and
+`skene-terminal` and `skene-simple-terminal` from theirs, naming the terminal in
+`x86_64-unknown-linux-gnu`'s.
 
 A facade is the one place allowed to name its platforms, which is why the shared
 platform-adjacent surface lives there: `launch`, `#[main]` (per-platform entry glue),

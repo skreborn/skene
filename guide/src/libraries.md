@@ -11,6 +11,7 @@ skene new lib acme-ui web terminal
 
 ```text
 acme-ui
+├── .cargo         config.toml: the platform plain cargo builds, the web
 ├── Cargo.toml     the workspace
 ├── core           acme-ui: the palette, the sizes and the views over any platform
 ├── terminal       acme-ui-terminal: the views as the terminal's own

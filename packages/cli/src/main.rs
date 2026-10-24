@@ -12,6 +12,8 @@ mod command;
 #[cfg(not(target_arch = "wasm32"))]
 mod dev;
 #[cfg(not(target_arch = "wasm32"))]
+mod flags;
+#[cfg(not(target_arch = "wasm32"))]
 mod manifest;
 #[cfg(not(target_arch = "wasm32"))]
 mod pipeline;

@@ -39,3 +39,6 @@ pub mod testing {}
 #[doc = include_str!("../../../../guide/src/libraries.md")]
 #[cfg(skene_platform = "web")]
 pub mod libraries {}
+
+#[doc = include_str!("../../../../guide/src/contributing.md")]
+pub mod contributing {}

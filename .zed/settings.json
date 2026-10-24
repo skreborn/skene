@@ -3,6 +3,14 @@
   "lsp": {
     "rust-analyzer": {
       "initialization_options": {
+        // This repository names no default platform: rust-analyzer builds the web's
+        // browser leaf, as `cargo check-web` does.
+        "cargo": {
+          "target": "wasm32-unknown-unknown",
+          "extraEnv": {
+            "CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS": "--cfg skene_platform=\"web\"",
+          },
+        },
         "check": { "command": "clippy" },
         "rustfmt": { "extraArgs": ["+nightly"] },
       },

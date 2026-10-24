@@ -9,7 +9,7 @@ use crate::{
   dev::{dev, run_terminal},
   manifest::App,
   pipeline,
-  scaffold::{Kind, Platform, Source},
+  scaffold::{Kind, Platform, Source, on_path},
 };
 
 /// Build, statically generate, and develop skene applications.
@@ -49,7 +49,7 @@ enum NewKind {
   App {
     /// The directory to create; its last component names the app.
     path: PathBuf,
-    /// The platforms to give the app a shell on.
+    /// The platforms to give the app a shell on, the first the one plain cargo builds.
     #[arg(required = true, value_enum)]
     platforms: Vec<Platform>,
     /// Take the skene crates from the checkout at this path instead of crates.io.
@@ -61,7 +61,8 @@ enum NewKind {
   Lib {
     /// The directory to create; its last component names the library.
     path: PathBuf,
-    /// The platforms to give the library a crate on.
+    /// The platforms to give the library a crate on, the first the one plain cargo
+    /// builds.
     #[arg(required = true, value_enum)]
     platforms: Vec<Platform>,
     /// Take the skene crates from the checkout at this path instead of crates.io.
@@ -138,15 +139,11 @@ impl Cli {
         } => (Kind::Library, path, platforms, skene),
       };
       let source = match skene {
-        Some(checkout) => Source::Checkout(
-          checkout
-            .canonicalize()
-            .map_err(|error| format!("{}: {error}", checkout.display()))?,
-        ),
+        Some(checkout) => Source::checkout(&checkout)?,
         None => Source::Registry,
       };
 
-      return kind.create(&self.dir.join(path), &platforms, &source);
+      return kind.create(&self.dir.join(path), &platforms, &source, on_path);
     }
 
     let app = App::load(&self.dir)?;

@@ -566,12 +566,12 @@ re-export.
   submits them as one field, and a choice made there reaches the signal as any adopted
   toggle does; since the browser unchecks the others with the one it checks, a toggle
   reported on one member re-reads every member's state, each radio writing whether it
-  is chosen as its `Checked` content. The picker alone is drawn (no
-  engine but Chromium restyles an open `<select>` yet), so it is an `Enhance` of its
-  own: its scriptless form is a `NativePicker` control, a `<select>` on the web, listing
-  the options the option views name, its caption a `<label for>` beside it and the
-  chosen value selected, the options and the chosen key written as one `Choices`
-  content whenever either changes; the option views build once, under the group both forms answer
+  is chosen as its `Checked` content. The picker alone is drawn (no engine but Chromium
+  restyles an open `<select>` yet), so it is an `Enhance` of its own: its scriptless
+  form is a `NativePicker` control, a `<select>` on the web, listing the options the
+  option views name, its caption a `<label for>` beside it and the chosen value
+  selected, the options and the chosen key written as one `Choices` content whenever
+  either changes; the option views build once, under the group both forms answer
   through, and attach nowhere until the drawn form lists them, and the caption builds
   once and each form mounts it with its name and the disabled setting, so a swap
   rebuilds nothing but the face; a choice the reader made in the `<select>` before the
@@ -1266,8 +1266,8 @@ adds only what is its own:
   rather than duplicated, text typed in an entry before the client arrived replayed as
   an applied edit and repaired in place, any other live input value that differs from
   the serialized one written into its signal, a toggle's checked state read as the
-  hydration begins, before the client writes any radio of its group, and convergence once the tree is built:
-  every server node the client built differently or never built removed, every adopted
+  hydration begins, before the client writes any radio of its group, and convergence
+  once the tree is built: every server node the client built differently or never built removed, every adopted
   element given exactly the client's classes, and the order-keyed resource values no
   resource adopted dropped), scroll and focus restoration keyed by a segment's end
   anchor, the `WebDom` escape trait, the History binding and the head.

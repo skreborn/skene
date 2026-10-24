@@ -205,7 +205,7 @@ pub struct Range {
 }
 
 impl Range {
-  /// `value` within `minimum..=maximum`, snapping to `step`.
+  /// The range `minimum..=maximum` snapping to `step`, holding `value`.
   #[inline(always)]
   pub const fn new(value: f32, minimum: f32, maximum: f32, step: f32) -> Self {
     Self {

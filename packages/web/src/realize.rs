@@ -147,7 +147,7 @@ pub(crate) trait Sink {
   /// Sets whether the native toggle `element` shows as indeterminate.
   fn set_indeterminate(&mut self, element: &Self::Element, indeterminate: bool);
 
-  /// Sets the value of the form element `element`.
+  /// Sets the value of the text entry or range input `element`.
   fn set_value(&mut self, element: &Self::Element, value: &str);
 
   /// Places the selection of the text entry `element`, in grapheme clusters of its

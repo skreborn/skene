@@ -457,14 +457,14 @@ in a code comment.
     autocomplete as reported properties on `ControlFacts`, the `set_keyboard` of item 1
     choosing the keyboard, mapped on the web to `type`, `autocomplete`, `inputmode` and
     `enterkeyhint`, a password entry secure in the terminal and, on every other
-    platform, the one field masked under the platform's secure-entry flag; `set_value`
-    written as a contract, a no-op when equal and never while an IME composes; a `Form`
-    view emitting a real `<form>` with field names and typed buttons, its GET submission
-    a route with a query, so constraints such as `required` hold without script, and
-    elsewhere its explicit submit and cancel drive the platform's credential commit
-    (Android's autofill, app-initiated saving on Apple); `Action<I, O>` with pending,
-    error and an optimistic overlay; a `Validate` trait feeding `Invalid` and
-    `:user-invalid`.
+    platform, the one field masked under the platform's secure-entry flag; an entry's
+    `Edit` content written as a contract, a no-op when equal and never while an IME
+    composes; a `Form` view emitting a real `<form>` with field names and typed buttons,
+    its GET submission a route with a query, so constraints such as `required` hold
+    without script, and elsewhere its explicit submit and cancel drive the platform's
+    credential commit (Android's autofill, app-initiated saving on Apple);
+    `Action<I, O>` with pending, error and an optimistic overlay; a `Validate` trait
+    feeding `Invalid` and `:user-invalid`.
     - Images and assets: `asset!()` handles checked at compile time, fingerprinted and
     scoped by the crate's own name, in place of hand-written URIs;
     `Image::new(asset).set_description(..)`, its description the floor where pixels

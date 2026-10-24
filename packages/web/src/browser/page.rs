@@ -299,34 +299,31 @@ impl Sink for Page {
     let focused = self.document.active_element().as_ref().map(AsRef::as_ref) == Some(element);
     let length = u32::try_from(value.encode_utf16().count()).unwrap_or(u32::MAX);
 
-    if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
-      if input.value() != value {
-        let kept = focused
-          .then(|| Option::zip(input.selection_start().ok()?, input.selection_end().ok()?))
-          .flatten();
+    if let Some(input) = element.dyn_ref::<HtmlInputElement>()
+      && input.value() != value
+    {
+      let kept = focused
+        .then(|| Option::zip(input.selection_start().ok()?, input.selection_end().ok()?))
+        .flatten();
 
-        input.set_value(value);
+      input.set_value(value);
 
-        if let Some((start, end)) = kept {
-          let _ = input.set_selection_range(start.min(length), end.min(length));
-        }
+      if let Some((start, end)) = kept {
+        let _ = input.set_selection_range(start.min(length), end.min(length));
       }
     }
-    else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
-      if area.value() != value {
-        let kept = focused
-          .then(|| Option::zip(area.selection_start().ok()?, area.selection_end().ok()?))
-          .flatten();
+    else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>()
+      && area.value() != value
+    {
+      let kept = focused
+        .then(|| Option::zip(area.selection_start().ok()?, area.selection_end().ok()?))
+        .flatten();
 
-        area.set_value(value);
+      area.set_value(value);
 
-        if let Some((start, end)) = kept {
-          let _ = area.set_selection_range(start.min(length), end.min(length));
-        }
+      if let Some((start, end)) = kept {
+        let _ = area.set_selection_range(start.min(length), end.min(length));
       }
-    }
-    else if let Some(select) = element.dyn_ref::<HtmlSelectElement>() {
-      select.set_value(value);
     }
   }
 

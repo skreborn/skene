@@ -56,9 +56,7 @@ in a code comment.
     `Widget`). `skene new`'s app and library scaffolds take that shape, and the gate
     compiles what they write on every platform they name, so a scaffold cannot fall
     behind the surface it teaches.
-    - The seam: a box's destination, a run's link, a control's placeholder and an
-    overlay's placement leave `NodeSpec`'s facts for contents of their own, and each
-    report says whether the toolkit applied it.
+    - The seam: each report says whether the toolkit applied it.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.
@@ -114,10 +112,17 @@ in a code comment.
     platform composites views, since a drawn Paste triggers iOS's paste prompt and
     macOS 26's pasteboard alert.
     - A context menu's `set_placement` places nothing on any platform: the list is a
-    pinned overlay, and the seam's `set_overlay_position` has a pinned overlay ignore its
+    pinned overlay, and its `Placement` content has a pinned overlay ignore its
     placement, so the web and the terminal both open the list's top-start corner at the
     pointer whatever the menu says; the design places a pinned overlay against its
     point, or the setter goes, and its test returns where a platform passes it.
+    - On the web an overlay placed against the viewport keeps the margins its first
+    `Placement` content compiled into its class: a derived placement re-places an
+    anchored or pinned popup as it opens, and the terminal any overlay at its next
+    frame, but the web moves a viewport-placed one nowhere, and the inline position an
+    anchored or pinned opening writes stays once it is neither; the design writes the
+    margins per placement, as a rule of their own or inline, so every change of the
+    content shows.
 4. **Linux, drawn on its own protocols.** A window platform: Skene owns the whole
     window, draws everything and speaks Linux's text, input and accessibility protocols
     itself, the GTK prototype remaining a reference whose transcripts are the bar. The

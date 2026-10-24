@@ -30,7 +30,7 @@ const RUNS: &[Run] = &[
     package: "skene-web",
     arguments: &["--features", "gpu"],
     binaries: &[
-      ("browser_dom", 91),
+      ("browser_dom", 93),
       ("browser_gpu_loss", 1),
       ("browser_hydrate", 23),
       ("browser_painted", 4),

@@ -312,8 +312,6 @@ pub fn skene_web::platform::web::Web::scene() -> &'static std::thread::local::Lo
 pub fn skene_web::platform::web::Web::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_foundation::spine::realization::Timer
 pub fn skene_web::platform::web::Web::set_control_state(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlState)
 pub fn skene_web::platform::web::Web::set_overlay_open(skene_foundation::spine::node::NodeId, bool, core::option::Option<skene_foundation::spine::node::NodeId>)
-pub fn skene_web::platform::web::Web::set_overlay_placement(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::placement::Placement)
-pub fn skene_web::platform::web::Web::set_overlay_position(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::point::Point<f32>>)
 pub fn skene_web::platform::web::Web::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_web::platform::web::Web::set_window_title(core::option::Option<&str>)
 pub fn skene_web::platform::web::Web::update_access(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::values::access::AccessProp])

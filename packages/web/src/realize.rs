@@ -21,8 +21,8 @@ use skene_foundation::{
   NodeMap,
   NodeSpec,
   OverlayFacts,
+  OverlayPlacement,
   Placement,
-  Point,
   RunFacts,
   Scene,
   Slot,
@@ -173,23 +173,23 @@ pub(crate) enum Realized {
     native: Option<FormElement>,
   },
   /// An overlay.
-  #[cfg_attr(
-    skene_server,
-    expect(
-      dead_code,
-      reason = "the server renders every overlay closed, unplaced"
-    )
-  )]
   Overlay {
     /// Whether it is modal.
+    #[cfg_attr(
+      skene_server,
+      expect(dead_code, reason = "the server renders every overlay closed")
+    )]
     modal: bool,
-    /// Where it opens against its anchor.
-    placement: Placement,
-    /// The point it is pinned at, where it is pinned to one.
-    position: Option<Point<f32>>,
+    /// Where it sits, or the point it is pinned at, as its last content said.
+    placement: OverlayPlacement,
   },
   /// A text run.
-  Run,
+  Run {
+    /// How it opens as a link and what it discloses.
+    policy: LinkPolicy,
+    /// The path it navigates to, where it is a link and one was written.
+    destination: Option<Rc<str>>,
+  },
   /// An anchor.
   Anchor,
   /// A scope.
@@ -360,22 +360,14 @@ impl<S: Sink> Realizer<S> {
     true
   }
 
-  /// Realizes the box `node`: an anchor where it has a destination, else the element
-  /// its role names.
+  /// Realizes the box `node`: an anchor where it is a link, else the element its role
+  /// names.
   fn make_box(&mut self, node: NodeId, spec: &NodeSpec, boxed: &BoxFacts) {
-    let tag = box_tag(spec.role, spec.level, boxed.destination.is_some());
+    let tag = box_tag(spec.role, spec.level, boxed.link);
     let (element, _) = self.create_element(node, tag, Realized::Box);
 
     if let Some(role) = spec.role.and_then(aria_role) {
       self.sink.set_attribute(&element, "role", role);
-    }
-
-    if let Some(href) = boxed
-      .destination
-      .as_deref()
-      .filter(|href| !runs_script(href))
-    {
-      self.sink.set_attribute(&element, "href", href);
     }
 
     self.finish_box(node, spec.drag, Template::boxed(boxed));
@@ -442,8 +434,7 @@ impl<S: Sink> Realizer<S> {
   fn make_overlay(&mut self, node: NodeId, spec: &NodeSpec, overlay: &OverlayFacts) {
     let realized = Realized::Overlay {
       modal: overlay.modal,
-      placement: overlay.placement,
-      position: None,
+      placement: OverlayPlacement::new(Placement::Center, None),
     };
 
     if overlay.modal {
@@ -466,20 +457,14 @@ impl<S: Sink> Realizer<S> {
     self.finish_box(node, spec.drag, Template::overlay(overlay));
   }
 
-  /// Realizes the text run `node`: a link where it has one, else a span.
+  /// Realizes the text run `node`: an anchor where it is a link, else a span.
   fn make_run(&mut self, node: NodeId, run: &RunFacts) {
-    match run.link.as_deref() {
-      Some(href) => {
-        let (element, _) = self.create_element(node, "a", Realized::Run);
+    let realized = Realized::Run {
+      policy: LinkPolicy::default(),
+      destination: None,
+    };
 
-        for (name, value) in LinkPolicy::default().attributes(href) {
-          self.sink.set_attribute(&element, name, &value);
-        }
-      }
-      None => {
-        self.create_element(node, "span", Realized::Run);
-      }
-    }
+    self.create_element(node, if run.link { "a" } else { "span" }, realized);
 
     if let Some(record) = self.records.get_mut(node) {
       record.template = Some(Template::run(run));
@@ -733,14 +718,16 @@ impl<S: Sink> Realizer<S> {
     record.token_class = Some(class);
   }
 
-  /// Shows `value` as `node`'s content, whole: a run's text as its own, and a control's
-  /// on the form element carrying it, a range's bounds and step before its value; a
-  /// control drawn without one shows its content through its parts.
+  /// Shows `value` as `node`'s content, whole: a run's text as its own, a link's
+  /// destination as its `href` under its policy, an overlay's placement where it opens,
+  /// and a control's on the form element carrying it, a range's bounds and step before
+  /// its value; a control drawn without one shows its content through its parts.
   pub(crate) fn write(&mut self, node: NodeId, value: ContentValue<'_>) {
-    if let ContentValue::Text(text) = value {
-      self.set_text(node, text);
-
-      return;
+    match value {
+      ContentValue::Text(text) => return self.set_text(node, text),
+      ContentValue::Destination(path) => return self.write_destination(node, path),
+      ContentValue::Placement(placement) => return self.place_overlay(node, placement),
+      _ => {}
     }
 
     let Some(record) = self.records.get(node)
@@ -754,7 +741,7 @@ impl<S: Sink> Realizer<S> {
     let carrier = record.carrier();
 
     match value {
-      ContentValue::Text(_) => {}
+      ContentValue::Text(_) | ContentValue::Destination(_) | ContentValue::Placement(_) => {}
       ContentValue::Edit(edit) => {
         self.sink.set_value(carrier, &edit.text);
 
@@ -778,6 +765,106 @@ impl<S: Sink> Realizer<S> {
         }
       }
       ContentValue::Choice(choices) => self.sink.set_choices(carrier, choices),
+      ContentValue::Placeholder(hint) => self.sink.set_attribute(carrier, "placeholder", hint),
+    }
+  }
+
+  /// Gives the link `node` the destination `path`: a run's `href`, `target` and `rel`
+  /// as its policy has them, a box's `href`, neither `href` where following it would
+  /// run script.
+  fn write_destination(&mut self, node: NodeId, path: &str) {
+    let Some(record) = self.records.get_mut(node)
+    else {
+      return;
+    };
+
+    match &mut record.realized {
+      Realized::Run {
+        policy,
+        destination,
+      } => {
+        let previous = destination
+          .replace(Rc::from(path))
+          .map(|previous| policy.attributes(&previous))
+          .unwrap_or_default();
+        let next = policy.attributes(path);
+
+        Self::rewrite_attributes(&mut self.sink, &record.element, &previous, &next);
+      }
+      Realized::Box if runs_script(path) => self.sink.remove_attribute(&record.element, "href"),
+      Realized::Box => self.sink.set_attribute(&record.element, "href", path),
+      _ => {}
+    }
+  }
+
+  /// Opens the link run `node` as `policy` says from now on, rewriting the attributes
+  /// of the destination it holds.
+  pub(crate) fn set_link_policy(&mut self, node: NodeId, next: LinkPolicy) {
+    let Some(record) = self.records.get_mut(node)
+    else {
+      return;
+    };
+    let Realized::Run {
+      policy,
+      destination,
+    } = &mut record.realized
+    else {
+      return;
+    };
+    let previous = *policy;
+
+    *policy = next;
+
+    if let Some(path) = destination.as_deref() {
+      Self::rewrite_attributes(
+        &mut self.sink,
+        &record.element,
+        &previous.attributes(path),
+        &next.attributes(path),
+      );
+    }
+  }
+
+  /// Replaces the attributes `previous` of `element` with `next`, removing those `next`
+  /// leaves out and writing the rest.
+  fn rewrite_attributes(
+    sink: &mut S,
+    element: &S::Element,
+    previous: &[(&'static str, String)],
+    next: &[(&'static str, String)],
+  ) {
+    for (name, _) in previous {
+      if next.iter().all(|(kept, _)| kept != name) {
+        sink.remove_attribute(element, name);
+      }
+    }
+
+    for (name, value) in next {
+      sink.set_attribute(element, name, value);
+    }
+  }
+
+  /// Places the overlay `node` as `placement` says when it next opens, its margins
+  /// against the viewport compiled from it until its style is applied.
+  fn place_overlay(&mut self, node: NodeId, placement: OverlayPlacement) {
+    let Some(record) = self.records.get_mut(node)
+    else {
+      return;
+    };
+
+    if let Realized::Overlay {
+      placement: held, ..
+    } = &mut record.realized
+    {
+      *held = placement;
+    }
+
+    if let Some(Template::Overlay {
+      placement: compiled,
+      ..
+    }) = &mut record.template
+    {
+      *compiled = placement.placement;
     }
   }
 

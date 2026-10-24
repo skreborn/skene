@@ -37,6 +37,7 @@ use super::{
   with_realizer,
 };
 use crate::{
+  LinkPolicy,
   declarations::Declarations,
   low_level::WebMarkup,
   platform::web::Web,
@@ -231,6 +232,13 @@ impl WebHydration for Web {
 
   fn register_boundary(start: NodeId, settled: Box<dyn Fn() -> bool>) {
     super::register_boundary(start, settled);
+  }
+}
+
+impl Web {
+  /// Opens the link run `node` as `policy` says.
+  pub(crate) fn set_link_policy(node: NodeId, policy: LinkPolicy) {
+    with_realizer(|realizer| realizer.set_link_policy(node, policy));
   }
 }
 

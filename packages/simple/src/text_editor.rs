@@ -72,6 +72,14 @@ impl<P: Realization> SimpleTextEditor<P> {
     self
   }
 
+  /// Derives the hint shown while the value is empty from the signals `placeholder`
+  /// reads.
+  pub fn derive_placeholder(mut self, placeholder: impl Fn() -> String + 'static) -> Self {
+    self.entry = self.entry.derive_placeholder(placeholder);
+
+    self
+  }
+
   /// Sets the lines shown at once; at least two.
   #[inline(always)]
   pub fn set_lines(mut self, lines: u16) -> Self {
@@ -153,6 +161,13 @@ pub trait SimpleTextEditorBase<P: Realization>: Wraps<Inner = SimpleTextEditor<P
   #[must_use]
   fn set_placeholder(self, placeholder: impl Into<String>) -> Self {
     Self::wrap(self.into_inner().set_placeholder(placeholder))
+  }
+
+  /// Derives the hint shown while the value is empty from the signals `placeholder`
+  /// reads.
+  #[must_use]
+  fn derive_placeholder(self, placeholder: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_placeholder(placeholder))
   }
 
   /// Sets the lines shown at once; at least two.

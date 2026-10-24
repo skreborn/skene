@@ -234,6 +234,13 @@ pub trait RunBase<P: Realization>: HasRun<P> {
     self.map_run(|run| run.set_link(destination))
   }
 
+  /// Makes the text a link to the destination derived from the signals `destination`
+  /// reads, as [`set_link`](Self::set_link) does.
+  #[must_use]
+  fn derive_link(self, destination: impl Fn() -> String + 'static) -> Self {
+    self.map_run(|run| run.derive_link(destination))
+  }
+
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[must_use]

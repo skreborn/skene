@@ -36,6 +36,30 @@ fn input_binds_a_signal_both_ways() {
   });
 }
 
+/// A derived placeholder shows while the value is empty and names the field, following
+/// its signal.
+#[test]
+fn a_derived_placeholder_shows_and_names_the_field() {
+  with_platform(|| {
+    let hint = Signal::new("name".to_owned());
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(TextEntry::new().derive_placeholder(move || hint.get()))
+        .into_any()
+        .build()
+    });
+
+    assert!(testing::render_to_text(10, 1).starts_with("name"));
+    assert!(testing::find_by_role(Role::TextInput, "name").is_some());
+
+    hint.set("email".to_owned());
+
+    assert!(testing::render_to_text(10, 1).starts_with("email"));
+    assert!(testing::find_by_role(Role::TextInput, "email").is_some());
+    assert!(testing::find_by_role(Role::TextInput, "name").is_none());
+  });
+}
+
 /// The caret moves with arrows, `Home`, and `End`; edits insert and delete around it.
 #[test]
 fn caret_edits_insert_and_delete() {

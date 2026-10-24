@@ -112,9 +112,12 @@ level of a style its toolkit keeps unresolved). Its methods are the portable voc
 over node ids:
 
 - **Create** every node, a box, a control, an overlay, a run, an anchor or a scope, from
-  one `NodeSpec` (`create`: its role, its heading level, its drag axes and its kind's
-  facts, a fact of another kind unrepresentable), answering whether it made a node. The
-  scene creates it through `Scene::realize` and records the answer.
+  one `NodeSpec` (`create`: what fixes its element, its role, its heading level, its
+  drag axes and its kind's facts, a fact of another kind unrepresentable: a box's layout
+  and whether it is a link, a control's native element, lines and caption placement, an
+  overlay's modality and backdrop, a run's placement and whether it is a link),
+  answering whether it made a node. What can change once the node exists crosses as a
+  content instead. The scene creates it through `Scene::realize` and records the answer.
 - **Style** each box, control, overlay and run once, right after its creation and before
   any token definition on it: `apply_style` hands it the node's record compiled at
   `Keep::Everything` (a style that sets nothing included; a low-level node receives the
@@ -135,26 +138,32 @@ over node ids:
   `destroy`, releasing a made node's record.
 - **Write contents** through one call, `write`, which reports nothing: what a node
   shows that a view writes is one typed value (`Content`: a run's `Text`, an entry's
-  `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`), written through
+  `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`, a link's
+  `Destination`, an entry's `Placeholder`, an overlay's `Placement`), written through
   its key in `contents` (`contents::RANGE.write::<P>(node, &range)`), the key typed by
   its value so a value of another type does not compile, and erased into a borrowed
   `ContentValue` the realization dispatches on. A value constrained by another crosses
   with it whole, a range with its bounds and step, a choice's chosen key with its
-  options, an entry's selection with its text, so a realization never shows half of a
-  change. Each kind takes its own contents (`NodeKind::contents`), which the write
-  asserts in a debug build.
+  options, an entry's selection with its text, an overlay's pinned point with its
+  placement (`OverlayPlacement`, a pinned overlay ignoring its placement), so a
+  realization never shows half of a change. Each kind takes its own contents
+  (`NodeKind::contents`), which the write asserts in a debug build. A link's first
+  destination and an overlay's first placement are written between its `create` and its
+  `apply_style`, so the web writes a link's `href` where it stood and compiles an
+  overlay's margins against the viewport from its first placement. A box's
+  `set_destination`, a run's `set_link` and an entry's `set_placeholder` each have their
+  `derive_` twin.
 - **The rest**: register event kinds, focus, observe sizes, report media, schedule on
   the clock, route, and reach the clipboard.
 
 A method with a default body is one a platform lacking what it reaches keeps (`listen`,
 the focus order and accessibility where the scene is read for them, `focus_visible`,
-`lay_out`, `hydration`, an overlay's placement and position where none opens, the
-window title, routing, static routes, the clipboard): the default does
-nothing, or answers that nothing is there. Every behavior is required, each platform
-realizing it in its own form: a navigation commits under a view transition in the
-browser and at once on the server leaf and in the terminal, and a pointer event is
-localized against its node's laid-out box, except on the server leaf, which lays nothing
-out and hands it back unchanged.
+`lay_out`, `hydration`, the window title, routing, static routes, the clipboard): the
+default does nothing, or answers that nothing is there. Every behavior is required,
+each platform realizing it in its own form: a navigation commits under a view
+transition in the browser and at once on the server leaf and in the terminal, and a
+pointer event is localized against its node's laid-out box, except on the server leaf,
+which lays nothing out and hands it back unchanged.
 
 `Painted` and embeds are deliberately outside the trait—their payloads never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
@@ -452,7 +461,7 @@ is the opt-in: a secondary press on the wrapped view, or `Shift-F10` and the
 `ContextMenu` key while focus is inside it, dispatches `EventKind::ContextMenu` at the
 node through the ordinary bubbling dispatch, and the deepest wrapper along the path
 opens its menu pinned at the pointer (at the focused node's bottom-start corner from
-the keyboard, through `Realization::set_overlay_position`) and answers `Prevent::All`, so
+the keyboard, through the overlay's `Placement` content) and answers `Prevent::All`, so
 the browser's own menu stays wherever no wrapper is, and an app that wants its own
 everywhere wraps its root. The terminal facade serves the standard menu from the root
 at install, because the terminal has no menu of its own; a deeper wrapper wins over it

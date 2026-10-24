@@ -155,7 +155,9 @@ impl Records {
     let path = self.hit_test(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
     let link_of = |run: Handle| match &self.record(run)?.kind {
-      Kind::Run { facts, .. } => facts.link.clone().map(|url| (run, url)),
+      Kind::Run {
+        facts, destination, ..
+      } if facts.link => destination.clone().map(|url| (run, url)),
       _ => None,
     };
 

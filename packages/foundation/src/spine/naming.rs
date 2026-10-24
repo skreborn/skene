@@ -48,7 +48,7 @@ pub struct NameFacts {
   pub label: Option<String>,
   /// A run's text.
   pub text: Option<String>,
-  /// Whether the node is a link: a run or a box with a destination.
+  /// Whether the node is a link: a run or a box created as one.
   pub link: bool,
   /// Whether the node lays out apart from the text around it: a box, or a run on its
   /// own line.
@@ -67,7 +67,7 @@ pub struct NameFacts {
 impl NameFacts {
   /// The facts of a run holding `text`, created from `facts`.
   pub fn of_run(facts: &RunFacts, text: String) -> Self {
-    let link = facts.link.is_some();
+    let link = facts.link;
 
     Self {
       role: link.then_some(Role::Link),
@@ -81,7 +81,7 @@ impl NameFacts {
   /// The facts of a box, a control or an overlay created stating `role` from the box
   /// `facts`, reporting `access`.
   pub fn of_box(role: Option<Role>, facts: &BoxFacts, access: Vec<AccessProp>) -> Self {
-    let link = facts.destination.is_some();
+    let link = facts.link;
 
     Self {
       role: role.or(link.then_some(Role::Link)),

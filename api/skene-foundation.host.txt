@@ -666,7 +666,10 @@ pub fn skene_foundation::box_fields::Wrap::get_mut<S: skene_foundation::Shape>(&
 pub mod skene_foundation::contents
 pub const skene_foundation::contents::CHECKED: skene_foundation::ContentKey<skene_foundation::CheckState>
 pub const skene_foundation::contents::CHOICE: skene_foundation::ContentKey<skene_foundation::Choices>
+pub const skene_foundation::contents::DESTINATION: skene_foundation::ContentKey<alloc::rc::Rc<str>>
 pub const skene_foundation::contents::EDIT: skene_foundation::ContentKey<skene_foundation::Edit>
+pub const skene_foundation::contents::PLACEHOLDER: skene_foundation::ContentKey<alloc::rc::Rc<str>>
+pub const skene_foundation::contents::PLACEMENT: skene_foundation::ContentKey<skene_foundation::OverlayPlacement>
 pub const skene_foundation::contents::RANGE: skene_foundation::ContentKey<skene_foundation::Range>
 pub const skene_foundation::contents::TEXT: skene_foundation::ContentKey<alloc::rc::Rc<str>>
 pub mod skene_foundation::interpolate
@@ -2217,6 +2220,7 @@ pub fn skene_foundation::Text<P>::derive_color<R: core::convert::Into<skene_foun
 pub fn skene_foundation::Text<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -3084,7 +3088,10 @@ pub fn skene_foundation::ContainerQuery<N>::hash<H: core::hash::Hasher>(&self, &
 pub enum skene_foundation::Content
 pub skene_foundation::Content::Checked
 pub skene_foundation::Content::Choice
+pub skene_foundation::Content::Destination
 pub skene_foundation::Content::Edit
+pub skene_foundation::Content::Placeholder
+pub skene_foundation::Content::Placement
 pub skene_foundation::Content::Range
 pub skene_foundation::Content::Text
 impl core::clone::Clone for skene_foundation::Content
@@ -3101,7 +3108,10 @@ impl core::marker::StructuralPartialEq for skene_foundation::Content
 pub enum skene_foundation::ContentValue<'a>
 pub skene_foundation::ContentValue::Checked(skene_foundation::CheckState)
 pub skene_foundation::ContentValue::Choice(&'a skene_foundation::Choices)
+pub skene_foundation::ContentValue::Destination(&'a str)
 pub skene_foundation::ContentValue::Edit(&'a skene_foundation::Edit)
+pub skene_foundation::ContentValue::Placeholder(&'a str)
+pub skene_foundation::ContentValue::Placement(skene_foundation::OverlayPlacement)
 pub skene_foundation::ContentValue::Range(&'a skene_foundation::Range)
 pub skene_foundation::ContentValue::Text(&'a str)
 impl skene_foundation::ContentValue<'_>
@@ -4497,7 +4507,6 @@ pub fn skene_foundation::Activate::on_pointer(&self, skene_foundation::PointerPh
 pub fn skene_foundation::Activate::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Activate::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Activate::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Activate::state(&self) -> skene_foundation::ControlState
@@ -4716,8 +4725,8 @@ impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_fou
 pub fn skene_foundation::BoxDynamics<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::BoxFacts
 pub skene_foundation::BoxFacts::container: core::option::Option<skene_foundation::ContainerName>
-pub skene_foundation::BoxFacts::destination: core::option::Option<alloc::string::String>
 pub skene_foundation::BoxFacts::layout: skene_foundation::Layout
+pub skene_foundation::BoxFacts::link: bool
 pub skene_foundation::BoxFacts::transition_name: core::option::Option<alloc::string::String>
 impl core::clone::Clone for skene_foundation::BoxFacts
 pub fn skene_foundation::BoxFacts::clone(&self) -> skene_foundation::BoxFacts
@@ -4905,7 +4914,6 @@ pub fn skene_foundation::Collection<C>::on_pointer(&self, skene_foundation::Poin
 pub fn skene_foundation::Collection<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Collection<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Collection<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Collection<C>::state(&self) -> skene_foundation::ControlState
@@ -5381,7 +5389,6 @@ pub skene_foundation::ControlFacts::label: core::option::Option<alloc::string::S
 pub skene_foundation::ControlFacts::label_beside: bool
 pub skene_foundation::ControlFacts::lines: u16
 pub skene_foundation::ControlFacts::native: core::option::Option<skene_foundation::NativeElement>
-pub skene_foundation::ControlFacts::placeholder: core::option::Option<alloc::string::String>
 impl core::clone::Clone for skene_foundation::ControlFacts
 pub fn skene_foundation::ControlFacts::clone(&self) -> skene_foundation::ControlFacts
 impl core::fmt::Debug for skene_foundation::ControlFacts
@@ -6153,6 +6160,7 @@ pub fn skene_foundation::LayoutBox<P, Kind>::derive_accessibility(self, impl cor
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_alignment<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_arrangement<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_columns<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridTemplate<<P as skene_foundation::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::LayoutBox<P, Kind>::derive_destination(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_flow<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::GridFlow>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_focus_order(self, impl core::ops::function::Fn() -> skene_foundation::FocusOrder + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::derive_implicit_columns<R: core::convert::Into<skene_foundation::StaticLeaf<alloc::vec::Vec<skene_foundation::GridTrack<<P as skene_foundation::Realization>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -6423,7 +6431,6 @@ pub fn skene_foundation::Member<C>::on_pointer(&self, skene_foundation::PointerP
 pub fn skene_foundation::Member<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Member<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Member<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Member<C>::state(&self) -> skene_foundation::ControlState
@@ -6555,7 +6562,6 @@ pub fn skene_foundation::NativePicker::on_pointer(&self, skene_foundation::Point
 pub fn skene_foundation::NativePicker::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::NativePicker::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::NativePicker::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::NativePicker::state(&self) -> skene_foundation::ControlState
@@ -6759,13 +6765,26 @@ pub skene_foundation::OverlayFacts::backdrop: core::option::Option<skene_foundat
 pub skene_foundation::OverlayFacts::boxed: skene_foundation::BoxFacts
 pub skene_foundation::OverlayFacts::hint: bool
 pub skene_foundation::OverlayFacts::modal: bool
-pub skene_foundation::OverlayFacts::placement: skene_foundation::Placement
 impl skene_foundation::OverlayFacts
 pub const fn skene_foundation::OverlayFacts::role(&self, core::option::Option<accesskit::Role>) -> core::option::Option<accesskit::Role>
 impl core::clone::Clone for skene_foundation::OverlayFacts
 pub fn skene_foundation::OverlayFacts::clone(&self) -> skene_foundation::OverlayFacts
 impl core::fmt::Debug for skene_foundation::OverlayFacts
 pub fn skene_foundation::OverlayFacts::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::OverlayPlacement
+pub skene_foundation::OverlayPlacement::placement: skene_foundation::Placement
+pub skene_foundation::OverlayPlacement::position: core::option::Option<skene_foundation::Point<f32>>
+impl skene_foundation::OverlayPlacement
+pub const fn skene_foundation::OverlayPlacement::new(skene_foundation::Placement, core::option::Option<skene_foundation::Point<f32>>) -> Self
+impl core::clone::Clone for skene_foundation::OverlayPlacement
+pub fn skene_foundation::OverlayPlacement::clone(&self) -> skene_foundation::OverlayPlacement
+impl core::cmp::PartialEq for skene_foundation::OverlayPlacement
+pub fn skene_foundation::OverlayPlacement::eq(&self, &skene_foundation::OverlayPlacement) -> bool
+impl core::fmt::Debug for skene_foundation::OverlayPlacement
+pub fn skene_foundation::OverlayPlacement::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::OverlayPlacement
+impl core::marker::StructuralPartialEq for skene_foundation::OverlayPlacement
+impl skene_foundation::ContentType for skene_foundation::OverlayPlacement
 pub struct skene_foundation::Painted<P: skene_foundation::Painting>
 impl<P: skene_foundation::Painting> skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self
@@ -6960,7 +6979,6 @@ pub fn skene_foundation::Popup::on_pointer(&self, skene_foundation::PointerPhase
 pub fn skene_foundation::Popup::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Popup::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Popup::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Popup::state(&self) -> skene_foundation::ControlState
@@ -7226,6 +7244,7 @@ pub fn skene_foundation::Run<P>::add_realization(self, impl core::ops::function:
 pub fn skene_foundation::Run<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Run<P>::build(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId
 pub fn skene_foundation::Run<P>::build_group(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId where <P as skene_foundation::Realization>::StyleExt: skene_foundation::TypeMetrics
+pub fn skene_foundation::Run<P>::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Run<P>::new() -> Self
 pub fn skene_foundation::Run<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn skene_foundation::Run<P>::set_selectable(self, bool) -> Self
@@ -7249,7 +7268,7 @@ pub fn skene_foundation::RunDynamics<X>::default() -> Self
 impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunDynamics<X>
 pub fn skene_foundation::RunDynamics<X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_foundation::RunFacts
-pub skene_foundation::RunFacts::link: core::option::Option<alloc::string::String>
+pub skene_foundation::RunFacts::link: bool
 pub skene_foundation::RunFacts::placement: skene_foundation::RunPlacement
 pub skene_foundation::RunFacts::selectable: bool
 impl core::clone::Clone for skene_foundation::RunFacts
@@ -7525,7 +7544,6 @@ pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhas
 pub fn skene_foundation::Slider::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Slider::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Slider::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Slider::state(&self) -> skene_foundation::ControlState
@@ -7630,6 +7648,7 @@ pub fn skene_foundation::Span<P>::derive_color<R: core::convert::Into<skene_foun
 pub fn skene_foundation::Span<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Span<P>::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -7734,6 +7753,7 @@ pub fn skene_foundation::Text<P>::derive_color<R: core::convert::Into<skene_foun
 pub fn skene_foundation::Text<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -7752,6 +7772,7 @@ pub struct skene_foundation::TextEntry
 impl skene_foundation::TextEntry
 pub fn skene_foundation::TextEntry::bind_selection(self, skene_reactive::signal::Signal<skene_foundation::TextSelection>) -> Self
 pub fn skene_foundation::TextEntry::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::TextEntry::derive_placeholder(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::TextEntry::derive_selection(self, impl core::ops::function::Fn() -> skene_foundation::TextSelection + 'static) -> Self
 pub fn skene_foundation::TextEntry::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::TextEntry::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
@@ -7787,7 +7808,6 @@ pub fn skene_foundation::TextEntry::on_pointer(&self, skene_foundation::PointerP
 pub fn skene_foundation::TextEntry::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::TextEntry::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::TextEntry::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::TextEntry::state(&self) -> skene_foundation::ControlState
@@ -7893,7 +7913,6 @@ pub fn skene_foundation::Toggle::on_pointer(&self, skene_foundation::PointerPhas
 pub fn skene_foundation::Toggle::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Toggle::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Toggle::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Toggle::state(&self) -> skene_foundation::ControlState
@@ -8212,7 +8231,6 @@ pub fn skene_foundation::Behavior::on_pointer(&self, skene_foundation::PointerPh
 pub fn skene_foundation::Behavior::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Behavior::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Behavior::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Behavior::state(&self) -> skene_foundation::ControlState
@@ -8238,7 +8256,6 @@ pub fn skene_foundation::Collection<C>::on_pointer(&self, skene_foundation::Poin
 pub fn skene_foundation::Collection<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Collection<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Collection<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Collection<C>::state(&self) -> skene_foundation::ControlState
@@ -8264,7 +8281,6 @@ pub fn skene_foundation::Member<C>::on_pointer(&self, skene_foundation::PointerP
 pub fn skene_foundation::Member<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Member<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Member<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Member<C>::state(&self) -> skene_foundation::ControlState
@@ -8290,7 +8306,6 @@ pub fn skene_foundation::Activate::on_pointer(&self, skene_foundation::PointerPh
 pub fn skene_foundation::Activate::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Activate::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Activate::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Activate::state(&self) -> skene_foundation::ControlState
@@ -8316,7 +8331,6 @@ pub fn skene_foundation::NativePicker::on_pointer(&self, skene_foundation::Point
 pub fn skene_foundation::NativePicker::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::NativePicker::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::NativePicker::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::NativePicker::state(&self) -> skene_foundation::ControlState
@@ -8342,7 +8356,6 @@ pub fn skene_foundation::Popup::on_pointer(&self, skene_foundation::PointerPhase
 pub fn skene_foundation::Popup::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Popup::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Popup::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Popup::state(&self) -> skene_foundation::ControlState
@@ -8368,7 +8381,6 @@ pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhas
 pub fn skene_foundation::Slider::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Slider::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Slider::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Slider::state(&self) -> skene_foundation::ControlState
@@ -8394,7 +8406,6 @@ pub fn skene_foundation::TextEntry::on_pointer(&self, skene_foundation::PointerP
 pub fn skene_foundation::TextEntry::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::TextEntry::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::TextEntry::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::TextEntry::state(&self) -> skene_foundation::ControlState
@@ -8420,7 +8431,6 @@ pub fn skene_foundation::Toggle::on_pointer(&self, skene_foundation::PointerPhas
 pub fn skene_foundation::Toggle::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Toggle::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Toggle::reconcile(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Toggle::state(&self) -> skene_foundation::ControlState
@@ -8772,6 +8782,7 @@ impl skene_foundation::ContentType for alloc::rc::Rc<str>
 impl skene_foundation::ContentType for skene_foundation::CheckState
 impl skene_foundation::ContentType for skene_foundation::Choices
 impl skene_foundation::ContentType for skene_foundation::Edit
+impl skene_foundation::ContentType for skene_foundation::OverlayPlacement
 impl skene_foundation::ContentType for skene_foundation::Range
 pub trait skene_foundation::ContextMenuBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::ContextMenu<P>>
 pub fn skene_foundation::ContextMenuBase::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
@@ -9783,8 +9794,6 @@ pub fn skene_foundation::Realization::scene() -> &'static std::thread::local::Lo
 pub fn skene_foundation::Realization::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_foundation::Timer
 pub fn skene_foundation::Realization::set_control_state(skene_foundation::NodeId, &skene_foundation::ControlState)
 pub fn skene_foundation::Realization::set_overlay_open(skene_foundation::NodeId, bool, core::option::Option<skene_foundation::NodeId>)
-pub fn skene_foundation::Realization::set_overlay_placement(skene_foundation::NodeId, skene_foundation::Placement)
-pub fn skene_foundation::Realization::set_overlay_position(skene_foundation::NodeId, core::option::Option<skene_foundation::Point<f32>>)
 pub fn skene_foundation::Realization::set_scheme(core::option::Option<skene_foundation::ColorScheme>)
 pub fn skene_foundation::Realization::set_window_title(core::option::Option<&str>)
 pub fn skene_foundation::Realization::update_access(skene_foundation::NodeId, &[skene_foundation::AccessProp])
@@ -9822,6 +9831,7 @@ pub fn skene_foundation::RunBase::derive_color<R: core::convert::Into<skene_foun
 pub fn skene_foundation::RunBase::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::RunBase::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::RunBase::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -9839,6 +9849,7 @@ pub fn skene_foundation::Span<P>::derive_color<R: core::convert::Into<skene_foun
 pub fn skene_foundation::Span<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Span<P>::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Span<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -9856,6 +9867,7 @@ pub fn skene_foundation::Text<P>::derive_color<R: core::convert::Into<skene_foun
 pub fn skene_foundation::Text<P>::derive_decoration<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_decoration_style<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::Text<P>::derive_link(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Text<P>::set_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self

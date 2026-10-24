@@ -23,7 +23,6 @@ use skene_foundation::{
   Observation,
   Painting,
   Placement,
-  Point,
   PointerEvent,
   Realization,
   RunPlacement,
@@ -107,7 +106,7 @@ impl Realization for Terminal {
         let field = control
           .native
           .is_some_and(NativeElement::is_text_entry)
-          .then(|| Box::new(Field::new(node, control.placeholder.clone(), control.lines)));
+          .then(|| Box::new(Field::new(node, control.lines)));
         let entry = field.is_some();
 
         with_records(|records| {
@@ -131,7 +130,7 @@ impl Realization for Terminal {
           node,
           Kind::Overlay {
             inner: inner(&overlay.boxed),
-            placement: overlay.placement,
+            placement: Placement::Center,
             backdrop: overlay.backdrop,
             open: false,
             position: None,
@@ -197,35 +196,6 @@ impl Realization for Terminal {
     }
   }
 
-  fn set_overlay_position(node: NodeId, position: Option<Point<f32>>) {
-    with_records(|records| {
-      if let Some(Kind::Overlay { position: held, .. }) =
-        records.record_mut(node).map(|record| &mut record.kind)
-      {
-        #[expect(
-          clippy::cast_possible_truncation,
-          reason = "a pointer's cell lies within the terminal, far inside i64"
-        )]
-        let cell = position.map(|point| (point.x.floor() as i64, point.y.floor() as i64));
-
-        *held = cell;
-        records.paint_dirty = true;
-      }
-    });
-  }
-
-  fn set_overlay_placement(node: NodeId, placement: Placement) {
-    with_records(|records| {
-      if let Some(Kind::Overlay {
-        placement: held, ..
-      }) = records.record_mut(node).map(|record| &mut record.kind)
-      {
-        *held = placement;
-        records.paint_dirty = true;
-      }
-    });
-  }
-
   fn write(node: NodeId, value: ContentValue<'_>) {
     match value {
       ContentValue::Text(text) => with_records(|records| records.write_text(node, text)),
@@ -245,6 +215,44 @@ impl Realization for Terminal {
           records.damage(node);
         });
       }
+      ContentValue::Destination(path) => with_records(|records| {
+        if let Some(Kind::Run { destination, .. }) =
+          records.record_mut(node).map(|record| &mut record.kind)
+        {
+          *destination = Some(path.to_owned());
+          records.damage(node);
+        }
+      }),
+      ContentValue::Placeholder(hint) => with_records(|records| {
+        if let Some(Kind::Control {
+          field: Some(field), ..
+        }) = records.record_mut(node).map(|record| &mut record.kind)
+        {
+          field.placeholder = Some(hint.to_owned());
+          records.layout_dirty = true;
+          records.damage(node);
+        }
+      }),
+      ContentValue::Placement(placement) => with_records(|records| {
+        if let Some(Kind::Overlay {
+          placement: held,
+          position,
+          ..
+        }) = records.record_mut(node).map(|record| &mut record.kind)
+        {
+          #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a pointer's cell lies within the terminal, far inside i64"
+          )]
+          let cell = placement
+            .position
+            .map(|point| (point.x.floor() as i64, point.y.floor() as i64));
+
+          *held = placement.placement;
+          *position = cell;
+          records.paint_dirty = true;
+        }
+      }),
     }
   }
 

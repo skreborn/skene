@@ -32,8 +32,6 @@ use crate::spine::{
   FocusOrder,
   Length,
   Media,
-  Placement,
-  Point,
   PointerEvent,
   Size,
 };
@@ -285,26 +283,17 @@ pub trait Realization: Copy + Default + 'static {
   /// meets another it was not written with; see [`ContentKey`](crate::ContentKey).
   ///
   /// It reports nothing: what the reader sees changes, and no event of the change
-  /// reaches the scene.
+  /// reaches the scene. A link's first [`Destination`](crate::Content::Destination) and
+  /// an overlay's first [`Placement`](crate::Content::Placement) are written between
+  /// its [`create`](Self::create) and its [`apply_style`](Self::apply_style).
   fn write(node: NodeId, value: ContentValue<'_>);
 
-  /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
-  /// rather than by the viewport.
+  /// Opens or closes an overlay, placed as its last
+  /// [`Placement`](crate::Content::Placement) content says: an open overlay placed
+  /// against `anchor` sits by it rather than by the viewport, and one pinned to a point
+  /// sits there. An open overlay whose placement changes is re-placed by the call that
+  /// follows.
   fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>);
-
-  /// Replaces where an overlay sits; an open overlay is re-placed by the
-  /// [`set_overlay_open`](Self::set_overlay_open) that follows. A platform that never
-  /// shows an overlay open needs nothing here.
-  #[inline(always)]
-  fn set_overlay_placement(_node: NodeId, _placement: Placement) {}
-
-  /// Pins an overlay's top-start corner to `position`, in the units a pointer event
-  /// reports, or unpins it for `None`; a pinned overlay ignores its placement and
-  /// anchor, and is shifted to stay within the viewport. An open overlay moves at the
-  /// [`set_overlay_open`](Self::set_overlay_open) that follows. A platform that never
-  /// shows an overlay open needs nothing here.
-  #[inline(always)]
-  fn set_overlay_position(_node: NodeId, _position: Option<Point<f32>>) {}
 
   /// Places `child`, standing under no parent, under `parent`, immediately before
   /// `before` when given, else last: a new node, or a hidden one, given back what the

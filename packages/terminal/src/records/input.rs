@@ -99,7 +99,9 @@ impl Records {
     let record = self.record(self.focused()?)?;
 
     match &record.kind {
-      Kind::Run { facts, .. } => Some((record.node?, facts.link.clone()?)),
+      Kind::Run {
+        facts, destination, ..
+      } if facts.link => Some((record.node?, destination.clone()?)),
       _ => None,
     }
   }

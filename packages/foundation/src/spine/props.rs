@@ -22,7 +22,7 @@ use super::{
   Scalar,
   Static,
 };
-use crate::spine::{Color, ColorScheme, Layout, Placement, Role, RunPlacement, Size};
+use crate::spine::{Color, ColorScheme, Layout, Role, RunPlacement, Size};
 
 /// A box's style as a builder declares it: values under the platform's conditions,
 /// possibly derived.
@@ -58,9 +58,11 @@ pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Realization>::StyleExt>;
 
 /// What a platform creates a node from beside its style.
 ///
-/// It holds what a reader takes the node for, the heading level its element is fixed
-/// at, whether a press drags it, and the facts of its kind; the style arrives through
-/// [`Realization::apply_style`].
+/// It holds what fixes the node's element: what a reader takes the node for, the heading
+/// level its element is fixed at, whether a press drags it, and the facts of its kind.
+/// The style arrives through [`Realization::apply_style`], and what can change once the
+/// node exists, a link's destination, an entry's placeholder, an overlay's placement
+/// among it, through [`Realization::write`].
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct NodeSpec {
@@ -167,13 +169,14 @@ pub struct BoxFacts {
   pub container: Option<ContainerName>,
   /// The name pairing the box with its counterpart across a view transition.
   pub transition_name: Option<String>,
-  /// The path the box navigates to when activated; a real link where the medium has
-  /// one.
-  pub destination: Option<String>,
+  /// Whether the box is a link, navigating to the path its
+  /// [`Destination`](super::Content::Destination) content holds when activated; a real
+  /// link where the medium has one.
+  pub link: bool,
 }
 
-/// What a platform creates an overlay from: its box, whether it is modal or a hint,
-/// where it sits and its backdrop.
+/// What a platform creates an overlay from: its box, whether it is modal or a hint, and
+/// its backdrop; where it sits is its [`Placement`](super::Content::Placement) content.
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct OverlayFacts {
@@ -184,8 +187,6 @@ pub struct OverlayFacts {
   /// Whether the overlay is a hint: a popup describing its anchor, which never takes
   /// focus and sits beneath every other popup.
   pub hint: bool,
-  /// Where the overlay sits.
-  pub placement: Placement,
   /// The backdrop color painted over the app while open, if any.
   pub backdrop: Option<Color>,
 }
@@ -215,8 +216,9 @@ pub struct RunFacts {
   pub placement: RunPlacement,
   /// Whether the user can select and copy the run's text.
   pub selectable: bool,
-  /// The link destination, when the run is a link.
-  pub link: Option<String>,
+  /// Whether the run is a link, navigating to the path its
+  /// [`Destination`](super::Content::Destination) content holds when followed.
+  pub link: bool,
 }
 
 /// The measured sizes of the named query containers, filled by the platform.
@@ -448,7 +450,7 @@ pub enum EventKind {
 #[cfg(test)]
 mod tests {
   use super::{BoxFacts, NodeFacts, NodeSpec, OverlayFacts, RunFacts};
-  use crate::spine::{ControlFacts, Layout, NodeKind, Placement, Role, RunPlacement};
+  use crate::spine::{ControlFacts, Layout, NodeKind, Role, RunPlacement};
 
   /// The facts of a plain box.
   fn boxed() -> BoxFacts {
@@ -456,7 +458,7 @@ mod tests {
       layout: Layout::Document,
       container: None,
       transition_name: None,
-      destination: None,
+      link: false,
     }
   }
 
@@ -466,7 +468,6 @@ mod tests {
       boxed: boxed(),
       modal,
       hint,
-      placement: Placement::Center,
       backdrop: None,
     })
   }
@@ -500,13 +501,12 @@ mod tests {
     let run = NodeFacts::Run(RunFacts {
       placement: RunPlacement::Line,
       selectable: false,
-      link: None,
+      link: false,
     });
     let control = NodeFacts::Control(ControlFacts {
       boxed: boxed(),
       native: None,
       label: None,
-      placeholder: None,
       lines: 1,
       label_beside: false,
       group: None,

@@ -21,6 +21,7 @@ use crate::{
   NodeHandle,
   NodeId,
   OverlayFacts,
+  OverlayPlacement,
   Placement,
   PlainChild,
   PlainHandler,
@@ -30,6 +31,7 @@ use crate::{
   Scene,
   View,
   Wraps,
+  contents,
   empty,
   realize::Source,
 };
@@ -60,7 +62,7 @@ pub struct Overlay<P: Realization> {
   placement: Source<Placement>,
   backdrop: Option<Color>,
   anchor: Option<NodeHandle<P>>,
-  position: Option<Rc<dyn Fn() -> Option<Point<f32>>>>,
+  position: Source<Option<Point<f32>>>,
   open: Source<bool>,
   dismiss: Vec<Rc<PlainHandler>>,
   inner: LayoutBox<P, PlainChild>,
@@ -81,7 +83,7 @@ impl<P: Realization> Overlay<P> {
       placement: Source::Fixed(Placement::Center),
       backdrop: modal.then(modal_backdrop),
       anchor: None,
-      position: None,
+      position: Source::Fixed(None),
       open: Source::Fixed(false),
       dismiss: Vec::new(),
       inner: LayoutBox::new(Layout::Single),
@@ -156,7 +158,7 @@ impl<P: Realization> Overlay<P> {
   /// event reports, shifted to stay within the viewport; pinned, the overlay ignores
   /// its placement and anchor.
   pub fn set_position(mut self, position: Point<f32>) -> Self {
-    self.position = Some(Rc::new(move || Some(position)));
+    self.position = Source::Fixed(Some(position));
 
     self
   }
@@ -164,7 +166,7 @@ impl<P: Realization> Overlay<P> {
   /// Derives where the open overlay is pinned from the signals `position` reads;
   /// `None` leaves it to its placement and anchor.
   pub fn derive_position(mut self, position: impl Fn() -> Option<Point<f32>> + 'static) -> Self {
-    self.position = Some(Rc::new(position));
+    self.position = Source::derive(position);
 
     self
   }
@@ -255,9 +257,13 @@ impl<P: Realization> View<P> for Overlay<P> {
     else {
       return empty::<P>().build();
     };
-    let (initial, placement) = match placement {
-      Source::Fixed(placement) => (placement, None),
-      Source::Derived(compute) => (untrack(|| compute()), Some(compute)),
+    let placement = match (placement, position) {
+      (Source::Fixed(placement), Source::Fixed(position)) => {
+        Source::Fixed(OverlayPlacement::new(placement, position))
+      }
+      (placement, position) => {
+        Source::derive(move || OverlayPlacement::new(placement.get(), position.get()))
+      }
     };
     let open: Rc<dyn Fn() -> bool> = match open {
       Source::Fixed(open) => Rc::new(move || open),
@@ -269,11 +275,10 @@ impl<P: Realization> View<P> for Overlay<P> {
           boxed,
           modal,
           hint,
-          placement: initial,
           backdrop,
         })
       },
-      |_, _, _| {},
+      |node, _, _| contents::PLACEMENT.write::<P>(node, &untrack(|| placement.get())),
     );
 
     Scene::<P>::with(|scene| {
@@ -284,25 +289,22 @@ impl<P: Realization> View<P> for Overlay<P> {
       }
     });
 
-    Effect::render(move |_: Option<()>| {
-      let placement = placement.as_ref().map(|placement| placement());
-      let position = position.as_ref().map(|position| position());
+    Effect::render(move |written: Option<OverlayPlacement>| {
+      let placed = placement.get();
       let open = open();
       let anchor = anchor.and_then(|anchor| untrack(|| anchor.node()));
 
       if !Scene::<P>::with(|scene| scene.contains(node)) {
-        return;
+        return placed;
       }
 
-      if let Some(placement) = placement {
-        P::set_overlay_placement(node, placement);
-      }
-
-      if let Some(position) = position {
-        P::set_overlay_position(node, position);
+      if written.is_some_and(|written| written != placed) {
+        contents::PLACEMENT.write::<P>(node, &placed);
       }
 
       Scene::<P>::with(|scene| scene.set_overlay_open(node, open, anchor));
+
+      placed
     });
 
     node

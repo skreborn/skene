@@ -146,19 +146,22 @@ pub(crate) enum Kind {
   Overlay {
     /// The overlay's own box, carrying the overlay's role.
     inner: BoxRecord,
-    /// Where the overlay sits.
+    /// Where the overlay sits, as its last placement content said.
     placement: Placement,
     /// The backdrop color painted over the app while open, if any.
     backdrop: Option<Color>,
     /// Whether the overlay is open.
     open: bool,
-    /// The cell the overlay's top-start corner is pinned to, if it is.
+    /// The cell the overlay's top-start corner is pinned to, if it is, as its last
+    /// placement content said.
     position: Option<(i64, i64)>,
   },
   /// A text run.
   Run {
     /// The facts the run was created with.
     facts: RunFacts,
+    /// The path a link run navigates to, as its last destination content said.
+    destination: Option<String>,
     /// The run's style, then the per-child layout a wrapper annotated it with, and its
     /// motion, kept whole as the shared half applied them; empty until it does.
     kept: KeptStyle,
@@ -177,6 +180,7 @@ impl Kind {
   pub(crate) fn run(facts: RunFacts) -> Self {
     Self::Run {
       facts,
+      destination: None,
       kept: StyleRecord::new().into_kept(),
       cache: None,
       motion: RunMotion::default(),

@@ -8,7 +8,17 @@ use std::{
 use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
-use crate::{Edit, EventKind, NativeElement, Realization, Role, TextSelection, Verdict, contents};
+use crate::{
+  Edit,
+  EventKind,
+  NativeElement,
+  Realization,
+  Role,
+  TextSelection,
+  Verdict,
+  contents,
+  realize::Source,
+};
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
@@ -36,7 +46,7 @@ use crate::{Edit, EventKind, NativeElement, Realization, Role, TextSelection, Ve
 pub struct TextEntry {
   value: Controlled<String>,
   selection: Controlled<TextSelection>,
-  placeholder: Option<String>,
+  placeholder: Option<Source<Rc<str>>>,
   lines: u16,
   reported: OnceCell<Reported>,
 }
@@ -85,7 +95,15 @@ impl TextEntry {
 
   /// Sets the hint shown while the value is empty.
   pub fn set_placeholder(mut self, placeholder: impl Into<String>) -> Self {
-    self.placeholder = Some(placeholder.into());
+    self.placeholder = Some(Source::Fixed(Rc::from(placeholder.into())));
+
+    self
+  }
+
+  /// Derives the hint shown while the value is empty from the signals `placeholder`
+  /// reads.
+  pub fn derive_placeholder(mut self, placeholder: impl Fn() -> String + 'static) -> Self {
+    self.placeholder = Some(Source::derive(move || Rc::from(placeholder())));
 
     self
   }
@@ -225,17 +243,19 @@ impl<P: Realization> Behavior<P> for TextEntry {
   }
 
   #[inline(always)]
-  fn placeholder(&self) -> Option<String> {
-    self.placeholder.clone()
-  }
-
-  #[inline(always)]
   fn lines(&self) -> u16 {
     self.lines
   }
 
   fn attach(&self, control: &ControlHandle<P>) {
     let node = control.node();
+
+    if let Some(placeholder) = self.placeholder.clone() {
+      placeholder.bind(node, |node, hint| {
+        contents::PLACEHOLDER.write::<P>(node, hint);
+      });
+    }
+
     let value = self.value.reader();
     let selection = self.selection.reader();
 

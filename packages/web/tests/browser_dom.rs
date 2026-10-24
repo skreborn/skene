@@ -371,6 +371,80 @@ fn linked_text_is_an_anchor_element() {
   );
 }
 
+/// A derived destination's `href` follows its signal, the link opening as its policy has
+/// it for each: a new page for an external one, in place for a relative one.
+#[wasm_bindgen_test]
+fn a_derived_destination_follows_its_signal() {
+  let (_guard, root) = fresh_root();
+  let destination = Signal::new("/docs".to_owned());
+
+  let _ = mount(move || {
+    Text::new("go")
+      .derive_link(move || destination.get())
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "A");
+  assert_eq!(element.get_attribute("href").as_deref(), Some("/docs"));
+  assert_eq!(element.get_attribute("target"), None);
+
+  destination.set("https://example.com/".to_owned());
+  web::end_turn();
+
+  assert_eq!(
+    element.get_attribute("href").as_deref(),
+    Some("https://example.com/")
+  );
+  assert_eq!(element.get_attribute("target").as_deref(), Some("_blank"));
+  assert_eq!(
+    element.get_attribute("rel").as_deref(),
+    Some("noopener noreferrer")
+  );
+
+  destination.set("/guide".to_owned());
+  web::end_turn();
+
+  assert_eq!(element.get_attribute("href").as_deref(), Some("/guide"));
+  assert_eq!(element.get_attribute("target"), None);
+  assert_eq!(element.get_attribute("rel"), None);
+}
+
+/// A destination that would run script is refused when it is written after the link
+/// exists, as when it is created with one: the anchor stays, with no `href`.
+#[wasm_bindgen_test]
+fn a_script_destination_written_later_is_refused() {
+  let (_guard, root) = fresh_root();
+  let destination = Signal::new("/safe".to_owned());
+
+  let _ = mount(move || {
+    Text::new("go")
+      .derive_link(move || destination.get())
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.get_attribute("href").as_deref(), Some("/safe"));
+
+  destination.set(" JavaScript:alert(1)".to_owned());
+  web::end_turn();
+
+  assert_eq!(element.tag_name(), "A");
+  assert_eq!(
+    element.get_attribute("href"),
+    None,
+    "{}",
+    element.outer_html()
+  );
+
+  destination.set("/again".to_owned());
+  web::end_turn();
+
+  assert_eq!(element.get_attribute("href").as_deref(), Some("/again"));
+}
+
 #[wasm_bindgen_test]
 fn children_mount_in_order() {
   let (_guard, root) = fresh_root();

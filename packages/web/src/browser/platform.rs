@@ -72,6 +72,7 @@ use super::{
   with_dom,
 };
 use crate::{
+  LinkPolicy,
   declarations::Declarations,
   low_level::{WebDom, WebMarkup},
   platform::web::Web,
@@ -339,13 +340,9 @@ impl Realization for Web {
   }
 
   fn set_overlay_open(sink: NodeId, open: bool, anchor: Option<NodeId>) {
-    let Some((element, modal, placement, position, anchor)) = with_dom(|dom| {
+    let Some((element, modal, placement, anchor)) = with_dom(|dom| {
       let node = dom.node(sink)?;
-      let Realized::Overlay {
-        modal,
-        placement,
-        position,
-      } = node.realized
+      let Realized::Overlay { modal, placement } = node.realized
       else {
         return None;
       };
@@ -364,7 +361,7 @@ impl Realization for Web {
 
       dom.pending_open.remove(&sink);
 
-      Some((element, modal, placement, position, anchor_element))
+      Some((element, modal, placement, anchor_element))
     })
     else {
       return;
@@ -391,38 +388,16 @@ impl Realization for Web {
     if open {
       let _ = html.show_popover();
 
-      if let Some(position) = position {
+      if let Some(position) = placement.position {
         position_at_point(html, position);
       }
       else if let Some((sink, anchor)) = anchor {
-        position_at_anchor(html, &anchor, sink, placement);
+        position_at_anchor(html, &anchor, sink, placement.placement);
       }
     }
     else {
       let _ = html.hide_popover();
     }
-  }
-
-  fn set_overlay_position(sink: NodeId, position: Option<Point<f32>>) {
-    with_dom(|dom| {
-      if let Some(node) = dom.node_mut(sink)
-        && let Realized::Overlay { position: held, .. } = &mut node.realized
-      {
-        *held = position;
-      }
-    });
-  }
-
-  fn set_overlay_placement(sink: NodeId, placement: Placement) {
-    with_dom(|dom| {
-      if let Some(node) = dom.node_mut(sink)
-        && let Realized::Overlay {
-          placement: held, ..
-        } = &mut node.realized
-      {
-        *held = placement;
-      }
-    });
   }
 
   fn write(sink: NodeId, value: ContentValue<'_>) {
@@ -909,6 +884,13 @@ impl WebHydration for Web {
   }
 
   fn register_boundary(_start: NodeId, _settled: Box<dyn Fn() -> bool>) {}
+}
+
+impl Web {
+  /// Opens the link run `node` as `policy` says.
+  pub(crate) fn set_link_policy(node: NodeId, policy: LinkPolicy) {
+    with_dom(|dom| dom.realizer.set_link_policy(node, policy));
+  }
 }
 
 impl WebMarkup for Web {

@@ -198,7 +198,7 @@ impl Records {
       },
       container: None,
       transition_name: None,
-      destination: None,
+      link: false,
     };
     let mut records = Self {
       by_node: NodeMap::new(),

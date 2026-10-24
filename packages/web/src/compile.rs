@@ -699,7 +699,7 @@ pub(crate) enum Template {
   Overlay {
     /// Its box's facts.
     boxed: BoxTemplate,
-    /// Where it sits.
+    /// Where it sits, as its first placement content says.
     placement: Placement,
     /// The backdrop color painted over the app while it is open, if any.
     backdrop: Option<Color>,
@@ -729,11 +729,12 @@ impl Template {
     }
   }
 
-  /// The template of an overlay of `facts`.
+  /// The template of an overlay of `facts`, centered until its
+  /// [`Placement`](skene_foundation::Content::Placement) content places it.
   pub(crate) fn overlay(facts: &OverlayFacts) -> Self {
     Self::Overlay {
       boxed: BoxTemplate::of(&facts.boxed),
-      placement: facts.placement,
+      placement: Placement::Center,
       backdrop: facts.backdrop,
     }
   }

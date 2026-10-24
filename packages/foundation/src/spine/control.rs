@@ -117,8 +117,6 @@ pub struct ControlFacts {
   pub native: Option<NativeElement>,
   /// The accessible name, when nothing visible supplies one.
   pub label: Option<String>,
-  /// The hint a text entry shows while its value is empty.
-  pub placeholder: Option<String>,
   /// The lines a text entry shows at once; `1` for every other kind.
   pub lines: u16,
   /// Whether the control's [`Part::Label`] sits before its box among its siblings,

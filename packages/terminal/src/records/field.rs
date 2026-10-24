@@ -104,7 +104,7 @@ pub(crate) struct Field {
   /// The area the window was last settled or scrolled in, `None` before the first; in any
   /// other the window settles around the caret before it shows.
   pub(crate) window_area: Option<Area>,
-  /// The text shown while the value is empty.
+  /// The text shown while the value is empty, as its last placeholder content said.
   pub(crate) placeholder: Option<String>,
   /// The rows the entry asks the layout for; more than one makes it an editor.
   pub(crate) lines: u16,
@@ -113,9 +113,10 @@ pub(crate) struct Field {
 }
 
 impl Field {
-  /// A fresh, empty entry of `node` showing `lines` rows: an editor wrapping its lines at
-  /// its width where they are more than one, else a field of one unwrapped line.
-  pub(crate) fn new(node: NodeId, placeholder: Option<String>, lines: u16) -> Self {
+  /// A fresh, empty entry of `node` showing `lines` rows, with no placeholder: an editor
+  /// wrapping its lines at its width where they are more than one, else a field of one
+  /// unwrapped line.
+  pub(crate) fn new(node: NodeId, lines: u16) -> Self {
     let lines = lines.max(1);
     let multiline = lines > 1;
     let changed = Rc::new(Cell::new(Changed::default()));
@@ -143,7 +144,7 @@ impl Field {
       deferred: Vec::new(),
       window: 0,
       window_area: None,
-      placeholder,
+      placeholder: None,
       lines,
       widest: Cell::new(0),
     }

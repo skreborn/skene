@@ -69,6 +69,14 @@ impl<P: Realization> SimpleTextField<P> {
     self
   }
 
+  /// Derives the hint shown while the value is empty from the signals `placeholder`
+  /// reads.
+  pub fn derive_placeholder(mut self, placeholder: impl Fn() -> String + 'static) -> Self {
+    self.entry = self.entry.derive_placeholder(placeholder);
+
+    self
+  }
+
   /// Runs `action` with the text an edit asks for.
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
     self.entry = self.entry.handle_change(action);
@@ -142,6 +150,13 @@ pub trait SimpleTextFieldBase<P: Realization>: Wraps<Inner = SimpleTextField<P>>
   #[must_use]
   fn set_placeholder(self, placeholder: impl Into<String>) -> Self {
     Self::wrap(self.into_inner().set_placeholder(placeholder))
+  }
+
+  /// Derives the hint shown while the value is empty from the signals `placeholder`
+  /// reads.
+  #[must_use]
+  fn derive_placeholder(self, placeholder: impl Fn() -> String + 'static) -> Self {
+    Self::wrap(self.into_inner().derive_placeholder(placeholder))
   }
 
   /// Runs `action` with the text an edit asks for.

@@ -37,19 +37,10 @@ pub(crate) const MARKER_ATTRIBUTE: &str = "data-h";
 /// The attribute a scope's layout-invisible element carries.
 pub(crate) const SCOPE_ATTRIBUTE: &str = "data-skene-scope";
 
-/// The element a box is realized as: an anchor when it has a destination, else the
-/// element its role names, a heading's at its `level`.
-pub(crate) const fn box_tag(
-  role: Option<Role>,
-  level: Option<usize>,
-  destination: bool,
-) -> &'static str {
-  if destination {
-    "a"
-  }
-  else {
-    element_tag(role, level)
-  }
+/// The element a box is realized as: an anchor when it is a `link`, else the element
+/// its role names, a heading's at its `level`.
+pub(crate) const fn box_tag(role: Option<Role>, level: Option<usize>, link: bool) -> &'static str {
+  if link { "a" } else { element_tag(role, level) }
 }
 
 /// The element a box of `role` is realized as, a heading's at its `level`: the second
@@ -326,8 +317,8 @@ pub(crate) fn range_attributes(range: &Range) -> [(&'static str, String); 4] {
 }
 
 /// The attributes a control's native element carries: its `type`, the `name` a radio
-/// shares with its group's other radios, the placeholder and the lines of a text
-/// entry, and the accessible name when nothing visible supplies one.
+/// shares with its group's other radios, the lines of a text editor, and the accessible
+/// name when nothing visible supplies one.
 pub(crate) fn native_attributes(
   native: FormElement,
   control: &ControlFacts,
@@ -340,10 +331,6 @@ pub(crate) fn native_attributes(
 
   if let (Some("radio"), Some(group)) = (native.kind, control.group) {
     attributes.push(("name", element_id(group)));
-  }
-
-  if let Some(placeholder) = &control.placeholder {
-    attributes.push(("placeholder", placeholder.clone()));
   }
 
   if native.tag == "textarea" {

@@ -1,12 +1,13 @@
 //! What a node shows that a view writes as one typed value: its text, an entry's text
 //! with its selection, a toggle's checked state, a range's value within its bounds, a
-//! choice's options with the chosen one.
+//! choice's options with the chosen one, a link's destination, an entry's placeholder,
+//! an overlay's placement.
 
 #[cfg(debug_assertions)]
 use std::cell::Ref;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 
-use crate::spine::{CheckState, Edit, NodeId, NodeKind, Realization};
+use crate::spine::{CheckState, Edit, NodeId, NodeKind, Placement, Point, Realization};
 #[cfg(debug_assertions)]
 use crate::spine::{NodeRecord, Scene};
 
@@ -24,6 +25,12 @@ pub enum Content {
   Range,
   /// A choice's options with the chosen one.
   Choice,
+  /// The path a link navigates to when followed.
+  Destination,
+  /// The hint a text entry shows while its value is empty.
+  Placeholder,
+  /// Where an overlay sits, or the point it is pinned at.
+  Placement,
 }
 
 impl NodeKind {
@@ -31,14 +38,17 @@ impl NodeKind {
   #[must_use]
   pub const fn contents(self) -> &'static [Content] {
     match self {
-      Self::Run => &[Content::Text],
+      Self::Box => &[Content::Destination],
+      Self::Run => &[Content::Text, Content::Destination],
       Self::Control => &[
         Content::Edit,
         Content::Checked,
         Content::Range,
         Content::Choice,
+        Content::Placeholder,
       ],
-      Self::Box | Self::Anchor | Self::Scope | Self::Overlay => &[],
+      Self::Overlay => &[Content::Placement],
+      Self::Anchor | Self::Scope => &[],
     }
   }
 }
@@ -58,6 +68,12 @@ pub enum ContentValue<'a> {
   Range(&'a Range),
   /// A choice's options with the chosen one.
   Choice(&'a Choices),
+  /// The path a link navigates to when followed.
+  Destination(&'a str),
+  /// The hint a text entry shows while its value is empty.
+  Placeholder(&'a str),
+  /// Where an overlay sits, or the point it is pinned at.
+  Placement(OverlayPlacement),
 }
 
 impl ContentValue<'_> {
@@ -70,6 +86,9 @@ impl ContentValue<'_> {
       Self::Checked(_) => Content::Checked,
       Self::Range(_) => Content::Range,
       Self::Choice(_) => Content::Choice,
+      Self::Destination(_) => Content::Destination,
+      Self::Placeholder(_) => Content::Placeholder,
+      Self::Placement(_) => Content::Placement,
     }
   }
 }
@@ -77,7 +96,7 @@ impl ContentValue<'_> {
 /// A value a content holds: what a view writes through a [`ContentKey`] of its type.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a value a node's content holds",
-  label = "a content holds a text, an edit, a checked state, a range or choices",
+  label = "a content holds a text, an edit, a checked state, a range, choices or an overlay's placement",
   note = "write a content through its key in `contents`, with the value of the key's type"
 )]
 pub trait ContentType: Clone + PartialEq + Debug + 'static {}
@@ -91,6 +110,8 @@ impl ContentType for CheckState {}
 impl ContentType for Range {}
 
 impl ContentType for Choices {}
+
+impl ContentType for OverlayPlacement {}
 
 /// The key a content is written by, typed by the value it holds, so a value of another
 /// type does not compile.
@@ -282,11 +303,35 @@ impl Choices {
   }
 }
 
+/// Where an overlay sits, or the point it is pinned at, as one value: a pinned overlay
+/// ignores its placement and its anchor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[must_use]
+pub struct OverlayPlacement {
+  /// Where the overlay sits; anchored, `Bottom` and `Top` open below and above the
+  /// anchor.
+  pub placement: Placement,
+  /// The point the open overlay's top-start corner is pinned to, in the units a pointer
+  /// event reports, shifted to stay within the viewport; `None` where it is not pinned.
+  pub position: Option<Point<f32>>,
+}
+
+impl OverlayPlacement {
+  /// Sitting where `placement` says, pinned to `position` where one is given.
+  #[inline(always)]
+  pub const fn new(placement: Placement, position: Option<Point<f32>>) -> Self {
+    Self {
+      placement,
+      position,
+    }
+  }
+}
+
 /// The key of each content.
 pub mod contents {
   use std::rc::Rc;
 
-  use super::{Choices, Content, ContentKey, ContentValue, Range};
+  use super::{Choices, Content, ContentKey, ContentValue, OverlayPlacement, Range};
   use crate::spine::{CheckState, Edit};
 
   /// A run's text.
@@ -304,36 +349,48 @@ pub mod contents {
   /// A choice's options with the chosen one.
   pub const CHOICE: ContentKey<Choices> =
     ContentKey::new(Content::Choice, |choices| ContentValue::Choice(choices));
+  /// The path a box or a run that is a link navigates to when followed.
+  pub const DESTINATION: ContentKey<Rc<str>> =
+    ContentKey::new(Content::Destination, |path| ContentValue::Destination(path));
+  /// The hint a text entry shows while its value is empty.
+  pub const PLACEHOLDER: ContentKey<Rc<str>> =
+    ContentKey::new(Content::Placeholder, |hint| ContentValue::Placeholder(hint));
+  /// Where an overlay sits, or the point it is pinned at.
+  pub const PLACEMENT: ContentKey<OverlayPlacement> =
+    ContentKey::new(Content::Placement, |placement| {
+      ContentValue::Placement(*placement)
+    });
 }
 
 #[cfg(test)]
 mod tests {
   use std::rc::Rc;
 
-  use super::{ChoiceOption, Choices, Content, ContentValue, Range, contents};
-  use crate::spine::{CheckState, Edit, NodeKind};
+  use super::{ChoiceOption, Choices, Content, ContentValue, OverlayPlacement, Range, contents};
+  use crate::spine::{CheckState, Edit, NodeKind, Placement, Point};
 
-  /// A control takes every control content, a run its text alone, and the
-  /// layout-invisible nodes none.
+  /// A control takes every control content, a run its text and its destination, a box
+  /// its destination, an overlay its placement, and the layout-invisible nodes none.
   #[test]
   fn each_kind_names_the_contents_it_takes() {
-    assert_eq!(NodeKind::Run.contents(), [Content::Text]);
+    assert_eq!(NodeKind::Box.contents(), [Content::Destination]);
+    assert_eq!(
+      NodeKind::Run.contents(),
+      [Content::Text, Content::Destination]
+    );
     assert_eq!(
       NodeKind::Control.contents(),
       [
         Content::Edit,
         Content::Checked,
         Content::Range,
-        Content::Choice
+        Content::Choice,
+        Content::Placeholder,
       ]
     );
+    assert_eq!(NodeKind::Overlay.contents(), [Content::Placement]);
 
-    for kind in [
-      NodeKind::Box,
-      NodeKind::Anchor,
-      NodeKind::Scope,
-      NodeKind::Overlay,
-    ] {
+    for kind in [NodeKind::Anchor, NodeKind::Scope] {
       assert!(kind.contents().is_empty(), "{kind:?}");
     }
   }
@@ -358,12 +415,31 @@ mod tests {
       ContentValue::Choice(&choices)
     );
 
+    let path: Rc<str> = Rc::from("/docs");
+    let pinned = OverlayPlacement::new(Placement::Top, Some(Point::new(4., 2.)));
+
+    assert_eq!(
+      contents::DESTINATION.erase(&path),
+      ContentValue::Destination("/docs")
+    );
+    assert_eq!(
+      contents::PLACEHOLDER.erase(&path),
+      ContentValue::Placeholder("/docs")
+    );
+    assert_eq!(
+      contents::PLACEMENT.erase(&pinned),
+      ContentValue::Placement(pinned)
+    );
+
     for (key, content) in [
       (contents::TEXT.content(), Content::Text),
       (contents::EDIT.content(), Content::Edit),
       (contents::CHECKED.content(), Content::Checked),
       (contents::RANGE.content(), Content::Range),
       (contents::CHOICE.content(), Content::Choice),
+      (contents::DESTINATION.content(), Content::Destination),
+      (contents::PLACEHOLDER.content(), Content::Placeholder),
+      (contents::PLACEMENT.content(), Content::Placement),
     ] {
       assert_eq!(key, content);
     }

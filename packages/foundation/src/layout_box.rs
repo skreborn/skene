@@ -50,6 +50,7 @@ use crate::{
   View,
   WheelEvent,
   Wrap,
+  contents,
   properties,
   realize::{Source, bind_slot, report_access},
 };
@@ -75,7 +76,7 @@ pub struct LayoutBox<P: Realization, Kind = PlainChild> {
   style: Box<DeclaredBoxStyle<P>>,
   dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   transition_name: Option<String>,
-  destination: Option<String>,
+  destination: Option<Source<Rc<str>>>,
   drag_axes: Option<DragAxes>,
   handlers: Vec<Handler>,
   handles: Vec<NodeHandle<P>>,
@@ -277,7 +278,15 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// has one. A destination that would run script when followed, a `javascript:` URL,
   /// is never followed.
   pub fn set_destination(mut self, path: impl Into<String>) -> Self {
-    self.destination = Some(path.into());
+    self.destination = Some(Source::Fixed(Rc::from(path.into())));
+
+    self
+  }
+
+  /// Derives the path the box navigates to when activated from the signals `path`
+  /// reads, making it a link as [`set_destination`](Self::set_destination) does.
+  pub fn derive_destination(mut self, path: impl Fn() -> String + 'static) -> Self {
+    self.destination = Some(Source::derive(move || Rc::from(path())));
 
     self
   }
@@ -564,11 +573,17 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
         layout: self.layout,
         container: self.container,
         transition_name: self.transition_name,
-        destination: self.destination,
+        link: links,
       }),
     );
     let container = self.container;
     let node = Scene::<P>::realize(&spec, None);
+
+    if let Some(destination) = self.destination {
+      destination.bind(node, |node, path| {
+        contents::DESTINATION.write::<P>(node, path);
+      });
+    }
 
     realized(node, &spec, &style);
     P::apply_style(node, style);

@@ -73,6 +73,7 @@ pub use content::{
   ContentKey,
   ContentType,
   ContentValue,
+  OverlayPlacement,
   Range,
   contents,
 };

@@ -33,7 +33,8 @@ use crate::{
   Transition,
   TypeMetrics,
   Value,
-  realize::bind_slot,
+  contents,
+  realize::{Source, bind_slot},
   typography,
 };
 
@@ -44,7 +45,7 @@ use crate::{
 #[must_use]
 pub struct Run<P: Realization> {
   selectable: bool,
-  link: Option<String>,
+  link: Option<Source<Rc<str>>>,
   style: DeclaredRunStyle<P>,
   dynamics: RunDynamics<P::StyleExt>,
   realizations: Vec<Realize<P>>,
@@ -98,7 +99,15 @@ impl<P: Realization> Run<P> {
   /// Makes the run a link to `destination`; a destination that would run script when
   /// followed, a `javascript:` URL, is never followed.
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
-    self.link = Some(destination.into());
+    self.link = Some(Source::Fixed(Rc::from(destination.into())));
+
+    self
+  }
+
+  /// Makes the run a link to the destination derived from the signals `destination`
+  /// reads, as [`set_link`](Self::set_link) does.
+  pub fn derive_link(mut self, destination: impl Fn() -> String + 'static) -> Self {
+    self.link = Some(Source::derive(move || Rc::from(destination())));
 
     self
   }
@@ -226,10 +235,16 @@ impl<P: Realization> Run<P> {
       NodeFacts::Run(RunFacts {
         placement,
         selectable: self.selectable,
-        link: self.link,
+        link: links,
       }),
     );
     let node = Scene::<P>::realize(&spec, annotation);
+
+    if let Some(destination) = self.link {
+      destination.bind(node, |node, path| {
+        contents::DESTINATION.write::<P>(node, path);
+      });
+    }
 
     for realization in self.realizations {
       realization(node, &spec, &style);

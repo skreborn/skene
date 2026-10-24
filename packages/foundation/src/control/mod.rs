@@ -160,12 +160,6 @@ pub trait Behavior<P: Realization>: 'static {
   /// The events the behavior acts on.
   fn listens(&self) -> &'static [EventKind];
 
-  /// The hint a text entry shows while its value is empty.
-  #[inline(always)]
-  fn placeholder(&self) -> Option<String> {
-    None
-  }
-
   /// The lines a text entry shows at once.
   #[inline(always)]
   fn lines(&self) -> u16 {
@@ -827,7 +821,6 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
 
     owner.enter(move || {
       let native = behavior.native();
-      let placeholder = behavior.placeholder();
       let lines = behavior.lines();
       let placement = behavior.label_placement();
       let named = label.as_ref().and_then(|label| label.name.clone());
@@ -853,7 +846,6 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
             boxed,
             native,
             label: name.as_ref().map(|name| untrack(|| name())),
-            placeholder,
             lines,
             label_beside: placement == LabelPlacement::Beside,
             group: behavior.group(),

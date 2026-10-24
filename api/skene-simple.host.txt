@@ -279,6 +279,7 @@ pub fn skene_simple::SimpleSliderBase::set_range(self, skene_foundation::control
 pub fn skene_simple::SimpleSliderBase::set_value(self, f32) -> Self
 pub trait skene_simple::SimpleTextEditorBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleTextEditor<P>>
 pub fn skene_simple::SimpleTextEditorBase::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_simple::SimpleTextEditorBase::derive_placeholder(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextEditorBase::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextEditorBase::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
 pub fn skene_simple::SimpleTextEditorBase::new() -> Self
@@ -288,6 +289,7 @@ pub fn skene_simple::SimpleTextEditorBase::set_placeholder(self, impl core::conv
 pub fn skene_simple::SimpleTextEditorBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleTextFieldBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleTextField<P>>
 pub fn skene_simple::SimpleTextFieldBase::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_simple::SimpleTextFieldBase::derive_placeholder(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextFieldBase::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleTextFieldBase::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
 pub fn skene_simple::SimpleTextFieldBase::new() -> Self

@@ -64,7 +64,7 @@ use skene_web::{
   View,
   client_only,
   derived,
-  platform,
+  platform::web,
   render_page_stream,
   render_to_stream,
   render_to_string,
@@ -641,7 +641,7 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
 fn an_async_load_settles_before_serialization() {
   let page = render_to_string(|| {
     let greeting = Resource::new(|| async {
-      platform::sleep(Duration::from_millis(5)).await;
+      web::sleep(Duration::from_millis(5)).await;
 
       "Ada".to_owned()
     });
@@ -673,7 +673,7 @@ fn an_async_load_settles_before_serialization() {
 fn a_list_reordered_before_serialization_serializes_in_its_new_order() {
   let page = render_to_string(|| {
     let order = Resource::new(|| async {
-      platform::sleep(Duration::from_millis(1)).await;
+      web::sleep(Duration::from_millis(1)).await;
 
       vec![4, 3, 2, 1]
     });
@@ -938,7 +938,7 @@ fn deferred_app() -> impl skene_web::View {
     Deferred::new()
       .set_child_builder(|| {
         let data = Resource::new(|| async {
-          platform::sleep(Duration::from_millis(5)).await;
+          web::sleep(Duration::from_millis(5)).await;
 
           "late".to_owned()
         });
@@ -977,12 +977,12 @@ fn a_stream_resumes_where_it_stood_among_changed_siblings() {
       Deferred::new()
         .set_child_builder(move || {
           skene_web::spawn(async move {
-            platform::sleep(Duration::from_millis(1)).await;
+            web::sleep(Duration::from_millis(1)).await;
             grown.set(true);
           });
 
           let data = Resource::new(|| async {
-            platform::sleep(Duration::from_millis(5)).await;
+            web::sleep(Duration::from_millis(5)).await;
 
             "late".to_owned()
           });
@@ -1078,7 +1078,7 @@ fn a_title_registered_after_the_shell_is_warned_about() {
       render_to_stream(|| {
         Row::new().add_child(Deferred::new().set_child_builder(|| {
           let data = Resource::new(|| async {
-            platform::sleep(Duration::from_millis(1)).await;
+            web::sleep(Duration::from_millis(1)).await;
 
             "late".to_owned()
           });
@@ -1250,11 +1250,11 @@ fn a_groups_style_cascades_to_its_children() {
 /// of hanging its caller.
 #[test]
 fn render_deadline_cuts_off_unsettled_work() {
-  platform::set_render_deadline(Duration::from_millis(20));
+  web::set_render_deadline(Duration::from_millis(20));
 
   let rendered = render_to_string(|| {
     let value = Resource::new(|| async {
-      platform::sleep(Duration::from_hours(1)).await;
+      web::sleep(Duration::from_hours(1)).await;
 
       1u32
     });
@@ -1265,7 +1265,7 @@ fn render_deadline_cuts_off_unsettled_work() {
     })
   });
 
-  platform::set_render_deadline(Duration::from_secs(10));
+  web::set_render_deadline(Duration::from_secs(10));
 
   assert!(rendered.body().contains("still waiting"));
   assert!(!rendered.body().contains("done"));
@@ -1395,7 +1395,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
   let black = Color::srgb(0., 0., 0.);
   let white = Color::srgb(1., 1., 1.);
 
-  platform::set_render_hints(platform::RenderHints::from_headers([(
+  web::set_render_hints(web::RenderHints::from_headers([(
     "Sec-CH-Prefers-Color-Scheme",
     "dark",
   )]));
@@ -1411,7 +1411,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
     })
   });
 
-  platform::set_render_hints(platform::RenderHints::DEFAULT);
+  web::set_render_hints(web::RenderHints::DEFAULT);
 
   assert!(
     page
@@ -1477,7 +1477,7 @@ fn a_markup_style_and_its_declarations_serialize_as_one_attribute() {
   use skene_foundation::{AnyView, NodeKind};
   use skene_web::{
     Active,
-    platform::{Declarations, WebMarkup},
+    platform::web::{Declarations, WebMarkup},
   };
 
   let rendered = render_to_string(|| {
@@ -1589,11 +1589,11 @@ fn an_inline_script_carries_the_renders_nonce() {
     Text::new("x")
   };
 
-  platform::set_script_nonce(Some("r4nd\"om"));
+  web::set_script_nonce(Some("r4nd\"om"));
 
   let page = render_to_string(app).page();
 
-  platform::set_script_nonce(None);
+  web::set_script_nonce(None);
 
   assert!(page.contains("<script nonce=\"r4nd&quot;om\">"), "{page}");
   assert!(!render_to_string(app).page().contains("nonce="));
@@ -1603,15 +1603,15 @@ fn an_inline_script_carries_the_renders_nonce() {
 /// carries the dev script, every inline script under the render's nonce.
 #[test]
 fn a_page_boots_its_bundle_under_the_nonce() {
-  platform::set_client_bundle(Some("app"));
-  platform::set_dev_loop(true);
-  platform::set_script_nonce(Some("n0"));
+  web::set_client_bundle(Some("app"));
+  web::set_dev_loop(true);
+  web::set_script_nonce(Some("n0"));
 
   let page = render_to_string(|| Text::new("x")).page();
 
-  platform::set_client_bundle(None);
-  platform::set_dev_loop(false);
-  platform::set_script_nonce(None);
+  web::set_client_bundle(None);
+  web::set_dev_loop(false);
+  web::set_script_nonce(None);
 
   assert!(
     page.contains("<link rel=\"modulepreload\" href=\"/app.js\">"),
@@ -1640,7 +1640,7 @@ fn a_page_boots_its_bundle_under_the_nonce() {
 #[should_panic(expected = "a head element is one of")]
 fn a_head_registration_names_a_head_element() {
   let _ = render_to_string(|| {
-    let _ = platform::add_head_element("img", &[("src", "x")]);
+    let _ = web::add_head_element("img", &[("src", "x")]);
 
     Text::new("x")
   });
@@ -1651,7 +1651,7 @@ fn a_head_registration_names_a_head_element() {
 #[should_panic(expected = "is not an attribute name")]
 fn a_head_registration_refuses_an_attribute_that_is_not_one() {
   let _ = render_to_string(|| {
-    let _ = platform::add_head_element("meta", &[("onload=alert(1) x", "y")]);
+    let _ = web::add_head_element("meta", &[("onload=alert(1) x", "y")]);
 
     Text::new("x")
   });

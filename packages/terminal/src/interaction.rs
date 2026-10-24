@@ -138,7 +138,7 @@ impl Records {
   /// The tab stops' nodes in traversal order, as [`tab_order`](Self::tab_order) orders
   /// them.
   fn tab_stops(&self) -> Vec<NodeId> {
-    let Some(root) = crate::platform::root_node()
+    let Some(root) = crate::realize::root_node()
     else {
       return Vec::new();
     };
@@ -874,7 +874,7 @@ fn focus_on(next: Option<Handle>, restored: bool) {
 /// after it, or before it for a negative `step`, in document order.
 pub(crate) fn move_focus(step: isize) {
   let next = records(|records| {
-    let root = crate::platform::root_node()?;
+    let root = crate::realize::root_node()?;
     let order = records.tab_stops();
     let from = records
       .focused()

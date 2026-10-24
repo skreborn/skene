@@ -15,7 +15,7 @@ use skene_web::{
   TextBase,
   View,
   derived,
-  platform::mount,
+  platform::web::mount,
   reactive::Owner,
   testing::{fresh_root, tick},
 };

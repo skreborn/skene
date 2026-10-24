@@ -14,7 +14,7 @@
 use skene_foundation::web::HeadId;
 use skene_reactive::on_cleanup;
 
-use crate::platform::{add_head_element, remove_head_entry, set_document_language};
+use crate::platform::web::{add_head_element, remove_head_entry, set_document_language};
 
 /// Removes the registration `id` when the current owner is disposed.
 #[inline(always)]

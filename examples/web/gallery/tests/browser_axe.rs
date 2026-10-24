@@ -10,7 +10,7 @@ use std::fmt::Write as _;
 
 use js_sys::{Array, Function, Object, Promise, Reflect};
 use skene_web::{
-  platform::mount,
+  platform::web::mount,
   prelude::*,
   testing::{document, fresh_root},
 };

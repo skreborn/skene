@@ -58,7 +58,7 @@ elements it built and the styles the engine computes for them, through `web-sys`
 
 use skene_simple_web::prelude::*;
 use skene_web::{
-  platform::mount,
+  platform::web::mount,
   prelude::*,
   testing::{computed, fresh_root, only_child},
 };

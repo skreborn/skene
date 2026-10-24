@@ -39,7 +39,7 @@ use skene_web::{
   TextBase,
   Tooltip,
   TooltipBase,
-  platform::{self, hydrate},
+  platform::web::{self, hydrate},
   reactive::Get,
   testing::{document, only_child, tick},
   wasm_bindgen::JsCast,
@@ -82,9 +82,9 @@ fn served(app: impl FnOnce() -> skene_web::AnyView + 'static) -> (String, String
     .expect("a body")
     .append_child(&root)
     .expect("connect the root");
-  platform::install(root.clone());
+  web::install(root.clone());
 
-  let _ = platform::mount(|| skene_web::View::build(app()));
+  let _ = web::mount(|| skene_web::View::build(app()));
 
   let elements = root.query_selector_all("*").expect("query the elements");
 
@@ -106,7 +106,7 @@ fn served(app: impl FnOnce() -> skene_web::AnyView + 'static) -> (String, String
     .collect();
   let markup = root.inner_html();
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 
   (markup, styles)
@@ -166,7 +166,7 @@ fn hydrate_keeps_the_readers_scroll_and_focus() {
 
   hydrate(root.clone(), "", app);
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert!(only_child(&root) == scroller, "the scroller was adopted");
   assert_eq!(scroller.scroll_top(), 30, "the offset survived hydration");
   assert_eq!(
@@ -175,7 +175,7 @@ fn hydrate_keeps_the_readers_scroll_and_focus() {
     "the focus survived hydration",
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
   block.remove();
 }
@@ -195,7 +195,7 @@ fn hydrate_adopts_the_marked_elements() {
 
   let hydrated_container = only_child(&root);
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert!(
     server_container == hydrated_container,
     "the container was adopted, not recreated",
@@ -217,7 +217,7 @@ fn hydrate_adopts_the_marked_elements() {
     "the anchors were adopted rather than added",
   );
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 #[wasm_bindgen_test]
@@ -242,7 +242,7 @@ fn a_hydrated_handler_fires_on_the_adopted_node() {
     "the hydrated handler fired on the server-rendered node",
   );
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 #[wasm_bindgen_test]
@@ -293,7 +293,7 @@ fn a_resource_adopts_server_state_without_loading() {
     );
   });
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// An enhancement builds its fallback while hydrating, adopting the server's markup
@@ -322,13 +322,13 @@ fn an_enhancement_adopts_its_fallback_then_builds_its_child() {
     }
   });
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(root.text_content().expect("text"), "live");
   assert_eq!(element_count(&root), 1, "the fallback is gone");
   assert_eq!(children.get(), 1);
   assert!(skene_web::media::hydrated().get());
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A page mounted without a server's markup is live at once: the hydration signal is
@@ -344,9 +344,9 @@ fn a_mount_without_hydrating_is_hydrated_from_the_start() {
     .expect("a body")
     .append_child(&root)
     .expect("connect the root");
-  platform::install(root.clone());
+  web::install(root.clone());
 
-  let _ = platform::mount({
+  let _ = web::mount({
     let fallbacks = Rc::clone(&fallbacks);
 
     move || {
@@ -370,7 +370,7 @@ fn a_mount_without_hydrating_is_hydrated_from_the_start() {
   assert_eq!(root.text_content().expect("text"), "live");
   assert_eq!(fallbacks.get(), 0, "the fallback was never built");
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -396,7 +396,7 @@ fn a_painted_box_adopts_its_fallback_then_takes_its_place() {
     }
   });
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(
     fallbacks.get(),
     1,
@@ -417,7 +417,7 @@ fn a_painted_box_adopts_its_fallback_then_takes_its_place() {
     "the fallback is gone"
   );
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A client-only view adopts the empty place a server left for it, so the nodes after
@@ -439,14 +439,14 @@ fn a_client_only_view_builds_after_hydrating_without_shifting_markers() {
 
   let column = only_child(&root);
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(column.text_content().expect("text"), "mapafter");
   assert!(
     column.last_element_child() == Some(server_after),
     "the later text was adopted"
   );
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A picker hydrates over the server's `<select>`, carrying the choice the reader
@@ -472,13 +472,13 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
       .expect("a body")
       .append_child(&scratch)
       .expect("connect the scratch root");
-    platform::install(scratch.clone());
+    web::install(scratch.clone());
 
-    let _ = platform::mount(|| skene_web::View::build(Column::new().set_children(options())));
+    let _ = web::mount(|| skene_web::View::build(Column::new().set_children(options())));
 
     let count = element_count(&scratch);
 
-    platform::uninstall();
+    web::uninstall();
     scratch.remove();
 
     count + 1
@@ -508,7 +508,7 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
       .set_face(|shown| Text::derive(move || shown.get()))
   });
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(value.get(), "b", "the reader's choice reached the signal");
   assert!(
     root.query_selector("select").expect("query").is_none(),
@@ -527,7 +527,7 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
 
   assert_eq!(shown.text_content().as_deref(), Some("b"));
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -565,7 +565,7 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
       .set_face(|shown| Text::derive(move || shown.get()))
   });
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert!(
     root.query_selector("select").expect("query").is_none(),
     "the select is gone"
@@ -598,7 +598,7 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
     root.inner_html()
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -617,7 +617,7 @@ async fn a_lazy_view_keeps_server_content_until_it_loads() {
   });
 
   // Claimed: the server content still stands, visible, while the module is pending.
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(element_count(&root), 2, "the server content was kept");
   assert_eq!(root.text_content().expect("text"), "note");
 
@@ -640,7 +640,7 @@ async fn a_lazy_view_keeps_server_content_until_it_loads() {
     "the arrived content is freshly built, not the claim",
   );
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A lazy segment's content adopts the values the server keyed under the segment's
@@ -699,7 +699,7 @@ async fn a_lazy_segments_resources_adopt_their_own_values() {
     );
   });
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A server-rendered caption and its input are adopted in place: the container builds
@@ -725,7 +725,7 @@ fn hydrate_adopts_a_captioned_text_field() {
     Container::new().set_child(BasicTextField::new(TextEntry::new()).set_label("Name"))
   });
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(
     element_count(&root),
     4,
@@ -746,7 +746,7 @@ fn hydrate_adopts_a_captioned_text_field() {
   assert_eq!(label.next_element_sibling().as_ref(), Some(&input));
   assert_eq!(label.get_attribute("for"), Some(input.id()));
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// Text typed into a server-rendered field before the bundle arrived reaches the
@@ -800,7 +800,7 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
 
   hydrate(root.clone(), "", move || field(value, selection));
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(value.get(), "ABC", "the typed text reached the handler");
   assert_eq!(
     selection.get(),
@@ -825,7 +825,7 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
     "the reader's caret, before the repaired range, stays"
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -882,7 +882,7 @@ fn a_value_typed_into_an_editor_before_the_bundle_reports_as_an_edit() {
 
   hydrate(root.clone(), "", move || editor(value, selection));
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(
     value.get(),
     "\u{1F600}\nABC\nD",
@@ -911,7 +911,7 @@ fn a_value_typed_into_an_editor_before_the_bundle_reports_as_an_edit() {
     "the reader's caret, before the repaired range, stays"
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -966,7 +966,7 @@ fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
 
   hydrate(root.clone(), "", move || group(value));
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(
     value.get().as_deref(),
     Some("m"),
@@ -982,7 +982,7 @@ fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
     "the server's choice stays unchecked"
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -1001,9 +1001,9 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
     "the mismatch produced a fresh node and dropped the wrong one",
   );
   assert_eq!(only_child(&root).tag_name().to_lowercase(), "div");
-  assert!(platform::hydration_mismatches() > 0);
+  assert!(web::hydration_mismatches() > 0);
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A checkbox whose label the client builds afresh keeps the input the server sent,
@@ -1033,9 +1033,9 @@ fn an_adopted_input_moves_into_a_rebuilt_label() {
     "the adopted input sits in the client's label: {}",
     root.inner_html()
   );
-  assert_eq!(platform::hydration_mismatches(), 1);
+  assert_eq!(web::hydration_mismatches(), 1);
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// Hydration converges on the client's tree: a server element and anchor the client
@@ -1064,10 +1064,10 @@ fn hydration_converges_on_the_clients_tree() {
     !html.contains("stale"),
     "the server's extra class was dropped: {html}"
   );
-  assert_eq!(platform::hydration_mismatches(), 3);
+  assert_eq!(web::hydration_mismatches(), 3);
   assert_eq!(element_count(&root), 2);
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A resource built after hydration loads rather than adopting a value served for a
@@ -1102,7 +1102,7 @@ async fn a_resource_built_after_hydration_loads() {
     );
   });
 
-  platform::uninstall();
+  web::uninstall();
 }
 
 /// A streamed page leaves its style deltas in the body; hydration adopts them with the
@@ -1128,9 +1128,9 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
   let (markup, rule) = {
     let staging = document().create_element("div").expect("a staging root");
 
-    platform::install(staging.clone());
+    web::install(staging.clone());
 
-    let _ = platform::mount(|| skene_web::View::build(app()));
+    let _ = web::mount(|| skene_web::View::build(app()));
 
     let container = only_child(&staging);
     let class = container.get_attribute("class").expect("a class");
@@ -1149,7 +1149,7 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
       staging.inner_html()
     );
 
-    platform::uninstall();
+    web::uninstall();
 
     assert!(rule.contains(&class));
 
@@ -1178,11 +1178,11 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
     })
     .expect("the delta");
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(copies, 1, "the delta is the one copy of its rule");
   assert_eq!(delta.parent_element(), document().head().map(Into::into));
 
-  platform::uninstall();
+  web::uninstall();
 
   assert!(
     !block.is_connected(),
@@ -1224,7 +1224,7 @@ fn hydrate_removes_the_servers_title_from_a_tooltips_child() {
 
   hydrate(root.clone(), "", app);
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
 
   let described = root
     .query_selector("[aria-describedby]")
@@ -1246,7 +1246,7 @@ fn hydrate_removes_the_servers_title_from_a_tooltips_child() {
       .get_attribute("id")
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }
 
@@ -1312,7 +1312,7 @@ fn the_server_leafs_bytes_hydrate_in_place() {
 
   let hydrated = elements(&root);
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(hydrated.len(), served.len(), "{}", root.inner_html());
 
   for (index, (served, hydrated)) in served.iter().zip(&hydrated).enumerate() {
@@ -1352,6 +1352,6 @@ fn the_server_leafs_bytes_hydrate_in_place() {
     "the server's block holds every rule the browser interned",
   );
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 }

@@ -134,7 +134,7 @@ impl Launch {
   ///
   /// Panics if the platform is already installed for this thread.
   pub fn install(self) {
-    crate::platform::install();
+    crate::realize::install();
 
     with_records(|records| {
       records.clipboard = self.clipboard;
@@ -180,7 +180,7 @@ impl Launch {
 /// items, drawn in the terminal's default colors, which any menu closer to the pressed
 /// node takes precedence over.
 fn serve_standard_menu() {
-  let Some(root) = crate::platform::root_node()
+  let Some(root) = crate::realize::root_node()
   else {
     return;
   };

@@ -7,7 +7,14 @@ use std::time::Duration;
 
 use skene_foundation::{BoxKeyframe, Property, RunKeyframe};
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, Color, State, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  Color,
+  State,
+  platform::terminal::Terminal,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{blue, colors_at, red, rgb, with_platform};
 
@@ -17,18 +24,16 @@ fn color_transition() -> Transition<terminal::TerminalProperty> {
 }
 
 /// A box keyframe of one background color.
-fn frame(color: impl Into<skene_terminal::StaticLeaf<Color>>) -> BoxKeyframe<terminal::Terminal> {
-  BoxKeyframe::<terminal::Terminal> {
+fn frame(color: impl Into<skene_terminal::StaticLeaf<Color>>) -> BoxKeyframe<Terminal> {
+  BoxKeyframe::<Terminal> {
     background: Some(color.into()),
     ..Default::default()
   }
 }
 
 /// A run keyframe of one text color.
-fn ink_frame(
-  color: impl Into<skene_terminal::StaticLeaf<Color>>,
-) -> RunKeyframe<terminal::Terminal> {
-  RunKeyframe::<terminal::Terminal> {
+fn ink_frame(color: impl Into<skene_terminal::StaticLeaf<Color>>) -> RunKeyframe<Terminal> {
+  RunKeyframe::<Terminal> {
     color: Some(color.into()),
     ..Default::default()
   }

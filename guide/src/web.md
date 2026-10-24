@@ -125,6 +125,37 @@ fn app() -> impl View {
 }
 ```
 
+## One platform, and its own vocabulary
+
+The web is a platform of the pixel facade, which iOS, Android, macOS, Windows and Linux
+are to join, and `Platform::CURRENT` names the one the build is for. It is a const, so a
+match on it costs the arms of every other platform nothing:
+
+```rust
+use skene_web::prelude::*;
+
+fn update_hint() -> impl View {
+  Text::new(match Platform::CURRENT {
+    Platform::Web => "Reload the page to update",
+    Platform::Ios | Platform::Macos => "Update from the App Store",
+    Platform::Android => "Update from Google Play",
+    Platform::Windows | Platform::Linux => "Run the installer to update",
+  })
+}
+```
+
+`Platform::IS_SERVER` tells the server leaf from the browser, both of which are `Web`.
+A view's content does not branch on it, since the browser adopts the markup the server
+rendered and a difference between the two is a hydration mismatch; it is for what the
+server does around a render. `Platform::IS_APPLE` answers for iOS and macOS together.
+
+What only one platform has lives in its module, `skene_web::platform::<p>`: its data
+types in every build, so code naming one compiles everywhere, and its controls in its own
+build alone, so code naming one sits in an arm under `#[cfg(skene_platform = "<p>")]`.
+`platform::web` holds the web's: `WebMarkup` and `WebDom`, the escape traits a
+low-level view is written against, and the leaves' own entry points. `platform::apple`
+holds what iOS and macOS share.
+
 ## Pixels
 
 `Painted` draws with vello into a canvas: on the GPU where the page has WebGPU, on the

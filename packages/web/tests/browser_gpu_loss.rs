@@ -14,7 +14,7 @@ use skene_web::{
   Painted,
   View,
   kurbo::Rect,
-  platform::mount,
+  platform::web::mount,
   testing::{frames_until, fresh_root, next_frame},
   wasm_bindgen::{JsCast, JsValue},
 };

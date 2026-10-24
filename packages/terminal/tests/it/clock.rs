@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use skene_terminal::{Realization, Terminal, testing};
+use skene_terminal::{Realization, platform::terminal::Terminal, testing};
 
 use crate::common::with_platform;
 

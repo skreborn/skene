@@ -74,7 +74,7 @@ use crate::{
     scrolls,
     takes_disabled,
   },
-  platform::Web,
+  platform::web::Web,
   style_book::{StyleBook, StyleSink},
   token::WebTokenValue,
 };

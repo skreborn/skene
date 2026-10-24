@@ -11,5 +11,5 @@
 /// cross-document navigations between pages animate the same way. A browser without
 /// view transitions cuts.
 pub fn enable() {
-  crate::platform::enable_view_transitions();
+  crate::platform::web::enable_view_transitions();
 }

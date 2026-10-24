@@ -24,6 +24,7 @@ use skene_foundation::{
   Size,
   View,
 };
+use skene_web::platform::web::Web;
 
 /// The sea the map paints, as CSS.
 const SEA: &str = "oklch(0.72 0.1 230)";
@@ -93,7 +94,7 @@ impl<P: MapHost> View<P> for Map<P> {
   }
 }
 
-impl MapHost for skene_web::platform::Web {
+impl MapHost for Web {
   /// The canvas once the page runs script, the sea's box before then and on the
   /// server.
   fn build_map(map: Map<Self>) -> NodeId {
@@ -109,12 +110,12 @@ impl MapHost for skene_web::platform::Web {
   }
 }
 
-impl Map<skene_web::platform::Web> {
+impl Map<Web> {
   /// A node realized as an element of `tag` dressed as the map's surface, then handed
   /// to `draw`, inside a container of the map's size.
   fn surface(self, tag: &'static str, draw: impl FnOnce(NodeId)) -> NodeId {
     use skene_foundation::{LowLevel, NodeKind};
-    use skene_web::platform::{Declarations, Web, WebMarkup};
+    use skene_web::platform::web::{Declarations, WebMarkup};
 
     let node = LowLevel::<Web>::realize(NodeKind::Box, |node| {
       Web::create_element(node, tag);
@@ -137,7 +138,7 @@ impl Map<skene_web::platform::Web> {
   /// The canvas the map paints.
   #[cfg(all(skene_platform = "web", not(skene_server)))]
   fn canvas(self) -> NodeId {
-    use skene_web::platform::{Web, WebDom, WebMarkup};
+    use skene_web::platform::web::{WebDom, WebMarkup};
     use wasm_bindgen::JsCast;
 
     #[expect(

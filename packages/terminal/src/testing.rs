@@ -43,8 +43,7 @@ use crate::{
   },
   frame,
   interaction,
-  platform,
-  platform::end_turn,
+  realize::end_turn,
   records::Kind,
   with_records,
 };
@@ -593,11 +592,11 @@ pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
 /// `true` when any ran. For an in-process test driving async work.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  platform::end_turn();
+  end_turn();
 
   let ran = skene_foundation::task::pump();
 
-  platform::end_turn();
+  end_turn();
 
   ran
 }

@@ -6,8 +6,9 @@
 //! platform. The medium's own contribution is [`Typography`], the [`media`] module and
 //! the entry points: `launch` in the browser, `render_to_string`, `render_to_stream`
 //! and `render_main` on the server leaf, and [`macro@main`] expanding to whichever the
-//! build names. [`platform`] is the web platform itself, for a view written against the
-//! DOM or the server's markup.
+//! build names. [`Platform`] is the build's platform as a const an app matches on, and
+//! [`platform`] holds each platform's own vocabulary: [`platform::web`] is the web
+//! platform itself, for a view written against the DOM or the server's markup.
 //!
 //! A build names the web by `--cfg skene_platform="web"`: the browser leaf on
 //! `wasm32-unknown-unknown`, and the server leaf on any target with `--cfg skene_server`
@@ -279,11 +280,14 @@ pub use tracing;
 pub use wasm_bindgen;
 
 #[cfg(all(skene_platform = "web", skene_server))]
-pub use self::platform::Rendered;
+pub use self::platform::web::Rendered;
+#[cfg(skene_platform = "web")]
+use crate::platform::web;
 #[cfg(skene_platform = "web")]
 pub use crate::{
   link_policy::{LinkAnnotation, LinkPolicy},
   media::{chosen_scheme, derive_scheme, set_scheme},
+  platform::Platform,
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,
@@ -334,7 +338,7 @@ pub use crate::{
 /// The realization the build selected: the web's, in the browser and on a server
 /// render (`--cfg skene_server`).
 #[cfg(skene_platform = "web")]
-pub type Active = platform::Web;
+pub type Active = web::Web;
 
 #[cfg(skene_platform = "web")]
 skene_foundation::facade!(Active, f32, "logical pixels");
@@ -360,8 +364,8 @@ where
   F: FnOnce() -> V + 'static,
   V: View,
 {
-  platform::boot_with_dev_state(move || {
-    platform::launch(app);
+  web::boot_with_dev_state(move || {
+    web::launch(app);
 
     tracing::info!("application mounted");
   });
@@ -370,14 +374,14 @@ where
 /// Renders the application, for a server-rendering platform.
 ///
 /// It builds the tree, drives its resources until they settle, and serializes the
-/// result plus the resource state for hydration; see [`platform::render_to_string`].
+/// result plus the resource state for hydration; see [`platform::web::render_to_string`].
 #[cfg(all(skene_platform = "web", skene_server))]
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
   V: View,
 {
-  platform::render_to_string(app)
+  web::render_to_string(app)
 }
 
 /// Renders the application for the given request path: the router (when installed via
@@ -389,7 +393,7 @@ where
   F: FnOnce() -> V + 'static,
   V: View,
 {
-  platform::set_request_path(path);
+  web::set_request_path(path);
 
   render_to_string(app)
 }
@@ -435,9 +439,9 @@ where
 {
   use std::io::Write as _;
 
-  platform::install_logging();
-  platform::set_client_bundle(Some(bundle));
-  platform::set_dev_loop(std::env::var_os(DEV_VARIABLE).is_some());
+  web::install_logging();
+  web::set_client_bundle(Some(bundle));
+  web::set_dev_loop(std::env::var_os(DEV_VARIABLE).is_some());
 
   if matches!(std::env::args().nth(1).as_deref(), Some("--help" | "-h")) {
     println!("{USAGE}");
@@ -451,7 +455,7 @@ where
     return;
   }
 
-  platform::set_script_nonce(std::env::var(NONCE_VARIABLE).ok().as_deref());
+  web::set_script_nonce(std::env::var(NONCE_VARIABLE).ok().as_deref());
 
   if let Ok(hints) = std::env::var(HINTS_VARIABLE) {
     let headers = hints
@@ -459,7 +463,7 @@ where
       .filter_map(|line| line.split_once(':'))
       .map(|(name, value)| (name.trim(), value.trim()));
 
-    platform::set_render_hints(platform::RenderHints::from_headers(headers));
+    web::set_render_hints(web::RenderHints::from_headers(headers));
   }
 
   let argument = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
@@ -468,7 +472,7 @@ where
     let mut output = protocol_output();
     let _ = render_to_string_at("/", app);
     let [first, last] = ROUTES_MARKERS;
-    let routes = platform::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]);
+    let routes = web::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]);
 
     let _ = writeln!(output, "{first}");
 
@@ -485,7 +489,7 @@ where
   if argument == "--stream" {
     let path = std::env::args().nth(2).unwrap_or_else(|| "/".to_owned());
 
-    platform::set_request_path(&path);
+    web::set_request_path(&path);
     render_page_stream(app, |piece| {
       print!("{piece}");
 
@@ -560,14 +564,14 @@ where
   let mut opening = String::new();
   let mut closing = String::new();
 
-  platform::render_to_stream_with(app, |piece| match piece {
-    platform::StreamPiece::Shell {
+  web::render_to_stream_with(app, |piece| match piece {
+    web::StreamPiece::Shell {
       styles,
       head,
       language,
-    } => opening = platform::document_opening(language, head, styles),
-    platform::StreamPiece::Chunk(chunk) => chunks.push(chunk),
-    platform::StreamPiece::Tail(state) => closing = platform::document_closing(&state),
+    } => opening = web::document_opening(language, head, styles),
+    web::StreamPiece::Chunk(chunk) => chunks.push(chunk),
+    web::StreamPiece::Tail(state) => closing = web::document_closing(&state),
   });
 
   if let Some(first) = chunks.first_mut() {
@@ -593,14 +597,14 @@ where
   F: FnOnce() -> V + 'static,
   V: View,
 {
-  platform::render_to_stream_with(app, |piece| match piece {
-    platform::StreamPiece::Shell {
+  web::render_to_stream_with(app, |piece| match piece {
+    web::StreamPiece::Shell {
       styles,
       head,
       language,
-    } => sink(&platform::document_opening(language, head, styles)),
-    platform::StreamPiece::Chunk(chunk) => sink(&chunk),
-    platform::StreamPiece::Tail(state) => sink(&platform::document_closing(&state)),
+    } => sink(&web::document_opening(language, head, styles)),
+    web::StreamPiece::Chunk(chunk) => sink(&chunk),
+    web::StreamPiece::Tail(state) => sink(&web::document_closing(&state)),
   });
 }
 
@@ -637,8 +641,8 @@ where
       .find(|(name, _)| name.eq_ignore_ascii_case("script-nonce"))
       .map(|(_, nonce)| nonce);
 
-    platform::set_script_nonce(nonce);
-    platform::set_render_hints(platform::RenderHints::from_headers(fields()));
+    web::set_script_nonce(nonce);
+    web::set_render_hints(web::RenderHints::from_headers(fields()));
 
     let page = render_to_string_at(path, app.clone()).page();
 

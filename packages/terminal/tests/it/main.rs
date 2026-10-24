@@ -28,6 +28,7 @@ mod names;
 mod overlays;
 mod painted;
 mod picker;
+mod platform;
 mod pointer;
 mod pty;
 mod rendering;

@@ -21,7 +21,7 @@ use skene_terminal::{
   NodeId,
   Scene,
   TOOLTIP_DELAY,
-  Terminal,
+  platform::terminal::Terminal,
   prelude::*,
   testing,
 };

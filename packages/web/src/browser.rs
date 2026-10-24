@@ -67,7 +67,7 @@ use self::{
 };
 use super::{
   markup::{MARKER_ATTRIBUTE, STYLE_ID},
-  platform::Web,
+  platform::web::Web,
   realize::{Realized, Realizer, Record},
 };
 

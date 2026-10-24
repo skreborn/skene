@@ -42,7 +42,7 @@ use super::{
 use crate::{
   declarations::Declarations,
   low_level::WebMarkup,
-  platform::Web,
+  platform::web::Web,
   realize::Realized,
   token::WebTokenValue,
 };

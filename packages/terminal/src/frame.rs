@@ -30,11 +30,11 @@ const SETTLE_ROUNDS: usize = 4;
 /// The layout settles as [`settle`] says. The paint rewrites the rows the changed nodes
 /// covered and cover, over the previous frame; a whole-frame change rewrites every row.
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
-  crate::platform::end_turn();
+  crate::realize::end_turn();
   resize(width, height);
   crate::field::autoscroll();
   crate::field::report_selections();
-  crate::platform::end_turn();
+  crate::realize::end_turn();
   settle(width, height);
   paint_frame(width, height)
 }
@@ -67,7 +67,7 @@ pub(crate) fn settle(width: u16, height: u16) {
     let reported = laid_out && report_sizes();
     let revealed = reveal();
 
-    crate::platform::end_turn();
+    crate::realize::end_turn();
 
     let settled =
       !(containers || reported || revealed || with_records(|records| records.layout_dirty));

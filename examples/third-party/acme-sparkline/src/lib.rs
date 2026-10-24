@@ -26,7 +26,7 @@ use skene_foundation::{
   View,
   kurbo::Rect,
 };
-use skene_terminal::CellPainter;
+use skene_terminal::platform::terminal::CellPainter;
 
 /// The bar glyphs, lowest to highest.
 const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];

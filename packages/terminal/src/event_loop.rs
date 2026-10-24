@@ -53,7 +53,7 @@ use crate::{
   interaction::{self, WHEEL_STEP},
   paint,
   parse::{ClipboardStatus, Event, KeyKind, ModeSetting, Mouse, MouseKind, Parser},
-  platform::end_turn,
+  realize::end_turn,
   text,
   tty::Tty,
   with_records,

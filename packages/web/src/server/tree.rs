@@ -18,7 +18,7 @@ use crate::{
   condition::CLASS_PLACEHOLDER,
   markup::{FormElement, MARKER_ATTRIBUTE, STYLE_ATTRIBUTE, STYLE_ID},
   motion::VIEW_TRANSITION_RULE,
-  platform::Web,
+  platform::web::Web,
   realize::{Realizer, Sink},
   style_book::{RESET_CSS, STYLE_LAYER, StyleSink, push_style_text},
 };

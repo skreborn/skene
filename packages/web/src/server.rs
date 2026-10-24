@@ -40,7 +40,7 @@ use self::{
 };
 use crate::{
   hints::RenderHints,
-  platform::Web,
+  platform::web::Web,
   realize::{Realized, Realizer},
 };
 

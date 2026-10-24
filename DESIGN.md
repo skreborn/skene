@@ -1195,6 +1195,20 @@ adds only what is its own:
   adopt; takes client hints as render input. The raw handles do not exist here, painted
   content renders empty, and handlers are inert.
 
+The crate's `platform` module holds each pixel platform's own vocabulary, a module per
+platform: `platform::web` is the web platform itself (`Web`, the `WebMarkup` and
+`WebDom` escape traits, `Declarations`, `RenderHints`, the re-exported `Document`, and
+each leaf's entry points and seams: install, mount, hydrate, drive, the head and the
+path), and `platform::{android, apple, ios, linux, macos, windows}` stand empty beside
+it, a platform's data types to exist there in every build and its controls in its own
+build alone, `apple` the one grouping, for what iOS and macOS share. `Platform`, at the
+crate's root and in its prelude, is the build's platform as a const enum
+(`Web`, `Ios`, `Android`, `Macos`, `Windows`, `Linux`): `Platform::CURRENT` answers
+`Web` on both leaves, `Platform::IS_SERVER` answers whether the build is the server leaf
+as `skene_server` does, `Platform::IS_APPLE` whether it is iOS or macOS, and `name` the
+value the build names in `skene_platform`. The facade's entry points (`launch`,
+`render_to_string`, `render_main`) stay at its root.
+
 The app compiles to wasm for the browser and natively for the server: the server binary
 renders as a plain command and, as a render worker over its stdin, serves the CLI's dev
 server and generator. The two builds must agree on every byte they both produce, since
@@ -1245,6 +1259,14 @@ the crate, its dependencies and `#[main]`'s `main` exist there alone, a build na
 platform fails with the crate's `compile_error!`, and every other platform's build
 compiles it empty, as it does `skene-simple-terminal`, `acme-sparkline` and the terminal
 examples, each gated on the same cfg.
+
+Its `platform` module holds the terminal's own vocabulary as the web's holds each pixel
+platform's: `platform::terminal` is the terminal platform itself, `Terminal`, the
+`CellPainter` escape trait and the `Cells` it paints through. `Platform`, at the crate's
+root and in its prelude, is the build's platform as a const enum of one variant,
+`Terminal`, with `CURRENT` and `name` alone, since the pixel facade's leaves and Apple's
+grouping have no terminal counterpart. `Launch` and its options, `launch`, `install`,
+`mount` and `uninstall` stay at the root.
 
 The loop runs on a `Device`: bytes in and out, the window's size, a wake, raw mode, and
 notes for what the device learns besides input (a request to end, a job control stop
@@ -1528,9 +1550,12 @@ Two guarantees, both properties of what is public rather than of any one API.
   own that each platform implements (`impl<P: MapHost> View<P> for Map<P>`), so an app
   names no platform and writes no `cfg`; a blanket impl over one escape trait would allow
   one per view type and push the cfgs into the app. Selecting the platform is what
-  selecting the facade already does. `acme-map` (a canvas on the browser leaf through
-  `WebDom`, a placeholder through `WebMarkup` before it and on the server) and `acme-sparkline` (bars through `CellPainter`) are the standing
-  proofs. The portable low-level path for pixel media is `Painted`.
+  selecting the facade already does. A platform's escape traits live in its facade's
+  `platform::<p>` module: `skene_web::platform::web::{WebDom, WebMarkup}` and
+  `skene_terminal::platform::terminal::CellPainter`. `acme-map` (a canvas on the browser
+  leaf through `WebDom`, a placeholder through `WebMarkup` before it and on the server)
+  and `acme-sparkline` (bars through `CellPainter`) are the standing proofs. The
+  portable low-level path for pixel media is `Painted`.
 
 A platform need not be first-party: a crate that implements `Realization`, provides its
 scalar, leaves, extension, a `launch` and views over `skene-foundation` is a facade.
@@ -1548,12 +1573,17 @@ one naming no platform, the web without `skene_server` off `wasm32-unknown-unkno
 and each pixel platform it does not realize yet, while a terminal build compiles it
 empty. `skene-terminal` compiles under `--cfg skene_platform="terminal"` on the host's
 target, refuses a build naming no platform with its own `compile_error!`, and compiles
-empty in every other platform's build. A crate reaching a facade—its Simple crate, a
-low-level view's, an example—is gated on that facade's platform, so a build of the whole
-workspace for one platform compiles the other facade's crates empty, and one naming no
-platform fails with both facades' messages. No build script infers a platform or a leaf
-and no cargo feature selects one. `#[main]` and `#[lazy]` expand per leaf on the same
-cfgs, so a server build never emits the browser entry or splits a lazy body, and the
+empty in every other platform's build. Each facade's `Platform` answers the build's
+platform as a const (`Platform::CURRENT`; the web's `Platform::IS_SERVER` the server
+leaf and `Platform::IS_APPLE` Apple's two), so an app that diverges per platform
+matches on it, and its `platform::<p>` modules hold each platform's own vocabulary, a
+platform's data types in every build and its controls in its own. A crate reaching a
+facade—its Simple crate, a low-level view's, an example—is gated on that facade's
+platform, so a build of the whole workspace for one platform compiles the other
+facade's crates empty, and one naming no platform fails with both facades' messages.
+No build script infers a platform or a leaf and no cargo feature selects one. `#[main]`
+and `#[lazy]` expand per leaf on the same cfgs, so a server build never emits the
+browser entry or splits a lazy body, and the
 terminal's `#[main]` emits its `main` in the terminal's build alone; the gate's
 `selection` step holds each refusal to its message alone. The CLI names the cfgs for
 the target it builds, through the target's rustflags; this repository's root names no
@@ -1628,8 +1658,8 @@ table (`StaticRoutes`) to know what to render. The router depends on the engine 
 
 Server-side rendering is a *capability*, not a server: `render_to_string` /
 `render_to_stream` produce the parts (styles, body, state) or ordered chunks, and
-`Rendered::page` assembles a document. One template, `skene_dev::Document`, which the
-web's `platform` re-exports, writes every page, the CLI's client-rendered shell among
+`Rendered::page` assembles a document. One template, `skene_dev::Document`, which
+`platform::web` re-exports, writes every page, the CLI's client-rendered shell among
 them, so the CLI depends on no facade: the head preloads the client bundle, the body
 ends in the hydration state and the module script booting the bundle, a page in the dev
 loop carries the dev marker and the dev script, and every inline script carries the

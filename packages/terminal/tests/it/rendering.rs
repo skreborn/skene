@@ -13,6 +13,7 @@ use skene_terminal::{
   RadioGroup,
   Scene,
   TextEntry,
+  platform::terminal::Terminal,
   prelude::*,
   testing,
 };
@@ -81,7 +82,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
         .into_any()
         .build()
     });
-    let card = Scene::<terminal::Terminal>::with(|scene| scene.children(node).next()).unwrap();
+    let card = Scene::<Terminal>::with(|scene| scene.children(node).next()).unwrap();
 
     let _ = testing::render_to_text(20, 7);
 
@@ -94,7 +95,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
     assert_eq!(builds.get(), 1);
     assert_eq!(inner.get().unwrap().get(), 2);
     assert_eq!(
-      Scene::<terminal::Terminal>::with(|scene| scene.children(node).next()),
+      Scene::<Terminal>::with(|scene| scene.children(node).next()),
       Some(card)
     );
     assert!(testing::render_to_text(20, 7).contains('2'));
@@ -590,7 +591,7 @@ fn lay_out_lays_the_scene_out_without_a_frame() {
 
     let before = testing::layout_generation();
 
-    skene_foundation::lay_out::<terminal::Terminal>();
+    skene_foundation::lay_out::<Terminal>();
 
     assert!(
       testing::layout_generation() > before,

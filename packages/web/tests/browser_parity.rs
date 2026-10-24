@@ -97,7 +97,7 @@ use skene_foundation::{
 };
 use skene_reactive::{Get, Set, Signal, untrack};
 use skene_web::{
-  platform::{self, mount},
+  platform::web::{self, mount},
   testing::{computed, document},
 };
 use wasm_bindgen::JsCast;
@@ -1074,7 +1074,7 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
         .get()
         .expect("the moving case's number")
         .set(*written);
-      platform::end_turn();
+      web::end_turn();
 
       let next = read.compile(source, node);
 
@@ -1145,7 +1145,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
     .expect("a body")
     .append_child(&root)
     .expect("connect the root");
-  platform::install(root.clone());
+  web::install(root.clone());
   READ_BOX.set(None);
   READ_RUN.set(None);
   READ_CONTROL.set(None);
@@ -1187,7 +1187,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
   };
   let reading = present(case, &read, &source);
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 
   reading
@@ -1202,7 +1202,7 @@ fn rendered(case: Case) -> Reading {
     .expect("a body")
     .append_child(&root)
     .expect("connect the root");
-  platform::install(root.clone());
+  web::install(root.clone());
 
   let _ = mount(move || case.build());
 
@@ -1232,7 +1232,7 @@ fn rendered(case: Case) -> Reading {
   for (width, milliseconds) in case.steps() {
     if let Some(width) = width {
       MOVING.get().expect("the moving case's width").set(*width);
-      platform::end_turn();
+      web::end_turn();
       let _ = computed(&element, "width");
     }
 
@@ -1279,7 +1279,7 @@ fn rendered(case: Case) -> Reading {
       }),
   };
 
-  platform::uninstall();
+  web::uninstall();
   root.remove();
 
   reading

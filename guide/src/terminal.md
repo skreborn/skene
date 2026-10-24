@@ -19,6 +19,11 @@ fn status(saved: Signal<bool>) -> impl View {
 }
 ```
 
+The terminal is its facade's one platform, so `Platform::CURRENT` is
+`Platform::Terminal` in every build an app's terminal shell compiles in. Its own
+vocabulary lives in `skene_terminal::platform::terminal`: `CellPainter`, the escape
+trait a low-level view paints the terminal's cells through.
+
 ## Behaving as a browser does
 
 Wherever the terminal can express it, an interaction takes the shape it has in a

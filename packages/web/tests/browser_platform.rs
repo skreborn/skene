@@ -53,7 +53,8 @@ use skene_simple_web::{
   SimpleVariant,
 };
 use skene_web::{
-  platform::{self, Declarations, Web, WebMarkup, WebTokenValue},
+  Platform,
+  platform::web::{self, Declarations, Web, WebMarkup, WebTokenValue},
   testing::{Installed, computed, connected_root, document, fresh_root, only_child},
 };
 use wasm_bindgen::JsCast;
@@ -200,7 +201,7 @@ fn serve_styles(text: &str) -> Element {
 fn a_token_color_resolves_through_the_theme() {
   let (_guard, root) = fresh_root();
 
-  let _ = platform::mount(|| {
+  let _ = web::mount(|| {
     Theme::<Web, _>::new(Palette::default())
       .set_child_builder(|| Box_::new().set_background(Palette::CARD))
       .build()
@@ -232,7 +233,7 @@ fn a_palette_write_reinks_without_replacing_the_element() {
   let card = Signal::new(white());
   let inner: Rc<Cell<Option<Signal<i32>>>> = Rc::new(Cell::new(None));
 
-  let _ = platform::mount({
+  let _ = web::mount({
     let inner = Rc::clone(&inner);
 
     move || {
@@ -254,12 +255,12 @@ fn a_palette_write_reinks_without_replacing_the_element() {
   let count = inner.get().expect("the inner signal");
 
   count.set(5);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(before.text_content().as_deref(), Some("5"));
 
   card.set(red());
-  platform::end_turn();
+  web::end_turn();
 
   let after = only_child(&only_child(&root));
 
@@ -279,7 +280,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   let (_guard, root) = fresh_root();
   let color = Signal::new(white());
 
-  let _ = platform::mount(move || {
+  let _ = web::mount(move || {
     Box_::new()
       .set_background(
         Value::<Color, Condition<f32>>::new(Leaf::derive(move || color.get()))
@@ -297,7 +298,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   );
 
   color.set(blue());
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     computed(&element, "background-color"),
@@ -337,7 +338,7 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   let (_guard, root) = fresh_root();
   let plain = Signal::new(false);
 
-  let _ = platform::mount(move || {
+  let _ = web::mount(move || {
     Theme::<Web, _>::new(Palette::default())
       .set_child_builder(move || {
         Box_::new().derive_background(move || {
@@ -367,7 +368,7 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   );
 
   plain.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(slot(), Declarations::render_color(red()));
   assert_eq!(
@@ -384,7 +385,7 @@ fn a_checkbox_flips_once_per_click() {
   let checked = Signal::new(false);
   let flips = Rc::new(Cell::new(0));
 
-  let _ = platform::mount({
+  let _ = web::mount({
     let flips = Rc::clone(&flips);
 
     move || {
@@ -445,7 +446,7 @@ fn a_native_toggle_click_is_observed_once_per_press() {
   let observed = Rc::new(Cell::new(0));
   let container_clicks = Rc::new(Cell::new(0));
 
-  let _ = platform::mount({
+  let _ = web::mount({
     let observed = Rc::clone(&observed);
     let container_clicks = Rc::clone(&container_clicks);
 
@@ -490,7 +491,7 @@ fn a_button_click_does_not_reach_the_container() {
   let container_clicks = Rc::new(Cell::new(0));
   let button_clicks = Rc::new(Cell::new(0));
 
-  let _ = platform::mount({
+  let _ = web::mount({
     let container_clicks = Rc::clone(&container_clicks);
     let button_clicks = Rc::clone(&button_clicks);
 
@@ -525,7 +526,7 @@ fn a_button_click_does_not_reach_the_container() {
 fn a_focus_visible_variant_anchors_on_the_input() {
   let (_guard, root) = fresh_root();
 
-  let _ = platform::mount(|| SimpleCheckbox::new().set_label("Agree").build());
+  let _ = web::mount(|| SimpleCheckbox::new().set_label("Agree").build());
 
   let label = only_child(&root);
   let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");
@@ -588,17 +589,17 @@ fn media_reports_the_window() {
   )]
   let above = (width + 1.) as f32;
 
-  assert!(platform::watch_media(&Media::min_width(below)).get());
-  assert!(!platform::watch_media(&Media::min_width(above)).get());
+  assert!(web::watch_media(&Media::min_width(below)).get());
+  assert!(!web::watch_media(&Media::min_width(above)).get());
   assert!(
-    platform::watch_media(&Media::or([
+    web::watch_media(&Media::or([
       Media::min_width(above),
       Media::max_width(above)
     ]))
     .get()
   );
-  assert!(platform::media_query(&format!("(min-width: {below}px)")).get());
-  assert!(!platform::media_query(&format!("(min-width: {above}px)")).get());
+  assert!(web::media_query(&format!("(min-width: {below}px)")).get());
+  assert!(!web::media_query(&format!("(min-width: {above}px)")).get());
 
   let platform_dark = window
     .match_media("(prefers-color-scheme: dark)")
@@ -610,13 +611,13 @@ fn media_reports_the_window() {
   else {
     ColorScheme::Light
   };
-  let dark = platform::watch_media(&Media::Dark);
+  let dark = web::watch_media(&Media::Dark);
 
   assert_eq!(media.scheme.get(), platform);
   assert_eq!(dark.get(), platform_dark);
 
-  platform::set_scheme(Some(ColorScheme::Dark));
-  platform::end_turn();
+  web::set_scheme(Some(ColorScheme::Dark));
+  web::end_turn();
 
   assert_eq!(media.scheme.get(), ColorScheme::Dark);
   assert!(dark.get());
@@ -628,13 +629,13 @@ fn media_reports_the_window() {
       .as_deref(),
     Some("dark")
   );
-  assert_eq!(platform::persisted_scheme(), Some(ColorScheme::Dark));
+  assert_eq!(web::persisted_scheme(), Some(ColorScheme::Dark));
 
-  platform::set_scheme(None);
-  platform::end_turn();
+  web::set_scheme(None);
+  web::end_turn();
 
   assert_eq!(media.scheme.get(), platform);
-  assert_eq!(platform::persisted_scheme(), None);
+  assert_eq!(web::persisted_scheme(), None);
 }
 
 /// A low-level view: a `<div>` made through the escape trait.
@@ -655,7 +656,7 @@ fn a_low_level_node_takes_its_wrappers_layout() {
   let (_guard, root) = fresh_root();
   let grow = Signal::new(2.0f32);
 
-  let _ = platform::mount(move || {
+  let _ = web::mount(move || {
     Row::<Web>::new()
       .set_children((
         Flexible::<Web>::new()
@@ -676,7 +677,7 @@ fn a_low_level_node_takes_its_wrappers_layout() {
   assert_eq!(computed(&derived, "flex-grow"), "2");
 
   grow.set(5.);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(computed(&derived, "flex-grow"), "5");
 }
@@ -695,8 +696,8 @@ fn choosing_a_scheme_keeps_the_documents_inline_style() {
 
   let _ = style.set_property("--kept", "1");
 
-  platform::set_scheme(Some(ColorScheme::Dark));
-  platform::end_turn();
+  web::set_scheme(Some(ColorScheme::Dark));
+  web::end_turn();
 
   assert_eq!(
     style.get_property_value("color-scheme").ok().as_deref(),
@@ -707,8 +708,8 @@ fn choosing_a_scheme_keeps_the_documents_inline_style() {
     Some("1")
   );
 
-  platform::set_scheme(None);
-  platform::end_turn();
+  web::set_scheme(None);
+  web::end_turn();
 
   assert_eq!(
     style.get_property_value("color-scheme").ok().as_deref(),
@@ -736,7 +737,7 @@ fn a_served_page_hydrates_without_mismatch() {
   let (markup, styles) = {
     let (_guard, root) = fresh_root();
 
-    let _ = platform::mount(move || app().build());
+    let _ = web::mount(move || app().build());
 
     (as_served(&root), sheet_text())
   };
@@ -750,12 +751,12 @@ fn a_served_page_hydrates_without_mismatch() {
 
   let served_card = only_child(&only_child(&root));
 
-  platform::hydrate(root.clone(), "", app);
+  web::hydrate(root.clone(), "", app);
 
   let guard = Installed::on(root.clone());
   let card = only_child(&only_child(&root));
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert!(served_card == card, "the card was adopted, not rebuilt");
   assert_eq!(card.get_attribute("data-h"), None);
   assert_eq!(card.text_content().as_deref(), Some("Hi"));
@@ -788,10 +789,10 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
     let (_guard, root) = fresh_root();
     let palette = Signal::new(Palette::with_card(white()));
 
-    let _ = platform::mount(move || app(palette)().build());
+    let _ = web::mount(move || app(palette)().build());
 
     palette.set(Palette::with_card(black()));
-    platform::end_turn();
+    web::end_turn();
 
     (as_served(&root), sheet_text())
   };
@@ -802,7 +803,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   let root = connected_root();
 
   root.set_inner_html(&markup);
-  platform::hydrate(root.clone(), "", app(Signal::new(Palette::default())));
+  web::hydrate(root.clone(), "", app(Signal::new(Palette::default())));
 
   let _guard = Installed::on(root.clone());
   let scope = html(&only_child(&root));
@@ -832,10 +833,10 @@ fn a_hydrated_control_drops_its_served_inline_definitions() {
     let (_guard, root) = fresh_root();
     let variant = Signal::new(SimpleVariant::Primary);
 
-    let _ = platform::mount(move || app(variant)().build());
+    let _ = web::mount(move || app(variant)().build());
 
     variant.set(SimpleVariant::Destructive);
-    platform::end_turn();
+    web::end_turn();
 
     (as_served(&root), sheet_text())
   };
@@ -849,12 +850,12 @@ fn a_hydrated_control_drops_its_served_inline_definitions() {
 
   let served_button = only_child(&root);
 
-  platform::hydrate(root.clone(), "", app(Signal::new(SimpleVariant::Primary)));
+  web::hydrate(root.clone(), "", app(Signal::new(SimpleVariant::Primary)));
 
   let _guard = Installed::on(root.clone());
   let button = html(&only_child(&root));
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert!(
     served_button == *button,
     "the button was adopted, not rebuilt"
@@ -879,7 +880,7 @@ fn a_ticked_input_reports_on_hydration() {
   let (markup, styles) = {
     let (_guard, root) = fresh_root();
 
-    let _ = platform::mount(move || app(Signal::new(false))().build());
+    let _ = web::mount(move || app(Signal::new(false))().build());
 
     (as_served(&root), sheet_text())
   };
@@ -896,16 +897,16 @@ fn a_ticked_input_reports_on_hydration() {
 
   let checked = Signal::new(false);
 
-  platform::hydrate(root.clone(), "", app(checked));
+  web::hydrate(root.clone(), "", app(checked));
 
   let _guard = Installed::on(root.clone());
 
-  assert_eq!(platform::hydration_mismatches(), 0);
+  assert_eq!(web::hydration_mismatches(), 0);
   assert!(checked.get(), "the reader got there first");
   assert!(input.checked());
 
   checked.set(false);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(!input.checked());
 }
@@ -936,7 +937,7 @@ fn a_picker_opens_and_chooses_with_the_keyboard() {
   let (_guard, root) = fresh_root();
   let value = Signal::new("md".to_owned());
 
-  let _ = platform::mount(move || {
+  let _ = web::mount(move || {
     SimplePicker::new()
       .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
       .bind_chosen(value)
@@ -1076,4 +1077,15 @@ fn a_value_hashes_as_it_does_on_the_host() {
     wide_of(&vec![1u16, 2]),
     0x0758_c67a_c51a_33c6_6944_4642_ed1f_5182
   );
+}
+
+/// The browser leaf is the web platform and not the server leaf, both answering as
+/// consts.
+#[wasm_bindgen_test]
+fn the_browser_leaf_is_the_web_platform() {
+  const _: () = assert!(matches!(Platform::CURRENT, Platform::Web) && !Platform::IS_SERVER);
+
+  assert_eq!(Platform::CURRENT, Platform::Web);
+  assert_eq!((Platform::IS_SERVER, Platform::IS_APPLE), (false, false));
+  assert_eq!(Platform::CURRENT.name(), "web");
 }

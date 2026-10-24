@@ -76,7 +76,7 @@ use super::{
 use crate::{
   declarations::Declarations,
   low_level::{WebDom, WebMarkup},
-  platform::Web,
+  platform::web::Web,
   realize::Realized,
   token::WebTokenValue,
 };

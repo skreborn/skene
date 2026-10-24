@@ -115,7 +115,7 @@ use skene_web::{
   head,
   install_router,
   media,
-  platform::{self, Declarations, Web, mount},
+  platform::web::{self, Declarations, Web, mount},
   reactive::{Effect, Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, only_child, tick},
   wasm_bindgen::{JsCast, closure::Closure},
@@ -251,7 +251,7 @@ struct Scheme;
 impl Scheme {
   fn choose(scheme: ColorScheme) -> Self {
     media::set_scheme(Some(scheme));
-    platform::end_turn();
+    web::end_turn();
 
     Self
   }
@@ -260,7 +260,7 @@ impl Scheme {
 impl Drop for Scheme {
   fn drop(&mut self) {
     media::set_scheme(None);
-    platform::end_turn();
+    web::end_turn();
   }
 }
 
@@ -411,7 +411,7 @@ fn an_overlay_follows_its_signal_and_a_cancel_asks_it_to_close() {
   assert!(!dialog.has_attribute("open"));
 
   open.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(dialog.has_attribute("open"));
 
@@ -422,7 +422,7 @@ fn an_overlay_follows_its_signal_and_a_cancel_asks_it_to_close() {
   let cancel = web_sys::Event::new_with_event_init_dict("cancel", &init).expect("an event");
   let _ = dialog.dispatch_event(&cancel);
 
-  platform::end_turn();
+  web::end_turn();
 
   assert!(!open.get(), "the dismiss wrote the binding");
   assert!(!dialog.has_attribute("open"));
@@ -451,7 +451,7 @@ fn keyed_children_keep_their_elements_through_a_removal_and_a_reorder() {
   assert_eq!(before.len(), 3);
 
   items.set(vec![3, 1]);
-  platform::end_turn();
+  web::end_turn();
 
   let after = elements(&column);
 
@@ -500,14 +500,14 @@ fn a_radio_groups_tab_stop_follows_the_choice_in_tree_order() {
   assert_eq!(stops(), [true, false]);
 
   inputs()[1].click();
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(chosen.get().as_deref(), Some("b"));
   assert_eq!(stops(), [false, true]);
 
   chosen.set(None);
   items.set(vec!["z", "a", "b"]);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(stops(), [true, false, false]);
 }
@@ -763,7 +763,7 @@ fn a_stacks_derived_alignment_drives_both_axes() {
   assert_eq!(axes(&stack), ("center".to_owned(), "center".to_owned()));
 
   alignment.set(Alignment::new(ItemAlignment::Start, ItemAlignment::End));
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(only_child(&root), stack, "the same element");
   assert_eq!(
@@ -849,7 +849,7 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
   assert!(key_down(&link, "Enter"), "Enter on a link is the router's");
   assert_eq!(router.route(), Page::About);
 
-  platform::push_path(&path);
+  web::push_path(&path);
 }
 
 /// A lazy subtree mounts its content once its future completes.
@@ -906,7 +906,7 @@ fn a_derived_title_follows_its_signal_and_a_shared_stylesheet_stays_with_either_
   assert_eq!(stylesheets(), 1);
 
   title.set("About".to_owned());
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(document().title(), "About — skene");
 
@@ -1030,7 +1030,7 @@ fn the_scheme_follows_the_media_choice() {
   );
 
   media::set_scheme(Some(ColorScheme::Dark));
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(media::scheme().get(), ColorScheme::Dark);
   assert_eq!(media::chosen_scheme(), Some(ColorScheme::Dark));
@@ -1106,7 +1106,7 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
   );
 
   scheme.set(Some(ColorScheme::Dark));
-  platform::end_turn();
+  web::end_turn();
 
   assert!(dark.get());
   assert_eq!(
@@ -1120,7 +1120,7 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
   );
 
   scheme.set(None);
-  platform::end_turn();
+  web::end_turn();
   owner.dispose();
 }
 
@@ -1267,7 +1267,7 @@ fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
   );
   assert_eq!(text.get(), "ABC");
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input_of(&root).value(), "ABC");
 
@@ -1366,7 +1366,7 @@ fn report_edit_does_not_reconcile() {
     Verdict::Replace(Edit::new("12"))
   );
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input.value(), "12a", "nothing but the verdict writes back");
 }
@@ -1384,7 +1384,7 @@ fn a_rejected_toggle_is_undone_on_the_platform() {
 
   input.set_checked(true);
   dispatch(&input, "change");
-  platform::end_turn();
+  web::end_turn();
 
   assert!(!input.checked(), "the rejected toggle is undone");
 }
@@ -1455,7 +1455,7 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
   assert_eq!(clicks.get(), 0, "the change is the field's alone");
 
   bound.set("fresh".to_owned());
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input.value(), "fresh");
 
@@ -1657,7 +1657,7 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
   assert!(!is_open());
 
   open.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(is_open());
 
@@ -1704,7 +1704,7 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
   }
 
   placement.set(Placement::Top);
-  platform::end_turn();
+  web::end_turn();
 
   let (_, _, bottom) = edges(&popup);
 
@@ -1807,7 +1807,7 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
   assert_eq!(bubble[0].text_content().as_deref(), Some("Saves"));
 
   disabled.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(
     button.has_attribute("disabled")
@@ -1821,7 +1821,7 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
   );
 
   text.set("Saves the document".to_owned());
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     bubble[0].text_content().as_deref(),
@@ -1872,7 +1872,7 @@ fn a_controls_description_and_a_tooltips_fold_into_one_list() {
   assert_eq!(texts(), ["Required", "Saves"]);
 
   disabled.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     texts(),
@@ -2258,7 +2258,7 @@ fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
   let events = FocusEvents::new();
 
   order.set(vec![3, 1, 2]);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(texts(), ["3", "1", "2"]);
   events.assert_released();
@@ -2275,7 +2275,7 @@ fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
   );
 
   order.set(vec![3, 2]);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(texts(), ["3", "2"]);
   events.assert_released();

@@ -46,7 +46,10 @@ use skene_foundation::{
   When,
 };
 use skene_reactive::{Get, Set, signal};
-use skene_web::platform::{Web, WebMarkup, WebTokenValue, render_to_string};
+use skene_web::{
+  Platform,
+  platform::web::{Web, WebMarkup, WebTokenValue, render_to_string},
+};
 
 type Box_ = Container<Web>;
 
@@ -562,4 +565,15 @@ fn slot_registrations_appear_once() {
   let class = first_class(rendered.body());
 
   assert!(styles.find("@property").unwrap() < styles.find(&format!(".{class}{{")).unwrap());
+}
+
+/// The server leaf is the web platform, told apart by `IS_SERVER`, and both answer as
+/// consts.
+#[test]
+fn the_server_leaf_is_the_web_platform() {
+  const _: () = assert!(matches!(Platform::CURRENT, Platform::Web) && Platform::IS_SERVER);
+
+  assert_eq!(Platform::CURRENT, Platform::Web);
+  assert_eq!((Platform::IS_SERVER, Platform::IS_APPLE), (true, false));
+  assert_eq!(Platform::CURRENT.name(), "web");
 }

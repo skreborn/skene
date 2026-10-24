@@ -21,5 +21,5 @@ pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
 /// Installs the active platform's executor as this thread's spawner.
 #[inline(always)]
 pub(crate) fn install_executor() {
-  crate::platform::install_executor();
+  crate::platform::web::install_executor();
 }

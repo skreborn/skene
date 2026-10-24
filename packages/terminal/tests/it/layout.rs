@@ -15,6 +15,7 @@ use skene_terminal::{
   TextEntry,
   Token,
   TokenName,
+  platform::terminal::Terminal,
   prelude::*,
   testing,
 };
@@ -1141,17 +1142,17 @@ fn a_third_party_layout_view_matches_the_built_in() {
     }
   }
 
-  impl HasChildren<terminal::Terminal> for Toolbar {
+  impl HasChildren<Terminal> for Toolbar {
     type Kind = FlexChild;
 
-    fn children_mut(&mut self, seal: Seal) -> &mut Children<terminal::Terminal, FlexChild> {
+    fn children_mut(&mut self, seal: Seal) -> &mut Children<Terminal, FlexChild> {
       self.base.children_mut(seal)
     }
   }
 
   impl AnyKind for Toolbar {}
 
-  impl skene_foundation::View<terminal::Terminal> for Toolbar {
+  impl skene_foundation::View<Terminal> for Toolbar {
     fn build(self) -> terminal::NodeId {
       skene_foundation::View::build(self.base)
     }
@@ -1433,7 +1434,7 @@ fn a_stopped_size_observation_hears_nothing_more() {
     let observation = {
       let heard = Rc::clone(&heard);
 
-      terminal::Terminal::observe_size(
+      Terminal::observe_size(
         handle.node().expect("the box built"),
         Rc::new(move |size| heard.borrow_mut().push(size)),
       )

@@ -24,13 +24,9 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - Selection: `Platform::CURRENT` answers the build's platform as a const enum and
-    `Platform::IS_SERVER` the server leaf, and this repository's root names no default
-    platform, a cargo alias per platform and the checked-in rust-analyzer settings
-    naming one. Each platform has its module, `platform::<p>`, its data types present in
-    every build and its controls in its own alone; `platform::apple` is the one grouping
-    (`Platform::IS_APPLE`, `set_apple_*`). Every `P: Realization` above the realizations
-    goes.
+    - Selection: this repository's root names no default platform, a cargo alias per
+    platform and the checked-in rust-analyzer settings naming one. Every
+    `P: Realization` above the realizations goes.
     - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
     come from the macro the shared properties come from, with their `derive_` twins and
     their backing fields cfg-gated; another platform's setter compiles and does nothing.
@@ -66,6 +62,9 @@ in a code comment.
     write applied or not.
     - Behaviors name no realization, reaching the build's one realization through a
     table of plain functions filled from it once per build.
+    - The leaves' own seams stand in one place on both facades: the web keeps
+    `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
+    keeps `install`, `mount` and `uninstall` at its root beside `launch`.
     - `#[inline(always)]` stays on tiny functions alone.
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the

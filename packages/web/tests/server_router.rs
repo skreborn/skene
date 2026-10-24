@@ -98,11 +98,11 @@ fn static_router_records_its_routes() {
   });
 
   assert_eq!(
-    skene_web::platform::recorded_static_routes(),
+    skene_web::platform::web::recorded_static_routes(),
     Some(vec!["/".to_owned(), "/about".to_owned()])
   );
 
   let _ = render_to_string_at("/", app);
 
-  assert_eq!(skene_web::platform::recorded_static_routes(), None);
+  assert_eq!(skene_web::platform::web::recorded_static_routes(), None);
 }

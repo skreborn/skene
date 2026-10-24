@@ -42,13 +42,9 @@ use crate::{
   cells::{CellPainter, Painter},
   interaction,
   motion::RunMotion,
+  platform::terminal::Terminal,
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
-
-/// The terminal platform: a zero-sized [`Realization`].
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-#[must_use]
-pub struct Terminal;
 
 thread_local! {
   static SCENE: RefCell<Scene<Terminal>> = RefCell::new(Scene::new());

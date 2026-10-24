@@ -16,10 +16,10 @@ use skene_terminal::{
   Length,
   Scene,
   StaticLeaf,
-  Terminal,
   Token,
   TokenName,
   TokenValue,
+  platform::terminal::Terminal,
   prelude::*,
   testing,
 };
@@ -262,7 +262,7 @@ fn a_theme_redefines_the_glyph_tokens() {
     });
     let _ = testing::render_to_text(8, 1);
 
-    let (checked, unchecked) = Scene::<terminal::Terminal>::with(|scene| {
+    let (checked, unchecked) = Scene::<Terminal>::with(|scene| {
       let text = scene.children(node).next().expect("the themed text");
 
       (

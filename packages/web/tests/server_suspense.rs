@@ -71,7 +71,7 @@ fn suspense_settles_through_the_stream() {
 fn suspense_inside_a_deferred_boundary_settles_its_chunk() {
   use std::time::Duration;
 
-  use skene_web::{Deferred, HasChildren, Row, platform};
+  use skene_web::{Deferred, HasChildren, Row, platform::web};
 
   let stream = skene_web::render_to_stream(|| {
     Row::new().set_children([
@@ -82,7 +82,7 @@ fn suspense_inside_a_deferred_boundary_settles_its_chunk() {
             .set_fallback_builder(|| Text::new("FALLBACK"))
             .set_child_builder(|| {
               let value = Resource::new(|| async {
-                platform::sleep(Duration::from_millis(5)).await;
+                web::sleep(Duration::from_millis(5)).await;
 
                 5u32
               });

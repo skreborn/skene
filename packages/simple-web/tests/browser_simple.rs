@@ -19,7 +19,7 @@ use skene_web::{
   TokenName,
   TokenRef,
   TokenSet,
-  platform::{self, Declarations, WebTokenValue, mount},
+  platform::web::{self, Declarations, WebTokenValue, mount},
   prelude::*,
   testing::{Installed, computed, dispatch, document, frames_until, fresh_root, only_child},
   wasm_bindgen::JsCast,
@@ -36,7 +36,7 @@ struct Scheme;
 impl Scheme {
   fn choose(scheme: ColorScheme) -> Self {
     media::set_scheme(Some(scheme));
-    platform::end_turn();
+    web::end_turn();
 
     Self
   }
@@ -45,7 +45,7 @@ impl Scheme {
 impl Drop for Scheme {
   fn drop(&mut self) {
     media::set_scheme(None);
-    platform::end_turn();
+    web::end_turn();
   }
 }
 
@@ -174,7 +174,7 @@ fn press(target: &Element, key: &str) {
   let event = KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
   let _ = target.dispatch_event(&event);
 
-  platform::end_turn();
+  web::end_turn();
 }
 
 /// Whether `element` is the document's focused element.
@@ -246,7 +246,7 @@ async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   assert_eq!(settled(&button, &primary).await, primary);
 
   variant.set(SimpleVariant::Outline);
-  platform::end_turn();
+  web::end_turn();
 
   let outline = probe("background-color", Color::TRANSPARENT);
 
@@ -257,7 +257,7 @@ async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   );
 
   variant.set(SimpleVariant::Destructive);
-  platform::end_turn();
+  web::end_turn();
 
   let destructive = probe("background-color", light(&palette.destructive.surface));
 
@@ -306,7 +306,7 @@ fn a_checkbox_mark_follows_the_checked_state() {
   );
 
   field.click();
-  platform::end_turn();
+  web::end_turn();
 
   assert!(bound.get());
   assert_eq!(
@@ -347,7 +347,7 @@ fn a_radio_ring_follows_the_groups_choice() {
   assert_eq!(background(&dot(0)), transparent);
 
   field(1).click();
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(chosen.get().as_deref(), Some("b"));
   assert_eq!(
@@ -433,7 +433,7 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   );
 
   bound.set(150.);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(field.value(), "150");
   assert!((fill_fraction() - 0.75).abs() < 0.01, "{}", fill_fraction());
@@ -786,7 +786,7 @@ async fn a_disabled_button_takes_the_disabled_surface_and_ink() {
   assert_eq!(border(&button), drawn(1, light(&palette.border)));
 
   disabled.set(false);
-  platform::end_turn();
+  web::end_turn();
 
   let outline = probe("background-color", light(&palette.outline.surface));
 

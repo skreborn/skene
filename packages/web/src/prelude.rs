@@ -153,6 +153,7 @@ pub use crate::{
   Overlay,
   Painted,
   Pinned,
+  Platform,
   Point,
   Rect,
   Resource,

@@ -2,7 +2,7 @@
 //! build on, and the probes reading a frame, a reader's tree and the scene back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
-use skene_terminal::{Color, NodeId, Scene, Terminal, testing};
+use skene_terminal::{Color, NodeId, Scene, platform::terminal::Terminal, testing};
 
 /// A cell's foreground and background.
 pub(crate) type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);

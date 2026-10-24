@@ -129,7 +129,7 @@ use skene_web::{
   derived,
   empty,
   head,
-  platform::{self, Declarations, Web, mount},
+  platform::web::{self, Declarations, Web, mount},
   reactive::{Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, next_frame, only_child, wait},
   wasm_bindgen::{JsCast, JsValue},
@@ -291,7 +291,7 @@ async fn a_text_entrys_selection_binds_both_ways() {
   );
 
   selection.set(TextSelection::new(9, 1));
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     range(&input),
@@ -610,9 +610,9 @@ fn escape_dismisses_the_topmost_popup_unless_taken() {
   });
 
   outer.set(true);
-  platform::end_turn();
+  web::end_turn();
   inner.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   let escape = |target: &Element| {
     let init = web_sys::KeyboardEventInit::new();
@@ -667,9 +667,9 @@ fn escape_over_a_modal_keeps_the_popup_beneath_it() {
   });
 
   popup.set(true);
-  platform::end_turn();
+  web::end_turn();
   modal.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   let init = web_sys::KeyboardEventInit::new();
 
@@ -711,7 +711,7 @@ fn focus_leaving_a_popup_dismisses_it() {
   });
 
   open.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   let stops = root
     .query_selector_all("[tabindex]")
@@ -754,7 +754,7 @@ fn a_derived_wrapper_property_reaches_a_run() {
   assert_eq!(computed(&text, "flex-grow"), "2");
 
   grow.set(5.);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(computed(&text, "flex-grow"), "5");
 }
@@ -1239,7 +1239,7 @@ fn a_sliders_native_input_holds_its_range_and_value() {
   assert!(!input.has_attribute("aria-valuenow"));
 
   value.set(185.);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input.value(), "185");
 }
@@ -1336,7 +1336,7 @@ fn a_transformed_value_keeps_the_caret() {
   let _ = input.set_selection_range(2, 2);
 
   dispatch(&input, "input");
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input.value(), "ABC");
   assert_eq!(
@@ -1379,7 +1379,7 @@ fn a_refused_character_is_repaired_in_place() {
   let _ = input.set_selection_range(3, 3);
 
   dispatch(&input, "input");
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input.value(), "123");
   assert_eq!(value.get(), "123", "the refusal wrote nothing");
@@ -1428,7 +1428,7 @@ fn a_repair_waits_out_composition() {
   let composing = InputEvent::new_with_event_init_dict("input", &init).expect("an input event");
   let _ = input.dispatch_event(&composing);
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(value.get(), "ABX", "the composing edit reached the handler");
   assert_eq!(
@@ -1438,7 +1438,7 @@ fn a_repair_waits_out_composition() {
   );
 
   selection.set(TextSelection::new(0, 0));
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     (input.selection_start(), input.selection_end()),
@@ -1455,7 +1455,7 @@ fn a_repair_waits_out_composition() {
     .expect("a composition event");
   let _ = input.dispatch_event(&end);
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(input.value(), "ABX", "the composition's end repairs it");
   assert_eq!(
@@ -1502,7 +1502,7 @@ fn a_refused_character_is_repaired_in_place_in_an_editor() {
   let _ = area.set_selection_range(4, 4);
 
   dispatch(&area, "input");
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(area.value(), "\u{1F600}\nab");
   assert_eq!(value.get(), "\u{1F600}\nab", "the refusal wrote nothing");
@@ -1551,7 +1551,7 @@ fn a_repair_in_an_editor_waits_out_composition() {
   let composing = InputEvent::new_with_event_init_dict("input", &init).expect("an input event");
   let _ = area.dispatch_event(&composing);
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     value.get(),
@@ -1573,7 +1573,7 @@ fn a_repair_in_an_editor_waits_out_composition() {
     .expect("a composition event");
   let _ = area.dispatch_event(&end);
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(area.value(), "A\nBX", "the composition's end repairs it");
   assert_eq!(
@@ -1641,7 +1641,7 @@ fn a_cut_reports_its_edit() {
 
   stub_clipboard("");
   Web::clipboard(ClipboardAction::Cut);
-  platform::end_turn();
+  web::end_turn();
 
   let cut = written();
 
@@ -1714,7 +1714,7 @@ fn checkbox_binding_round_trips() {
   assert!(!target.checked());
 
   checked.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(target.checked());
 
@@ -1911,7 +1911,7 @@ fn derived_text_updates_the_dom_on_change() {
   assert_eq!(element.text_content().as_deref(), Some("0"));
 
   count.set(5);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(element.text_content().as_deref(), Some("5"));
 }
@@ -2014,7 +2014,7 @@ fn text_keeps_the_guaranteed_core() {
   );
 
   shown.set(String::new());
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(child(6).text_content().as_deref(), Some(""));
   assert!(
@@ -2038,7 +2038,7 @@ fn derived_style_updates_its_slot_on_change() {
   assert_eq!(computed(&element, "font-size"), "12px");
 
   size.set(20.0);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(computed(&element, "font-size"), "20px");
 }
@@ -2065,7 +2065,7 @@ fn typography_link_ink_reaches_a_link_and_updates() {
   );
 
   link_ink.set(Color::srgb(0., 0., 1.));
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     computed(&link, "color"),
@@ -2109,7 +2109,7 @@ fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
   );
 
   conditional.set(false);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     computed(&text, "color"),
@@ -2117,7 +2117,7 @@ fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
   );
 
   conditional.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     computed(&text, "color"),
@@ -2454,7 +2454,7 @@ fn a_low_level_view_reaches_the_platform_directly() {
   let _ = mount(|| {
     AnyView::new(|| {
       let node = Container::new().set_role(Role::Region).build();
-      let element = platform::element(node).expect("the realized element");
+      let element = web::element(node).expect("the realized element");
 
       element.set_text_content(Some("raw"));
 
@@ -2497,7 +2497,7 @@ fn reconcile_reorders_the_real_dom_preserving_nodes() {
     .unwrap();
 
   items.set(vec![3, 1, 2]);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(child_texts(&parent), ["3", "1", "2"]);
 
@@ -2528,7 +2528,7 @@ fn derived_view_swaps_between_trees_on_state_change() {
   assert_eq!(only_child(&root).tag_name(), "NAV");
 
   logged_in.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   let swapped = only_child(&root);
 
@@ -2587,12 +2587,12 @@ fn a_hidden_subtree_keeps_its_scroll_and_focus() {
   let focusable = focus_and_scroll(&scroller);
 
   shown.set(false);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(!scroller.is_connected(), "the subtree left the document");
 
   shown.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(only_child(&root), scroller, "the same subtree returned");
   assert_eq!(scroller.scroll_top(), 30, "the offset returned with it");
@@ -2622,7 +2622,7 @@ fn a_derived_rebuild_keeps_nothing() {
   let focusable = focus_and_scroll(&scroller);
 
   generation.set(1);
-  platform::end_turn();
+  web::end_turn();
 
   let rebuilt = only_child(&root);
 
@@ -2659,7 +2659,7 @@ fn a_moved_row_keeps_its_focus() {
 
   html(&first).focus().expect("focus the first row");
   items.set(vec![3, 2, 1]);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(child_texts(&parent), ["3", "2", "1"]);
   assert_eq!(parent.children().item(2), Some(first.clone()));
@@ -2705,7 +2705,7 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
   assert_eq!(runs.get(), 1, "one diff on mount");
 
   extra.set(9);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     runs.get(),
@@ -2715,7 +2715,7 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
 
   // The list itself still drives the diff.
   items.set(vec![1, 2, 3]);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(runs.get(), 2, "changing the list re-runs the diff");
   assert_eq!(child_texts(&only_child(&root)).len(), 3);
@@ -2744,7 +2744,7 @@ fn a_derived_property_inside_an_item_still_updates() {
   assert_eq!(computed(&item, "font-size"), "12px");
 
   size.set(24.0);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(computed(&item, "font-size"), "24px");
 }
@@ -2830,7 +2830,7 @@ fn a_widget_role_and_state_reach_the_real_dom() {
   );
 
   checked.set(true);
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(
     element.get_attribute("aria-checked").as_deref(),
@@ -2928,7 +2928,7 @@ fn a_radio_group_traverses_in_document_order() {
     String::from("fig"),
   ]);
 
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(rows().len(), 3, "the newcomer is in the document");
   assert_eq!(
@@ -2986,7 +2986,7 @@ fn a_refused_radio_choice_keeps_the_chosen_one_checked() {
   assert!(radio(0).checked());
 
   radio(1).click();
-  platform::end_turn();
+  web::end_turn();
 
   assert_eq!(*asked.borrow(), ["fig"], "the choice was asked for");
   assert!(radio(0).checked(), "the chosen radio is checked again");
@@ -3076,7 +3076,7 @@ fn a_route_change_commits_under_a_view_transition() {
   let _ = router.borrow().as_ref().expect("a router").apply_path("/");
 
   assert_eq!(calls.get(), 2, "an applied path commits the same way");
-  platform::push_path("/");
+  web::push_path("/");
 
   if !had_native {
     let _ = js_sys::Reflect::delete_property(&document.unchecked_into::<js_sys::Object>(), &key);
@@ -3184,7 +3184,7 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
 
   let _ = mount(build);
 
-  platform::adopt_restoration();
+  web::adopt_restoration();
 
   let column = only_child(&root);
   let scroller = column.first_element_child().expect("the scroller");
@@ -3248,7 +3248,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 
   let _ = mount(|| build(vec![3, 1, 2]));
 
-  platform::adopt_restoration();
+  web::adopt_restoration();
 
   let field = field_at(&root, 2);
 
@@ -3313,7 +3313,7 @@ fn a_text_fields_caption_is_a_label_before_the_input() {
   );
 
   shown.set(false);
-  platform::end_turn();
+  web::end_turn();
 
   assert!(
     container.query_selector("label").expect("query").is_none(),

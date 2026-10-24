@@ -2,9 +2,9 @@
 //! with its selection, a toggle's checked state, a range's value within its bounds, a
 //! choice's options with the chosen one, a group's chosen key and a member's place in
 //! its group, a link's destination, an entry's placeholder, whether it is secure and the
-//! keyboard it asks for, an overlay's placement. A
-//! content a behavior controls is answered by its [`Controller`], or an entry's by its
-//! [`EditController`], when a reader changes it.
+//! keyboard it asks for, an overlay's placement. A content a behavior controls is
+//! answered by its [`Controller`], or an entry's by its [`EditController`], when a reader
+//! changes it.
 
 #[cfg(debug_assertions)]
 use std::cell::Ref;

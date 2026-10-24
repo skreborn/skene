@@ -15,6 +15,7 @@ use std::{
 };
 
 use skene_foundation::{
+  Availability,
   Axes,
   Axis,
   BasicPickerBase,
@@ -1926,6 +1927,54 @@ fn a_cut_reports_its_edit() {
     (Ok(Some(1)), Ok(Some(1)))
   );
   assert_eq!(selection.get(), TextSelection::new(1, 1));
+}
+
+/// A secure field keeps its text from the clipboard as Chromium's password field does:
+/// with its value selected, copying and cutting are offered disabled and pasting enabled,
+/// and a cut writes nothing to the clipboard and leaves the value whole.
+#[wasm_bindgen_test]
+fn a_secure_field_neither_copies_nor_cuts() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("hunter2".to_owned());
+
+  let _ =
+    mount(move || BasicTextField::new(TextEntry::new().set_secure(true).bind_value(value)).build());
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  assert_eq!(input.type_(), "password");
+
+  let _ = input.focus();
+  let _ = input.set_selection_range(0, 7);
+
+  assert_eq!(
+    [
+      ClipboardAction::Copy,
+      ClipboardAction::Cut,
+      ClipboardAction::Paste
+    ]
+    .map(Web::clipboard_availability),
+    [
+      Availability::Disabled,
+      Availability::Disabled,
+      Availability::Enabled
+    ]
+  );
+
+  stub_clipboard("");
+  Web::clipboard(ClipboardAction::Copy);
+  Web::clipboard(ClipboardAction::Cut);
+  web::end_turn();
+
+  let written = written();
+
+  restore_clipboard();
+
+  assert_eq!(written, None, "nothing reached the clipboard");
+  assert_eq!(value.get(), "hunter2", "the cut removed nothing");
+  assert_eq!(input.value(), "hunter2");
 }
 
 /// A paste into a bound field replaces its selection and reports the edit it makes: the

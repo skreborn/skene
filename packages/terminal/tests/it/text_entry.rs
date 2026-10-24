@@ -1386,10 +1386,9 @@ fn a_secure_field_draws_a_mark_a_cluster_and_keeps_its_value() {
       "日e\u{301}xy",
       "the value is the real text"
     );
-    assert!(
-      testing::render_to_text(8, 1) == "\u{2022}\u{2022}\u{2022}\u{2022}\n",
-      "{}",
-      testing::render_to_text(8, 1)
+    assert_eq!(
+      testing::render_to_text(8, 1),
+      "\u{2022}\u{2022}\u{2022}\u{2022}\n"
     );
 
     secure.set(false);
@@ -1403,8 +1402,8 @@ fn a_secure_field_draws_a_mark_a_cluster_and_keeps_its_value() {
 }
 
 /// A secure field keeps its text from the clipboard as Chromium's password field does:
-/// its context menu lists copying and cutting disabled and pasting live, and the copy key
-/// copies nothing.
+/// its context menu lists copying and cutting disabled and pasting live, and the copy and
+/// cut keys copy nothing.
 #[test]
 fn a_secure_fields_menu_disables_copying_and_cutting() {
   with_platform(|| {
@@ -1422,6 +1421,11 @@ fn a_secure_fields_menu_disables_copying_and_cutting() {
     testing::trigger_key("Ctrl+c");
 
     assert_eq!(testing::take_copied(), None, "the copy key copies nothing");
+
+    testing::trigger_key("Ctrl+x");
+
+    assert_eq!(testing::take_copied(), None, "the cut key copies nothing");
+    assert_eq!(value.get_untracked(), "hunter2", "and removes nothing");
 
     testing::trigger_mouse_right_click(2, 0);
 

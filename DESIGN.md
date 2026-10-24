@@ -141,9 +141,9 @@ over node ids:
   `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`, a group's
   `Chosen` key, a member's `Membership` of its group, a link's `Destination`, an
   entry's `Placeholder`, its `Secure` flag and its `Keyboard`, an overlay's
-  `Placement`), written through
-  its key in `contents` (`contents::RANGE.write::<P>(node, &range)`), the key typed by
-  its value so a value of another type does not compile, and erased into a borrowed
+  `Placement`), written through its key in `contents`
+  (`contents::RANGE.write::<P>(node, &range)`), the key typed by its value so a value
+  of another type does not compile, and erased into a borrowed
   `ContentValue` the realization dispatches on. A value constrained by another crosses
   with it whole, a range with its bounds and step, a choice's chosen key with its
   options, an entry's selection with its text, an overlay's pinned point with its
@@ -154,10 +154,11 @@ over node ids:
   `apply_style`, so the web writes a link's `href` where it stood and compiles an
   overlay's margins against the viewport from its first placement. A box's
   `set_destination`, a run's `set_link` and an entry's `set_placeholder`, `set_secure`
-  and `set_keyboard` each have their `derive_` twin. What an entry shows is read back through `read` (its `Edit`,
-  where the platform keeps one), and `composing` says whether what a control shows is
-  still the reader's, as while an input method composes or before the client adopted
-  a changed control; a controlled content's controller reads both.
+  and `set_keyboard` each have their `derive_` twin. What an entry shows is read back
+  through `read` (its `Edit`, where the platform keeps one), and `composing` says
+  whether what a control shows is still the reader's, as while an input method composes
+  or before the client adopted a changed control; a controlled content's controller
+  reads both.
 - **The rest**: register event kinds, focus, observe sizes, report media, schedule on
   the clock, route, and reach the clipboard.
 

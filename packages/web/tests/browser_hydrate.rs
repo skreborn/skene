@@ -829,6 +829,83 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
   root.remove();
 }
 
+/// A server-rendered secure field is adopted as the password input it was served as:
+/// what the reader typed before the bundle arrived reaches the signal as their edit, and
+/// the input keeps its type, its value and the reader's caret.
+#[wasm_bindgen_test]
+fn a_secure_field_typed_before_the_bundle_stays_a_password_input() {
+  use skene_web::{BasicTextField, TextEntry, TextSelection, reactive::Signal};
+
+  let field = |value: Signal<String>, selection: Signal<TextSelection>| {
+    BasicTextField::new(
+      TextEntry::new()
+        .set_secure(true)
+        .bind_value(value)
+        .bind_selection(selection),
+    )
+  };
+  let (markup, _) = served(move || {
+    skene_web::View::into_any(field(
+      Signal::new("ab".to_owned()),
+      Signal::new(TextSelection::new(2, 2)),
+    ))
+  });
+  let root = server_root(&markup);
+  let server_input: web_sys::HtmlInputElement = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input")
+    .unchecked_into();
+
+  assert_eq!(
+    server_input.type_(),
+    "password",
+    "served as a password input"
+  );
+
+  let _ = server_input.set_attribute("value", "ab");
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  server_input.set_value("abc");
+
+  let _ = server_input.set_selection_range(1, 1);
+
+  let value = Signal::new("ab".to_owned());
+  let selection = Signal::new(TextSelection::new(2, 2));
+
+  hydrate(root.clone(), "", move || field(value, selection));
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(value.get(), "abc", "the typed text reached the signal");
+  assert_eq!(
+    selection.get(),
+    TextSelection::new(1, 1),
+    "the reader's caret reached the bound selection"
+  );
+
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input");
+
+  assert!(input == **server_input, "the input was adopted");
+  assert_eq!(server_input.type_(), "password");
+  assert_eq!(server_input.value(), "abc");
+  assert_eq!(
+    (server_input.selection_start(), server_input.selection_end()),
+    (Ok(Some(1)), Ok(Some(1))),
+    "the reader's caret stays"
+  );
+
+  web::uninstall();
+  root.remove();
+}
+
 /// Text typed into a server-rendered editor before the bundle arrived reaches the
 /// signal as the reader's edit, its caret with it, and a handler transforming it
 /// repairs the adopted `<textarea>` in place, across its lines, the reader's caret kept.

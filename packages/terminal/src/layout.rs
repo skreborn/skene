@@ -700,8 +700,11 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
 
   let env = Env::of(records, handle);
   let resolved_box = env.resolve_box();
-  let resolved_run = env.resolve_run();
-  let resolved_layout = env.resolve_run_layout();
+  let (resolved_run, resolved_layout) = env
+    .resolve_run()
+    .map_or((None, PlainBox::default()), |(run, layout)| {
+      (Some(run), layout)
+    });
   let box_keyframes = record
     .kind
     .box_record()

@@ -15,11 +15,13 @@ use skene_foundation::{
   BoxProps,
   ClipboardAction,
   ColorScheme,
+  CompiledStyle,
   ControlProps,
   ControlState,
   Definitions,
   EventKind,
   FocusOrder,
+  Keep,
   Media,
   MediaSignals,
   NodeId,
@@ -35,7 +37,6 @@ use skene_foundation::{
   Size,
   Slot,
   SlotLeaf,
-  StaticBoxStyle,
   TextSelection,
   Timer,
   TokenScope,
@@ -284,6 +285,7 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: NodeId, place
 
 impl Realization for Web {
   const FONT_SIZE: f32 = 16.;
+  const KEEP: Keep = Keep::Everything;
 
   type Scalar = f32;
   type StyleExt = WebStyle;
@@ -293,8 +295,12 @@ impl Realization for Web {
     &SCENE
   }
 
-  fn create_box(sink: NodeId, props: &BoxProps<Self>) {
+  fn create_box(sink: NodeId, props: &BoxProps) {
     with_dom(|dom| dom.realizer.create_box(sink, props));
+  }
+
+  fn apply_style(sink: NodeId, style: CompiledStyle<f32, WebStyle>) {
+    with_dom(|dom| dom.realizer.apply_style(sink, &style));
   }
 
   fn apply_slot(sink: NodeId, slot: Slot, leaf: &SlotLeaf<f32, WebStyle>) {
@@ -309,7 +315,7 @@ impl Realization for Web {
     with_dom(|dom| dom.realizer.update_access(sink, access));
   }
 
-  fn create_control(sink: NodeId, props: &ControlProps<Self>) {
+  fn create_control(sink: NodeId, props: &ControlProps) {
     with_dom(|dom| dom.realizer.create_control(sink, props));
   }
 
@@ -317,7 +323,7 @@ impl Realization for Web {
     with_dom(|dom| dom.realizer.set_control_state(sink, *state));
   }
 
-  fn create_overlay(sink: NodeId, props: &OverlayProps<Self>) {
+  fn create_overlay(sink: NodeId, props: &OverlayProps) {
     with_dom(|dom| {
       dom.realizer.create_overlay(sink, props);
 
@@ -427,11 +433,7 @@ impl Realization for Web {
     });
   }
 
-  fn apply_layout(sink: NodeId, layout: &StaticBoxStyle<Self>) {
-    with_dom(|dom| dom.realizer.apply_layout(sink, layout));
-  }
-
-  fn create_run(sink: NodeId, props: &RunProps<Self>) {
+  fn create_run(sink: NodeId, props: &RunProps) {
     with_dom(|dom| dom.realizer.create_run(sink, props));
   }
 
@@ -963,7 +965,7 @@ impl WebHydration for Web {
 impl WebMarkup for Web {
   fn create_element(node: NodeId, tag: &'static str) {
     with_dom(|dom| {
-      dom.realizer.create_element(node, tag, Realized::Box);
+      dom.realizer.create_low_level(node, tag);
     });
   }
 

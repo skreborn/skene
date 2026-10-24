@@ -265,7 +265,7 @@ impl<P: Realization> View<P> for Overlay<P> {
     };
     let node = inner
       .add_child(child)
-      .realize(NodeKind::Overlay, |node, box_props| {
+      .realize(NodeKind::Overlay, |node, box_props, _| {
         P::create_overlay(
           node,
           &OverlayProps {

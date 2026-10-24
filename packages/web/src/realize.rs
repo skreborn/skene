@@ -23,7 +23,6 @@ use skene_foundation::{
   Scene,
   Slot,
   SlotLeaf,
-  StaticBoxStyle,
   TokenScope,
   web::WebStyle,
 };
@@ -39,7 +38,6 @@ use crate::{
     compile_definitions,
     compile_root_definitions,
     inline_definitions,
-    record,
     render_slot_leaf,
     slot_properties,
   },
@@ -202,6 +200,9 @@ pub(crate) struct Record<S: Sink> {
   pub captioned: Option<NodeId>,
   /// What the node is realized as.
   pub realized: Realized,
+  /// The facts of its construction its rule template is compiled from, until the
+  /// shared half applies its style; `None` for a node that takes none.
+  pub template: Option<Template>,
   /// The class of its compiled style.
   pub style_class: Option<Rc<str>>,
   /// The class of the node's token definitions.
@@ -306,6 +307,7 @@ impl<S: Sink> Realizer<S> {
         caption: None,
         captioned: None,
         realized,
+        template: None,
         style_class: None,
         token_class: None,
         inline_tokens: Vec::new(),
@@ -333,7 +335,7 @@ impl<S: Sink> Realizer<S> {
   }
 
   /// Realizes the box `node`.
-  pub(crate) fn create_box(&mut self, node: NodeId, props: &BoxProps<Web>) {
+  pub(crate) fn create_box(&mut self, node: NodeId, props: &BoxProps) {
     let tag = box_tag(
       props.role,
       AccessProp::level_of(&props.access),
@@ -353,15 +355,12 @@ impl<S: Sink> Realizer<S> {
       self.sink.set_attribute(&element, "href", href);
     }
 
-    let style = record::of_box(props);
-    let compiled = self.book.compiled(&style, &Template::boxed(props));
-
-    self.finish_box(node, props, &style, &compiled);
+    self.finish_box(node, props, Template::boxed(props));
   }
 
   /// Realizes the control `node`: a form element bare or inside its label where it
   /// stands in one, else the element it is drawn as.
-  pub(crate) fn create_control(&mut self, node: NodeId, props: &ControlProps<Web>) {
+  pub(crate) fn create_control(&mut self, node: NodeId, props: &ControlProps) {
     let native = form_element(props.native);
     let realized = Realized::Control { native };
     let root = match native {
@@ -413,14 +412,11 @@ impl<S: Sink> Realizer<S> {
 
     self.sink.set_attribute(&root, CONTROL_ATTRIBUTE, "");
 
-    let style = record::of_box(&props.box_props);
-    let compiled = self.book.compiled(&style, &Template::control(props));
-
-    self.finish_box(node, &props.box_props, &style, &compiled);
+    self.finish_box(node, &props.box_props, Template::control(props));
   }
 
   /// Realizes the overlay `node`: a `<dialog>` when modal, else a popover.
-  pub(crate) fn create_overlay(&mut self, node: NodeId, props: &OverlayProps<Web>) {
+  pub(crate) fn create_overlay(&mut self, node: NodeId, props: &OverlayProps) {
     let realized = Realized::Overlay {
       modal: props.modal,
       placement: props.placement,
@@ -444,14 +440,11 @@ impl<S: Sink> Realizer<S> {
       }
     }
 
-    let style = record::of_box(&props.box_props);
-    let compiled = self.book.compiled(&style, &Template::overlay(props));
-
-    self.finish_box(node, &props.box_props, &style, &compiled);
+    self.finish_box(node, &props.box_props, Template::overlay(props));
   }
 
   /// Realizes the text run `node`: a link where it has one, else a span.
-  pub(crate) fn create_run(&mut self, node: NodeId, props: &RunProps<Web>) {
+  pub(crate) fn create_run(&mut self, node: NodeId, props: &RunProps) {
     match props.link.as_deref() {
       Some(href) => {
         let (element, _) = self.create_element(node, "a", Realized::Run);
@@ -465,11 +458,38 @@ impl<S: Sink> Realizer<S> {
       }
     }
 
-    let compiled = self
-      .book
-      .compiled(&record::of_run(props), &Template::run(props));
+    if let Some(record) = self.records.get_mut(node) {
+      record.template = Some(Template::run(props));
+    }
+  }
+
+  /// Realizes `node`, which a low-level view made, as a new element of `tag`, its style
+  /// the per-child layout a wrapper annotated it with.
+  pub(crate) fn create_low_level(&mut self, node: NodeId, tag: &'static str) {
+    self.create_element(node, tag, Realized::Box);
+
+    if let Some(record) = self.records.get_mut(node) {
+      record.template = Some(Template::Layout);
+    }
+  }
+
+  /// Gives `node` the class `style` compiles to under the facts of its construction,
+  /// noting whether it scrolls its content; a node that takes no style ignores it.
+  pub(crate) fn apply_style(&mut self, node: NodeId, style: &KeptStyle) {
+    let Some(template) = self
+      .records
+      .get_mut(node)
+      .and_then(|record| record.template.take())
+    else {
+      return;
+    };
+    let compiled = self.book.compiled(style, &template);
 
     self.assign_style(node, &compiled);
+
+    if let Some(record) = self.records.get_mut(node) {
+      record.scrolls = scrolls(style);
+    }
   }
 
   /// Realizes the anchor `node` as the next anchor's comment.
@@ -609,15 +629,6 @@ impl<S: Sink> Realizer<S> {
     }
 
     self.sink.set_flag(root, "data-skene-open", state.open);
-  }
-
-  /// Gives `node` the class of its compiled layout.
-  pub(crate) fn apply_layout(&mut self, node: NodeId, layout: &StaticBoxStyle<Web>) {
-    let compiled = self
-      .book
-      .compiled(&record::of_layout(layout), &Template::Layout);
-
-    self.assign_style(node, &compiled);
   }
 
   /// Replaces the text of the run `node`, leaving adopted text that already reads
@@ -833,32 +844,21 @@ impl<S: Sink> Realizer<S> {
     Some(record)
   }
 
-  /// Realizes the props every box-like node shares onto `node`, its style kept as
-  /// `style` and compiled to `compiled`.
-  fn finish_box(
-    &mut self,
-    node: NodeId,
-    props: &BoxProps<Web>,
-    style: &KeptStyle,
-    compiled: &Rc<Compiled>,
-  ) {
-    self.assign_style(node, compiled);
-
+  /// Realizes the props every box-like node shares onto `node`, keeping `template` for
+  /// its style.
+  fn finish_box(&mut self, node: NodeId, props: &BoxProps, template: Template) {
     let Some(record) = self.records.get_mut(node)
     else {
       return;
     };
 
-    record.scrolls = scrolls(style);
+    record.template = Some(template);
 
     if let Some(axes) = props.drag_axes {
       self
         .sink
         .set_attribute(&record.element, DRAGS_ATTRIBUTE, drags_value(axes));
     }
-
-    self.update_focus_order(node, props.focus_order);
-    self.update_access(node, &props.access);
   }
 
   /// Gives `node` the class of `compiled` in place of its previous one, with the slots
@@ -888,7 +888,7 @@ impl<S: Sink> Realizer<S> {
     &mut self,
     element: &S::Element,
     native: FormElement,
-    props: &ControlProps<Web>,
+    props: &ControlProps,
   ) {
     for (name, value) in native_attributes(native, props) {
       self.sink.set_attribute(element, name, &value);

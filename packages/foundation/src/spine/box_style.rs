@@ -485,8 +485,8 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for Overlay<'_, N, X> {
 impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
   BoxStyle<N, Declared<C>, X>
 {
-  /// The static style a platform receives, and the derived leaves lifted out of it: each
-  /// slot's index is its position in the list, and its property's field holds
+  /// The static style a record is built from, and the derived leaves lifted out of it:
+  /// each slot's index is its position in the list, and its property's field holds
   /// [`KeptLeaf::Slot`](super::KeptLeaf::Slot) where the leaf was.
   #[expect(
     clippy::type_complexity,

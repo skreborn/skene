@@ -337,6 +337,18 @@ impl<N: Scalar, X: StyleExtension> Record<N, X> {
       animations,
     )
   }
+
+  /// The record compiled at [`Keep::Everything`], as [`compile`](Self::compile) compiles
+  /// it there, its entries and motion moved rather than copied: the style the shared
+  /// half hands a realization.
+  pub fn into_kept(self) -> CompiledStyle<N, X> {
+    CompiledStyle::new(
+      Keep::Everything,
+      self.entries,
+      self.transitions,
+      self.animations,
+    )
+  }
 }
 
 impl<N: Scalar, X: StyleExtension> Default for Record<N, X> {
@@ -1609,6 +1621,11 @@ mod tests {
     assert_eq!(
       compiled.address(),
       probe_record().compile(Keeping::Everything).address()
+    );
+    assert_eq!(
+      probe_record().into_kept(),
+      compiled,
+      "a record kept by value compiles as one compiled at `Keep::Everything`"
     );
 
     let mut moved = probe_record();

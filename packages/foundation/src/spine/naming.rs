@@ -66,7 +66,7 @@ pub struct NameFacts {
 
 impl NameFacts {
   /// The facts of a run holding `text`, created with `props`.
-  pub fn of_run<P: Realization>(props: &RunProps<P>, text: String) -> Self {
+  pub fn of_run(props: &RunProps, text: String) -> Self {
     let link = props.link.is_some();
 
     Self {
@@ -80,7 +80,7 @@ impl NameFacts {
 
   /// The facts of a box, a control or an overlay created with `props`, reporting
   /// `access`.
-  pub fn of_box<P: Realization>(props: &BoxProps<P>, access: Vec<AccessProp>) -> Self {
+  pub fn of_box(props: &BoxProps, access: Vec<AccessProp>) -> Self {
     let link = props.destination.is_some();
 
     Self {

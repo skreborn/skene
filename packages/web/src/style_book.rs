@@ -64,7 +64,7 @@ impl<K: StyleSink> StyleBook<K> {
   }
 
   /// What `template` compiles `style` to, compiled on a miss.
-  pub(crate) fn compiled(&mut self, style: &KeptStyle, template: &Template<'_>) -> Rc<Compiled> {
+  pub(crate) fn compiled(&mut self, style: &KeptStyle, template: &Template) -> Rc<Compiled> {
     let key = (style.address(), template.key());
 
     if let Some(cached) = self.compiled.get(&key) {

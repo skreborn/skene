@@ -70,10 +70,7 @@ use super::{
   motion::{NO_PREFERENCE, REDUCE, render_animation_values, render_keyframes, render_transitions},
   token::WebTokenValue,
 };
-use crate::{
-  declarations::{Declarations, Ident},
-  platform::web::Web,
-};
+use crate::declarations::{Declarations, Ident};
 
 /// A node's style as the web keeps it: its record compiled at
 /// [`Keep::Everything`](skene_foundation::Keep::Everything).
@@ -635,68 +632,25 @@ fn layout_declarations(layout: Layout) -> Declarations {
   }
 }
 
-/// The records a node's props compile to at
-/// [`Keep::Everything`](skene_foundation::Keep::Everything).
-pub(crate) mod record {
-  use skene_foundation::{BoxProps, Keeping, Record, RunProps, StaticBoxStyle};
-
-  use super::KeptStyle;
-  use crate::platform::web::Web;
-
-  /// The record of a box's style and its motion.
-  pub(crate) fn of_box(props: &BoxProps<Web>) -> KeptStyle {
-    let mut record = Record::new();
-
-    record.add_box(&props.style);
-    record.add_box_dynamics(&props.dynamics);
-
-    record.compile(Keeping::Everything)
-  }
-
-  /// The record of the per-child layout a wrapper gave a low-level node.
-  pub(crate) fn of_layout(layout: &StaticBoxStyle<Web>) -> KeptStyle {
-    let mut record = Record::new();
-
-    record.add_box(layout);
-
-    record.compile(Keeping::Everything)
-  }
-
-  /// The record of a run's style, then its layout's, and its motion.
-  pub(crate) fn of_run(props: &RunProps<Web>) -> KeptStyle {
-    let mut record = Record::new();
-
-    record.add_run(&props.style);
-
-    if let Some(layout) = &props.layout {
-      record.add_box(layout);
-    }
-
-    record.add_run_dynamics(&props.dynamics);
-
-    record.compile(Keeping::Everything)
-  }
-}
-
 /// What a box's construction gives its rule template beside its style.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[must_use]
-pub(crate) struct BoxFacts<'a> {
+pub(crate) struct BoxFacts {
   /// The layout mode.
   pub layout: Layout,
   /// The name the box publishes for container queries against its size.
   pub container: Option<ContainerName>,
   /// The name pairing the box with its counterpart across a view transition.
-  pub transition_name: Option<&'a str>,
+  pub transition_name: Option<String>,
 }
 
-impl<'a> BoxFacts<'a> {
+impl BoxFacts {
   /// The facts of a box's props.
-  fn of(props: &'a BoxProps<Web>) -> Self {
+  fn of(props: &BoxProps) -> Self {
     Self {
       layout: props.layout,
       container: props.container,
-      transition_name: props.transition_name.as_deref(),
+      transition_name: props.transition_name.clone(),
     }
   }
 
@@ -715,7 +669,7 @@ impl<'a> BoxFacts<'a> {
       base = base.set("container", format!("{} / {containment}", name.0));
     }
 
-    if let Some(name) = self.transition_name {
+    if let Some(name) = &self.transition_name {
       base = base.set("view-transition-name", Ident(name).to_string());
     }
 
@@ -729,22 +683,22 @@ impl<'a> BoxFacts<'a> {
 }
 
 /// What a node's construction gives its rule template beside its style, by kind.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[must_use]
-pub(crate) enum Template<'a> {
+pub(crate) enum Template {
   /// A box.
-  Box(BoxFacts<'a>),
+  Box(BoxFacts),
   /// A control.
   Control {
     /// Its box's facts.
-    boxed: BoxFacts<'a>,
+    boxed: BoxFacts,
     /// Whether its native element is a text entry.
     entry: bool,
   },
   /// An overlay.
   Overlay {
     /// Its box's facts.
-    boxed: BoxFacts<'a>,
+    boxed: BoxFacts,
     /// Where it sits.
     placement: Placement,
     /// The backdrop color painted over the app while it is open, if any.
@@ -761,14 +715,14 @@ pub(crate) enum Template<'a> {
   },
 }
 
-impl<'a> Template<'a> {
+impl Template {
   /// The template of a box of `props`.
-  pub(crate) fn boxed(props: &'a BoxProps<Web>) -> Self {
+  pub(crate) fn boxed(props: &BoxProps) -> Self {
     Self::Box(BoxFacts::of(props))
   }
 
   /// The template of a control of `props`.
-  pub(crate) fn control(props: &'a ControlProps<Web>) -> Self {
+  pub(crate) fn control(props: &ControlProps) -> Self {
     Self::Control {
       boxed: BoxFacts::of(&props.box_props),
       entry: props.native.is_some_and(NativeElement::is_text_entry),
@@ -776,7 +730,7 @@ impl<'a> Template<'a> {
   }
 
   /// The template of an overlay of `props`.
-  pub(crate) fn overlay(props: &'a OverlayProps<Web>) -> Self {
+  pub(crate) fn overlay(props: &OverlayProps) -> Self {
     Self::Overlay {
       boxed: BoxFacts::of(&props.box_props),
       placement: props.placement,
@@ -785,7 +739,7 @@ impl<'a> Template<'a> {
   }
 
   /// The template of a run of `props`.
-  pub(crate) const fn run(props: &RunProps<Web>) -> Self {
+  pub(crate) const fn run(props: &RunProps) -> Self {
     Self::Run {
       placement: props.placement,
       selectable: props.selectable,
@@ -801,24 +755,24 @@ impl<'a> Template<'a> {
 
   /// The rule template of a node of this kind whose style is `style`.
   pub(crate) fn compile(&self, style: &KeptStyle) -> Compiled {
-    match *self {
+    match self {
       Self::Box(boxed) => compile_box(style, boxed),
-      Self::Control { boxed, entry } => compile_control(style, boxed, entry),
+      Self::Control { boxed, entry } => compile_control(style, boxed, *entry),
       Self::Overlay {
         boxed,
         placement,
         backdrop,
-      } => compile_overlay(style, boxed, placement, backdrop),
+      } => compile_overlay(style, boxed, *placement, *backdrop),
       Self::Layout => compile_layout(style),
       Self::Run {
         placement,
         selectable,
-      } => compile_run(style, placement, selectable),
+      } => compile_run(style, *placement, *selectable),
     }
   }
 }
 
-impl Hash for Template<'_> {
+impl Hash for Template {
   fn hash<H: Hasher>(&self, state: &mut H) {
     std::mem::discriminant(self).hash(state);
 
@@ -861,7 +815,7 @@ fn compile_box_with(style: &KeptStyle, base: Declarations) -> Compiled {
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
-fn compile_box(style: &KeptStyle, boxed: BoxFacts<'_>) -> Compiled {
+fn compile_box(style: &KeptStyle, boxed: &BoxFacts) -> Compiled {
   let mut compiled = compile_box_with(style, boxed.base(style));
 
   if boxed.layout == Layout::Stack {
@@ -888,7 +842,7 @@ fn compile_layout(style: &KeptStyle) -> Compiled {
 /// The rule template of a control: its box's, over the control reset that strips the
 /// native element's own chrome; a text `entry`'s value is inked and selected by the
 /// typography inherited at it.
-fn compile_control(style: &KeptStyle, boxed: BoxFacts<'_>, entry: bool) -> Compiled {
+fn compile_control(style: &KeptStyle, boxed: &BoxFacts, entry: bool) -> Compiled {
   let ink = if entry {
     token_reference(typography::INK.name())
   }
@@ -943,7 +897,7 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// backdrop.
 fn compile_overlay(
   style: &KeptStyle,
-  boxed: BoxFacts<'_>,
+  boxed: &BoxFacts,
   placement: Placement,
   backdrop: Option<Color>,
 ) -> Compiled {
@@ -1217,7 +1171,6 @@ mod tests {
     Conditional,
     ContainerName,
     Dimension,
-    Keeping,
     KeptLeaf,
     Layout,
     Placement,
@@ -1244,11 +1197,11 @@ mod tests {
 
     record.add_box(&style);
 
-    record.compile(Keeping::Everything)
+    record.into_kept()
   }
 
   /// Every template of a kind the facts can name, each fact varied.
-  fn templates() -> Vec<Template<'static>> {
+  fn templates() -> Vec<Template> {
     let mut boxes = Vec::new();
 
     for layout in [
@@ -1270,7 +1223,7 @@ mod tests {
           boxes.push(BoxFacts {
             layout,
             container,
-            transition_name,
+            transition_name: transition_name.map(str::to_owned),
           });
         }
       }
@@ -1278,17 +1231,20 @@ mod tests {
 
     let mut templates = vec![Template::Layout];
 
-    for &boxed in &boxes {
-      templates.push(Template::Box(boxed));
+    for boxed in &boxes {
+      templates.push(Template::Box(boxed.clone()));
 
       for entry in [false, true] {
-        templates.push(Template::Control { boxed, entry });
+        templates.push(Template::Control {
+          boxed: boxed.clone(),
+          entry,
+        });
       }
 
       for placement in [Placement::Center, Placement::TopEnd] {
         for backdrop in [None, Some(Color::TRANSPARENT)] {
           templates.push(Template::Overlay {
-            boxed,
+            boxed: boxed.clone(),
             placement,
             backdrop,
           });

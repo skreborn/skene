@@ -3,13 +3,13 @@
 //! of leaf a property takes.
 //!
 //! The browser is the oracle. The resolved side is the shared half's
-//! [`Keep::Nothing`](skene_foundation::Keep::Nothing) compile over the real scene: each
-//! case's read node is a low-level view that keeps the props the platform realizes it
-//! with, and its [`Record`] compiles at [`Keeping::Nothing`] with the resolver of its
-//! [`ResolutionContext`], reading tokens, scopes, containers and the enclosing control's
-//! state from the web's own scene. A case the resolution gets wrong is a divergence every
-//! platform resolving through the shared half shares, the terminal among them. A case in
-//! motion steps both sides alike: the resolved one through the foundation's
+//! [`Keep::Nothing`](skene_foundation::Keep::Nothing) entry over the real scene: each
+//! case's read node is a low-level view that keeps the style the shared half hands the
+//! platform, and that [`CompiledStyle`] resolves through [`CompiledStyle::resolve`] with
+//! the resolver of its [`ResolutionContext`], reading tokens, scopes, containers and the
+//! enclosing control's state from the web's own scene. A case the resolution gets wrong is a
+//! divergence every platform resolving through the shared half shares, the terminal among them. A
+//! case in motion steps both sides alike: the resolved one through the foundation's
 //! [`Motion`], retargeted as each step writes and sampled at its elapsed time, the
 //! engine's by seeking its animations.
 #![cfg(all(skene_platform = "web", not(skene_server)))]
@@ -26,7 +26,6 @@ use skene_foundation::{
   Axes,
   BasicButton,
   BasicCheckbox,
-  BoxDynamics,
   BoxKeyframe,
   BoxSlot,
   BoxValue,
@@ -46,13 +45,13 @@ use skene_foundation::{
   Edge,
   Environment,
   Expr,
+  Frame,
   HasBoxStyle,
   HasChild,
   HasChildren,
   HasLayoutBox,
   HasRun,
   Inset,
-  Keeping,
   Layout,
   LayoutBox,
   Length,
@@ -71,7 +70,6 @@ use skene_foundation::{
   ResolutionSource,
   ResolvedStyle,
   RunBase,
-  RunDynamics,
   RunValue,
   Seal,
   Size,
@@ -79,9 +77,7 @@ use skene_foundation::{
   SlotLeaf,
   SlotValue,
   State,
-  StaticBoxStyle,
   StaticLeaf,
-  StaticRunStyle,
   Text,
   Theme,
   Toggle,
@@ -140,58 +136,58 @@ thread_local! {
   static GENERATION: Cell<u64> = const { Cell::new(0) };
 }
 
-/// A read node as the platform realized it: the node, once known, the record of the
-/// style it received, and the derived leaves its slots hold.
+/// A read node as the platform realized it: the node, once known, the style the shared
+/// half handed the platform, and the derived leaves its slots hold.
 #[derive(Debug, Clone)]
 struct Realized {
   /// The node; `None` for a control's box, whose node its handle names.
   node: Option<NodeId>,
-  /// The style the platform received, with its motion.
-  record: Record<f32, WebStyle>,
+  /// The style the platform was handed, kept at `Keep::Everything`, with its motion.
+  style: CompiledStyle<f32, WebStyle>,
   /// The derived leaves the style's slots stand for.
   slots: Vec<BoxSlot<f32, WebStyle>>,
 }
 
 impl Realized {
-  /// The box of `style` and `dynamics` as the platform receives it at `node`, its
-  /// derived leaves lifted into `slots`.
+  /// The box the platform was handed `style` for at `node`, its derived leaves lifted
+  /// into `slots`.
   fn of_box(
     node: Option<NodeId>,
-    style: &StaticBoxStyle<Web>,
-    dynamics: &BoxDynamics<f32, WebStyle>,
+    style: &CompiledStyle<f32, WebStyle>,
     slots: Vec<BoxSlot<f32, WebStyle>>,
   ) -> Self {
-    let mut record = Record::new();
-
-    record.add_box(style);
-    record.add_box_dynamics(dynamics);
-
     Self {
       node,
-      record,
+      style: style.clone(),
       slots,
     }
   }
 
-  /// The run of `style` and `dynamics` as the platform receives it at `node`.
-  fn of_run(node: NodeId, style: &StaticRunStyle<Web>, dynamics: &RunDynamics<WebStyle>) -> Self {
-    let mut record = Record::new();
-
-    record.add_run(style);
-    record.add_run_dynamics(dynamics);
-
+  /// The run the platform was handed `style` for at `node`.
+  fn of_run(node: NodeId, style: &CompiledStyle<f32, WebStyle>) -> Self {
     Self {
       node: Some(node),
-      record,
+      style: style.clone(),
       slots: Vec::new(),
     }
   }
 
-  /// The record compiled at [`Keeping::Nothing`] against `source` at `node`.
-  fn compile(&self, source: &ParitySource, node: NodeId) -> CompiledStyle<f32, WebStyle> {
+  /// The style resolved against `source` at `node` through the `Keep::Nothing` entry.
+  fn resolve(&self, source: &ParitySource, node: NodeId) -> ResolvedStyle<f32, WebStyle> {
     ResolutionContext::<Web, ParitySource>::of(source, node)
       .expect("the read node is live")
-      .with_resolver(|resolver| self.record.compile(Keeping::Nothing(resolver)))
+      .with_resolver(|resolver| self.style.resolve(resolver))
+  }
+
+  /// A keyframe of the style resolved against `source` at `node`.
+  fn resolve_frame(
+    source: &ParitySource,
+    node: NodeId,
+    frame: &Frame<f32, WebStyle>,
+  ) -> ResolvedStyle<f32, WebStyle> {
+    ResolutionContext::<Web, ParitySource>::of(source, node)
+      .expect("the read node is live")
+      .with_resolver(|resolver| frame.resolve(resolver))
   }
 }
 
@@ -254,23 +250,20 @@ impl View<Web> for ReadBox {
   fn build(mut self) -> NodeId {
     let (_, slots) = self.inner.style_mut().clone().split();
 
-    self.inner.realize(NodeKind::Box, move |node, props| {
-      READ_BOX.set(Some(Realized::of_box(
-        Some(node),
-        &props.style,
-        &props.dynamics,
-        slots,
-      )));
-      <Web as Realization>::create_box(node, &props);
-    })
+    self
+      .inner
+      .realize(NodeKind::Box, move |node, props, style| {
+        READ_BOX.set(Some(Realized::of_box(Some(node), style, slots)));
+        <Web as Realization>::create_box(node, &props);
+      })
   }
 }
 
 /// `text` as a run that keeps the style the platform realizes it with in [`READ_RUN`].
 fn read_run(text: Text<Web>) -> Text<Web> {
   text.map_run(|run| {
-    run.add_realization(|node, props| {
-      READ_RUN.set(Some(Realized::of_run(node, &props.style, &props.dynamics)));
+    run.add_realization(|node, _, style| {
+      READ_RUN.set(Some(Realized::of_run(node, style)));
     })
   })
 }
@@ -284,13 +277,10 @@ fn read_control(button: BasicButton<Web>) -> BasicButton<Web> {
 
   button.map_layout_box(|mut layout| {
     let (style, slots) = layout.style_mut().clone().split();
+    let mut record = Record::new();
 
-    READ_BOX.set(Some(Realized::of_box(
-      None,
-      &style,
-      &BoxDynamics::default(),
-      slots,
-    )));
+    record.add_box(&style);
+    READ_BOX.set(Some(Realized::of_box(None, &record.into_kept(), slots)));
 
     layout.bind_handle(handle)
   })
@@ -1066,7 +1056,7 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
   let reduced = source.environment.reduced_motion;
   let mut motion = Motion::<WebProperty, SlotValue<f32, WebStyle>>::started_at(0.);
   let mut now = 0.;
-  let mut style = read.compile(source, node);
+  let mut style = read.resolve(source, node);
 
   for (written, milliseconds) in case.steps() {
     if let Some(written) = written {
@@ -1076,14 +1066,14 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
         .set(*written);
       web::end_turn();
 
-      let next = read.compile(source, node);
+      let next = read.resolve(source, node);
 
       for key in keys {
         motion.retarget(
           *key,
-          resolved_value(&style.resolved(), *key).as_ref(),
-          resolved_value(&next.resolved(), *key).as_ref(),
-          next.transitions(),
+          resolved_value(&style, *key).as_ref(),
+          resolved_value(&next, *key).as_ref(),
+          read.style.transitions(),
           now,
           reduced,
         );
@@ -1104,15 +1094,15 @@ fn present(case: Case, read: &Realized, source: &ParitySource) -> Reading {
   let presented: Vec<_> = keys
     .iter()
     .map(|key| {
-      let target = resolved_value(&style.resolved(), *key);
+      let target = resolved_value(&style, *key);
       let underlying = motion
         .sample(*key, now)
         .map(|sample| in_range(sample, *key))
         .or_else(|| target.clone());
       let value = motion.animate(
-        style.animations(),
+        read.style.animations(),
         underlying,
-        |frame| resolved_value(&frame.resolved(), *key),
+        |frame| resolved_value(&Realized::resolve_frame(source, node, frame), *key),
         now,
         reduced,
       );

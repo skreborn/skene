@@ -15,6 +15,7 @@ use crate::spine::{
   BoxValue,
   BoxVisitor,
   Color,
+  CompiledStyle,
   Condition,
   Conditional,
   ContainerName,
@@ -25,9 +26,11 @@ use crate::spine::{
   ExprEnv,
   ExprNode,
   ExprValue,
+  Frame,
   Inset,
   IntoBoxValue,
   IntoRunValue,
+  Keep,
   KeptLeaf,
   Keyframe,
   Leaf,
@@ -39,6 +42,7 @@ use crate::spine::{
   Plain,
   PropertyKey,
   Realization,
+  ResolvedStyle,
   RunStyle,
   RunValue,
   RunVisitor,
@@ -1005,6 +1009,42 @@ where
   #[must_use]
   pub const fn read_interaction(&self) -> bool {
     self.interaction_read.get()
+  }
+
+  /// `style`, the node's style kept at [`Keep::Everything`], resolved in this context:
+  /// the entry a realization keeping nothing resolves a node's kept style through at
+  /// every restyle, as [`CompiledStyle::resolve`] resolves it.
+  ///
+  /// It is the one reader of [`Realization::KEEP`]: a realization keeping anything does
+  /// not compile through it.
+  pub fn resolve(
+    &self,
+    style: &CompiledStyle<P::Scalar, P::StyleExt>,
+  ) -> ResolvedStyle<P::Scalar, P::StyleExt> {
+    const {
+      assert!(
+        matches!(P::KEEP, Keep::Nothing),
+        "only a realization keeping nothing resolves a kept style in the shared half",
+      );
+    };
+
+    self.with_resolver(|resolver| style.resolve(resolver))
+  }
+
+  /// `frame`, a keyframe of the node's kept style, resolved in this context as
+  /// [`resolve`](Self::resolve) resolves the style, through [`Frame::resolve`].
+  pub fn resolve_frame(
+    &self,
+    frame: &Frame<P::Scalar, P::StyleExt>,
+  ) -> ResolvedStyle<P::Scalar, P::StyleExt> {
+    const {
+      assert!(
+        matches!(P::KEEP, Keep::Nothing),
+        "only a realization keeping nothing resolves a kept style in the shared half",
+      );
+    };
+
+    self.with_resolver(|resolver| frame.resolve(resolver))
   }
 
   /// Runs `operation` with the resolver of this context, reading tokens where they are

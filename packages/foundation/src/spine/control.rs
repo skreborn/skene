@@ -3,7 +3,7 @@
 
 use std::fmt::Debug;
 
-use super::{BoxProps, Realization, State};
+use super::{BoxProps, State};
 use crate::spine::{CheckState, NodeId, Role};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
@@ -109,12 +109,13 @@ impl NativeElement {
 /// Everything a platform needs to realize a control: a box, the native element it
 /// stands in where it has one and, where nothing visible supplies one, an accessible
 /// name.
+#[derive(Clone, Debug)]
 #[must_use]
-pub struct ControlProps<P: Realization> {
+pub struct ControlProps {
   /// The native element the control stands in; `None` for one its view draws.
   pub native: Option<NativeElement>,
   /// The box the control is realized as.
-  pub box_props: BoxProps<P>,
+  pub box_props: BoxProps,
   /// The accessible name, when nothing visible supplies one.
   pub label: Option<String>,
   /// The hint a text entry shows while its value is empty.
@@ -127,34 +128,6 @@ pub struct ControlProps<P: Realization> {
   /// The collection whose members the platform groups as one, as a radio group's
   /// choices; `None` for a control no group holds.
   pub group: Option<NodeId>,
-}
-
-impl<P: Realization> Clone for ControlProps<P> {
-  fn clone(&self) -> Self {
-    Self {
-      native: self.native,
-      box_props: self.box_props.clone(),
-      label: self.label.clone(),
-      placeholder: self.placeholder.clone(),
-      lines: self.lines,
-      label_beside: self.label_beside,
-      group: self.group,
-    }
-  }
-}
-
-impl<P: Realization> Debug for ControlProps<P> {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter
-      .debug_struct("ControlProps")
-      .field("native", &self.native)
-      .field("label", &self.label)
-      .field("placeholder", &self.placeholder)
-      .field("lines", &self.lines)
-      .field("label_beside", &self.label_beside)
-      .field("group", &self.group)
-      .finish_non_exhaustive()
-  }
 }
 
 /// A styling target a control exposes: the node a part is recorded on is that part of

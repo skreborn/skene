@@ -7,11 +7,13 @@ use skene_foundation::{
   AccessProp,
   BoxProps,
   ColorScheme,
+  CompiledStyle,
   ControlProps,
   ControlState,
   Definitions,
   EventKind,
   FocusOrder,
+  Keep,
   Media,
   MediaSignals,
   NodeId,
@@ -24,7 +26,6 @@ use skene_foundation::{
   Size,
   Slot,
   SlotLeaf,
-  StaticBoxStyle,
   TextSelection,
   Timer,
   TokenScope,
@@ -42,7 +43,6 @@ use crate::{
   declarations::Declarations,
   low_level::WebMarkup,
   platform::web::Web,
-  realize::Realized,
   token::WebTokenValue,
 };
 
@@ -56,6 +56,7 @@ impl Painting for Web {
 
 impl Realization for Web {
   const FONT_SIZE: f32 = 16.;
+  const KEEP: Keep = Keep::Everything;
 
   type Scalar = f32;
   type StyleExt = WebStyle;
@@ -65,8 +66,12 @@ impl Realization for Web {
     &SCENE
   }
 
-  fn create_box(node: NodeId, props: &BoxProps<Self>) {
+  fn create_box(node: NodeId, props: &BoxProps) {
     with_realizer(|realizer| realizer.create_box(node, props));
+  }
+
+  fn apply_style(node: NodeId, style: CompiledStyle<f32, WebStyle>) {
+    with_realizer(|realizer| realizer.apply_style(node, &style));
   }
 
   fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<f32, WebStyle>) {
@@ -81,7 +86,7 @@ impl Realization for Web {
     with_realizer(|realizer| realizer.update_access(node, access));
   }
 
-  fn create_control(node: NodeId, props: &ControlProps<Self>) {
+  fn create_control(node: NodeId, props: &ControlProps) {
     with_realizer(|realizer| realizer.create_control(node, props));
   }
 
@@ -89,17 +94,13 @@ impl Realization for Web {
     with_realizer(|realizer| realizer.set_control_state(node, *state));
   }
 
-  fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
+  fn create_overlay(node: NodeId, props: &OverlayProps) {
     with_realizer(|realizer| realizer.create_overlay(node, props));
   }
 
   fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
 
-  fn apply_layout(node: NodeId, layout: &StaticBoxStyle<Self>) {
-    with_realizer(|realizer| realizer.apply_layout(node, layout));
-  }
-
-  fn create_run(node: NodeId, props: &RunProps<Self>) {
+  fn create_run(node: NodeId, props: &RunProps) {
     with_realizer(|realizer| realizer.create_run(node, props));
   }
 
@@ -263,7 +264,7 @@ impl WebHydration for Web {
 impl WebMarkup for Web {
   fn create_element(node: NodeId, tag: &'static str) {
     with_realizer(|realizer| {
-      realizer.create_element(node, tag, Realized::Box);
+      realizer.create_low_level(node, tag);
     });
   }
 

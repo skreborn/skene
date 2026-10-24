@@ -4,7 +4,6 @@ use rustc_hash::FxHashMap;
 use skene_reactive::{Get, Memo, ReadSignal, Signal, Update, With, WriteSignal};
 
 use super::{
-  BoxDynamics,
   BoxStyle,
   Condition,
   ContainerName,
@@ -17,22 +16,11 @@ use super::{
   MediaEnv,
   PointerPrecision,
   Realization,
-  RunDynamics,
   RunStyle,
   Scalar,
   Static,
 };
-use crate::spine::{
-  AccessProp,
-  Color,
-  ColorScheme,
-  FocusOrder,
-  Layout,
-  Placement,
-  Role,
-  RunPlacement,
-  Size,
-};
+use crate::spine::{AccessProp, Color, ColorScheme, Layout, Placement, Role, RunPlacement, Size};
 
 /// A box's style as a builder declares it: values under the platform's conditions,
 /// possibly derived.
@@ -42,7 +30,8 @@ pub type DeclaredBoxStyle<P> = BoxStyle<
   <P as Realization>::StyleExt,
 >;
 
-/// A box's style as a platform receives it: every derived leaf replaced by its slot.
+/// A box's style split from its derived leaves, each replaced by its slot: what its
+/// record is built from.
 pub type StaticBoxStyle<P> = BoxStyle<
   <P as Realization>::Scalar,
   Static<Condition<<P as Realization>::Scalar>>,
@@ -53,7 +42,8 @@ pub type StaticBoxStyle<P> = BoxStyle<
 pub type DeclaredRunStyle<P> =
   RunStyle<Declared<Condition<<P as Realization>::Scalar>>, <P as Realization>::StyleExt>;
 
-/// A run's style as a platform receives it: every derived leaf replaced by its slot.
+/// A run's style split from its derived leaves, each replaced by its slot: what its
+/// record is built from.
 pub type StaticRunStyle<P> =
   RunStyle<Static<Condition<<P as Realization>::Scalar>>, <P as Realization>::StyleExt>;
 
@@ -64,57 +54,47 @@ pub type BoxKeyframe<P> =
 /// A run's style as one keyframe of an animation: a static leaf per set property.
 pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Realization>::StyleExt>;
 
-/// Everything a platform needs to realize a box.
+/// What a platform needs to realize a box beside its style, which arrives through
+/// [`Realization::apply_style`].
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct BoxProps<P: Realization> {
+pub struct BoxProps {
   /// The layout mode.
   pub layout: Layout,
   /// The semantic role, guiding the platform's concrete choice of element.
   pub role: Option<Role>,
-  /// The static style: every derived leaf already replaced by its slot.
-  pub style: StaticBoxStyle<P>,
-  /// The transitions and animations.
-  pub dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   /// The name pairing the box with its counterpart across a view transition.
   pub transition_name: Option<String>,
   /// The name the box publishes for container queries against its size.
   pub container: Option<ContainerName>,
-  /// The box's place in focus traversal; `None` for a box that takes no focus.
-  pub focus_order: Option<FocusOrder>,
   /// The axes a press's pointer drags the box along; `None` for a box no press drags.
   pub drag_axes: Option<DragAxes>,
-  /// The accessibility properties the box reports.
+  /// The accessibility properties the box reports as it is created, which the shared
+  /// half writes through [`Realization::update_access`] once its style is applied.
   pub access: Vec<AccessProp>,
   /// The path the box navigates to when activated; a real link where the medium has
   /// one.
   pub destination: Option<String>,
 }
 
-/// Everything a platform needs to realize a text run.
+/// What a platform needs to realize a text run beside its style, which arrives through
+/// [`Realization::apply_style`].
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct RunProps<P: Realization> {
+pub struct RunProps {
   /// Where the run sits in the surrounding layout.
   pub placement: RunPlacement,
   /// Whether the user can select and copy the run's text.
   pub selectable: bool,
   /// The link destination, when the run is a link.
   pub link: Option<String>,
-  /// The static style: every derived leaf already replaced by its slot.
-  pub style: StaticRunStyle<P>,
-  /// The static per-child layout a wrapper gave the run (its flexibility, alignment,
-  /// pinning and grid placement), as a box style holding nothing else.
-  pub layout: Option<Box<StaticBoxStyle<P>>>,
-  /// The transitions and animations.
-  pub dynamics: RunDynamics<P::StyleExt>,
 }
 
 /// Everything a platform needs to realize an overlay: a box shown above the app while
 /// open, opened and closed through [`Realization::set_overlay_open`].
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct OverlayProps<P: Realization> {
+pub struct OverlayProps {
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
   pub modal: bool,
   /// Whether the overlay is a hint: a popup describing its anchor, which never takes
@@ -125,10 +105,10 @@ pub struct OverlayProps<P: Realization> {
   /// The backdrop color painted over the app while open, if any.
   pub backdrop: Option<Color>,
   /// The box the overlay's content is realized as.
-  pub box_props: BoxProps<P>,
+  pub box_props: BoxProps,
 }
 
-impl<P: Realization> OverlayProps<P> {
+impl OverlayProps {
   /// The role the overlay carries: a hint's tooltip, a modal's dialog unless its box
   /// states another, else the one its box states.
   #[must_use]

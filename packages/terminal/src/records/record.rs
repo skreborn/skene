@@ -13,7 +13,6 @@ use skene_foundation::{
   ContainerName,
   Inset,
   Interaction,
-  Keeping,
   Layout,
   NativeElement,
   NodeId,
@@ -29,7 +28,6 @@ use skene_foundation::{
 
 use super::{CellRect, field::Field};
 use crate::{
-  Terminal,
   TerminalStyle,
   motion::{BoxMotion, RunMotion},
   paint::Image,
@@ -44,9 +42,9 @@ pub(crate) type PlainRun = RunStyle<Plain, TerminalStyle>;
 /// What a derived leaf last wrote into a node's slot; see [`skene_foundation::SlotLeaf`].
 pub(crate) type SlotLeaf = skene_foundation::SlotLeaf<i32, TerminalStyle>;
 
-/// A node's style and motion as its record kept at
+/// A node's style and motion as the shared half applies it, its record kept at
 /// [`Keep::Everything`](skene_foundation::Keep::Everything), which every restyle resolves
-/// through [`CompiledStyle::resolve`].
+/// through [`ResolutionContext::resolve`](skene_foundation::ResolutionContext::resolve).
 pub(crate) type KeptStyle = CompiledStyle<i32, TerminalStyle>;
 
 /// A box's style resolved under one generation and interaction: the style presented,
@@ -83,9 +81,10 @@ pub(crate) struct RunCache {
 
 /// A box-like node's props, its kept style, its resolution and its motion.
 pub(crate) struct BoxRecord {
-  /// The props the node was created with, its style and motion taken into `kept`.
-  pub(crate) props: BoxProps<Terminal>,
-  /// The node's style and motion, kept whole.
+  /// The props the node was created with.
+  pub(crate) props: BoxProps,
+  /// The node's style and motion, kept whole as the shared half applied it; empty until
+  /// it does.
   pub(crate) kept: KeptStyle,
   /// The style last resolved and presented, once a frame resolved it.
   pub(crate) cache: Option<BoxCache>,
@@ -94,17 +93,12 @@ pub(crate) struct BoxRecord {
 }
 
 impl BoxRecord {
-  /// The record of a box created with `props`, its style and motion kept as their
-  /// record.
-  pub(crate) fn new(mut props: BoxProps<Terminal>) -> Self {
-    let mut record = StyleRecord::new();
-
-    record.add_box(&std::mem::take(&mut props.style));
-    record.add_box_dynamics(&std::mem::take(&mut props.dynamics));
-
+  /// The record of a box created with `props`, its style setting nothing until the
+  /// shared half applies it.
+  pub(crate) fn new(props: BoxProps) -> Self {
     Self {
       props,
-      kept: record.compile(Keeping::Everything),
+      kept: StyleRecord::new().into_kept(),
       cache: None,
       motion: BoxMotion::default(),
     }
@@ -154,9 +148,10 @@ pub(crate) enum Kind {
     position: Option<(i64, i64)>,
   },
   Run {
-    /// The props the run was created with, its style and motion taken into `kept`.
-    props: RunProps<Terminal>,
-    /// The run's style and motion, kept whole.
+    /// The props the run was created with.
+    props: RunProps,
+    /// The run's style, then the per-child layout a wrapper annotated it with, and its
+    /// motion, kept whole as the shared half applied them; empty until it does.
     kept: KeptStyle,
     /// The style last resolved and presented, once a frame resolved it.
     cache: Option<RunCache>,
@@ -170,20 +165,27 @@ pub(crate) enum Kind {
 }
 
 impl Kind {
-  /// The record of a run created with `props`, its style and motion kept as their
-  /// record.
-  pub(crate) fn run(mut props: RunProps<Terminal>) -> Self {
-    let mut record = StyleRecord::new();
-
-    record.add_run(&std::mem::take(&mut props.style));
-    record.add_run_dynamics(&std::mem::take(&mut props.dynamics));
-
+  /// The record of a run created with `props`, its style setting nothing until the
+  /// shared half applies it.
+  pub(crate) fn run(props: RunProps) -> Self {
     Self::Run {
       props,
-      kept: record.compile(Keeping::Everything),
+      kept: StyleRecord::new().into_kept(),
       cache: None,
       motion: RunMotion::default(),
       extent: None,
+    }
+  }
+
+  /// The node's kept style, replaced by what the shared half applies: a box's, a
+  /// control's, an overlay's or a run's.
+  pub(crate) const fn kept_mut(&mut self) -> Option<&mut KeptStyle> {
+    match self {
+      Self::Run { kept, .. } => Some(kept),
+      kind => match kind.box_record_mut() {
+        Some(inner) => Some(&mut inner.kept),
+        None => None,
+      },
     }
   }
 
@@ -380,7 +382,7 @@ impl Record {
 
   /// The box props of a box, a control or an overlay.
   #[inline(always)]
-  pub(crate) fn box_props(&self) -> Option<&BoxProps<Terminal>> {
+  pub(crate) fn box_props(&self) -> Option<&BoxProps> {
     self.kind.box_record().map(|inner| &inner.props)
   }
 

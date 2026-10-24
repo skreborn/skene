@@ -6,11 +6,13 @@ use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   BoxProps,
+  CompiledStyle,
   ControlProps,
   ControlState,
   Definition,
   Definitions,
   EventKind,
+  Keep,
   MediaSignals,
   NodeId,
   OverlayProps,
@@ -20,7 +22,6 @@ use super::{
   Scene,
   Slot,
   SlotLeaf,
-  StaticBoxStyle,
   StyleExtension,
   TokenScope,
 };
@@ -214,6 +215,10 @@ impl<A> Timers<A> {
 pub trait Realization: Copy + Default + 'static {
   /// The font size in force where no typography defines one, in the medium's unit.
   const FONT_SIZE: f32;
+  /// What of a style the realization keeps unresolved, its toolkit resolving it: at
+  /// [`Keep::Nothing`] it resolves each node's kept style through the shared half's
+  /// [`ResolutionContext::resolve`](crate::ResolutionContext::resolve).
+  const KEEP: Keep;
 
   /// The unit lengths are measured in.
   type Scalar: Scalar;
@@ -233,7 +238,18 @@ pub trait Realization: Copy + Default + 'static {
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
 
   /// Realizes the box `node`.
-  fn create_box(node: NodeId, props: &BoxProps<Self>);
+  fn create_box(node: NodeId, props: &BoxProps);
+
+  /// Gives `node` its style: every property it sets, its own and the per-child layout a
+  /// wrapper annotated it with, with its motion, as the shared half compiles its record
+  /// at [`Keep::Everything`], each derived leaf a slot [`apply_slot`](Self::apply_slot)
+  /// writes.
+  ///
+  /// Called once for every box, control, overlay and run, after the node's creation and
+  /// before any [`define_tokens`](Self::define_tokens) on it, a style that sets nothing
+  /// included; a node a low-level view made receives the per-child layout alone, and
+  /// only where a wrapper annotated it.
+  fn apply_style(node: NodeId, style: CompiledStyle<Self::Scalar, Self::StyleExt>);
 
   /// Writes the leaf a derived leaf computed into its slot on `node`, a box's, a run's,
   /// or one in the layout a wrapper gave a run or a low-level node: a value, or a token
@@ -251,13 +267,13 @@ pub trait Realization: Copy + Default + 'static {
   fn update_access(_node: NodeId, _access: &[AccessProp]) {}
 
   /// Realizes the control `node`: a box a platform may stand a native element in for.
-  fn create_control(node: NodeId, props: &ControlProps<Self>);
+  fn create_control(node: NodeId, props: &ControlProps);
 
   /// Mirrors a control's state, for a platform whose native element holds it too.
   fn set_control_state(node: NodeId, state: &ControlState);
 
   /// Realizes the overlay `node`: a box shown above the app while open, closed at first.
-  fn create_overlay(node: NodeId, props: &OverlayProps<Self>);
+  fn create_overlay(node: NodeId, props: &OverlayProps);
 
   /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
   /// rather than by the viewport.
@@ -275,16 +291,8 @@ pub trait Realization: Copy + Default + 'static {
   #[inline(always)]
   fn set_overlay_position(_node: NodeId, _position: Option<Point<f32>>) {}
 
-  /// Gives the node a low-level view made, `node`, the per-child layout a wrapper
-  /// annotated it with: its flexibility, alignment, pinning and grid placement, as a
-  /// box style holding nothing else, each derived leaf a slot
-  /// [`apply_slot`](Self::apply_slot) writes. A platform that lays out from the
-  /// scene's annotations needs nothing here.
-  #[inline(always)]
-  fn apply_layout(_node: NodeId, _layout: &StaticBoxStyle<Self>) {}
-
   /// Realizes the text run `node`.
-  fn create_run(node: NodeId, props: &RunProps<Self>);
+  fn create_run(node: NodeId, props: &RunProps);
 
   /// Replaces a run's text.
   fn set_text(node: NodeId, text: &str);

@@ -102,7 +102,7 @@ impl LinkPolicy {
 
   /// Rewrites the attributes of the link `props` realized at `node`, given the default
   /// policy's, as this policy gives them.
-  pub(crate) fn realize(self, node: NodeId, props: &RunProps<Active>) {
+  pub(crate) fn realize(self, node: NodeId, props: &RunProps) {
     use crate::low_level::WebMarkup;
 
     let Some(href) = props.link.as_deref()

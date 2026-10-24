@@ -205,7 +205,9 @@ pub type skene_terminal::platform::terminal::Terminal::Scalar = i32
 pub type skene_terminal::platform::terminal::Terminal::StyleExt = skene_foundation::terminal::ext::TerminalStyle
 pub type skene_terminal::platform::terminal::Terminal::TokenValue = skene_foundation::spine::resolve::TokenValue<i32>
 pub const skene_terminal::platform::terminal::Terminal::FONT_SIZE: f32
+pub const skene_terminal::platform::terminal::Terminal::KEEP: skene_foundation::spine::record::Keep
 pub fn skene_terminal::platform::terminal::Terminal::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<i32, skene_foundation::terminal::ext::TerminalStyle>)
+pub fn skene_terminal::platform::terminal::Terminal::apply_style(skene_foundation::spine::node::NodeId, skene_foundation::spine::record::CompiledStyle<i32, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_terminal::platform::terminal::Terminal::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_terminal::platform::terminal::Terminal::blur(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::platform::terminal::Terminal::cancel(skene_foundation::spine::realization::Timer)
@@ -213,10 +215,10 @@ pub fn skene_terminal::platform::terminal::Terminal::chosen_scheme() -> core::op
 pub fn skene_terminal::platform::terminal::Terminal::clipboard(skene_foundation::spine::values::clipboard::ClipboardAction)
 pub fn skene_terminal::platform::terminal::Terminal::clipboard_availability(skene_foundation::spine::values::clipboard::ClipboardAction) -> skene_foundation::spine::values::clipboard::Availability
 pub fn skene_terminal::platform::terminal::Terminal::create_anchor(skene_foundation::spine::node::NodeId)
-pub fn skene_terminal::platform::terminal::Terminal::create_box(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::BoxProps<Self>)
-pub fn skene_terminal::platform::terminal::Terminal::create_control(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlProps<Self>)
-pub fn skene_terminal::platform::terminal::Terminal::create_overlay(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::OverlayProps<Self>)
-pub fn skene_terminal::platform::terminal::Terminal::create_run(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::RunProps<Self>)
+pub fn skene_terminal::platform::terminal::Terminal::create_box(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::BoxProps)
+pub fn skene_terminal::platform::terminal::Terminal::create_control(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlProps)
+pub fn skene_terminal::platform::terminal::Terminal::create_overlay(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::OverlayProps)
+pub fn skene_terminal::platform::terminal::Terminal::create_run(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::RunProps)
 pub fn skene_terminal::platform::terminal::Terminal::create_scope(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::platform::terminal::Terminal::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<skene_terminal::TokenValue>)
 pub fn skene_terminal::platform::terminal::Terminal::destroy(skene_foundation::spine::node::NodeId)

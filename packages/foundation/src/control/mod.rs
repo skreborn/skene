@@ -847,7 +847,7 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
         inner = inner.set_drag_axes(axes);
       }
 
-      let node = inner.realize(NodeKind::Control, |node, box_props| {
+      let node = inner.realize(NodeKind::Control, |node, box_props, _| {
         P::create_control(
           node,
           &ControlProps {

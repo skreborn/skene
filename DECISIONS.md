@@ -8,6 +8,23 @@ supersedes.
 
 ## Decided against
 
+- **A per-node effect recompiling the whole record at `Keep::Nothing`** (2026-10-24), the
+  prototype's shape: a render effect per node reading every signal its style reads and
+  recompiling its record, resolved, whenever one changes, handing the realization a
+  style with nothing left to resolve. A derived leaf already binds an effect of its own
+  per slot, so a change to one would recompute every property of the node, and what a
+  resolution reads beyond the signals (the node's interaction, the environment, the
+  definitions in force) changes after creation and is tracked by the realization's
+  retained runtime. The shared half hands every realization the record kept at
+  `Keep::Everything`, and one keeping nothing resolves it at each restyle through
+  `ResolutionContext::resolve`. Revisit when a realization keeps nothing and has no
+  retained runtime resolving through the `Resolver`.
+- **`apply_style` taking the style by reference** (2026-10-24), the realization borrowing
+  the compiled record as it does a derived slot's leaf: a realization keeping nothing
+  keeps the style for its restyles, so a borrow would copy every entry of every node
+  once more. The style crosses by value, and a hook that reads it (`LayoutBox::realize`'s
+  creation, `Run::add_realization`) borrows it before it is applied. Revisit when a
+  realization must apply one style to several nodes.
 - **A `.cargo/config.toml` per shell** (2026-10-24), `skene new` writing each shell's
   own configuration naming its platform, so plain cargo in a shell's directory builds
   that shell's platform: cargo reads its configuration from the directory it runs in, so

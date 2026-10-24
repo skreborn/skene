@@ -15,6 +15,7 @@ use crate::{
   NodeId,
   NodeKind,
   Realization,
+  Record,
   Scene,
   SlotLeaf,
   StaticLeaf,
@@ -165,8 +166,8 @@ pub struct LowLevel<P: Realization>(PhantomData<fn() -> P>);
 impl<P: Realization> LowLevel<P> {
   /// Mints a detached node of `kind`, has `make` realize it against a platform's
   /// escape trait, and returns its id, recording the annotation a wrapper around the
-  /// view gave it and applying it to the node as its layout; see
-  /// [`Realization::apply_layout`].
+  /// view gave it and applying it to the node as a style holding that layout alone; see
+  /// [`Realization::apply_style`].
   pub fn realize(kind: NodeKind, make: impl FnOnce(NodeId)) -> NodeId {
     let (node, annotation) = Scene::<P>::with(|scene| {
       let annotation = scene.take_pending_annotation();
@@ -178,8 +179,10 @@ impl<P: Realization> LowLevel<P> {
 
     if let Some(annotation) = annotation {
       let (layout, slots) = annotation.into_style().split();
+      let mut record = Record::new();
 
-      P::apply_layout(node, &layout);
+      record.add_box(&layout);
+      P::apply_style(node, record.into_kept());
 
       for slot in slots {
         bind_slot::<P, _, _>(node, slot);

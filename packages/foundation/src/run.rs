@@ -6,6 +6,7 @@ use skene_reactive::Effect;
 
 use crate::{
   Animation,
+  CompiledStyle,
   Condition,
   DeclaredRunStyle,
   Definition,
@@ -15,6 +16,7 @@ use crate::{
   NodeId,
   NodeKind,
   Realization,
+  Record,
   RunDynamics,
   RunKeyframe,
   RunPlacement,
@@ -46,7 +48,10 @@ pub struct Run<P: Realization> {
   realizations: Vec<Realize<P>>,
 }
 
-type Realize<P> = Box<dyn FnOnce(NodeId, &RunProps<P>)>;
+type Realize<P> = Box<dyn FnOnce(NodeId, &RunProps, &KeptStyle<P>)>;
+
+/// A run's style as the shared half hands it to the platform.
+type KeptStyle<P> = CompiledStyle<<P as Realization>::Scalar, <P as Realization>::StyleExt>;
 
 impl<P: Realization> std::fmt::Debug for Run<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -96,11 +101,12 @@ impl<P: Realization> Run<P> {
     self
   }
 
-  /// Adds `realization`, called with the run's node and props once the platform has
-  /// realized the run, after the realizations added before it.
+  /// Adds `realization`, called with the run's node, its props and the style the
+  /// platform is handed once the platform has created the run, before the style is
+  /// applied and after the realizations added before it.
   pub fn add_realization(
     mut self,
-    realization: impl FnOnce(NodeId, &RunProps<P>) + 'static,
+    realization: impl FnOnce(NodeId, &RunProps, &CompiledStyle<P::Scalar, P::StyleExt>) + 'static,
   ) -> Self {
     self.realizations.push(Box::new(realization));
 
@@ -195,30 +201,36 @@ impl<P: Realization> Run<P> {
 
     let (style, slots) = style.split();
     let annotation = Scene::<P>::with(Scene::take_pending_annotation);
-    let (layout, layout_slots) = annotation.clone().map_or_else(
-      || (None, Vec::new()),
-      |annotation| {
-        let (layout, layout_slots) = annotation.into_style().split_after(slots.len());
+    let mut record = Record::new();
 
-        (Some(Box::new(layout)), layout_slots)
-      },
-    );
+    record.add_run(&style);
+
+    let layout_slots = annotation.clone().map_or_else(Vec::new, |annotation| {
+      let (layout, layout_slots) = annotation.into_style().split_after(slots.len());
+
+      record.add_box(&layout);
+
+      layout_slots
+    });
+
+    record.add_run_dynamics(&self.dynamics);
+
+    let style = record.into_kept();
     let links = self.link.is_some();
     let props = RunProps {
       placement,
       selectable: self.selectable,
       link: self.link,
-      style,
-      layout,
-      dynamics: self.dynamics,
     };
     let node = Scene::<P>::with(|scene| scene.create(NodeKind::Run, annotation));
 
     P::create_run(node, &props);
 
     for realization in self.realizations {
-      realization(node, &props);
+      realization(node, &props, &style);
     }
+
+    P::apply_style(node, style);
 
     if links {
       Scene::<P>::with(|scene| scene.note_focus_order(node, Some(FocusOrder::Auto)));

@@ -16,7 +16,6 @@ use skene_foundation::{
   PopupKind,
   Property,
   PropertyKey,
-  Realization,
   Role,
   SlotValue,
   StaticLeaf,
@@ -307,9 +306,9 @@ pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'sta
 /// The attributes a control's native element carries: its `type`, the `name` a radio
 /// shares with its group's other radios, the placeholder and the lines of a text
 /// entry, and the accessible name when nothing visible supplies one.
-pub(crate) fn native_attributes<P: Realization>(
+pub(crate) fn native_attributes(
   native: FormElement,
-  props: &ControlProps<P>,
+  props: &ControlProps,
 ) -> Vec<(&'static str, String)> {
   let mut attributes = Vec::new();
 

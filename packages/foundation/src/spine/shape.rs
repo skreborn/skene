@@ -22,8 +22,8 @@ impl<C: Clone + PartialEq + Debug + 'static> Shape for Declared<C> {
   type Of<T: Clone + PartialEq + Debug + 'static> = Option<Value<T, C>>;
 }
 
-/// What a platform receives: a conditional [`KeptLeaf`] per set property, every derived
-/// leaf replaced by the slot a render effect writes.
+/// What a record is built from: a conditional [`KeptLeaf`] per set property, every
+/// derived leaf replaced by the slot a render effect writes.
 pub struct Static<C>(PhantomData<fn() -> C>);
 
 impl<C: Clone + PartialEq + Debug + 'static> Shape for Static<C> {

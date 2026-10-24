@@ -12,9 +12,7 @@ mod structure;
 pub(crate) use skene_foundation::Interaction;
 use skene_foundation::{
   Axis,
-  BoxDynamics,
   BoxProps,
-  BoxStyle,
   ColorScheme,
   Layout,
   NodeId,
@@ -199,11 +197,8 @@ impl Records {
         reversed: false,
       },
       role: None,
-      style: BoxStyle::default(),
-      dynamics: BoxDynamics::default(),
       transition_name: None,
       container: None,
-      focus_order: None,
       drag_axes: None,
       access: Vec::new(),
       destination: None,

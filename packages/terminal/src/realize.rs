@@ -8,9 +8,11 @@ use skene_foundation::{
   BoxProps,
   ClipboardAction,
   ColorScheme,
+  CompiledStyle,
   ControlProps,
   ControlState,
   Definitions,
+  Keep,
   Media,
   MediaSignals,
   NativeElement,
@@ -84,6 +86,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
 
 impl Realization for Terminal {
   const FONT_SIZE: f32 = 1.;
+  const KEEP: Keep = Keep::Nothing;
 
   type Scalar = i32;
   type StyleExt = TerminalStyle;
@@ -93,8 +96,20 @@ impl Realization for Terminal {
     &SCENE
   }
 
-  fn create_box(node: NodeId, props: &BoxProps<Self>) {
+  fn create_box(node: NodeId, props: &BoxProps) {
     with_records(|records| records.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
+  }
+
+  fn apply_style(node: NodeId, style: CompiledStyle<i32, TerminalStyle>) {
+    with_records(|records| {
+      if let Some(kept) = records
+        .record_mut(node)
+        .and_then(|record| record.kind.kept_mut())
+      {
+        *kept = style;
+        records.queue_restyle(node);
+      }
+    });
   }
 
   fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<i32, TerminalStyle>) {
@@ -109,7 +124,7 @@ impl Realization for Terminal {
     });
   }
 
-  fn create_control(node: NodeId, props: &ControlProps<Self>) {
+  fn create_control(node: NodeId, props: &ControlProps) {
     let field = props
       .native
       .is_some_and(NativeElement::is_text_entry)
@@ -141,7 +156,7 @@ impl Realization for Terminal {
     });
   }
 
-  fn create_overlay(node: NodeId, props: &OverlayProps<Self>) {
+  fn create_overlay(node: NodeId, props: &OverlayProps) {
     with_records(|records| {
       records.insert_laid_out(
         node,
@@ -195,7 +210,7 @@ impl Realization for Terminal {
     });
   }
 
-  fn create_run(node: NodeId, props: &RunProps<Self>) {
+  fn create_run(node: NodeId, props: &RunProps) {
     let inline_box = props.placement == skene_foundation::RunPlacement::Embedded;
 
     with_records(|records| {

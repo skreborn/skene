@@ -222,8 +222,8 @@ impl<X: StyleExtension> RunFieldVisitor<X> for Overlay<'_, X> {
 }
 
 impl<C: Clone + PartialEq + Debug + 'static, X: StyleExtension> RunStyle<Declared<C>, X> {
-  /// The static style a platform receives, and the derived leaves lifted out of it: each
-  /// slot's index is its position in the list, and its property's field holds
+  /// The static style a record is built from, and the derived leaves lifted out of it:
+  /// each slot's index is its position in the list, and its property's field holds
   /// [`KeptLeaf::Slot`](super::KeptLeaf::Slot) where the leaf was.
   pub fn split(mut self) -> (RunStyle<Static<C>, X>, Vec<RunSlot<X>>) {
     let mut target = RunStyle::default();

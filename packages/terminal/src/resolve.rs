@@ -1,10 +1,18 @@
 //! The one resolution of a node's style: the terminal environment and the node's
-//! interaction feed the shared [`Resolver`], the node's style kept whole resolves
-//! through the shared [`Keep::Nothing`](skene_foundation::Keep::Nothing) entry
-//! ([`CompiledStyle::resolve`](skene_foundation::CompiledStyle::resolve)), and the
-//! terminal fills in what its own vocabulary takes from the typography.
+//! interaction feed the shared [`Resolver`], the node's style as the shared half applied
+//! it resolves through the shared [`Keep::Nothing`](skene_foundation::Keep::Nothing)
+//! entry ([`ResolutionContext::resolve`]), and the terminal fills in what its own
+//! vocabulary takes from the typography.
 
-use skene_foundation::{Color, Frame, ResolutionContext, Resolver, Scene, StaticLeaf, typography};
+use skene_foundation::{
+  Color,
+  Frame,
+  ResolutionContext,
+  ResolvedStyle,
+  Resolver,
+  StaticLeaf,
+  typography,
+};
 
 use crate::{
   BOLD_WEIGHT,
@@ -49,26 +57,18 @@ impl<'a> Env<'a> {
 
   /// A box keyframe of the node's style with every leaf resolved at the node.
   pub(crate) fn resolve_box_keyframe(&self, frame: &Frame<i32, TerminalStyle>) -> PlainBox {
-    self.with_resolver(|resolver| frame.resolve(resolver).boxed)
+    self.context.resolve_frame(frame).boxed
   }
 
   /// A run keyframe of the node's style with every leaf resolved at the node.
   pub(crate) fn resolve_run_keyframe(&self, frame: &Frame<i32, TerminalStyle>) -> PlainRun {
-    self.with_resolver(|resolver| frame.resolve(resolver).run)
-  }
-
-  /// The per-child layout properties a wrapper annotated the node with, resolved into
-  /// an otherwise empty box style.
-  pub(crate) fn resolve_run_layout(&self) -> PlainBox {
-    Scene::<Terminal>::read(|scene| scene.record(self.handle)?.annotation().cloned())
-      .map(|annotation| self.with_resolver(|resolver| annotation.resolve(resolver)))
-      .unwrap_or_default()
+    self.context.resolve_frame(frame).run
   }
 
   /// The box style of the record, every property resolved.
   pub(crate) fn resolve_box(&self) -> Option<PlainBox> {
     let kept = &self.records.record(self.handle)?.kind.box_record()?.kept;
-    let mut style = self.with_resolver(|resolver| kept.resolve(resolver).boxed);
+    let mut style = self.context.resolve(kept).boxed;
 
     if style.ext.border_glyphs.is_none()
       && style.ext.corner_radius.is_some_and(|radius| radius.0 > 0.)
@@ -112,17 +112,21 @@ impl<'a> Env<'a> {
     })
   }
 
-  /// The run style of the record, every property resolved.
-  pub(crate) fn resolve_run(&self) -> Option<PlainRun> {
+  /// The run style of the record, every property resolved, with the per-child layout
+  /// a wrapper annotated the run with, resolved into an otherwise empty box style.
+  pub(crate) fn resolve_run(&self) -> Option<(PlainRun, PlainBox)> {
     let record = self.records.record(self.handle)?;
     let Kind::Run { kept, .. } = &record.kind
     else {
       return None;
     };
-    let mut style = self.with_resolver(|resolver| {
-      let mut style = kept.resolve(resolver).run;
+    let ResolvedStyle {
+      boxed: layout,
+      run: mut style,
+    } = self.context.resolve(kept);
 
-      // A size or weight the run leaves unset is the typography's.
+    // A size or weight the run leaves unset is the typography's.
+    self.with_resolver(|resolver| {
       if style.ext.size.is_none() {
         style.ext.size = resolver.keyframe_run_value(&StaticLeaf::from(typography::SIZE));
       }
@@ -130,14 +134,12 @@ impl<'a> Env<'a> {
       if style.ext.weight.is_none() {
         style.ext.weight = resolver.keyframe_run_value(&StaticLeaf::from(typography::WEIGHT));
       }
-
-      style
     });
 
     if style.ext.bold.is_none() {
       style.ext.bold = style.ext.weight.map(|weight| weight >= BOLD_WEIGHT);
     }
 
-    Some(style)
+    Some((style, layout))
   }
 }

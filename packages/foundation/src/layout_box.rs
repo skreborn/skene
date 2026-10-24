@@ -15,6 +15,7 @@ use crate::{
   Bubbling,
   Children,
   ClickEvent,
+  CompiledStyle,
   ContainerName,
   DeclaredBoxStyle,
   DragAxes,
@@ -37,6 +38,7 @@ use crate::{
   PointerEvent,
   Prevent,
   Realization,
+  Record,
   Role,
   Scene,
   ScrollEvent,
@@ -490,13 +492,18 @@ impl<P: Realization, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
 impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// Realizes the box as a node of `kind`, which `create` realizes on the platform from
-  /// the props: folds the pending annotation into the style, splits it, binds every
-  /// derived slot, the focus order, the accessibility and the handlers, mounts the
-  /// children and returns the node.
+  /// the props, its style beside them: folds the pending annotation into the style,
+  /// splits it, applies its record to the node once created, writes its focus order and
+  /// accessibility, binds every derived slot, the focus order, the accessibility and the
+  /// handlers, mounts the children and returns the node.
   ///
   /// A box builds through this with [`NodeKind::Box`] and [`Realization::create_box`]; a
   /// view realized as another kind supplies its own creation.
-  pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(NodeId, BoxProps<P>)) -> NodeId {
+  pub fn realize(
+    mut self,
+    kind: NodeKind,
+    create: impl FnOnce(NodeId, BoxProps, &CompiledStyle<P::Scalar, P::StyleExt>),
+  ) -> NodeId {
     if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
     }
@@ -531,6 +538,12 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     }
 
     let (style, slots) = (*self.style).split();
+    let mut record = Record::new();
+
+    record.add_box(&style);
+    record.add_box_dynamics(&self.dynamics);
+
+    let style = record.into_kept();
     let focus_order = match &self.focus_order {
       Some(Source::Fixed(focus_order)) => Some(*focus_order),
       Some(Source::Derived(_)) | None => None,
@@ -544,19 +557,19 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     let props = BoxProps {
       layout: self.layout,
       role: self.role,
-      style,
-      dynamics: self.dynamics,
       transition_name: self.transition_name,
       container: self.container,
-      focus_order,
       drag_axes: self.drag_axes,
-      access,
+      access: access.clone(),
       destination: self.destination,
     };
     let container = self.container;
     let node = Scene::<P>::with(|scene| scene.create(kind, None));
 
-    create(node, props);
+    create(node, props, &style);
+    P::apply_style(node, style);
+    P::update_focus_order(node, focus_order);
+    P::update_access(node, &access);
     Scene::<P>::with(|scene| {
       scene.note_focus_order(
         node,
@@ -607,6 +620,6 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
 impl<P: Realization, Kind: 'static> View<P> for LayoutBox<P, Kind> {
   #[inline(always)]
   fn build(self) -> NodeId {
-    self.realize(NodeKind::Box, |node, props| P::create_box(node, &props))
+    self.realize(NodeKind::Box, |node, props, _| P::create_box(node, &props))
   }
 }

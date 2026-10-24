@@ -54,9 +54,10 @@ in a code comment.
     `ControlSink`, for a native view no built-in covers. `skene new`'s app and library
     scaffolds take that shape, and the gate compiles what they write on every platform
     they name, so a scaffold cannot fall behind the surface it teaches.
-    - The seam: a realization receives properties under Skene's own names as one generic
-    record, at the `Keep` level it declares, contents typed and atomic, and reports each
-    write applied or not.
+    - The seam: contents typed and atomic, and each write reported applied or not.
+    - The scene drops the copy of a wrapper's annotation it records per node
+    (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
+    crosses in its style alone, and nothing reads the copy.
     - No signature above the realizations names one, every `P: Realization` there
     going: behaviors reach the build's one realization through a table of plain
     functions filled from it once per build.

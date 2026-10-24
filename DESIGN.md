@@ -101,9 +101,10 @@ the control state and reports it holds, which the platforms read rather than cop
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts). Its methods are the
 portable vocabulary over node ids: realize boxes, controls, overlays and runs, write a
-derived slot's erased leaf into it (`apply_slot`), realize anchors and scopes, mirror tree mutations, define tokens on a
-`TokenScope` (one call, a node's or the root's, the root a scope like any other), register
-event kinds, focus, set values, observe sizes, report media.
+derived slot's erased leaf into it (`apply_slot`), realize anchors and scopes, mirror
+tree mutations, define tokens on a `TokenScope` (one call, a node's or the root's, the
+root a scope like any other), register event kinds, focus, set values, observe sizes,
+report media.
 `Painted` and embeds are deliberately outside it—their payloads never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free

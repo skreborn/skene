@@ -65,7 +65,7 @@ pub use condition::{
   State,
 };
 pub use condition_tree::{ConditionShape, ConditionTree};
-pub use control::{ControlProps, ControlState, NativeElement, Part, PickerOption};
+pub use control::{ControlFacts, ControlState, NativeElement, Part, PickerOption};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,
@@ -150,17 +150,19 @@ pub use node::NodeId;
 pub use node_map::NodeMap;
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{
+  BoxFacts,
   BoxKeyframe,
-  BoxProps,
   ContainerSizes,
   DeclaredBoxStyle,
   DeclaredRunStyle,
   EventKind,
   MediaSignals,
   MediaWriters,
-  OverlayProps,
+  NodeFacts,
+  NodeSpec,
+  OverlayFacts,
+  RunFacts,
   RunKeyframe,
-  RunProps,
   StaticBoxStyle,
   StaticRunStyle,
 };

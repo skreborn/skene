@@ -206,17 +206,17 @@ fn name_facts(node: NodeId) -> NameFacts {
     };
     let access = || Scene::<Terminal>::read(|scene| scene.access(node));
     let facts = match &record.kind {
-      Kind::Run { props, .. } => NameFacts::of_run(props, record.text.clone()),
-      Kind::Box(inner) => NameFacts::of_box(&inner.props, access()),
-      Kind::Overlay {
-        inner, role, open, ..
-      } => NameFacts::of_box(&inner.props, access()).with_overlay(*role, *open),
+      Kind::Run { facts, .. } => NameFacts::of_run(facts, record.text.clone()),
+      Kind::Box(inner) => NameFacts::of_box(inner.role, &inner.facts, access()),
+      Kind::Overlay { inner, open, .. } => {
+        NameFacts::of_box(inner.role, &inner.facts, access()).with_overlay(inner.role, *open)
+      }
       Kind::Control {
         native,
         label,
         inner,
         field,
-      } => NameFacts::of_box(&inner.props, access()).with_control(
+      } => NameFacts::of_box(inner.role, &inner.facts, access()).with_control(
         *native,
         label.clone(),
         field.as_ref().and_then(|field| field.placeholder.clone()),

@@ -101,12 +101,16 @@ the control state and reports it holds, which the platforms read rather than cop
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts), with the constant
 `KEEP` (the `Keep` level of a style its toolkit keeps unresolved). Its methods are the
-portable vocabulary over node ids: realize boxes, controls, overlays and runs, give each
-its style once as the shared half compiled its record (`apply_style`), write a derived
-slot's erased leaf into it (`apply_slot`), realize anchors and scopes, mirror tree
-mutations, define tokens on a `TokenScope` (one call, a node's or the root's, the root a
-scope like any other), register event kinds, focus, set values, observe sizes, report
-media.
+portable vocabulary over node ids: create every node, a box, a control, an overlay, a
+run, an anchor or a scope, from one `NodeSpec` (`create`: its role, its heading level,
+its drag axes and its kind's facts, a fact of another kind unrepresentable), give a
+box, a control, an overlay or a run its style once as the shared half compiled its
+record (`apply_style`), write a derived slot's erased leaf into it (`apply_slot`),
+mirror tree mutations, define tokens on a `TokenScope` (one call, a node's or the
+root's, the root a scope like any other), register event kinds, focus, set values,
+observe sizes, report media. A node's focus order and accessibility are not part of its
+spec: the shared half writes them once its style is applied (`update_focus_order`,
+`update_access`), which on the web keeps the attribute order a render emits.
 `Painted` and embeds are deliberately outside it—their payloads never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
@@ -502,27 +506,27 @@ re-export.
   `Hovered` and `Focused` stay its own. On the web a control that owns a native input
   compiles control state to a selector anchored on that input; natively it is the
   control's own state.
-- **The scriptless form is the control.** A text field or editor is its native
-  `<input>` or `<textarea>` itself, decorated as the box; a checkbox, radio or slider
-  keeps its native input inside its label, covering the label's box unseen and
-  focusable, beside the parts that draw it, which take the press it lets through, as a
-  run inside any control leaves a press to the box it falls in. So keyboard, form
-  participation and accessibility are the browser's before and after hydration and
-  nothing is swapped. A radio group's radios share the group's element id as their
-  `name` (a member names its collection through `Behavior::group`, carried to the
-  platform as `ControlProps::group`), so before the bundle the browser keeps one of
-  them chosen and submits them as one field, and a choice made there reaches the
-  signal as any adopted toggle does; since the browser unchecks the others with the
-  one it checks, a toggle reported on one member re-reads every member's state. The
-  picker alone is drawn (no engine but Chromium restyles an open `<select>` yet), so it
-  is an `Enhance` of its own: its scriptless form is a `NativePicker` control, a
-  `<select>` on the web, listing the options the option views name, its caption a
-  `<label for>` beside it and the chosen value selected; the option views build once,
-  under the group both forms answer through, and attach nowhere until the drawn form
-  lists them, and the caption builds once and each form mounts it with its name and
-  the disabled setting, so a swap rebuilds nothing but the face; a choice the reader
-  made in the `<select>` before the bundle arrived reaches the signal as any adopted
-  live value does, and the drawn face that takes the select's place shows it.
+- **The scriptless form is the control.** A text field or editor is its native `<input>`
+  or `<textarea>` itself, decorated as the box; a checkbox, radio or slider keeps its
+  native input inside its label, covering the label's box unseen and focusable, beside
+  the parts that draw it, which take the press it lets through, as a run inside any
+  control leaves a press to the box it falls in. So keyboard, form participation and
+  accessibility are the browser's before and after hydration and nothing is swapped. A
+  radio group's radios share the group's element id as their `name` (a member names its
+  collection through `Behavior::group`, carried to the platform as the `group` of its
+  spec's `ControlFacts`), so before the bundle the browser keeps one of them chosen and
+  submits them as one field, and a choice made there reaches the signal as any adopted
+  toggle does; since the browser unchecks the others with the one it checks, a toggle
+  reported on one member re-reads every member's state. The picker alone is drawn (no
+  engine but Chromium restyles an open `<select>` yet), so it is an `Enhance` of its
+  own: its scriptless form is a `NativePicker` control, a `<select>` on the web, listing
+  the options the option views name, its caption a `<label for>` beside it and the
+  chosen value selected; the option views build once, under the group both forms answer
+  through, and attach nowhere until the drawn form lists them, and the caption builds
+  once and each form mounts it with its name and the disabled setting, so a swap
+  rebuilds nothing but the face; a choice the reader made in the `<select>` before the
+  bundle arrived reaches the signal as any adopted live value does, and the drawn face
+  that takes the select's place shows it.
 - **Accessibility is reported, never spelled.** A behavior reports what it is
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
@@ -565,10 +569,10 @@ re-export.
   behavior every platform must share is a scenario, and a divergence the suite finds is
   fixed in the platform, never excused in the suite. The
   rules those scenarios exercise that a platform realizing its own overlays would
-  otherwise copy live in the spine: an overlay's role
-  (`OverlayProps::role`: a hint's tooltip, a modal's dialog) and the focus a closing
-  overlay returns, to the node focused when it opened or its anchor's nearest
-  focusable, as a browser's top layer does.
+  otherwise copy live in the spine: an overlay's role, which `NodeSpec::new` computes
+  (a hint's tooltip, a modal's dialog), and the focus a closing overlay returns, to
+  the node focused when it opened or its anchor's nearest focusable, as a browser's
+  top layer does.
 - **A platform that names its nodes itself names them once.** The browser computes
   accessible names; everywhere else the spine does (`Scene::accessible_name`), over the
   scene's structure and parts and the facts a platform records of each node
@@ -805,11 +809,12 @@ Condition     = Media | State | And | Or
   wrapper annotated it with, then its motion), compiles it at `Keep::Everything` by value
   (`into_kept`, the entries moved rather than copied) and hands it to the realization
   through `apply_style` once the node is created, before any token definition on it,
-  and `BoxProps` and `RunProps` carry the construction facts alone. A realization's
-  `KEEP` says what it keeps: the web keeps everything and compiles the style as it
-  arrives, and one keeping nothing keeps it and resolves it at every restyle through
-  `ResolutionContext::resolve` (each keyframe through `resolve_frame`), which is
-  `KEEP`'s one reader: it asserts at compile time that its realization keeps nothing.
+  and the `NodeSpec` it was created from carries the construction facts alone. A
+  realization's `KEEP` says what it keeps: the web keeps everything and compiles the
+  style as it arrives, and one keeping nothing keeps it and resolves it at every
+  restyle through `ResolutionContext::resolve` (each keyframe through
+  `resolve_frame`), which is `KEEP`'s one reader: it asserts at compile time that its
+  realization keeps nothing.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.

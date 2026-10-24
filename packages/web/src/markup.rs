@@ -8,7 +8,7 @@ use skene_foundation::{
   BoxValue,
   CheckState,
   Conditional,
-  ControlProps,
+  ControlFacts,
   FocusOrder,
   KeptLeaf,
   NativeElement,
@@ -308,7 +308,7 @@ pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'sta
 /// entry, and the accessible name when nothing visible supplies one.
 pub(crate) fn native_attributes(
   native: FormElement,
-  props: &ControlProps,
+  control: &ControlFacts,
 ) -> Vec<(&'static str, String)> {
   let mut attributes = Vec::new();
 
@@ -316,19 +316,19 @@ pub(crate) fn native_attributes(
     attributes.push(("type", kind.to_owned()));
   }
 
-  if let (Some("radio"), Some(group)) = (native.kind, props.group) {
+  if let (Some("radio"), Some(group)) = (native.kind, control.group) {
     attributes.push(("name", element_id(group)));
   }
 
-  if let Some(placeholder) = &props.placeholder {
+  if let Some(placeholder) = &control.placeholder {
     attributes.push(("placeholder", placeholder.clone()));
   }
 
   if native.tag == "textarea" {
-    attributes.push(("rows", props.lines.to_string()));
+    attributes.push(("rows", control.lines.to_string()));
   }
 
-  if let Some(label) = &props.label {
+  if let Some(label) = &control.label {
     attributes.push(("aria-label", label.clone()));
   }
 

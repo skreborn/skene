@@ -22,7 +22,7 @@ use super::{
   AccessText,
   AccessTextPosition,
   Axis,
-  BoxProps,
+  BoxFacts,
   CheckState,
   NativeElement,
   NodeId,
@@ -30,8 +30,8 @@ use super::{
   PopupKind,
   Realization,
   Role,
+  RunFacts,
   RunPlacement,
-  RunProps,
   Scene,
 };
 
@@ -44,7 +44,7 @@ pub struct NameFacts {
   pub role: Option<Role>,
   /// What the node reports to assistive technology.
   pub access: Vec<AccessProp>,
-  /// The name a control's props were created with.
+  /// The name a control was created with.
   pub label: Option<String>,
   /// A run's text.
   pub text: Option<String>,
@@ -65,26 +65,26 @@ pub struct NameFacts {
 }
 
 impl NameFacts {
-  /// The facts of a run holding `text`, created with `props`.
-  pub fn of_run(props: &RunProps, text: String) -> Self {
-    let link = props.link.is_some();
+  /// The facts of a run holding `text`, created from `facts`.
+  pub fn of_run(facts: &RunFacts, text: String) -> Self {
+    let link = facts.link.is_some();
 
     Self {
       role: link.then_some(Role::Link),
       text: Some(text),
       link,
-      block: props.placement == RunPlacement::Line,
+      block: facts.placement == RunPlacement::Line,
       ..Self::default()
     }
   }
 
-  /// The facts of a box, a control or an overlay created with `props`, reporting
-  /// `access`.
-  pub fn of_box(props: &BoxProps, access: Vec<AccessProp>) -> Self {
-    let link = props.destination.is_some();
+  /// The facts of a box, a control or an overlay created stating `role` from the box
+  /// `facts`, reporting `access`.
+  pub fn of_box(role: Option<Role>, facts: &BoxFacts, access: Vec<AccessProp>) -> Self {
+    let link = facts.destination.is_some();
 
     Self {
-      role: props.role.or(link.then_some(Role::Link)),
+      role: role.or(link.then_some(Role::Link)),
       access,
       link,
       block: true,
@@ -265,8 +265,8 @@ impl<P: Realization> Scene<P> {
   /// computation, each node read through `facts`.
   ///
   /// In its order: the text alternatives of the nodes it is labelled by, else the label
-  /// its accessibility properties carry, else the name a control's props were created
-  /// with, else the text alternative of its [`Part::Label`], else a text entry's
+  /// its accessibility properties carry, else the name a control was created with,
+  /// else the text alternative of its [`Part::Label`], else a text entry's
   /// placeholder, else, where its role or its link takes its name from its content, the
   /// text alternatives of its children.
   ///

@@ -23,14 +23,14 @@ use rustc_hash::FxHashMap;
 use skene_foundation::{
   Animation,
   Axis,
-  BoxProps,
+  BoxFacts,
   BoxStyle,
   BoxValue,
   BoxVisitor,
   Color,
   CompiledStyle,
   ContainerName,
-  ControlProps,
+  ControlFacts,
   Definitions,
   Dimension,
   Fingerprint,
@@ -42,14 +42,14 @@ use skene_foundation::{
   Layout,
   NativeElement,
   Overflow,
-  OverlayProps,
+  OverlayFacts,
   Placement,
   Plain,
   Property,
   PropertyKey,
   RecordValue,
+  RunFacts,
   RunPlacement,
-  RunProps,
   RunStyle,
   RunValue,
   RunVisitor,
@@ -632,10 +632,10 @@ fn layout_declarations(layout: Layout) -> Declarations {
   }
 }
 
-/// What a box's construction gives its rule template beside its style.
+/// What a box's facts give its rule template beside its style.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[must_use]
-pub(crate) struct BoxFacts {
+pub(crate) struct BoxTemplate {
   /// The layout mode.
   pub layout: Layout,
   /// The name the box publishes for container queries against its size.
@@ -644,13 +644,13 @@ pub(crate) struct BoxFacts {
   pub transition_name: Option<String>,
 }
 
-impl BoxFacts {
-  /// The facts of a box's props.
-  fn of(props: &BoxProps) -> Self {
+impl BoxTemplate {
+  /// What the template of a box of `facts` reads of them.
+  fn of(facts: &BoxFacts) -> Self {
     Self {
-      layout: props.layout,
-      container: props.container,
-      transition_name: props.transition_name.clone(),
+      layout: facts.layout,
+      container: facts.container,
+      transition_name: facts.transition_name.clone(),
     }
   }
 
@@ -687,18 +687,18 @@ impl BoxFacts {
 #[must_use]
 pub(crate) enum Template {
   /// A box.
-  Box(BoxFacts),
+  Box(BoxTemplate),
   /// A control.
   Control {
     /// Its box's facts.
-    boxed: BoxFacts,
+    boxed: BoxTemplate,
     /// Whether its native element is a text entry.
     entry: bool,
   },
   /// An overlay.
   Overlay {
     /// Its box's facts.
-    boxed: BoxFacts,
+    boxed: BoxTemplate,
     /// Where it sits.
     placement: Placement,
     /// The backdrop color painted over the app while it is open, if any.
@@ -716,33 +716,33 @@ pub(crate) enum Template {
 }
 
 impl Template {
-  /// The template of a box of `props`.
-  pub(crate) fn boxed(props: &BoxProps) -> Self {
-    Self::Box(BoxFacts::of(props))
+  /// The template of a box of `facts`.
+  pub(crate) fn boxed(facts: &BoxFacts) -> Self {
+    Self::Box(BoxTemplate::of(facts))
   }
 
-  /// The template of a control of `props`.
-  pub(crate) fn control(props: &ControlProps) -> Self {
+  /// The template of a control of `facts`.
+  pub(crate) fn control(facts: &ControlFacts) -> Self {
     Self::Control {
-      boxed: BoxFacts::of(&props.box_props),
-      entry: props.native.is_some_and(NativeElement::is_text_entry),
+      boxed: BoxTemplate::of(&facts.boxed),
+      entry: facts.native.is_some_and(NativeElement::is_text_entry),
     }
   }
 
-  /// The template of an overlay of `props`.
-  pub(crate) fn overlay(props: &OverlayProps) -> Self {
+  /// The template of an overlay of `facts`.
+  pub(crate) fn overlay(facts: &OverlayFacts) -> Self {
     Self::Overlay {
-      boxed: BoxFacts::of(&props.box_props),
-      placement: props.placement,
-      backdrop: props.backdrop,
+      boxed: BoxTemplate::of(&facts.boxed),
+      placement: facts.placement,
+      backdrop: facts.backdrop,
     }
   }
 
-  /// The template of a run of `props`.
-  pub(crate) const fn run(props: &RunProps) -> Self {
+  /// The template of a run of `facts`.
+  pub(crate) const fn run(facts: &RunFacts) -> Self {
     Self::Run {
-      placement: props.placement,
-      selectable: props.selectable,
+      placement: facts.placement,
+      selectable: facts.selectable,
     }
   }
 
@@ -815,7 +815,7 @@ fn compile_box_with(style: &KeptStyle, base: Declarations) -> Compiled {
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
-fn compile_box(style: &KeptStyle, boxed: &BoxFacts) -> Compiled {
+fn compile_box(style: &KeptStyle, boxed: &BoxTemplate) -> Compiled {
   let mut compiled = compile_box_with(style, boxed.base(style));
 
   if boxed.layout == Layout::Stack {
@@ -842,7 +842,7 @@ fn compile_layout(style: &KeptStyle) -> Compiled {
 /// The rule template of a control: its box's, over the control reset that strips the
 /// native element's own chrome; a text `entry`'s value is inked and selected by the
 /// typography inherited at it.
-fn compile_control(style: &KeptStyle, boxed: &BoxFacts, entry: bool) -> Compiled {
+fn compile_control(style: &KeptStyle, boxed: &BoxTemplate, entry: bool) -> Compiled {
   let ink = if entry {
     token_reference(typography::INK.name())
   }
@@ -897,7 +897,7 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// backdrop.
 fn compile_overlay(
   style: &KeptStyle,
-  boxed: &BoxFacts,
+  boxed: &BoxTemplate,
   placement: Placement,
   backdrop: Option<Color>,
 ) -> Compiled {
@@ -1180,7 +1180,7 @@ mod tests {
     StaticLeaf,
   };
 
-  use super::{BoxFacts, KeptStyle, Template};
+  use super::{BoxTemplate, KeptStyle, Template};
   use crate::platform::web::Web;
 
   /// A style kept at `Keep::Everything`, its height set where `height` says.
@@ -1220,7 +1220,7 @@ mod tests {
     ] {
       for container in [None, Some(ContainerName("card"))] {
         for transition_name in [None, Some("hero")] {
-          boxes.push(BoxFacts {
+          boxes.push(BoxTemplate {
             layout,
             container,
             transition_name: transition_name.map(str::to_owned),

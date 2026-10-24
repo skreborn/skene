@@ -672,7 +672,7 @@ mod tests {
         Some("font_size"),
       ),
       (
-        "pub skene_foundation::RunProps::placement: skene_foundation::RunPlacement",
+        "pub skene_foundation::RunFacts::placement: skene_foundation::RunPlacement",
         Some("placement"),
       ),
       (

@@ -1,6 +1,6 @@
 //! How a link opens and what it discloses to its destination.
 
-use skene_foundation::{NodeId, RunProps};
+use skene_foundation::{NodeFacts, NodeId, NodeSpec, RunFacts};
 
 use crate::Active;
 
@@ -100,12 +100,14 @@ impl LinkPolicy {
     attributes
   }
 
-  /// Rewrites the attributes of the link `props` realized at `node`, given the default
+  /// Rewrites the attributes of the link `spec` realized at `node`, given the default
   /// policy's, as this policy gives them.
-  pub(crate) fn realize(self, node: NodeId, props: &RunProps) {
+  pub(crate) fn realize(self, node: NodeId, spec: &NodeSpec) {
     use crate::low_level::WebMarkup;
 
-    let Some(href) = props.link.as_deref()
+    let NodeFacts::Run(RunFacts {
+      link: Some(href), ..
+    }) = &spec.facts
     else {
       return;
     };

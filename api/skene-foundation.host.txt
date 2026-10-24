@@ -3734,6 +3734,17 @@ impl core::marker::Copy for skene_foundation::NoValue
 impl core::marker::StructuralPartialEq for skene_foundation::NoValue
 impl skene_foundation::Fingerprint for skene_foundation::NoValue
 pub fn skene_foundation::NoValue::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub enum skene_foundation::NodeFacts
+pub skene_foundation::NodeFacts::Anchor
+pub skene_foundation::NodeFacts::Box(skene_foundation::BoxFacts)
+pub skene_foundation::NodeFacts::Control(skene_foundation::ControlFacts)
+pub skene_foundation::NodeFacts::Overlay(skene_foundation::OverlayFacts)
+pub skene_foundation::NodeFacts::Run(skene_foundation::RunFacts)
+pub skene_foundation::NodeFacts::Scope
+impl core::clone::Clone for skene_foundation::NodeFacts
+pub fn skene_foundation::NodeFacts::clone(&self) -> skene_foundation::NodeFacts
+impl core::fmt::Debug for skene_foundation::NodeFacts
+pub fn skene_foundation::NodeFacts::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_foundation::NodeKind
 pub skene_foundation::NodeKind::Anchor
 pub skene_foundation::NodeKind::Box
@@ -4661,18 +4672,15 @@ impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> core::def
 pub fn skene_foundation::BoxDynamics<N, X>::default() -> Self
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::BoxDynamics<N, X>
 pub fn skene_foundation::BoxDynamics<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-pub struct skene_foundation::BoxProps
-pub skene_foundation::BoxProps::access: alloc::vec::Vec<skene_foundation::AccessProp>
-pub skene_foundation::BoxProps::container: core::option::Option<skene_foundation::ContainerName>
-pub skene_foundation::BoxProps::destination: core::option::Option<alloc::string::String>
-pub skene_foundation::BoxProps::drag_axes: core::option::Option<skene_foundation::DragAxes>
-pub skene_foundation::BoxProps::layout: skene_foundation::Layout
-pub skene_foundation::BoxProps::role: core::option::Option<accesskit::Role>
-pub skene_foundation::BoxProps::transition_name: core::option::Option<alloc::string::String>
-impl core::clone::Clone for skene_foundation::BoxProps
-pub fn skene_foundation::BoxProps::clone(&self) -> skene_foundation::BoxProps
-impl core::fmt::Debug for skene_foundation::BoxProps
-pub fn skene_foundation::BoxProps::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::BoxFacts
+pub skene_foundation::BoxFacts::container: core::option::Option<skene_foundation::ContainerName>
+pub skene_foundation::BoxFacts::destination: core::option::Option<alloc::string::String>
+pub skene_foundation::BoxFacts::layout: skene_foundation::Layout
+pub skene_foundation::BoxFacts::transition_name: core::option::Option<alloc::string::String>
+impl core::clone::Clone for skene_foundation::BoxFacts
+pub fn skene_foundation::BoxFacts::clone(&self) -> skene_foundation::BoxFacts
+impl core::fmt::Debug for skene_foundation::BoxFacts
+pub fn skene_foundation::BoxFacts::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::BoxStyle<N: skene_foundation::Scalar, S: skene_foundation::Shape, X: skene_foundation::StyleExtension>
 pub skene_foundation::BoxStyle::arrangement: <S as skene_foundation::Shape>::Of
 pub skene_foundation::BoxStyle::aspect_ratio: <S as skene_foundation::Shape>::Of
@@ -5281,6 +5289,18 @@ impl<P: skene_foundation::Realization, B: skene_foundation::Behavior<P>> skene_f
 pub fn skene_foundation::Control<P, B>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Control<P, B>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Control<P, B>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::ControlFacts
+pub skene_foundation::ControlFacts::boxed: skene_foundation::BoxFacts
+pub skene_foundation::ControlFacts::group: core::option::Option<skene_foundation::NodeId>
+pub skene_foundation::ControlFacts::label: core::option::Option<alloc::string::String>
+pub skene_foundation::ControlFacts::label_beside: bool
+pub skene_foundation::ControlFacts::lines: u16
+pub skene_foundation::ControlFacts::native: core::option::Option<skene_foundation::NativeElement>
+pub skene_foundation::ControlFacts::placeholder: core::option::Option<alloc::string::String>
+impl core::clone::Clone for skene_foundation::ControlFacts
+pub fn skene_foundation::ControlFacts::clone(&self) -> skene_foundation::ControlFacts
+impl core::fmt::Debug for skene_foundation::ControlFacts
+pub fn skene_foundation::ControlFacts::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::ControlHandle<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::ControlHandle<P>
 pub fn skene_foundation::ControlHandle<P>::click(&self, &skene_foundation::ClickEvent) -> skene_foundation::Prevented
@@ -5293,18 +5313,6 @@ pub const fn skene_foundation::ControlHandle<P>::node(&self) -> skene_foundation
 pub fn skene_foundation::ControlHandle<P>::refresh(&self)
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::ControlHandle<P>
 pub fn skene_foundation::ControlHandle<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_foundation::ControlProps
-pub skene_foundation::ControlProps::box_props: skene_foundation::BoxProps
-pub skene_foundation::ControlProps::group: core::option::Option<skene_foundation::NodeId>
-pub skene_foundation::ControlProps::label: core::option::Option<alloc::string::String>
-pub skene_foundation::ControlProps::label_beside: bool
-pub skene_foundation::ControlProps::lines: u16
-pub skene_foundation::ControlProps::native: core::option::Option<skene_foundation::NativeElement>
-pub skene_foundation::ControlProps::placeholder: core::option::Option<alloc::string::String>
-impl core::clone::Clone for skene_foundation::ControlProps
-pub fn skene_foundation::ControlProps::clone(&self) -> skene_foundation::ControlProps
-impl core::fmt::Debug for skene_foundation::ControlProps
-pub fn skene_foundation::ControlProps::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::ControlState
 pub skene_foundation::ControlState::checked: skene_foundation::CheckState
 pub skene_foundation::ControlState::disabled: bool
@@ -6112,7 +6120,7 @@ pub fn skene_foundation::LayoutBox<P, Kind>::set_transition_name(self, impl core
 pub fn skene_foundation::LayoutBox<P, Kind>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub const fn skene_foundation::LayoutBox<P, Kind>::style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
 impl<P: skene_foundation::Realization, Kind: 'static> skene_foundation::LayoutBox<P, Kind>
-pub fn skene_foundation::LayoutBox<P, Kind>::realize(self, skene_foundation::NodeKind, impl core::ops::function::FnOnce(skene_foundation::NodeId, skene_foundation::BoxProps, &skene_foundation::CompiledStyle<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>)) -> skene_foundation::NodeId
+pub fn skene_foundation::LayoutBox<P, Kind>::realize(self, impl core::ops::function::FnOnce(skene_foundation::BoxFacts) -> skene_foundation::NodeFacts, impl core::ops::function::FnOnce(skene_foundation::NodeId, &skene_foundation::NodeSpec, &skene_foundation::CompiledStyle<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>)) -> skene_foundation::NodeId
 impl<P: skene_foundation::Realization, Kind: 'static> skene_foundation::AnyKind for skene_foundation::LayoutBox<P, Kind>
 impl<P: skene_foundation::Realization, Kind: 'static> skene_foundation::HasChildren<P> for skene_foundation::LayoutBox<P, Kind>
 pub type skene_foundation::LayoutBox<P, Kind>::Kind = Kind
@@ -6418,8 +6426,8 @@ pub skene_foundation::NameFacts::text: core::option::Option<alloc::string::Strin
 pub skene_foundation::NameFacts::text_runs: core::option::Option<skene_foundation::AccessText>
 pub skene_foundation::NameFacts::value: core::option::Option<alloc::string::String>
 impl skene_foundation::NameFacts
-pub fn skene_foundation::NameFacts::of_box(&skene_foundation::BoxProps, alloc::vec::Vec<skene_foundation::AccessProp>) -> Self
-pub fn skene_foundation::NameFacts::of_run(&skene_foundation::RunProps, alloc::string::String) -> Self
+pub fn skene_foundation::NameFacts::of_box(core::option::Option<accesskit::Role>, &skene_foundation::BoxFacts, alloc::vec::Vec<skene_foundation::AccessProp>) -> Self
+pub fn skene_foundation::NameFacts::of_run(&skene_foundation::RunFacts, alloc::string::String) -> Self
 pub fn skene_foundation::NameFacts::with_control(self, core::option::Option<skene_foundation::NativeElement>, core::option::Option<alloc::string::String>, core::option::Option<alloc::string::String>, core::option::Option<alloc::string::String>) -> Self
 pub fn skene_foundation::NameFacts::with_overlay(self, core::option::Option<accesskit::Role>, bool) -> Self
 impl core::clone::Clone for skene_foundation::NameFacts
@@ -6539,6 +6547,21 @@ pub const fn skene_foundation::NodeRecord<P>::part(&self) -> core::option::Optio
 pub const fn skene_foundation::NodeRecord<P>::position(&self) -> &skene_reactive::path::SnapshotPlace
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::NodeRecord<P>
 pub fn skene_foundation::NodeRecord<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::NodeSpec
+pub skene_foundation::NodeSpec::drag: core::option::Option<skene_foundation::DragAxes>
+pub skene_foundation::NodeSpec::facts: skene_foundation::NodeFacts
+pub skene_foundation::NodeSpec::level: core::option::Option<usize>
+pub skene_foundation::NodeSpec::role: core::option::Option<accesskit::Role>
+impl skene_foundation::NodeSpec
+pub const fn skene_foundation::NodeSpec::anchor() -> Self
+pub const fn skene_foundation::NodeSpec::box_facts(&self) -> core::option::Option<&skene_foundation::BoxFacts>
+pub const fn skene_foundation::NodeSpec::kind(&self) -> skene_foundation::NodeKind
+pub const fn skene_foundation::NodeSpec::new(core::option::Option<accesskit::Role>, core::option::Option<usize>, core::option::Option<skene_foundation::DragAxes>, skene_foundation::NodeFacts) -> Self
+pub const fn skene_foundation::NodeSpec::scope() -> Self
+impl core::clone::Clone for skene_foundation::NodeSpec
+pub fn skene_foundation::NodeSpec::clone(&self) -> skene_foundation::NodeSpec
+impl core::fmt::Debug for skene_foundation::NodeSpec
+pub fn skene_foundation::NodeSpec::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Number(pub f32)
 impl core::clone::Clone for skene_foundation::Number
 pub fn skene_foundation::Number::clone(&self) -> skene_foundation::Number
@@ -6645,18 +6668,18 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::Overlay<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Overlay<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Overlay<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-pub struct skene_foundation::OverlayProps
-pub skene_foundation::OverlayProps::backdrop: core::option::Option<skene_foundation::Color>
-pub skene_foundation::OverlayProps::box_props: skene_foundation::BoxProps
-pub skene_foundation::OverlayProps::hint: bool
-pub skene_foundation::OverlayProps::modal: bool
-pub skene_foundation::OverlayProps::placement: skene_foundation::Placement
-impl skene_foundation::OverlayProps
-pub fn skene_foundation::OverlayProps::role(&self) -> core::option::Option<accesskit::Role>
-impl core::clone::Clone for skene_foundation::OverlayProps
-pub fn skene_foundation::OverlayProps::clone(&self) -> skene_foundation::OverlayProps
-impl core::fmt::Debug for skene_foundation::OverlayProps
-pub fn skene_foundation::OverlayProps::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::OverlayFacts
+pub skene_foundation::OverlayFacts::backdrop: core::option::Option<skene_foundation::Color>
+pub skene_foundation::OverlayFacts::boxed: skene_foundation::BoxFacts
+pub skene_foundation::OverlayFacts::hint: bool
+pub skene_foundation::OverlayFacts::modal: bool
+pub skene_foundation::OverlayFacts::placement: skene_foundation::Placement
+impl skene_foundation::OverlayFacts
+pub const fn skene_foundation::OverlayFacts::role(&self, core::option::Option<accesskit::Role>) -> core::option::Option<accesskit::Role>
+impl core::clone::Clone for skene_foundation::OverlayFacts
+pub fn skene_foundation::OverlayFacts::clone(&self) -> skene_foundation::OverlayFacts
+impl core::fmt::Debug for skene_foundation::OverlayFacts
+pub fn skene_foundation::OverlayFacts::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Painted<P: skene_foundation::Painting>
 impl<P: skene_foundation::Painting> skene_foundation::Painted<P>
 pub fn skene_foundation::Painted<P>::new(impl core::ops::function::Fn(&mut skene_foundation::Canvas, skene_foundation::Size<f32>) + 'static) -> Self
@@ -7110,7 +7133,7 @@ pub fn skene_foundation::Row<P>::set_key(self, impl core::hash::Hash) -> skene_f
 pub struct skene_foundation::Run<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Run<P>
 pub fn skene_foundation::Run<P>::add_animation(self, skene_foundation::Animation<skene_foundation::RunKeyframe<P>>) -> Self
-pub fn skene_foundation::Run<P>::add_realization(self, impl core::ops::function::FnOnce(skene_foundation::NodeId, &skene_foundation::RunProps, &skene_foundation::CompiledStyle<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>) + 'static) -> Self
+pub fn skene_foundation::Run<P>::add_realization(self, impl core::ops::function::FnOnce(skene_foundation::NodeId, &skene_foundation::NodeSpec, &skene_foundation::CompiledStyle<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>) + 'static) -> Self
 pub fn skene_foundation::Run<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Run<P>::build(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId
 pub fn skene_foundation::Run<P>::build_group(self, skene_foundation::RunPlacement) -> skene_foundation::NodeId where <P as skene_foundation::Realization>::StyleExt: skene_foundation::TypeMetrics
@@ -7136,14 +7159,14 @@ impl<X: skene_foundation::StyleExtension> core::default::Default for skene_found
 pub fn skene_foundation::RunDynamics<X>::default() -> Self
 impl<X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunDynamics<X>
 pub fn skene_foundation::RunDynamics<X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-pub struct skene_foundation::RunProps
-pub skene_foundation::RunProps::link: core::option::Option<alloc::string::String>
-pub skene_foundation::RunProps::placement: skene_foundation::RunPlacement
-pub skene_foundation::RunProps::selectable: bool
-impl core::clone::Clone for skene_foundation::RunProps
-pub fn skene_foundation::RunProps::clone(&self) -> skene_foundation::RunProps
-impl core::fmt::Debug for skene_foundation::RunProps
-pub fn skene_foundation::RunProps::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::RunFacts
+pub skene_foundation::RunFacts::link: core::option::Option<alloc::string::String>
+pub skene_foundation::RunFacts::placement: skene_foundation::RunPlacement
+pub skene_foundation::RunFacts::selectable: bool
+impl core::clone::Clone for skene_foundation::RunFacts
+pub fn skene_foundation::RunFacts::clone(&self) -> skene_foundation::RunFacts
+impl core::fmt::Debug for skene_foundation::RunFacts
+pub fn skene_foundation::RunFacts::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::RunStyle<S: skene_foundation::Shape, X: skene_foundation::StyleExtension>
 pub skene_foundation::RunStyle::color: <S as skene_foundation::Shape>::Of
 pub skene_foundation::RunStyle::decoration: <S as skene_foundation::Shape>::Of
@@ -9642,12 +9665,7 @@ pub fn skene_foundation::Realization::chosen_scheme() -> core::option::Option<sk
 pub fn skene_foundation::Realization::clipboard(skene_foundation::ClipboardAction)
 pub fn skene_foundation::Realization::clipboard_availability(skene_foundation::ClipboardAction) -> skene_foundation::Availability
 pub fn skene_foundation::Realization::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
-pub fn skene_foundation::Realization::create_anchor(skene_foundation::NodeId)
-pub fn skene_foundation::Realization::create_box(skene_foundation::NodeId, &skene_foundation::BoxProps)
-pub fn skene_foundation::Realization::create_control(skene_foundation::NodeId, &skene_foundation::ControlProps)
-pub fn skene_foundation::Realization::create_overlay(skene_foundation::NodeId, &skene_foundation::OverlayProps)
-pub fn skene_foundation::Realization::create_run(skene_foundation::NodeId, &skene_foundation::RunProps)
-pub fn skene_foundation::Realization::create_scope(skene_foundation::NodeId)
+pub fn skene_foundation::Realization::create(skene_foundation::NodeId, &skene_foundation::NodeSpec)
 pub fn skene_foundation::Realization::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Realization::define_tokens(skene_foundation::TokenScope, &skene_foundation::Definitions<Self::TokenValue>)
 pub fn skene_foundation::Realization::destroy(skene_foundation::NodeId)

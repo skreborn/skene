@@ -3,7 +3,7 @@
 
 use std::fmt::Debug;
 
-use super::{BoxProps, State};
+use super::{BoxFacts, State};
 use crate::spine::{CheckState, NodeId, Role};
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
@@ -106,16 +106,15 @@ impl NativeElement {
   }
 }
 
-/// Everything a platform needs to realize a control: a box, the native element it
-/// stands in where it has one and, where nothing visible supplies one, an accessible
-/// name.
+/// What a platform creates a control from beside its box: the native element it stands
+/// in where it has one and, where nothing visible supplies one, an accessible name.
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct ControlProps {
+pub struct ControlFacts {
+  /// The box the control is realized as.
+  pub boxed: BoxFacts,
   /// The native element the control stands in; `None` for one its view draws.
   pub native: Option<NativeElement>,
-  /// The box the control is realized as.
-  pub box_props: BoxProps,
   /// The accessible name, when nothing visible supplies one.
   pub label: Option<String>,
   /// The hint a text entry shows while its value is empty.

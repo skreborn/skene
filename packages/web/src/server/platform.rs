@@ -5,10 +5,8 @@ use std::{cell::RefCell, rc::Rc, thread::LocalKey, time::Duration};
 
 use skene_foundation::{
   AccessProp,
-  BoxProps,
   ColorScheme,
   CompiledStyle,
-  ControlProps,
   ControlState,
   Definitions,
   EventKind,
@@ -17,11 +15,10 @@ use skene_foundation::{
   Media,
   MediaSignals,
   NodeId,
+  NodeSpec,
   Observation,
-  OverlayProps,
   PickerOption,
   Realization,
-  RunProps,
   Scene,
   Size,
   Slot,
@@ -66,8 +63,8 @@ impl Realization for Web {
     &SCENE
   }
 
-  fn create_box(node: NodeId, props: &BoxProps) {
-    with_realizer(|realizer| realizer.create_box(node, props));
+  fn create(node: NodeId, spec: &NodeSpec) {
+    with_realizer(|realizer| realizer.create(node, spec));
   }
 
   fn apply_style(node: NodeId, style: CompiledStyle<f32, WebStyle>) {
@@ -86,34 +83,14 @@ impl Realization for Web {
     with_realizer(|realizer| realizer.update_access(node, access));
   }
 
-  fn create_control(node: NodeId, props: &ControlProps) {
-    with_realizer(|realizer| realizer.create_control(node, props));
-  }
-
   fn set_control_state(node: NodeId, state: &ControlState) {
     with_realizer(|realizer| realizer.set_control_state(node, *state));
   }
 
-  fn create_overlay(node: NodeId, props: &OverlayProps) {
-    with_realizer(|realizer| realizer.create_overlay(node, props));
-  }
-
   fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
-
-  fn create_run(node: NodeId, props: &RunProps) {
-    with_realizer(|realizer| realizer.create_run(node, props));
-  }
 
   fn set_text(node: NodeId, text: &str) {
     with_realizer(|realizer| realizer.set_text(node, text));
-  }
-
-  fn create_anchor(node: NodeId) {
-    with_realizer(|realizer| realizer.create_anchor(node));
-  }
-
-  fn create_scope(node: NodeId) {
-    with_realizer(|realizer| realizer.create_scope(node));
   }
 
   fn attach(parent: NodeId, child: NodeId, _before: Option<NodeId>) {

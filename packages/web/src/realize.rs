@@ -7,19 +7,22 @@ use std::rc::Rc;
 
 use skene_foundation::{
   AccessProp,
-  BoxProps,
+  BoxFacts,
   CheckState,
-  ControlProps,
+  ControlFacts,
   ControlState,
   Definitions,
+  DragAxes,
   FocusOrder,
+  NodeFacts,
   NodeId,
   NodeMap,
-  OverlayProps,
+  NodeSpec,
+  OverlayFacts,
   PickerOption,
   Placement,
   Point,
-  RunProps,
+  RunFacts,
   Scene,
   Slot,
   SlotLeaf,
@@ -334,20 +337,29 @@ impl<S: Sink> Realizer<S> {
     (element, adopted)
   }
 
-  /// Realizes the box `node`.
-  pub(crate) fn create_box(&mut self, node: NodeId, props: &BoxProps) {
-    let tag = box_tag(
-      props.role,
-      AccessProp::level_of(&props.access),
-      props.destination.is_some(),
-    );
+  /// Realizes `node` as `spec` describes it.
+  pub(crate) fn create(&mut self, node: NodeId, spec: &NodeSpec) {
+    match &spec.facts {
+      NodeFacts::Box(boxed) => self.make_box(node, spec, boxed),
+      NodeFacts::Control(control) => self.make_control(node, spec, control),
+      NodeFacts::Overlay(overlay) => self.make_overlay(node, spec, overlay),
+      NodeFacts::Run(run) => self.make_run(node, run),
+      NodeFacts::Anchor => self.make_anchor(node),
+      NodeFacts::Scope => self.make_scope(node),
+    }
+  }
+
+  /// Realizes the box `node`: an anchor where it has a destination, else the element
+  /// its role names.
+  fn make_box(&mut self, node: NodeId, spec: &NodeSpec, boxed: &BoxFacts) {
+    let tag = box_tag(spec.role, spec.level, boxed.destination.is_some());
     let (element, _) = self.create_element(node, tag, Realized::Box);
 
-    if let Some(role) = props.role.and_then(aria_role) {
+    if let Some(role) = spec.role.and_then(aria_role) {
       self.sink.set_attribute(&element, "role", role);
     }
 
-    if let Some(href) = props
+    if let Some(href) = boxed
       .destination
       .as_deref()
       .filter(|href| !runs_script(href))
@@ -355,19 +367,19 @@ impl<S: Sink> Realizer<S> {
       self.sink.set_attribute(&element, "href", href);
     }
 
-    self.finish_box(node, props, Template::boxed(props));
+    self.finish_box(node, spec.drag, Template::boxed(boxed));
   }
 
   /// Realizes the control `node`: a form element bare or inside its label where it
   /// stands in one, else the element it is drawn as.
-  pub(crate) fn create_control(&mut self, node: NodeId, props: &ControlProps) {
-    let native = form_element(props.native);
+  fn make_control(&mut self, node: NodeId, spec: &NodeSpec, control: &ControlFacts) {
+    let native = form_element(control.native);
     let realized = Realized::Control { native };
     let root = match native {
       Some(native) if native.is_bare() => {
         let (root, adopted) = self.create_element(node, native.tag, realized);
 
-        self.write_native_attributes(&root, native, props);
+        self.write_native_attributes(&root, native, control);
 
         if adopted {
           self.sink.note_live_state(node, &root, native);
@@ -379,7 +391,7 @@ impl<S: Sink> Realizer<S> {
         let (root, _) = self.create_element(node, "label", realized);
         let (input, adopted) = self.sink.create_element(native.tag);
 
-        self.write_native_attributes(&input, native, props);
+        self.write_native_attributes(&input, native, control);
         self.sink.set_attribute(&input, "class", NATIVE_CLASS);
 
         if adopted {
@@ -395,14 +407,14 @@ impl<S: Sink> Realizer<S> {
         root
       }
       None => {
-        let (tag, attribute) = drawn_element(props.native, props.box_props.role);
+        let (tag, attribute) = drawn_element(control.native, spec.role);
         let (root, _) = self.create_element(node, tag, realized);
 
         if let Some((name, value)) = attribute {
           self.sink.set_attribute(&root, name, value);
         }
 
-        if let Some(label) = &props.label {
+        if let Some(label) = &control.label {
           self.sink.set_attribute(&root, "aria-label", label);
         }
 
@@ -412,18 +424,18 @@ impl<S: Sink> Realizer<S> {
 
     self.sink.set_attribute(&root, CONTROL_ATTRIBUTE, "");
 
-    self.finish_box(node, &props.box_props, Template::control(props));
+    self.finish_box(node, spec.drag, Template::control(control));
   }
 
   /// Realizes the overlay `node`: a `<dialog>` when modal, else a popover.
-  pub(crate) fn create_overlay(&mut self, node: NodeId, props: &OverlayProps) {
+  fn make_overlay(&mut self, node: NodeId, spec: &NodeSpec, overlay: &OverlayFacts) {
     let realized = Realized::Overlay {
-      modal: props.modal,
-      placement: props.placement,
+      modal: overlay.modal,
+      placement: overlay.placement,
       position: None,
     };
 
-    if props.modal {
+    if overlay.modal {
       self.create_element(node, "dialog", realized);
     }
     else {
@@ -432,20 +444,20 @@ impl<S: Sink> Realizer<S> {
       self.sink.set_attribute(
         &element,
         "popover",
-        if props.hint { "hint" } else { "manual" },
+        if overlay.hint { "hint" } else { "manual" },
       );
 
-      if let Some(role) = props.role().and_then(aria_role) {
+      if let Some(role) = spec.role.and_then(aria_role) {
         self.sink.set_attribute(&element, "role", role);
       }
     }
 
-    self.finish_box(node, &props.box_props, Template::overlay(props));
+    self.finish_box(node, spec.drag, Template::overlay(overlay));
   }
 
   /// Realizes the text run `node`: a link where it has one, else a span.
-  pub(crate) fn create_run(&mut self, node: NodeId, props: &RunProps) {
-    match props.link.as_deref() {
+  fn make_run(&mut self, node: NodeId, run: &RunFacts) {
+    match run.link.as_deref() {
       Some(href) => {
         let (element, _) = self.create_element(node, "a", Realized::Run);
 
@@ -459,7 +471,7 @@ impl<S: Sink> Realizer<S> {
     }
 
     if let Some(record) = self.records.get_mut(node) {
-      record.template = Some(Template::run(props));
+      record.template = Some(Template::run(run));
     }
   }
 
@@ -493,7 +505,7 @@ impl<S: Sink> Realizer<S> {
   }
 
   /// Realizes the anchor `node` as the next anchor's comment.
-  pub(crate) fn create_anchor(&mut self, node: NodeId) {
+  fn make_anchor(&mut self, node: NodeId) {
     let text = anchor_text(self.anchors);
 
     self.anchors += 1;
@@ -504,7 +516,7 @@ impl<S: Sink> Realizer<S> {
   }
 
   /// Realizes the scope `node` as a layout-invisible element.
-  pub(crate) fn create_scope(&mut self, node: NodeId) {
+  fn make_scope(&mut self, node: NodeId) {
     let (element, adopted) = self.sink.create_element("div");
 
     self.sink.set_attribute(&element, SCOPE_ATTRIBUTE, "");
@@ -844,9 +856,9 @@ impl<S: Sink> Realizer<S> {
     Some(record)
   }
 
-  /// Realizes the props every box-like node shares onto `node`, keeping `template` for
-  /// its style.
-  fn finish_box(&mut self, node: NodeId, props: &BoxProps, template: Template) {
+  /// Realizes what every box-like node shares onto `node`: the axes a press drags it
+  /// along, and `template`, kept for its style.
+  fn finish_box(&mut self, node: NodeId, drag: Option<DragAxes>, template: Template) {
     let Some(record) = self.records.get_mut(node)
     else {
       return;
@@ -854,7 +866,7 @@ impl<S: Sink> Realizer<S> {
 
     record.template = Some(template);
 
-    if let Some(axes) = props.drag_axes {
+    if let Some(axes) = drag {
       self
         .sink
         .set_attribute(&record.element, DRAGS_ATTRIBUTE, drags_value(axes));
@@ -888,9 +900,9 @@ impl<S: Sink> Realizer<S> {
     &mut self,
     element: &S::Element,
     native: FormElement,
-    props: &ControlProps,
+    control: &ControlFacts,
   ) {
-    for (name, value) in native_attributes(native, props) {
+    for (name, value) in native_attributes(native, control) {
       self.sink.set_attribute(element, name, &value);
     }
   }

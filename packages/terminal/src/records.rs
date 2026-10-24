@@ -12,7 +12,7 @@ mod structure;
 pub(crate) use skene_foundation::Interaction;
 use skene_foundation::{
   Axis,
-  BoxProps,
+  BoxFacts,
   ColorScheme,
   Layout,
   NodeId,
@@ -191,16 +191,13 @@ pub(crate) struct Records {
 impl Records {
   /// Records whose root box, filling the screen, is the scene's node `root`.
   pub(crate) fn new(root: NodeId) -> Self {
-    let root_props = BoxProps {
+    let root_facts = BoxFacts {
       layout: Layout::Flex {
         axis: Axis::Vertical,
         reversed: false,
       },
-      role: None,
-      transition_name: None,
       container: None,
-      drag_axes: None,
-      access: Vec::new(),
+      transition_name: None,
       destination: None,
     };
     let mut records = Self {
@@ -259,7 +256,7 @@ impl Records {
       picture_generation: 0,
     };
 
-    records.insert_laid_out(root, Kind::Box(BoxRecord::new(root_props)));
+    records.insert_laid_out(root, Kind::Box(BoxRecord::new(None, None, root_facts)));
 
     records
   }

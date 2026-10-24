@@ -87,14 +87,14 @@ impl Records {
     }
 
     match &record.kind {
-      Kind::Run { props, .. } if props.selectable && !record.text.is_empty() => {
+      Kind::Run { facts, .. } if facts.selectable && !record.text.is_empty() => {
         Some(record.text.clone())
       }
       Kind::Box(_) if is_paragraph(self, handle) => {
         let selectable = paragraph_runs(self, handle).iter().any(|run| {
           matches!(
             self.record(*run).map(|record| &record.kind),
-            Some(Kind::Run { props, .. }) if props.selectable
+            Some(Kind::Run { facts, .. }) if facts.selectable
           )
         });
         let text = paragraph_text(self, handle);
@@ -134,7 +134,7 @@ impl Records {
       is_paragraph(self, *handle)
         || matches!(
           self.record(*handle).map(|record| &record.kind),
-          Some(Kind::Run { props, .. }) if props.placement == RunPlacement::Line
+          Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Line
         )
     })
   }
@@ -155,7 +155,7 @@ impl Records {
     let path = self.hit_test(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
     let link_of = |run: Handle| match &self.record(run)?.kind {
-      Kind::Run { props, .. } => props.link.clone().map(|url| (run, url)),
+      Kind::Run { facts, .. } => facts.link.clone().map(|url| (run, url)),
       _ => None,
     };
 
@@ -404,7 +404,7 @@ impl Records {
       };
 
       if current != handle
-        && matches!(&record.kind, Kind::Run { props, .. } if props.placement != RunPlacement::Embedded)
+        && matches!(&record.kind, Kind::Run { facts, .. } if facts.placement != RunPlacement::Embedded)
       {
         text.push_str(&record.text);
       }

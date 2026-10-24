@@ -10,8 +10,8 @@ use crate::{
   AnyKind,
   Arrangement,
   BoxDynamics,
+  BoxFacts,
   BoxKeyframe,
-  BoxProps,
   Bubbling,
   Children,
   ClickEvent,
@@ -31,9 +31,10 @@ use crate::{
   ItemAlignment,
   KeyEvent,
   Layout,
+  NodeFacts,
   NodeHandle,
   NodeId,
-  NodeKind,
+  NodeSpec,
   PlainChild,
   PointerEvent,
   Prevent,
@@ -491,18 +492,19 @@ impl<P: Realization, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
 impl<P: Realization, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
 impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
-  /// Realizes the box as a node of `kind`, which `create` realizes on the platform from
-  /// the props, its style beside them: folds the pending annotation into the style,
-  /// splits it, applies its record to the node once created, then writes its fixed focus
-  /// order and accessibility, binds every derived slot, a derived focus order and
-  /// accessibility, and the handlers, mounts the children and returns the node.
+  /// Realizes the box as the node whose facts `facts` makes of the box's: folds the
+  /// pending annotation into the style, splits it, creates the node on the platform
+  /// from its [`NodeSpec`], calls `realized` with the node, its spec and its style, then
+  /// applies the style, writes its fixed focus order and accessibility, binds every
+  /// derived slot, a derived focus order and accessibility, and the handlers, mounts the
+  /// children and returns the node.
   ///
-  /// A box builds through this with [`NodeKind::Box`] and [`Realization::create_box`]; a
-  /// view realized as another kind supplies its own creation.
+  /// A box builds through this with [`NodeFacts::Box`]; a view realized as another kind
+  /// makes its facts from the box's.
   pub fn realize(
     mut self,
-    kind: NodeKind,
-    create: impl FnOnce(NodeId, BoxProps, &CompiledStyle<P::Scalar, P::StyleExt>),
+    facts: impl FnOnce(BoxFacts) -> NodeFacts,
+    realized: impl FnOnce(NodeId, &NodeSpec, &CompiledStyle<P::Scalar, P::StyleExt>),
   ) -> NodeId {
     if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
@@ -554,19 +556,22 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     };
     let access = noted.clone().unwrap_or_default();
     let links = self.destination.is_some();
-    let props = BoxProps {
-      layout: self.layout,
-      role: self.role,
-      transition_name: self.transition_name,
-      container: self.container,
-      drag_axes: self.drag_axes,
-      access: access.clone(),
-      destination: self.destination,
-    };
+    let spec = NodeSpec::new(
+      self.role,
+      AccessProp::level_of(&access),
+      self.drag_axes,
+      facts(BoxFacts {
+        layout: self.layout,
+        container: self.container,
+        transition_name: self.transition_name,
+        destination: self.destination,
+      }),
+    );
     let container = self.container;
-    let node = Scene::<P>::with(|scene| scene.create(kind, None));
+    let node = Scene::<P>::with(|scene| scene.create(spec.kind(), None));
 
-    create(node, props, &style);
+    P::create(node, &spec);
+    realized(node, &spec, &style);
     P::apply_style(node, style);
     P::update_focus_order(node, focus_order);
     P::update_access(node, &access);
@@ -620,6 +625,6 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
 impl<P: Realization, Kind: 'static> View<P> for LayoutBox<P, Kind> {
   #[inline(always)]
   fn build(self) -> NodeId {
-    self.realize(NodeKind::Box, |node, props, _| P::create_box(node, &props))
+    self.realize(NodeFacts::Box, |_, _, _| {})
   }
 }

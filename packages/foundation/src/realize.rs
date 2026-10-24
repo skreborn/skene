@@ -157,8 +157,8 @@ impl<P: Realization> ChildBuilder<P> {
 /// The node it returns is a [`View`], so it composes as a built-in does: as the child
 /// of a [`Container`](crate::Container) that sizes and decorates it, under a theme,
 /// inside a wrapper, with handlers registered on it through the [`Scene`]. A box the
-/// view creates through [`Realization::create_box`] instead needs no registration beyond
-/// the [`LayoutBox`](crate::LayoutBox) that made it.
+/// view builds through a [`LayoutBox`](crate::LayoutBox) instead needs no registration
+/// beyond it.
 #[derive(Debug)]
 #[must_use]
 pub struct LowLevel<P: Realization>(PhantomData<fn() -> P>);

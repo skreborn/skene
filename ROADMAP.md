@@ -41,7 +41,7 @@ in a code comment.
     strings, and the web's scriptless form names each option by a key of its own, the
     server leaf's and the browser's alike even for a value holding a slice of `usize` or
     `isize`, which `wide_of` hashes at the target's width; the group whose radios share
-    a `name` crosses in that content, replacing `ControlProps::group` and the re-read of
+    a `name` crosses in that content, replacing `ControlFacts::group` and the re-read of
     every member's state a toggle report on one sets off. A text entry's
     secure flag (`set_secure`), the web's `type=password` and every drawn field masked
     through the core's `Masked` engine, which has no client until then;
@@ -445,7 +445,7 @@ in a code comment.
     alone and is cleared at boot.
 16. **The app layer before 1.0.** Every surveyed framework treats these as table stakes.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and
-    autocomplete as reported properties on `ControlProps`, the `set_keyboard` of item 1
+    autocomplete as reported properties on `ControlFacts`, the `set_keyboard` of item 1
     choosing the keyboard, mapped on the web to `type`, `autocomplete`, `inputmode` and
     `enterkeyhint`, a password entry secure in the terminal and, on every other
     platform, the one field masked under the platform's secure-entry flag; `set_value`

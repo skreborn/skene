@@ -3,11 +3,7 @@
 
 use skene_foundation::{FocusOrder, Interaction, NodeId, Scene};
 
-use super::{
-  Handle,
-  Records,
-  record::{Kind, Record},
-};
+use super::{Handle, Records, record::Kind};
 use crate::Terminal;
 
 /// The center of a cell, where a pointer reported by cell alone is taken to be.
@@ -86,8 +82,8 @@ impl Records {
   pub(crate) fn drags(&self, handle: Handle) -> bool {
     self
       .record(handle)
-      .and_then(Record::box_props)
-      .is_some_and(|props| props.drag_axes.is_some())
+      .and_then(|record| record.kind.box_record())
+      .is_some_and(|inner| inner.drag.is_some())
   }
 
   /// Whether `handle` is a control a press's pointer drags.
@@ -103,7 +99,7 @@ impl Records {
     let record = self.record(self.focused()?)?;
 
     match &record.kind {
-      Kind::Run { props, .. } => Some((record.node?, props.link.clone()?)),
+      Kind::Run { facts, .. } => Some((record.node?, facts.link.clone()?)),
       _ => None,
     }
   }

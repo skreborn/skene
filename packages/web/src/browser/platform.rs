@@ -12,11 +12,9 @@ use std::{
 use skene_foundation::{
   AccessProp,
   Availability,
-  BoxProps,
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
-  ControlProps,
   ControlState,
   Definitions,
   EventKind,
@@ -24,15 +22,16 @@ use skene_foundation::{
   Keep,
   Media,
   MediaSignals,
+  NodeFacts,
   NodeId,
+  NodeSpec,
   Observation,
-  OverlayProps,
+  OverlayFacts,
   PickerOption,
   Placement,
   Point,
   PointerEvent,
   Realization,
-  RunProps,
   Scene,
   Size,
   Slot,
@@ -295,8 +294,27 @@ impl Realization for Web {
     &SCENE
   }
 
-  fn create_box(sink: NodeId, props: &BoxProps) {
-    with_dom(|dom| dom.realizer.create_box(sink, props));
+  fn create(sink: NodeId, spec: &NodeSpec) {
+    with_dom(|dom| {
+      dom.realizer.create(sink, spec);
+
+      if let NodeFacts::Overlay(OverlayFacts { modal: true, .. }) = spec.facts
+        && let Some(node) = dom.node_mut(sink)
+      {
+        node.extra.cancel = Some(Listener::new(
+          node.element.clone().into(),
+          "cancel",
+          false,
+          move |event| {
+            event.prevent_default();
+
+            if with_dom(|dom| dom.node(sink).is_some()) {
+              notify_dismiss::<Self>(sink);
+            }
+          },
+        ));
+      }
+    });
   }
 
   fn apply_style(sink: NodeId, style: CompiledStyle<f32, WebStyle>) {
@@ -315,35 +333,8 @@ impl Realization for Web {
     with_dom(|dom| dom.realizer.update_access(sink, access));
   }
 
-  fn create_control(sink: NodeId, props: &ControlProps) {
-    with_dom(|dom| dom.realizer.create_control(sink, props));
-  }
-
   fn set_control_state(sink: NodeId, state: &ControlState) {
     with_dom(|dom| dom.realizer.set_control_state(sink, *state));
-  }
-
-  fn create_overlay(sink: NodeId, props: &OverlayProps) {
-    with_dom(|dom| {
-      dom.realizer.create_overlay(sink, props);
-
-      if props.modal
-        && let Some(node) = dom.node_mut(sink)
-      {
-        node.extra.cancel = Some(Listener::new(
-          node.element.clone().into(),
-          "cancel",
-          false,
-          move |event| {
-            event.prevent_default();
-
-            if with_dom(|dom| dom.node(sink).is_some()) {
-              notify_dismiss::<Self>(sink);
-            }
-          },
-        ));
-      }
-    });
   }
 
   fn set_overlay_open(sink: NodeId, open: bool, anchor: Option<NodeId>) {
@@ -433,20 +424,8 @@ impl Realization for Web {
     });
   }
 
-  fn create_run(sink: NodeId, props: &RunProps) {
-    with_dom(|dom| dom.realizer.create_run(sink, props));
-  }
-
   fn set_text(sink: NodeId, text: &str) {
     with_dom(|dom| dom.realizer.set_text(sink, text));
-  }
-
-  fn create_anchor(sink: NodeId) {
-    with_dom(|dom| dom.realizer.create_anchor(sink));
-  }
-
-  fn create_scope(sink: NodeId) {
-    with_dom(|dom| dom.realizer.create_scope(sink));
   }
 
   fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {

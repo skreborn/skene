@@ -5,27 +5,27 @@ use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_foundation::{
   Availability,
-  BoxProps,
+  BoxFacts,
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
-  ControlProps,
   ControlState,
   Definitions,
   Keep,
   Media,
   MediaSignals,
   NativeElement,
+  NodeFacts,
   NodeId,
   NodeKind,
+  NodeSpec,
   Observation,
-  OverlayProps,
   Painting,
   Placement,
   Point,
   PointerEvent,
   Realization,
-  RunProps,
+  RunPlacement,
   Scene,
   Size,
   Slot,
@@ -96,8 +96,64 @@ impl Realization for Terminal {
     &SCENE
   }
 
-  fn create_box(node: NodeId, props: &BoxProps) {
-    with_records(|records| records.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
+  fn create(node: NodeId, spec: &NodeSpec) {
+    let inner = |boxed: &BoxFacts| BoxRecord::new(spec.role, spec.drag, boxed.clone());
+
+    match &spec.facts {
+      NodeFacts::Box(boxed) => {
+        with_records(|records| records.insert_laid_out(node, Kind::Box(inner(boxed))));
+      }
+      NodeFacts::Control(control) => {
+        let field = control
+          .native
+          .is_some_and(NativeElement::is_text_entry)
+          .then(|| Box::new(Field::new(node, control.placeholder.clone(), control.lines)));
+        let entry = field.is_some();
+
+        with_records(|records| {
+          records.insert_laid_out(
+            node,
+            Kind::Control {
+              native: control.native,
+              label: control.label.clone(),
+              inner: inner(&control.boxed),
+              field,
+            },
+          );
+
+          if entry {
+            records.entries.push(node);
+          }
+        });
+      }
+      NodeFacts::Overlay(overlay) => with_records(|records| {
+        records.insert_laid_out(
+          node,
+          Kind::Overlay {
+            inner: inner(&overlay.boxed),
+            placement: overlay.placement,
+            backdrop: overlay.backdrop,
+            open: false,
+            position: None,
+          },
+        );
+        records.overlays.push(node);
+      }),
+      NodeFacts::Run(run) => {
+        let inline_box = run.placement == RunPlacement::Embedded;
+
+        with_records(|records| {
+          records.insert_laid_out(node, Kind::run(run.clone()));
+
+          // An inline box flows as one placeholder cluster, as large as its own layout.
+          if inline_box && let Some(record) = records.record_mut(node) {
+            record.text = crate::layout::INLINE_BOX.to_string();
+          }
+        });
+      }
+      NodeFacts::Anchor => with_records(|records| records.insert(node, Kind::Anchor)),
+      NodeFacts::Scope => with_records(|records| records.insert(node, Kind::Scope)),
+    }
   }
 
   fn apply_style(node: NodeId, style: CompiledStyle<i32, TerminalStyle>) {
@@ -124,52 +180,10 @@ impl Realization for Terminal {
     });
   }
 
-  fn create_control(node: NodeId, props: &ControlProps) {
-    let field = props
-      .native
-      .is_some_and(NativeElement::is_text_entry)
-      .then(|| Box::new(Field::new(node, props.placeholder.clone(), props.lines)));
-
-    let entry = field.is_some();
-
-    with_records(|records| {
-      records.insert_laid_out(
-        node,
-        Kind::Control {
-          native: props.native,
-          label: props.label.clone(),
-          inner: BoxRecord::new(props.box_props.clone()),
-          field,
-        },
-      );
-
-      if entry {
-        records.entries.push(node);
-      }
-    });
-  }
-
   fn set_control_state(node: NodeId, _state: &ControlState) {
     with_records(|records| {
       records.layout_dirty = true;
       records.damage(node);
-    });
-  }
-
-  fn create_overlay(node: NodeId, props: &OverlayProps) {
-    with_records(|records| {
-      records.insert_laid_out(
-        node,
-        Kind::Overlay {
-          inner: BoxRecord::new(props.box_props.clone()),
-          role: props.role(),
-          placement: props.placement,
-          backdrop: props.backdrop,
-          open: false,
-          position: None,
-        },
-      );
-      records.overlays.push(node);
     });
   }
 
@@ -210,19 +224,6 @@ impl Realization for Terminal {
     });
   }
 
-  fn create_run(node: NodeId, props: &RunProps) {
-    let inline_box = props.placement == skene_foundation::RunPlacement::Embedded;
-
-    with_records(|records| {
-      records.insert_laid_out(node, Kind::run(props.clone()));
-
-      // An inline box flows as one placeholder cluster, as large as its own layout.
-      if inline_box && let Some(record) = records.record_mut(node) {
-        record.text = crate::layout::INLINE_BOX.to_string();
-      }
-    });
-  }
-
   fn set_text(node: NodeId, text: &str) {
     with_records(|records| {
       let Some(record) = records.record_mut(node)
@@ -240,14 +241,6 @@ impl Realization for Terminal {
       records.layout_dirty = true;
       records.damage(node);
     });
-  }
-
-  fn create_anchor(node: NodeId) {
-    with_records(|records| records.insert(node, Kind::Anchor));
-  }
-
-  fn create_scope(node: NodeId) {
-    with_records(|records| records.insert(node, Kind::Scope));
   }
 
   fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {

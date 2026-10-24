@@ -7,6 +7,7 @@ use super::{
   BoxStyle,
   Condition,
   ContainerName,
+  ControlFacts,
   Declared,
   DragAxes,
   Environment,
@@ -14,13 +15,14 @@ use super::{
   Keyframe,
   Media,
   MediaEnv,
+  NodeKind,
   PointerPrecision,
   Realization,
   RunStyle,
   Scalar,
   Static,
 };
-use crate::spine::{AccessProp, Color, ColorScheme, Layout, Placement, Role, RunPlacement, Size};
+use crate::spine::{Color, ColorScheme, Layout, Placement, Role, RunPlacement, Size};
 
 /// A box's style as a builder declares it: values under the platform's conditions,
 /// possibly derived.
@@ -54,47 +56,144 @@ pub type BoxKeyframe<P> =
 /// A run's style as one keyframe of an animation: a static leaf per set property.
 pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Realization>::StyleExt>;
 
-/// What a platform needs to realize a box beside its style, which arrives through
+/// What a platform creates a node from beside its style.
+///
+/// It holds what a reader takes the node for, the heading level its element is fixed
+/// at, whether a press drags it, and the facts of its kind; the style arrives through
 /// [`Realization::apply_style`].
+///
+/// A box's destination, a run's link, a control's placeholder and group, and an
+/// overlay's placement ride the spec until each crosses as a typed content of its own.
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct BoxProps {
+pub struct NodeSpec {
+  /// The semantic role, guiding the platform's concrete choice of element; an
+  /// overlay's is the one [`new`](Self::new) computes from its facts.
+  pub role: Option<Role>,
+  /// The heading level the node reports as it is created, which a medium with an
+  /// element per level fixes the element by.
+  pub level: Option<usize>,
+  /// The axes a press's pointer drags the node along; `None` for a node no press drags.
+  pub drag: Option<DragAxes>,
+  /// The facts of the node's kind.
+  pub facts: NodeFacts,
+}
+
+impl NodeSpec {
+  /// The spec of a node of `facts` stating `role`, reporting the heading `level` and
+  /// dragged along `drag`: an overlay carries a hint's tooltip role, else the role it
+  /// states, else a modal's dialog role.
+  pub const fn new(
+    role: Option<Role>,
+    level: Option<usize>,
+    drag: Option<DragAxes>,
+    facts: NodeFacts,
+  ) -> Self {
+    let role = match &facts {
+      NodeFacts::Overlay(overlay) => overlay.role(role),
+      _ => role,
+    };
+
+    Self {
+      role,
+      level,
+      drag,
+      facts,
+    }
+  }
+
+  /// The spec of an anchor: a layout-invisible marker a reactive subtree mounts
+  /// between.
+  #[inline(always)]
+  pub const fn anchor() -> Self {
+    Self::bare(NodeFacts::Anchor)
+  }
+
+  /// The spec of a scope: a layout-invisible node token definitions hang off.
+  #[inline(always)]
+  pub const fn scope() -> Self {
+    Self::bare(NodeFacts::Scope)
+  }
+
+  /// The spec of a node of `facts` stating nothing else.
+  #[inline(always)]
+  const fn bare(facts: NodeFacts) -> Self {
+    Self {
+      role: None,
+      level: None,
+      drag: None,
+      facts,
+    }
+  }
+
+  /// The kind of node the spec creates, as the scene records it.
+  #[inline(always)]
+  pub const fn kind(&self) -> NodeKind {
+    match self.facts {
+      NodeFacts::Box(_) => NodeKind::Box,
+      NodeFacts::Control(_) => NodeKind::Control,
+      NodeFacts::Overlay(_) => NodeKind::Overlay,
+      NodeFacts::Run(_) => NodeKind::Run,
+      NodeFacts::Anchor => NodeKind::Anchor,
+      NodeFacts::Scope => NodeKind::Scope,
+    }
+  }
+
+  /// The facts of the box a box, a control or an overlay is realized as.
+  #[inline(always)]
+  #[must_use]
+  pub const fn box_facts(&self) -> Option<&BoxFacts> {
+    match &self.facts {
+      NodeFacts::Box(boxed)
+      | NodeFacts::Control(ControlFacts { boxed, .. })
+      | NodeFacts::Overlay(OverlayFacts { boxed, .. }) => Some(boxed),
+      NodeFacts::Run(_) | NodeFacts::Anchor | NodeFacts::Scope => None,
+    }
+  }
+}
+
+/// The facts of a node's kind: what a platform creates it from that no other kind
+/// has.
+#[derive(Clone, Debug)]
+#[must_use]
+pub enum NodeFacts {
+  /// A box.
+  Box(BoxFacts),
+  /// A control: a box a platform may stand a native element in for.
+  Control(ControlFacts),
+  /// An overlay: a box shown above the app while open, opened and closed through
+  /// [`Realization::set_overlay_open`].
+  Overlay(OverlayFacts),
+  /// A text run.
+  Run(RunFacts),
+  /// An anchor: a layout-invisible marker a reactive subtree mounts between.
+  Anchor,
+  /// A scope: a layout-invisible node token definitions hang off.
+  Scope,
+}
+
+/// What a platform creates a box from beside its style: the box of a box, a control
+/// or an overlay.
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct BoxFacts {
   /// The layout mode.
   pub layout: Layout,
-  /// The semantic role, guiding the platform's concrete choice of element.
-  pub role: Option<Role>,
-  /// The name pairing the box with its counterpart across a view transition.
-  pub transition_name: Option<String>,
   /// The name the box publishes for container queries against its size.
   pub container: Option<ContainerName>,
-  /// The axes a press's pointer drags the box along; `None` for a box no press drags.
-  pub drag_axes: Option<DragAxes>,
-  /// The accessibility properties the box reports as it is created, which the shared
-  /// half writes through [`Realization::update_access`] once its style is applied.
-  pub access: Vec<AccessProp>,
+  /// The name pairing the box with its counterpart across a view transition.
+  pub transition_name: Option<String>,
   /// The path the box navigates to when activated; a real link where the medium has
   /// one.
   pub destination: Option<String>,
 }
 
-/// What a platform needs to realize a text run beside its style, which arrives through
-/// [`Realization::apply_style`].
+/// What a platform creates an overlay from beside its box.
 #[derive(Clone, Debug)]
 #[must_use]
-pub struct RunProps {
-  /// Where the run sits in the surrounding layout.
-  pub placement: RunPlacement,
-  /// Whether the user can select and copy the run's text.
-  pub selectable: bool,
-  /// The link destination, when the run is a link.
-  pub link: Option<String>,
-}
-
-/// Everything a platform needs to realize an overlay: a box shown above the app while
-/// open, opened and closed through [`Realization::set_overlay_open`].
-#[derive(Clone, Debug)]
-#[must_use]
-pub struct OverlayProps {
+pub struct OverlayFacts {
+  /// The box the overlay's content is realized as.
+  pub boxed: BoxFacts,
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
   pub modal: bool,
   /// Whether the overlay is a hint: a popup describing its anchor, which never takes
@@ -104,21 +203,36 @@ pub struct OverlayProps {
   pub placement: Placement,
   /// The backdrop color painted over the app while open, if any.
   pub backdrop: Option<Color>,
-  /// The box the overlay's content is realized as.
-  pub box_props: BoxProps,
 }
 
-impl OverlayProps {
-  /// The role the overlay carries: a hint's tooltip, a modal's dialog unless its box
-  /// states another, else the one its box states.
+impl OverlayFacts {
+  /// The role the overlay carries where its box states `stated`: a hint's tooltip, a
+  /// modal's dialog unless its box states another, else the one its box states.
+  #[inline(always)]
   #[must_use]
-  pub fn role(&self) -> Option<Role> {
+  pub const fn role(&self, stated: Option<Role>) -> Option<Role> {
     if self.hint {
       return Some(Role::Tooltip);
     }
 
-    self.box_props.role.or(self.modal.then_some(Role::Dialog))
+    match stated {
+      Some(role) => Some(role),
+      None if self.modal => Some(Role::Dialog),
+      None => None,
+    }
   }
+}
+
+/// What a platform creates a text run from beside its style.
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct RunFacts {
+  /// Where the run sits in the surrounding layout.
+  pub placement: RunPlacement,
+  /// Whether the user can select and copy the run's text.
+  pub selectable: bool,
+  /// The link destination, when the run is a link.
+  pub link: Option<String>,
 }
 
 /// The measured sizes of the named query containers, filled by the platform.

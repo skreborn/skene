@@ -976,12 +976,12 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
       let spans: Vec<SpanPaint> = source
         .runs()
         .map(|(run, _)| {
-          let Some(Kind::Run { props, cache, .. }) = records.record(run).map(|record| &record.kind)
+          let Some(Kind::Run { facts, cache, .. }) = records.record(run).map(|record| &record.kind)
           else {
             unreachable!("paragraph runs are runs");
           };
           let style = cache.as_ref().map(|cache| &cache.style);
-          let link = props.link.as_ref().map(|url| {
+          let link = facts.link.as_ref().map(|url| {
             destinations.push(url.clone());
             u16::try_from(destinations.len() - 1).unwrap_or(0)
           });
@@ -1064,9 +1064,9 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
       }
     }
     Kind::Run { .. } if is_inline_box(records, handle) => NodePaint::None,
-    Kind::Run { props, cache, .. } => {
+    Kind::Run { facts, cache, .. } => {
       let style = cache.as_ref().map(|cache| &cache.style);
-      let selection = props
+      let selection = facts
         .selectable
         .then(|| records.selection_range(handle))
         .flatten();
@@ -1081,9 +1081,9 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
         ),
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
-        decoration: CellDecoration::of(style, props.link.is_some()),
-        link: props.link.clone(),
-        focused: (props.link.is_some() && focused).then(|| link_focus_emphasis(records, handle)),
+        decoration: CellDecoration::of(style, facts.link.is_some()),
+        link: facts.link.clone(),
+        focused: (facts.link.is_some() && focused).then(|| link_focus_emphasis(records, handle)),
         selection: style.and_then(selection_colors),
       }
     }

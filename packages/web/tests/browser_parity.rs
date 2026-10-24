@@ -57,9 +57,9 @@ use skene_foundation::{
   Length,
   Media,
   MotionBase,
+  NodeFacts,
   NodeHandle,
   NodeId,
-  NodeKind,
   Overflow,
   PlainChild,
   Property,
@@ -250,12 +250,9 @@ impl View<Web> for ReadBox {
   fn build(mut self) -> NodeId {
     let (_, slots) = self.inner.style_mut().clone().split();
 
-    self
-      .inner
-      .realize(NodeKind::Box, move |node, props, style| {
-        READ_BOX.set(Some(Realized::of_box(Some(node), style, slots)));
-        <Web as Realization>::create_box(node, &props);
-      })
+    self.inner.realize(NodeFacts::Box, move |node, _, style| {
+      READ_BOX.set(Some(Realized::of_box(Some(node), style, slots)));
+    })
   }
 }
 

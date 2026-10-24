@@ -9,7 +9,7 @@ use crate::{
   AnyKind,
   Definitions,
   NodeId,
-  NodeKind,
+  NodeSpec,
   Realization,
   Scene,
   TokenSet,
@@ -79,9 +79,10 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S> {
     else {
       return empty::<P>().build();
     };
-    let scope = Scene::<P>::with(|scene| scene.create(NodeKind::Scope, None));
+    let spec = NodeSpec::scope();
+    let scope = Scene::<P>::with(|scene| scene.create(spec.kind(), None));
 
-    P::create_scope(scope);
+    P::create(scope, &spec);
 
     let owner = Owner::current().child();
     let palette = self.palette;

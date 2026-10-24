@@ -291,12 +291,7 @@ pub fn skene_web::platform::web::Web::chosen_scheme() -> core::option::Option<sk
 pub fn skene_web::platform::web::Web::clipboard(skene_foundation::spine::values::clipboard::ClipboardAction)
 pub fn skene_web::platform::web::Web::clipboard_availability(skene_foundation::spine::values::clipboard::ClipboardAction) -> skene_foundation::spine::values::clipboard::Availability
 pub fn skene_web::platform::web::Web::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
-pub fn skene_web::platform::web::Web::create_anchor(skene_foundation::spine::node::NodeId)
-pub fn skene_web::platform::web::Web::create_box(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::BoxProps)
-pub fn skene_web::platform::web::Web::create_control(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlProps)
-pub fn skene_web::platform::web::Web::create_overlay(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::OverlayProps)
-pub fn skene_web::platform::web::Web::create_run(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::RunProps)
-pub fn skene_web::platform::web::Web::create_scope(skene_foundation::spine::node::NodeId)
+pub fn skene_web::platform::web::Web::create(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec)
 pub fn skene_web::platform::web::Web::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_web::platform::web::Web::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<skene_web::platform::web::WebTokenValue>)
 pub fn skene_web::platform::web::Web::destroy(skene_foundation::spine::node::NodeId)

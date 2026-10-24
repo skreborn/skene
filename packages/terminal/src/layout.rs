@@ -332,7 +332,7 @@ pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
     && children.iter().all(|child| {
       matches!(
         records.record(*child).map(|record| &record.kind),
-        Some(Kind::Run { props, .. }) if props.placement != RunPlacement::Line
+        Some(Kind::Run { facts, .. }) if facts.placement != RunPlacement::Line
       )
     })
 }
@@ -342,7 +342,7 @@ pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
 pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
   matches!(
     records.record(handle).map(|record| &record.kind),
-    Some(Kind::Run { props, .. }) if props.placement == RunPlacement::Embedded
+    Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Embedded
   )
 }
 
@@ -351,7 +351,7 @@ pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
 pub(crate) fn is_inline_run(records: &Records, handle: Handle) -> bool {
   matches!(
     records.record(handle).map(|record| &record.kind),
-    Some(Kind::Run { props, .. }) if props.placement != RunPlacement::Line
+    Some(Kind::Run { facts, .. }) if facts.placement != RunPlacement::Line
   )
 }
 
@@ -847,9 +847,9 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       .is_none_or(|style| style.height.is_none());
 
   match &record.kind {
-    Kind::Run { props, cache, .. } => {
+    Kind::Run { facts, cache, .. } => {
       let mut style = Style::default();
-      let inline = props.placement != RunPlacement::Line;
+      let inline = facts.placement != RunPlacement::Line;
       let has_children = !records.layout_children(handle).is_empty();
 
       // A wrapper's properties on a bare run: its flexibility, alignment, pinning and
@@ -858,7 +858,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
         cache.layout.fold_into(&mut style, place);
       }
 
-      let text = if props.placement == RunPlacement::Embedded {
+      let text = if facts.placement == RunPlacement::Embedded {
         // An inline box lays out on its own, at its content's size.
         style.display = Display::Flex;
 
@@ -895,7 +895,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     Kind::Box(inner) => {
       let resolved = inner.style().cloned().unwrap_or_default();
       let paragraph = is_paragraph(records, handle);
-      let mut style = resolved.taffy_style(inner.props.layout, place);
+      let mut style = resolved.taffy_style(inner.facts.layout, place);
 
       if fills_root {
         style.flex_grow = 1.;
@@ -911,7 +911,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     }
     Kind::Control { inner, field, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
-      let mut style = resolved.taffy_style(inner.props.layout, place);
+      let mut style = resolved.taffy_style(inner.facts.layout, place);
       let leaf = field
         .as_ref()
         .map(|field| entry_leaf(&mut style, &resolved, field));
@@ -924,7 +924,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     }
     Kind::Overlay { inner, open, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
-      let mut style = resolved.taffy_style(inner.props.layout, place.detached());
+      let mut style = resolved.taffy_style(inner.facts.layout, place.detached());
 
       style.position = taffy::style::Position::Absolute;
 

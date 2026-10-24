@@ -3,8 +3,8 @@
 
 use smallvec::SmallVec;
 
-use super::{Mirror, NodeKind, NodeRecord, Scene};
-use crate::spine::{NodeId, Part, Realization, dispatch::Crossing};
+use super::{Mirror, NodeRecord, Scene};
+use crate::spine::{NodeId, NodeSpec, Part, Realization, dispatch::Crossing};
 
 /// The end of a segment and, while the segment is detached, the content waiting
 /// between its anchors.
@@ -34,9 +34,10 @@ impl<P: Realization> Scene<P> {
   ///
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment() -> (NodeId, NodeId) {
+    let spec = NodeSpec::anchor();
     let (start, end) = Self::with(|scene| {
-      let start = scene.create(NodeKind::Anchor, None);
-      let end = scene.create(NodeKind::Anchor, None);
+      let start = scene.create(spec.kind(), None);
+      let end = scene.create(spec.kind(), None);
 
       if let Some(record) = scene.record_mut(start) {
         record.segment = Some(Box::new(SegmentRecord {
@@ -48,8 +49,8 @@ impl<P: Realization> Scene<P> {
       (start, end)
     });
 
-    P::create_anchor(start);
-    P::create_anchor(end);
+    P::create(start, &spec);
+    P::create(end, &spec);
 
     (start, end)
   }

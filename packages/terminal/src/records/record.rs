@@ -1,4 +1,4 @@
-//! What the records keep per node: its kind with the props its creation carried, its
+//! What the records keep per node: its kind with the facts its creation carried, its
 //! style kept as a record, its resolved style and motion, and what the frame last
 //! measured and painted of it.
 
@@ -6,11 +6,12 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 use skene_foundation::{
-  BoxProps,
+  BoxFacts,
   BoxStyle,
   Color,
   CompiledStyle,
   ContainerName,
+  DragAxes,
   Inset,
   Interaction,
   Layout,
@@ -20,7 +21,7 @@ use skene_foundation::{
   Plain,
   Record as StyleRecord,
   Role,
-  RunProps,
+  RunFacts,
   RunStyle,
   Size,
   Slot,
@@ -79,10 +80,14 @@ pub(crate) struct RunCache {
   pub(crate) keyframes: Vec<skene_foundation::Animation<PlainRun>>,
 }
 
-/// A box-like node's props, its kept style, its resolution and its motion.
+/// A box-like node's facts, its kept style, its resolution and its motion.
 pub(crate) struct BoxRecord {
-  /// The props the node was created with.
-  pub(crate) props: BoxProps,
+  /// The role the node was created with.
+  pub(crate) role: Option<Role>,
+  /// The axes a press's pointer drags the node along; `None` for a node no press drags.
+  pub(crate) drag: Option<DragAxes>,
+  /// The facts of the box the node was created with.
+  pub(crate) facts: BoxFacts,
   /// The node's style and motion, kept whole as the shared half applied it; empty until
   /// it does.
   pub(crate) kept: KeptStyle,
@@ -93,11 +98,13 @@ pub(crate) struct BoxRecord {
 }
 
 impl BoxRecord {
-  /// The record of a box created with `props`, its style setting nothing until the
-  /// shared half applies it.
-  pub(crate) fn new(props: BoxProps) -> Self {
+  /// The record of a box created stating `role`, dragged along `drag`, from `facts`,
+  /// its style setting nothing until the shared half applies it.
+  pub(crate) fn new(role: Option<Role>, drag: Option<DragAxes>, facts: BoxFacts) -> Self {
     Self {
-      props,
+      role,
+      drag,
+      facts,
       kept: StyleRecord::new().into_kept(),
       cache: None,
       motion: BoxMotion::default(),
@@ -120,13 +127,13 @@ impl BoxRecord {
   }
 }
 
-/// What a record is, with everything its creation call carried.
+/// What a record is, with everything its creation carried.
 pub(crate) enum Kind {
   Box(BoxRecord),
   Control {
     /// The native element the control stands in; `None` for one its view draws.
     native: Option<NativeElement>,
-    /// The name the control's props were created with.
+    /// The name the control was created with.
     label: Option<String>,
     /// The control's own box.
     inner: BoxRecord,
@@ -134,10 +141,8 @@ pub(crate) enum Kind {
     field: Option<Box<Field>>,
   },
   Overlay {
-    /// The overlay's own box.
+    /// The overlay's own box, carrying the overlay's role.
     inner: BoxRecord,
-    /// The role the overlay carries.
-    role: Option<Role>,
     /// Where the overlay sits.
     placement: Placement,
     /// The backdrop color painted over the app while open, if any.
@@ -148,8 +153,8 @@ pub(crate) enum Kind {
     position: Option<(i64, i64)>,
   },
   Run {
-    /// The props the run was created with.
-    props: RunProps,
+    /// The facts the run was created with.
+    facts: RunFacts,
     /// The run's style, then the per-child layout a wrapper annotated it with, and its
     /// motion, kept whole as the shared half applied them; empty until it does.
     kept: KeptStyle,
@@ -165,11 +170,11 @@ pub(crate) enum Kind {
 }
 
 impl Kind {
-  /// The record of a run created with `props`, its style setting nothing until the
+  /// The record of a run created from `facts`, its style setting nothing until the
   /// shared half applies it.
-  pub(crate) fn run(props: RunProps) -> Self {
+  pub(crate) fn run(facts: RunFacts) -> Self {
     Self::Run {
-      props,
+      facts,
       kept: StyleRecord::new().into_kept(),
       cache: None,
       motion: RunMotion::default(),
@@ -287,7 +292,7 @@ impl Kind {
 
 /// One realized node.
 pub(crate) struct Record {
-  /// What the node is, with its props, its resolution and its motion.
+  /// What the node is, with the facts it was created from, its resolution and its motion.
   pub(crate) kind: Kind,
   /// The scene node the record realizes, once bound.
   pub(crate) node: Option<NodeId>,
@@ -380,22 +385,19 @@ impl Record {
     }
   }
 
-  /// The box props of a box, a control or an overlay.
-  #[inline(always)]
-  pub(crate) fn box_props(&self) -> Option<&BoxProps> {
-    self.kind.box_record().map(|inner| &inner.props)
-  }
-
   /// The layout mode of a box-like record.
   #[inline(always)]
   pub(crate) fn layout(&self) -> Option<Layout> {
-    self.box_props().map(|props| props.layout)
+    self.kind.box_record().map(|inner| inner.facts.layout)
   }
 
   /// The name the record publishes for container queries.
   #[inline(always)]
   pub(crate) fn container(&self) -> Option<ContainerName> {
-    self.box_props().and_then(|props| props.container)
+    self
+      .kind
+      .box_record()
+      .and_then(|inner| inner.facts.container)
   }
 
   /// Whether the record's box is hidden by its style: it and its content draw nothing

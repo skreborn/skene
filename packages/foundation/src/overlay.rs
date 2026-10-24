@@ -17,10 +17,10 @@ use crate::{
   Layout,
   LayoutBox,
   MotionBase,
+  NodeFacts,
   NodeHandle,
   NodeId,
-  NodeKind,
-  OverlayProps,
+  OverlayFacts,
   Placement,
   PlainChild,
   PlainHandler,
@@ -263,20 +263,18 @@ impl<P: Realization> View<P> for Overlay<P> {
       Source::Fixed(open) => Rc::new(move || open),
       Source::Derived(compute) => compute,
     };
-    let node = inner
-      .add_child(child)
-      .realize(NodeKind::Overlay, |node, box_props, _| {
-        P::create_overlay(
-          node,
-          &OverlayProps {
-            modal,
-            hint,
-            placement: initial,
-            backdrop,
-            box_props,
-          },
-        );
-      });
+    let node = inner.add_child(child).realize(
+      |boxed| {
+        NodeFacts::Overlay(OverlayFacts {
+          boxed,
+          modal,
+          hint,
+          placement: initial,
+          backdrop,
+        })
+      },
+      |_, _, _| {},
+    );
 
     Scene::<P>::with(|scene| {
       scene.note_overlay(node, modal);

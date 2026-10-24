@@ -5,9 +5,7 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey, time::Duration};
 use skene_reactive::{Memo, ReadSignal};
 
 use super::{
-  BoxProps,
   CompiledStyle,
-  ControlProps,
   ControlState,
   Definition,
   Definitions,
@@ -15,9 +13,8 @@ use super::{
   Keep,
   MediaSignals,
   NodeId,
-  OverlayProps,
+  NodeSpec,
   PickerOption,
-  RunProps,
   Scalar,
   Scene,
   Slot,
@@ -237,8 +234,10 @@ pub trait Realization: Copy + Default + 'static {
   /// The thread-local holding this platform's scene.
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
 
-  /// Realizes the box `node`.
-  fn create_box(node: NodeId, props: &BoxProps);
+  /// Realizes `node` as `spec` describes it: a box, a control a platform may stand a
+  /// native element in for, an overlay closed at first, a text run, or a
+  /// layout-invisible anchor or scope.
+  fn create(node: NodeId, spec: &NodeSpec);
 
   /// Gives `node` its style: every property it sets, its own and the per-child layout a
   /// wrapper annotated it with, with its motion, as the shared half compiles its record
@@ -266,14 +265,8 @@ pub trait Realization: Copy + Default + 'static {
   #[inline(always)]
   fn update_access(_node: NodeId, _access: &[AccessProp]) {}
 
-  /// Realizes the control `node`: a box a platform may stand a native element in for.
-  fn create_control(node: NodeId, props: &ControlProps);
-
   /// Mirrors a control's state, for a platform whose native element holds it too.
   fn set_control_state(node: NodeId, state: &ControlState);
-
-  /// Realizes the overlay `node`: a box shown above the app while open, closed at first.
-  fn create_overlay(node: NodeId, props: &OverlayProps);
 
   /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
   /// rather than by the viewport.
@@ -291,18 +284,8 @@ pub trait Realization: Copy + Default + 'static {
   #[inline(always)]
   fn set_overlay_position(_node: NodeId, _position: Option<Point<f32>>) {}
 
-  /// Realizes the text run `node`.
-  fn create_run(node: NodeId, props: &RunProps);
-
   /// Replaces a run's text.
   fn set_text(node: NodeId, text: &str);
-
-  /// Realizes the anchor `node`: a layout-invisible marker a reactive subtree mounts
-  /// between.
-  fn create_anchor(node: NodeId);
-
-  /// Realizes the scope `node`: a layout-invisible node token definitions hang off.
-  fn create_scope(node: NodeId);
 
   /// Places `child`, standing under no parent, under `parent`, immediately before
   /// `before` when given, else last: a new node, or a hidden one, given back what the

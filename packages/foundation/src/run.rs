@@ -13,14 +13,15 @@ use crate::{
   Definitions,
   FocusOrder,
   Leaf,
+  NodeFacts,
   NodeId,
-  NodeKind,
+  NodeSpec,
   Realization,
   Record,
   RunDynamics,
+  RunFacts,
   RunKeyframe,
   RunPlacement,
-  RunProps,
   Scalar,
   Scene,
   StaticLeaf,
@@ -48,7 +49,7 @@ pub struct Run<P: Realization> {
   realizations: Vec<Realize<P>>,
 }
 
-type Realize<P> = Box<dyn FnOnce(NodeId, &RunProps, &KeptStyle<P>)>;
+type Realize<P> = Box<dyn FnOnce(NodeId, &NodeSpec, &KeptStyle<P>)>;
 
 /// A run's style as the shared half hands it to the platform.
 type KeptStyle<P> = CompiledStyle<<P as Realization>::Scalar, <P as Realization>::StyleExt>;
@@ -101,12 +102,12 @@ impl<P: Realization> Run<P> {
     self
   }
 
-  /// Adds `realization`, called with the run's node, its props and the style the
-  /// platform is handed once the platform has created the run, before the style is
-  /// applied and after the realizations added before it.
+  /// Adds `realization`, called with the run's node, the spec it was created from and
+  /// the style the platform is handed once the platform has created the run, before the
+  /// style is applied and after the realizations added before it.
   pub fn add_realization(
     mut self,
-    realization: impl FnOnce(NodeId, &RunProps, &CompiledStyle<P::Scalar, P::StyleExt>) + 'static,
+    realization: impl FnOnce(NodeId, &NodeSpec, &CompiledStyle<P::Scalar, P::StyleExt>) + 'static,
   ) -> Self {
     self.realizations.push(Box::new(realization));
 
@@ -217,17 +218,22 @@ impl<P: Realization> Run<P> {
 
     let style = record.into_kept();
     let links = self.link.is_some();
-    let props = RunProps {
-      placement,
-      selectable: self.selectable,
-      link: self.link,
-    };
-    let node = Scene::<P>::with(|scene| scene.create(NodeKind::Run, annotation));
+    let spec = NodeSpec::new(
+      None,
+      None,
+      None,
+      NodeFacts::Run(RunFacts {
+        placement,
+        selectable: self.selectable,
+        link: self.link,
+      }),
+    );
+    let node = Scene::<P>::with(|scene| scene.create(spec.kind(), annotation));
 
-    P::create_run(node, &props);
+    P::create(node, &spec);
 
     for realization in self.realizations {
-      realization(node, &props, &style);
+      realization(node, &spec, &style);
     }
 
     P::apply_style(node, style);

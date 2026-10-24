@@ -54,7 +54,7 @@ use crate::{
   ClickEvent,
   Condition,
   ContainerName,
-  ControlProps,
+  ControlFacts,
   ControlState,
   DeclaredBoxStyle,
   DecorationBase,
@@ -72,9 +72,9 @@ use crate::{
   LayoutBox,
   MotionBase,
   NativeElement,
+  NodeFacts,
   NodeHandle,
   NodeId,
-  NodeKind,
   Part,
   PlainChild,
   PointerEvent,
@@ -847,20 +847,20 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
         inner = inner.set_drag_axes(axes);
       }
 
-      let node = inner.realize(NodeKind::Control, |node, box_props, _| {
-        P::create_control(
-          node,
-          &ControlProps {
+      let node = inner.realize(
+        |boxed| {
+          NodeFacts::Control(ControlFacts {
+            boxed,
             native,
-            box_props,
             label: name.as_ref().map(|name| untrack(|| name())),
             placeholder,
             lines,
             label_beside: placement == LabelPlacement::Beside,
             group: behavior.group(),
-          },
-        );
-      });
+          })
+        },
+        |_, _, _| {},
+      );
 
       Scene::<P>::with(|scene| {
         if native.is_some_and(NativeElement::is_text_entry) {

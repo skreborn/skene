@@ -45,41 +45,89 @@
 //! assert_eq!(Dimension::from(1.5), Dimension::Length(2));
 //! ```
 //!
-//! Host-only: on a wasm target the crate is empty.
+//! A build names the terminal by `--cfg skene_platform="terminal"`, on the host's own
+//! target. A build that names no platform fails with a `compile_error!` saying so, and
+//! every other platform's build compiles the crate empty.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(any(
+  skene_platform = "terminal",
+  not(any(
+    skene_platform = "android",
+    skene_platform = "ios",
+    skene_platform = "linux",
+    skene_platform = "macos",
+    skene_platform = "terminal",
+    skene_platform = "web",
+    skene_platform = "windows",
+  )),
+))]
 
+#[cfg(not(skene_platform = "terminal"))]
+compile_error!(
+  "skene-terminal builds for the platform its build names: `--cfg \
+   skene_platform=\"terminal\"` in the rustflags of the host's target (`cargo \
+   check-terminal`)"
+);
+
+#[cfg(skene_platform = "terminal")]
 pub mod media;
+#[cfg(skene_platform = "terminal")]
 pub mod prelude;
 
+#[cfg(skene_platform = "terminal")]
 mod cells;
+#[cfg(skene_platform = "terminal")]
 mod detect;
+#[cfg(skene_platform = "terminal")]
 mod dev;
+#[cfg(skene_platform = "terminal")]
 mod device;
+#[cfg(skene_platform = "terminal")]
 mod engine;
+#[cfg(skene_platform = "terminal")]
 mod escape;
+#[cfg(skene_platform = "terminal")]
 mod event_loop;
+#[cfg(skene_platform = "terminal")]
 mod field;
+#[cfg(skene_platform = "terminal")]
 mod frame;
+#[cfg(skene_platform = "terminal")]
 mod interaction;
+#[cfg(skene_platform = "terminal")]
 mod launch;
+#[cfg(skene_platform = "terminal")]
 mod layout;
+#[cfg(skene_platform = "terminal")]
 mod motion;
+#[cfg(skene_platform = "terminal")]
 mod paint;
+#[cfg(skene_platform = "terminal")]
 mod parse;
+#[cfg(skene_platform = "terminal")]
 mod platform;
+#[cfg(skene_platform = "terminal")]
 mod records;
+#[cfg(skene_platform = "terminal")]
 mod resolve;
+#[cfg(skene_platform = "terminal")]
 mod routing;
+#[cfg(skene_platform = "terminal")]
 mod selection;
+#[cfg(skene_platform = "terminal")]
 pub mod testing;
+#[cfg(skene_platform = "terminal")]
 mod text;
+#[cfg(skene_platform = "terminal")]
 mod tty;
+#[cfg(skene_platform = "terminal")]
 mod views;
+#[cfg(skene_platform = "terminal")]
 pub mod window;
 
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
+#[cfg(skene_platform = "terminal")]
 pub use skene_foundation::terminal::{
   BOLD_WEIGHT,
   BorderGlyphs,
@@ -92,6 +140,7 @@ pub use skene_foundation::terminal::{
   Typography,
   terminal_fields,
 };
+#[cfg(skene_platform = "terminal")]
 pub use skene_foundation::{
   Activate,
   AnyKind,
@@ -219,10 +268,14 @@ pub use skene_foundation::{
   routing as router,
   typography,
 };
+#[cfg(skene_platform = "terminal")]
 pub use skene_macros::terminal_main as main;
+#[cfg(skene_platform = "terminal")]
 pub use skene_reactive::{self as reactive, LoadState, Resource};
 
+#[cfg(skene_platform = "terminal")]
 pub(crate) use crate::platform::{try_with_records, with_records};
+#[cfg(skene_platform = "terminal")]
 pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
@@ -275,9 +328,11 @@ pub use crate::{
   },
 };
 
-/// The realization the build selected: the terminal's, on every host target.
+/// The realization the build names: the terminal's.
+#[cfg(skene_platform = "terminal")]
 pub type Active = Terminal;
 
+#[cfg(skene_platform = "terminal")]
 skene_foundation::facade!(Active, i32, "cells");
 
 /// Runs `future` as a task of the current scope until it finishes, the scope goes or
@@ -287,6 +342,7 @@ skene_foundation::facade!(Active, i32, "cells");
 /// it. The future runs on the terminal thread, pumped by the event loop between events
 /// and at once when woken from another thread, so it may touch signals and views
 /// directly.
+#[cfg(skene_platform = "terminal")]
 pub fn spawn(future: impl Future<Output = ()> + 'static) -> skene_reactive::TaskHandle {
   skene_reactive::spawn(future)
 }

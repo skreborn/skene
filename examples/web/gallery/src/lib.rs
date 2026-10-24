@@ -1,5 +1,7 @@
 //! The gallery: every built-in view and Simple component, live.
 
+#![cfg(skene_platform = "web")]
+
 use std::fmt;
 
 use skene_simple_web::prelude::*;

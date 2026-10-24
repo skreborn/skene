@@ -97,6 +97,11 @@ const STEPS: &[Step] = &[
     stamped: true,
   },
   Step {
+    name: "clippy:terminal",
+    run: clippy_terminal,
+    stamped: true,
+  },
+  Step {
     name: "clippy:wasm",
     run: clippy_wasm,
     stamped: true,
@@ -117,6 +122,11 @@ const STEPS: &[Step] = &[
     stamped: true,
   },
   Step {
+    name: "doc:terminal",
+    run: doc_terminal,
+    stamped: true,
+  },
+  Step {
     name: "doc:wasm",
     run: doc_wasm,
     stamped: true,
@@ -134,6 +144,11 @@ const STEPS: &[Step] = &[
   Step {
     name: "test:server",
     run: test_server,
+    stamped: true,
+  },
+  Step {
+    name: "test:terminal",
+    run: test_terminal,
     stamped: true,
   },
   Step {
@@ -163,6 +178,9 @@ const WEB_CFG: &str = r#"--cfg skene_platform="web""#;
 
 /// The flags that name the web's server leaf in a build.
 const SERVER_CFG: &str = r#"--cfg skene_platform="web" --cfg skene_server"#;
+
+/// The flag that names the terminal in a build.
+const TERMINAL_CFG: &str = r#"--cfg skene_platform="terminal""#;
 
 /// The five project documents, which no crate compiles and no stamped step reads; every
 /// other file, every other document among them, is an input of a stamped step.
@@ -512,6 +530,20 @@ impl Gate {
     command
   }
 
+  /// A cargo command building for the terminal on the host's target, its cfg in the
+  /// target's rustc and rustdoc flags, in a target directory of its own.
+  fn terminal_cargo<I, S>(&self, arguments: I) -> Command
+  where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+  {
+    let mut command = self.cargo_for(&self.host, TERMINAL_CFG, arguments);
+
+    command.env("CARGO_TARGET_DIR", self.target.join("terminal"));
+
+    command
+  }
+
   /// A cargo command building for the browser leaf, its cfg in [`WASM`]'s rustc and
   /// rustdoc flags.
   fn wasm_cargo<I, S>(&self, arguments: I) -> Command
@@ -676,7 +708,7 @@ fn dependencies(gate: &Gate, log: &mut Log) -> Outcome {
 
 fn licenses(gate: &Gate, log: &mut Log) -> Outcome {
   gate.require("deny", "cargo-deny")?;
-  log.check(gate.cargo(["deny", "--locked", "check", "licenses"]))
+  log.check(gate.cargo(["deny", "--workspace", "--locked", "check", "licenses"]))
 }
 
 fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {
@@ -689,26 +721,38 @@ fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(command)
 }
 
-/// What skene-web reports for each build it refuses: the flags naming the platform
-/// (none, then on the host's target), the message it fails with.
-const REFUSED: &[(Option<&str>, &str)] = &[
-  (None, "skene-web builds for the platform its build names"),
+/// What each facade reports for each build it refuses: the facade, the flags naming the
+/// platform (none, then on the host's target), the message it fails with.
+const REFUSED: &[(&str, Option<&str>, &str)] = &[
   (
+    "skene-web",
+    None,
+    "skene-web builds for the platform its build names",
+  ),
+  (
+    "skene-web",
     Some(WEB_CFG),
     r#"skene_platform = "web" builds the browser on wasm32-unknown-unknown alone"#,
   ),
   (
+    "skene-web",
     Some(r#"--cfg skene_platform="linux""#),
     "skene-web realizes no linux yet",
   ),
+  (
+    "skene-terminal",
+    None,
+    "skene-terminal builds for the platform its build names",
+  ),
 ];
 
-/// Holds skene-web to refusing each build [`REFUSED`] names with its own message alone.
+/// Holds each facade to refusing each build [`REFUSED`] names with its own message
+/// alone.
 fn selection(gate: &Gate, log: &mut Log) -> Outcome {
   let mut problems = Vec::new();
 
-  for (flags, message) in REFUSED {
-    let arguments = ["check", "--locked", "-p", "skene-web"];
+  for (package, flags, message) in REFUSED {
+    let arguments = ["check", "--locked", "-p", package];
     let command = match flags {
       None => gate.cargo(arguments),
       Some(flags) => {
@@ -721,13 +765,13 @@ fn selection(gate: &Gate, log: &mut Log) -> Outcome {
     };
     let described = describe(&command);
     let ran = log.run(command)?;
-    let alone = ran
-      .output
-      .contains("could not compile `skene-web` (lib) due to 1 previous error");
+    let alone = ran.output.contains(&format!(
+      "could not compile `{package}` (lib) due to 1 previous error"
+    ));
 
     if ran.success || !ran.output.contains(message) || !alone {
       problems.push(format!(
-        "`{described}` did not fail with skene-web's message alone: {message}"
+        "`{described}` did not fail with {package}'s message alone: {message}"
       ));
     }
   }
@@ -754,11 +798,30 @@ fn clippy_release(gate: &Gate, log: &mut Log) -> Outcome {
   server
     .args(packages(&workspace.web()))
     .args(["--", "-D", "warnings"]);
-  log.check(server)
+  log.check(server)?;
+
+  let mut terminal = gate.terminal_cargo(["clippy", "--all-targets", "--locked", "--release"]);
+
+  terminal
+    .args(packages(&workspace.terminal()))
+    .args(["--", "-D", "warnings"]);
+  log.check(terminal)
 }
 
 fn clippy_server(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(gate.server_cargo([
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings",
+  ]))
+}
+
+fn clippy_terminal(gate: &Gate, log: &mut Log) -> Outcome {
+  log.check(gate.terminal_cargo([
     "clippy",
     "--workspace",
     "--all-targets",
@@ -794,7 +857,7 @@ fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
 fn clippy_apple(gate: &Gate, log: &mut Log) -> Outcome {
   Gate::require_target(APPLE, None)?;
 
-  let mut command = gate.cargo(["clippy", "--all-targets", "--locked", "--target", APPLE]);
+  let mut command = gate.cargo_for(APPLE, TERMINAL_CFG, ["clippy", "--all-targets", "--locked"]);
 
   command
     .args(packages(APPLE_PACKAGES))
@@ -820,6 +883,17 @@ fn doc_server(gate: &Gate, log: &mut Log) -> Outcome {
   command.args(packages(&workspace.web())).env(
     Gate::target_flags(&gate.host, "RUSTDOCFLAGS"),
     format!("{SERVER_CFG} -D warnings"),
+  );
+  log.check(command)
+}
+
+fn doc_terminal(gate: &Gate, log: &mut Log) -> Outcome {
+  let workspace = Workspace::read(&gate.root)?;
+  let mut command = gate.terminal_cargo(["doc", "--no-deps", "--locked"]);
+
+  command.args(packages(&workspace.terminal())).env(
+    Gate::target_flags(&gate.host, "RUSTDOCFLAGS"),
+    format!("{TERMINAL_CFG} -D warnings"),
   );
   log.check(command)
 }
@@ -865,6 +939,21 @@ fn test_server(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(doctests)
 }
 
+fn test_terminal(gate: &Gate, log: &mut Log) -> Outcome {
+  gate.require("nextest", "cargo-nextest")?;
+
+  let workspace = Workspace::read(&gate.root)?;
+  let mut tests = gate.terminal_cargo(["nextest", "run", "--locked", "--no-fail-fast"]);
+
+  tests.args(packages(&workspace.terminal()));
+  log.check(tests)?;
+
+  let mut doctests = gate.terminal_cargo(["test", "--locked", "--no-fail-fast", "--doc"]);
+
+  doctests.args(packages(&workspace.terminal()));
+  log.check(doctests)
+}
+
 fn msrv(gate: &Gate, log: &mut Log) -> Outcome {
   let version = manifests::rust_version(&gate.root)?;
   let toolchain = installed_toolchain(&version).ok_or_else(|| {
@@ -889,6 +978,14 @@ fn msrv(gate: &Gate, log: &mut Log) -> Outcome {
     .arg("--workspace")
     .env("CARGO_TARGET_DIR", gate.target.join("msrv").join("server"));
   log.check(server)?;
+
+  let mut terminal = gate.terminal_cargo([toolchain.as_str()].into_iter().chain(check));
+
+  terminal.arg("--workspace").env(
+    "CARGO_TARGET_DIR",
+    gate.target.join("msrv").join("terminal"),
+  );
+  log.check(terminal)?;
 
   let mut browser = gate.wasm_cargo([toolchain.as_str()].into_iter().chain(check));
 

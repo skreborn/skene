@@ -2,7 +2,7 @@
 //! first tick, the picture's fallback stands in for the pixels, and the stripes paint
 //! once the terminal proves its graphics.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
   self as terminal,

@@ -1,7 +1,7 @@
 //! The gallery in the terminal: every control, link, picture and dialog it shows is
 //! named, as a reader finds it.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{self as terminal, prelude::*, testing};
 

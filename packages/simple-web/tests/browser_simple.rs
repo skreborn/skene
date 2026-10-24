@@ -6,7 +6,7 @@
 //! Run in a headless browser:
 //! `cargo test-web --test browser_simple`.
 
-#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::{cell::RefCell, rc::Rc};
 

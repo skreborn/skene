@@ -60,8 +60,10 @@ pub fn web_main(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Marks a terminal app's entry point: a function returning the app's view.
 ///
-/// Expands to the app crate's `main`, launching the app in the terminal. The crate is
-/// the app's library alone: the `skene` command builds it as a binary.
+/// Expands to the app crate's `main` in the terminal's build (`skene_platform =
+/// "terminal"`), launching the app in the terminal. The crate is the app's library
+/// alone: the `skene` command builds it as a binary, and its `check-cfg` declares the
+/// cfg the expansion reads.
 ///
 /// The attribute takes no arguments and the function no parameters and no generics:
 /// the build names the platform.
@@ -83,7 +85,7 @@ pub fn terminal_main(attr: TokenStream, item: TokenStream) -> TokenStream {
   quote! {
     #function
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(skene_platform = "terminal")]
     #[doc(hidden)]
     pub fn main() {
       ::skene_terminal::launch(#name);

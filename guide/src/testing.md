@@ -6,6 +6,7 @@ There is no mock platform. A test finds what a reader finds, by role and accessi
 name or by text, and acts as a user acts, through the gestures of the `user` module:
 
 ```rust
+# #[cfg(skene_platform = "terminal")] {
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   mount,
@@ -33,6 +34,7 @@ with_platform(|| {
   assert!(find_by_text("1").is_some());
   assert!(render_to_text(20, 3).starts_with('1'));
 });
+# }
 ```
 
 `with_platform` installs a fresh terminal for the closure and removes it afterwards, and
@@ -52,7 +54,7 @@ elements it built and the styles the engine computes for them, through `web-sys`
 `wasm-bindgen` beside `wasm-bindgen-test` among the crate's dev-dependencies:
 
 ```rust,ignore
-#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use skene_simple_web::prelude::*;
 use skene_web::{
@@ -103,6 +105,7 @@ with `render_to_string` and reads the markup and the stylesheet the browser woul
 receive, here for the same counter.
 
 ```rust
+# #[cfg(all(skene_platform = "web", skene_server))] {
 # use skene_simple_web::prelude::*;
 use skene_web::{prelude::*, render_to_string};
 #
@@ -119,6 +122,7 @@ let page = render_to_string(counter);
 
 assert!(page.body().contains(">0</span>"), "{}", page.body());
 assert!(page.body().contains("<button"), "{}", page.body());
+# }
 ```
 
 ## Shared logic

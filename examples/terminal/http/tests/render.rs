@@ -1,7 +1,7 @@
 //! The HTTP example in the terminal's in-process tier: the URL and the pending caption paint before
 //! anything lands.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
   self as terminal,

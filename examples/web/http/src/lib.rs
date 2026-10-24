@@ -7,6 +7,8 @@
 //! The quotes are a manifest-declared asset, served beside the page, so the example
 //! needs no network beyond the dev server.
 
+#![cfg(skene_platform = "web")]
+
 use skene_simple_web::prelude::*;
 use skene_web::{HasChild, Resource, prelude::*};
 

@@ -8,7 +8,7 @@
 //! `terminal-http [url]` fetches the URL (`https://example.com/` without one) and shows
 //! what came back. `Ctrl-Q` quits.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;

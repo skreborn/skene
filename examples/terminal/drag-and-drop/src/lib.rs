@@ -9,7 +9,7 @@
 //! Press a card and move off its cell to drag it, release over the other list to drop it,
 //! `Escape` to abandon the drag, `Ctrl-Q` to quit.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;

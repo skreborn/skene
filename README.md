@@ -33,6 +33,7 @@ A web app depends on `skene-web` and, for the ready-made components, on
 (`examples/web/counter`):
 
 ```rust
+# #[cfg(skene_platform = "web")] {
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
@@ -59,6 +60,7 @@ fn app() -> impl View {
       )
   })
 }
+# }
 ```
 
 `#[main]` expands to whichever entry the target has: in the browser it launches the
@@ -73,6 +75,7 @@ A terminal app depends on `skene-terminal` (and `skene-simple-terminal` for the 
 marks its entry with `#[main]` (`examples/terminal/counter`):
 
 ```rust
+# #[cfg(skene_platform = "terminal")] {
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;
 
@@ -90,6 +93,7 @@ fn app() -> impl View {
     ))
   })
 }
+# }
 ```
 
 Lengths are whole cells (`i32`), text is a color, a bold flag and a size in cells (a scale
@@ -203,16 +207,20 @@ cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` 
 
 The gate checks formatting, manifest order, every patched crate vendored under
 `vendor/`, the house rules, unused dependencies, clippy and rustdoc on every leaf,
-`skene-web` refusing with its own message a build that names no platform or one it does
-not realize, clippy on the terminal's macOS paths, manifests free of cargo features, the
-minimum Rust version in the host's, the server's and the browser's builds, and three
-test tiers. A crate reaching `skene-web` is built for the web's leaves alone, and the
-host tier runs every other crate's tests: the foundation's and the layout engine's unit
-tests and the terminal's in-process tests, which act through real input and read what a
-reader finds. The server tier builds every crate reaching the web on the server leaf
-natively and runs their tests and doctests, the guide's and this README's examples, a
-byte-exact render snapshot and the compile-fail suite (a program per rule the types
-enforce, beside the diagnostic it must raise) among them; the browser tier drives a real Firefox and a real
+each facade refusing with its own message a build that names no platform and
+`skene-web` one it does not realize, clippy on the terminal's macOS paths, manifests
+free of cargo features, the minimum Rust version in the host's, the server's, the
+terminal's and the browser's builds, and four test tiers. A crate reaching a facade is
+built for that facade's platform alone, and the host tier runs the tests of every crate
+reaching neither, which name no platform and which plain cargo at the root builds: the
+foundation's and the layout engine's unit tests among them. The terminal tier builds
+every crate reaching `skene-terminal` in the terminal's build and runs their tests and
+doctests, the terminal's in-process tests, which act through real input and read what a
+reader finds, and the guide's and this README's terminal examples among them. The server
+tier builds every crate reaching the web on the server leaf natively and runs their
+tests and doctests, the guide's and this README's web examples, a byte-exact render
+snapshot and the compile-fail suite (a program per rule the types enforce, beside the
+diagnostic it must raise) among them; the browser tier drives a real Firefox and a real
 Chromium, several sessions at once, the `gallery` example running axe-core over every
 built-in, acts the conformance suite out in both by trusted input over WebDriver, and on
 x86-64 Linux compares every page of the suite against its screenshot golden in a pinned

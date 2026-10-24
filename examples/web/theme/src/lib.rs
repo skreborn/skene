@@ -7,6 +7,8 @@
 //! toggle re-inks it without rebuilding anything. A palette change is the same: the
 //! theme redefines its tokens in place, and the tree beneath it stands.
 
+#![cfg(skene_platform = "web")]
+
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 

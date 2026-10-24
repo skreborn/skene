@@ -7,6 +7,8 @@
 //! `skeneConformance`, whose `probe(name)` reads what the page publishes as its probe
 //! `name` ([`probe`]).
 
+#![cfg(skene_platform = "web")]
+
 use std::cell::RefCell;
 
 use skene_conformance::Probes;
@@ -37,7 +39,7 @@ fn app() -> AnyView {
 
   PROBES.set(Some(probes));
 
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(not(skene_server))]
   publish();
 
   view
@@ -51,7 +53,7 @@ pub fn probe(name: &str) -> Option<String> {
 }
 
 /// Publishes the global `skeneConformance`, its `probe` calling [`probe`].
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_server))]
 fn publish() {
   use wasm_bindgen::{JsValue, closure::Closure};
 

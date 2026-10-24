@@ -7,6 +7,8 @@
 //! browser's menu. The standard items follow the clipboard: `Copy` is listed only where
 //! something is selected, and `Cut` and `Paste` only inside a text entry.
 
+#![cfg(skene_platform = "web")]
+
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 

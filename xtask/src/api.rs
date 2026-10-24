@@ -18,10 +18,11 @@ use crate::{
   Log,
   Outcome,
   SERVER_CFG,
+  TERMINAL_CFG,
   WASM,
   WEB_CFG,
   describe,
-  manifests::{WEB, Workspace},
+  manifests::{TERMINAL, WEB, Workspace},
 };
 
 /// The toolchain every surface is read with; a snapshot holds under this toolchain's
@@ -44,6 +45,8 @@ enum Leaf {
   Server,
   /// On the browser's target.
   Browser,
+  /// On the host's target, with the terminal named in its flags.
+  Terminal,
 }
 
 impl Leaf {
@@ -53,6 +56,7 @@ impl Leaf {
       Self::Host => "host",
       Self::Server => "server",
       Self::Browser => "browser",
+      Self::Terminal => "terminal",
     }
   }
 }
@@ -65,8 +69,9 @@ struct Snapshot {
   leaf: Leaf,
 }
 
-/// Every snapshot: each library crate reaching no web on the host, each reaching the web
-/// on the server leaf, and those whose surface differs by leaf on each of theirs.
+/// Every snapshot: each library crate reaching neither facade on the host, each reaching
+/// the web on the server leaf and each reaching the terminal in the terminal's build,
+/// and those whose surface differs by leaf on each of theirs.
 const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-conformance", Leaf::Host),
   Snapshot::new("skene-dev", Leaf::Host),
@@ -76,10 +81,10 @@ const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-parley", Leaf::Host),
   Snapshot::new("skene-reactive", Leaf::Host),
   Snapshot::new("skene-simple", Leaf::Host),
-  Snapshot::new("skene-simple-terminal", Leaf::Host),
+  Snapshot::new("skene-simple-terminal", Leaf::Terminal),
   Snapshot::new("skene-simple-web", Leaf::Server),
   Snapshot::new("skene-simple-web", Leaf::Browser),
-  Snapshot::new("skene-terminal", Leaf::Host),
+  Snapshot::new("skene-terminal", Leaf::Terminal),
   Snapshot::new("skene-transport", Leaf::Host),
   Snapshot::new("skene-transport", Leaf::Browser),
   Snapshot::new("skene-web", Leaf::Server),
@@ -125,6 +130,13 @@ impl Snapshot {
           .args(["--target", WASM])
           .env(Gate::target_flags(WASM, "RUSTFLAGS"), WEB_CFG)
           .env(Gate::target_flags(WASM, "RUSTDOCFLAGS"), WEB_CFG)
+          .env("CARGO_TARGET_DIR", gate.target.join("api"));
+      }
+      Leaf::Terminal => {
+        command
+          .args(["--target", gate.host.as_str()])
+          .env(Gate::target_flags(&gate.host, "RUSTFLAGS"), TERMINAL_CFG)
+          .env(Gate::target_flags(&gate.host, "RUSTDOCFLAGS"), TERMINAL_CFG)
           .env("CARGO_TARGET_DIR", gate.target.join("api"));
       }
     }
@@ -191,22 +203,25 @@ fn require(gate: &Gate) -> Outcome {
   }
 }
 
-/// Fails where a snapshot's leaf is not one its crate builds on: a crate reaching the web
-/// is read on its leaves alone, and the server leaf reads no other.
+/// Fails where a snapshot's leaf is not one its crate builds on: a crate reaching a
+/// facade is read on that facade's leaves alone, and the server and terminal leaves read
+/// no other.
 fn require_leaves(gate: &Gate) -> Outcome {
   let workspace = Workspace::read(&gate.root)?;
   let web = workspace.web();
+  let terminal = workspace.terminal();
   let misplaced: Vec<String> = SNAPSHOTS
     .iter()
     .filter(|snapshot| match snapshot.leaf {
-      Leaf::Host => web.contains(&snapshot.package),
+      Leaf::Host => web.contains(&snapshot.package) || terminal.contains(&snapshot.package),
       Leaf::Server => !web.contains(&snapshot.package),
       Leaf::Browser => false,
+      Leaf::Terminal => !terminal.contains(&snapshot.package),
     })
     .map(|snapshot| {
       format!(
-        "`{}` is read on the {} leaf; a crate reaching `{WEB}` is read on the web's leaves \
-         alone, and the server leaf reads no other",
+        "`{}` is read on the {} leaf; a crate reaching `{WEB}` or `{TERMINAL}` is read on \
+         that facade's leaves alone, and the server and terminal leaves read no other",
         snapshot.package,
         snapshot.leaf.name()
       )

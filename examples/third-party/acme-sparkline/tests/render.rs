@@ -2,7 +2,7 @@
 //! color it was given; and the bars as pixels over the glyphs once the terminal proves
 //! its graphics.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use acme_sparkline::Sparkline;
 use skene_terminal::{self as terminal, Color, View as _, testing};

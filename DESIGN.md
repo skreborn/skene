@@ -37,7 +37,9 @@ time because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
 platform; each facade names only its own platforms, and publishes the selected one as
-`Active`.
+`Active`. A crate reaching neither facade names no platform and builds in every build,
+plain cargo at the root among them; one reaching a facade builds in that facade's
+platforms' builds and compiles empty in the other's.
 
 ## The scene and the platform
 
@@ -1238,6 +1240,12 @@ box-drawing characters on each edge its width names, in its own color, its condi
 are cells and its own background. Nothing the medium lacks exists to call, so a
 terminal app is first-class at compile time rather than best-effort at run time.
 
+The terminal's build names it, `--cfg skene_platform="terminal"` on the host's target:
+the crate, its dependencies and `#[main]`'s `main` exist there alone, a build naming no
+platform fails with the crate's `compile_error!`, and every other platform's build
+compiles it empty, as it does `skene-simple-terminal`, `acme-sparkline` and the terminal
+examples, each gated on the same cfg.
+
 The loop runs on a `Device`: bytes in and out, the window's size, a wake, raw mode, and
 notes for what the device learns besides input (a request to end, a job control stop
 and continue). The loop owns the decoding—the parser, the escape grace, the reply
@@ -1532,29 +1540,39 @@ extension traits.
 ## Selection and entry
 
 Selection is by **facade dependency** first—a web app depends on `skene-web`, a
-terminal app on `skene-terminal`—and by the build's cfg within a facade: `skene-web`
-compiles under `--cfg skene_platform="web"`, its browser leaf on `wasm32-unknown-unknown`
-and its server leaf, on any target, where `--cfg skene_server` stands beside it, and it
-refuses every other build with a `compile_error!` of its own: one naming no platform,
-the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
-does not realize yet, while a terminal build compiles it empty. No build script infers
-a leaf and no cargo feature selects one. `#[main]` and `#[lazy]` expand per leaf on the
-same cfgs, so a server build never emits the browser entry or splits a lazy body, and
-the gate's `selection` step holds each refusal to its message alone. The CLI names the
-cfgs for the target it builds, through the target's rustflags; this repository's root
-names no platform, and its cargo aliases (`cargo check-web`, `cargo check-server` and
-their `clippy`, `doc` and `test` kin) carry the web's cfgs and triples, each over the
-whole workspace in the target directory the gate builds it in. docs.rs documents each
-leaf of `skene-web` and `skene-simple-web` from their metadata's `cargo-args`, which name
-the browser in `wasm32-unknown-unknown`'s rustflags and rustdocflags and the server leaf
-in `x86_64-unknown-linux-gnu`'s. A project `skene new` writes declares both cfgs in its
-workspace's `check-cfg`, which every crate of it inherits, so an app's code and its
-entry's expansion name them without a warning. Where one triple hosts several platforms
-the build names the platform by a cfg, chosen once and unifying nothing, as `getrandom`
-names its backend. Target-gating stays the enforcement layer
-where it applies. A cargo feature is an opt-in upgrade that enables optional
-dependencies alone, never a bound, a type, a variant or a platform, and none is on by
-default: `skene-web`'s `gpu` is the one there is.
+terminal app on `skene-terminal`—and by the build's cfg, which every build names:
+`skene-web` compiles under `--cfg skene_platform="web"`, its browser leaf on
+`wasm32-unknown-unknown` and its server leaf, on any target, where `--cfg skene_server`
+stands beside it, and it refuses every other build with a `compile_error!` of its own:
+one naming no platform, the web without `skene_server` off `wasm32-unknown-unknown`,
+and each pixel platform it does not realize yet, while a terminal build compiles it
+empty. `skene-terminal` compiles under `--cfg skene_platform="terminal"` on the host's
+target, refuses a build naming no platform with its own `compile_error!`, and compiles
+empty in every other platform's build. A crate reaching a facade—its Simple crate, a
+low-level view's, an example—is gated on that facade's platform, so a build of the whole
+workspace for one platform compiles the other facade's crates empty, and one naming no
+platform fails with both facades' messages. No build script infers a platform or a leaf
+and no cargo feature selects one. `#[main]` and `#[lazy]` expand per leaf on the same
+cfgs, so a server build never emits the browser entry or splits a lazy body, and the
+terminal's `#[main]` emits its `main` in the terminal's build alone; the gate's
+`selection` step holds each refusal to its message alone. The CLI names the cfgs for
+the target it builds, through the target's rustflags; this repository's root names no
+platform: plain cargo there builds its default members, the crates reaching neither
+facade, which the gate's `manifests` step holds the list to, and its cargo aliases
+(`cargo check-web`, `cargo check-server`, `cargo check-terminal` and their `clippy`,
+`doc` and `test` kin) carry each platform's cfgs and triple, each over the whole
+workspace in the target directory the gate builds it in. docs.rs documents each leaf of
+`skene-web` and `skene-simple-web` from their metadata's `cargo-args`, which name the
+browser in `wasm32-unknown-unknown`'s rustflags and rustdocflags and the server leaf in
+`x86_64-unknown-linux-gnu`'s, and `skene-terminal` and `skene-simple-terminal` from
+theirs, naming the terminal in `x86_64-unknown-linux-gnu`'s. A project `skene new`
+writes declares both cfgs in its workspace's `check-cfg`, which every crate of it
+inherits, so an app's code and its entry's expansion name them without a warning.
+Where one triple hosts several platforms the build names the platform by a cfg, chosen
+once and unifying nothing, as `getrandom` names its backend. Target-gating stays the
+enforcement layer where it applies. A cargo feature is an opt-in upgrade that enables
+optional dependencies alone, never a bound, a type, a variant or a platform, and none
+is on by default: `skene-web`'s `gpu` is the one there is.
 
 A facade is the one place allowed to name its platforms, which is why the shared
 platform-adjacent surface lives there: `launch`, `#[main]` (per-platform entry glue),

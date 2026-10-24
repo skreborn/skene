@@ -12,7 +12,7 @@ skene-foundation.workspace = true
 skene-simple.workspace = true
 skene-web.workspace = true
 
-[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dev-dependencies]
 wasm-bindgen-test.workspace = true
 web-sys = { workspace = true, features = [
   "css",

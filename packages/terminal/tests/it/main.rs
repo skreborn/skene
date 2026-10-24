@@ -1,7 +1,7 @@
-//! The terminal platform's integration tests, in one binary, host-only as the platform
-//! is.
+//! The terminal platform's integration tests, in one binary, built in the terminal's
+//! build alone as the platform is.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 mod common;
 

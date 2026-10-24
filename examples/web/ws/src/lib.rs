@@ -7,6 +7,8 @@
 //! receiving future in a task of its own and are written into a signal the list
 //! follows.
 
+#![cfg(skene_platform = "web")]
+
 use std::rc::Rc;
 
 use skene_simple_web::prelude::*;

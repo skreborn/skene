@@ -1,7 +1,7 @@
 //! The text sizing example in the terminal's in-process tier: every section paints at one cell
 //! until the terminal proves the protocol, and the title takes three rows after it.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
   self as terminal,

@@ -106,12 +106,63 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
     }
   }
 
+  check_default_members(root, &mut problems)?;
+
   if problems.is_empty() {
     Ok(())
   }
   else {
     Err(problems.join("\n"))
   }
+}
+
+/// Notes where the workspace's `default-members` differ from the directories of the
+/// members reaching neither facade ([`Workspace::host`]), which plain cargo at the root
+/// builds with no platform named, listed alphabetically.
+fn check_default_members(root: &Path, problems: &mut Vec<String>) -> Result<(), String> {
+  let workspace = Workspace::read(root)?;
+  let host = workspace.host();
+  let mut expected = Vec::new();
+
+  for path in manifest_paths(root)? {
+    let manifest = read(&path)?;
+    let name = manifest
+      .get("package")
+      .and_then(|package| package.get("name"))
+      .and_then(Item::as_str);
+
+    if let Some(name) = name
+      && host.contains(&name)
+      && let Some(directory) = path
+        .parent()
+        .and_then(|parent| parent.strip_prefix(root).ok())
+    {
+      expected.push(directory.to_string_lossy().replace('\\', "/"));
+    }
+  }
+
+  expected.sort();
+
+  let listed: Vec<String> = read(&root.join("Cargo.toml"))?
+    .get("workspace")
+    .and_then(|workspace| workspace.get("default-members"))
+    .and_then(Item::as_array)
+    .map(|members| {
+      members
+        .iter()
+        .filter_map(|member| member.as_str().map(str::to_owned))
+        .collect()
+    })
+    .unwrap_or_default();
+
+  if listed != expected {
+    problems.push(format!(
+      "Cargo.toml: [workspace] default-members lists {listed:?}; the members reaching \
+       neither facade, alphabetically, are {expected:?}"
+    ));
+  }
+
+  Ok(())
 }
 
 /// Notes what the crate under `packages/` that `manifest` (named `name`) lacks to
@@ -273,6 +324,9 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
 /// The web's facade: a package reaching it is built for the web's leaves alone.
 pub(crate) const WEB: &str = "skene-web";
 
+/// The terminal's facade: a package reaching it is built for the terminal alone.
+pub(crate) const TERMINAL: &str = "skene-terminal";
+
 /// The workspace's packages and what each depends on among them, from which every step
 /// reads the packages it builds.
 pub(crate) struct Workspace {
@@ -387,25 +441,37 @@ impl Workspace {
         .contains(facade)
   }
 
-  /// The members the host's own build checks, documents and tests: those reaching no
-  /// [`WEB`].
+  /// The members the host's own build checks, documents and tests, naming no platform:
+  /// those reaching neither [`WEB`] nor [`TERMINAL`].
   pub(crate) fn host(&self) -> Vec<&str> {
     self
       .packages
       .iter()
       .map(|package| package.name.as_str())
-      .filter(|name| !self.reaches(name, WEB))
+      .filter(|name| !self.reaches(name, WEB) && !self.reaches(name, TERMINAL))
       .collect()
   }
 
   /// The members built for the web's leaves alone: those reaching [`WEB`], itself
   /// included.
   pub(crate) fn web(&self) -> Vec<&str> {
+    self.reaching(WEB)
+  }
+
+  /// The members built for the terminal alone: those reaching [`TERMINAL`], itself
+  /// included.
+  pub(crate) fn terminal(&self) -> Vec<&str> {
+    self.reaching(TERMINAL)
+  }
+
+  /// The members reaching `facade`, itself included, in the order the workspace lists
+  /// them.
+  fn reaching(&self, facade: &str) -> Vec<&str> {
     self
       .packages
       .iter()
       .map(|package| package.name.as_str())
-      .filter(|name| self.reaches(name, WEB))
+      .filter(|name| self.reaches(name, facade))
       .collect()
   }
 
@@ -673,7 +739,7 @@ mod tests {
   }
 
   #[test]
-  fn a_member_reaches_the_web_through_what_its_build_compiles() {
+  fn a_member_reaches_a_facade_through_what_its_build_compiles() {
     let workspace = Workspace::new(&[
       manifest("[workspace]\nmembers = [\"*\"]\n"),
       manifest("[package]\nname = \"skene-web\"\n[dependencies]\nbase = { path = \"..\" }\n"),
@@ -683,17 +749,22 @@ mod tests {
         "[package]\nname = \"app\"\n[target.'cfg(unix)'.dependencies]\nlib = { path = \"..\" }\n",
       ),
       manifest(
-        "[package]\nname = \"docs\"\n[dev-dependencies]\nweb = { package = \"skene-web\", path = \"..\" }\n",
+        "[package]\nname = \"docs\"\n[dev-dependencies]\nskene-terminal = { path = \"..\" }\nweb = { package = \"skene-web\", path = \"..\" }\n",
       ),
       manifest("[package]\nname = \"tool\"\n[build-dependencies]\nbase = { path = \"..\" }\n"),
       manifest("[package]\nname = \"probe\"\n[dev-dependencies]\nskene-web = { path = \"..\" }\n"),
       manifest("[package]\nname = \"user\"\n[dependencies]\nprobe = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"skene-terminal\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest(
+        "[package]\nname = \"shell\"\n[target.'cfg(skene_platform = \"terminal\")'.dependencies]\nskene-terminal = { path = \"..\" }\n",
+      ),
     ]);
 
     assert_eq!(
       workspace.web(),
       ["skene-web", "lib", "app", "docs", "probe"]
     );
+    assert_eq!(workspace.terminal(), ["docs", "skene-terminal", "shell"]);
     assert_eq!(workspace.host(), ["base", "tool", "user"]);
     assert_eq!(
       workspace.web_build(),

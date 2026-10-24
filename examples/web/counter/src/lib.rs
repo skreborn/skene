@@ -4,6 +4,8 @@
 //! In the browser `#[main]` launches it; on the server leaf the same entry renders a
 //! requested path to stdout.
 
+#![cfg(skene_platform = "web")]
+
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 

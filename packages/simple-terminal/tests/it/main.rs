@@ -2,7 +2,7 @@
 //! the pointer resting on a control and the keys walking a picker, read as the cells the
 //! terminal paints.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use std::time::Duration;
 

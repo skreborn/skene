@@ -5,6 +5,8 @@
 //! palette in the web's unit, and a [`prelude`] an app imports beside the facade's
 //! own.
 
+#![cfg(skene_platform = "web")]
+
 mod button;
 mod card;
 mod checkbox;

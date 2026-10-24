@@ -7,7 +7,7 @@
 //!
 //! `Ctrl-Q` quits.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use std::time::Duration;
 

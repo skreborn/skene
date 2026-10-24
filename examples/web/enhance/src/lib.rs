@@ -7,6 +7,8 @@
 //! keeps, and a picture painted through vello. Where the bundle never arrives, the
 //! fallbacks stand.
 
+#![cfg(skene_platform = "web")]
+
 use std::time::Duration;
 
 use skene_simple_web::prelude::*;

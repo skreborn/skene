@@ -5,7 +5,7 @@
 //! palette in the terminal's unit, and a [`prelude`] an app imports beside the facade's
 //! own.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 mod button;
 mod card;

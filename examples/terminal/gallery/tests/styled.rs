@@ -3,7 +3,7 @@
 //!
 //! `INSTA_UPDATE=always` rewrites the file once a change to the frame is meant.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{self as terminal, prelude::*, testing};
 

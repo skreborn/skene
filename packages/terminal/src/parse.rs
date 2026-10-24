@@ -1879,7 +1879,7 @@ mod tests {
   }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(test)]
 mod properties {
   use proptest::prelude::*;
 

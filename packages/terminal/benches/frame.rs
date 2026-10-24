@@ -3,14 +3,14 @@
 //! every row, with a keyed row added or removed, and mounted afresh.
 
 #![cfg_attr(
-  not(target_arch = "wasm32"),
+  skene_platform = "terminal",
   expect(
     missing_docs,
     reason = "criterion's macros generate the harness's functions"
   )
 )]
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_platform = "terminal")]
 mod frame {
   use criterion::Criterion;
   use skene_terminal::{self as terminal, prelude::*, testing};
@@ -123,10 +123,10 @@ mod frame {
   }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_platform = "terminal")]
 criterion::criterion_group!(benches, frame::frames);
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_platform = "terminal")]
 criterion::criterion_main!(benches);
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_platform = "terminal"))]
 fn main() {}

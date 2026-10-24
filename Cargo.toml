@@ -1,6 +1,21 @@
 [workspace]
 resolver = "3"
 members = ["examples/*/*", "packages/*", "xtask"]
+# The members reaching neither facade, which build with no platform named; the gate's
+# `manifests` step holds the list to them.
+default-members = [
+  "packages/cli",
+  "packages/conformance",
+  "packages/dev",
+  "packages/foundation",
+  "packages/layout",
+  "packages/macros",
+  "packages/parley",
+  "packages/reactive",
+  "packages/simple",
+  "packages/transport",
+  "xtask",
+]
 exclude = ["vendor"]
 
 [workspace.package]

@@ -508,7 +508,7 @@ impl Records {
   }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(test)]
 mod properties {
   use proptest::prelude::*;
   use skene_foundation::{

@@ -7,8 +7,8 @@ description = "skene's terminal facade and platform: views typed to the terminal
 license.workspace = true
 repository.workspace = true
 
-# Host-only: the terminal platform never itself compiles to wasm.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The terminal's build alone: every other build compiles the crate empty.
+[target.'cfg(skene_platform = "terminal")'.dependencies]
 base64 = "0.23"
 libc = "0.2"
 memchr = "2"
@@ -27,7 +27,7 @@ tracing.workspace = true
 unicode-segmentation.workspace = true
 unicode-width = "0.2"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+[target.'cfg(skene_platform = "terminal")'.dev-dependencies]
 accesskit.workspace = true
 criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.7" }
 proptest.workspace = true
@@ -44,6 +44,13 @@ unicode-width = "0.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+# The target names the terminal.
+cargo-args = [
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustflags = ["--cfg", "skene_platform=\"terminal\""]',
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
 
 [lints]
 workspace = true

@@ -2,7 +2,7 @@
 //! on a note opens its menu in place of the standard one, running an item records it,
 //! and a right click on the plain text opens the standard menu.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
   self as terminal,

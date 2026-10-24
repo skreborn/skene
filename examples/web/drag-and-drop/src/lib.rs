@@ -6,6 +6,8 @@
 //! `Dragged` and the list under the pointer that would take it `Targeted`, so both are
 //! styled as any state is.
 
+#![cfg(skene_platform = "web")]
+
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 

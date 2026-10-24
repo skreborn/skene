@@ -1,10 +1,10 @@
 [alias]
 skene = "run --package skene-cli --profile cli --"
 xtask = "run --package xtask --"
-# The web's builds at this repository's root, which names no default platform: its
-# browser leaf on wasm32 and its server leaf on the host, each in the target directory
-# the gate builds it in. `--workspace` takes every member, so a `-p` beside it narrows
-# nothing.
+# Each platform's build at this repository's root, which names no default platform:
+# the web's browser leaf on wasm32 and its server leaf on the host, and the terminal on
+# the host, each in the target directory the gate builds it in. `--workspace` takes
+# every member, so a `-p` beside it narrows nothing.
 check-web = [
   "check",
   "--workspace",
@@ -92,6 +92,54 @@ test-server = [
   '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]''',
   "--config",
   'build.rustdocflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+]
+check-terminal = [
+  "check",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/terminal",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"terminal\""]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
+clippy-terminal = [
+  "clippy",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/terminal",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"terminal\""]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
+doc-terminal = [
+  "doc",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/terminal",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"terminal\""]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
+test-terminal = [
+  "test",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/terminal",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"terminal\""]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
 ]
 
 [target.wasm32-unknown-unknown]

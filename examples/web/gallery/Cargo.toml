@@ -10,7 +10,7 @@ acme-map = { path = "../../third-party/acme-map" }
 skene-simple-web.workspace = true
 skene-web = { features = ["gpu"], workspace = true }
 
-[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dev-dependencies]
 js-sys.workspace = true
 wasm-bindgen.workspace = true
 wasm-bindgen-futures.workspace = true

@@ -1,6 +1,6 @@
 //! The gallery in the terminal's in-process tier: every section paints and the controls respond.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
   self as terminal,

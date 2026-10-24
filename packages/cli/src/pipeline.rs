@@ -252,10 +252,13 @@ fn build_library(app: &App, crate_type: &str, target: &str) -> Command {
   command
 }
 
-/// Builds the app's terminal binary for the host, quietly, and returns its path; on
-/// failure returns cargo's diagnostics.
+/// Builds the app's terminal binary for the host, with the terminal named, quietly, and
+/// returns its path; on failure returns cargo's diagnostics.
 pub(crate) fn build_terminal_binary(app: &App, release: bool) -> Result<Built, String> {
-  let mut command = build_library(app, "bin", host_triple()?);
+  let host = host_triple()?;
+  let mut command = build_library(app, "bin", host);
+
+  name_platform(&mut command, host, TERMINAL);
 
   if release {
     command.arg("--release");
@@ -382,6 +385,9 @@ const WEB: &[&str] = &["skene_platform=\"web\""];
 
 /// The cfgs naming the web's server leaf.
 const SERVER: &[&str] = &["skene_platform=\"web\"", "skene_server"];
+
+/// The cfg naming the terminal.
+const TERMINAL: &[&str] = &["skene_platform=\"terminal\""];
 
 /// Names `cfgs` for what the build `command` compiles for `target` alone, never its
 /// build scripts or proc macros: through the target's rustflags, or, where `RUSTFLAGS`
@@ -520,7 +526,7 @@ fn route_file(route: &str) -> PathBuf {
 mod tests {
   use std::fs;
 
-  use super::{SERVER, WEB, WebOut, rustflags_config};
+  use super::{SERVER, TERMINAL, WEB, WebOut, rustflags_config};
 
   /// A build dropped unpublished leaves the output standing and its staging gone, and a
   /// published one replaces the output whole.
@@ -552,8 +558,9 @@ mod tests {
     fs::remove_dir_all(&dist).unwrap();
   }
 
-  /// The browser's build names the web and the server's names its leaf beside it, each
-  /// as a TOML array cargo reads for the target alone.
+  /// The browser's build names the web, the server's names its leaf beside it and the
+  /// terminal's names the terminal, each as a TOML array cargo reads for the target
+  /// alone.
   #[test]
   fn a_build_names_its_platform_in_the_targets_rustflags() {
     assert_eq!(
@@ -563,6 +570,10 @@ mod tests {
     assert_eq!(
       rustflags_config("x86_64-unknown-linux-gnu", SERVER),
       r#"target.x86_64-unknown-linux-gnu.rustflags=["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]"#
+    );
+    assert_eq!(
+      rustflags_config("x86_64-unknown-linux-gnu", TERMINAL),
+      r#"target.x86_64-unknown-linux-gnu.rustflags=["--cfg", "skene_platform=\"terminal\""]"#
     );
   }
 }

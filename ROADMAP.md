@@ -24,14 +24,13 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - Selection: `--cfg skene_platform="<p>"` names the platform of every build,
-    `Platform::CURRENT` answers it as a const enum, and a build naming none fails with
-    one `compile_error!`; `Platform::IS_SERVER` answers the server leaf, and this
-    repository's root names no default platform, a cargo alias per platform and the
-    checked-in rust-analyzer settings naming one. Each platform has its module,
-    `platform::<p>`, its data types present in every build and its controls in its own
-    alone; `platform::apple` is the one grouping (`Platform::IS_APPLE`, `set_apple_*`).
-    Every `P: Realization` above the realizations goes.
+    - Selection: `Platform::CURRENT` answers the build's platform as a const enum and
+    `Platform::IS_SERVER` the server leaf, and this repository's root names no default
+    platform, a cargo alias per platform and the checked-in rust-analyzer settings
+    naming one. Each platform has its module, `platform::<p>`, its data types present in
+    every build and its controls in its own alone; `platform::apple` is the one grouping
+    (`Platform::IS_APPLE`, `set_apple_*`). Every `P: Realization` above the realizations
+    goes.
     - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
     come from the macro the shared properties come from, with their `derive_` twins and
     their backing fields cfg-gated; another platform's setter compiles and does nothing.
@@ -628,12 +627,13 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-31. **Confirm docs.rs documents both web leaves.** `skene-web` and `skene-simple-web`
-    name each target's leaf through `cargo-args` setting `target.<triple>.rustflags` and
-    `rustdocflags`, and cargo takes a target's flags over `build.*` and an environment
-    variable over both, so on the first publish either docs.rs's own rustdoc flags or
-    these may be dropped: check both targets' pages, and move the cfgs to wherever
-    docs.rs's flags merge with them if either is missing.
+31. **Confirm docs.rs documents every platform's build.** `skene-web` and
+    `skene-simple-web` name each target's leaf, and `skene-terminal` and
+    `skene-simple-terminal` the terminal, through `cargo-args` setting
+    `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over
+    `build.*` and an environment variable over both, so on the first publish either
+    docs.rs's own rustdoc flags or these may be dropped: check every target's pages, and
+    move the cfgs to wherever docs.rs's flags merge with them if any is missing.
 
 Watched, not scheduled:
 

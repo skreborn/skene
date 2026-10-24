@@ -12,16 +12,16 @@ publish = false
 skene-conformance.workspace = true
 skene-web.workspace = true
 
-# Host-only: the harness drives a browser from outside it; on wasm targets its binary
-# compiles to an empty stub.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The server leaf's: the harness drives a browser from outside it, and in every other
+# build its binary compiles to an empty stub.
+[target.'cfg(all(skene_platform = "web", skene_server))'.dependencies]
 base64 = "0.23"
 png = "0.18"
 serde_json.workspace = true
 skene-foundation.workspace = true
 ureq = { default-features = false, version = "3" }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dependencies]
 js-sys.workspace = true
 wasm-bindgen.workspace = true
 

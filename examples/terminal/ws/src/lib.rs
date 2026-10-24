@@ -4,7 +4,7 @@
 //! `terminal-ws [url]` opens the URL (a public echo service without one), sends a greeting
 //! and lists what comes back. `Ctrl-Q` quits.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;

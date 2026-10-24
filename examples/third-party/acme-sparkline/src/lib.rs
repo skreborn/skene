@@ -9,9 +9,9 @@
 //! upgrade arrives when the platform proves it, with nothing for the view's user to
 //! choose.
 //!
-//! Host-only: on a wasm target the crate is empty.
+//! Built in the terminal's build alone: every other build compiles the crate empty.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use std::marker::PhantomData;
 

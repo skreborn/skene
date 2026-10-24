@@ -4,7 +4,7 @@
 //!
 //! Run in a headless browser:
 //! `cargo test-web --test browser_axe`.
-#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::fmt::Write as _;
 

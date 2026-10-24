@@ -7,7 +7,7 @@
 //! the count beneath the list, and nothing else runs. The list follows the shape of
 //! the `Vec` alone, keyed by the id each todo carries.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_platform = "terminal")]
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;

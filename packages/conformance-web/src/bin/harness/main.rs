@@ -14,21 +14,21 @@
 //! Reports as a test binary does, a line per scenario or page and a `test result:`
 //! line, and fails where any fails.
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 mod browser;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 mod engine;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 mod goldens;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 mod session;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 mod site;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(all(skene_platform = "web", skene_server)))]
 const fn main() {}
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 fn main() -> std::process::ExitCode {
   match run() {
     Ok(true) => std::process::ExitCode::SUCCESS,
@@ -42,7 +42,7 @@ fn main() -> std::process::ExitCode {
 }
 
 /// What the arguments ask for.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 struct Arguments {
   /// The directory the app was built into.
   site: std::path::PathBuf,
@@ -51,7 +51,7 @@ struct Arguments {
   goldens: Option<(std::path::PathBuf, String)>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 impl Arguments {
   /// The arguments the harness was given.
   fn parse() -> Result<Self, String> {
@@ -76,7 +76,7 @@ impl Arguments {
 }
 
 /// Runs the suite or takes the goldens, returning whether every one passed.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 fn run() -> Result<bool, String> {
   use crate::{
     browser::Browser,
@@ -147,7 +147,7 @@ fn run() -> Result<bool, String> {
 }
 
 /// What a panic said.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 fn message(panic: &(dyn std::any::Any + Send)) -> String {
   panic
     .downcast_ref::<String>()
@@ -157,14 +157,14 @@ fn message(panic: &(dyn std::any::Any + Send)) -> String {
 }
 
 /// What a run found: how many passed, and what each failure reported.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 #[derive(Default)]
 struct Report {
   passed: usize,
   failures: Vec<String>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(skene_platform = "web", skene_server))]
 impl Report {
   /// Records and prints the outcome of `name`, begun at `began`.
   fn record(&mut self, name: &str, began: std::time::Instant, outcome: Result<(), String>) {

@@ -7,14 +7,20 @@ description = "Simple's views on skene's terminal facade"
 license.workspace = true
 repository.workspace = true
 
-# Host-only: the terminal platform never itself compiles to wasm.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[dependencies]
 skene-foundation.workspace = true
 skene-simple.workspace = true
 skene-terminal.workspace = true
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+# The target names the terminal.
+cargo-args = [
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustflags = ["--cfg", "skene_platform=\"terminal\""]',
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
 
 [lints]
 workspace = true

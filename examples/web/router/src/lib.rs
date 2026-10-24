@@ -5,8 +5,6 @@
 //! route as full markup, so both pages read and navigate with JavaScript disabled; a
 //! running client upgrades the links to instant in-app navigation and fetches the
 //! split module in the background.
-//!
-//! Gated to the web's two leaves, whose links and lazy modules these are.
 
 #![cfg(skene_platform = "web")]
 

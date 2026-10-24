@@ -8,6 +8,8 @@
 //! reorder moves them—keyed by the id each todo carries, so state under a row keeps
 //! its identity wherever the row sits.
 
+#![cfg(skene_platform = "web")]
+
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 

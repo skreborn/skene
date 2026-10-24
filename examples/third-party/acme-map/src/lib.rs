@@ -8,6 +8,8 @@
 //! composes with wrappers, themes and events as a built-in does, and an app names no
 //! platform.
 
+#![cfg(skene_platform = "web")]
+
 use std::marker::PhantomData;
 
 use skene_foundation::{

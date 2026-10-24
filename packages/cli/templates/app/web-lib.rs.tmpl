@@ -1,5 +1,7 @@
 //! The app's web shell: `skene run web` serves it, `skene build web` builds it.
 
+#![cfg(skene_platform = "web")]
+
 use {crate}_shared::Counter;
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;

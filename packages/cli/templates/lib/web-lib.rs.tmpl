@@ -1,6 +1,8 @@
 //! {name} on the web: every view of [`{crate}`] as a view of the web's own, the palette
 //! in the web's unit, and a [`prelude`] an app imports beside the facade's own.
 
+#![cfg(skene_platform = "web")]
+
 use skene_foundation::{View, Wraps};
 use skene_web::Active;
 

@@ -1,5 +1,7 @@
 //! The app's terminal shell: `skene run terminal` runs it, `skene build terminal` builds it.
 
+#![cfg(skene_platform = "terminal")]
+
 use {crate}_shared::Counter;
 use skene_simple_terminal::prelude::*;
 use skene_terminal::prelude::*;

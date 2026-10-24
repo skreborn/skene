@@ -398,8 +398,10 @@ in a code comment.
     token and per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
-    -p skene-terminal --bench frame`); selection spans compute once per frame; clusters
-    re-segment around an edit, and undo stores range diffs.
+    -p skene-terminal --bench frame --target host-tuple --config
+    "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`);
+    selection spans compute once per frame; clusters re-segment around an edit, and undo
+    stores range diffs.
     - Token caches take per-scope epochs in place of the generations every redefinition,
     structure change and environment change moves for every scope today, and interned
     names, so a palette change costs the number of tokens beyond the web too, in the

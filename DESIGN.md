@@ -106,18 +106,44 @@ the control state and reports it holds, which the platforms read rather than cop
 
 **`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
-properties), `TokenValue` (the erased definition the medium accepts), with the constant
-`KEEP` (the `Keep` level of a style its toolkit keeps unresolved). Its methods are the
-portable vocabulary over node ids: create every node, a box, a control, an overlay, a
-run, an anchor or a scope, from one `NodeSpec` (`create`: its role, its heading level,
-its drag axes and its kind's facts, a fact of another kind unrepresentable), answering
-whether it made a node, give a box, a control, an overlay or a run its style once as the shared half compiled its
-record (`apply_style`), write a derived slot's erased leaf into it (`apply_slot`),
-mirror tree mutations, define tokens on a `TokenScope` (one call, a node's or the
-root's, the root a scope like any other), register event kinds, focus, set values,
-observe sizes, report media. A node's focus order and accessibility are not part of its
-spec: the shared half writes them once its style is applied (`update_focus_order`,
-`update_access`), which on the web keeps the attribute order a render emits.
+properties), `TokenValue` (the erased definition the medium accepts), with the constants
+`FONT_SIZE` (the size in force where no typography defines one) and `KEEP` (the `Keep`
+level of a style its toolkit keeps unresolved). Its methods are the portable vocabulary
+over node ids:
+
+- **Create** every node, a box, a control, an overlay, a run, an anchor or a scope, from
+  one `NodeSpec` (`create`: its role, its heading level, its drag axes and its kind's
+  facts, a fact of another kind unrepresentable), answering whether it made a node. The
+  scene creates it through `Scene::realize` and records the answer.
+- **Style** each box, control, overlay and run once, right after its creation and before
+  any token definition on it: `apply_style` hands it the node's record compiled at
+  `Keep::Everything` (a style that sets nothing included; a low-level node receives the
+  per-child layout a wrapper annotated it with, and only then). The web keeps everything
+  and compiles the style as it arrives; a realization keeping nothing keeps it and
+  resolves it at every restyle through the one `Keep::Nothing` entry,
+  `ResolutionContext::resolve` (each keyframe through `resolve_frame`), which is `KEEP`'s
+  one reader: it asserts at compile time that its realization keeps nothing. Each
+  derived leaf's effect writes one erased leaf into its slot (`apply_slot`). A node's
+  focus order and accessibility are not part of its spec: the shared half writes them
+  once its style is applied (`update_focus_order`, `update_access`).
+- **Define tokens** on a `TokenScope` (`define_tokens`, one call, a node's or the root's,
+  the root a scope like any other), which reaches the realization for a scope it did not
+  make as well.
+- **Mirror structure** through four calls, `attach`, `relocate`, `hide` and `remove`,
+  each naming the nearest made ancestor as the parent and the next made sibling as
+  `before`, as the scene places them above, and `destroy`, releasing a made node's record.
+- **The rest**: register event kinds, focus, set values, observe sizes, report media,
+  schedule on the clock, route, and reach the clipboard.
+
+A method with a default body is one a platform lacking what it reaches keeps (`listen`,
+the focus order and accessibility where the scene is read for them, `focus_visible`,
+a picker's options, `lay_out`, `hydration`, an overlay's placement and position where
+none opens, the window title, routing, static routes, the clipboard): the default does
+nothing, or answers that nothing is there. Every behavior is required, each platform
+realizing it in its own form: a navigation commits under a view transition in the
+browser and at once on the server leaf and in the terminal, and a pointer event is
+localized against its node's laid-out box, except on the server leaf, which lays nothing
+out and hands it back unchanged.
 `Painted` and embeds are deliberately outside it—their payloads never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
@@ -811,17 +837,12 @@ Condition     = Media | State | And | Or
   `Keep::Everything` whole, every slot bound where it stands, and compiled at
   `Keep::Nothing`, or kept and resolved through `resolve`, resolves as the typed style
   does under readings where every condition both holds and fails. It is how a style
-  crosses the seam: the shared half builds each box's, control's, overlay's and run's
-  record (a box's style then its motion; a run's own style, then the per-child layout a
-  wrapper annotated it with, then its motion), compiles it at `Keep::Everything` by value
-  (`into_kept`, the entries moved rather than copied) and hands it to the realization
-  through `apply_style` once the node is created, before any token definition on it,
-  and the `NodeSpec` it was created from carries the construction facts alone. A
-  realization's `KEEP` says what it keeps: the web keeps everything and compiles the
-  style as it arrives, and one keeping nothing keeps it and resolves it at every
-  restyle through `ResolutionContext::resolve` (each keyframe through
-  `resolve_frame`), which is `KEEP`'s one reader: it asserts at compile time that its
-  realization keeps nothing.
+  crosses the seam (`apply_style`, under 'The scene and the platform'): the shared half
+  builds each box's, control's, overlay's and run's record (a box's style then its
+  motion; a run's own style, then the per-child layout a wrapper annotated it with, then
+  its motion) and compiles it at `Keep::Everything` by value (`into_kept`, the entries
+  moved rather than copied), the `NodeSpec` the node was created from carrying the
+  construction facts alone.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.
@@ -834,9 +855,8 @@ Condition     = Media | State | And | Or
   whether it has a height, its slot bindings the shared half's) beside the facts of the
   node's construction it reads, kept from the node's creation until `apply_style`, and
   both leaves cache it by the kept style's address and a hash of those facts. A box's
-  focus order and accessibility follow its style, written by the shared half through
-  `update_focus_order` and `update_access` once it is applied, since whether a box
-  scrolls, and so takes a place in the focus order, is its style's.
+  focus order and accessibility follow its style, since whether a box scrolls, and so
+  takes a place in the focus order, is its style's.
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
@@ -857,12 +877,11 @@ Condition     = Media | State | And | Or
   holds the value to the one the engine computes, so a divergence it finds is one every
   platform resolving through the shared half shares. The terminal keeps the style
   `apply_style` hands it for each box, control, overlay and run, and resolves it at every
-  restyle through the shared `Keep::Nothing` entry (`ResolutionContext::resolve`, each
-  keyframe through `resolve_frame`), the one resolution setting whether the node's
-  interaction was read and giving a run its wrapper's layout beside its own properties,
-  before its own fill-ins (rounded border glyphs, the typography's size and weight,
-  `bold`); its transitions and animations are the kept style's. A text entry's value
-  takes the typography's tokens in force at the entry.
+  restyle through the shared `Keep::Nothing` entry, the one resolution setting whether
+  the node's interaction was read and giving a run its wrapper's layout beside its own
+  properties, before its own fill-ins (rounded border glyphs, the typography's size and
+  weight, `bold`); its transitions and animations are the kept style's. A text entry's
+  value takes the typography's tokens in force at the entry.
 
 ### Tokens and themes
 

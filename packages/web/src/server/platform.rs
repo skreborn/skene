@@ -18,6 +18,7 @@ use skene_foundation::{
   NodeSpec,
   Observation,
   PickerOption,
+  PointerEvent,
   Realization,
   Scene,
   Size,
@@ -128,6 +129,11 @@ impl Realization for Web {
 
   fn listen(_: NodeId, _: EventKind) {}
 
+  /// The event unchanged: the server lays nothing out.
+  fn localize_pointer(_: NodeId, event: &PointerEvent) -> PointerEvent {
+    *event
+  }
+
   fn focus(_: NodeId) {}
 
   fn blur(_: NodeId) {}
@@ -183,6 +189,11 @@ impl Realization for Web {
 
   fn current_path() -> Option<String> {
     Some(super::current_path())
+  }
+
+  /// A render has no view transitions: the update runs at once.
+  fn commit_navigation(update: Box<dyn FnOnce()>) {
+    update();
   }
 
   fn record_static_routes(routes: Vec<String>) {

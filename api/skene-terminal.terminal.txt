@@ -214,6 +214,7 @@ pub fn skene_terminal::platform::terminal::Terminal::cancel(skene_foundation::sp
 pub fn skene_terminal::platform::terminal::Terminal::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::platform::terminal::Terminal::clipboard(skene_foundation::spine::values::clipboard::ClipboardAction)
 pub fn skene_terminal::platform::terminal::Terminal::clipboard_availability(skene_foundation::spine::values::clipboard::ClipboardAction) -> skene_foundation::spine::values::clipboard::Availability
+pub fn skene_terminal::platform::terminal::Terminal::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
 pub fn skene_terminal::platform::terminal::Terminal::create(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_terminal::platform::terminal::Terminal::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<skene_terminal::TokenValue>)
 pub fn skene_terminal::platform::terminal::Terminal::destroy(skene_foundation::spine::node::NodeId)

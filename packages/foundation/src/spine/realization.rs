@@ -204,6 +204,10 @@ impl<A> Timers<A> {
 /// polls—through [`hold_flushes`](crate::hold_flushes), ending each with
 /// [`end_turn`](crate::end_turn), so what a view's build notifies is delivered once the
 /// build is whole, and leaves a thread through [`reset_thread`](crate::reset_thread).
+///
+/// A method with a default body is one a platform lacking what it reaches keeps: the
+/// default does nothing, or answers that nothing is there. Every other method, a
+/// behavior each platform has in its own form, is required.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a realization",
   label = "a realization is a platform's zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
@@ -280,14 +284,16 @@ pub trait Realization: Copy + Default + 'static {
   fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>);
 
   /// Replaces where an overlay sits; an open overlay is re-placed by the
-  /// [`set_overlay_open`](Self::set_overlay_open) that follows.
+  /// [`set_overlay_open`](Self::set_overlay_open) that follows. A platform that never
+  /// shows an overlay open needs nothing here.
   #[inline(always)]
   fn set_overlay_placement(_node: NodeId, _placement: Placement) {}
 
   /// Pins an overlay's top-start corner to `position`, in the units a pointer event
   /// reports, or unpins it for `None`; a pinned overlay ignores its placement and
   /// anchor, and is shifted to stay within the viewport. An open overlay moves at the
-  /// [`set_overlay_open`](Self::set_overlay_open) that follows.
+  /// [`set_overlay_open`](Self::set_overlay_open) that follows. A platform that never
+  /// shows an overlay open needs nothing here.
   #[inline(always)]
   fn set_overlay_position(_node: NodeId, _position: Option<Point<f32>>) {}
 
@@ -328,12 +334,8 @@ pub trait Realization: Copy + Default + 'static {
   #[inline(always)]
   fn listen(_node: NodeId, _kind: EventKind) {}
 
-  /// `event` with its local position measured from `node`'s top-left corner; unchanged
-  /// on a platform that lays nothing out.
-  #[inline(always)]
-  fn localize_pointer(_node: NodeId, event: &PointerEvent) -> PointerEvent {
-    *event
-  }
+  /// `event` with its local position measured from `node`'s top-left corner.
+  fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent;
 
   /// Moves focus to a node.
   fn focus(node: NodeId);
@@ -342,7 +344,8 @@ pub trait Realization: Copy + Default + 'static {
   fn blur(node: NodeId);
 
   /// Whether the focus held now shows: reached by the keyboard, or held by a text
-  /// entry, and not since a pointer press; `false` where nothing holds focus.
+  /// entry, and not since a pointer press; `false` where nothing holds focus, the
+  /// default of a platform where nothing ever does.
   #[inline(always)]
   #[must_use]
   fn focus_visible() -> bool {
@@ -399,10 +402,12 @@ pub trait Realization: Copy + Default + 'static {
 
   /// Shows `title` as the window's title, the one the latest live owner set, or `None`
   /// once no live owner sets one; a platform with no window title shows nothing.
+  #[inline(always)]
   fn set_window_title(_title: Option<&str>) {}
 
   /// The path the platform is at, where it has one: the location an app opened at, or
-  /// the path a render was asked for.
+  /// the path a render was asked for; `None` on a platform without paths.
+  #[inline(always)]
   #[must_use]
   fn current_path() -> Option<String> {
     None
@@ -410,20 +415,21 @@ pub trait Realization: Copy + Default + 'static {
 
   /// Records a navigation to `path` the platform's history can return from; a platform
   /// without one records nothing.
+  #[inline(always)]
   fn push_path(_path: &str) {}
 
   /// Runs `on_pop` with the path the platform's history moves to whenever it moves; a
   /// platform without one never moves.
+  #[inline(always)]
   fn on_pop(_on_pop: impl Fn(String) + 'static) {}
 
   /// Runs `update`, a navigation's change of state, under a view transition where the
   /// platform has one, and at once where it has none.
-  fn commit_navigation(update: Box<dyn FnOnce()>) {
-    update();
-  }
+  fn commit_navigation(update: Box<dyn FnOnce()>);
 
   /// Records `routes`, the paths a static build renders; a platform that builds
   /// nothing statically ignores them.
+  #[inline(always)]
   fn record_static_routes(_routes: Vec<String>) {}
 
   /// Runs `action` once `delay` has passed on the platform's clock, unless cancelled

@@ -429,6 +429,11 @@ impl Realization for Terminal {
       records.title_dirty = true;
     });
   }
+
+  /// The terminal has no view transitions: the update runs at once.
+  fn commit_navigation(update: Box<dyn FnOnce()>) {
+    update();
+  }
 }
 
 impl Painting for Terminal {

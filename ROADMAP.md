@@ -51,9 +51,11 @@ in a code comment.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), a preset a constructor per variant and a `derive_variant`
     re-inking its built-in, and the native door, `platform::<p>::NativeView` with its
-    `ControlSink`, for a native view no built-in covers. `skene new`'s app and library
-    scaffolds take that shape, and the gate compiles what they write on every platform
-    they name, so a scaffold cannot fall behind the surface it teaches.
+    `ControlSink`, for a native view no built-in covers, the realization's own view type
+    among the door's seam items named in Skene's vocabulary (the gate's lint bans
+    `Widget`). `skene new`'s app and library scaffolds take that shape, and the gate
+    compiles what they write on every platform they name, so a scaffold cannot fall
+    behind the surface it teaches.
     - The seam: contents typed and atomic, and each write reported applied or not.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
@@ -127,6 +129,11 @@ in a code comment.
     it, and its full `run.sh` passes in 75 minutes. The defaults it took that nothing settled are in
     `spikes/linux/DEFAULTS.md`, its designs in `spikes/linux/design`, and its reports for
     upstream, unfiled, in `spikes/linux/upstream`. What it leaves open:
+    - The seam: who lays a realization out (`LayoutOwner`: the shared engine or the
+    toolkit) and whether it draws a scroll box's bars from the box's parts, associated
+    items of `Realization` landing with this realization, their first reader, since the
+    web's layout is CSS and the terminal maps its own taffy tree and draws its bars from
+    `TerminalStyle`.
     - The first frame: 1000 eager rows take 64.5–73.6 ms (layout 17.3–19.7 ms) against a
     target of 50 (16), shaping 3,000 paragraphs being 37–45 ms of it, while a lazy list of
     1,000 to 100,000 rows draws in 12.7–22.8 ms. What remains is cheaper shaping per

@@ -84,8 +84,14 @@ impl EditTruth {
 
   /// The edit to write so the entry shows the truth over `shown`: a text the truth leaves
   /// free is the one shown; `None` where nothing is derived, where a selection is
-  /// derived beside no text and nothing is shown yet, and where `shown` holds the truth.
-  fn written(&self, shown: Option<&Edit>) -> Option<Edit> {
+  /// derived beside no text and nothing is shown yet, where `shown` holds the truth, and
+  /// while the reader's text is `composing`, the write waiting for the report that ends
+  /// it.
+  fn written(&self, shown: Option<&Edit>, composing: bool) -> Option<Edit> {
+    if composing {
+      return None;
+    }
+
     let text = match &self.text {
       Some(text) => Rc::clone(text),
       None if self.selection.is_some() => Rc::clone(&shown?.text),
@@ -193,18 +199,28 @@ impl Answer {
   /// The answer to `proposed` over `shown`: `truth` reads the truth as it stands, before
   /// the asks and after them, and `ask` asks the app.
   ///
-  /// A disabled entry asks nothing; while the reader's text is `composing` the change
-  /// stands and the repair waits for the report that ends the composition.
+  /// A disabled entry asks nothing. A change reported while the truth is `writing` is its
+  /// echo: it stands, asking only for a selection the write moved that differs from the
+  /// truth's, or from the one shown where the truth leaves it free, the text being the
+  /// write's own. While the reader's text is `composing` the change stands and the
+  /// repair waits for the report that ends the composition.
   fn of(
     truth: impl Fn() -> EditTruth,
     shown: Option<&Edit>,
     proposed: &Edit,
     disabled: bool,
+    writing: bool,
     composing: bool,
     ask: impl FnOnce(&Asked),
   ) -> Self {
     let asked = if disabled {
       Asked::default()
+    }
+    else if writing {
+      Asked {
+        text: None,
+        selection: truth().asked(shown, proposed).selection,
+      }
     }
     else {
       truth().asked(shown, proposed)
@@ -214,7 +230,7 @@ impl Answer {
       ask(&asked);
     }
 
-    let verdict = if composing {
+    let verdict = if writing || composing {
       Verdict::Accept
     }
     else {
@@ -231,11 +247,11 @@ impl Answer {
 /// [`register`](Self::register) writes the truth as the entry's content whenever what it
 /// reads changes, skipping a write of what the entry shows already and holding one back
 /// while the reader's text is [composing](Realization::composing); and it answers every
-/// reader's change [`report`]ed at the node: a change made while it writes, or one the
-/// truth holds already, asks nothing and stands; any other asks the app for each part it
-/// changes, the text then the selection, and stands where the truth then holds it,
-/// replaced by the truth otherwise ([`Verdict`]). A disabled entry asks nothing and is
-/// answered with its truth.
+/// reader's change [`report`]ed at the node: one the truth holds already asks nothing
+/// and stands, and so does one made while it writes, but for a selection the write moved,
+/// which it asks for; any other asks the app for each part it changes, the text then the
+/// selection, and stands where the truth then holds it, replaced by the truth otherwise
+/// ([`Verdict`]). A disabled entry asks nothing and is answered with its truth.
 #[must_use]
 pub struct Controller {
   truth: Box<dyn Fn() -> EditTruth>,
@@ -276,13 +292,21 @@ impl Controller {
 
   /// Controls the [`Edit`] content of `node` through `P`, as the current owner: the
   /// truth is written now and whenever it changes, and the node's reports of the content
-  /// are answered by this controller from now on.
+  /// are answered by this controller from now on; a second controller of the content is
+  /// a debug assertion.
   pub fn register<P: Realization>(self, node: NodeId) {
     let controller = Rc::new(self);
     let answering = Rc::clone(&controller);
 
     *controller.shown.borrow_mut() = contents::EDIT.read::<P>(node);
     Scene::<P>::with(|scene| {
+      debug_assert!(
+        scene
+          .handlers(node)
+          .and_then(|handlers| handlers.reporter(Content::Edit))
+          .is_none(),
+        "a node's content has one controller"
+      );
       scene.handle(
         node,
         Handler::Report(
@@ -295,22 +319,24 @@ impl Controller {
   }
 
   /// Writes the truth to `node` unless it is shown already or held back while the
-  /// reader's text is composing.
+  /// reader's text is composing; a selection the truth leaves free is noted as the one
+  /// shown before the write.
   fn write<P: Realization>(&self, node: NodeId) {
     let truth = (self.truth)();
 
     untrack(|| {
       let shown = self.shown.borrow().clone();
-      let Some(edit) = truth.written(shown.as_ref())
+      let Some(edit) = truth.written(shown.as_ref(), P::composing(node))
       else {
         return;
       };
 
-      if P::composing(node) {
-        return;
-      }
-
-      *self.shown.borrow_mut() = Some(edit.clone());
+      *self.shown.borrow_mut() = Some(Edit {
+        text: Rc::clone(&edit.text),
+        selection: edit
+          .selection
+          .or_else(|| shown.and_then(|shown| shown.selection)),
+      });
       self.writing.set(true);
       contents::EDIT.write::<P>(node, &edit);
       self.writing.set(false);
@@ -330,12 +356,6 @@ impl Controller {
       return Verdict::Accept;
     };
 
-    if self.writing.get() {
-      *self.shown.borrow_mut() = Some(proposed.clone());
-
-      return Verdict::Accept;
-    }
-
     let shown = self.shown.borrow().clone();
     let answer = untrack(|| {
       Answer::of(
@@ -343,6 +363,7 @@ impl Controller {
         shown.as_ref(),
         proposed,
         self.disabled.as_ref().is_some_and(|disabled| disabled()),
+        self.writing.get(),
         P::composing(node),
         |asked| (self.ask)(asked),
       )
@@ -371,8 +392,38 @@ mod tests {
     Edit::new(text).with_selection(TextSelection::collapsed(caret))
   }
 
+  /// The state of the entry a change is reported in.
+  #[derive(Clone, Copy, Default)]
+  struct During {
+    disabled: bool,
+    writing: bool,
+    composing: bool,
+  }
+
   /// The answer to `proposed` over `shown` while the truth reads `truth`, the asks
   /// collected rather than run.
+  fn answer_during(
+    truth: &EditTruth,
+    shown: Option<&Edit>,
+    proposed: &Edit,
+    during: During,
+  ) -> (Answer, Vec<Asked>) {
+    let asks = RefCell::new(Vec::new());
+    let answer = Answer::of(
+      || truth.clone(),
+      shown,
+      proposed,
+      during.disabled,
+      during.writing,
+      during.composing,
+      |asked| asks.borrow_mut().push(asked.clone()),
+    );
+
+    (answer, asks.into_inner())
+  }
+
+  /// The answer to `proposed` over `shown` in an enabled entry, the truth not writing,
+  /// while `composing` says so.
   fn answer(
     truth: &EditTruth,
     shown: Option<&Edit>,
@@ -380,17 +431,16 @@ mod tests {
     disabled: bool,
     composing: bool,
   ) -> (Answer, Vec<Asked>) {
-    let asks = RefCell::new(Vec::new());
-    let answer = Answer::of(
-      || truth.clone(),
+    answer_during(
+      truth,
       shown,
       proposed,
-      disabled,
-      composing,
-      |asked| asks.borrow_mut().push(asked.clone()),
-    );
-
-    (answer, asks.into_inner())
+      During {
+        disabled,
+        composing,
+        ..During::default()
+      },
+    )
   }
 
   /// A change the truth holds already, as the echo of the truth's own write, asks
@@ -408,6 +458,65 @@ mod tests {
 
     assert_eq!(answered.verdict, Verdict::Accept);
     assert_eq!(asks, Vec::<Asked>::new());
+  }
+
+  /// A change reported while the truth is written is its echo: it stands and asks
+  /// nothing of the text, even one the write did not leave as written, and asks only
+  /// for a selection the write moved.
+  #[test]
+  fn a_change_reported_while_writing_is_an_echo() {
+    let writing = During {
+      writing: true,
+      ..During::default()
+    };
+    let held = truth("hi", Some(1));
+    let (answered, asks) = answer_during(&held, Some(&edit("hi", 1)), &edit("hi", 1), writing);
+
+    assert_eq!(answered.verdict, Verdict::Accept);
+    assert_eq!(asks, Vec::<Asked>::new());
+
+    let (answered, asks) = answer_during(&held, Some(&edit("hi", 1)), &edit("h", 1), writing);
+
+    assert_eq!(
+      answered.verdict,
+      Verdict::Accept,
+      "never repaired mid-write"
+    );
+    assert_eq!(asks, Vec::<Asked>::new());
+
+    let free = truth("hi", None);
+    let (answered, asks) = answer_during(&free, Some(&edit("hi", 5)), &edit("hi", 2), writing);
+
+    assert_eq!(answered.verdict, Verdict::Accept);
+    assert_eq!(
+      asks,
+      [Asked {
+        text: None,
+        selection: Some(TextSelection::collapsed(2)),
+      }],
+      "the caret the write moved is asked for"
+    );
+
+    let (_, asks) = answer_during(&free, Some(&edit("hi", 2)), &edit("hi", 2), writing);
+
+    assert_eq!(asks, Vec::<Asked>::new(), "an unmoved caret asks nothing");
+  }
+
+  /// A caret moved in an entry that derives its selection asks for the move and, where
+  /// nothing takes it, is answered with the truth's selection.
+  #[test]
+  fn a_derived_selection_brings_a_moved_caret_back() {
+    let held = truth("ab", Some(1));
+    let (answered, asks) = answer(&held, Some(&edit("ab", 1)), &edit("ab", 2), false, false);
+
+    assert_eq!(
+      asks,
+      [Asked {
+        text: None,
+        selection: Some(TextSelection::collapsed(2)),
+      }]
+    );
+    assert_eq!(answered.verdict, Verdict::Replace(edit("ab", 1)));
   }
 
   /// A change asks for each part it changes: the text where it differs from the truth's,
@@ -449,32 +558,52 @@ mod tests {
   fn an_equal_write_is_skipped() {
     let held = truth("ab", Some(2));
 
-    assert_eq!(held.written(Some(&edit("ab", 2))), None);
-    assert_eq!(held.written(Some(&edit("ab", 1))), Some(edit("ab", 2)));
-    assert_eq!(held.written(None), Some(edit("ab", 2)));
+    assert_eq!(held.written(Some(&edit("ab", 2)), false), None);
     assert_eq!(
-      truth("ab", None).written(Some(&edit("ab", 1))),
+      held.written(Some(&edit("ab", 1)), false),
+      Some(edit("ab", 2))
+    );
+    assert_eq!(held.written(None, false), Some(edit("ab", 2)));
+    assert_eq!(
+      truth("ab", None).written(Some(&edit("ab", 1)), false),
       None,
       "a free selection is not written"
     );
     assert_eq!(
-      truth("ab", None).written(Some(&edit("a", 1))),
+      truth("ab", None).written(Some(&edit("a", 1)), false),
       Some(Edit::new("ab"))
     );
 
     let caret = EditTruth::new(None, Some(TextSelection::collapsed(1)));
 
-    assert_eq!(caret.written(None), None, "nothing shown to place it in");
-    assert_eq!(caret.written(Some(&edit("xyz", 3))), Some(edit("xyz", 1)));
-    assert_eq!(EditTruth::default().written(Some(&edit("x", 0))), None);
+    assert_eq!(
+      caret.written(None, false),
+      None,
+      "nothing shown to place it in"
+    );
+    assert_eq!(
+      caret.written(Some(&edit("xyz", 3)), false),
+      Some(edit("xyz", 1))
+    );
+    assert_eq!(
+      EditTruth::default().written(Some(&edit("x", 0)), false),
+      None
+    );
   }
 
-  /// While the reader's text composes, a change the truth refuses still asks but
-  /// stands, its repair held back; the report ending the composition settles it.
+  /// While the reader's text composes, a write of the truth waits, and a change the
+  /// truth refuses still asks but stands, its repair held back; the report ending the
+  /// composition settles both.
   #[test]
   fn a_composition_holds_the_repair_until_it_ends() {
     let held = truth("AB", Some(2));
     let composed = edit("abx", 3);
+
+    assert_eq!(
+      held.written(Some(&composed), true),
+      None,
+      "the write waits for the composition"
+    );
     let (answered, asks) = answer(&held, Some(&edit("AB", 2)), &composed, false, true);
 
     assert_eq!(

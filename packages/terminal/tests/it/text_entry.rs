@@ -1312,3 +1312,38 @@ fn a_text_entrys_selection_binds_both_ways() {
     );
   });
 }
+
+/// A value written from its signal moves the caret it leaves free, and the selection's
+/// handler hears the move as it hears the user's.
+#[test]
+fn a_written_value_reports_the_caret_it_moves() {
+  with_platform(|| {
+    let value = Signal::new("hello".to_owned());
+    let heard = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&heard);
+
+    let _ = terminal::mount(move || {
+      BasicTextField::new(
+        TextEntry::new()
+          .bind_value(value)
+          .handle_selection_change(move |selection| log.borrow_mut().push(selection)),
+      )
+      .set_width(10)
+      .into_any()
+      .build()
+    });
+    let _ = testing::render_to_text(10, 1);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+    heard.borrow_mut().clear();
+    value.set("hi".to_owned());
+    let _ = testing::render_to_text(10, 1);
+
+    assert_eq!(
+      heard.borrow().last(),
+      Some(&TextSelection::collapsed(2)),
+      "the caret clamped into the written value is reported"
+    );
+  });
+}

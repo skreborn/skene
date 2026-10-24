@@ -533,8 +533,10 @@ re-export.
   Report::Change { content, proposed, applied })` and answered by that controller alone,
   whatever handlers the node or its ancestors carry. The controller keeps what the entry
   shows (read once through `Realization::read`, then what it wrote and what was
-  reported) and decides over it in plain functions the spine unit-tests: a report made
-  while it writes, or one the truth already holds, asks nothing and stands; a write of
+  reported) and decides over it in plain functions the spine unit-tests: a report the
+  truth already holds asks nothing and stands, and so does one made while it writes,
+  its echo, but for a selection the write moved, which it asks for as the reader's move
+  would (the terminal reports the caret its write collapses inside the write); a write of
   what is shown is skipped; while `Realization::composing` says the reader's text is
   still the reader's, a write waits and a refused change stands with its repair held
   back, until the report that ends the composition is answered with the truth; and a

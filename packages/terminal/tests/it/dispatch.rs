@@ -354,6 +354,23 @@ fn an_edit_is_answered_by_the_entrys_own_controller_alone() {
         .build()
     });
     let field = field.node().expect("the field");
+    let climbed = Rc::new(RefCell::new(0));
+    let heard = Rc::clone(&climbed);
+
+    Scene::<Terminal>::with(|scene| {
+      scene.handle(
+        column,
+        Handler::Report(
+          Content::Edit,
+          Rc::new(move |_: ContentValue<'_>, _: bool| {
+            *heard.borrow_mut() += 1;
+
+            Verdict::Replace(Edit::new("column"))
+          }),
+        ),
+      );
+    });
+
     let proposed = |text: &str, applied: bool| {
       let edit = Edit::new(text);
 
@@ -388,12 +405,18 @@ fn an_edit_is_answered_by_the_entrys_own_controller_alone() {
       Verdict::Replace(Edit::new("z")),
       "a change the controller refuses is answered with the truth"
     );
-    assert_eq!(
-      proposed("w", true)(column),
-      Verdict::Accept,
-      "the column controls no content"
-    );
     assert_eq!(std::mem::take(&mut *asked.borrow_mut()), ["z!"]);
     assert_eq!(value.get_untracked(), "z");
+    assert_eq!(
+      *climbed.borrow(),
+      0,
+      "the column's reporter never hears its entry's reports"
+    );
+    assert_eq!(
+      proposed("w", true)(column),
+      Verdict::Replace(Edit::new("column")),
+      "a report reaches the node it is made at"
+    );
+    assert!(asked.borrow().is_empty());
   });
 }

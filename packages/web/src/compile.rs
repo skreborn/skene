@@ -10,13 +10,12 @@
 //! variant's index. Variants group by their canonical condition into one rule per
 //! conjunction, kept in each property's declaration order.
 //!
-//! A template is compiled from the node's typed styles and, in debug builds, from its
-//! [`Record`](skene_foundation::Record) compiled at
-//! [`Keep::Everything`](skene_foundation::Keep::Everything) as well, its slots bound by
-//! the shared half, the two held equal.
+//! A template is compiled from the node's [`Record`](skene_foundation::Record) kept at
+//! [`Keep::Everything`](skene_foundation::Keep::Everything) alone, beside the facts of
+//! the node's construction its [`Template`] names, its slots bound by the shared half.
 
 use std::{
-  fmt::{Debug, Write as _},
+  fmt::Write as _,
   hash::{Hash, Hasher},
 };
 
@@ -24,22 +23,22 @@ use rustc_hash::{FxHashMap, FxHasher};
 use skene_foundation::{
   Animation,
   Axis,
-  BoxDynamics,
   BoxProps,
   BoxStyle,
   BoxValue,
   BoxVisitor,
-  Condition,
-  Conditional,
+  Color,
+  CompiledStyle,
+  ContainerName,
   ControlProps,
   Definitions,
   Dimension,
   Fingerprint,
+  Frame,
   GridFlow,
   IntoBoxValue,
   IntoRunValue,
   KeptLeaf,
-  Keyframe,
   Layout,
   NativeElement,
   Overflow,
@@ -48,8 +47,7 @@ use skene_foundation::{
   Plain,
   Property,
   PropertyKey,
-  Realization,
-  RunDynamics,
+  RecordValue,
   RunPlacement,
   RunProps,
   RunStyle,
@@ -57,8 +55,6 @@ use skene_foundation::{
   RunVisitor,
   SlotLeaf,
   SlotValue,
-  Static,
-  StaticBoxStyle,
   StaticLeaf,
   TextDecoration,
   TextDecorationStyle,
@@ -74,20 +70,19 @@ use super::{
   motion::{NO_PREFERENCE, REDUCE, render_animation_values, render_keyframes, render_transitions},
   token::WebTokenValue,
 };
-use crate::declarations::{Declarations, Ident};
+use crate::{
+  declarations::{Declarations, Ident},
+  platform::web::Web,
+};
 
-/// A realization over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelRealization:
-  Realization<Scalar = f32, StyleExt = WebStyle> + Debug
-{
-}
-
-impl<P: Realization<Scalar = f32, StyleExt = WebStyle> + Debug> PixelRealization for P {}
+/// A node's style as the web keeps it: its record compiled at
+/// [`Keep::Everything`](skene_foundation::Keep::Everything).
+pub(crate) type KeptStyle = CompiledStyle<f32, WebStyle>;
 
 /// A property's key on the web.
 pub(crate) type Key = PropertyKey<WebProperty>;
 
-/// What a node's props compiled to: the rule template and the slots the class
+/// What a node's style compiled to: the rule template and the slots the class
 /// references.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
@@ -254,7 +249,7 @@ fn token_reference(name: TokenName) -> String {
 /// out, never as a declaration CSS drops: a size below zero, and a track list CSS
 /// rejects, as `initial`; a padding's, a border's or a spacing's length below zero as
 /// none; a flexibility's basis below zero as `auto`.
-pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> Vec<String> {
+fn render_box_value(value: &BoxValue<f32, WebStyle>) -> Vec<String> {
   let none = |length: f32| length.max(0.);
   let whole = match value {
     BoxValue::DimensionInset(inset) => return Declarations::render_dimension_inset(*inset).into(),
@@ -337,7 +332,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, WebStyle>) -> Vec<String> {
 }
 
 /// The CSS text of a run property's erased value.
-pub(crate) fn render_run_value(value: &RunValue<WebStyle>) -> String {
+fn render_run_value(value: &RunValue<WebStyle>) -> String {
   match value {
     RunValue::Color(color) => Declarations::render_color(*color),
     RunValue::Length(length) => format!("{}px", length.0),
@@ -362,7 +357,7 @@ pub(crate) fn render_run_value(value: &RunValue<WebStyle>) -> String {
 
 /// The CSS texts of an erased value, one per property its target declares: an inset's
 /// block and inline halves, any other value whole.
-pub(crate) fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String> {
+fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String> {
   match value {
     SlotValue::Box(value) => render_box_value(value),
     SlotValue::Run(value) => vec![render_run_value(value)],
@@ -372,46 +367,22 @@ pub(crate) fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String>
 /// The CSS texts a derived leaf writes into the `count` custom properties of its slot:
 /// a value rendered, a token or an expression referenced in each.
 pub(crate) fn render_slot_leaf(leaf: &SlotLeaf<f32, WebStyle>, count: usize) -> Vec<String> {
-  static_leaf_texts(leaf, count, |value| render_slot_value(&value))
-}
-
-/// The texts of a static leaf for `count` declarations: a fixed value through `fixed`,
-/// a token or an expression referenced in each.
-fn static_leaf_texts<T: Clone>(
-  leaf: &StaticLeaf<T>,
-  count: usize,
-  fixed: impl FnOnce(T) -> Vec<String>,
-) -> Vec<String> {
   match leaf {
-    StaticLeaf::Fixed(value) => fixed(value.clone()),
+    StaticLeaf::Fixed(value) => render_slot_value(value),
     StaticLeaf::Token(name) => vec![token_reference(*name); count],
     StaticLeaf::Expr(expr) => vec![render_expr(expr.node()); count],
   }
 }
 
-/// The texts of a platform leaf of `key` at `position`, one per property its target
-/// declares, recording a slot it references.
-fn leaf_texts<T: Clone>(
-  key: Key,
-  position: usize,
-  leaf: &KeptLeaf<T>,
-  slots: &mut Vec<SlotBinding>,
-  fixed: impl FnOnce(T) -> Vec<String>,
-) -> Vec<String> {
+/// The texts of a kept leaf of `key` at `position`, one per property its target
+/// declares: a static leaf rendered, a slot referenced through its custom properties.
+fn leaf_texts(key: Key, position: usize, leaf: &KeptLeaf<SlotValue<f32, WebStyle>>) -> Vec<String> {
   match leaf {
-    KeptLeaf::Static(leaf) => static_leaf_texts(leaf, target(key).declared().len(), fixed),
-    KeptLeaf::Slot(slot) => {
-      slots.push(SlotBinding {
-        slot: *slot,
-        property: key,
-        position,
-      });
-
-      slot_properties(key, position)
-        .into_iter()
-        .map(|property| format!("var({property})"))
-        .collect()
-    }
+    KeptLeaf::Static(leaf) => render_slot_leaf(leaf, target(key).declared().len()),
+    KeptLeaf::Slot(_) => slot_properties(key, position)
+      .into_iter()
+      .map(|property| format!("var({property})"))
+      .collect(),
   }
 }
 
@@ -427,7 +398,6 @@ struct Rules {
   base: Vec<Group>,
   variants: Vec<Group>,
   latest: FxHashMap<(Conjunction, &'static str), usize>,
-  slots: Vec<SlotBinding>,
 }
 
 impl Rules {
@@ -440,7 +410,6 @@ impl Rules {
       }],
       variants: Vec::new(),
       latest: FxHashMap::default(),
-      slots: Vec::new(),
     }
   }
 
@@ -463,20 +432,22 @@ impl Rules {
     &mut self.base[index].declarations
   }
 
+  /// Adds every property `style` sets, in its record's order.
+  fn properties(&mut self, style: &KeptStyle) {
+    for (key, value) in style.entries() {
+      self.property(*key, value);
+    }
+  }
+
   /// Adds one property: its base leaf to the base rule and each variant to the rule of
   /// its conjunction, reusing a conjunction's rule only while that keeps the property's
   /// variants in declaration order.
-  fn property<T: Clone>(
-    &mut self,
-    key: Key,
-    value: &Conditional<KeptLeaf<T>, Condition<f32>>,
-    fixed: &impl Fn(T) -> Vec<String>,
-  ) {
+  fn property(&mut self, key: Key, value: &RecordValue<f32, WebStyle>) {
     let target = target(key);
     let Target {
       pseudo, position, ..
     } = target;
-    let texts = leaf_texts(key, 0, value.base(), &mut self.slots, fixed);
+    let texts = leaf_texts(key, 0, value.base());
     let base = target.declare(std::mem::take(self.base_of(pseudo)), &texts);
     let base = match position {
       Some(position) => base.set("position", position),
@@ -488,7 +459,7 @@ impl Rules {
     let mut last = None;
 
     for (index, (condition, leaf)) in value.variants().iter().enumerate() {
-      let texts = leaf_texts(key, index + 1, leaf, &mut self.slots, fixed);
+      let texts = leaf_texts(key, index + 1, leaf);
 
       for conjunction in Conjunction::of_condition(condition) {
         let lookup = (conjunction, pseudo);
@@ -522,10 +493,9 @@ impl Rules {
     }
   }
 
-  /// Renders every rule after `prefix`: the base rules, the variants in order, then
-  /// `trailer`; the slots are those `source` binds where it binds them, else those the
-  /// rules met.
-  fn finish(self, source: &impl Source, mut out: String, trailer: &str) -> Compiled {
+  /// Renders every rule after `out`: the base rules, the variants in order, then
+  /// `trailer`, with the slots `style` binds.
+  fn finish(self, style: &KeptStyle, mut out: String, trailer: &str) -> Compiled {
     for group in self.base.iter().chain(&self.variants) {
       if group.declarations.is_empty() {
         continue;
@@ -540,109 +510,36 @@ impl Rules {
 
     Compiled {
       template: out,
-      slots: source.slots().map_or(self.slots, <[SlotBinding]>::to_vec),
+      slots: style.slots().to_vec(),
     }
   }
 }
 
-/// Feeds a static box style's properties to the rules.
-struct BoxRules<'a>(&'a mut Rules);
+/// A keyframe as declarations.
+fn frame_declarations(frame: &Frame<f32, WebStyle>) -> Declarations {
+  frame
+    .entries()
+    .iter()
+    .fold(Declarations::new(), |declarations, (key, leaf)| {
+      let target = target(*key);
+      let texts = render_slot_leaf(leaf, target.declared().len());
+      let declarations = target.declare(declarations, &texts);
 
-impl BoxVisitor<f32, Static<Condition<f32>>, WebStyle> for BoxRules<'_> {
-  fn value<T: IntoBoxValue<f32, WebStyle>>(
-    &mut self,
-    key: Key,
-    value: &Option<Conditional<KeptLeaf<T>, Condition<f32>>>,
-  ) {
-    if let Some(value) = value {
-      self.0.property(key, value, &|fixed: T| {
-        render_box_value(&fixed.into_box_value())
-      });
-    }
-  }
-}
-
-/// Feeds a static run style's properties to the rules.
-struct RunRules<'a>(&'a mut Rules);
-
-impl RunVisitor<Static<Condition<f32>>, WebStyle> for RunRules<'_> {
-  fn value<T: IntoRunValue<WebStyle>>(
-    &mut self,
-    key: Key,
-    value: &Option<Conditional<KeptLeaf<T>, Condition<f32>>>,
-  ) {
-    if let Some(value) = value {
-      self.0.property(key, value, &|fixed: T| {
-        vec![render_run_value(&fixed.into_run_value())]
-      });
-    }
-  }
-}
-
-/// Renders a box keyframe as declarations.
-struct KeyframeBox(Declarations);
-
-impl BoxVisitor<f32, Keyframe, WebStyle> for KeyframeBox {
-  fn value<T: IntoBoxValue<f32, WebStyle>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
-    if let Some(leaf) = value {
-      let target = target(key);
-      let texts = static_leaf_texts(leaf, target.declared().len(), |fixed: T| {
-        render_box_value(&fixed.into_box_value())
-      });
-      let declarations = target.declare(std::mem::take(&mut self.0), &texts);
-
-      self.0 = match target.position {
+      match target.position {
         Some(position) => declarations.set("position", position),
         None => declarations,
-      };
-    }
-  }
+      }
+    })
 }
 
-/// Renders a run keyframe as declarations.
-struct KeyframeRun(Declarations);
-
-impl RunVisitor<Keyframe, WebStyle> for KeyframeRun {
-  fn value<T: IntoRunValue<WebStyle>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
-    if let Some(leaf) = value {
-      let target = target(key);
-      let texts = static_leaf_texts(leaf, target.declared().len(), |fixed: T| {
-        vec![render_run_value(&fixed.into_run_value())]
-      });
-
-      self.0 = target.declare(std::mem::take(&mut self.0), &texts);
-    }
-  }
-}
-
-fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, WebStyle>) -> Declarations {
-  let mut keyframe = KeyframeBox(Declarations::new());
-
-  style.visit(&mut keyframe);
-
-  keyframe.0
-}
-
-fn run_keyframe_declarations(style: &RunStyle<Keyframe, WebStyle>) -> Declarations {
-  let mut keyframe = KeyframeRun(Declarations::new());
-
-  style.visit(&mut keyframe);
-
-  keyframe.0
-}
-
-/// Folds the motion into `base` and appends the `@keyframes` blocks to `out`; the
-/// motion respecting reduced motion goes into the returned trailer, a rule on the
-/// class under the no-preference media query, and under the reduce query each
+/// Folds the motion of `style` into `base` and appends the `@keyframes` blocks to
+/// `out`; the motion respecting reduced motion goes into the returned trailer, a rule
+/// on the class under the no-preference media query, and under the reduce query each
 /// animation respecting it rests on its final frame, so a reader preferring reduced
 /// motion sees only the motion that opted out moving.
-fn motion<S>(
-  out: &mut String,
-  base: Declarations,
-  transitions: &[skene_foundation::Transition<WebProperty>],
-  animations: &[Animation<S>],
-  declarations: &impl Fn(&S) -> Declarations,
-) -> (Declarations, String) {
+fn motion(out: &mut String, base: Declarations, style: &KeptStyle) -> (Declarations, String) {
+  let transitions = style.transitions();
+  let animations = style.animations();
   let mut base = base;
   let mut respecting = Declarations::new();
   let mut resting = Declarations::new();
@@ -669,10 +566,12 @@ fn motion<S>(
   if !animations.is_empty() {
     let names: Vec<String> = animations
       .iter()
-      .map(|animation| render_keyframes(out, animation, declarations))
+      .map(|animation| render_keyframes(out, animation, &frame_declarations))
       .collect();
     let entries = || animations.iter().zip(names.iter().map(String::as_str));
-    let insistent = |(animation, _): &(&Animation<S>, &str)| !animation.respects_reduced_motion;
+    let insistent = |(animation, _): &(&Animation<Frame<f32, WebStyle>>, &str)| {
+      !animation.respects_reduced_motion
+    };
 
     if entries().any(|entry| insistent(&entry)) {
       base = base.set(
@@ -735,194 +634,16 @@ fn layout_declarations(layout: Layout) -> Declarations {
   }
 }
 
-/// A node's style as the compiler reads it: its typed styles, or its record compiled.
-trait Source {
-  /// Whether the style sets the box's height.
-  fn sets_height(&self) -> bool;
+/// The records a node's props compile to at
+/// [`Keep::Everything`](skene_foundation::Keep::Everything).
+pub(crate) mod record {
+  use skene_foundation::{BoxProps, Keeping, Record, RunProps, StaticBoxStyle};
 
-  /// The slots the style binds itself; `None` where the rules bind them as they meet
-  /// them.
-  fn slots(&self) -> Option<&[SlotBinding]>;
+  use super::KeptStyle;
+  use crate::platform::web::Web;
 
-  /// Folds the style's motion into `base` as [`motion`] does, appending its
-  /// `@keyframes` blocks to `out`.
-  fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String);
-
-  /// Adds every property the style sets to `rules`, in its visitors' order.
-  fn properties(&self, rules: &mut Rules);
-}
-
-/// A box's typed style and its motion.
-struct TypedBox<'a> {
-  style: &'a BoxStyle<f32, Static<Condition<f32>>, WebStyle>,
-  dynamics: &'a BoxDynamics<f32, WebStyle>,
-}
-
-impl<'a> TypedBox<'a> {
-  /// The style and the motion of a box's props.
-  const fn of<P: PixelRealization>(props: &'a BoxProps<P>) -> Self {
-    Self {
-      style: &props.style,
-      dynamics: &props.dynamics,
-    }
-  }
-}
-
-impl Source for TypedBox<'_> {
-  fn sets_height(&self) -> bool {
-    self.style.height.is_some()
-  }
-
-  fn slots(&self) -> Option<&[SlotBinding]> {
-    None
-  }
-
-  fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
-    motion(
-      out,
-      base,
-      &self.dynamics.transitions,
-      &self.dynamics.animations,
-      &box_keyframe_declarations,
-    )
-  }
-
-  fn properties(&self, rules: &mut Rules) {
-    self.style.visit(&mut BoxRules(rules));
-  }
-}
-
-/// A run's typed style, the per-child layout a wrapper gave it, and its motion.
-struct TypedRun<'a> {
-  style: &'a RunStyle<Static<Condition<f32>>, WebStyle>,
-  layout: Option<&'a BoxStyle<f32, Static<Condition<f32>>, WebStyle>>,
-  dynamics: &'a RunDynamics<WebStyle>,
-}
-
-impl<'a> TypedRun<'a> {
-  /// The style, the layout and the motion of a run's props.
-  fn of<P: PixelRealization>(props: &'a RunProps<P>) -> Self {
-    Self {
-      style: &props.style,
-      layout: props.layout.as_deref(),
-      dynamics: &props.dynamics,
-    }
-  }
-}
-
-impl Source for TypedRun<'_> {
-  fn sets_height(&self) -> bool {
-    self.layout.is_some_and(|layout| layout.height.is_some())
-  }
-
-  fn slots(&self) -> Option<&[SlotBinding]> {
-    None
-  }
-
-  fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
-    motion(
-      out,
-      base,
-      &self.dynamics.transitions,
-      &self.dynamics.animations,
-      &run_keyframe_declarations,
-    )
-  }
-
-  fn properties(&self, rules: &mut Rules) {
-    self.style.visit(&mut RunRules(rules));
-
-    if let Some(layout) = self.layout {
-      layout.visit(&mut BoxRules(rules));
-    }
-  }
-}
-
-/// The record path: a node's style read from its [`Record`](skene_foundation::Record)
-/// compiled at [`Keep::Everything`](skene_foundation::Keep::Everything), every compile held equal
-/// to the typed path's in debug builds.
-mod record {
-  use std::fmt::Debug;
-
-  use skene_foundation::{
-    BoxProps,
-    BoxStyle,
-    CompiledStyle,
-    Condition,
-    Frame,
-    Keeping,
-    Property,
-    PropertyKey,
-    Record,
-    RunProps,
-    SlotValue,
-    Static,
-    web::WebStyle,
-  };
-
-  use super::{
-    Compiled,
-    Declarations,
-    PixelRealization,
-    Rules,
-    SlotBinding,
-    Source,
-    motion,
-    render_slot_value,
-    static_leaf_texts,
-    target,
-  };
-
-  /// A record's keyframe as declarations.
-  fn frame_declarations(frame: &Frame<f32, WebStyle>) -> Declarations {
-    frame
-      .entries()
-      .iter()
-      .fold(Declarations::new(), |declarations, (key, leaf)| {
-        let target = target(*key);
-        let texts = static_leaf_texts(leaf, target.declared().len(), |value| {
-          render_slot_value(&value)
-        });
-        let declarations = target.declare(declarations, &texts);
-
-        match target.position {
-          Some(position) => declarations.set("position", position),
-          None => declarations,
-        }
-      })
-  }
-
-  impl Source for CompiledStyle<f32, WebStyle> {
-    fn sets_height(&self) -> bool {
-      self.has(PropertyKey::Shared(Property::Height))
-    }
-
-    fn slots(&self) -> Option<&[SlotBinding]> {
-      Some(Self::slots(self))
-    }
-
-    fn motion(&self, out: &mut String, base: Declarations) -> (Declarations, String) {
-      motion(
-        out,
-        base,
-        self.transitions(),
-        self.animations(),
-        &frame_declarations,
-      )
-    }
-
-    fn properties(&self, rules: &mut Rules) {
-      for (key, value) in self.entries() {
-        rules.property(*key, value, &|value: SlotValue<f32, WebStyle>| {
-          render_slot_value(&value)
-        });
-      }
-    }
-  }
-
-  /// The record of a box's style and its motion, compiled at
-  /// [`Keep::Everything`](skene_foundation::Keep::Everything).
-  pub(super) fn of_box<P: PixelRealization>(props: &BoxProps<P>) -> CompiledStyle<f32, WebStyle> {
+  /// The record of a box's style and its motion.
+  pub(crate) fn of_box(props: &BoxProps<Web>) -> KeptStyle {
     let mut record = Record::new();
 
     record.add_box(&props.style);
@@ -931,11 +652,8 @@ mod record {
     record.compile(Keeping::Everything)
   }
 
-  /// The record of the per-child layout a wrapper gave a low-level node, compiled at
-  /// [`Keep::Everything`](skene_foundation::Keep::Everything).
-  pub(super) fn of_layout(
-    layout: &BoxStyle<f32, Static<Condition<f32>>, WebStyle>,
-  ) -> CompiledStyle<f32, WebStyle> {
+  /// The record of the per-child layout a wrapper gave a low-level node.
+  pub(crate) fn of_layout(layout: &StaticBoxStyle<Web>) -> KeptStyle {
     let mut record = Record::new();
 
     record.add_box(layout);
@@ -943,9 +661,8 @@ mod record {
     record.compile(Keeping::Everything)
   }
 
-  /// The record of a run's style, then its layout's, and its motion, compiled at
-  /// [`Keep::Everything`](skene_foundation::Keep::Everything).
-  pub(super) fn of_run<P: PixelRealization>(props: &RunProps<P>) -> CompiledStyle<f32, WebStyle> {
+  /// The record of a run's style, then its layout's, and its motion.
+  pub(crate) fn of_run(props: &RunProps<Web>) -> KeptStyle {
     let mut record = Record::new();
 
     record.add_run(&props.style);
@@ -958,80 +675,194 @@ mod record {
 
     record.compile(Keeping::Everything)
   }
-
-  /// Holds what a `kind` node of `props` compiled to from its record to what it compiled
-  /// to from its typed style.
-  pub(super) fn hold(kind: &str, props: &impl Debug, typed: &Compiled, record: &Compiled) {
-    debug_assert_eq!(
-      record, typed,
-      "the {kind} {props:?} compiles from its record apart from its typed style"
-    );
-  }
 }
 
-/// The base declarations a box starts from: its layout and its identity.
-fn box_base<P: PixelRealization>(props: &BoxProps<P>, source: &impl Source) -> Declarations {
-  box_identity(props, source, layout_declarations(props.layout))
+/// What a box's construction gives its rule template beside its style.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct BoxFacts<'a> {
+  /// The layout mode.
+  pub layout: Layout,
+  /// The name the box publishes for container queries against its size.
+  pub container: Option<ContainerName>,
+  /// The name pairing the box with its counterpart across a view transition.
+  pub transition_name: Option<&'a str>,
 }
 
-/// `base` with what names a box: when it names itself for container queries, its
-/// containment—`size` when its height is set, else `inline-size`—and its
-/// view-transition name.
-fn box_identity<P: PixelRealization>(
-  props: &BoxProps<P>,
-  source: &impl Source,
-  mut base: Declarations,
-) -> Declarations {
-  if let Some(name) = props.container {
-    let containment = if source.sets_height() {
-      "size"
+impl<'a> BoxFacts<'a> {
+  /// The facts of a box's props.
+  fn of(props: &'a BoxProps<Web>) -> Self {
+    Self {
+      layout: props.layout,
+      container: props.container,
+      transition_name: props.transition_name.as_deref(),
     }
-    else {
-      "inline-size"
-    };
-
-    base = base.set("container", format!("{} / {containment}", name.0));
   }
 
-  if let Some(name) = &props.transition_name {
-    base = base.set("view-transition-name", Ident(name).to_string());
+  /// `base` with what names the box: when it names itself for container queries, its
+  /// containment—`size` when `style` sets its height, else `inline-size`—and its
+  /// view-transition name.
+  fn identity(&self, style: &KeptStyle, mut base: Declarations) -> Declarations {
+    if let Some(name) = self.container {
+      let containment = if style.has(PropertyKey::Shared(Property::Height)) {
+        "size"
+      }
+      else {
+        "inline-size"
+      };
+
+      base = base.set("container", format!("{} / {containment}", name.0));
+    }
+
+    if let Some(name) = self.transition_name {
+      base = base.set("view-transition-name", Ident(name).to_string());
+    }
+
+    base
   }
 
-  base
+  /// The base declarations the box starts from: its layout and its identity.
+  fn base(&self, style: &KeptStyle) -> Declarations {
+    self.identity(style, layout_declarations(self.layout))
+  }
 }
 
-/// Compiles the style `source` reads with `base` ahead of its own declarations.
-fn compile_box_with(source: &impl Source, base: Declarations) -> Compiled {
+/// What a node's construction gives its rule template beside its style, by kind.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Template<'a> {
+  /// A box.
+  Box(BoxFacts<'a>),
+  /// A control.
+  Control {
+    /// Its box's facts.
+    boxed: BoxFacts<'a>,
+    /// Whether its native element is a text entry.
+    entry: bool,
+  },
+  /// An overlay.
+  Overlay {
+    /// Its box's facts.
+    boxed: BoxFacts<'a>,
+    /// Where it sits.
+    placement: Placement,
+    /// The backdrop color painted over the app while it is open, if any.
+    backdrop: Option<Color>,
+  },
+  /// The per-child layout a wrapper gave a low-level node.
+  Layout,
+  /// A text run.
+  Run {
+    /// Where it sits in the surrounding layout.
+    placement: RunPlacement,
+    /// Whether the user can select and copy its text.
+    selectable: bool,
+  },
+}
+
+impl Template<'_> {
+  /// The template of a box of `props`.
+  pub(crate) fn boxed(props: &BoxProps<Web>) -> Template<'_> {
+    Template::Box(BoxFacts::of(props))
+  }
+
+  /// The template of a control of `props`.
+  pub(crate) fn control(props: &ControlProps<Web>) -> Template<'_> {
+    Template::Control {
+      boxed: BoxFacts::of(&props.box_props),
+      entry: props.native.is_some_and(NativeElement::is_text_entry),
+    }
+  }
+
+  /// The template of an overlay of `props`.
+  pub(crate) fn overlay(props: &OverlayProps<Web>) -> Template<'_> {
+    Template::Overlay {
+      boxed: BoxFacts::of(&props.box_props),
+      placement: props.placement,
+      backdrop: props.backdrop,
+    }
+  }
+
+  /// The template of a run of `props`.
+  pub(crate) const fn run(props: &RunProps<Web>) -> Self {
+    Self::Run {
+      placement: props.placement,
+      selectable: props.selectable,
+    }
+  }
+
+  /// The hash a compile of the template is cached under beside its style's
+  /// [`address`](skene_foundation::CompiledStyle::address): every fact it reads.
+  pub(crate) fn key(&self) -> u64 {
+    let mut hasher = FxHasher::default();
+
+    match self {
+      Self::Box(boxed) => {
+        hasher.write_u8(0);
+        boxed.hash(&mut hasher);
+      }
+      Self::Control { boxed, entry } => {
+        hasher.write_u8(1);
+        boxed.hash(&mut hasher);
+        entry.hash(&mut hasher);
+      }
+      Self::Overlay {
+        boxed,
+        placement,
+        backdrop,
+      } => {
+        hasher.write_u8(2);
+        boxed.hash(&mut hasher);
+        hasher.write_u8(*placement as u8);
+        backdrop.fingerprint(&mut hasher);
+      }
+      Self::Layout => hasher.write_u8(3),
+      Self::Run {
+        placement,
+        selectable,
+      } => {
+        hasher.write_u8(4);
+        hasher.write_u8(*placement as u8);
+        selectable.hash(&mut hasher);
+      }
+    }
+
+    hasher.finish()
+  }
+
+  /// The rule template of a node of this kind whose style is `style`.
+  pub(crate) fn compile(&self, style: &KeptStyle) -> Compiled {
+    match *self {
+      Self::Box(boxed) => compile_box(style, boxed),
+      Self::Control { boxed, entry } => compile_control(style, boxed, entry),
+      Self::Overlay {
+        boxed,
+        placement,
+        backdrop,
+      } => compile_overlay(style, boxed, placement, backdrop),
+      Self::Layout => compile_layout(style),
+      Self::Run {
+        placement,
+        selectable,
+      } => compile_run(style, placement, selectable),
+    }
+  }
+}
+
+/// Compiles `style` with `base` ahead of its own declarations.
+fn compile_box_with(style: &KeptStyle, base: Declarations) -> Compiled {
   let mut out = String::new();
-  let (base, trailer) = source.motion(&mut out, base);
+  let (base, trailer) = motion(&mut out, base, style);
   let mut rules = Rules::new(base);
 
-  source.properties(&mut rules);
+  rules.properties(style);
 
-  rules.finish(source, out, &trailer)
+  rules.finish(style, out, &trailer)
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
-pub(crate) fn compile_box<P: PixelRealization>(props: &BoxProps<P>) -> Compiled {
-  let compiled = compile_box_from(props, &TypedBox::of(props));
+fn compile_box(style: &KeptStyle, boxed: BoxFacts<'_>) -> Compiled {
+  let mut compiled = compile_box_with(style, boxed.base(style));
 
-  if cfg!(debug_assertions) {
-    record::hold(
-      "box",
-      props,
-      &compiled,
-      &compile_box_from(props, &record::of_box(props)),
-    );
-  }
-
-  compiled
-}
-
-/// The rule template of a box, its style read from `source`.
-fn compile_box_from<P: PixelRealization>(props: &BoxProps<P>, source: &impl Source) -> Compiled {
-  let mut compiled = compile_box_with(source, box_base(props, source));
-
-  if props.layout == Layout::Stack {
+  if boxed.layout == Layout::Stack {
     Conjunction::default().emit(
       &mut compiled.template,
       None,
@@ -1044,58 +875,18 @@ fn compile_box_from<P: PixelRealization>(props: &BoxProps<P>, source: &impl Sour
 }
 
 /// The rule template of the per-child layout a wrapper gave a low-level node.
-pub(crate) fn compile_layout<P: PixelRealization>(layout: &StaticBoxStyle<P>) -> Compiled {
-  let dynamics = BoxDynamics::default();
-  let compiled = compile_layout_from(&TypedBox {
-    style: layout,
-    dynamics: &dynamics,
-  });
-
-  if cfg!(debug_assertions) {
-    record::hold(
-      "layout",
-      layout,
-      &compiled,
-      &compile_layout_from(&record::of_layout(layout)),
-    );
-  }
-
-  compiled
-}
-
-/// The rule template of a per-child layout, its style read from `source`.
-fn compile_layout_from(source: &impl Source) -> Compiled {
+fn compile_layout(style: &KeptStyle) -> Compiled {
   let mut rules = Rules::new(Declarations::new());
 
-  source.properties(&mut rules);
+  rules.properties(style);
 
-  rules.finish(source, String::new(), "")
+  rules.finish(style, String::new(), "")
 }
 
 /// The rule template of a control: its box's, over the control reset that strips the
-/// native element's own chrome; a text entry's value is inked and selected by the
+/// native element's own chrome; a text `entry`'s value is inked and selected by the
 /// typography inherited at it.
-pub(crate) fn compile_control<P: PixelRealization>(props: &ControlProps<P>) -> Compiled {
-  let compiled = compile_control_from(props, &TypedBox::of(&props.box_props));
-
-  if cfg!(debug_assertions) {
-    record::hold(
-      "control",
-      &(props, &props.box_props),
-      &compiled,
-      &compile_control_from(props, &record::of_box(&props.box_props)),
-    );
-  }
-
-  compiled
-}
-
-/// The rule template of a control, its box's style read from `source`.
-fn compile_control_from<P: PixelRealization>(
-  props: &ControlProps<P>,
-  source: &impl Source,
-) -> Compiled {
-  let entry = props.native.is_some_and(NativeElement::is_text_entry);
+fn compile_control(style: &KeptStyle, boxed: BoxFacts<'_>, entry: bool) -> Compiled {
   let ink = if entry {
     token_reference(typography::INK.name())
   }
@@ -1103,8 +894,9 @@ fn compile_control_from<P: PixelRealization>(
     "inherit".to_owned()
   };
   let mut compiled = compile_box_with(
-    source,
-    box_base(&props.box_props, source)
+    style,
+    boxed
+      .base(style)
       .set("appearance", "none")
       .set("font", "inherit")
       .set("color", ink)
@@ -1147,43 +939,30 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// placement margins, its layout applying only while open so the platform's
 /// `display: none` stands while closed, and the `::backdrop` rule of a modal with a
 /// backdrop.
-pub(crate) fn compile_overlay<P: PixelRealization>(props: &OverlayProps<P>) -> Compiled {
-  let compiled = compile_overlay_from(props, &TypedBox::of(&props.box_props));
-
-  if cfg!(debug_assertions) {
-    record::hold(
-      "overlay",
-      props,
-      &compiled,
-      &compile_overlay_from(props, &record::of_box(&props.box_props)),
-    );
-  }
-
-  compiled
-}
-
-/// The rule template of an overlay, its box's style read from `source`.
-fn compile_overlay_from<P: PixelRealization>(
-  props: &OverlayProps<P>,
-  source: &impl Source,
+fn compile_overlay(
+  style: &KeptStyle,
+  boxed: BoxFacts<'_>,
+  placement: Placement,
+  backdrop: Option<Color>,
 ) -> Compiled {
-  let base = box_identity(&props.box_props, source, Declarations::new())
+  let base = boxed
+    .identity(style, Declarations::new())
     .set("border", "0 solid")
     .set("padding", "0")
     .set("background", "none")
     .set("color", "inherit")
     .set("overflow", "visible")
-    .set("margin", placement_margin(props.placement));
-  let mut compiled = compile_box_with(source, base);
+    .set("margin", placement_margin(placement));
+  let mut compiled = compile_box_with(style, base);
 
   Conjunction::default().emit(
     &mut compiled.template,
     None,
     ":where([open],:popover-open)",
-    &layout_declarations(props.box_props.layout).render(),
+    &layout_declarations(boxed.layout).render(),
   );
 
-  if let Some(color) = props.backdrop {
+  if let Some(color) = backdrop {
     Conjunction::default().emit(
       &mut compiled.template,
       None,
@@ -1199,39 +978,23 @@ fn compile_overlay_from<P: PixelRealization>(
 
 /// The rule template of a text run; a run on a line of its own lays out one line while
 /// empty, through a rule of its class's specificity that precedes the class's own.
-pub(crate) fn compile_run<P: PixelRealization>(props: &RunProps<P>) -> Compiled {
-  let compiled = compile_run_from(props, &TypedRun::of(props));
-
-  if cfg!(debug_assertions) {
-    record::hold(
-      "run",
-      props,
-      &compiled,
-      &compile_run_from(props, &record::of_run(props)),
-    );
-  }
-
-  compiled
-}
-
-/// The rule template of a text run, its style and its layout's read from `source`.
-fn compile_run_from<P: PixelRealization>(props: &RunProps<P>, source: &impl Source) -> Compiled {
-  let mut base = match props.placement {
+fn compile_run(style: &KeptStyle, placement: RunPlacement, selectable: bool) -> Compiled {
+  let mut base = match placement {
     RunPlacement::Line => Declarations::new().set("display", "block"),
     RunPlacement::Inline => Declarations::new(),
     RunPlacement::Embedded => Declarations::new().set("display", "inline-block"),
   };
 
-  if props.selectable {
+  if selectable {
     base = base
       .set("-webkit-user-select", "text")
       .set("user-select", "text");
   }
 
   let mut out = String::new();
-  let (base, trailer) = source.motion(&mut out, base);
+  let (base, trailer) = motion(&mut out, base, style);
 
-  if props.placement == RunPlacement::Line {
+  if placement == RunPlacement::Line {
     Conjunction::default().emit(
       &mut out,
       None,
@@ -1244,9 +1007,9 @@ fn compile_run_from<P: PixelRealization>(props: &RunProps<P>, source: &impl Sour
 
   let mut rules = Rules::new(base);
 
-  source.properties(&mut rules);
+  rules.properties(style);
 
-  rules.finish(source, out, &trailer)
+  rules.finish(style, out, &trailer)
 }
 
 /// The text of a token definition's leaf.
@@ -1442,69 +1205,4 @@ pub(crate) fn slot_registrations() -> String {
   }
 
   out
-}
-
-/// The hash the class cache keys a box's compiled template on.
-pub(crate) fn box_fingerprint<P: PixelRealization>(props: &BoxProps<P>, reset: u8) -> u64 {
-  let mut hasher = FxHasher::default();
-
-  hasher.write_u8(reset);
-  props.layout.hash(&mut hasher);
-  props.container.hash(&mut hasher);
-  props.transition_name.hash(&mut hasher);
-  props.style.fingerprint(&mut hasher);
-  props.dynamics.fingerprint(&mut hasher);
-
-  hasher.finish()
-}
-
-/// The hash the class cache keys a control's compiled template on: its box's and its
-/// kind's.
-pub(crate) fn control_fingerprint<P: PixelRealization>(props: &ControlProps<P>) -> u64 {
-  let mut hasher = FxHasher::default();
-
-  hasher.write_u64(box_fingerprint(&props.box_props, 1));
-  props.native.hash(&mut hasher);
-
-  hasher.finish()
-}
-
-/// The hash the class cache keys an overlay's compiled template on.
-pub(crate) fn overlay_fingerprint<P: PixelRealization>(props: &OverlayProps<P>) -> u64 {
-  let mut hasher = FxHasher::default();
-
-  hasher.write_u64(box_fingerprint(&props.box_props, 2));
-  props.modal.hash(&mut hasher);
-  (props.placement as u8).hash(&mut hasher);
-  props.backdrop.fingerprint(&mut hasher);
-
-  hasher.finish()
-}
-
-/// The hash the class cache keys a low-level node's compiled layout on.
-pub(crate) fn layout_fingerprint<P: PixelRealization>(layout: &StaticBoxStyle<P>) -> u64 {
-  let mut hasher = FxHasher::default();
-
-  hasher.write_u8(3);
-  layout.fingerprint(&mut hasher);
-
-  hasher.finish()
-}
-
-/// The hash the class cache keys a run's compiled template on.
-pub(crate) fn run_fingerprint<P: PixelRealization>(props: &RunProps<P>) -> u64 {
-  let mut hasher = FxHasher::default();
-
-  (props.placement as u8).hash(&mut hasher);
-  props.selectable.hash(&mut hasher);
-  props.style.fingerprint(&mut hasher);
-  props.layout.is_some().hash(&mut hasher);
-
-  if let Some(layout) = &props.layout {
-    layout.fingerprint(&mut hasher);
-  }
-
-  props.dynamics.fingerprint(&mut hasher);
-
-  hasher.finish()
 }

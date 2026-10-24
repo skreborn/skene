@@ -32,22 +32,15 @@ use crate::{
   LinkPolicy,
   compile::{
     Compiled,
+    KeptStyle,
     SlotBinding,
+    Template,
     all_unconditional,
-    box_fingerprint,
-    compile_box,
-    compile_control,
     compile_definitions,
-    compile_layout,
-    compile_overlay,
     compile_root_definitions,
-    compile_run,
-    control_fingerprint,
     inline_definitions,
-    layout_fingerprint,
-    overlay_fingerprint,
+    record,
     render_slot_leaf,
-    run_fingerprint,
     slot_properties,
   },
   condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
@@ -360,11 +353,10 @@ impl<S: Sink> Realizer<S> {
       self.sink.set_attribute(&element, "href", href);
     }
 
-    let compiled = self
-      .book
-      .compiled(box_fingerprint(props, 0), || compile_box(props));
+    let style = record::of_box(props);
+    let compiled = self.book.compiled(&style, &Template::boxed(props));
 
-    self.finish_box(node, props, &compiled);
+    self.finish_box(node, props, &style, &compiled);
   }
 
   /// Realizes the control `node`: a form element bare or inside its label where it
@@ -421,11 +413,10 @@ impl<S: Sink> Realizer<S> {
 
     self.sink.set_attribute(&root, CONTROL_ATTRIBUTE, "");
 
-    let compiled = self
-      .book
-      .compiled(control_fingerprint(props), || compile_control(props));
+    let style = record::of_box(&props.box_props);
+    let compiled = self.book.compiled(&style, &Template::control(props));
 
-    self.finish_box(node, &props.box_props, &compiled);
+    self.finish_box(node, &props.box_props, &style, &compiled);
   }
 
   /// Realizes the overlay `node`: a `<dialog>` when modal, else a popover.
@@ -453,11 +444,10 @@ impl<S: Sink> Realizer<S> {
       }
     }
 
-    let compiled = self
-      .book
-      .compiled(overlay_fingerprint(props), || compile_overlay(props));
+    let style = record::of_box(&props.box_props);
+    let compiled = self.book.compiled(&style, &Template::overlay(props));
 
-    self.finish_box(node, &props.box_props, &compiled);
+    self.finish_box(node, &props.box_props, &style, &compiled);
   }
 
   /// Realizes the text run `node`: a link where it has one, else a span.
@@ -477,7 +467,7 @@ impl<S: Sink> Realizer<S> {
 
     let compiled = self
       .book
-      .compiled(run_fingerprint(props), || compile_run(props));
+      .compiled(&record::of_run(props), &Template::run(props));
 
     self.assign_style(node, &compiled);
   }
@@ -623,9 +613,9 @@ impl<S: Sink> Realizer<S> {
 
   /// Gives `node` the class of its compiled layout.
   pub(crate) fn apply_layout(&mut self, node: NodeId, layout: &StaticBoxStyle<Web>) {
-    let compiled = self.book.compiled(layout_fingerprint::<Web>(layout), || {
-      compile_layout::<Web>(layout)
-    });
+    let compiled = self
+      .book
+      .compiled(&record::of_layout(layout), &Template::Layout);
 
     self.assign_style(node, &compiled);
   }
@@ -843,8 +833,15 @@ impl<S: Sink> Realizer<S> {
     Some(record)
   }
 
-  /// Realizes the props every box-like node shares onto `node`.
-  fn finish_box(&mut self, node: NodeId, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
+  /// Realizes the props every box-like node shares onto `node`, its style kept as
+  /// `style` and compiled to `compiled`.
+  fn finish_box(
+    &mut self,
+    node: NodeId,
+    props: &BoxProps<Web>,
+    style: &KeptStyle,
+    compiled: &Rc<Compiled>,
+  ) {
     self.assign_style(node, compiled);
 
     let Some(record) = self.records.get_mut(node)
@@ -852,7 +849,7 @@ impl<S: Sink> Realizer<S> {
       return;
     };
 
-    record.scrolls = scrolls::<Web>(&props.style);
+    record.scrolls = scrolls(style);
 
     if let Some(axes) = props.drag_axes {
       self

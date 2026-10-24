@@ -5,6 +5,7 @@
 use skene_foundation::{
   AccessProp,
   Axis,
+  BoxValue,
   CheckState,
   Conditional,
   ControlProps,
@@ -13,10 +14,15 @@ use skene_foundation::{
   NativeElement,
   NodeId,
   PopupKind,
+  Property,
+  PropertyKey,
   Realization,
   Role,
+  SlotValue,
   StaticLeaf,
 };
+
+use crate::compile::KeptStyle;
 
 /// The id of the server's `<style>` block, which the browser leaf adopts.
 pub(crate) const STYLE_ID: &str = "skene-styles";
@@ -383,10 +389,13 @@ pub(crate) fn focus_order_attribute(
 
 /// Whether a box's declared style scrolls its content: an overflow fixed on the base
 /// value that scrolls on either axis once computed.
-pub(crate) fn scrolls<P: Realization>(style: &skene_foundation::StaticBoxStyle<P>) -> bool {
+pub(crate) fn scrolls(style: &KeptStyle) -> bool {
   matches!(
-    style.overflow.as_ref().map(Conditional::base),
-    Some(KeptLeaf::Static(StaticLeaf::Fixed(overflow))) if overflow.scrolls()
+    style
+      .get(PropertyKey::Shared(Property::Overflow))
+      .map(Conditional::base),
+    Some(KeptLeaf::Static(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Overflow(overflow)))))
+      if overflow.scrolls()
   )
 }
 

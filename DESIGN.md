@@ -796,7 +796,7 @@ Condition     = Media | State | And | Or
   `Keep::Nothing`, or kept and resolved through `resolve`, resolves as the typed style
   does under readings where every condition both holds and fails. The seam does not
   carry it yet: a realization receives the typed styles in `BoxProps` and `RunProps`,
-  and the terminal builds each node's record from them when it creates the node.
+  and each realization builds a node's record from them when it creates the node.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.
@@ -804,11 +804,11 @@ Condition     = Media | State | And | Or
   `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
   `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
   therefore works in a static document with zero script. A template is compiled from
-  the node's typed styles and, in debug builds on both leaves, from its record compiled
-  at `Keep::Everything` as well (its entries through the same `Rules`, its frames'
-  leaves rendered as the typed keyframes', a container's `size` containment read from
-  whether it has a height, its slot bindings the shared half's), and the two compiles
-  are asserted equal, template and slot bindings.
+  the node's record kept at `Keep::Everything` alone (its entries through `Rules`, its
+  frames' leaves rendered as declarations, a container's `size` containment read from
+  whether it has a height, its slot bindings the shared half's) beside the facts of the
+  node's construction it reads, and both leaves cache it by the kept style's address
+  and a hash of those facts.
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
@@ -901,8 +901,9 @@ hashed with a wide hash to a deterministic name, interned once, reference-counte
 node, collected when unused; naming never depends on intern order or liveness. Identical
 styles collapse to one class; both leaves emit rules in interning order, which is build
 order, so the server's stylesheet is byte-compatible with the client's and the cascade
-order is identical, which hydration relies on. A class cache keyed by the hash of the
-typed props renders the template text on a miss only. The interner, the cache and the
+order is identical, which hydration relies on. A class cache keyed by the kept style's
+address and a hash of the construction facts its template reads renders the template
+text on a miss only. The interner, the cache and the
 token and slot registrations are one `StyleBook` both web leaves share, telling each
 leaf's `StyleSink` what to add and remove (the browser: one `<style>` element per
 class; the server: each rule collected as it is interned and emitted with the next

@@ -1,7 +1,7 @@
-//! The stylesheet bookkeeping both web leaves share: the compiled templates by
-//! fingerprint, the interned classes each node keeps and releases, and the custom
-//! properties registered for tokens and slots, told to the leaf's [`StyleSink`] as they
-//! change.
+//! The stylesheet bookkeeping both web leaves share: the compiled templates by their
+//! style's address and their construction's facts, the interned classes each node keeps and
+//! releases, and the custom properties registered for tokens and slots, told to the leaf's
+//! [`StyleSink`] as they change.
 
 use std::rc::Rc;
 
@@ -9,7 +9,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use skene_foundation::{Definitions, TokenName};
 
 use crate::{
-  compile::{Compiled, Key, SlotBinding, slot_registration},
+  compile::{Compiled, KeptStyle, Key, SlotBinding, Template, slot_registration},
   interner::ClassInterner,
   token::WebTokenValue,
 };
@@ -41,8 +41,8 @@ pub(crate) trait StyleSink {
 pub(crate) struct StyleBook<K> {
   /// The classes interned for the rule templates.
   interner: ClassInterner,
-  /// The compiled templates, by fingerprint.
-  compiled: FxHashMap<u64, Rc<Compiled>>,
+  /// The compiled templates, by their style's address and their template's key.
+  compiled: FxHashMap<(u128, u64), Rc<Compiled>>,
   /// The tokens whose custom property is registered.
   tokens: FxHashSet<TokenName>,
   /// The variant slots whose custom property is registered.
@@ -63,18 +63,20 @@ impl<K: StyleSink> StyleBook<K> {
     }
   }
 
-  /// The compiled template for `key`, rendered by `compile` on a miss.
-  pub(crate) fn compiled(&mut self, key: u64, compile: impl FnOnce() -> Compiled) -> Rc<Compiled> {
+  /// What `template` compiles `style` to, compiled on a miss.
+  pub(crate) fn compiled(&mut self, style: &KeptStyle, template: &Template<'_>) -> Rc<Compiled> {
+    let key = (style.address(), template.key());
+
     if let Some(cached) = self.compiled.get(&key) {
       debug_assert!(
-        cached.template == compile().template,
-        "the fingerprint {key:x} names two templates"
+        cached.template == template.compile(style).template,
+        "the key {key:x?} names two templates"
       );
 
       return Rc::clone(cached);
     }
 
-    let compiled = Rc::new(compile());
+    let compiled = Rc::new(template.compile(style));
 
     self.compiled.insert(key, Rc::clone(&compiled));
 

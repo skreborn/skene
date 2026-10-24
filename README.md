@@ -116,7 +116,7 @@ with the mouse off a plain drag is the terminal's.
 | `skene-foundation` | `packages/foundation` | The spine: `Scene<P>`, the zero-sized `Realization` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values, knowing nothing of platforms. Beside it, every built-in view: `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Slider`/`RadioGroup`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Basic*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuEntry` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Link` to a route, `Visibility`/`OneOf`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello, and `text`: the attributed text model, the `TextEngine` contract every realization's engine implements, the layout's `TextLeaf`, the `TextIndex` between bytes, code points, UTF-16 and grapheme clusters, and `editing`, the editing core every drawn entry shares, beside the spine's `Edit`, `Verdict`, `Unit` and `AccessText`; `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal `Typography`), `web` (`WebStyle`, the web's `Typography`, the document `Head`, and `WebHydration` with the hydrating `Resource`, the streaming `Deferred` and the lazily loaded `AsyncView`) and `routing` (`Route`, `StaticRoutes`, `Router`, `install_router`: a typed route in a signal, bound to the platform's history through its seams). |
 | `skene-layout` | `packages/layout` | The layout every platform but the web computes: the resolved style model on taffy (`BoxLayout`), generic over the scalar, a `Tree` keyed by the scene's nodes, retained across layouts and written node by node, by a walk of the scene or for the nodes a shared `Restyle` says moved, each node's part classified by its platform, and `TextFlow`, a box's inline runs and boxes laid out as one text through the platform's text engine, answering which run a point falls on. |
 | `skene-parley` | `packages/parley` | The `TextEngine` over the patched Parley (`vendor/parley`), on the typefaces it is given and no system font: paragraphs shaped once and broken per width, on threads off the web for a batch, bidirectional carets and movement, ICU4X's dictionaries for complex-script breaking, and drawing through vello. |
-| `skene-headless` | `packages/headless` | The host leaf `skene-web` selects off its targets, so the builds that only compile on the host (the docs crates' doctests, the web examples' libraries, `#[main]`'s host arm, the compile-fail suite) have a `Realization` to build against; no test runs on it. |
+| `skene-headless` | `packages/headless` | The host leaf `skene-web` selects off its targets, so the builds that only compile on the host (the docs crates' doctests, the web examples' libraries, `#[main]`'s host arm) have a `Realization` to build against; no test runs on it. |
 | `skene-web` | `packages/web` | The web facade and platform: `f32`, `Active`, a type of its own for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; and `platform`, the web `Realization`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the `WebMarkup` and `WebDom` escape traits. |
 | `skene-terminal` | `packages/terminal` | The terminal facade and platform: `i32` cells, `Terminal`, the same views, its own decoration on them, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams. |
@@ -207,13 +207,14 @@ clippy on the terminal's macOS paths, manifests free of cargo features, the mini
 version, and three test tiers, of which the host alone proves nothing about the web: the
 host tier runs the foundation's and the layout engine's unit tests and the terminal's
 in-process tests, which act through real input and read what a reader finds; the server
-tier builds the server leaf natively, a byte-exact render snapshot among its tests; the
-browser tier drives a real Firefox and a real Chromium, several sessions at once, the
-`gallery` example running axe-core over every built-in, acts the conformance suite out in
-both by trusted input over WebDriver, and on x86-64 Linux compares every page of the
-suite against its screenshot golden in a pinned Firefox it fetches into
-`target/browsers` (`SKENE_GOLDENS=overwrite` rewrites them). Each step logs to
-`target/gate/<step>.log`, and a step whose inputs are unchanged since it passed is
+tier builds the server leaf natively, a byte-exact render snapshot and the compile-fail
+suite (a program per rule the types enforce, beside the diagnostic it must raise) among
+its tests; the browser tier drives a real Firefox and a real Chromium, several sessions
+at once, the `gallery` example running axe-core over every built-in, acts the
+conformance suite out in both by trusted input over WebDriver, and on x86-64 Linux
+compares every page of the suite against its screenshot golden in a pinned Firefox it
+fetches into `target/browsers` (`SKENE_GOLDENS=overwrite` rewrites them). Each step logs
+to `target/gate/<step>.log`, and a step whose inputs are unchanged since it passed is
 skipped unless `--force` is given. The gate needs the stable toolchain
 `rust-toolchain.toml` pins, which rustup installs with clippy and the
 `wasm32-unknown-unknown` and `aarch64-apple-darwin` targets, the nightly toolchain for

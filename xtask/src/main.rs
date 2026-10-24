@@ -19,7 +19,7 @@ mod manifests;
 
 use std::{
   env,
-  ffi::OsStr,
+  ffi::{OsStr, OsString},
   fs::{self, File},
   hash::{DefaultHasher, Hash as _, Hasher as _},
   io::Write as _,
@@ -201,12 +201,14 @@ fn main() -> ExitCode {
 
 /// Rewrites the public API snapshots, logging to `target/gate/api-write.log`.
 fn write_api() -> ExitCode {
-  let gate = Gate::new();
-  let logs = gate.target.join("gate");
-  let written = fs::create_dir_all(&logs)
-    .map_err(|error| format!("{}: {error}", logs.display()))
-    .and_then(|()| Log::create(logs.join("api-write.log")))
-    .and_then(|mut log| api::write(&gate, &mut log));
+  let written = Gate::new().and_then(|gate| {
+    let logs = gate.target.join("gate");
+
+    fs::create_dir_all(&logs)
+      .map_err(|error| format!("{}: {error}", logs.display()))
+      .and_then(|()| Log::create(logs.join("api-write.log")))
+      .and_then(|mut log| api::write(&gate, &mut log))
+  });
 
   match written {
     Ok(()) => ExitCode::SUCCESS,
@@ -227,7 +229,11 @@ fn step_names() -> String {
 }
 
 fn run_gate(arguments: &[String]) -> ExitCode {
-  let gate = Gate::new();
+  let Ok(gate) = Gate::new().inspect_err(|error| eprintln!("{error}"))
+  else {
+    return ExitCode::FAILURE;
+  };
+
   let force = env::var_os("CI").is_some() || arguments.iter().any(|argument| argument == "--force");
   let selectors: Vec<&str> = arguments
     .iter()
@@ -344,22 +350,43 @@ fn run_gate(arguments: &[String]) -> ExitCode {
   }
 }
 
-/// Where the gate runs: the workspace and cargo's target directory.
+/// Where the gate runs: the workspace, cargo's target directory and the toolchain.
 struct Gate {
+  /// The workspace's root.
   root: PathBuf,
+  /// Cargo's target directory.
   target: PathBuf,
+  /// What `rustc -vV` reports of the toolchain.
+  toolchain: String,
+  /// The host's target triple, as the toolchain reports it.
+  host: String,
 }
 
 impl Gate {
-  fn new() -> Self {
+  fn new() -> Result<Self, String> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .expect("the xtask crate sits in the workspace")
       .to_path_buf();
     let target =
       env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), |dir| root.join(dir));
+    let output = Command::new("rustc")
+      .arg("-vV")
+      .output()
+      .map_err(|error| format!("rustc -vV: {error}"))?;
+    let toolchain = String::from_utf8_lossy(&output.stdout).into_owned();
+    let host = toolchain
+      .lines()
+      .find_map(|line| line.strip_prefix("host: "))
+      .ok_or("rustc -vV reports no host")?
+      .to_owned();
 
-    Self { root, target }
+    Ok(Self {
+      root,
+      target,
+      toolchain,
+      host,
+    })
   }
 
   /// A hash of everything a stamped step reads: every file of the workspace, listed or
@@ -377,10 +404,6 @@ impl Gate {
       .current_dir(&self.root)
       .output()
       .map_err(|error| format!("git ls-files: {error}"))?;
-    let toolchain = Command::new("rustc")
-      .arg("-vV")
-      .output()
-      .map_err(|error| format!("rustc -vV: {error}"))?;
     let mut paths: Vec<&[u8]> = listed
       .stdout
       .split(|byte| *byte == 0)
@@ -398,7 +421,7 @@ impl Gate {
       }
     }
 
-    toolchain.stdout.hash(&mut hasher);
+    self.toolchain.hash(&mut hasher);
 
     for variable in ["GECKODRIVER", "CHROMEDRIVER"] {
       env::var_os(variable).hash(&mut hasher);
@@ -461,16 +484,37 @@ impl Gate {
     }
   }
 
-  /// A cargo command building for the server leaf, in a target directory of its own.
+  /// The variable cargo reads `kind` (`RUSTFLAGS` or `RUSTDOCFLAGS`) from for `target`
+  /// alone.
+  fn target_flags(target: &str, kind: &str) -> String {
+    format!(
+      "CARGO_TARGET_{}_{kind}",
+      target.to_uppercase().replace(['-', '.'], "_")
+    )
+  }
+
+  /// A cargo command building for the server leaf on the host's target, its cfg in the
+  /// target's flags, in a target directory of its own; `--target` goes before any `--`.
   fn server_cargo<I, S>(&self, arguments: I) -> Command
   where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
   {
+    let mut arguments: Vec<OsString> = arguments
+      .into_iter()
+      .map(|argument| argument.as_ref().to_owned())
+      .collect();
+    let end = arguments
+      .iter()
+      .position(|argument| argument == "--")
+      .unwrap_or(arguments.len());
+
+    arguments.splice(end..end, ["--target".into(), self.host.clone().into()]);
+
     let mut command = self.cargo(arguments);
 
     command
-      .env("RUSTFLAGS", SERVER_CFG)
+      .env(Self::target_flags(&self.host, "RUSTFLAGS"), SERVER_CFG)
       .env("CARGO_TARGET_DIR", self.target.join("server"));
 
     command
@@ -691,9 +735,10 @@ fn doc_host(gate: &Gate, log: &mut Log) -> Outcome {
 fn doc_server(gate: &Gate, log: &mut Log) -> Outcome {
   let mut command = gate.server_cargo(["doc", "--no-deps", "--locked"]);
 
-  command
-    .args(packages(SERVER_PACKAGES))
-    .env("RUSTDOCFLAGS", format!("{SERVER_CFG} -D warnings"));
+  command.args(packages(SERVER_PACKAGES)).env(
+    Gate::target_flags(&gate.host, "RUSTDOCFLAGS"),
+    format!("{SERVER_CFG} -D warnings"),
+  );
   log.check(command)
 }
 

@@ -8,8 +8,8 @@ error[E0277]: `skene_web::Flexible` is not a child this container accepts
   |
   = note: every container accepts any view
   = note: a wrapper is accepted only by a container that understands it: `Flexible` by a row or a column, `GridCell` by a grid, `Pinned` by a stack
-help: the trait `IntoChildOf<Headless, skene_foundation::spine::view::PlainChild>` is not implemented for `skene_web::Flexible`
-      but trait `IntoChildOf<Headless, skene_foundation::spine::view::FlexChild>` is implemented for it
+help: the trait `IntoChildOf<Web, skene_foundation::spine::view::PlainChild>` is not implemented for `skene_web::Flexible`
+      but trait `IntoChildOf<Web, skene_foundation::spine::view::FlexChild>` is implemented for it
  --> src/views/flexible.rs
   |
   | impl IntoChildOf<Active, FlexChild> for Flexible {

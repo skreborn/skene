@@ -4,7 +4,7 @@
 //!
 //! `TRYBUILD=overwrite` rewrites the diagnostics once a change to one is meant.
 
-#![cfg(skene_web_platform = "headless")]
+#![cfg(skene_web_platform = "server")]
 
 #[test]
 fn what_the_rules_forbid_does_not_compile() {

@@ -15,7 +15,7 @@ error[E0599]: the method `set_children` exists for struct `skene_web::Container`
   | ------------------------------------ doesn't satisfy `_: HasChildren<_>`
   |
   = note: the following trait bounds were not satisfied:
-          `skene_foundation::container::Container<Headless>: skene_web::HasChildren<_>`
+          `skene_foundation::container::Container<Web>: skene_web::HasChildren<_>`
           which is required by `skene_web::Container: skene_web::HasChildren<_>`
           `&skene_web::Container: Wraps`
           which is required by `&skene_web::Container: skene_web::HasChildren<_>`

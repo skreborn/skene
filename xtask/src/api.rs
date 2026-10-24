@@ -31,7 +31,7 @@ const SHOWN: usize = 10;
 enum Leaf {
   /// Natively, with no platform named.
   Host,
-  /// Natively, with the web's server leaf named.
+  /// On the host's target, with the web's server leaf named in its flags.
   Server,
   /// On the browser's target.
   Browser,
@@ -109,8 +109,9 @@ impl Snapshot {
       }
       Leaf::Server => {
         command
-          .env("RUSTFLAGS", SERVER_CFG)
-          .env("RUSTDOCFLAGS", SERVER_CFG)
+          .args(["--target", gate.host.as_str()])
+          .env(Gate::target_flags(&gate.host, "RUSTFLAGS"), SERVER_CFG)
+          .env(Gate::target_flags(&gate.host, "RUSTDOCFLAGS"), SERVER_CFG)
           .env("CARGO_TARGET_DIR", gate.target.join("api-server"));
       }
       Leaf::Browser => {

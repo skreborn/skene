@@ -1639,6 +1639,12 @@ mod tests {
       animations: Vec::new(),
     });
 
+    assert_eq!(
+      timed.clone().into_kept(),
+      timed.compile(Keeping::Everything),
+      "a record kept by value keeps its motion"
+    );
+
     let mut rebound = Record::<f32, Probe>::new();
 
     rebound.set_run::<run_fields::TextColor>(

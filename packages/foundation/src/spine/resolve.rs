@@ -1011,22 +1011,25 @@ where
     self.interaction_read.get()
   }
 
+  /// Fails to compile for a realization keeping anything: the one reading of
+  /// [`Realization::KEEP`], which [`resolve`](Self::resolve) and
+  /// [`resolve_frame`](Self::resolve_frame) evaluate.
+  const KEEPS_NOTHING: () = assert!(
+    matches!(P::KEEP, Keep::Nothing),
+    "only a realization keeping nothing resolves a kept style in the shared half",
+  );
+
   /// `style`, the node's style kept at [`Keep::Everything`], resolved in this context:
   /// the entry a realization keeping nothing resolves a node's kept style through at
   /// every restyle, as [`CompiledStyle::resolve`] resolves it.
   ///
-  /// It is the one reader of [`Realization::KEEP`]: a realization keeping anything does
-  /// not compile through it.
+  /// It reads [`Realization::KEEP`], as `resolve_frame` does, and only there: a
+  /// realization keeping anything does not compile through either.
   pub fn resolve(
     &self,
     style: &CompiledStyle<P::Scalar, P::StyleExt>,
   ) -> ResolvedStyle<P::Scalar, P::StyleExt> {
-    const {
-      assert!(
-        matches!(P::KEEP, Keep::Nothing),
-        "only a realization keeping nothing resolves a kept style in the shared half",
-      );
-    };
+    let () = Self::KEEPS_NOTHING;
 
     self.with_resolver(|resolver| style.resolve(resolver))
   }
@@ -1037,12 +1040,7 @@ where
     &self,
     frame: &Frame<P::Scalar, P::StyleExt>,
   ) -> ResolvedStyle<P::Scalar, P::StyleExt> {
-    const {
-      assert!(
-        matches!(P::KEEP, Keep::Nothing),
-        "only a realization keeping nothing resolves a kept style in the shared half",
-      );
-    };
+    let () = Self::KEEPS_NOTHING;
 
     self.with_resolver(|resolver| frame.resolve(resolver))
   }

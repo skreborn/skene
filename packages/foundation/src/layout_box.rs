@@ -493,9 +493,9 @@ impl<P: Realization, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// Realizes the box as a node of `kind`, which `create` realizes on the platform from
   /// the props, its style beside them: folds the pending annotation into the style,
-  /// splits it, applies its record to the node once created, writes its focus order and
-  /// accessibility, binds every derived slot, the focus order, the accessibility and the
-  /// handlers, mounts the children and returns the node.
+  /// splits it, applies its record to the node once created, then writes its fixed focus
+  /// order and accessibility, binds every derived slot, a derived focus order and
+  /// accessibility, and the handlers, mounts the children and returns the node.
   ///
   /// A box builds through this with [`NodeKind::Box`] and [`Realization::create_box`]; a
   /// view realized as another kind supplies its own creation.

@@ -7,11 +7,11 @@
 //! case's read node is a low-level view that keeps the style the shared half hands the
 //! platform, and that [`CompiledStyle`] resolves through [`CompiledStyle::resolve`] with
 //! the resolver of its [`ResolutionContext`], reading tokens, scopes, containers and the
-//! enclosing control's state from the web's own scene. A case the resolution gets wrong is a
-//! divergence every platform resolving through the shared half shares, the terminal among them. A
-//! case in motion steps both sides alike: the resolved one through the foundation's
-//! [`Motion`], retargeted as each step writes and sampled at its elapsed time, the
-//! engine's by seeking its animations.
+//! enclosing control's state from the web's own scene. A case the resolution gets wrong
+//! is a divergence every platform resolving through the shared half shares, the
+//! terminal among them. A case in motion steps both sides alike: the resolved one
+//! through the foundation's [`Motion`], retargeted as each step writes and sampled at
+//! its elapsed time, the engine's by seeking its animations.
 #![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::cell::{Cell, RefCell};
@@ -1023,8 +1023,8 @@ impl Read {
   }
 }
 
-/// The value `resolved`, a style or a frame compiled at [`Keeping::Nothing`], gives the
-/// property `key`.
+/// The value `resolved`, a style or a frame resolved at the read node, gives the property
+/// `key`.
 fn resolved_value(
   resolved: &ResolvedStyle<f32, WebStyle>,
   key: PropertyKey<WebProperty>,

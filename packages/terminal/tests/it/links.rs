@@ -1,7 +1,7 @@
 //! Links in cells: a link run is a tab stop, `Enter` clicks and opens it, `Space` does
 //! not, a click on its cell focuses it, and focus scrolls a link's paragraph into view;
-//! a link group inks its spans in the link ink; a route link navigates the router as
-//! `Enter` or a click follows it.
+//! a derived link opens where its signal says now; a link group inks its spans in the link ink; a
+//! route link navigates the router as `Enter` or a click follows it.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -166,6 +166,43 @@ fn a_link_groups_spans_take_the_link_ink() {
     assert_eq!(colors_at(4, 1, 0, 0).0, Some(rgb(red())));
     assert_eq!(colors_at(4, 1, 1, 0).0, Some(rgb(red())));
     assert_eq!(colors_at(4, 1, 2, 0).0, Some(rgb(white())));
+  });
+}
+
+/// A derived link opens at the destination its signal holds now, by a click on its
+/// cell and by `Enter` alike.
+#[test]
+fn a_derived_link_opens_where_its_signal_says() {
+  with_platform(|| {
+    let destination = Signal::new("https://a.example".to_owned());
+
+    let _ = terminal::mount(move || {
+      RichText::new()
+        .add_spans([
+          Span::new("see the "),
+          Span::new("docs").derive_link(move || destination.get()),
+        ])
+        .into_any()
+        .build()
+    });
+    let frame = testing::render_to_text(20, 2);
+    let (x, y) = locate(&frame, "docs");
+
+    testing::trigger_mouse_click(x, y);
+
+    assert_eq!(testing::take_opened().as_deref(), Some("https://a.example"));
+
+    destination.set("https://b.example".to_owned());
+
+    let _ = testing::render_to_text(20, 2);
+
+    testing::trigger_mouse_click(x, y);
+
+    assert_eq!(testing::take_opened().as_deref(), Some("https://b.example"));
+
+    testing::trigger_key("Enter");
+
+    assert_eq!(testing::take_opened().as_deref(), Some("https://b.example"));
   });
 }
 

@@ -40,6 +40,7 @@ use skene_foundation::{
   GridTrack,
   ItemAlignment,
   KeymapBase,
+  Layout,
   LazyColumnBase,
   Line,
   LinkBase,
@@ -47,6 +48,7 @@ use skene_foundation::{
   OverlayBase,
   PaintedBase,
   PinnedBase,
+  PlainChild,
   PointerButton,
   PointerId,
   PointerType,
@@ -93,6 +95,7 @@ use skene_web::{
   HasChildren,
   Inset,
   Keymap,
+  LayoutBox,
   Link,
   Media,
   MenuEntry,
@@ -443,6 +446,42 @@ fn a_script_destination_written_later_is_refused() {
   web::end_turn();
 
   assert_eq!(element.get_attribute("href").as_deref(), Some("/again"));
+}
+
+/// A box's derived destination writes its `href` as its signal changes, and none while
+/// the destination would run script, the anchor staying.
+#[wasm_bindgen_test]
+fn a_box_s_derived_destination_follows_its_signal() {
+  let (_guard, root) = fresh_root();
+  let destination = Signal::new("/docs".to_owned());
+
+  let _ = mount(move || {
+    LayoutBox::<PlainChild>::new(Layout::Document)
+      .derive_destination(move || destination.get())
+      .add_child(Text::new("go"))
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "A");
+  assert_eq!(element.get_attribute("href").as_deref(), Some("/docs"));
+
+  destination.set("javascript:alert(1)".to_owned());
+  web::end_turn();
+
+  assert_eq!(element.tag_name(), "A");
+  assert_eq!(
+    element.get_attribute("href"),
+    None,
+    "{}",
+    element.outer_html()
+  );
+
+  destination.set("/guide".to_owned());
+  web::end_turn();
+
+  assert_eq!(element.get_attribute("href").as_deref(), Some("/guide"));
 }
 
 #[wasm_bindgen_test]

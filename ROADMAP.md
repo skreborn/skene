@@ -86,6 +86,9 @@ in a code comment.
     layout-only nodes flatten by type, since only `Container` is decorated; layout
     settles before a frame commits, the terminal's settle loop becoming the frame
     contract; taffy nodes persist, and `Painted` resizes land with the layout commit.
+    `Tree::lay_out_revisited` (a walk of the scene revisiting the moved nodes alone) and
+    `TextFlow::trimmed` (a text trimmed as `text-box-trim` trims it), which no platform
+    calls, become that runtime's or leave.
     - Beside it: vello paint for `Painted`; the frame clock running
     `skene_foundation::interpolate`, with opacity, transform and color transitions on
     the platform's compositor where it has one and the frame clock their floor;

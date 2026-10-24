@@ -17,7 +17,7 @@
 //! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
-#[cfg(not(skene_web_platform = "browser"))]
+#[cfg(skene_web_platform = "server")]
 pub use skene_dev::Document;
 pub use skene_dev::STATE_SCRIPT_ID;
 

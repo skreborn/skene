@@ -3,12 +3,11 @@
 //! The web's shell: a web app's single dependency. It fixes the scalar (logical pixels,
 //! `f32`), names the platform it realizes ([`Active`], the web platform in the browser
 //! and on a server render) and aliases every built-in view to it, so app code names no
-//! platform. The medium's own
-//! contribution is [`Typography`], the [`media`] module and the entry points: `launch`
-//! in the browser, `render_to_string`, `render_to_stream` and `render_main` on the
-//! server leaf, and [`macro@main`] expanding to whichever the target has. [`platform`]
-//! is the web platform itself, for a view written against the DOM or the server's
-//! markup.
+//! platform. The medium's own contribution is [`Typography`], the [`media`] module and
+//! the entry points: `launch` in the browser, `render_to_string`, `render_to_stream`
+//! and `render_main` on the server leaf, and [`macro@main`] expanding to whichever the
+//! target has. [`platform`] is the web platform itself, for a view written against the
+//! DOM or the server's markup.
 //!
 //! A length is a plain number of logical pixels, an `i32` or an `f32`, wherever one is
 //! taken: a setter, a derived value, a condition's variant, a token's definition and

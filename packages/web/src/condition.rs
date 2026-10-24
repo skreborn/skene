@@ -38,11 +38,9 @@ pub const CONTROL_ATTRIBUTE: &str = "data-skene-control";
 
 /// The attribute the element of a node a press's pointer drags carries, naming the axes
 /// it drags along.
-#[cfg(any(skene_web_platform = "browser", skene_web_platform = "server"))]
 pub(crate) const DRAGS_ATTRIBUTE: &str = "data-skene-drags";
 
 /// The value of [`DRAGS_ATTRIBUTE`] naming `axes`.
-#[cfg(any(skene_web_platform = "browser", skene_web_platform = "server"))]
 pub(crate) const fn drags_value(axes: skene_foundation::DragAxes) -> &'static str {
   match axes {
     skene_foundation::DragAxes::Horizontal => "horizontal",

@@ -3,11 +3,21 @@
 
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use skene_reactive::{Memo, Signal, Trigger, With, on_cleanup, provide_context, use_context};
+use skene_reactive::{
+  Effect,
+  Memo,
+  Signal,
+  Trigger,
+  With,
+  on_cleanup,
+  provide_context,
+  use_context,
+};
 
 use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster, TypeAhead};
 use crate::{
   AccessProp,
+  CheckState,
   ControlState,
   EventKind,
   FocusOrder,
@@ -19,6 +29,7 @@ use crate::{
   Prevent,
   Realization,
   Role,
+  contents,
 };
 
 /// How a [`Collection`] behaves: what it and its members are, which keys move between
@@ -413,8 +424,9 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
 ///
 /// Inside a collection it names the collection as its [`group`](Behavior::group), and
 /// a toggle the platform reports on one member re-reads and rewrites every member's
-/// state. Outside a collection it reports its role, is never chosen and takes focus
-/// like any control.
+/// state. A member standing in a native toggle writes whether it is chosen as its
+/// [`Checked`](crate::Content::Checked) content. Outside a collection it reports its
+/// role, is never chosen and takes focus like any control.
 #[must_use]
 pub struct Member<C: CollectionPolicy> {
   value: String,
@@ -497,6 +509,20 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     let roster = group.roster.clone();
 
     on_cleanup(move || roster.leave(node));
+
+    if C::MEMBER_NATIVE.is_some() {
+      let group = group.clone();
+      let value = self.value.clone();
+
+      Effect::render(move |_: Option<()>| {
+        group.reasserted.track();
+
+        let chosen = group.chosen().as_deref() == Some(value.as_str());
+
+        contents::CHECKED.write::<P>(node, &CheckState::from(chosen));
+      });
+    }
+
     *self.collection.borrow_mut() = Some(group);
     control.refresh();
   }
@@ -547,9 +573,13 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     }
   }
 
-  fn reconcile(&self, _control: &ControlHandle<P>) {
-    if let Some(group) = self.collection() {
-      group.reasserted.notify();
+  fn reconcile(&self, control: &ControlHandle<P>) {
+    match self.collection() {
+      Some(group) => group.reasserted.notify(),
+      None if C::MEMBER_NATIVE.is_some() => {
+        contents::CHECKED.write::<P>(control.node(), &CheckState::Off);
+      }
+      None => {}
     }
   }
 

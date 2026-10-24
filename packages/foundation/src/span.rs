@@ -23,13 +23,14 @@ use crate::{
   TypeMetrics,
   View,
   Wraps,
+  contents,
   realize::Source,
   run::Run,
 };
 
 /// What a span renders.
 enum Content<P: Realization> {
-  Text(Source<String>),
+  Text(Source<Rc<str>>),
   Group(Vec<Span<P>>),
   View(AnyView<P>),
 }
@@ -60,12 +61,12 @@ impl<P: Realization> std::fmt::Debug for Span<P> {
 impl<P: Realization> Span<P> {
   /// A run reading `content`.
   pub fn new(content: impl Into<String>) -> Self {
-    Self::with_content(Content::Text(Source::Fixed(content.into())))
+    Self::with_content(Content::Text(Source::Fixed(Rc::from(content.into()))))
   }
 
   /// A run whose text is recomputed whenever a signal `content` reads changes.
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
-    Self::with_content(Content::Text(Source::derive(content)))
+    Self::with_content(Content::Text(Source::derive(move || Rc::from(content()))))
   }
 
   /// A group of spans styled as a unit.
@@ -121,7 +122,7 @@ where
 
     match self.content {
       Content::Text(content) => {
-        content.bind(node, |node, text| P::set_text(node, text));
+        content.bind(node, |node, text| contents::TEXT.write::<P>(node, text));
       }
       Content::Group(spans) => {
         for span in spans {

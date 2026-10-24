@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::Signal;
+use skene_reactive::{Effect, Signal};
 
 use super::{Behavior, ControlHandle, Controlled, PointerPhase};
 use crate::{
@@ -20,10 +20,12 @@ use crate::{
   PointerButton,
   PointerEvent,
   Prevent,
+  Range,
   Realization,
   Role,
   Scalar,
   Scene,
+  contents,
   realize::Source,
 };
 
@@ -40,7 +42,8 @@ use crate::{
 /// reads, and a move only calls [`handle_change`](Self::handle_change) with the value
 /// it asks for; [`bind_value`](Self::bind_value) wires both to one signal. A
 /// non-positive step leaves the range continuous, and an arrow then moves by a
-/// hundredth of the span.
+/// hundredth of the span. The value crosses to the platform with the range as one
+/// [`Range`](crate::Range) content.
 #[must_use]
 pub struct Slider {
   range: Source<SliderRange>,
@@ -240,6 +243,19 @@ impl<P: Realization> Behavior<P> for Slider {
     Self::EVENTS
   }
 
+  fn attach(&self, control: &ControlHandle<P>) {
+    let node = control.node();
+    let range = self.range.clone();
+    let value = self.value.clone();
+
+    Effect::render(move |_: Option<()>| {
+      let range = range.get();
+      let value = value.read().unwrap_or_else(|| range.min());
+
+      contents::RANGE.write::<P>(node, &range.with_value(value));
+    });
+  }
+
   fn mounted(&self, control: &ControlHandle<P>) {
     let node = control.node();
     let track = Scene::<P>::with(|scene| scene.find_part(node, Part::Track));
@@ -376,6 +392,12 @@ impl SliderRange {
   #[must_use]
   pub const fn step(&self) -> f32 {
     self.step
+  }
+
+  /// `value` within this range, as the content a slider writes.
+  #[inline(always)]
+  pub const fn with_value(&self, value: f32) -> Range {
+    Range::new(value, self.min, self.max, self.step)
   }
 
   /// The value `fraction` of the way along the track, snapped and clamped.

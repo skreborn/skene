@@ -230,17 +230,14 @@ pub fn skene_terminal::platform::terminal::Terminal::relocate(skene_foundation::
 pub fn skene_terminal::platform::terminal::Terminal::remove(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::platform::terminal::Terminal::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_foundation::spine::scene::Scene<Self>>>
 pub fn skene_terminal::platform::terminal::Terminal::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_foundation::spine::realization::Timer
-pub fn skene_terminal::platform::terminal::Terminal::set_checked(skene_foundation::spine::node::NodeId, bool)
 pub fn skene_terminal::platform::terminal::Terminal::set_control_state(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlState)
 pub fn skene_terminal::platform::terminal::Terminal::set_overlay_open(skene_foundation::spine::node::NodeId, bool, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_terminal::platform::terminal::Terminal::set_overlay_placement(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::placement::Placement)
 pub fn skene_terminal::platform::terminal::Terminal::set_overlay_position(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::point::Point<f32>>)
 pub fn skene_terminal::platform::terminal::Terminal::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
-pub fn skene_terminal::platform::terminal::Terminal::set_selection(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::text_selection::TextSelection)
-pub fn skene_terminal::platform::terminal::Terminal::set_text(skene_foundation::spine::node::NodeId, &str)
-pub fn skene_terminal::platform::terminal::Terminal::set_value(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_terminal::platform::terminal::Terminal::set_window_title(core::option::Option<&str>)
 pub fn skene_terminal::platform::terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<i32>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_terminal::platform::terminal::Terminal::write(skene_foundation::spine::node::NodeId, skene_foundation::spine::content::ContentValue<'_>)
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::platform::terminal::Terminal, skene_foundation::spine::view::FlexChild> for skene_terminal::Flexible
 pub fn skene_terminal::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_terminal::Active>
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::platform::terminal::Terminal, skene_foundation::spine::view::GridChild> for skene_terminal::GridCell

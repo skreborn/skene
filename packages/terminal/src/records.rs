@@ -285,6 +285,25 @@ impl Records {
     self.by_node.get_mut(handle)
   }
 
+  /// Replaces the run `handle`'s text, its selection, style and layout made afresh;
+  /// nothing happens where it reads `text` already.
+  pub(crate) fn write_text(&mut self, handle: Handle, text: &str) {
+    let Some(record) = self.record_mut(handle)
+    else {
+      return;
+    };
+
+    if record.text == text {
+      return;
+    }
+
+    text.clone_into(&mut record.text);
+    self.invalidate_selection(handle);
+    self.queue_restyle(handle);
+    self.layout_dirty = true;
+    self.damage(handle);
+  }
+
   /// Queues `handle` for the next restyle, which resolves it where its resolution is
   /// stale and hands the layout what it measures by.
   #[inline(always)]

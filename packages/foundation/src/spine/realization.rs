@@ -6,6 +6,7 @@ use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   CompiledStyle,
+  ContentValue,
   ControlState,
   Definition,
   Definitions,
@@ -14,7 +15,6 @@ use super::{
   MediaSignals,
   NodeId,
   NodeSpec,
-  PickerOption,
   Scalar,
   Scene,
   Slot,
@@ -36,7 +36,6 @@ use crate::spine::{
   Point,
   PointerEvent,
   Size,
-  TextSelection,
 };
 
 /// A one-shot action a platform scheduled on its clock, to cancel it by.
@@ -188,7 +187,7 @@ impl<A> Timers<A> {
 }
 
 /// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
-/// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes,
+/// anchors, scopes, tree mutations, tokens, contents, event registration, focus, sizes,
 /// media and a clock.
 ///
 /// Zero-sized and monomorphized: a facade names exactly one platform, and every
@@ -276,8 +275,18 @@ pub trait Realization: Copy + Default + 'static {
   #[inline(always)]
   fn update_access(_node: NodeId, _access: &[AccessProp]) {}
 
-  /// Mirrors a control's state, for a platform whose native element holds it too.
+  /// Mirrors a control's state: whether it is checked, disabled, invalid and open, which
+  /// its parts' states resolve against, for a platform that marks them on the control.
+  /// The checked state a native toggle shows is its [`Checked`](crate::Content::Checked)
+  /// content.
   fn set_control_state(node: NodeId, state: &ControlState);
+
+  /// Shows `value` as `node`'s content, whole: every part of it at once, so no part
+  /// meets another it was not written with; see [`ContentKey`](crate::ContentKey).
+  ///
+  /// It reports nothing: what the reader sees changes, and no event of the change
+  /// reaches the scene.
+  fn write(node: NodeId, value: ContentValue<'_>);
 
   /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
   /// rather than by the viewport.
@@ -296,9 +305,6 @@ pub trait Realization: Copy + Default + 'static {
   /// shows an overlay open needs nothing here.
   #[inline(always)]
   fn set_overlay_position(_node: NodeId, _position: Option<Point<f32>>) {}
-
-  /// Replaces a run's text.
-  fn set_text(node: NodeId, text: &str);
 
   /// Places `child`, standing under no parent, under `parent`, immediately before
   /// `before` when given, else last: a new node, or a hidden one, given back what the
@@ -352,27 +358,12 @@ pub trait Realization: Copy + Default + 'static {
     false
   }
 
-  /// Writes the options a platform-drawn picker offers, in order; a platform without
-  /// one ignores them.
-  #[inline(always)]
-  fn set_options(_node: NodeId, _options: &[PickerOption]) {}
-
-  /// Writes a control's textual value; a focused entry keeps its caret, clamped into
-  /// the value.
-  fn set_value(node: NodeId, value: &str);
-
-  /// Writes a text entry's selection.
-  fn set_selection(node: NodeId, selection: TextSelection);
-
   /// Lays out what changed since the last layout, synchronously, without painting: the
   /// layout a text-input protocol call reaches through [`lay_out`](crate::spine::lay_out)
   /// when it asks for geometry. A platform whose layout no such call reads does nothing,
   /// the default.
   #[inline(always)]
   fn lay_out() {}
-
-  /// Writes a control's checked state.
-  fn set_checked(node: NodeId, checked: bool);
 
   /// Reports a node's measured size to `report`, now and whenever it changes, until
   /// the observation this returns is stopped or the node is destroyed.

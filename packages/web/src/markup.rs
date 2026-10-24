@@ -16,6 +16,7 @@ use skene_foundation::{
   PopupKind,
   Property,
   PropertyKey,
+  Range,
   Role,
   SlotValue,
   StaticLeaf,
@@ -266,41 +267,62 @@ pub(crate) fn replaced_by_access(name: &str) -> bool {
 
 /// The native attribute carrying `prop` on a form element and its value, where one
 /// exists; the form element then enforces it without script.
-fn native_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
+const fn native_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
   match prop {
     AccessProp::Required(true) => Some(("required", String::new())),
     AccessProp::ReadOnly(true) => Some(("readonly", String::new())),
-    AccessProp::Value(value) => Some(("value", value.to_string())),
-    AccessProp::ValueMin(value) => Some(("min", value.to_string())),
-    AccessProp::ValueMax(value) => Some(("max", value.to_string())),
-    AccessProp::ValueStep(step) if *step > 0. => Some(("step", step.to_string())),
-    AccessProp::ValueStep(_) => Some(("step", "any".to_owned())),
     _ => None,
   }
 }
 
+/// Whether a form element shows `prop` through its content rather than an attribute of
+/// the report: a range's value, bounds and step.
+const fn shown_by_content(prop: &AccessProp) -> bool {
+  matches!(
+    prop,
+    AccessProp::Value(_)
+      | AccessProp::ValueMin(_)
+      | AccessProp::ValueMax(_)
+      | AccessProp::ValueStep(_)
+  )
+}
+
 /// The native attributes an access write clears before it rewrites them: every one
-/// [`access_attributes`] gives a form element but `value`, which it only overwrites.
-pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 5] =
-  ["required", "readonly", "min", "max", "step"];
+/// [`access_attributes`] gives a form element.
+pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 2] = ["required", "readonly"];
 
 /// The attributes `access` gives an element, a form element taking the native
-/// attribute where one exists and ARIA otherwise; a native `value` comes last, after
-/// the bounds it is held within.
+/// attribute where one exists and ARIA otherwise, and none for what its content shows.
 pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'static str, String)> {
-  let mut attributes: Vec<_> = access
+  access
     .iter()
+    .filter(|prop| !(form && shown_by_content(prop)))
     .filter_map(|prop| {
       form
         .then(|| native_attribute(prop))
         .flatten()
         .or_else(|| access_attribute(prop))
     })
-    .collect();
+    .collect()
+}
 
-  attributes.sort_by_key(|(name, _)| *name == "value");
-
-  attributes
+/// The attributes a range input shows `range` with, its bounds and step before the value
+/// they hold it within: a non-positive step leaves it continuous (`any`).
+pub(crate) fn range_attributes(range: &Range) -> [(&'static str, String); 4] {
+  [
+    ("min", range.minimum.to_string()),
+    ("max", range.maximum.to_string()),
+    (
+      "step",
+      if range.is_continuous() {
+        "any".to_owned()
+      }
+      else {
+        range.step.to_string()
+      },
+    ),
+    ("value", range.value.to_string()),
+  ]
 }
 
 /// The attributes a control's native element carries: its `type`, the `name` a radio

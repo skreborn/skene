@@ -5,6 +5,7 @@ mod box_style;
 mod children;
 mod condition;
 mod condition_tree;
+mod content;
 mod control;
 mod derived;
 mod dispatch;
@@ -65,7 +66,17 @@ pub use condition::{
   State,
 };
 pub use condition_tree::{ConditionShape, ConditionTree};
-pub use control::{ControlFacts, ControlState, NativeElement, Part, PickerOption};
+pub use content::{
+  ChoiceOption,
+  Choices,
+  Content,
+  ContentKey,
+  ContentType,
+  ContentValue,
+  Range,
+  contents,
+};
+pub use control::{ControlFacts, ControlState, NativeElement, Part};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,

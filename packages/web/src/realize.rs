@@ -9,6 +9,8 @@ use skene_foundation::{
   AccessProp,
   BoxFacts,
   CheckState,
+  Choices,
+  ContentValue,
   ControlFacts,
   ControlState,
   Definitions,
@@ -19,13 +21,13 @@ use skene_foundation::{
   NodeMap,
   NodeSpec,
   OverlayFacts,
-  PickerOption,
   Placement,
   Point,
   RunFacts,
   Scene,
   Slot,
   SlotLeaf,
+  TextSelection,
   TokenScope,
   web::WebStyle,
 };
@@ -60,6 +62,7 @@ use crate::{
     form_element,
     is_form_element,
     native_attributes,
+    range_attributes,
     referenced_nodes,
     replaced_by_access,
     runs_script,
@@ -147,8 +150,13 @@ pub(crate) trait Sink {
   /// Sets the value of the form element `element`.
   fn set_value(&mut self, element: &Self::Element, value: &str);
 
-  /// Replaces the options of the `<select>` `element`.
-  fn set_options(&mut self, element: &Self::Element, options: &[PickerOption]);
+  /// Places the selection of the text entry `element`, in grapheme clusters of its
+  /// value.
+  fn select(&mut self, element: &Self::Element, selection: TextSelection);
+
+  /// Shows `choices` on the `<select>` `element`: its options, and the chosen one
+  /// selected.
+  fn set_choices(&mut self, element: &Self::Element, choices: &Choices);
 
   /// Notes what the reader changed on the adopted native `input` of the control `node`
   /// before the client arrived.
@@ -582,10 +590,6 @@ impl<S: Sink> Realizer<S> {
       }
 
       self.sink.set_attribute(carrier, name, &value);
-
-      if name == "value" {
-        self.sink.set_value(carrier, &value);
-      }
     }
 
     for referenced in referenced_nodes(access) {
@@ -598,7 +602,8 @@ impl<S: Sink> Realizer<S> {
   }
 
   /// Writes `state` on the control `node`: on the native element carrying it where it
-  /// has one, else as attributes of its own element.
+  /// has one, whose checked state is its content's, else as attributes of its own
+  /// element.
   pub(crate) fn set_control_state(&mut self, node: NodeId, state: ControlState) {
     let Some(record) = self.records.get(node)
     else {
@@ -625,10 +630,6 @@ impl<S: Sink> Realizer<S> {
         }
       }
       Some(carrier) => {
-        self
-          .sink
-          .set_checked(carrier, state.checked == CheckState::On);
-        self.sink.set_indeterminate(carrier, mixed);
         self
           .sink
           .set_flag(carrier, "data-skene-indeterminate", mixed);
@@ -732,24 +733,51 @@ impl<S: Sink> Realizer<S> {
     record.token_class = Some(class);
   }
 
-  /// Sets the value of the form element carrying `node`'s value.
-  pub(crate) fn set_value(&mut self, node: NodeId, value: &str) {
-    if let Some(record) = self.records.get(node) {
-      self.sink.set_value(record.carrier(), value);
-    }
-  }
+  /// Shows `value` as `node`'s content, whole: a run's text as its own, and a control's
+  /// on the form element carrying it, a range's bounds and step before its value; a
+  /// control drawn without one shows its content through its parts.
+  pub(crate) fn write(&mut self, node: NodeId, value: ContentValue<'_>) {
+    if let ContentValue::Text(text) = value {
+      self.set_text(node, text);
 
-  /// Replaces the options of the `<select>` carrying `node`'s value.
-  pub(crate) fn set_options(&mut self, node: NodeId, options: &[PickerOption]) {
-    if let Some(record) = self.records.get(node) {
-      self.sink.set_options(record.carrier(), options);
+      return;
     }
-  }
 
-  /// Sets whether the native toggle carrying `node`'s state is checked.
-  pub(crate) fn set_checked(&mut self, node: NodeId, checked: bool) {
-    if let Some(record) = self.records.get(node) {
-      self.sink.set_checked(record.carrier(), checked);
+    let Some(record) = self.records.get(node)
+    else {
+      return;
+    };
+    let Realized::Control { native: Some(_) } = record.realized
+    else {
+      return;
+    };
+    let carrier = record.carrier();
+
+    match value {
+      ContentValue::Text(_) => {}
+      ContentValue::Edit(edit) => {
+        self.sink.set_value(carrier, &edit.text);
+
+        if let Some(selection) = edit.selection {
+          self.sink.select(carrier, selection);
+        }
+      }
+      ContentValue::Checked(checked) => {
+        self.sink.set_checked(carrier, checked == CheckState::On);
+        self
+          .sink
+          .set_indeterminate(carrier, checked == CheckState::Mixed);
+      }
+      ContentValue::Range(range) => {
+        for (name, value) in range_attributes(range) {
+          self.sink.set_attribute(carrier, name, &value);
+
+          if name == "value" {
+            self.sink.set_value(carrier, &value);
+          }
+        }
+      }
+      ContentValue::Choice(choices) => self.sink.set_choices(carrier, choices),
     }
   }
 

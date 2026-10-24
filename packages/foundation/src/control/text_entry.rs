@@ -1,9 +1,14 @@
 //! A text field's and a text editor's behavior.
 
+use std::{
+  cell::{OnceCell, RefCell},
+  rc::Rc,
+};
+
 use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
-use crate::{Edit, EventKind, NativeElement, Realization, Role, TextSelection, Verdict};
+use crate::{Edit, EventKind, NativeElement, Realization, Role, TextSelection, Verdict, contents};
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
@@ -22,12 +27,18 @@ use crate::{Edit, EventKind, NativeElement, Realization, Role, TextSelection, Ve
 /// [`handle_selection_change`](Self::handle_selection_change) hears every move of the
 /// caret, and [`bind_selection`](Self::bind_selection) wires both to one signal, so
 /// an app reads and writes the selection beside the value.
+///
+/// The text and the selection cross to the platform as one [`Edit`]: a change of the text
+/// alone leaves the selection to the platform, mapped through the change, and a change
+/// of the selection places it in the text it is written with. A selection derived beside
+/// no derived text is placed in the text the entry last reported, once it reports one.
 #[must_use]
 pub struct TextEntry {
   value: Controlled<String>,
   selection: Controlled<TextSelection>,
   placeholder: Option<String>,
   lines: u16,
+  reported: OnceCell<Reported>,
 }
 
 impl std::fmt::Debug for TextEntry {
@@ -60,6 +71,7 @@ impl TextEntry {
       selection: Controlled::new(),
       placeholder: None,
       lines: 1,
+      reported: OnceCell::new(),
     }
   }
 
@@ -137,6 +149,35 @@ impl TextEntry {
     self
   }
 
+  /// The text the entry last reported, `None` until it reports one.
+  fn reported(&self) -> &Reported {
+    self.reported.get_or_init(Reported::default)
+  }
+
+  /// Notes `text` as the text the entry last reported.
+  fn note_reported(&self, text: impl Into<Rc<str>>) {
+    *self.reported().borrow_mut() = Some(text.into());
+  }
+
+  /// The text and selection the entry shows, read untracked: the derived text, else the
+  /// one it last reported, with the derived selection; `None` while neither is derived.
+  fn shown(&self) -> Option<Edit> {
+    untrack(|| {
+      let selection = self.selection.read();
+      let text = match self.value.read() {
+        Some(text) => Rc::from(text),
+        None if selection.is_some() => self.reported().borrow().clone()?,
+        None => return None,
+      };
+      let edit = Edit::new(text);
+
+      Some(match selection {
+        Some(selection) => edit.with_selection(selection),
+        None => edit,
+      })
+    })
+  }
+
   /// The text and selection the entry holds, read untracked; `None` while no text is
   /// derived.
   fn held(&self) -> Option<Edit> {
@@ -151,6 +192,9 @@ impl TextEntry {
     })
   }
 }
+
+/// The text an entry last reported, shared with the effect writing its content.
+type Reported = Rc<RefCell<Option<Rc<str>>>>;
 
 impl Default for TextEntry {
   #[inline(always)]
@@ -192,25 +236,38 @@ impl<P: Realization> Behavior<P> for TextEntry {
 
   fn attach(&self, control: &ControlHandle<P>) {
     let node = control.node();
+    let value = self.value.reader();
+    let selection = self.selection.reader();
 
-    if let Some(value) = self.value.reader() {
-      Effect::render(move |_: Option<()>| {
-        let value = value();
-
-        P::set_value(node, &value);
-      });
+    if value.is_none() && selection.is_none() {
+      return;
     }
 
-    if let Some(selection) = self.selection.reader() {
-      Effect::render(move |_: Option<()>| {
-        let selection = selection();
+    let reported = Rc::clone(self.reported());
 
-        P::set_selection(node, selection);
-      });
-    }
+    Effect::render(move |previous: Option<Option<TextSelection>>| {
+      let placed = selection.as_ref().map(|selection| selection());
+      let text = match &value {
+        Some(value) => Rc::from(value()),
+        None => match reported.borrow().clone() {
+          Some(text) => text,
+          None => return None,
+        },
+      };
+      let edit = Edit::new(text);
+      let edit = match placed {
+        Some(placed) if previous != Some(Some(placed)) => edit.with_selection(placed),
+        _ => edit,
+      };
+
+      contents::EDIT.write::<P>(node, &edit);
+
+      placed
+    });
   }
 
   fn on_change(&self, value: &str, _control: &ControlHandle<P>) {
+    self.note_reported(value);
     self.value.ask(value.to_owned());
   }
 
@@ -219,6 +276,8 @@ impl<P: Realization> Behavior<P> for TextEntry {
   }
 
   fn on_edit(&self, edit: &Edit, _applied: bool, _control: &ControlHandle<P>) -> Verdict {
+    self.note_reported(Rc::clone(&edit.text));
+
     if self.held().is_some_and(|truth| truth.holds(edit)) {
       return Verdict::Accept;
     }
@@ -241,12 +300,8 @@ impl<P: Realization> Behavior<P> for TextEntry {
   }
 
   fn reconcile(&self, control: &ControlHandle<P>) {
-    if let Some(value) = untrack(|| self.value.read()) {
-      P::set_value(control.node(), &value);
-    }
-
-    if let Some(selection) = untrack(|| self.selection.read()) {
-      P::set_selection(control.node(), selection);
+    if let Some(shown) = self.shown() {
+      contents::EDIT.write::<P>(control.node(), &shown);
     }
   }
 }

@@ -1,5 +1,7 @@
 //! A text run on its own line.
 
+use std::rc::Rc;
+
 use crate::{
   AnyKind,
   DeclaredRunStyle,
@@ -10,6 +12,7 @@ use crate::{
   RunPlacement,
   View,
   Wraps,
+  contents,
   realize::Source,
   run::Run,
 };
@@ -20,7 +23,7 @@ use crate::{
 /// token; the medium's own text properties come through the platform's style extension.
 #[must_use]
 pub struct Text<P: Realization> {
-  content: Source<String>,
+  content: Source<Rc<str>>,
   run: Run<P>,
 }
 
@@ -34,7 +37,7 @@ impl<P: Realization> Text<P> {
   /// A run reading `content`.
   pub fn new(content: impl Into<String>) -> Self {
     Self {
-      content: Source::Fixed(content.into()),
+      content: Source::Fixed(Rc::from(content.into())),
       run: Run::new(),
     }
   }
@@ -42,7 +45,7 @@ impl<P: Realization> Text<P> {
   /// A run whose text is recomputed whenever a signal `content` reads changes.
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self {
-      content: Source::derive(content),
+      content: Source::derive(move || Rc::from(content())),
       run: Run::new(),
     }
   }
@@ -56,7 +59,7 @@ impl<P: Realization> View<P> for Text<P> {
 
     self
       .content
-      .bind(node, |node, text| P::set_text(node, text));
+      .bind(node, |node, text| contents::TEXT.write::<P>(node, text));
 
     node
   }

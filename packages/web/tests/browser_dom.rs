@@ -142,9 +142,13 @@ use web_sys::{
   Element,
   HtmlElement,
   HtmlInputElement,
+  HtmlSelectElement,
   HtmlTextAreaElement,
   InputEvent,
   InputEventInit,
+  MutationObserver,
+  MutationObserverInit,
+  MutationRecord,
 };
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -1242,6 +1246,156 @@ fn a_sliders_native_input_holds_its_range_and_value() {
   web::end_turn();
 
   assert_eq!(input.value(), "185");
+}
+
+/// The attribute names the mutations `observer` holds name, in the order they were made.
+fn mutated_attributes(observer: &MutationObserver) -> Vec<String> {
+  observer
+    .take_records()
+    .iter()
+    .filter_map(|record| record.dyn_into::<MutationRecord>().ok())
+    .filter_map(|record| record.attribute_name())
+    .collect()
+}
+
+/// An observer of the range attributes `element` is written.
+fn observe_attributes(element: &Element) -> MutationObserver {
+  let observer =
+    MutationObserver::new(&js_sys::Function::new_no_args("")).expect("a mutation observer");
+  let options = MutationObserverInit::new();
+  let filter: js_sys::Array = ["min", "max", "step", "value"]
+    .into_iter()
+    .map(JsValue::from_str)
+    .collect();
+
+  options.set_attribute_filter(&filter);
+  observer
+    .observe_with_options(element, &options)
+    .expect("observing the element");
+
+  observer
+}
+
+/// A slider whose range narrows below its value writes its bounds, its step and its value
+/// once each, the bounds first, and its input shows the value clamped into them.
+#[wasm_bindgen_test]
+fn a_slider_narrowed_below_its_value_shows_it_clamped_in_one_write() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(150.0f32);
+  let maximum = Signal::new(200.0f32);
+
+  let _ = mount(move || {
+    BasicSlider::new(
+      Slider::new()
+        .derive_range(move || SliderRange::new(0., maximum.get(), 5.))
+        .bind_value(value),
+    )
+    .build()
+  });
+
+  let input: HtmlInputElement = root
+    .query_selector("input")
+    .expect("a valid selector")
+    .expect("the slider's input")
+    .dyn_into()
+    .expect("an input");
+  let observer = observe_attributes(&input);
+
+  maximum.set(100.);
+  web::end_turn();
+
+  assert_eq!(
+    mutated_attributes(&observer),
+    ["min", "max", "step", "value"],
+    "one write, the bounds before the value"
+  );
+  assert_eq!(input.get_attribute("max").as_deref(), Some("100"));
+  assert_eq!(input.value(), "100", "the value clamped into the range");
+  assert!(
+    (value.get() - 150.).abs() < f32::EPSILON,
+    "the truth stays the app's"
+  );
+}
+
+/// A `<select>` whose options and chosen value change together shows the chosen option
+/// among the new ones after the one write, rebuilding its options only where they differ,
+/// and selects nothing where the chosen key names no option.
+#[wasm_bindgen_test]
+fn a_select_shows_its_options_and_choice_as_one() {
+  use skene_foundation::{ChoiceOption, Choices, contents};
+  use skene_web::{Active, Control, NativePicker, reactive::Effect};
+
+  let choices = |keys: &[&str], chosen: &str| {
+    Choices::new(
+      keys
+        .iter()
+        .map(|key| ChoiceOption::new(*key, key.to_uppercase()))
+        .collect(),
+      Some(Rc::from(chosen)),
+    )
+  };
+  let (_guard, root) = fresh_root();
+  let shown = Signal::new(choices(&["s", "m"], "s"));
+
+  let _ = mount(move || {
+    let node = Control::new(NativePicker::new()).build();
+
+    Effect::render(move |_: Option<()>| contents::CHOICE.write::<Active>(node, &shown.get()));
+
+    node
+  });
+
+  let select: HtmlSelectElement = root
+    .query_selector("select")
+    .expect("a valid selector")
+    .expect("the picker's select")
+    .dyn_into()
+    .expect("a select");
+  let names = |select: &HtmlSelectElement| {
+    let options = select.options();
+
+    (0..options.length())
+      .filter_map(|index| options.item(index))
+      .map(|option| option.text_content().unwrap_or_default())
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(names(&select), ["S", "M"]);
+  assert_eq!(select.value(), "s");
+
+  shown.set(choices(&["l", "xl"], "xl"));
+  web::end_turn();
+
+  assert_eq!(names(&select), ["L", "XL"]);
+  assert_eq!(
+    select.value(),
+    "xl",
+    "the chosen key among the options it came with"
+  );
+  assert_eq!(select.selected_index(), 1);
+
+  let first = select.options().item(0).expect("an option");
+
+  shown.set(choices(&["l", "xl"], "l"));
+  web::end_turn();
+
+  assert_eq!(select.value(), "l");
+  assert!(
+    select
+      .options()
+      .item(0)
+      .is_some_and(|option| option == first),
+    "options it shows already stay"
+  );
+
+  shown.set(choices(&["l", "xl"], "m"));
+  web::end_turn();
+
+  assert_eq!(
+    select.selected_index(),
+    -1,
+    "a key naming no option selects none"
+  );
 }
 
 /// A change handler receives the value, in real time, when an input event fires on

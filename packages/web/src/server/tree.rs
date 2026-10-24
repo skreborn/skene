@@ -6,9 +6,10 @@ use std::{cell::Cell, rc::Rc};
 use rustc_hash::FxHashSet;
 use skene_dev::Document;
 use skene_foundation::{
+  Choices,
   NodeId,
-  PickerOption,
   Scene,
+  TextSelection,
   web::{Head, HeadElement},
 };
 
@@ -59,10 +60,8 @@ struct Element {
   /// The elements the realization placed inside it apart from the scene's children,
   /// serialized first inside it: a control's native input inside its label.
   nested: Vec<u32>,
-  /// A `<select>`'s options.
-  options: Vec<PickerOption>,
-  /// A `<select>`'s chosen value.
-  chosen: Option<String>,
+  /// A `<select>`'s options with the chosen one.
+  choices: Option<Choices>,
 }
 
 impl Element {
@@ -75,8 +74,7 @@ impl Element {
       inline: Vec::new(),
       text: None,
       nested: Vec::new(),
-      options: Vec::new(),
-      chosen: None,
+      choices: None,
     }
   }
 
@@ -250,12 +248,17 @@ impl Element {
 
   /// Writes a `<select>`'s options, the chosen one and the disabled ones marked.
   fn emit_options(&self, out: &mut String) {
-    for option in &self.options {
+    let Some(choices) = &self.choices
+    else {
+      return;
+    };
+
+    for option in choices.options.iter() {
       out.push_str("<option value=\"");
-      Document::escape_attribute(&option.value, out);
+      Document::escape_attribute(&option.key, out);
       out.push('"');
 
-      if self.chosen.as_deref() == Some(option.value.as_str()) {
+      if choices.chosen.as_deref() == Some(&*option.key) {
         out.push_str(" selected");
       }
 
@@ -423,13 +426,14 @@ impl Sink for StringTree {
   fn set_value(&mut self, element: &u32, value: &str) {
     self.write(*element, |element| match element.tag() {
       "textarea" => element.text = Some(value.to_owned()),
-      "select" => element.chosen = Some(value.to_owned()),
       _ => element.set_attribute("value", value),
     });
   }
 
-  fn set_options(&mut self, element: &u32, options: &[PickerOption]) {
-    self.write(*element, |element| element.options = options.to_vec());
+  fn select(&mut self, _: &u32, _: TextSelection) {}
+
+  fn set_choices(&mut self, element: &u32, choices: &Choices) {
+    self.write(*element, |element| element.choices = Some(choices.clone()));
   }
 
   fn note_live_state(&mut self, _: NodeId, _: &u32, _: FormElement) {}

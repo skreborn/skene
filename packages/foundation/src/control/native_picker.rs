@@ -9,7 +9,8 @@ use crate::{EventKind, NativeElement, Realization, Role};
 /// [`BasicPicker`](crate::BasicPicker), realized as the platform's own choice control
 /// where it has one.
 ///
-/// The options are written to the platform by whoever builds the control, from the
+/// The options are written to the platform with the chosen value as one
+/// [`Choices`](crate::Choices) content by whoever builds the control, from the
 /// [`Roster`](super::Roster) the option controls join; the platform's choice arrives
 /// as a change and only calls [`handle_choose`](Self::handle_choose), so the bound
 /// value stays the truth.

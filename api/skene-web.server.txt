@@ -330,18 +330,14 @@ pub fn skene_web::platform::web::Web::relocate(skene_foundation::spine::node::No
 pub fn skene_web::platform::web::Web::remove(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
 pub fn skene_web::platform::web::Web::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_foundation::spine::scene::Scene<Self>>>
 pub fn skene_web::platform::web::Web::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_foundation::spine::realization::Timer
-pub fn skene_web::platform::web::Web::set_checked(skene_foundation::spine::node::NodeId, bool)
 pub fn skene_web::platform::web::Web::set_control_state(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlState)
-pub fn skene_web::platform::web::Web::set_options(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::control::PickerOption])
 pub fn skene_web::platform::web::Web::set_overlay_open(skene_foundation::spine::node::NodeId, bool, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_web::platform::web::Web::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
-pub fn skene_web::platform::web::Web::set_selection(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::text_selection::TextSelection)
-pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::NodeId, &str)
-pub fn skene_web::platform::web::Web::set_value(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_web::platform::web::Web::set_window_title(core::option::Option<&str>)
 pub fn skene_web::platform::web::Web::update_access(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::values::access::AccessProp])
 pub fn skene_web::platform::web::Web::update_focus_order(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::focus_order::FocusOrder>)
 pub fn skene_web::platform::web::Web::watch_media(&skene_foundation::spine::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_web::platform::web::Web::write(skene_foundation::spine::node::NodeId, skene_foundation::spine::content::ContentValue<'_>)
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::web::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible
 pub fn skene_web::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::web::Web, skene_foundation::spine::view::GridChild> for skene_web::GridCell

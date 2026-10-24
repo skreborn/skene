@@ -7,6 +7,7 @@ use skene_foundation::{
   AccessProp,
   ColorScheme,
   CompiledStyle,
+  ContentValue,
   ControlState,
   Definitions,
   EventKind,
@@ -17,14 +18,12 @@ use skene_foundation::{
   NodeId,
   NodeSpec,
   Observation,
-  PickerOption,
   PointerEvent,
   Realization,
   Scene,
   Size,
   Slot,
   SlotLeaf,
-  TextSelection,
   Timer,
   TokenScope,
   web::{HydrationSource, Painter, Painting, WebHydration, WebStyle},
@@ -90,8 +89,8 @@ impl Realization for Web {
 
   fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
 
-  fn set_text(node: NodeId, text: &str) {
-    with_realizer(|realizer| realizer.set_text(node, text));
+  fn write(node: NodeId, value: ContentValue<'_>) {
+    with_realizer(|realizer| realizer.write(node, value));
   }
 
   fn attach(parent: NodeId, child: NodeId, _before: Option<NodeId>) {
@@ -137,20 +136,6 @@ impl Realization for Web {
   fn focus(_: NodeId) {}
 
   fn blur(_: NodeId) {}
-
-  fn set_value(node: NodeId, value: &str) {
-    with_realizer(|realizer| realizer.set_value(node, value));
-  }
-
-  fn set_options(node: NodeId, options: &[PickerOption]) {
-    with_realizer(|realizer| realizer.set_options(node, options));
-  }
-
-  fn set_selection(_: NodeId, _: TextSelection) {}
-
-  fn set_checked(node: NodeId, checked: bool) {
-    with_realizer(|realizer| realizer.set_checked(node, checked));
-  }
 
   fn observe_size(_: NodeId, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
     Observation::unmeasured()
@@ -269,6 +254,6 @@ impl WebMarkup for Web {
   }
 
   fn set_text(node: NodeId, text: &str) {
-    <Self as Realization>::set_text(node, text);
+    with_realizer(|realizer| realizer.set_text(node, text));
   }
 }

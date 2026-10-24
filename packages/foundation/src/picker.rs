@@ -9,6 +9,7 @@ use crate::{
   AnyView,
   Axis,
   Behavior,
+  Choices,
   Control,
   DeclaredBoxStyle,
   DecorationBase,
@@ -36,6 +37,7 @@ use crate::{
   TypeAhead,
   View,
   Wraps,
+  contents,
   empty,
   realize::Source,
 };
@@ -454,7 +456,8 @@ impl<P: Realization> View<P> for BasicPicker<P> {
 
 /// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
 /// and disabled setting, its options read from the option views, which attach
-/// nowhere; the parts stay for the drawn form.
+/// nowhere, and written with the chosen value as one [`Choices`] content whenever
+/// either changes; the parts stay for the drawn form.
 fn build_native<P: Realization>(
   parts: &mut Option<Parts<P>>,
   shared: &Rc<Shared<P>>,
@@ -476,17 +479,17 @@ fn build_native<P: Realization>(
   let node = parts.settings.apply(control).build();
 
   shared.roster.root_at(shared.options);
-
-  let options = untrack(|| shared.roster.options::<P>());
-
-  P::set_options(node, &options);
   Effect::render({
     let chosen = Rc::clone(&shared.chosen);
+    let roster = shared.roster.clone();
 
     move |_: Option<()>| {
-      let value = chosen().unwrap_or_default();
+      let choices = Choices::new(
+        Rc::from(roster.options::<P>()),
+        Some(Rc::from(chosen().unwrap_or_default())),
+      );
 
-      P::set_value(node, &value);
+      contents::CHOICE.write::<P>(node, &choices);
     }
   });
 

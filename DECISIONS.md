@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **`ReadOnly` as a content beside its access report** (2026-10-24), a read-only
+  entry's flag crossing the seam as a content of its own as its text does: it already
+  crosses typed as an access report, which the web maps to the native `readonly` the
+  form enforces without script and the scene reads to decide whether an entry takes
+  edits (`Scene::is_editable`), so a content beside it would be a second path for one
+  fact. Revisit when a platform's input protocol must hear read-only apart from its
+  access layer.
 - **The prototype's index-placing `insert` and in-place `set_hidden`** (2026-10-24),
   a realization told to place a child at an index among its parent's children and to
   hide a view where it stands: the scene's model takes a hidden child out and gives it

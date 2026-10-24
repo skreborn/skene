@@ -9,6 +9,7 @@ use skene_foundation::{
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
+  ContentValue,
   ControlState,
   Definitions,
   Keep,
@@ -30,7 +31,6 @@ use skene_foundation::{
   Size,
   Slot,
   SlotLeaf,
-  TextSelection,
   Timer,
   TokenScope,
 };
@@ -226,23 +226,26 @@ impl Realization for Terminal {
     });
   }
 
-  fn set_text(node: NodeId, text: &str) {
-    with_records(|records| {
-      let Some(record) = records.record_mut(node)
-      else {
-        return;
-      };
+  fn write(node: NodeId, value: ContentValue<'_>) {
+    match value {
+      ContentValue::Text(text) => with_records(|records| records.write_text(node, text)),
+      ContentValue::Edit(edit) => {
+        with_records(|records| {
+          records.write_entry(node, &edit.text);
 
-      if record.text == text {
-        return;
+          if let Some(selection) = edit.selection {
+            records.place_entry_selection(node, selection);
+          }
+        });
+        crate::field::report_selections();
       }
-
-      text.clone_into(&mut record.text);
-      records.invalidate_selection(node);
-      records.queue_restyle(node);
-      records.layout_dirty = true;
-      records.damage(node);
-    });
+      ContentValue::Checked(_) | ContentValue::Range(_) | ContentValue::Choice(_) => {
+        with_records(|records| {
+          records.layout_dirty = true;
+          records.damage(node);
+        });
+      }
+    }
   }
 
   fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
@@ -303,22 +306,11 @@ impl Realization for Terminal {
     })
   }
 
-  fn set_value(node: NodeId, value: &str) {
-    with_records(|records| records.write_entry(node, value));
-    crate::field::report_selections();
-  }
-
-  fn set_selection(node: NodeId, selection: TextSelection) {
-    with_records(|records| records.place_entry_selection(node, selection));
-  }
-
   fn lay_out() {
     let (width, height) = with_records(|records| records.last_size);
 
     crate::frame::settle(width, height);
   }
-
-  fn set_checked(_: NodeId, _: bool) {}
 
   fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<i32>)>) -> Observation {
     let kept = Rc::clone(&report);

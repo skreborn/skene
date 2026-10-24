@@ -158,15 +158,3 @@ pub enum Part {
   /// The bubble a tooltip shows beside the node it describes.
   Bubble,
 }
-
-/// One option a platform-drawn picker offers.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[must_use]
-pub struct PickerOption {
-  /// The value choosing it reports.
-  pub value: String,
-  /// The name shown for it.
-  pub name: String,
-  /// Whether it cannot be chosen.
-  pub disabled: bool,
-}

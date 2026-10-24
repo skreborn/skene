@@ -2,13 +2,14 @@
 //! server's markup, and what the reader changed before the client arrived.
 
 use rustc_hash::FxHashMap;
-use skene_foundation::{NodeId, PickerOption};
+use skene_foundation::{ChoiceOption, Choices, NodeId, TextSelection};
 use wasm_bindgen::JsCast;
 use web_sys::{
   Document,
   Element,
   HtmlElement,
   HtmlInputElement,
+  HtmlOptionElement,
   HtmlSelectElement,
   HtmlTextAreaElement,
 };
@@ -44,6 +45,9 @@ pub(super) struct Hydration {
   /// The adopted text entries holding text typed before the client arrived, which a
   /// signal's write leaves alone until the text is reported.
   pub(super) typed: Vec<web_sys::Node>,
+  /// Whether each of the server's checkboxes and radios was checked as the hydration
+  /// began, before the client wrote any.
+  pub(super) checked: Vec<(web_sys::Node, bool)>,
 }
 
 impl Hydration {
@@ -84,6 +88,18 @@ impl Hydration {
       }
     }
 
+    let toggles = root
+      .query_selector_all("input[type=checkbox], input[type=radio]")
+      .expect("query the toggles");
+    let checked = (0..toggles.length())
+      .filter_map(|index| toggles.item(index))
+      .filter_map(|node| {
+        let checked = node.dyn_ref::<HtmlInputElement>()?.checked();
+
+        Some((node, checked))
+      })
+      .collect();
+
     Self {
       elements,
       comments,
@@ -91,6 +107,7 @@ impl Hydration {
       mismatches: 0,
       pending: Vec::new(),
       typed: Vec::new(),
+      checked,
     }
   }
 }
@@ -313,31 +330,52 @@ impl Sink for Page {
     }
   }
 
-  fn set_options(&mut self, element: &web_sys::Node, options: &[PickerOption]) {
+  /// Places the selection, leaving an entry an input method is composing in, or one
+  /// holding text typed before the client arrived, to the report of its text.
+  fn select(&mut self, element: &web_sys::Node, selection: TextSelection) {
+    if self.holds_reader_text(element) {
+      return;
+    }
+
+    if let Some(element) = element.dyn_ref::<Element>() {
+      events::select(element, selection);
+    }
+  }
+
+  /// Rebuilds the options where they differ from those shown, then selects the chosen
+  /// one, or none where the chosen key names no option.
+  fn set_choices(&mut self, element: &web_sys::Node, choices: &Choices) {
     let Some(select) = element.dyn_ref::<HtmlSelectElement>()
     else {
       return;
     };
 
-    select.set_inner_html("");
+    if !shows_options(select, &choices.options) {
+      select.set_inner_html("");
 
-    for option in options {
-      let element = self.document.create_element("option").expect("an option");
+      for option in choices.options.iter() {
+        let element = self.document.create_element("option").expect("an option");
 
-      let _ = element.set_attribute("value", &option.value);
+        let _ = element.set_attribute("value", &option.key);
 
-      if option.disabled {
-        let _ = element.set_attribute("disabled", "");
+        if option.disabled {
+          let _ = element.set_attribute("disabled", "");
+        }
+
+        element.set_text_content(Some(&option.name));
+
+        let _ = select.append_child(&element);
       }
+    }
 
-      element.set_text_content(Some(&option.name));
-
-      let _ = select.append_child(&element);
+    match choices.chosen_option() {
+      Some(option) => select.set_value(&option.key),
+      None => select.set_selected_index(-1),
     }
   }
 
   /// Notes the change against what the server serialized, for the control to report
-  /// once the tree is built.
+  /// once the tree is built: a toggle's as it was checked when the hydration began.
   fn note_live_state(&mut self, node: NodeId, input: &web_sys::Node, native: FormElement) {
     let pending = if native.is_text_entry() {
       let (value, serialized) = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
@@ -358,8 +396,19 @@ impl Sink for Page {
     else if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
       if native.is_toggle() {
         let serialized = input.has_attribute("checked");
+        let live = self
+          .hydration
+          .as_ref()
+          .and_then(|hydration| {
+            hydration
+              .checked
+              .iter()
+              .find(|(toggle, _)| toggle == AsRef::<web_sys::Node>::as_ref(input))
+              .map(|(_, checked)| *checked)
+          })
+          .unwrap_or_else(|| input.checked());
 
-        (input.checked() != serialized).then(|| Pending::Toggle(input.checked()))
+        (live != serialized).then_some(Pending::Toggle(live))
       }
       else {
         let serialized = input.get_attribute("value").unwrap_or_default();
@@ -389,6 +438,25 @@ impl Sink for Page {
       hydration.pending.push((node, pending));
     }
   }
+}
+
+/// Whether `select` shows `options` already: the same keys, names and disabled ones, in
+/// order.
+fn shows_options(select: &HtmlSelectElement, options: &[ChoiceOption]) -> bool {
+  let shown = select.options();
+
+  shown.length() as usize == options.len()
+    && options.iter().enumerate().all(|(index, option)| {
+      u32::try_from(index)
+        .ok()
+        .and_then(|index| shown.item(index))
+        .and_then(|element| element.dyn_into::<HtmlOptionElement>().ok())
+        .is_some_and(|element| {
+          element.value() == *option.key
+            && element.text() == *option.name
+            && element.disabled() == option.disabled
+        })
+    })
 }
 
 /// Replaces `previous` with `class` in `element`'s class list.

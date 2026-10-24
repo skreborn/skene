@@ -133,13 +133,23 @@ over node ids:
   each naming the nearest made ancestor as the parent and the next node made after the
   child under it as `before`, a caption kept beside its control passed over, and
   `destroy`, releasing a made node's record.
-- **The rest**: register event kinds, focus, set values, observe sizes, report media,
-  schedule on the clock, route, and reach the clipboard.
+- **Write contents** through one call, `write`, which reports nothing: what a node
+  shows that a view writes is one typed value (`Content`: a run's `Text`, an entry's
+  `Edit`, a toggle's `Checked`, a range's `Range`, a choice's `Choices`), written through
+  its key in `contents` (`contents::RANGE.write::<P>(node, &range)`), the key typed by
+  its value so a value of another type does not compile, and erased into a borrowed
+  `ContentValue` the realization dispatches on. A value constrained by another crosses
+  with it whole, a range with its bounds and step, a choice's chosen key with its
+  options, an entry's selection with its text, so a realization never shows half of a
+  change. Each kind takes its own contents (`NodeKind::contents`), which the write
+  asserts in a debug build.
+- **The rest**: register event kinds, focus, observe sizes, report media, schedule on
+  the clock, route, and reach the clipboard.
 
 A method with a default body is one a platform lacking what it reaches keeps (`listen`,
 the focus order and accessibility where the scene is read for them, `focus_visible`,
-a picker's options, `lay_out`, `hydration`, an overlay's placement and position where
-none opens, the window title, routing, static routes, the clipboard): the default does
+`lay_out`, `hydration`, an overlay's placement and position where none opens, the
+window title, routing, static routes, the clipboard): the default does
 nothing, or answers that nothing is there. Every behavior is required, each platform
 realizing it in its own form: a navigation commits under a view transition in the
 browser and at once on the server leaf and in the terminal, and a pointer event is
@@ -513,8 +523,11 @@ re-export.
   behavior (`Behavior::on_edit`; while it is disabled the behavior's held truth,
   `Behavior::held_edit`, answers), refreshes its state and does not reconcile, so the
   verdict is the only write-back and a vetoed or transformed edit leaves no step in the
-  core's undo history; the bound value's own write arrives later through `set_value`,
-  which the core takes as nothing where it equals what is shown. `TextEntry` accepts an
+  core's undo history; the bound value's own write arrives later as its `Edit`
+  content, which the core takes as nothing where it equals what is shown. The entry
+  writes its text and its selection as that one content: a change of the text alone
+  leaves the selection to the platform, mapped through the change, and a change of the
+  selection places it in the text it is written with. `TextEntry` accepts an
   edit the truth already holds (`Edit::holds`) without asking, asks the value and then
   the selection otherwise, and accepts any edit of an entry whose value nothing derives.
   The web's `<input>` and `<textarea>` report the same way, as a toolkit that applies
@@ -552,11 +565,13 @@ re-export.
   spec's `ControlFacts`), so before the bundle the browser keeps one of them chosen and
   submits them as one field, and a choice made there reaches the signal as any adopted
   toggle does; since the browser unchecks the others with the one it checks, a toggle
-  reported on one member re-reads every member's state. The picker alone is drawn (no
+  reported on one member re-reads every member's state, each radio writing whether it
+  is chosen as its `Checked` content. The picker alone is drawn (no
   engine but Chromium restyles an open `<select>` yet), so it is an `Enhance` of its
   own: its scriptless form is a `NativePicker` control, a `<select>` on the web, listing
   the options the option views name, its caption a `<label for>` beside it and the
-  chosen value selected; the option views build once, under the group both forms answer
+  chosen value selected, the options and the chosen key written as one `Choices`
+  content whenever either changes; the option views build once, under the group both forms answer
   through, and attach nowhere until the drawn form lists them, and the caption builds
   once and each form mounts it with its name and the disabled setting, so a swap
   rebuilds nothing but the face; a choice the reader made in the `<select>` before the
@@ -566,11 +581,13 @@ re-export.
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
   `DescribedBy`, `Disabled`); the platform maps each to its layer. On the web a form
-  element takes the native attribute where one exists (`required`, `readonly`, and a
-  slider's `value`, `min`, `max` and `step`), so the form enforces it without script,
-  and ARIA otherwise; a property naming another node
-  (`Controls`, `LabelledBy`, `DescribedBy`) gives that node an id derived from its node
-  id, identical on both leaves. A name comes from wherever it is: a string caption is
+  element takes the native attribute where one exists (`required`, `readonly`), so the
+  form enforces it without script, and ARIA otherwise, while what its content shows
+  stays the content's: a slider's input takes its native `value`, `min`, `max` and
+  `step` from its `Range` content, its bounds before its value, never from its `Value`
+  report, which ARIA on a drawn slider and AccessKit read. A property naming another
+  node (`Controls`, `LabelledBy`, `DescribedBy`) gives that node an id derived from its
+  node id, identical on both leaves. A name comes from wherever it is: a string caption is
   the control's own (`aria-label`, or the native input's), and a caption drawn by a
   view names the control by reference (`LabelledBy` the caption part), so a combobox,
   a listbox or a radio group, which ARIA forbids naming from content, is named all the
@@ -1248,7 +1265,8 @@ adds only what is its own:
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted
   rather than duplicated, text typed in an entry before the client arrived replayed as
   an applied edit and repaired in place, any other live input value that differs from
-  the serialized one written into its signal, and convergence once the tree is built:
+  the serialized one written into its signal, a toggle's checked state read as the
+  hydration begins, before the client writes any radio of its group, and convergence once the tree is built:
   every server node the client built differently or never built removed, every adopted
   element given exactly the client's classes, and the order-keyed resource values no
   resource adopted dropped), scroll and focus restoration keyed by a segment's end

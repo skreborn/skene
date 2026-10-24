@@ -663,6 +663,12 @@ pub type skene_foundation::box_fields::Wrap::Value = skene_foundation::Wrap
 pub const skene_foundation::box_fields::Wrap::KEY: skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>
 pub fn skene_foundation::box_fields::Wrap::get<S: skene_foundation::Shape>(&skene_foundation::BoxStyle<N, S, X>) -> &<S as skene_foundation::Shape>::Of
 pub fn skene_foundation::box_fields::Wrap::get_mut<S: skene_foundation::Shape>(&mut skene_foundation::BoxStyle<N, S, X>) -> &mut <S as skene_foundation::Shape>::Of
+pub mod skene_foundation::contents
+pub const skene_foundation::contents::CHECKED: skene_foundation::ContentKey<skene_foundation::CheckState>
+pub const skene_foundation::contents::CHOICE: skene_foundation::ContentKey<skene_foundation::Choices>
+pub const skene_foundation::contents::EDIT: skene_foundation::ContentKey<skene_foundation::Edit>
+pub const skene_foundation::contents::RANGE: skene_foundation::ContentKey<skene_foundation::Range>
+pub const skene_foundation::contents::TEXT: skene_foundation::ContentKey<alloc::rc::Rc<str>>
 pub mod skene_foundation::interpolate
 pub struct skene_foundation::interpolate::Motion<P, V>
 impl<P, V> skene_foundation::interpolate::Motion<P, V>
@@ -2988,6 +2994,7 @@ impl core::hash::Hash for skene_foundation::CheckState
 pub fn skene_foundation::CheckState::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_foundation::CheckState
 impl core::marker::StructuralPartialEq for skene_foundation::CheckState
+impl skene_foundation::ContentType for skene_foundation::CheckState
 pub enum skene_foundation::ClipboardAction
 pub skene_foundation::ClipboardAction::Copy
 pub skene_foundation::ClipboardAction::Cut
@@ -3074,6 +3081,39 @@ pub fn skene_foundation::ContainerQuery<N>::fmt(&self, &mut core::fmt::Formatter
 impl<N: core::marker::Copy> core::marker::Copy for skene_foundation::ContainerQuery<N>
 impl<N: skene_foundation::Scalar> core::hash::Hash for skene_foundation::ContainerQuery<N>
 pub fn skene_foundation::ContainerQuery<N>::hash<H: core::hash::Hasher>(&self, &mut H)
+pub enum skene_foundation::Content
+pub skene_foundation::Content::Checked
+pub skene_foundation::Content::Choice
+pub skene_foundation::Content::Edit
+pub skene_foundation::Content::Range
+pub skene_foundation::Content::Text
+impl core::clone::Clone for skene_foundation::Content
+pub fn skene_foundation::Content::clone(&self) -> skene_foundation::Content
+impl core::cmp::Eq for skene_foundation::Content
+impl core::cmp::PartialEq for skene_foundation::Content
+pub fn skene_foundation::Content::eq(&self, &skene_foundation::Content) -> bool
+impl core::fmt::Debug for skene_foundation::Content
+pub fn skene_foundation::Content::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Content
+pub fn skene_foundation::Content::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::Content
+impl core::marker::StructuralPartialEq for skene_foundation::Content
+pub enum skene_foundation::ContentValue<'a>
+pub skene_foundation::ContentValue::Checked(skene_foundation::CheckState)
+pub skene_foundation::ContentValue::Choice(&'a skene_foundation::Choices)
+pub skene_foundation::ContentValue::Edit(&'a skene_foundation::Edit)
+pub skene_foundation::ContentValue::Range(&'a skene_foundation::Range)
+pub skene_foundation::ContentValue::Text(&'a str)
+impl skene_foundation::ContentValue<'_>
+pub const fn skene_foundation::ContentValue<'_>::content(&self) -> skene_foundation::Content
+impl<'a> core::clone::Clone for skene_foundation::ContentValue<'a>
+pub fn skene_foundation::ContentValue<'a>::clone(&self) -> skene_foundation::ContentValue<'a>
+impl<'a> core::cmp::PartialEq for skene_foundation::ContentValue<'a>
+pub fn skene_foundation::ContentValue<'a>::eq(&self, &skene_foundation::ContentValue<'a>) -> bool
+impl<'a> core::fmt::Debug for skene_foundation::ContentValue<'a>
+pub fn skene_foundation::ContentValue<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<'a> core::marker::Copy for skene_foundation::ContentValue<'a>
+impl<'a> core::marker::StructuralPartialEq for skene_foundation::ContentValue<'a>
 pub enum skene_foundation::Dimension<T>
 pub skene_foundation::Dimension::Auto
 pub skene_foundation::Dimension::Fraction(f32)
@@ -3752,6 +3792,8 @@ pub skene_foundation::NodeKind::Control
 pub skene_foundation::NodeKind::Overlay
 pub skene_foundation::NodeKind::Run
 pub skene_foundation::NodeKind::Scope
+impl skene_foundation::NodeKind
+pub const fn skene_foundation::NodeKind::contents(self) -> &'static [skene_foundation::Content]
 impl core::clone::Clone for skene_foundation::NodeKind
 pub fn skene_foundation::NodeKind::clone(&self) -> skene_foundation::NodeKind
 impl core::cmp::Eq for skene_foundation::NodeKind
@@ -4775,6 +4817,40 @@ impl<P: skene_foundation::Realization, Kind: 'static> core::default::Default for
 pub fn skene_foundation::Children<P, Kind>::default() -> Self
 impl<P: skene_foundation::Realization, Kind> core::fmt::Debug for skene_foundation::Children<P, Kind>
 pub fn skene_foundation::Children<P, Kind>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::ChoiceOption
+pub skene_foundation::ChoiceOption::disabled: bool
+pub skene_foundation::ChoiceOption::key: alloc::rc::Rc<str>
+pub skene_foundation::ChoiceOption::name: alloc::rc::Rc<str>
+impl skene_foundation::ChoiceOption
+pub fn skene_foundation::ChoiceOption::new(impl core::convert::Into<alloc::rc::Rc<str>>, impl core::convert::Into<alloc::rc::Rc<str>>) -> Self
+pub const fn skene_foundation::ChoiceOption::set_disabled(self, bool) -> Self
+impl core::clone::Clone for skene_foundation::ChoiceOption
+pub fn skene_foundation::ChoiceOption::clone(&self) -> skene_foundation::ChoiceOption
+impl core::cmp::Eq for skene_foundation::ChoiceOption
+impl core::cmp::PartialEq for skene_foundation::ChoiceOption
+pub fn skene_foundation::ChoiceOption::eq(&self, &skene_foundation::ChoiceOption) -> bool
+impl core::fmt::Debug for skene_foundation::ChoiceOption
+pub fn skene_foundation::ChoiceOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::ChoiceOption
+pub fn skene_foundation::ChoiceOption::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::ChoiceOption
+pub struct skene_foundation::Choices
+pub skene_foundation::Choices::chosen: core::option::Option<alloc::rc::Rc<str>>
+pub skene_foundation::Choices::options: alloc::rc::Rc<[skene_foundation::ChoiceOption]>
+impl skene_foundation::Choices
+pub fn skene_foundation::Choices::chosen_option(&self) -> core::option::Option<&skene_foundation::ChoiceOption>
+pub const fn skene_foundation::Choices::new(alloc::rc::Rc<[skene_foundation::ChoiceOption]>, core::option::Option<alloc::rc::Rc<str>>) -> Self
+impl core::clone::Clone for skene_foundation::Choices
+pub fn skene_foundation::Choices::clone(&self) -> skene_foundation::Choices
+impl core::cmp::Eq for skene_foundation::Choices
+impl core::cmp::PartialEq for skene_foundation::Choices
+pub fn skene_foundation::Choices::eq(&self, &skene_foundation::Choices) -> bool
+impl core::fmt::Debug for skene_foundation::Choices
+pub fn skene_foundation::Choices::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::Choices
+pub fn skene_foundation::Choices::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_foundation::Choices
+impl skene_foundation::ContentType for skene_foundation::Choices
 pub struct skene_foundation::ClickEvent
 pub skene_foundation::ClickEvent::count: u8
 pub skene_foundation::ClickEvent::modifiers: skene_foundation::Modifiers
@@ -5125,6 +5201,15 @@ pub fn skene_foundation::ContainerSizes<N>::fmt(&self, &mut core::fmt::Formatter
 impl<N: core::marker::Copy + 'static> core::marker::Copy for skene_foundation::ContainerSizes<N>
 impl<N: skene_foundation::Scalar> core::default::Default for skene_foundation::ContainerSizes<N>
 pub fn skene_foundation::ContainerSizes<N>::default() -> Self
+pub struct skene_foundation::ContentKey<T: skene_foundation::ContentType>
+impl<T: skene_foundation::ContentType> skene_foundation::ContentKey<T>
+pub const fn skene_foundation::ContentKey<T>::content(&self) -> skene_foundation::Content
+pub fn skene_foundation::ContentKey<T>::erase<'a>(&self, &'a T) -> skene_foundation::ContentValue<'a>
+pub fn skene_foundation::ContentKey<T>::write<P: skene_foundation::Realization>(&self, skene_foundation::NodeId, &T)
+impl<T: skene_foundation::ContentType> core::clone::Clone for skene_foundation::ContentKey<T>
+pub fn skene_foundation::ContentKey<T>::clone(&self) -> Self
+impl<T: skene_foundation::ContentType> core::fmt::Debug for skene_foundation::ContentKey<T>
+pub fn skene_foundation::ContentKey<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::ContextMenu<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::ContextMenu<P>
 pub fn skene_foundation::ContextMenu<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
@@ -5426,6 +5511,7 @@ pub fn skene_foundation::Edit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core
 impl core::hash::Hash for skene_foundation::Edit
 pub fn skene_foundation::Edit::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::StructuralPartialEq for skene_foundation::Edit
+impl skene_foundation::ContentType for skene_foundation::Edit
 pub struct skene_foundation::Enhance<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Enhance<P>
 pub const fn skene_foundation::Enhance<P>::new(skene_reactive::signal::ReadSignal<bool>) -> Self
@@ -6715,20 +6801,6 @@ impl<P: skene_foundation::Painting> skene_foundation::View<P> for skene_foundati
 pub fn skene_foundation::Painted<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Painted<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Painted<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
-pub struct skene_foundation::PickerOption
-pub skene_foundation::PickerOption::disabled: bool
-pub skene_foundation::PickerOption::name: alloc::string::String
-pub skene_foundation::PickerOption::value: alloc::string::String
-impl core::clone::Clone for skene_foundation::PickerOption
-pub fn skene_foundation::PickerOption::clone(&self) -> skene_foundation::PickerOption
-impl core::cmp::Eq for skene_foundation::PickerOption
-impl core::cmp::PartialEq for skene_foundation::PickerOption
-pub fn skene_foundation::PickerOption::eq(&self, &skene_foundation::PickerOption) -> bool
-impl core::fmt::Debug for skene_foundation::PickerOption
-pub fn skene_foundation::PickerOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_foundation::PickerOption
-pub fn skene_foundation::PickerOption::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::StructuralPartialEq for skene_foundation::PickerOption
 pub struct skene_foundation::Piece
 impl skene_foundation::Piece
 pub fn skene_foundation::Piece::discard(self)
@@ -6933,6 +7005,23 @@ pub const skene_foundation::RadioPolicy::MEMBER_ROLE: accesskit::Role
 pub const skene_foundation::RadioPolicy::ROLE: accesskit::Role
 pub const skene_foundation::RadioPolicy::WRAPS: bool
 pub fn skene_foundation::RadioPolicy::member_access(bool) -> alloc::vec::Vec<skene_foundation::AccessProp>
+pub struct skene_foundation::Range
+pub skene_foundation::Range::maximum: f32
+pub skene_foundation::Range::minimum: f32
+pub skene_foundation::Range::step: f32
+pub skene_foundation::Range::value: f32
+impl skene_foundation::Range
+pub const fn skene_foundation::Range::is_continuous(&self) -> bool
+pub const fn skene_foundation::Range::new(f32, f32, f32, f32) -> Self
+impl core::clone::Clone for skene_foundation::Range
+pub fn skene_foundation::Range::clone(&self) -> skene_foundation::Range
+impl core::cmp::PartialEq for skene_foundation::Range
+pub fn skene_foundation::Range::eq(&self, &skene_foundation::Range) -> bool
+impl core::fmt::Debug for skene_foundation::Range
+pub fn skene_foundation::Range::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::Range
+impl core::marker::StructuralPartialEq for skene_foundation::Range
+impl skene_foundation::ContentType for skene_foundation::Range
 pub struct skene_foundation::Record<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension>
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Record<N, X>
 pub fn skene_foundation::Record<N, X>::add_box(&mut self, &skene_foundation::BoxStyle<N, skene_foundation::Static<skene_foundation::Condition<N>>, X>)
@@ -7082,7 +7171,7 @@ pub fn skene_foundation::Roster::focus_value<P: skene_foundation::Realization>(&
 pub fn skene_foundation::Roster::join(&self, skene_foundation::NodeId, impl core::convert::Into<alloc::string::String>, core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>, alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>)
 pub fn skene_foundation::Roster::leave(&self, skene_foundation::NodeId)
 pub fn skene_foundation::Roster::new() -> Self
-pub fn skene_foundation::Roster::options<P: skene_foundation::Realization>(&self) -> alloc::vec::Vec<skene_foundation::PickerOption>
+pub fn skene_foundation::Roster::options<P: skene_foundation::Realization>(&self) -> alloc::vec::Vec<skene_foundation::ChoiceOption>
 pub fn skene_foundation::Roster::ordered<P: skene_foundation::Realization>(&self) -> alloc::vec::Vec<(skene_foundation::NodeId, alloc::string::String)>
 pub fn skene_foundation::Roster::root(&self) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Roster::root_at(&self, skene_foundation::NodeId)
@@ -7450,6 +7539,7 @@ pub fn skene_foundation::SliderRange::nudge(&self, f32, f32) -> f32
 pub fn skene_foundation::SliderRange::page(&self, f32, f32) -> f32
 pub const fn skene_foundation::SliderRange::step(&self) -> f32
 pub fn skene_foundation::SliderRange::value_at(&self, f32) -> f32
+pub const fn skene_foundation::SliderRange::with_value(&self, f32) -> skene_foundation::Range
 impl core::clone::Clone for skene_foundation::SliderRange
 pub fn skene_foundation::SliderRange::clone(&self) -> skene_foundation::SliderRange
 impl core::cmp::PartialEq for skene_foundation::SliderRange
@@ -8677,6 +8767,12 @@ pub fn skene_foundation::Container<P>::set_focus_order(self, skene_foundation::F
 pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
+pub trait skene_foundation::ContentType: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static
+impl skene_foundation::ContentType for alloc::rc::Rc<str>
+impl skene_foundation::ContentType for skene_foundation::CheckState
+impl skene_foundation::ContentType for skene_foundation::Choices
+impl skene_foundation::ContentType for skene_foundation::Edit
+impl skene_foundation::ContentType for skene_foundation::Range
 pub trait skene_foundation::ContextMenuBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::ContextMenu<P>>
 pub fn skene_foundation::ContextMenuBase::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::ContextMenuBase::derive_item_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -9685,20 +9781,16 @@ pub fn skene_foundation::Realization::relocate(skene_foundation::NodeId, skene_f
 pub fn skene_foundation::Realization::remove(skene_foundation::NodeId, skene_foundation::NodeId)
 pub fn skene_foundation::Realization::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_foundation::Scene<Self>>>
 pub fn skene_foundation::Realization::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_foundation::Timer
-pub fn skene_foundation::Realization::set_checked(skene_foundation::NodeId, bool)
 pub fn skene_foundation::Realization::set_control_state(skene_foundation::NodeId, &skene_foundation::ControlState)
-pub fn skene_foundation::Realization::set_options(skene_foundation::NodeId, &[skene_foundation::PickerOption])
 pub fn skene_foundation::Realization::set_overlay_open(skene_foundation::NodeId, bool, core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::Realization::set_overlay_placement(skene_foundation::NodeId, skene_foundation::Placement)
 pub fn skene_foundation::Realization::set_overlay_position(skene_foundation::NodeId, core::option::Option<skene_foundation::Point<f32>>)
 pub fn skene_foundation::Realization::set_scheme(core::option::Option<skene_foundation::ColorScheme>)
-pub fn skene_foundation::Realization::set_selection(skene_foundation::NodeId, skene_foundation::TextSelection)
-pub fn skene_foundation::Realization::set_text(skene_foundation::NodeId, &str)
-pub fn skene_foundation::Realization::set_value(skene_foundation::NodeId, &str)
 pub fn skene_foundation::Realization::set_window_title(core::option::Option<&str>)
 pub fn skene_foundation::Realization::update_access(skene_foundation::NodeId, &[skene_foundation::AccessProp])
 pub fn skene_foundation::Realization::update_focus_order(skene_foundation::NodeId, core::option::Option<skene_foundation::FocusOrder>)
 pub fn skene_foundation::Realization::watch_media(&skene_foundation::Media<Self::Scalar>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_foundation::Realization::write(skene_foundation::NodeId, skene_foundation::ContentValue<'_>)
 pub trait skene_foundation::Renderer
 pub fn skene_foundation::Renderer::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
 pub fn skene_foundation::Renderer::pop(&mut self)

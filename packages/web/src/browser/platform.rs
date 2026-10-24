@@ -15,6 +15,7 @@ use skene_foundation::{
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
+  ContentValue,
   ControlState,
   Definitions,
   EventKind,
@@ -27,7 +28,6 @@ use skene_foundation::{
   NodeSpec,
   Observation,
   OverlayFacts,
-  PickerOption,
   Placement,
   Point,
   PointerEvent,
@@ -36,7 +36,6 @@ use skene_foundation::{
   Size,
   Slot,
   SlotLeaf,
-  TextSelection,
   Timer,
   TokenScope,
   Unit,
@@ -426,8 +425,8 @@ impl Realization for Web {
     });
   }
 
-  fn set_text(sink: NodeId, text: &str) {
-    with_dom(|dom| dom.realizer.set_text(sink, text));
+  fn write(sink: NodeId, value: ContentValue<'_>) {
+    with_dom(|dom| dom.realizer.write(sink, value));
   }
 
   fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {
@@ -652,33 +651,6 @@ impl Realization for Web {
       .and_then(|window| window.document())
       .and_then(|document| document.active_element())
       .is_some_and(|element| element.matches(":focus-visible").unwrap_or(false))
-  }
-
-  fn set_value(sink: NodeId, value: &str) {
-    with_dom(|dom| dom.realizer.set_value(sink, value));
-  }
-
-  fn set_options(sink: NodeId, options: &[PickerOption]) {
-    with_dom(|dom| dom.realizer.set_options(sink, options));
-  }
-
-  fn set_selection(sink: NodeId, selection: TextSelection) {
-    with_dom(|dom| {
-      let Some(carrier) = dom.node(sink).and_then(Node::carrier_element)
-      else {
-        return;
-      };
-
-      if dom.realizer.sink.holds_reader_text(carrier) {
-        return;
-      }
-
-      events::select(carrier, selection);
-    });
-  }
-
-  fn set_checked(sink: NodeId, checked: bool) {
-    with_dom(|dom| dom.realizer.set_checked(sink, checked));
   }
 
   fn observe_size(sink: NodeId, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
@@ -959,7 +931,7 @@ impl WebMarkup for Web {
   }
 
   fn set_text(sink: NodeId, text: &str) {
-    <Self as Realization>::set_text(sink, text);
+    with_dom(|dom| dom.realizer.set_text(sink, text));
   }
 }
 

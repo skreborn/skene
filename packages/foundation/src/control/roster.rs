@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use skene_reactive::{Memo, Trigger};
 
 use super::TypeAhead;
-use crate::{NodeId, PickerOption, Realization, Scene};
+use crate::{ChoiceOption, NodeId, Realization, Scene};
 
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
 ///
@@ -152,17 +152,16 @@ impl Roster {
       .collect()
   }
 
-  /// The members as a platform-drawn picker's options, in tree order under `P`'s scene,
-  /// tracked; a member's value is its name where its label supplied none.
+  /// The members as the options of a choice, each keyed by its value, in tree order
+  /// under `P`'s scene, tracked; a member's value is its name where its label supplied
+  /// none.
   #[must_use]
-  pub fn options<P: Realization>(&self) -> Vec<PickerOption> {
+  pub fn options<P: Realization>(&self) -> Vec<ChoiceOption> {
     self
       .walk::<P>()
       .into_iter()
-      .map(|member| PickerOption {
-        name: member.name(),
-        disabled: (member.disabled)(),
-        value: member.value,
+      .map(|member| {
+        ChoiceOption::new(member.value.as_str(), member.name()).set_disabled((member.disabled)())
       })
       .collect()
   }

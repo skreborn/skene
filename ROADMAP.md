@@ -56,9 +56,9 @@ in a code comment.
     `Widget`). `skene new`'s app and library scaffolds take that shape, and the gate
     compiles what they write on every platform they name, so a scaffold cannot fall
     behind the surface it teaches.
-    - The seam: contents typed and atomic (a box's destination, a run's link, a
-    control's placeholder and an overlay's placement leaving `NodeSpec`'s facts for
-    contents of their own), and each write reported applied or not.
+    - The seam: a box's destination, a run's link, a control's placeholder and an
+    overlay's placement leave `NodeSpec`'s facts for contents of their own, and each
+    report says whether the toolkit applied it.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.
@@ -543,8 +543,9 @@ in a code comment.
     vocabulary and `Collection<Policy>`.
     - Motion: `set_enter` and `set_exit`, compiled to `@starting-style` with a deferred
     detach on the web, and springs, compiled to CSS `linear()`.
-    - Scrolling: a `ScrollHandle` with `scroll_to` and scroll-into-view;
-    `LazyColumn::scroll_to_item` and an index API; lazy grids and sticky headers.
+    - Scrolling: a `ScrollHandle` with `scroll_to`, which crosses the seam as a
+    `ScrollOffset` content, and scroll-into-view; `LazyColumn::scroll_to_item` and an
+    index API; lazy grids and sticky headers.
     - Style: opacity and transforms as compositor-friendly properties of their own,
     gradients, box shadows, italic, text alignment, ellipsis and a maximum line count,
     and system colors, shared with stated terminal degradations and the web-only ones

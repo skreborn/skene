@@ -2,11 +2,12 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::Signal;
+use skene_reactive::{Effect, Signal, untrack};
 
 use super::{Behavior, ControlHandle, Controlled};
 use crate::{
   AccessProp,
+  CheckState,
   ControlState,
   EventKind,
   KeyEvent,
@@ -14,6 +15,7 @@ use crate::{
   Prevent,
   Realization,
   Role,
+  contents,
 };
 
 /// A checkbox: a click, `Space` or the platform's own toggle flips it.
@@ -24,7 +26,8 @@ use crate::{
 /// Controlled: the checked state it reports is what
 /// [`derive_checked`](Self::derive_checked) reads, and a flip only calls
 /// [`handle_toggle`](Self::handle_toggle) with the state it asks for. With no handler
-/// nothing changes; [`bind_checked`](Self::bind_checked) wires both to one signal.
+/// nothing changes; [`bind_checked`](Self::bind_checked) wires both to one signal. The
+/// state crosses to the platform as its [`Checked`](crate::Content::Checked) content.
 #[derive(Default)]
 #[must_use]
 pub struct Toggle {
@@ -126,6 +129,15 @@ impl<P: Realization> Behavior<P> for Toggle {
     Self::EVENTS
   }
 
+  fn attach(&self, control: &ControlHandle<P>) {
+    let node = control.node();
+    let checked = self.reads_checked();
+
+    Effect::render(move |_: Option<()>| {
+      contents::CHECKED.write::<P>(node, &CheckState::from(checked()));
+    });
+  }
+
   fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     self.flip();
 
@@ -161,6 +173,12 @@ impl<P: Realization> Behavior<P> for Toggle {
 
   fn on_toggle(&self, checked: bool, _control: &ControlHandle<P>) {
     self.ask(checked);
+  }
+
+  fn reconcile(&self, control: &ControlHandle<P>) {
+    let checked = untrack(|| self.read());
+
+    contents::CHECKED.write::<P>(control.node(), &checked.into());
   }
 
   fn access(&self) -> Vec<AccessProp> {

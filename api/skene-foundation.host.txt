@@ -6554,7 +6554,6 @@ pub skene_foundation::NodeSpec::level: core::option::Option<usize>
 pub skene_foundation::NodeSpec::role: core::option::Option<accesskit::Role>
 impl skene_foundation::NodeSpec
 pub const fn skene_foundation::NodeSpec::anchor() -> Self
-pub const fn skene_foundation::NodeSpec::box_facts(&self) -> core::option::Option<&skene_foundation::BoxFacts>
 pub const fn skene_foundation::NodeSpec::kind(&self) -> skene_foundation::NodeKind
 pub const fn skene_foundation::NodeSpec::new(core::option::Option<accesskit::Role>, core::option::Option<usize>, core::option::Option<skene_foundation::DragAxes>, skene_foundation::NodeFacts) -> Self
 pub const fn skene_foundation::NodeSpec::scope() -> Self

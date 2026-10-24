@@ -138,18 +138,6 @@ impl NodeSpec {
       NodeFacts::Scope => NodeKind::Scope,
     }
   }
-
-  /// The facts of the box a box, a control or an overlay is realized as.
-  #[inline(always)]
-  #[must_use]
-  pub const fn box_facts(&self) -> Option<&BoxFacts> {
-    match &self.facts {
-      NodeFacts::Box(boxed)
-      | NodeFacts::Control(ControlFacts { boxed, .. })
-      | NodeFacts::Overlay(OverlayFacts { boxed, .. }) => Some(boxed),
-      NodeFacts::Run(_) | NodeFacts::Anchor | NodeFacts::Scope => None,
-    }
-  }
 }
 
 /// The facts of a node's kind: what a platform creates it from that no other kind
@@ -188,7 +176,8 @@ pub struct BoxFacts {
   pub destination: Option<String>,
 }
 
-/// What a platform creates an overlay from beside its box.
+/// What a platform creates an overlay from: its box, whether it is modal or a hint,
+/// where it sits and its backdrop.
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct OverlayFacts {
@@ -459,4 +448,85 @@ pub enum EventKind {
   /// A context menu was asked for at the node: a secondary press, or the menu key
   /// while it holds focus; the platform's own menu opens unless prevented.
   ContextMenu,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{BoxFacts, NodeFacts, NodeSpec, OverlayFacts, RunFacts};
+  use crate::spine::{ControlFacts, Layout, NodeKind, Placement, Role, RunPlacement};
+
+  /// The facts of a plain box.
+  fn boxed() -> BoxFacts {
+    BoxFacts {
+      layout: Layout::Document,
+      container: None,
+      transition_name: None,
+      destination: None,
+    }
+  }
+
+  /// The facts of an overlay, modal and a hint where `modal` and `hint` say.
+  fn overlay(modal: bool, hint: bool) -> NodeFacts {
+    NodeFacts::Overlay(OverlayFacts {
+      boxed: boxed(),
+      modal,
+      hint,
+      placement: Placement::Center,
+      backdrop: None,
+    })
+  }
+
+  #[test]
+  fn an_overlay_takes_a_hints_role_else_its_stated_role_else_a_modals() {
+    let role = |stated, modal, hint| NodeSpec::new(stated, None, None, overlay(modal, hint)).role;
+
+    assert_eq!(role(None, false, true), Some(Role::Tooltip));
+    assert_eq!(role(Some(Role::Menu), true, true), Some(Role::Tooltip));
+    assert_eq!(role(Some(Role::Menu), true, false), Some(Role::Menu));
+    assert_eq!(role(None, true, false), Some(Role::Dialog));
+    assert_eq!(role(Some(Role::ListBox), false, false), Some(Role::ListBox));
+    assert_eq!(role(None, false, false), None);
+  }
+
+  #[test]
+  fn a_node_of_another_kind_keeps_its_stated_role() {
+    assert_eq!(
+      NodeSpec::new(Some(Role::Heading), Some(2), None, NodeFacts::Box(boxed())).role,
+      Some(Role::Heading),
+    );
+    assert_eq!(
+      NodeSpec::new(None, None, None, NodeFacts::Box(boxed())).role,
+      None
+    );
+  }
+
+  #[test]
+  fn a_spec_creates_the_node_of_its_facts_kind() {
+    let run = NodeFacts::Run(RunFacts {
+      placement: RunPlacement::Line,
+      selectable: false,
+      link: None,
+    });
+    let control = NodeFacts::Control(ControlFacts {
+      boxed: boxed(),
+      native: None,
+      label: None,
+      placeholder: None,
+      lines: 1,
+      label_beside: false,
+      group: None,
+    });
+
+    for (facts, kind) in [
+      (NodeFacts::Box(boxed()), NodeKind::Box),
+      (control, NodeKind::Control),
+      (overlay(false, false), NodeKind::Overlay),
+      (run, NodeKind::Run),
+    ] {
+      assert_eq!(NodeSpec::new(None, None, None, facts).kind(), kind);
+    }
+
+    assert_eq!(NodeSpec::anchor().kind(), NodeKind::Anchor);
+    assert_eq!(NodeSpec::scope().kind(), NodeKind::Scope);
+  }
 }

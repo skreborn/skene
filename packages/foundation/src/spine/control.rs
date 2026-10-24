@@ -106,8 +106,8 @@ impl NativeElement {
   }
 }
 
-/// What a platform creates a control from beside its box: the native element it stands
-/// in where it has one and, where nothing visible supplies one, an accessible name.
+/// What a platform creates a control from: its box, the native element it stands in
+/// where it has one and, where nothing visible supplies one, an accessible name.
 #[derive(Clone, Debug)]
 #[must_use]
 pub struct ControlFacts {

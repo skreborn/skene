@@ -903,11 +903,11 @@ styles collapse to one class; both leaves emit rules in interning order, which i
 order, so the server's stylesheet is byte-compatible with the client's and the cascade
 order is identical, which hydration relies on. A class cache keyed by the kept style's
 address and a hash of the construction facts its template reads renders the template
-text on a miss only. The interner, the cache and the
-token and slot registrations are one `StyleBook` both web leaves share, telling each
-leaf's `StyleSink` what to add and remove (the browser: one `<style>` element per
-class; the server: each rule collected as it is interned and emitted with the next
-flush, the document's `<style>` or a streamed chunk's delta).
+text on a miss only. The interner, the cache and the token and slot registrations are
+one `StyleBook` both web leaves share, telling each leaf's `StyleSink` what to add and
+remove (the browser: one `<style>` element per class; the server: each rule collected as
+it is interned and emitted with the next flush, the document's `<style>` or a streamed
+chunk's delta).
 
 ## Text
 

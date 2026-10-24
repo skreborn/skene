@@ -42,7 +42,7 @@ pub(crate) struct StyleBook<K> {
   /// The classes interned for the rule templates.
   interner: ClassInterner,
   /// The compiled templates, by their style's address and their template's key.
-  compiled: FxHashMap<(u128, u64), Rc<Compiled>>,
+  compiled: FxHashMap<(u128, u128), Rc<Compiled>>,
   /// The tokens whose custom property is registered.
   tokens: FxHashSet<TokenName>,
   /// The variant slots whose custom property is registered.

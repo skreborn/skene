@@ -19,7 +19,7 @@ use std::{
   hash::{Hash, Hasher},
 };
 
-use rustc_hash::{FxHashMap, FxHasher};
+use rustc_hash::FxHashMap;
 use skene_foundation::{
   Animation,
   Axis,
@@ -364,8 +364,9 @@ fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String> {
   }
 }
 
-/// The CSS texts a derived leaf writes into the `count` custom properties of its slot:
-/// a value rendered, a token or an expression referenced in each.
+/// The CSS texts of a static leaf for the `count` properties its target declares, or
+/// the custom properties of its slot where a derived write carries it: a fixed value
+/// rendered, a token or an expression referenced in each.
 pub(crate) fn render_slot_leaf(leaf: &SlotLeaf<f32, WebStyle>, count: usize) -> Vec<String> {
   match leaf {
     StaticLeaf::Fixed(value) => render_slot_value(value),
@@ -679,6 +680,7 @@ pub(crate) mod record {
 
 /// What a box's construction gives its rule template beside its style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
 pub(crate) struct BoxFacts<'a> {
   /// The layout mode.
   pub layout: Layout,
@@ -728,6 +730,7 @@ impl<'a> BoxFacts<'a> {
 
 /// What a node's construction gives its rule template beside its style, by kind.
 #[derive(Debug, Clone, Copy)]
+#[must_use]
 pub(crate) enum Template<'a> {
   /// A box.
   Box(BoxFacts<'a>),
@@ -758,23 +761,23 @@ pub(crate) enum Template<'a> {
   },
 }
 
-impl Template<'_> {
+impl<'a> Template<'a> {
   /// The template of a box of `props`.
-  pub(crate) fn boxed(props: &BoxProps<Web>) -> Template<'_> {
-    Template::Box(BoxFacts::of(props))
+  pub(crate) fn boxed(props: &'a BoxProps<Web>) -> Self {
+    Self::Box(BoxFacts::of(props))
   }
 
   /// The template of a control of `props`.
-  pub(crate) fn control(props: &ControlProps<Web>) -> Template<'_> {
-    Template::Control {
+  pub(crate) fn control(props: &'a ControlProps<Web>) -> Self {
+    Self::Control {
       boxed: BoxFacts::of(&props.box_props),
       entry: props.native.is_some_and(NativeElement::is_text_entry),
     }
   }
 
   /// The template of an overlay of `props`.
-  pub(crate) fn overlay(props: &OverlayProps<Web>) -> Template<'_> {
-    Template::Overlay {
+  pub(crate) fn overlay(props: &'a OverlayProps<Web>) -> Self {
+    Self::Overlay {
       boxed: BoxFacts::of(&props.box_props),
       placement: props.placement,
       backdrop: props.backdrop,
@@ -789,43 +792,11 @@ impl Template<'_> {
     }
   }
 
-  /// The hash a compile of the template is cached under beside its style's
-  /// [`address`](skene_foundation::CompiledStyle::address): every fact it reads.
-  pub(crate) fn key(&self) -> u64 {
-    let mut hasher = FxHasher::default();
-
-    match self {
-      Self::Box(boxed) => {
-        hasher.write_u8(0);
-        boxed.hash(&mut hasher);
-      }
-      Self::Control { boxed, entry } => {
-        hasher.write_u8(1);
-        boxed.hash(&mut hasher);
-        entry.hash(&mut hasher);
-      }
-      Self::Overlay {
-        boxed,
-        placement,
-        backdrop,
-      } => {
-        hasher.write_u8(2);
-        boxed.hash(&mut hasher);
-        hasher.write_u8(*placement as u8);
-        backdrop.fingerprint(&mut hasher);
-      }
-      Self::Layout => hasher.write_u8(3),
-      Self::Run {
-        placement,
-        selectable,
-      } => {
-        hasher.write_u8(4);
-        hasher.write_u8(*placement as u8);
-        selectable.hash(&mut hasher);
-      }
-    }
-
-    hasher.finish()
+  /// The 128-bit hash a compile of the template is cached under beside its style's
+  /// [`address`](skene_foundation::CompiledStyle::address): its kind and every fact it
+  /// reads.
+  pub(crate) fn key(&self) -> u128 {
+    skene_reactive::hash::wide_of(self)
   }
 
   /// The rule template of a node of this kind whose style is `style`.
@@ -843,6 +814,37 @@ impl Template<'_> {
         placement,
         selectable,
       } => compile_run(style, placement, selectable),
+    }
+  }
+}
+
+impl Hash for Template<'_> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::Box(boxed) => boxed.hash(state),
+      Self::Control { boxed, entry } => {
+        boxed.hash(state);
+        entry.hash(state);
+      }
+      Self::Overlay {
+        boxed,
+        placement,
+        backdrop,
+      } => {
+        boxed.hash(state);
+        (*placement as u8).hash(state);
+        backdrop.fingerprint(state);
+      }
+      Self::Layout => {}
+      Self::Run {
+        placement,
+        selectable,
+      } => {
+        (*placement as u8).hash(state);
+        selectable.hash(state);
+      }
     }
   }
 }
@@ -1205,4 +1207,125 @@ pub(crate) fn slot_registrations() -> String {
   }
 
   out
+}
+
+#[cfg(test)]
+mod tests {
+  use skene_foundation::{
+    Axis,
+    Color,
+    Conditional,
+    ContainerName,
+    Dimension,
+    Keeping,
+    KeptLeaf,
+    Layout,
+    Placement,
+    Record,
+    RunPlacement,
+    StaticBoxStyle,
+    StaticLeaf,
+  };
+
+  use super::{BoxFacts, KeptStyle, Template};
+  use crate::platform::web::Web;
+
+  /// A style kept at `Keep::Everything`, its height set where `height` says.
+  fn kept(height: bool) -> KeptStyle {
+    let mut style = StaticBoxStyle::<Web>::default();
+
+    if height {
+      style.height = Some(Conditional::new(KeptLeaf::Static(StaticLeaf::Fixed(
+        Dimension::Length(10.),
+      ))));
+    }
+
+    let mut record = Record::new();
+
+    record.add_box(&style);
+
+    record.compile(Keeping::Everything)
+  }
+
+  /// Every template of a kind the facts can name, each fact varied.
+  fn templates() -> Vec<Template<'static>> {
+    let mut boxes = Vec::new();
+
+    for layout in [
+      Layout::Document,
+      Layout::Flex {
+        axis: Axis::Horizontal,
+        reversed: false,
+      },
+      Layout::Flex {
+        axis: Axis::Vertical,
+        reversed: true,
+      },
+      Layout::Grid,
+      Layout::Stack,
+      Layout::Single,
+    ] {
+      for container in [None, Some(ContainerName("card"))] {
+        for transition_name in [None, Some("hero")] {
+          boxes.push(BoxFacts {
+            layout,
+            container,
+            transition_name,
+          });
+        }
+      }
+    }
+
+    let mut templates = vec![Template::Layout];
+
+    for &boxed in &boxes {
+      templates.push(Template::Box(boxed));
+
+      for entry in [false, true] {
+        templates.push(Template::Control { boxed, entry });
+      }
+
+      for placement in [Placement::Center, Placement::TopEnd] {
+        for backdrop in [None, Some(Color::TRANSPARENT)] {
+          templates.push(Template::Overlay {
+            boxed,
+            placement,
+            backdrop,
+          });
+        }
+      }
+    }
+
+    for placement in [
+      RunPlacement::Line,
+      RunPlacement::Inline,
+      RunPlacement::Embedded,
+    ] {
+      for selectable in [false, true] {
+        templates.push(Template::Run {
+          placement,
+          selectable,
+        });
+      }
+    }
+
+    templates
+  }
+
+  /// Two templates compiling one style apart are cached apart: the key hashes every
+  /// fact a compile reads.
+  #[test]
+  fn a_templates_key_tells_apart_what_its_compile_does() {
+    let templates = templates();
+
+    for style in [kept(false), kept(true)] {
+      for (index, first) in templates.iter().enumerate() {
+        for second in &templates[index + 1..] {
+          if first.compile(&style) != second.compile(&style) {
+            assert_ne!(first.key(), second.key(), "{first:?} and {second:?}");
+          }
+        }
+      }
+    }
+  }
 }

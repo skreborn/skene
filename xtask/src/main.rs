@@ -494,7 +494,8 @@ impl Gate {
   }
 
   /// A cargo command building for the server leaf on the host's target, its cfg in the
-  /// target's flags, in a target directory of its own; `--target` goes before any `--`.
+  /// target's rustc and rustdoc flags, in a target directory of its own; `--target` goes
+  /// before any `--`.
   fn server_cargo<I, S>(&self, arguments: I) -> Command
   where
     I: IntoIterator<Item = S>,
@@ -515,6 +516,7 @@ impl Gate {
 
     command
       .env(Self::target_flags(&self.host, "RUSTFLAGS"), SERVER_CFG)
+      .env(Self::target_flags(&self.host, "RUSTDOCFLAGS"), SERVER_CFG)
       .env("CARGO_TARGET_DIR", self.target.join("server"));
 
     command

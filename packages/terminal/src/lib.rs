@@ -67,8 +67,9 @@
 #[cfg(not(skene_platform = "terminal"))]
 compile_error!(
   "skene-terminal builds for the platform its build names: `--cfg \
-   skene_platform=\"terminal\"` in the rustflags of the host's target (`cargo \
-   check-terminal`)"
+   skene_platform=\"terminal\"` in the rustflags of the host's target; the \
+   `.cargo/config.toml` `skene new` writes names it for plain cargo, and `skene build` \
+   and `skene run` name it themselves"
 );
 
 #[cfg(skene_platform = "terminal")]

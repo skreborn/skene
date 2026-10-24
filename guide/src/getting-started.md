@@ -46,9 +46,13 @@ fn app() -> impl View {
 }
 ```
 
-`#[main]` expands to the entry the build has: in the browser it hydrates the page the
-server rendered, and on the server it renders the requested path. A build for neither
-fails, naming the two.
+`#[main]` expands to the entry the build names: in the browser, the `web` build on
+`wasm32-unknown-unknown`, it hydrates the page the server rendered, and on the server
+leaf, the `web` build with `--cfg skene_server` beside it, it renders the requested
+path. A build naming no platform, or a pixel platform `skene-web` does not realize yet,
+fails with `skene-web`'s message naming the web's builds. A terminal build compiles
+`skene-web` empty, and the web shell with it, since `skene new` gates the shell on its
+platform (`#![cfg(skene_platform = "web")]`).
 
 ## One platform per build
 

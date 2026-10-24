@@ -63,10 +63,13 @@ fn app() -> impl View {
 # }
 ```
 
-`#[main]` expands to whichever entry the target has: in the browser it launches the
-app, hydrating a server-rendered page in place; on the server leaf it renders the
-requested path to stdout (the server build's `counter /` prints the page). A build
-that names neither leaf fails with a message naming them.
+`#[main]` expands to the entry the build names: in the browser, the `web` build on
+`wasm32-unknown-unknown`, it launches the app, hydrating a server-rendered page in
+place; on the server leaf, the `web` build with `--cfg skene_server` beside it, it
+renders the requested path to stdout (the server build's `counter /` prints the page).
+A build naming no platform, or a pixel platform `skene-web` does not realize yet, fails
+with `skene-web`'s message naming the web's builds, and a terminal build compiles
+`skene-web` empty, as it does an app gated on the web.
 The app is its library alone, which `skene` builds as each target's crate type.
 
 ## A terminal app
@@ -190,11 +193,13 @@ web build runs its bundle through binaryen's `wasm-opt` where it is installed.
 
 The server build of a web app is a plain, native command, with no integration at all:
 its library built as a binary for the host, the build naming the web and its server leaf
-beside it.
+beside it. `RUSTFLAGS` stands above every rustflags a configuration sets, the
+`.cargo/config.toml` `skene new` writes among them, and beside `--target` it reaches no
+build script or proc macro, so the same command builds the server in an app.
 
 ```sh
-cargo rustc -p counter --lib --crate-type bin --target host-tuple \
-  --config 'build.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]'
+RUSTFLAGS='--cfg skene_platform="web" --cfg skene_server' \
+  cargo rustc -p counter --lib --crate-type bin --target host-tuple
 target/x86_64-unknown-linux-gnu/debug/counter /   # prints the page, on an x86-64 Linux host
 ```
 

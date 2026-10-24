@@ -1720,8 +1720,10 @@ left. The title is the window's (`window::set_title`), shared with the terminal:
 latest live one is in force, and each platform shows it, the web in the head. The app's server binary is built natively with the
 web and its server leaf named (`skene build web --static` and `skene run web --ssr` do
 it, for the host target alone so build scripts and proc macros never see the cfgs; by
-hand, `cargo rustc --lib --crate-type bin --target host-tuple --config 'build.rustflags
-= ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]'`), and
+hand, `RUSTFLAGS='--cfg skene_platform="web" --cfg skene_server' cargo rustc --lib
+--crate-type bin --target host-tuple`, since `RUSTFLAGS` stands above the target
+rustflags an app's configuration sets and beside `--target` reaches no build script or
+proc macro), and
 `#[main]` makes it a plain command booting its own crate's bundle: `app /path`
 prints the page, `--routes` the enumerable routes, `--stream /path` the page as it
 flushes, and `--serve` renders one length-framed request after another read from

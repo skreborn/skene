@@ -53,7 +53,8 @@
 compile_error!(
   "skene-web builds for the platform its build names: `--cfg skene_platform=\"web\"` in \
    the rustflags of `--target wasm32-unknown-unknown` for the browser, with `--cfg \
-   skene_server` beside it for the server leaf (`cargo check-web`, `cargo check-server`)"
+   skene_server` beside it for the server leaf; the `.cargo/config.toml` `skene new` \
+   writes names it for plain cargo, and `skene build` and `skene run` name it themselves"
 );
 #[cfg(all(
   skene_platform = "web",

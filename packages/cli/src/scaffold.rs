@@ -514,9 +514,9 @@ mod tests {
     );
     assert!(file(&files, "shared/Cargo.toml").contains("name = \"my-app-shared\""));
 
-    for (shell, platform, facade) in [
-      ("terminal", "terminal", "skene_terminal"),
-      ("web", "web", "skene_web"),
+    for (shell, platform, facade, other) in [
+      ("terminal", "terminal", "skene_terminal", "web"),
+      ("web", "web", "skene_web", "terminal"),
     ] {
       let manifest = file(&files, &format!("{shell}/Cargo.toml"));
       let library = file(&files, &format!("{shell}/src/lib.rs"));
@@ -525,6 +525,18 @@ mod tests {
         manifest.contains(&format!("name = \"my-app-{shell}\"")),
         "{manifest}"
       );
+
+      for name in [format!("skene-{shell}"), format!("skene-simple-{shell}")] {
+        assert!(
+          manifest.contains(&format!("{name}.workspace = true")),
+          "{manifest}"
+        );
+      }
+
+      for name in [format!("skene-{other}"), format!("skene-simple-{other}")] {
+        assert!(!manifest.contains(&name), "{manifest}");
+      }
+
       assert!(
         manifest.contains("my-app-shared.workspace = true"),
         "{manifest}"
@@ -550,6 +562,51 @@ mod tests {
       .contains("[lints]\nworkspace = true")),
       "every member declares the platform's cfgs"
     );
+  }
+
+  /// A project of one platform depends on that platform's skene crates alone.
+  #[test]
+  fn a_project_depends_on_its_platforms_alone() {
+    for (kind, platform, own, other) in [
+      (
+        Kind::App,
+        Platform::Web,
+        &["skene-simple-web", "skene-web"][..],
+        &["skene-simple-terminal", "skene-terminal"][..],
+      ),
+      (
+        Kind::App,
+        Platform::Terminal,
+        &["skene-simple-terminal", "skene-terminal"],
+        &["skene-simple-web", "skene-web"],
+      ),
+      (
+        Kind::Library,
+        Platform::Web,
+        &["skene-web"],
+        &["skene-simple", "skene-terminal"],
+      ),
+      (
+        Kind::Library,
+        Platform::Terminal,
+        &["skene-terminal"],
+        &["skene-simple", "skene-web"],
+      ),
+    ] {
+      let files = kind.files("demo", &[platform], platform, &Source::Registry);
+      let workspace = file(&files, "Cargo.toml");
+
+      for name in own {
+        assert!(
+          workspace.contains(&format!("{name} = \"0.1\"")),
+          "{workspace}"
+        );
+      }
+
+      for name in other {
+        assert!(!workspace.contains(name), "{workspace}");
+      }
+    }
   }
 
   /// A library holds its core and a crate per platform named, its types named for the

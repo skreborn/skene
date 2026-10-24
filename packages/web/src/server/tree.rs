@@ -7,6 +7,7 @@ use rustc_hash::FxHashSet;
 use skene_dev::Document;
 use skene_foundation::{
   Choices,
+  Edit,
   NodeId,
   Scene,
   TextSelection,
@@ -431,6 +432,25 @@ impl Sink for StringTree {
   }
 
   fn select(&mut self, _: &u32, _: TextSelection) {}
+
+  fn shown(&self, element: &u32) -> Option<Edit> {
+    let element = self.element(*element)?;
+    let text = match element.tag() {
+      "textarea" => element.text.clone().unwrap_or_default(),
+      _ => element
+        .attributes
+        .iter()
+        .find(|(name, _)| name == "value")
+        .map(|(_, value)| value.clone())
+        .unwrap_or_default(),
+    };
+
+    Some(Edit::new(text))
+  }
+
+  fn composing(&self, _: &u32) -> bool {
+    false
+  }
 
   fn set_choices(&mut self, element: &u32, choices: &Choices) {
     self.write(*element, |element| element.choices = Some(choices.clone()));

@@ -10,11 +10,13 @@ use skene_foundation::{
   BoxFacts,
   CheckState,
   Choices,
+  Content,
   ContentValue,
   ControlFacts,
   ControlState,
   Definitions,
   DragAxes,
+  Edit,
   FocusOrder,
   NodeFacts,
   NodeId,
@@ -153,6 +155,14 @@ pub(crate) trait Sink {
   /// Places the selection of the text entry `element`, in grapheme clusters of its
   /// value.
   fn select(&mut self, element: &Self::Element, selection: TextSelection);
+
+  /// What the text entry `element` shows: its value, with its selection where the sink
+  /// keeps one.
+  fn shown(&self, element: &Self::Element) -> Option<Edit>;
+
+  /// Whether the text the text entry `element` shows is the reader's until it is
+  /// reported; see [`Realization::composing`](skene_foundation::Realization::composing).
+  fn composing(&self, element: &Self::Element) -> bool;
 
   /// Shows `choices` on the `<select>` `element`: its options, and the chosen one
   /// selected.
@@ -767,6 +777,39 @@ impl<S: Sink> Realizer<S> {
       ContentValue::Choice(choices) => self.sink.set_choices(carrier, choices),
       ContentValue::Placeholder(hint) => self.sink.set_attribute(carrier, "placeholder", hint),
     }
+  }
+
+  /// Runs `read` with what `node` shows of `content`: a text entry's text with its
+  /// selection; `None` for any other content, and for a node showing none.
+  pub(crate) fn read<R>(
+    &self,
+    node: NodeId,
+    content: Content,
+    read: impl FnOnce(ContentValue<'_>) -> R,
+  ) -> Option<R> {
+    let record = self.records.get(node)?;
+    let Realized::Control {
+      native: Some(native),
+    } = record.realized
+    else {
+      return None;
+    };
+
+    if content != Content::Edit || !native.is_text_entry() {
+      return None;
+    }
+
+    let shown = self.sink.shown(record.carrier())?;
+
+    Some(read(ContentValue::Edit(&shown)))
+  }
+
+  /// Whether the text the text entry `node` shows is the reader's until it is reported.
+  pub(crate) fn composing(&self, node: NodeId) -> bool {
+    self
+      .records
+      .get(node)
+      .is_some_and(|record| self.sink.composing(record.carrier()))
   }
 
   /// Gives the link `node` the destination `path`: a run's `href`, `target` and `rel`

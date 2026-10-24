@@ -152,12 +152,16 @@ over node ids:
   `apply_style`, so the web writes a link's `href` where it stood and compiles an
   overlay's margins against the viewport from its first placement. A box's
   `set_destination`, a run's `set_link` and an entry's `set_placeholder` each have their
-  `derive_` twin.
+  `derive_` twin. What an entry shows is read back through `read` (its `Edit`,
+  where the platform keeps one), and `composing` says whether its text is still the
+  reader's, as while an input method composes; a controlled content's `Controller`
+  reads both.
 - **The rest**: register event kinds, focus, observe sizes, report media, schedule on
   the clock, route, and reach the clipboard.
 
 A method with a default body is one a platform lacking what it reaches keeps (`listen`,
-the focus order and accessibility where the scene is read for them, `focus_visible`,
+`read` and `composing`, the focus order and accessibility where the scene is read for
+them, `focus_visible`,
 `lay_out`, `hydration`, the window title, routing, static routes, the clipboard): the
 default does nothing, or answers that nothing is there. Every behavior is required,
 each platform realizing it in its own form: a navigation commits under a view
@@ -204,6 +208,11 @@ toolkit's keeps the default, which does nothing.
   focus reach any control inside it and never hears it move between them; a pointer
   move does the same for enter and leave (`notify_pointer_moved`) over the hovered node
   the scene holds, which every platform moves.
+- **Reports are the spine's too.** A reader's change of a content a node controls
+  (`report`, a `Report::Change` saying whether the toolkit applied it) is answered by
+  the node's own `Controller` alone, with no climb: one controller per content, holding
+  the echo rule, the skip of an equal write, the composition hold and the disabled
+  answer once for every platform, which reports and applies the verdict.
 - **Events are the W3C's, typed.** A key event carries `keyboard-types`' `Key` and
   `Code`, and a pointer event `ui-events`' pointer vocabulary beside the platform's own
   positions: the pointer (`PointerInfo`: its id, `PointerId::PRIMARY` for the primary
@@ -516,46 +525,57 @@ re-export.
   binding is a derived read plus a handler write, on every facade, held once in a
   `Controlled<T>` that every shipped behavior, and a third party's, keeps its value in:
   `set`, `derive`, `handle` and `bind` for the behavior's own setters, `read` and `ask`
-  for its logic.
-- **A drawn entry reports an edit whole and applies its verdict.** A text entry whose
-  platform edits it with Skene's editing core (the terminal's today) reports a reader's
-  edit as one `Edit`, its text and its selection together, with whether its toolkit
-  shows it already, through `report_edit::<P>(node, &edit, applied)`, and is answered
-  with a `Verdict`: `Accept`, or `Replace` with the truth, which it shows. A truth that
-  gives no selection keeps the proposed one, mapped through the smallest edit from the
-  proposal to the truth by one rule in the shared half (`Edit::map_through`, counted in
-  grapheme clusters by `TextIndex::map_through` whatever unit the platform's protocol
-  counts in): an offset before the replaced range stays, one after it moves with it,
-  and one strictly inside it stays as many clusters into the replacement as it was,
-  clamped to the replacement's end, so a transform that rewrites the whole text, as
-  uppercasing does, keeps the caret where the reader typed. The control asks the
-  behavior (`Behavior::on_edit`; while it is disabled the behavior's held truth,
-  `Behavior::held_edit`, answers), refreshes its state and does not reconcile, so the
-  verdict is the only write-back and a vetoed or transformed edit leaves no step in the
-  core's undo history; the bound value's own write arrives later as its `Edit`
-  content, which the core takes as nothing where it equals what is shown. The entry
-  writes its text and its selection as that one content: a change of the text alone
-  leaves the selection to the platform, mapped through the change, and a change of the
-  selection places it in the text it is written with. `TextEntry` accepts an
-  edit the truth already holds (`Edit::holds`) without asking, asks the value and then
-  the selection otherwise, and accepts any edit of an entry whose value nothing derives.
-  The web's `<input>` and `<textarea>` report the same way, as a toolkit that applies
-  first: each `input` event is one applied `Edit`, its selection read in UTF-16 code
-  units and counted in clusters, and a `Replace` is repaired by the smallest splice
-  (`setRangeText`) with the selection mapped by the same rule, inside the event, so the
-  turn's write of the bound value finds it shown. While an input method composes
-  (`InputEvent.isComposing`) the repair waits, and a signal's write of the value or the
-  selection leaves the entry alone, until `compositionend` reports the entry's text
-  again and applies the verdict (an adopted entry holding text typed before the client
-  arrived is left alone the same way until hydration replays it as one more report of
-  its value and selection); a cut or a paste from the context menu splices the entry's
-  selection, the caret after the text it inserts, and dispatches the bubbling `input`
-  (`deleteByCut`, `insertFromPaste`) a browser's own would, so it reports the same way;
-  `Edit::holds` makes the report idempotent whichever of the two events an engine sends
-  last. A `TextSelection` counts grapheme clusters; where a platform's protocol counts
-  in code points or UTF-16 code units it names its unit (`Unit::CodePoint`,
-  `Unit::Utf16`) and converts through one index per text (`TextIndex`), as the web does
-  for its `<input>`.
+  for its logic. A content a behavior controls is registered in its `attach` through
+  `ControlHandle::register` as a `Controller` (the text entry's `Edit` today), which
+  holds both paths of the contract once, in the spine: the truth it reads, tracked by
+  its render effect, is written as the node's content whenever it changes, and a
+  reader's change of the content is reported through `report::<P>(node,
+  Report::Change { content, proposed, applied })` and answered by that controller alone,
+  whatever handlers the node or its ancestors carry. The controller keeps what the entry
+  shows (read once through `Realization::read`, then what it wrote and what was
+  reported) and decides over it in plain functions the spine unit-tests: a report made
+  while it writes, or one the truth already holds, asks nothing and stands; a write of
+  what is shown is skipped; while `Realization::composing` says the reader's text is
+  still the reader's, a write waits and a refused change stands with its repair held
+  back, until the report that ends the composition is answered with the truth; and a
+  disabled control asks nothing and answers with its truth. Registering a content
+  listens for its reports (`EventKind::Report`), so a platform installs what it needs
+  from the registration alone.
+- **A drawn entry reports an edit whole and applies its verdict.** A text entry
+  reports a reader's edit as one `Edit`, its text and its selection together, with
+  whether its toolkit shows it already, and a moved caret as the same change of the
+  text it shows, and is answered with a `Verdict`: `Accept`, or `Replace` with the
+  truth, which it shows. A truth that gives no selection keeps the proposed one, mapped
+  through the smallest edit from the proposal to the truth by one rule in the shared
+  half (`Edit::map_through`, counted in grapheme clusters by `TextIndex::map_through`
+  whatever unit the platform's protocol counts in): an offset before the replaced range
+  stays, one after it moves with it, and one strictly inside it stays as many clusters
+  into the replacement as it was, clamped to the replacement's end, so a transform that
+  rewrites the whole text, as uppercasing does, keeps the caret where the reader typed.
+  The verdict is the only write-back, so a vetoed or transformed edit leaves no step in
+  the core's undo history, and the truth's own write after it finds the truth shown.
+  `TextEntry`'s truth (`EditTruth`) is the text and the selection it derives, each
+  `None` where nothing derives it: a change asks for the text where it differs from the
+  truth's, then for the selection where it differs from the truth's, or from the one
+  shown where nothing derives it; a selection derived beside no derived text is placed
+  in the text shown; and an entry deriving neither keeps every change. The terminal's
+  entries, which edit with Skene's editing core, report before applying, the core's
+  `Arbiter` adapted onto `report`. The web's `<input>` and `<textarea>` report as a
+  toolkit that applies first: each `input` event and each `selectionchange` of the
+  focused entry is one applied `Edit`, its selection read in UTF-16 code units and
+  counted in clusters, and a `Replace` is repaired by the smallest splice
+  (`setRangeText`) with the selection mapped by the same rule, inside the event. While
+  an input method composes (`InputEvent.isComposing`), or an adopted entry holds text
+  typed before the client arrived, the web answers `composing` for the entry, so the
+  controller holds its writes and repairs back until `compositionend`, or hydration's
+  replay of that text, reports the entry again; a cut or a paste from the context menu
+  splices the entry's selection, the caret after the text it inserts, and dispatches
+  the bubbling `input` (`deleteByCut`, `insertFromPaste`) a browser's own would, so it
+  reports the same way; `Edit::holds` makes the report idempotent whichever of the two
+  events an engine sends last. A `TextSelection` counts grapheme clusters; where a
+  platform's protocol counts in code points or UTF-16 code units it names its unit
+  (`Unit::CodePoint`, `Unit::Utf16`) and converts through one index per text
+  (`TextIndex`), as the web does for its `<input>`.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,
@@ -1087,7 +1107,7 @@ engine, over the geometry it reports.
   Backspace removes the last code point of the cluster before the caret, as Chromium's
   does, an emoji sequence, a keycap or a flag whole; a forward deletion removes the
   cluster. A change to the text is proposed to the editor's `Arbiter` (`ControlledText`
-  over a truth and a handler, or a platform's adapter onto `report_edit`), an edit it
+  over a truth and a handler, or a platform's adapter onto `report`), an edit it
   refuses leaves no step, and a truth it answers instead is shown with the proposed
   selection mapped through it by `TextIndex::map_through`, cluster by cluster.
   `Binding::for_key` is the key table where Ctrl is the command key (Linux, Windows and
@@ -1461,12 +1481,13 @@ grows from beside a growing sibling, and the least a layout stretching or shrink
 leaves it, held to its own maximum and raised to its own minimum (its size
 outright where either is a fraction, which then bounds it). The value draws on the box's
 first row, where a browser centers it in a taller `<input>` (`ROADMAP.md`). Its edits
-are reported through `report_edit`, never applied ahead of the verdict, which it shows;
+are reported through `report`, never applied ahead of the verdict, which it shows;
 it takes its read-only state from the scene before each operation, and a key command
 lays the scene out first (`lay_out`).
 Its selection is the core's—an anchor beside the caret over the value,
-reported to the app as a `TextSelection` in clusters after every move and written from
-its bound signal, each index clamped into the value—so keyboard focus selects a field's
+reported after every move as a change of the `Edit` it shows, applied, its selection a
+`TextSelection` in clusters, and written from its bound signal, each index clamped into
+the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge
 scrolling the window on the frame clock, as a browser's does, and a drag after a
 double press extending by words), an edit replaces it, and it is drawn cluster by

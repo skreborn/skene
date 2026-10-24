@@ -92,7 +92,6 @@ impl FormElement {
   }
 
   /// Whether the element is a text entry's: a text `<input>` or a `<textarea>`.
-  #[cfg(not(skene_server))]
   #[inline(always)]
   pub(crate) fn is_text_entry(self) -> bool {
     matches!(

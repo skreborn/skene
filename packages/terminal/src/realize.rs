@@ -9,6 +9,7 @@ use skene_foundation::{
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
+  Content,
   ContentValue,
   ControlState,
   Definitions,
@@ -200,13 +201,7 @@ impl Realization for Terminal {
     match value {
       ContentValue::Text(text) => with_records(|records| records.write_text(node, text)),
       ContentValue::Edit(edit) => {
-        with_records(|records| {
-          records.write_entry(node, &edit.text);
-
-          if let Some(selection) = edit.selection {
-            records.place_entry_selection(node, selection);
-          }
-        });
+        with_records(|records| records.show_entry(node, edit));
         crate::field::report_selections();
       }
       ContentValue::Checked(_) | ContentValue::Range(_) | ContentValue::Choice(_) => {
@@ -254,6 +249,20 @@ impl Realization for Terminal {
         }
       }),
     }
+  }
+
+  fn read<R>(
+    node: NodeId,
+    content: Content,
+    read: impl FnOnce(ContentValue<'_>) -> R,
+  ) -> Option<R> {
+    if content != Content::Edit {
+      return None;
+    }
+
+    let shown = try_with_records(|records| records.field(node)?.shown()).flatten()?;
+
+    Some(read(ContentValue::Edit(&shown)))
   }
 
   fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {

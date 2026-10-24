@@ -2,7 +2,7 @@
 //! server's markup, and what the reader changed before the client arrived.
 
 use rustc_hash::FxHashMap;
-use skene_foundation::{ChoiceOption, Choices, NodeId, TextSelection};
+use skene_foundation::{ChoiceOption, Choices, Edit, NodeId, TextSelection};
 use wasm_bindgen::JsCast;
 use web_sys::{
   Document,
@@ -42,8 +42,8 @@ pub(super) struct Hydration {
   pub(super) mismatches: u32,
   /// What the reader changed before the client arrived, by control.
   pub(super) pending: Vec<(NodeId, Pending)>,
-  /// The adopted text entries holding text typed before the client arrived, which a
-  /// signal's write leaves alone until the text is reported.
+  /// The adopted text entries holding text typed before the client arrived, the
+  /// reader's until it is reported.
   pub(super) typed: Vec<web_sys::Node>,
   /// Whether each of the server's checkboxes and radios was checked as the hydration
   /// began, before the client wrote any.
@@ -120,22 +120,9 @@ pub(super) struct Page {
   pub(super) hydration: Option<Hydration>,
   /// The hydration marker the next element created takes.
   pub(super) markers: u32,
-  /// The text entry an input method is composing in, whose value a signal's write
-  /// leaves alone until the composition ends.
+  /// The text entry an input method is composing in, whose text is the reader's until
+  /// the composition ends.
   pub(super) composing: Option<web_sys::Node>,
-}
-
-impl Page {
-  /// Whether `element` is a text entry whose shown text is the reader's until it is
-  /// reported, which a signal's write leaves alone: an input method is composing in it,
-  /// or it holds text typed before the client arrived.
-  pub(super) fn holds_reader_text(&self, element: &web_sys::Node) -> bool {
-    self.composing.as_ref() == Some(element)
-      || self
-        .hydration
-        .as_ref()
-        .is_some_and(|hydration| hydration.typed.contains(element))
-  }
 }
 
 impl Sink for Page {
@@ -288,14 +275,8 @@ impl Sink for Page {
     }
   }
 
-  /// Sets the live value, keeping a focused entry's selection within it; an entry an
-  /// input method is composing in, or one holding text typed before the client arrived,
-  /// is left to the report of its text.
+  /// Sets the live value, keeping a focused entry's selection within it.
   fn set_value(&mut self, element: &web_sys::Node, value: &str) {
-    if self.holds_reader_text(element) {
-      return;
-    }
-
     let focused = self.document.active_element().as_ref().map(AsRef::as_ref) == Some(element);
     let length = u32::try_from(value.encode_utf16().count()).unwrap_or(u32::MAX);
 
@@ -327,16 +308,24 @@ impl Sink for Page {
     }
   }
 
-  /// Places the selection, leaving an entry an input method is composing in, or one
-  /// holding text typed before the client arrived, to the report of its text.
   fn select(&mut self, element: &web_sys::Node, selection: TextSelection) {
-    if self.holds_reader_text(element) {
-      return;
-    }
-
     if let Some(element) = element.dyn_ref::<Element>() {
       events::select(element, selection);
     }
+  }
+
+  fn shown(&self, element: &web_sys::Node) -> Option<Edit> {
+    events::Entry::of(element).map(|entry| entry.shown())
+  }
+
+  /// Whether an input method is composing in `element`, or it holds text typed before
+  /// the client arrived, which the reader's report of its text ends.
+  fn composing(&self, element: &web_sys::Node) -> bool {
+    self.composing.as_ref() == Some(element)
+      || self
+        .hydration
+        .as_ref()
+        .is_some_and(|hydration| hydration.typed.contains(element))
   }
 
   /// Rebuilds the options where they differ from those shown, then selects the chosen

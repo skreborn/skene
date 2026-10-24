@@ -3097,8 +3097,12 @@ pub skene_foundation::Content::Text
 impl core::clone::Clone for skene_foundation::Content
 pub fn skene_foundation::Content::clone(&self) -> skene_foundation::Content
 impl core::cmp::Eq for skene_foundation::Content
+impl core::cmp::Ord for skene_foundation::Content
+pub fn skene_foundation::Content::cmp(&self, &skene_foundation::Content) -> core::cmp::Ordering
 impl core::cmp::PartialEq for skene_foundation::Content
 pub fn skene_foundation::Content::eq(&self, &skene_foundation::Content) -> bool
+impl core::cmp::PartialOrd for skene_foundation::Content
+pub fn skene_foundation::Content::partial_cmp(&self, &skene_foundation::Content) -> core::option::Option<core::cmp::Ordering>
 impl core::fmt::Debug for skene_foundation::Content
 pub fn skene_foundation::Content::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_foundation::Content
@@ -3232,7 +3236,6 @@ pub skene_foundation::EventKind::Dismiss
 pub skene_foundation::EventKind::DoubleClick
 pub skene_foundation::EventKind::DragStart
 pub skene_foundation::EventKind::Drop
-pub skene_foundation::EventKind::Edit
 pub skene_foundation::EventKind::Focus
 pub skene_foundation::EventKind::KeyDown
 pub skene_foundation::EventKind::KeyUp
@@ -3242,8 +3245,8 @@ pub skene_foundation::EventKind::PointerEnter
 pub skene_foundation::EventKind::PointerLeave
 pub skene_foundation::EventKind::PointerMove
 pub skene_foundation::EventKind::PointerUp
+pub skene_foundation::EventKind::Report(skene_foundation::Content)
 pub skene_foundation::EventKind::Scroll
-pub skene_foundation::EventKind::SelectionChange
 pub skene_foundation::EventKind::Toggle
 pub skene_foundation::EventKind::Wheel
 impl core::clone::Clone for skene_foundation::EventKind
@@ -3428,7 +3431,6 @@ pub skene_foundation::Handler::Dismiss(alloc::rc::Rc<skene_foundation::PlainHand
 pub skene_foundation::Handler::DoubleClick(alloc::rc::Rc<skene_foundation::ClickHandler>)
 pub skene_foundation::Handler::DragStart(alloc::rc::Rc<skene_foundation::DragSource>)
 pub skene_foundation::Handler::Drop(alloc::rc::Rc<skene_foundation::DropHandler>)
-pub skene_foundation::Handler::Edit(alloc::rc::Rc<skene_foundation::EditHandler>)
 pub skene_foundation::Handler::Focus(alloc::rc::Rc<skene_foundation::PlainHandler>)
 pub skene_foundation::Handler::KeyDown(alloc::rc::Rc<skene_foundation::KeyHandler>)
 pub skene_foundation::Handler::KeyUp(alloc::rc::Rc<skene_foundation::KeyHandler>)
@@ -3438,8 +3440,8 @@ pub skene_foundation::Handler::PointerEnter(alloc::rc::Rc<skene_foundation::Plai
 pub skene_foundation::Handler::PointerLeave(alloc::rc::Rc<skene_foundation::PlainHandler>)
 pub skene_foundation::Handler::PointerMove(alloc::rc::Rc<skene_foundation::PointerHandler>)
 pub skene_foundation::Handler::PointerUp(alloc::rc::Rc<skene_foundation::PointerHandler>)
+pub skene_foundation::Handler::Report(skene_foundation::Content, alloc::rc::Rc<skene_foundation::ReportHandler>)
 pub skene_foundation::Handler::Scroll(alloc::rc::Rc<skene_foundation::ScrollHandler>)
-pub skene_foundation::Handler::SelectionChange(alloc::rc::Rc<skene_foundation::SelectionHandler>)
 pub skene_foundation::Handler::Toggle(alloc::rc::Rc<skene_foundation::ToggleHandler>)
 pub skene_foundation::Handler::Wheel(alloc::rc::Rc<skene_foundation::WheelHandler>)
 impl skene_foundation::Handler
@@ -4027,6 +4029,19 @@ pub fn skene_foundation::PropertyKey<P>::hash<__H: core::hash::Hasher>(&self, &m
 impl<P: core::marker::Copy> core::marker::Copy for skene_foundation::PropertyKey<P>
 impl<P> core::convert::From<skene_foundation::PropertyKey<P>> for skene_foundation::StyleProperty<P>
 pub fn skene_foundation::StyleProperty<P>::from(skene_foundation::PropertyKey<P>) -> Self
+pub enum skene_foundation::Report<'a>
+pub skene_foundation::Report::Change
+pub skene_foundation::Report::Change::applied: bool
+pub skene_foundation::Report::Change::content: skene_foundation::Content
+pub skene_foundation::Report::Change::proposed: skene_foundation::ContentValue<'a>
+impl<'a> core::clone::Clone for skene_foundation::Report<'a>
+pub fn skene_foundation::Report<'a>::clone(&self) -> skene_foundation::Report<'a>
+impl<'a> core::cmp::PartialEq for skene_foundation::Report<'a>
+pub fn skene_foundation::Report<'a>::eq(&self, &skene_foundation::Report<'a>) -> bool
+impl<'a> core::fmt::Debug for skene_foundation::Report<'a>
+pub fn skene_foundation::Report<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<'a> core::marker::Copy for skene_foundation::Report<'a>
+impl<'a> core::marker::StructuralPartialEq for skene_foundation::Report<'a>
 pub enum skene_foundation::Resolved<N: skene_foundation::Scalar>
 pub skene_foundation::Resolved::Color(skene_foundation::Color)
 pub skene_foundation::Resolved::Dimension(skene_foundation::Dimension<N>)
@@ -4491,7 +4506,6 @@ pub fn skene_foundation::Activate::attach(&self, &skene_foundation::ControlHandl
 pub fn skene_foundation::Activate::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Activate::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Activate::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Activate::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Activate::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Activate::lines(&self) -> u16
 pub fn skene_foundation::Activate::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -4500,11 +4514,9 @@ pub fn skene_foundation::Activate::native(&self) -> core::option::Option<skene_f
 pub fn skene_foundation::Activate::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Activate::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Activate::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Activate::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -4585,6 +4597,21 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::AnyView<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::AnyView<P>::into_any(self) -> Self
 pub fn skene_foundation::AnyView<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::Asked
+pub skene_foundation::Asked::selection: core::option::Option<skene_foundation::TextSelection>
+pub skene_foundation::Asked::text: core::option::Option<alloc::rc::Rc<str>>
+impl skene_foundation::Asked
+pub const fn skene_foundation::Asked::is_empty(&self) -> bool
+impl core::clone::Clone for skene_foundation::Asked
+pub fn skene_foundation::Asked::clone(&self) -> skene_foundation::Asked
+impl core::cmp::Eq for skene_foundation::Asked
+impl core::cmp::PartialEq for skene_foundation::Asked
+pub fn skene_foundation::Asked::eq(&self, &skene_foundation::Asked) -> bool
+impl core::default::Default for skene_foundation::Asked
+pub fn skene_foundation::Asked::default() -> skene_foundation::Asked
+impl core::fmt::Debug for skene_foundation::Asked
+pub fn skene_foundation::Asked::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::Asked
 pub struct skene_foundation::AspectRatio(pub f32)
 impl skene_foundation::AspectRatio
 pub const fn skene_foundation::AspectRatio::is_degenerate(self) -> bool
@@ -4898,7 +4925,6 @@ pub fn skene_foundation::Collection<C>::attach(&self, &skene_foundation::Control
 pub fn skene_foundation::Collection<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Collection<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Collection<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Collection<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Collection<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Collection<C>::lines(&self) -> u16
 pub fn skene_foundation::Collection<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -4907,11 +4933,9 @@ pub fn skene_foundation::Collection<C>::native(&self) -> core::option::Option<sk
 pub fn skene_foundation::Collection<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Collection<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Collection<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Collection<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -5213,6 +5237,8 @@ pub struct skene_foundation::ContentKey<T: skene_foundation::ContentType>
 impl<T: skene_foundation::ContentType> skene_foundation::ContentKey<T>
 pub const fn skene_foundation::ContentKey<T>::content(&self) -> skene_foundation::Content
 pub fn skene_foundation::ContentKey<T>::erase<'a>(&self, &'a T) -> skene_foundation::ContentValue<'a>
+pub fn skene_foundation::ContentKey<T>::own(&self, skene_foundation::ContentValue<'_>) -> core::option::Option<T>
+pub fn skene_foundation::ContentKey<T>::read<P: skene_foundation::Realization>(&self, skene_foundation::NodeId) -> core::option::Option<T>
 pub fn skene_foundation::ContentKey<T>::write<P: skene_foundation::Realization>(&self, skene_foundation::NodeId, &T)
 impl<T: skene_foundation::ContentType> core::clone::Clone for skene_foundation::ContentKey<T>
 pub fn skene_foundation::ContentKey<T>::clone(&self) -> Self
@@ -5403,6 +5429,7 @@ pub fn skene_foundation::ControlHandle<P>::name(&self) -> core::option::Option<a
 pub fn skene_foundation::ControlHandle<P>::name_read(&self) -> core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>
 pub const fn skene_foundation::ControlHandle<P>::node(&self) -> skene_foundation::NodeId
 pub fn skene_foundation::ControlHandle<P>::refresh(&self)
+pub fn skene_foundation::ControlHandle<P>::register(&self, skene_foundation::Controller)
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::ControlHandle<P>
 pub fn skene_foundation::ControlHandle<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::ControlState
@@ -5443,6 +5470,13 @@ impl<T: 'static> core::default::Default for skene_foundation::Controlled<T>
 pub fn skene_foundation::Controlled<T>::default() -> Self
 impl<T: 'static> core::fmt::Debug for skene_foundation::Controlled<T>
 pub fn skene_foundation::Controlled<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::Controller
+impl skene_foundation::Controller
+pub fn skene_foundation::Controller::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_foundation::Controller::new(impl core::ops::function::Fn() -> skene_foundation::EditTruth + 'static, impl core::ops::function::Fn(&skene_foundation::Asked) + 'static) -> Self
+pub fn skene_foundation::Controller::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+impl core::fmt::Debug for skene_foundation::Controller
+pub fn skene_foundation::Controller::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Declared<C>(_)
 impl<C: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> skene_foundation::Shape for skene_foundation::Declared<C>
 pub type skene_foundation::Declared<C>::Of<T: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> = core::option::Option<skene_foundation::Conditional<skene_foundation::Leaf<T>, C>>
@@ -5519,6 +5553,22 @@ impl core::hash::Hash for skene_foundation::Edit
 pub fn skene_foundation::Edit::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::StructuralPartialEq for skene_foundation::Edit
 impl skene_foundation::ContentType for skene_foundation::Edit
+pub struct skene_foundation::EditTruth
+pub skene_foundation::EditTruth::selection: core::option::Option<skene_foundation::TextSelection>
+pub skene_foundation::EditTruth::text: core::option::Option<alloc::rc::Rc<str>>
+impl skene_foundation::EditTruth
+pub const fn skene_foundation::EditTruth::is_free(&self) -> bool
+pub const fn skene_foundation::EditTruth::new(core::option::Option<alloc::rc::Rc<str>>, core::option::Option<skene_foundation::TextSelection>) -> Self
+impl core::clone::Clone for skene_foundation::EditTruth
+pub fn skene_foundation::EditTruth::clone(&self) -> skene_foundation::EditTruth
+impl core::cmp::Eq for skene_foundation::EditTruth
+impl core::cmp::PartialEq for skene_foundation::EditTruth
+pub fn skene_foundation::EditTruth::eq(&self, &skene_foundation::EditTruth) -> bool
+impl core::default::Default for skene_foundation::EditTruth
+pub fn skene_foundation::EditTruth::default() -> skene_foundation::EditTruth
+impl core::fmt::Debug for skene_foundation::EditTruth
+pub fn skene_foundation::EditTruth::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_foundation::EditTruth
 pub struct skene_foundation::Enhance<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Enhance<P>
 pub const fn skene_foundation::Enhance<P>::new(skene_reactive::signal::ReadSignal<bool>) -> Self
@@ -6415,7 +6465,6 @@ pub fn skene_foundation::Member<C>::attach(&self, &skene_foundation::ControlHand
 pub fn skene_foundation::Member<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Member<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Member<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Member<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Member<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Member<C>::lines(&self) -> u16
 pub fn skene_foundation::Member<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6424,11 +6473,9 @@ pub fn skene_foundation::Member<C>::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::Member<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Member<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Member<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Member<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -6546,7 +6593,6 @@ pub fn skene_foundation::NativePicker::attach(&self, &skene_foundation::ControlH
 pub fn skene_foundation::NativePicker::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::NativePicker::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::NativePicker::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::NativePicker::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::NativePicker::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::NativePicker::lines(&self) -> u16
 pub fn skene_foundation::NativePicker::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6555,11 +6601,9 @@ pub fn skene_foundation::NativePicker::native(&self) -> core::option::Option<ske
 pub fn skene_foundation::NativePicker::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::NativePicker::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::NativePicker::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::NativePicker::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -6963,7 +7007,6 @@ pub fn skene_foundation::Popup::attach(&self, &skene_foundation::ControlHandle<P
 pub fn skene_foundation::Popup::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Popup::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Popup::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Popup::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Popup::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Popup::lines(&self) -> u16
 pub fn skene_foundation::Popup::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -6972,11 +7015,9 @@ pub fn skene_foundation::Popup::native(&self) -> core::option::Option<skene_foun
 pub fn skene_foundation::Popup::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Popup::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Popup::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Popup::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -7528,7 +7569,6 @@ pub fn skene_foundation::Slider::attach(&self, &skene_foundation::ControlHandle<
 pub fn skene_foundation::Slider::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Slider::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Slider::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Slider::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Slider::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Slider::lines(&self) -> u16
 pub fn skene_foundation::Slider::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -7537,11 +7577,9 @@ pub fn skene_foundation::Slider::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Slider::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Slider::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Slider::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Slider::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -7792,7 +7830,6 @@ pub fn skene_foundation::TextEntry::attach(&self, &skene_foundation::ControlHand
 pub fn skene_foundation::TextEntry::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::TextEntry::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::TextEntry::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::TextEntry::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::TextEntry::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::TextEntry::lines(&self) -> u16
 pub fn skene_foundation::TextEntry::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -7801,11 +7838,9 @@ pub fn skene_foundation::TextEntry::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::TextEntry::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::TextEntry::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::TextEntry::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::TextEntry::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -7897,7 +7932,6 @@ pub fn skene_foundation::Toggle::attach(&self, &skene_foundation::ControlHandle<
 pub fn skene_foundation::Toggle::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Toggle::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Toggle::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Toggle::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Toggle::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Toggle::lines(&self) -> u16
 pub fn skene_foundation::Toggle::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -7906,11 +7940,9 @@ pub fn skene_foundation::Toggle::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Toggle::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Toggle::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Toggle::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Toggle::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8215,7 +8247,6 @@ pub fn skene_foundation::Behavior::attach(&self, &skene_foundation::ControlHandl
 pub fn skene_foundation::Behavior::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Behavior::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Behavior::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Behavior::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Behavior::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Behavior::lines(&self) -> u16
 pub fn skene_foundation::Behavior::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8224,11 +8255,9 @@ pub fn skene_foundation::Behavior::native(&self) -> core::option::Option<skene_f
 pub fn skene_foundation::Behavior::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Behavior::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Behavior::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Behavior::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Behavior::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Behavior::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Behavior::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Behavior::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8240,7 +8269,6 @@ pub fn skene_foundation::Collection<C>::attach(&self, &skene_foundation::Control
 pub fn skene_foundation::Collection<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Collection<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Collection<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Collection<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Collection<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Collection<C>::lines(&self) -> u16
 pub fn skene_foundation::Collection<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8249,11 +8277,9 @@ pub fn skene_foundation::Collection<C>::native(&self) -> core::option::Option<sk
 pub fn skene_foundation::Collection<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Collection<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Collection<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Collection<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Collection<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Collection<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8265,7 +8291,6 @@ pub fn skene_foundation::Member<C>::attach(&self, &skene_foundation::ControlHand
 pub fn skene_foundation::Member<C>::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Member<C>::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Member<C>::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Member<C>::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Member<C>::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Member<C>::lines(&self) -> u16
 pub fn skene_foundation::Member<C>::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8274,11 +8299,9 @@ pub fn skene_foundation::Member<C>::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::Member<C>::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Member<C>::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Member<C>::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Member<C>::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Member<C>::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Member<C>::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8290,7 +8313,6 @@ pub fn skene_foundation::Activate::attach(&self, &skene_foundation::ControlHandl
 pub fn skene_foundation::Activate::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Activate::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Activate::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Activate::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Activate::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Activate::lines(&self) -> u16
 pub fn skene_foundation::Activate::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8299,11 +8321,9 @@ pub fn skene_foundation::Activate::native(&self) -> core::option::Option<skene_f
 pub fn skene_foundation::Activate::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Activate::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Activate::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Activate::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Activate::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Activate::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8315,7 +8335,6 @@ pub fn skene_foundation::NativePicker::attach(&self, &skene_foundation::ControlH
 pub fn skene_foundation::NativePicker::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::NativePicker::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::NativePicker::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::NativePicker::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::NativePicker::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::NativePicker::lines(&self) -> u16
 pub fn skene_foundation::NativePicker::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8324,11 +8343,9 @@ pub fn skene_foundation::NativePicker::native(&self) -> core::option::Option<ske
 pub fn skene_foundation::NativePicker::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::NativePicker::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::NativePicker::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::NativePicker::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::NativePicker::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::NativePicker::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8340,7 +8357,6 @@ pub fn skene_foundation::Popup::attach(&self, &skene_foundation::ControlHandle<P
 pub fn skene_foundation::Popup::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Popup::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Popup::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Popup::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Popup::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Popup::lines(&self) -> u16
 pub fn skene_foundation::Popup::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8349,11 +8365,9 @@ pub fn skene_foundation::Popup::native(&self) -> core::option::Option<skene_foun
 pub fn skene_foundation::Popup::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Popup::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Popup::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Popup::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Popup::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Popup::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8365,7 +8379,6 @@ pub fn skene_foundation::Slider::attach(&self, &skene_foundation::ControlHandle<
 pub fn skene_foundation::Slider::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Slider::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Slider::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Slider::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Slider::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Slider::lines(&self) -> u16
 pub fn skene_foundation::Slider::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8374,11 +8387,9 @@ pub fn skene_foundation::Slider::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Slider::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Slider::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Slider::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Slider::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Slider::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8390,7 +8401,6 @@ pub fn skene_foundation::TextEntry::attach(&self, &skene_foundation::ControlHand
 pub fn skene_foundation::TextEntry::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::TextEntry::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::TextEntry::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::TextEntry::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::TextEntry::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::TextEntry::lines(&self) -> u16
 pub fn skene_foundation::TextEntry::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8399,11 +8409,9 @@ pub fn skene_foundation::TextEntry::native(&self) -> core::option::Option<skene_
 pub fn skene_foundation::TextEntry::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::TextEntry::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::TextEntry::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::TextEntry::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::TextEntry::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::TextEntry::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -8415,7 +8423,6 @@ pub fn skene_foundation::Toggle::attach(&self, &skene_foundation::ControlHandle<
 pub fn skene_foundation::Toggle::drag_axes(&self) -> core::option::Option<skene_foundation::DragAxes>
 pub fn skene_foundation::Toggle::focus_order(&self) -> core::option::Option<skene_foundation::FocusOrder>
 pub fn skene_foundation::Toggle::group(&self) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Toggle::held_edit(&self) -> core::option::Option<skene_foundation::Edit>
 pub fn skene_foundation::Toggle::label_placement(&self) -> skene_foundation::LabelPlacement
 pub fn skene_foundation::Toggle::lines(&self) -> u16
 pub fn skene_foundation::Toggle::listens(&self) -> &'static [skene_foundation::EventKind]
@@ -8424,11 +8431,9 @@ pub fn skene_foundation::Toggle::native(&self) -> core::option::Option<skene_fou
 pub fn skene_foundation::Toggle::on_blur(&self, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_change(&self, &str, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_click(&self, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Toggle::on_edit(&self, &skene_foundation::Edit, bool, &skene_foundation::ControlHandle<P>) -> skene_foundation::Verdict
 pub fn skene_foundation::Toggle::on_key(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_key_up(&self, &skene_foundation::KeyEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::on_pointer(&self, skene_foundation::PointerPhase, &skene_foundation::PointerEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
-pub fn skene_foundation::Toggle::on_selection_change(&self, skene_foundation::TextSelection, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_toggle(&self, bool, &skene_foundation::ControlHandle<P>)
 pub fn skene_foundation::Toggle::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle<P>) -> skene_foundation::Prevent
 pub fn skene_foundation::Toggle::reconcile(&self, &skene_foundation::ControlHandle<P>)
@@ -9772,6 +9777,7 @@ pub fn skene_foundation::Realization::chosen_scheme() -> core::option::Option<sk
 pub fn skene_foundation::Realization::clipboard(skene_foundation::ClipboardAction)
 pub fn skene_foundation::Realization::clipboard_availability(skene_foundation::ClipboardAction) -> skene_foundation::Availability
 pub fn skene_foundation::Realization::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
+pub fn skene_foundation::Realization::composing(skene_foundation::NodeId) -> bool
 pub fn skene_foundation::Realization::create(skene_foundation::NodeId, &skene_foundation::NodeSpec) -> bool
 pub fn skene_foundation::Realization::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Realization::define_tokens(skene_foundation::TokenScope, &skene_foundation::Definitions<Self::TokenValue>)
@@ -9787,6 +9793,7 @@ pub fn skene_foundation::Realization::media() -> skene_foundation::MediaSignals<
 pub fn skene_foundation::Realization::observe_size(skene_foundation::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::Size<Self::Scalar>)>) -> skene_foundation::Observation
 pub fn skene_foundation::Realization::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)
 pub fn skene_foundation::Realization::push_path(&str)
+pub fn skene_foundation::Realization::read<R>(skene_foundation::NodeId, skene_foundation::Content, impl core::ops::function::FnOnce(skene_foundation::ContentValue<'_>) -> R) -> core::option::Option<R>
 pub fn skene_foundation::Realization::record_static_routes(alloc::vec::Vec<alloc::string::String>)
 pub fn skene_foundation::Realization::relocate(skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::Realization::remove(skene_foundation::NodeId, skene_foundation::NodeId)
@@ -10296,11 +10303,10 @@ pub fn skene_foundation::notify_dismiss<P: skene_foundation::Realization>(skene_
 pub fn skene_foundation::notify_focus_moved<P: skene_foundation::Realization>(core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::notify_pointer_moved<P: skene_foundation::Realization>(core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::notify_scroll<P: skene_foundation::Realization>(skene_foundation::NodeId, &skene_foundation::ScrollEvent)
-pub fn skene_foundation::notify_selection_change<P: skene_foundation::Realization>(skene_foundation::NodeId, skene_foundation::TextSelection)
 pub fn skene_foundation::notify_toggle<P: skene_foundation::Realization>(skene_foundation::NodeId, bool)
 pub fn skene_foundation::paint(&peniko::brush::Brush) -> vello_common::paint::PaintType
 pub fn skene_foundation::reconcile<P: skene_foundation::Realization, T, I, K>(skene_foundation::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
-pub fn skene_foundation::report_edit<P: skene_foundation::Realization>(skene_foundation::NodeId, &skene_foundation::Edit, bool) -> skene_foundation::Verdict
+pub fn skene_foundation::report<P: skene_foundation::Realization>(skene_foundation::NodeId, skene_foundation::Report<'_>) -> skene_foundation::Verdict
 pub fn skene_foundation::reset_thread<P: skene_foundation::Realization>()
 pub fn skene_foundation::start_drag<P: skene_foundation::Realization>(skene_foundation::NodeId) -> core::option::Option<(skene_foundation::NodeId, skene_foundation::DragData)>
 pub type skene_foundation::Annotated<P, T> = skene_foundation::Value<T, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>
@@ -10324,7 +10330,6 @@ pub type skene_foundation::DeclaredRunStyle<P> = skene_foundation::RunStyle<sken
 pub type skene_foundation::Definition<T, N> = skene_foundation::Conditional<skene_foundation::StaticLeaf<T>, skene_foundation::Media<N>>
 pub type skene_foundation::DragSource = dyn core::ops::function::Fn() -> skene_foundation::DragData
 pub type skene_foundation::DropHandler = dyn core::ops::function::Fn(&skene_foundation::DragData, skene_foundation::DropPhase) -> bool
-pub type skene_foundation::EditHandler = dyn core::ops::function::Fn(&skene_foundation::Edit, bool) -> skene_foundation::Verdict
 pub type skene_foundation::FrameEntry<N, X> = (skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::SlotLeaf<N, X>)
 pub type skene_foundation::KeyHandler = dyn core::ops::function::Fn(&skene_foundation::KeyEvent) -> skene_foundation::Prevent
 pub type skene_foundation::Listbox = skene_foundation::Collection<skene_foundation::ListboxPolicy>
@@ -10341,10 +10346,10 @@ pub type skene_foundation::RadioGroup = skene_foundation::Collection<skene_found
 pub type skene_foundation::RadioGroupContext = skene_foundation::CollectionContext<skene_foundation::RadioPolicy>
 pub type skene_foundation::RecordEntry<N, X> = (skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::RecordValue<N, X>)
 pub type skene_foundation::RecordValue<N, X> = skene_foundation::StaticValue<skene_foundation::SlotValue<N, X>, skene_foundation::Condition<N>>
+pub type skene_foundation::ReportHandler = dyn core::ops::function::Fn(skene_foundation::ContentValue<'_>, bool) -> skene_foundation::Verdict
 pub type skene_foundation::RunKeyframe<P> = skene_foundation::RunStyle<skene_foundation::Keyframe, <P as skene_foundation::Realization>::StyleExt>
 pub type skene_foundation::RunSlot<X> = skene_foundation::DerivedSlot<skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>, skene_foundation::RunValue<X>>
 pub type skene_foundation::ScrollHandler = dyn core::ops::function::Fn(&skene_foundation::ScrollEvent)
-pub type skene_foundation::SelectionHandler = dyn core::ops::function::Fn(skene_foundation::TextSelection)
 pub type skene_foundation::SlotLeaf<N, X> = skene_foundation::StaticLeaf<skene_foundation::SlotValue<N, X>>
 pub type skene_foundation::StaticBoxStyle<P> = skene_foundation::BoxStyle<<P as skene_foundation::Realization>::Scalar, skene_foundation::Static<skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>, <P as skene_foundation::Realization>::StyleExt>
 pub type skene_foundation::StaticRunStyle<P> = skene_foundation::RunStyle<skene_foundation::Static<skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>, <P as skene_foundation::Realization>::StyleExt>

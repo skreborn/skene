@@ -588,7 +588,7 @@ where
         });
 
         if let Some(entry) = entry {
-          entry.report(node, false);
+          entry.report(node);
         }
       }
     }

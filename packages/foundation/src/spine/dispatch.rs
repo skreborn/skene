@@ -7,9 +7,8 @@
 //! stops at the node whose handlers prevented bubbling. A pointer event reaches each
 //! node local to that node's own box, measured by the platform. A notification runs the
 //! node's own handlers only, and a focus move notifies each node whose subtree it
-//! enters or leaves. A report of an edit runs the node's own handlers too and folds
-//! their answers into the [`Verdict`] the platform applies. Every dispatch runs in one
-//! batch, and no borrow of the scene is held while a handler runs.
+//! enters or leaves. Every dispatch runs in one batch, and no borrow of the scene is held
+//! while a handler runs.
 
 use skene_reactive::batch;
 use smallvec::SmallVec;
@@ -18,16 +17,12 @@ use super::{Handler, NodeId, Realization, Scene};
 use crate::spine::{
   ClickEvent,
   ClickHandler,
-  Edit,
-  EditHandler,
   KeyEvent,
   PlainHandler,
   PointerEvent,
   Prevent,
   Prevented,
   ScrollEvent,
-  TextSelection,
-  Verdict,
   WheelEvent,
   handler::{HandlerSet, Pick, Registered},
   task::run_handler,
@@ -263,44 +258,6 @@ pub fn notify_change<P: Realization>(node: NodeId, value: &str) {
   );
 }
 
-/// Notifies `node` of its new selection.
-pub fn notify_selection_change<P: Realization>(node: NodeId, selection: TextSelection) {
-  notify::<P, _>(
-    node,
-    |handler| match handler {
-      Handler::SelectionChange(run) => Some(run),
-      _ => None,
-    },
-    |handler| handler(selection),
-  );
-}
-
-/// Reports a reader's edit of the drawn text entry `node`, its text and selection as one,
-/// and answers with the verdict the platform applies: `applied` says whether its toolkit
-/// shows the edit already.
-///
-/// The node's edit handlers run in registration order, and the last answering
-/// [`Verdict::Replace`] decides; with none answering it, or none at all, the edit stands
-/// as [`Verdict::Accept`]. The verdict is the only write-back: a platform applies it, and
-/// a bound value's write reaching it later as the same text changes nothing.
-pub fn report_edit<P: Realization>(node: NodeId, edit: &Edit, applied: bool) -> Verdict {
-  batch(|| {
-    let (handlers, _) = snapshot::<P, EditHandler>(
-      node,
-      all(|handler| match handler {
-        Handler::Edit(run) => Some(run),
-        _ => None,
-      }),
-    );
-
-    Verdict::fold(
-      handlers
-        .iter()
-        .map(|handler| run_handler(handler.owner(), || handler(edit, applied))),
-    )
-  })
-}
-
 /// Notifies `node` of its new checked state.
 pub fn notify_toggle<P: Realization>(node: NodeId, checked: bool) {
   notify::<P, _>(
@@ -414,19 +371,6 @@ impl Prevented {
   }
 }
 
-impl Verdict {
-  /// What an edit's handlers answer together, from their verdicts in order: the last
-  /// replacing the edit decides, and the edit stands where none does.
-  pub(in crate::spine) fn fold(verdicts: impl IntoIterator<Item = Self>) -> Self {
-    verdicts
-      .into_iter()
-      .fold(Self::Accept, |verdict, next| match next {
-        Self::Accept => verdict,
-        replaced @ Self::Replace(_) => replaced,
-      })
-  }
-}
-
 impl HandlerSet {
   /// The handlers a click runs on one node: its acting ones, then the rest, ending the
   /// climb nowhere.
@@ -524,15 +468,12 @@ mod tests {
     Bubbling,
     ClickEvent,
     ClickHandler,
-    Edit,
     Handler,
     NodeId,
     PointerButton,
     PointerEvent,
     Prevent,
     Prevented,
-    TextSelection,
-    Verdict,
     scene::Held,
   };
 
@@ -845,35 +786,5 @@ mod tests {
     assert_eq!(prevented, Prevented::default());
     assert_eq!(*seen.borrow(), [("inner", 5., 5.), ("outer", 25., 25.)]);
     assert_eq!(*prepared.borrow(), ["inner", "outer"]);
-  }
-
-  /// An edit is answered by its handlers together, the last replacing it deciding.
-  #[test]
-  fn report_edit_folds_its_handlers_verdicts() {
-    let first = Edit::new("A");
-    let last = Edit::new("B").with_selection(TextSelection::collapsed(1));
-
-    assert_eq!(
-      Verdict::fold([
-        Verdict::Replace(first.clone()),
-        Verdict::Replace(last.clone()),
-        Verdict::Accept,
-      ]),
-      Verdict::Replace(last)
-    );
-    assert_eq!(
-      Verdict::fold([Verdict::Accept, Verdict::Replace(first.clone())]),
-      Verdict::Replace(first)
-    );
-  }
-
-  /// An edit no handler answers stands.
-  #[test]
-  fn report_edit_accepts_where_no_handler_acts() {
-    assert_eq!(Verdict::fold([]), Verdict::Accept);
-    assert_eq!(
-      Verdict::fold([Verdict::Accept, Verdict::Accept]),
-      Verdict::Accept
-    );
   }
 }

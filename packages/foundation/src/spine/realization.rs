@@ -6,6 +6,7 @@ use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   CompiledStyle,
+  Content,
   ContentValue,
   ControlState,
   Definition,
@@ -287,6 +288,28 @@ pub trait Realization: Copy + Default + 'static {
   /// an overlay's first [`Placement`](crate::Content::Placement) are written between
   /// its [`create`](Self::create) and its [`apply_style`](Self::apply_style).
   fn write(node: NodeId, value: ContentValue<'_>);
+
+  /// Runs `read` with what `node` shows of `content` right now, as the reader sees it:
+  /// an entry's text with its selection; `None`, the default, where the platform keeps
+  /// no record of the content to read.
+  #[inline(always)]
+  fn read<R>(
+    _node: NodeId,
+    _content: Content,
+    _read: impl FnOnce(ContentValue<'_>) -> R,
+  ) -> Option<R> {
+    None
+  }
+
+  /// Whether the reader's text in the entry `node` is the reader's until it is reported,
+  /// as while an input method composes in it: a write of its content waits, and so does
+  /// a repair, until the report that ends it. `false`, the default, for a platform where
+  /// nothing composes.
+  #[inline(always)]
+  #[must_use]
+  fn composing(_node: NodeId) -> bool {
+    false
+  }
 
   /// Opens or closes an overlay, placed as its last
   /// [`Placement`](crate::Content::Placement) content says: an open overlay placed

@@ -6,14 +6,14 @@ use skene_reactive::Owner;
 
 use crate::spine::{
   ClickHandler,
+  Content,
+  ContentValue,
   DragSource,
   DropHandler,
-  Edit,
   EventKind,
   KeyHandler,
   PointerHandler,
   ScrollEvent,
-  TextSelection,
   Verdict,
   WheelHandler,
 };
@@ -26,11 +26,9 @@ pub type ScrollHandler = dyn Fn(&ScrollEvent);
 pub type ChangeHandler = dyn Fn(&str);
 /// A toggle handler: a control's new checked state.
 pub type ToggleHandler = dyn Fn(bool);
-/// A selection handler: a text entry's new selection.
-pub type SelectionHandler = dyn Fn(TextSelection);
-/// An edit handler: a reader's edit of a drawn text entry, with whether its toolkit shows
-/// it already, answered with the verdict on it.
-pub type EditHandler = dyn Fn(&Edit, bool) -> Verdict;
+/// A report handler: a reader's change of a content the node controls, with whether its
+/// toolkit shows the change already, answered with the verdict on it.
+pub type ReportHandler = dyn Fn(ContentValue<'_>, bool) -> Verdict;
 
 /// A handler for one kind of event, as a node carries it.
 ///
@@ -71,10 +69,8 @@ pub enum Handler {
   Scroll(Rc<ScrollHandler>),
   /// Runs with a control's new textual value.
   Change(Rc<ChangeHandler>),
-  /// Runs with a text entry's new selection.
-  SelectionChange(Rc<SelectionHandler>),
-  /// Answers a reader's edit of a drawn text entry.
-  Edit(Rc<EditHandler>),
+  /// Answers a reader's change of the content the node controls: its controller's.
+  Report(Content, Rc<ReportHandler>),
   /// Runs with a control's new checked state.
   Toggle(Rc<ToggleHandler>),
   /// Runs when the platform dismisses the overlay.
@@ -107,8 +103,7 @@ impl Handler {
       Self::Wheel(_) => EventKind::Wheel,
       Self::Scroll(_) => EventKind::Scroll,
       Self::Change(_) => EventKind::Change,
-      Self::SelectionChange(_) => EventKind::SelectionChange,
-      Self::Edit(_) => EventKind::Edit,
+      Self::Report(content, _) => EventKind::Report(*content),
       Self::Toggle(_) => EventKind::Toggle,
       Self::Dismiss(_) => EventKind::Dismiss,
       Self::DragStart(_) => EventKind::DragStart,
@@ -188,6 +183,21 @@ impl HandlerSet {
         run: Rc::clone(run),
       })
     })
+  }
+
+  /// The handler answering a reader's change of `content`: the last registered for it.
+  pub(in crate::spine) fn reporter(&self, content: Content) -> Option<Registered<ReportHandler>> {
+    self
+      .entries
+      .iter()
+      .rev()
+      .find_map(|(owner, handler)| match handler {
+        Handler::Report(reported, run) if *reported == content => Some(Registered {
+          owner: *owner,
+          run: Rc::clone(run),
+        }),
+        _ => None,
+      })
   }
 
   /// Whether `pick` takes any handler.

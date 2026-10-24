@@ -67,15 +67,20 @@ pub use condition::{
 };
 pub use condition_tree::{ConditionShape, ConditionTree};
 pub use content::{
+  Asked,
   ChoiceOption,
   Choices,
   Content,
   ContentKey,
   ContentType,
   ContentValue,
+  Controller,
+  EditTruth,
   OverlayPlacement,
   Range,
+  Report,
   contents,
+  report,
 };
 pub use control::{ControlFacts, ControlState, NativeElement, Part};
 pub use derived::{derived, empty, reconcile};
@@ -96,9 +101,7 @@ pub use dispatch::{
   notify_focus_moved,
   notify_pointer_moved,
   notify_scroll,
-  notify_selection_change,
   notify_toggle,
-  report_edit,
 };
 pub use drag::{
   DragData,
@@ -134,12 +137,11 @@ pub use extension::{NoProperty, NoValue, StyleExtension};
 pub use fingerprint::Fingerprint;
 pub use handler::{
   ChangeHandler,
-  EditHandler,
   Handler,
   PlainHandler,
   Registered,
+  ReportHandler,
   ScrollHandler,
-  SelectionHandler,
   ToggleHandler,
 };
 pub use keyboard_types::{Code, Key, NamedKey};

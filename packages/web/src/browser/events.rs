@@ -16,6 +16,8 @@ use skene_foundation::{
   Axes,
   ClickEvent,
   Code,
+  Content,
+  ContentValue,
   Edit,
   EventKind,
   Key,
@@ -31,6 +33,7 @@ use skene_foundation::{
   PointerInfo,
   PointerType,
   Prevented,
+  Report,
   Scene,
   ScrollEvent,
   TextSelection,
@@ -56,9 +59,8 @@ use skene_foundation::{
   notify_focus_moved,
   notify_pointer_moved,
   notify_scroll,
-  notify_selection_change,
   notify_toggle,
-  report_edit,
+  report,
   start_drag,
   text::{Round, TextIndex},
 };
@@ -216,8 +218,8 @@ impl Events {
       EventKind::Wheel => &["wheel"],
       EventKind::Scroll => &["scroll"],
       EventKind::Change => &["input"],
-      EventKind::SelectionChange => &["selectionchange"],
-      EventKind::Edit => &["input", "compositionend"],
+      EventKind::Report(Content::Edit) => &["input", "compositionend", "selectionchange"],
+      EventKind::Report(_) => &[],
       EventKind::Toggle => &["change"],
       EventKind::Dismiss => &["click", "keydown", "pointerdown"],
       EventKind::ContextMenu => &["contextmenu"],
@@ -247,7 +249,7 @@ impl Events {
         "scroll" => on_scroll,
         "input" => on_input,
         "compositionend" => on_composition_end,
-        "selectionchange" => on_selection_change,
+        "selectionchange" => on_caret_move,
         "contextmenu" => on_context_menu,
         "dragstart" => on_drag_start,
         "dragend" => on_drag_end,
@@ -914,9 +916,9 @@ fn toggle_input(event: &web_sys::Event) -> Option<HtmlInputElement> {
     .filter(|input| matches!(input.type_().as_str(), "checkbox" | "radio"))
 }
 
-/// A text entry's edit reported at its node as one its toolkit applied, and repaired to
-/// the truth unless an input method is composing; any other control's new value reported
-/// as a change.
+/// A text entry's edit reported at its node as one its toolkit applied, an input method
+/// composing in it noted first, and repaired to the truth the verdict answers with; any
+/// other control's new value reported as a change.
 fn on_input(event: &web_sys::Event) {
   if toggle_input(event).is_some() {
     return;
@@ -937,7 +939,7 @@ fn on_input(event: &web_sys::Event) {
     });
 
     if let Some(node) = node_at(Some(target)) {
-      entry.report(node, composing);
+      entry.report(node);
     }
 
     return;
@@ -973,26 +975,26 @@ fn on_composition_end(event: &web_sys::Event) {
   with_dom(|dom| dom.realizer.sink.composing = None);
 
   if let Some(node) = node_at(Some(target)) {
-    entry.report(node, false);
+    entry.report(node);
   }
 }
 
-/// The selection of the text control holding focus, reported at the node it is; a
-/// change of the document's selection anywhere else is nothing to the scene.
-fn on_selection_change(_: &web_sys::Event) {
+/// What the text control holding focus shows as its caret moves, reported at the node it
+/// is; a change of the document's selection anywhere else is nothing to the scene.
+fn on_caret_move(_: &web_sys::Event) {
   let Some(element) = web_sys::window()
     .and_then(|window| window.document())
     .and_then(|document| document.active_element())
   else {
     return;
   };
-  let Some(selection) = Entry::of(&element).and_then(|entry| entry.selection())
+  let Some(entry) = Entry::of(&element)
   else {
     return;
   };
 
   if let Some(node) = node_at(Some(element.into())) {
-    notify_selection_change::<Web>(node, selection);
+    entry.report(node);
   }
 }
 
@@ -1097,19 +1099,30 @@ impl Entry {
     );
   }
 
-  /// Reports what the entry shows at `node`, its value and its selection, as an edit its
-  /// toolkit applied, and repairs it to the truth the verdict answers with unless
-  /// `composing`, where the repair waits for the composition's end.
-  pub(super) fn report(&self, node: NodeId, composing: bool) {
+  /// What the entry shows: its value with its selection.
+  pub(super) fn shown(&self) -> Edit {
     let shown = Edit::new(self.value());
-    let shown = match self.selection() {
+
+    match self.selection() {
       Some(selection) => shown.with_selection(selection),
       None => shown,
-    };
+    }
+  }
 
-    if let Verdict::Replace(truth) = report_edit::<Web>(node, &shown, true)
-      && !composing
-    {
+  /// Reports what the entry shows at `node`, its value and its selection, as a change its
+  /// toolkit applied, and repairs it to the truth the verdict answers with.
+  pub(super) fn report(&self, node: NodeId) {
+    let shown = self.shown();
+    let verdict = report::<Web>(
+      node,
+      Report::Change {
+        content: Content::Edit,
+        proposed: ContentValue::Edit(&shown),
+        applied: true,
+      },
+    );
+
+    if let Verdict::Replace(truth) = verdict {
       self.repair(&truth);
     }
   }

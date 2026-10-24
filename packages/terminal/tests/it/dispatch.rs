@@ -1,8 +1,8 @@
 //! Dispatch over the scene in cells, from real input: the climb follows the parents a
 //! node had when it began, through the start of each segment the node is mounted in; the
 //! pointer enters a segment through its content; a handler runs as the owner that
-//! registered it, and work it starts counts toward no boundary; a notification and a
-//! reported edit reach the node's own handlers alone.
+//! registered it, and work it starts counts toward no boundary; a notification reaches
+//! the node's own handlers alone, and a reported edit the node's own controller.
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -10,20 +10,29 @@ use skene_foundation::{
   Boundary,
   ClickEvent,
   ClickHandler,
+  Content,
+  ContentValue,
+  ControlHandle,
+  Controller,
   Edit,
+  EditTruth,
+  EventKind,
   Handler,
   Prevent,
   Prevented,
+  Report,
   Verdict,
   count_pending,
   dispatch_click,
-  report_edit,
+  report,
 };
 use skene_terminal::{
   self as terminal,
+  Behavior,
+  NativeElement,
   NodeId,
+  Role,
   Scene,
-  TextEntry,
   platform::terminal::Terminal,
   prelude::*,
   reactive::{Owner, provide_context, use_context},
@@ -287,71 +296,104 @@ fn notifications_do_not_bubble() {
   });
 }
 
-/// A reported edit is answered by the entry's own edit handlers alone, each hearing
-/// whether the toolkit shows the edit already, and never by an ancestor's.
+/// A drawn entry whose truth is `truth`: a third party's behavior registering an edit
+/// controller that notes each text it is asked for and keeps it unless it holds a `!`.
+struct Noted {
+  truth: Signal<String>,
+  asked: Rc<RefCell<Vec<String>>>,
+}
+
+impl Behavior<Terminal> for Noted {
+  fn native(&self) -> Option<NativeElement> {
+    Some(NativeElement::TextField)
+  }
+
+  fn role(&self) -> Option<Role> {
+    None
+  }
+
+  fn listens(&self) -> &'static [EventKind] {
+    &[]
+  }
+
+  fn attach(&self, control: &ControlHandle<Terminal>) {
+    let (truth, asked) = (self.truth, Rc::clone(&self.asked));
+
+    control.register(Controller::new(
+      move || EditTruth::new(Some(Rc::from(truth.get())), None),
+      move |change| {
+        if let Some(text) = &change.text {
+          asked.borrow_mut().push(text.to_string());
+
+          if !text.contains('!') {
+            truth.set(text.to_string());
+          }
+        }
+      },
+    ));
+  }
+}
+
+/// A reported edit is answered by the entry's own controller alone, whether or not the
+/// toolkit shows it already, and never by an ancestor's.
 #[test]
-fn an_edit_is_answered_by_the_entrys_own_handlers_alone() {
+fn an_edit_is_answered_by_the_entrys_own_controller_alone() {
   with_platform(|| {
     let value = Signal::new(String::new());
     let field = NodeHandle::new();
-    let heard = Rc::new(RefCell::new(Vec::new()));
+    let asked = Rc::new(RefCell::new(Vec::new()));
+    let noted = Rc::clone(&asked);
     let column = terminal::mount(move || {
       Column::new()
-        .set_children((BasicTextField::new(TextEntry::new().bind_value(value)).bind_handle(field),))
+        .set_children((Control::new(Noted {
+          truth: value,
+          asked: noted,
+        })
+        .bind_handle(field),))
         .into_any()
         .build()
     });
     let field = field.node().expect("the field");
-    let edit = |name: &'static str| -> Handler {
-      let heard = Rc::clone(&heard);
+    let proposed = |text: &str, applied: bool| {
+      let edit = Edit::new(text);
 
-      Handler::Edit(Rc::new(move |edit: &Edit, applied: bool| {
-        heard
-          .borrow_mut()
-          .push((name, edit.text.to_string(), applied));
-
-        Verdict::Accept
-      }))
+      move |node: NodeId| {
+        report::<Terminal>(
+          node,
+          Report::Change {
+            content: Content::Edit,
+            proposed: ContentValue::Edit(&edit),
+            applied,
+          },
+        )
+      }
     };
-
-    Scene::<Terminal>::with(|scene| {
-      scene.handle(column, edit("column"));
-      scene.handle(field, edit("first"));
-      scene.handle(field, edit("second"));
-    });
 
     let _ = testing::render_to_text(10, 1);
 
     testing::trigger_key("Tab");
     testing::trigger_key("x");
 
-    let typed = std::mem::take(&mut *heard.borrow_mut());
-
     assert_eq!(value.get_untracked(), "x");
-    assert_eq!(
-      typed.iter().map(|(name, ..)| *name).collect::<Vec<_>>(),
-      ["first", "second"],
-      "the entry's own, in order, and not the column's"
-    );
-    assert!(
-      typed
-        .iter()
-        .all(|(_, text, applied)| text == "x" && *applied == typed[0].2),
-      "{typed:?}"
-    );
+    assert_eq!(std::mem::take(&mut *asked.borrow_mut()), ["x"]);
 
-    for applied in [true, false] {
-      assert_eq!(
-        report_edit::<Terminal>(field, &Edit::new("y"), applied),
-        Verdict::Accept
-      );
-      assert_eq!(
-        std::mem::take(&mut *heard.borrow_mut()),
-        [
-          ("first", "y".to_owned(), applied),
-          ("second", "y".to_owned(), applied)
-        ]
-      );
+    for (text, applied) in [("y", true), ("z", false)] {
+      assert_eq!(proposed(text, applied)(field), Verdict::Accept);
+      assert_eq!(value.get_untracked(), text);
+      assert_eq!(std::mem::take(&mut *asked.borrow_mut()), [text]);
     }
+
+    assert_eq!(
+      proposed("z!", true)(field),
+      Verdict::Replace(Edit::new("z")),
+      "a change the controller refuses is answered with the truth"
+    );
+    assert_eq!(
+      proposed("w", true)(column),
+      Verdict::Accept,
+      "the column controls no content"
+    );
+    assert_eq!(std::mem::take(&mut *asked.borrow_mut()), ["z!"]);
+    assert_eq!(value.get_untracked(), "z");
   });
 }

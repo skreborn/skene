@@ -1,18 +1,22 @@
 //! What a node shows that a view writes as one typed value: its text, an entry's text
 //! with its selection, a toggle's checked state, a range's value within its bounds, a
 //! choice's options with the chosen one, a link's destination, an entry's placeholder,
-//! an overlay's placement.
+//! an overlay's placement. A content a behavior controls is answered by its
+//! [`Controller`] when a reader changes it.
 
 #[cfg(debug_assertions)]
 use std::cell::Ref;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 
+pub use self::report::{Asked, Controller, EditTruth, Report, report};
 use crate::spine::{CheckState, Edit, NodeId, NodeKind, Placement, Point, Realization};
 #[cfg(debug_assertions)]
 use crate::spine::{NodeRecord, Scene};
 
+mod report;
+
 /// The name of a content a node takes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
 pub enum Content {
   /// A run's text.
@@ -142,13 +146,14 @@ impl ContentType for OverlayPlacement {}
 pub struct ContentKey<T: ContentType> {
   content: Content,
   erase: for<'a> fn(&'a T) -> ContentValue<'a>,
+  own: fn(ContentValue<'_>) -> Option<T>,
   value: PhantomData<fn(&T)>,
 }
 
 impl<T: ContentType> Clone for ContentKey<T> {
   #[inline(always)]
   fn clone(&self) -> Self {
-    Self::new(self.content, self.erase)
+    Self::new(self.content, self.erase, self.own)
   }
 }
 
@@ -162,12 +167,17 @@ impl<T: ContentType> Debug for ContentKey<T> {
 }
 
 impl<T: ContentType> ContentKey<T> {
-  /// The key of `content`, its value erased by `erase`.
+  /// The key of `content`, its value erased by `erase` and owned again by `own`.
   #[inline(always)]
-  const fn new(content: Content, erase: for<'a> fn(&'a T) -> ContentValue<'a>) -> Self {
+  const fn new(
+    content: Content,
+    erase: for<'a> fn(&'a T) -> ContentValue<'a>,
+    own: fn(ContentValue<'_>) -> Option<T>,
+  ) -> Self {
     Self {
       content,
       erase,
+      own,
       value: PhantomData,
     }
   }
@@ -182,6 +192,19 @@ impl<T: ContentType> ContentKey<T> {
   #[inline(always)]
   pub fn erase<'a>(&self, value: &'a T) -> ContentValue<'a> {
     (self.erase)(value)
+  }
+
+  /// `value` as the key's type, where it is of the key's content.
+  #[inline(always)]
+  #[must_use]
+  pub fn own(&self, value: ContentValue<'_>) -> Option<T> {
+    (self.own)(value)
+  }
+
+  /// What `node` shows of the content as `P` reads it; `None` where `P` reads none.
+  #[must_use]
+  pub fn read<P: Realization>(&self, node: NodeId) -> Option<T> {
+    P::read(node, self.content, self.own).flatten()
   }
 
   /// Writes `value` as `node`'s content through `P`, which shows it whole; a node of a
@@ -335,31 +358,77 @@ pub mod contents {
   use crate::spine::{CheckState, Edit};
 
   /// A run's text.
-  pub const TEXT: ContentKey<Rc<str>> =
-    ContentKey::new(Content::Text, |text| ContentValue::Text(text));
+  pub const TEXT: ContentKey<Rc<str>> = ContentKey::new(
+    Content::Text,
+    |text| ContentValue::Text(text),
+    |value| match value {
+      ContentValue::Text(text) => Some(Rc::from(text)),
+      _ => None,
+    },
+  );
   /// A text entry's text with its selection.
-  pub const EDIT: ContentKey<Edit> =
-    ContentKey::new(Content::Edit, |edit| ContentValue::Edit(edit));
+  pub const EDIT: ContentKey<Edit> = ContentKey::new(
+    Content::Edit,
+    |edit| ContentValue::Edit(edit),
+    |value| match value {
+      ContentValue::Edit(edit) => Some(edit.clone()),
+      _ => None,
+    },
+  );
   /// A toggle's checked state.
-  pub const CHECKED: ContentKey<CheckState> =
-    ContentKey::new(Content::Checked, |checked| ContentValue::Checked(*checked));
+  pub const CHECKED: ContentKey<CheckState> = ContentKey::new(
+    Content::Checked,
+    |checked| ContentValue::Checked(*checked),
+    |value| match value {
+      ContentValue::Checked(checked) => Some(checked),
+      _ => None,
+    },
+  );
   /// A range's value with its bounds and step.
-  pub const RANGE: ContentKey<Range> =
-    ContentKey::new(Content::Range, |range| ContentValue::Range(range));
+  pub const RANGE: ContentKey<Range> = ContentKey::new(
+    Content::Range,
+    |range| ContentValue::Range(range),
+    |value| match value {
+      ContentValue::Range(range) => Some(*range),
+      _ => None,
+    },
+  );
   /// A choice's options with the chosen one.
-  pub const CHOICE: ContentKey<Choices> =
-    ContentKey::new(Content::Choice, |choices| ContentValue::Choice(choices));
+  pub const CHOICE: ContentKey<Choices> = ContentKey::new(
+    Content::Choice,
+    |choices| ContentValue::Choice(choices),
+    |value| match value {
+      ContentValue::Choice(choices) => Some(choices.clone()),
+      _ => None,
+    },
+  );
   /// The path a box or a run that is a link navigates to when followed.
-  pub const DESTINATION: ContentKey<Rc<str>> =
-    ContentKey::new(Content::Destination, |path| ContentValue::Destination(path));
+  pub const DESTINATION: ContentKey<Rc<str>> = ContentKey::new(
+    Content::Destination,
+    |path| ContentValue::Destination(path),
+    |value| match value {
+      ContentValue::Destination(path) => Some(Rc::from(path)),
+      _ => None,
+    },
+  );
   /// The hint a text entry shows while its value is empty.
-  pub const PLACEHOLDER: ContentKey<Rc<str>> =
-    ContentKey::new(Content::Placeholder, |hint| ContentValue::Placeholder(hint));
+  pub const PLACEHOLDER: ContentKey<Rc<str>> = ContentKey::new(
+    Content::Placeholder,
+    |hint| ContentValue::Placeholder(hint),
+    |value| match value {
+      ContentValue::Placeholder(hint) => Some(Rc::from(hint)),
+      _ => None,
+    },
+  );
   /// Where an overlay sits, or the point it is pinned at.
-  pub const PLACEMENT: ContentKey<OverlayPlacement> =
-    ContentKey::new(Content::Placement, |placement| {
-      ContentValue::Placement(*placement)
-    });
+  pub const PLACEMENT: ContentKey<OverlayPlacement> = ContentKey::new(
+    Content::Placement,
+    |placement| ContentValue::Placement(*placement),
+    |value| match value {
+      ContentValue::Placement(placement) => Some(placement),
+      _ => None,
+    },
+  );
 }
 
 #[cfg(test)]
@@ -445,6 +514,28 @@ mod tests {
     }
 
     assert_eq!(contents::CHOICE.erase(&choices).content(), Content::Choice);
+  }
+
+  /// Each key owns again what it erases, and nothing of another content.
+  #[test]
+  fn a_key_owns_what_it_erases() {
+    let edit = Edit::new("hi");
+    let range = Range::new(5., 0., 10., 1.);
+
+    assert_eq!(
+      contents::EDIT.own(contents::EDIT.erase(&edit)),
+      Some(edit.clone())
+    );
+    assert_eq!(
+      contents::RANGE.own(contents::RANGE.erase(&range)),
+      Some(range)
+    );
+    assert_eq!(
+      contents::TEXT.own(ContentValue::Text("a")).as_deref(),
+      Some("a")
+    );
+    assert_eq!(contents::TEXT.own(ContentValue::Placeholder("a")), None);
+    assert_eq!(contents::CHECKED.own(ContentValue::Edit(&edit)), None);
   }
 
   /// The chosen option is the one its key names, and a key naming none chooses none.

@@ -1,33 +1,30 @@
 //! A text field's and a text editor's behavior.
 
-use std::{
-  cell::{OnceCell, RefCell},
-  rc::Rc,
-};
+use std::rc::Rc;
 
-use skene_reactive::{Effect, Signal, untrack};
+use skene_reactive::Signal;
 
 use super::{Behavior, ControlHandle, Controlled};
 use crate::{
-  Edit,
+  Controller,
+  EditTruth,
   EventKind,
   NativeElement,
   Realization,
   Role,
   TextSelection,
-  Verdict,
   contents,
   realize::Source,
 };
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
 ///
-/// Editing keys are the platform's; the behavior only reports each change. A drawn
-/// entry reports a reader's edit as one [`Edit`], its text and selection together, with
-/// whether its toolkit shows it already, and applies the [`Verdict`] it is answered with,
-/// which is the only write-back: an edit the truth holds already is accepted unasked;
-/// otherwise the value is asked for first, then the selection, and an edit the truth
-/// then holds, or any edit while nothing is derived, is accepted, while any other is
+/// Editing keys are the platform's; the behavior only controls the entry's [`Edit`]
+/// content through a [`Controller`]. A reader's change is reported with whether its
+/// toolkit shows it already, and answered with the verdict, which is the only
+/// write-back: a change the truth holds already is accepted unasked; otherwise the text
+/// it changes is asked for first, then the selection it moves, and a change the truth
+/// then holds, or any change while nothing is derived, is accepted, while any other is
 /// answered with the truth.
 ///
 /// Controlled: the text shown is what [`derive_value`](Self::derive_value) reads, and an
@@ -38,17 +35,18 @@ use crate::{
 /// caret, and [`bind_selection`](Self::bind_selection) wires both to one signal, so
 /// an app reads and writes the selection beside the value.
 ///
-/// The text and the selection cross to the platform as one [`Edit`]: a change of the text
-/// alone leaves the selection to the platform, mapped through the change, and a change
-/// of the selection places it in the text it is written with. A selection derived beside
-/// no derived text is placed in the text the entry last reported, once it reports one.
+/// The text and the selection cross to the platform as one [`Edit`]: a change of the
+/// text alone leaves a selection nothing derives to the platform, mapped through the
+/// change, and a derived selection is placed in the text it is written with, or in the
+/// text the entry shows where no text is derived.
+///
+/// [`Edit`]: crate::Edit
 #[must_use]
 pub struct TextEntry {
   value: Controlled<String>,
   selection: Controlled<TextSelection>,
   placeholder: Option<Source<Rc<str>>>,
   lines: u16,
-  reported: OnceCell<Reported>,
 }
 
 impl std::fmt::Debug for TextEntry {
@@ -58,21 +56,6 @@ impl std::fmt::Debug for TextEntry {
 }
 
 impl TextEntry {
-  /// The events the entry acts on: a change and an edit, and a move of the selection
-  /// where something hears it.
-  const fn events(&self) -> &'static [EventKind] {
-    if self.selection.is_handled() {
-      &[
-        EventKind::Change,
-        EventKind::SelectionChange,
-        EventKind::Edit,
-      ]
-    }
-    else {
-      &[EventKind::Change, EventKind::Edit]
-    }
-  }
-
   /// An empty single-line field.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -81,7 +64,6 @@ impl TextEntry {
       selection: Controlled::new(),
       placeholder: None,
       lines: 1,
-      reported: OnceCell::new(),
     }
   }
 
@@ -166,53 +148,7 @@ impl TextEntry {
 
     self
   }
-
-  /// The text the entry last reported, `None` until it reports one.
-  fn reported(&self) -> &Reported {
-    self.reported.get_or_init(Reported::default)
-  }
-
-  /// Notes `text` as the text the entry last reported.
-  fn note_reported(&self, text: impl Into<Rc<str>>) {
-    *self.reported().borrow_mut() = Some(text.into());
-  }
-
-  /// The text and selection the entry shows, read untracked: the derived text, else the
-  /// one it last reported, with the derived selection; `None` while neither is derived.
-  fn shown(&self) -> Option<Edit> {
-    untrack(|| {
-      let selection = self.selection.read();
-      let text = match self.value.read() {
-        Some(text) => Rc::from(text),
-        None if selection.is_some() => self.reported().borrow().clone()?,
-        None => return None,
-      };
-      let edit = Edit::new(text);
-
-      Some(match selection {
-        Some(selection) => edit.with_selection(selection),
-        None => edit,
-      })
-    })
-  }
-
-  /// The text and selection the entry holds, read untracked; `None` while no text is
-  /// derived.
-  fn held(&self) -> Option<Edit> {
-    untrack(|| {
-      let text = self.value.read()?;
-      let edit = Edit::new(text);
-
-      Some(match self.selection.read() {
-        Some(selection) => edit.with_selection(selection),
-        None => edit,
-      })
-    })
-  }
 }
-
-/// The text an entry last reported, shared with the effect writing its content.
-type Reported = Rc<RefCell<Option<Rc<str>>>>;
 
 impl Default for TextEntry {
   #[inline(always)]
@@ -239,7 +175,7 @@ impl<P: Realization> Behavior<P> for TextEntry {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    self.events()
+    &[]
   }
 
   #[inline(always)]
@@ -256,98 +192,20 @@ impl<P: Realization> Behavior<P> for TextEntry {
       });
     }
 
-    let value = self.value.reader();
-    let selection = self.selection.reader();
+    let (value, selection) = (self.value.clone(), self.selection.clone());
+    let (asks_value, asks_selection) = (self.value.clone(), self.selection.clone());
 
-    if value.is_none() && selection.is_none() {
-      return;
-    }
+    control.register(Controller::new(
+      move || EditTruth::new(value.read().map(Rc::from), selection.read()),
+      move |asked| {
+        if let Some(text) = &asked.text {
+          asks_value.ask(text.to_string());
+        }
 
-    let reported = Rc::clone(self.reported());
-
-    Effect::render(move |previous: Option<Option<TextSelection>>| {
-      let placed = selection.as_ref().map(|selection| selection());
-      let text = match &value {
-        Some(value) => Rc::from(value()),
-        None => match reported.borrow().clone() {
-          Some(text) => text,
-          None => return None,
-        },
-      };
-      let edit = Edit::new(text);
-      let edit = match placed {
-        Some(placed) if previous != Some(Some(placed)) => edit.with_selection(placed),
-        _ => edit,
-      };
-
-      contents::EDIT.write::<P>(node, &edit);
-
-      placed
-    });
-  }
-
-  fn on_change(&self, value: &str, _control: &ControlHandle<P>) {
-    self.note_reported(value);
-    self.value.ask(value.to_owned());
-  }
-
-  fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<P>) {
-    self.selection.ask(selection);
-  }
-
-  fn on_edit(&self, edit: &Edit, _applied: bool, _control: &ControlHandle<P>) -> Verdict {
-    self.note_reported(Rc::clone(&edit.text));
-
-    if self.held().is_some_and(|truth| truth.holds(edit)) {
-      return Verdict::Accept;
-    }
-
-    self.value.ask(edit.text.to_string());
-
-    if let Some(selection) = edit.selection {
-      self.selection.ask(selection);
-    }
-
-    self
-      .held()
-      .filter(|truth| !truth.holds(edit))
-      .map_or(Verdict::Accept, Verdict::Replace)
-  }
-
-  #[inline(always)]
-  fn held_edit(&self) -> Option<Edit> {
-    self.held()
-  }
-
-  fn reconcile(&self, control: &ControlHandle<P>) {
-    if let Some(shown) = self.shown() {
-      contents::EDIT.write::<P>(control.node(), &shown);
-    }
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::TextEntry;
-  use crate::{EventKind, TextSelection};
-
-  /// An entry listens to its changes and edits, and to the selection's moves only where
-  /// something hears them.
-  #[test]
-  fn an_entry_listens_to_the_selection_only_where_it_is_heard() {
-    assert_eq!(
-      TextEntry::new().events(),
-      [EventKind::Change, EventKind::Edit]
-    );
-    assert_eq!(
-      TextEntry::new()
-        .handle_selection_change(|_: TextSelection| {})
-        .events(),
-      [
-        EventKind::Change,
-        EventKind::SelectionChange,
-        EventKind::Edit,
-      ]
-    );
+        if let Some(selection) = asked.selection {
+          asks_selection.ask(selection);
+        }
+      },
+    ));
   }
 }

@@ -7,6 +7,7 @@ use skene_foundation::{
   AccessProp,
   ColorScheme,
   CompiledStyle,
+  Content,
   ContentValue,
   ControlState,
   Definitions,
@@ -92,6 +93,18 @@ impl Realization for Web {
 
   fn write(node: NodeId, value: ContentValue<'_>) {
     with_realizer(|realizer| realizer.write(node, value));
+  }
+
+  fn read<R>(
+    node: NodeId,
+    content: Content,
+    read: impl FnOnce(ContentValue<'_>) -> R,
+  ) -> Option<R> {
+    with_realizer(|realizer| realizer.read(node, content, read))
+  }
+
+  fn composing(node: NodeId) -> bool {
+    with_realizer(|realizer| realizer.composing(node))
   }
 
   fn attach(parent: NodeId, child: NodeId, _before: Option<NodeId>) {

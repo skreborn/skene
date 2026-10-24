@@ -8,6 +8,19 @@ supersedes.
 
 ## Decided against
 
+- **A caret move reported apart from its text** (2026-10-24), a `SelectionChange`
+  report beside the edit, as the web's `selectionchange` and the terminal's moved
+  selections were notified until then: a selection that meets a text it was not read
+  with is the half-change the contents exist to prevent, and a second entry would split
+  the controller's echo rule and its verdict in two. A moved caret is a change of the
+  entry's `Edit` whose text is the one shown, asking only for the parts it changes.
+  Revisit when a platform's protocol reports a caret move it cannot read the entry's
+  text beside.
+- **`Realization::read` handing back a borrowed `ContentValue`** (2026-10-24), the
+  read returning the value as a write receives it: a realization keeps what a node
+  shows behind its own borrow, from which no borrowed value outlives the call, so the
+  read runs a closure with the value instead, and `ContentKey::read` owns it typed.
+  Revisit when a realization keeps every content it reads as a value it can lend.
 - **`ReadOnly` as a content beside its access report** (2026-10-24), a read-only
   entry's flag crossing the seam as a content of its own as its text does: it already
   crosses typed as an access report, which the web maps to the native `readonly` the

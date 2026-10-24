@@ -22,7 +22,7 @@ use super::{
   Scalar,
   Static,
 };
-use crate::spine::{Color, ColorScheme, Layout, Role, RunPlacement, Size};
+use crate::spine::{Color, ColorScheme, Content, Layout, Role, RunPlacement, Size};
 
 /// A box's style as a builder declares it: values under the platform's conditions,
 /// possibly derived.
@@ -429,11 +429,8 @@ pub enum EventKind {
   Scroll,
   /// A control's textual value changed.
   Change,
-  /// A text entry's selection changed.
-  SelectionChange,
-  /// A reader edited a drawn text entry, its text and selection as one, and awaits the
-  /// verdict on it.
-  Edit,
+  /// A reader changed a content the node controls, which awaits the verdict on it.
+  Report(Content),
   /// A control's checked state changed.
   Toggle,
   /// An overlay was dismissed by the platform: a light dismiss, or `Escape`.

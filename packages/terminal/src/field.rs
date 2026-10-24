@@ -7,14 +7,18 @@ use std::rc::Rc;
 
 use skene_foundation::{
   ClipboardAction,
+  Content,
+  ContentValue,
   Edit,
   Key,
   KeyEvent,
   Modifiers,
   NamedKey,
+  Report,
   Scene,
   TextSelection,
-  notify_selection_change,
+  Verdict,
+  report,
   text::{
     Direction,
     TextBoundary,
@@ -292,6 +296,17 @@ impl Records {
     });
   }
 
+  /// Shows `edit` in `entry` from outside its editing: its text written as
+  /// [`write_entry`](Self::write_entry) writes it, then its selection placed where it gives
+  /// one.
+  pub(crate) fn show_entry(&mut self, entry: Handle, edit: &Edit) {
+    self.write_entry(entry, &edit.text);
+
+    if let Some(selection) = edit.selection {
+      self.place_entry_selection(entry, selection);
+    }
+  }
+
   /// Writes `value` into `entry` from outside its editing, as the entry holds it: one undo
   /// step but for an entry's first value, the caret mapped through the change and the
   /// selection collapsed at it; nothing happens where it is shown already.
@@ -489,13 +504,25 @@ fn finish(entry: Handle) {
   report_selections();
 }
 
-/// Reports every entry's selection that moved since it was last reported, through
-/// the node's selection handlers.
+/// Reports every entry's selection that moved since it was last reported, at the
+/// entry's node as a change of what it shows that its toolkit applied, and shows the
+/// truth the verdict answers with.
 pub(crate) fn report_selections() {
   let reports = with_records(|records| records.selection_reports());
 
-  for (node, selection) in reports {
-    notify_selection_change::<Terminal>(node, selection);
+  for (node, shown) in reports {
+    let verdict = report::<Terminal>(
+      node,
+      Report::Change {
+        content: Content::Edit,
+        proposed: ContentValue::Edit(&shown),
+        applied: true,
+      },
+    );
+
+    if let Verdict::Replace(truth) = verdict {
+      with_records(|records| records.show_entry(node, &truth));
+    }
   }
 }
 

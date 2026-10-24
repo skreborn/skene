@@ -30,10 +30,10 @@
 //! lays it out under, with what is written once above it, the editing core every drawn
 //! entry shares ([`text::editing`]) included. What a node shows crosses as one typed
 //! [`Content`] a view writes through its key in [`contents`], whole: an entry's change
-//! crosses as one [`Edit`], its text and its selection together, answered by a
-//! [`Verdict`], a range's value with its bounds as one [`Range`] and a choice's chosen key
-//! with its options as one [`Choices`]; a drawn entry reports its text to assistive
-//! technology as an [`AccessText`], read from its editor.
+//! crosses as one [`Edit`], its text and its selection together, [`report`]ed to the
+//! [`Controller`] of the content and answered by a [`Verdict`], a range's value with its bounds as
+//! one [`Range`] and a choice's chosen key with its options as one [`Choices`]; a drawn entry
+//! reports its text to assistive technology as an [`AccessText`], read from its editor.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
 //! splits the style into the static part its record is built from (compiled at

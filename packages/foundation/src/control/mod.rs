@@ -56,10 +56,10 @@ use crate::{
   ContainerName,
   ControlFacts,
   ControlState,
+  Controller,
   DeclaredBoxStyle,
   DecorationBase,
   DragAxes,
-  Edit,
   EventKind,
   Expr,
   FocusOrder,
@@ -87,9 +87,7 @@ use crate::{
   Spacing,
   StaticLeaf,
   Text,
-  TextSelection,
   Value,
-  Verdict,
   View,
   WheelEvent,
   Wraps,
@@ -195,8 +193,9 @@ pub trait Behavior<P: Realization>: 'static {
 
   /// Runs once the control's node exists and its reports have been read, before its
   /// parts and child build, under the control's owner: what a behavior binds to the
-  /// node, provides to its subtree or joins goes here. A behavior whose reports change
-  /// here calls [`ControlHandle::refresh`].
+  /// node, provides to its subtree or joins goes here, and a content it controls is
+  /// registered here ([`ControlHandle::register`]). A behavior whose reports change here
+  /// calls [`ControlHandle::refresh`].
   #[inline(always)]
   fn attach(&self, _control: &ControlHandle<P>) {}
 
@@ -249,26 +248,6 @@ pub trait Behavior<P: Realization>: 'static {
   /// What the behavior does when the platform reports a new textual value.
   #[inline(always)]
   fn on_change(&self, _value: &str, _control: &ControlHandle<P>) {}
-
-  /// What the behavior does when the platform reports a new selection.
-  #[inline(always)]
-  fn on_selection_change(&self, _selection: TextSelection, _control: &ControlHandle<P>) {}
-
-  /// The verdict on an edit a reader made in a drawn entry, its text and selection as
-  /// one: `applied` says whether the entry's toolkit shows it already. The verdict is the
-  /// only write-back, so a behavior answering it writes nothing to the platform itself.
-  /// [`Verdict::Accept`], the default, keeps the edit.
-  #[inline(always)]
-  fn on_edit(&self, _edit: &Edit, _applied: bool, _control: &ControlHandle<P>) -> Verdict {
-    Verdict::Accept
-  }
-
-  /// The text and selection the behavior holds, read untracked: what a disabled entry
-  /// answers every edit with. `None`, the default, for a behavior holding no text.
-  #[inline(always)]
-  fn held_edit(&self) -> Option<Edit> {
-    None
-  }
 
   /// What the behavior does when the platform reports a new checked state.
   #[inline(always)]
@@ -365,6 +344,17 @@ impl<P: Realization> ControlHandle<P> {
   #[inline(always)]
   pub fn click(&self, event: &ClickEvent) -> Prevented {
     dispatch_click::<P>(self.node, event)
+  }
+
+  /// Registers `controller` for the control's content: the truth it reads is written to
+  /// the platform, and a reader's change of the content is answered by it, with the
+  /// truth alone while the control is disabled; see [`Controller`].
+  pub fn register(&self, controller: Controller) {
+    let disabled = Rc::clone(&self.disabled);
+
+    controller
+      .derive_disabled(move || disabled())
+      .register::<P>(self.node);
   }
 
   /// Re-reads what the behavior reports: its state, accessibility and focus order.
@@ -1101,26 +1091,6 @@ impl<P: Realization, B: Behavior<P>> Actor<P, B> {
     self.behavior.reconcile(&self.handle);
   }
 
-  /// The verdict on an edit a drawn entry reports: what the behavior holds while the
-  /// control is disabled, the behavior's answer otherwise; the control's state and
-  /// accessibility are re-read beside it, and nothing is written back but the verdict.
-  fn answer(&self, edit: &Edit, applied: bool) -> Verdict {
-    let verdict = if (self.disabled)() {
-      self
-        .behavior
-        .held_edit()
-        .filter(|held| !held.holds(edit))
-        .map_or(Verdict::Accept, Verdict::Replace)
-    }
-    else {
-      self.behavior.on_edit(edit, applied, &self.handle)
-    };
-
-    self.handle.refresh();
-
-    verdict
-  }
-
   /// The behavior's handler for an event of `kind`, `None` for a kind no behavior
   /// acts on: a disabled control answers without acting, and a key an input method is
   /// composing never reaches the behavior.
@@ -1167,20 +1137,6 @@ impl<P: Realization, B: Behavior<P>> Actor<P, B> {
 
         Handler::Change(Rc::new(move |value: &str| {
           actor.report(|behavior, handle| behavior.on_change(value, handle));
-        }))
-      }
-      EventKind::SelectionChange => {
-        let actor = self.clone();
-
-        Handler::SelectionChange(Rc::new(move |selection: TextSelection| {
-          actor.report(|behavior, handle| behavior.on_selection_change(selection, handle));
-        }))
-      }
-      EventKind::Edit => {
-        let actor = self.clone();
-
-        Handler::Edit(Rc::new(move |edit: &Edit, applied| {
-          actor.answer(edit, applied)
         }))
       }
       EventKind::Toggle => {

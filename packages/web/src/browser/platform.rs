@@ -15,6 +15,7 @@ use skene_foundation::{
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
+  Content,
   ContentValue,
   ControlState,
   Definitions,
@@ -402,6 +403,18 @@ impl Realization for Web {
 
   fn write(sink: NodeId, value: ContentValue<'_>) {
     with_dom(|dom| dom.realizer.write(sink, value));
+  }
+
+  fn read<R>(
+    sink: NodeId,
+    content: Content,
+    read: impl FnOnce(ContentValue<'_>) -> R,
+  ) -> Option<R> {
+    with_dom(|dom| dom.realizer.read(sink, content, read))
+  }
+
+  fn composing(sink: NodeId) -> bool {
+    with_dom(|dom| dom.realizer.composing(sink))
   }
 
   fn attach(parent: NodeId, child: NodeId, before: Option<NodeId>) {

@@ -8,11 +8,14 @@ use std::{
 };
 
 use skene_foundation::{
+  Content,
+  ContentValue,
   Edit,
   NodeId,
+  Report,
   TextSelection,
   Verdict,
-  report_edit,
+  report,
   text::{
     Laid as _,
     Position,
@@ -46,7 +49,7 @@ pub(crate) struct Changed {
 }
 
 /// The arbiter of an entry's edits: each is reported to the entry's node, its text and its
-/// selection as one, and the verdict the node's handlers fold is what the entry shows.
+/// selection as one, and the verdict its controller answers with is what the entry shows.
 struct Reporter {
   node: NodeId,
   reported: Rc<Cell<TextSelection>>,
@@ -58,7 +61,14 @@ impl Arbiter for Reporter {
       self.reported.set(selection);
     }
 
-    report_edit::<Terminal>(self.node, proposed, applied)
+    report::<Terminal>(
+      self.node,
+      Report::Change {
+        content: Content::Edit,
+        proposed: ContentValue::Edit(proposed),
+        applied,
+      },
+    )
   }
 
   fn settle(&mut self) -> Option<Edit> {
@@ -181,12 +191,22 @@ impl Field {
     Rc::clone(&self.reported)
   }
 
-  /// The selection, when it differs from the one last reported or written from outside,
-  /// which it becomes; `None` too while an operation holds the editor.
-  pub(crate) fn selection_report(&self) -> Option<TextSelection> {
-    let selection = self.editor.try_borrow().ok()?.selection();
+  /// The value with the selection, when the selection differs from the one last
+  /// reported or written from outside, which it becomes; `None` too while an operation
+  /// holds the editor.
+  pub(crate) fn selection_report(&self) -> Option<Edit> {
+    let editor = self.editor.try_borrow().ok()?;
+    let selection = editor.selection();
 
-    (selection != self.reported.replace(selection)).then_some(selection)
+    (selection != self.reported.replace(selection))
+      .then(|| Edit::new(editor.text()).with_selection(selection))
+  }
+
+  /// The value with the selection, `None` while an operation holds the editor.
+  pub(crate) fn shown(&self) -> Option<Edit> {
+    let editor = self.editor.try_borrow().ok()?;
+
+    Some(Edit::new(editor.text()).with_selection(editor.selection()))
   }
 
   /// The value, `None` while an operation holds the editor.
@@ -493,9 +513,9 @@ impl Records {
     self.record_mut(handle)?.kind.field_mut()
   }
 
-  /// The selection of every entry whose selection changed since it was last reported
-  /// or written from outside, with the entry's node.
-  pub(crate) fn selection_reports(&self) -> Vec<(NodeId, TextSelection)> {
+  /// What every entry whose selection changed since it was last reported or written
+  /// from outside shows, its value with that selection, with the entry's node.
+  pub(crate) fn selection_reports(&self) -> Vec<(NodeId, Edit)> {
     self
       .entries
       .iter()

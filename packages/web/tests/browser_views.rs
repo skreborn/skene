@@ -20,6 +20,8 @@ use skene_foundation::{
   ColumnBase,
   Condition,
   ContainerBase,
+  Content,
+  ContentValue,
   ControlBase,
   DecorationBase,
   DecorationWithCornerRadius,
@@ -40,6 +42,7 @@ use skene_foundation::{
   Placement,
   PointerPrecision,
   Property,
+  Report,
   RichTextBase,
   RowBase,
   RunBase,
@@ -56,7 +59,7 @@ use skene_foundation::{
   Value,
   Verdict,
   When,
-  report_edit,
+  report,
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
@@ -1242,11 +1245,24 @@ fn input_of(root: &Element) -> HtmlInputElement {
     .expect("an input element")
 }
 
+/// Reports `edit` at `node` as the reader's change of its text and selection, which its
+/// toolkit shows already where `applied`, and answers with the verdict.
+fn edited(node: NodeId, edit: &Edit, applied: bool) -> Verdict {
+  report::<Web>(
+    node,
+    Report::Change {
+      content: Content::Edit,
+      proposed: ContentValue::Edit(edit),
+      applied,
+    },
+  )
+}
+
 /// An `<input>`'s reported edit is answered with the truth: one its handler transforms
 /// is replaced by what the handler kept, the selection beside it, and the `<input>`
 /// shows the truth after the turn; one the truth holds stands.
 #[wasm_bindgen_test]
-fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
+fn a_reported_edit_is_answered_with_the_truth_when_the_handler_transforms_it() {
   let (_guard, root) = fresh_root();
   let text = Signal::new("ab".to_owned());
   let caret = Signal::new(TextSelection::collapsed(2));
@@ -1262,7 +1278,7 @@ fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
   let typed = Edit::new("abc").with_selection(TextSelection::collapsed(3));
 
   assert_eq!(
-    report_edit::<Web>(node, &typed, false),
+    edited(node, &typed, false),
     Verdict::Replace(Edit::new("ABC").with_selection(TextSelection::collapsed(3)))
   );
   assert_eq!(text.get(), "ABC");
@@ -1273,14 +1289,14 @@ fn report_edit_answers_with_the_truth_when_the_handler_transforms_it() {
 
   let kept = Edit::new("ABCD").with_selection(TextSelection::collapsed(4));
 
-  assert_eq!(report_edit::<Web>(node, &kept, true), Verdict::Accept);
+  assert_eq!(edited(node, &kept, true), Verdict::Accept);
   assert_eq!(caret.get(), TextSelection::collapsed(4));
 }
 
 /// An edit the truth holds already is accepted without asking the handlers, and one
 /// leaving a controlled selection unnamed is answered with the truth's.
 #[wasm_bindgen_test]
-fn report_edit_of_what_the_truth_holds_asks_nothing() {
+fn a_reported_edit_the_truth_holds_asks_nothing() {
   let (_guard, _root) = fresh_root();
   let asked = Rc::new(RefCell::new(Vec::new()));
   let heard = Rc::clone(&asked);
@@ -1295,17 +1311,17 @@ fn report_edit_of_what_the_truth_holds_asks_nothing() {
   });
   let truth = Edit::new("ab").with_selection(TextSelection::collapsed(1));
 
-  assert_eq!(report_edit::<Web>(node, &truth, true), Verdict::Accept);
+  assert_eq!(edited(node, &truth, true), Verdict::Accept);
   assert!(asked.borrow().is_empty());
   assert_eq!(
-    report_edit::<Web>(node, &Edit::new("ab"), true),
+    edited(node, &Edit::new("ab"), true),
     Verdict::Replace(truth)
   );
 }
 
 /// An entry deriving no text keeps no truth: its edit stands, its handler hearing it.
 #[wasm_bindgen_test]
-fn report_edit_accepts_an_uncontrolled_entry() {
+fn a_reported_edit_of_an_uncontrolled_entry_stands() {
   let (_guard, _root) = fresh_root();
   let heard = Rc::new(RefCell::new(Vec::new()));
   let log = Rc::clone(&heard);
@@ -1316,10 +1332,7 @@ fn report_edit_accepts_an_uncontrolled_entry() {
     .build()
   });
 
-  assert_eq!(
-    report_edit::<Web>(node, &Edit::new("typed"), true),
-    Verdict::Accept
-  );
+  assert_eq!(edited(node, &Edit::new("typed"), true), Verdict::Accept);
   assert_eq!(*heard.borrow(), ["typed"]);
 }
 
@@ -1337,20 +1350,17 @@ fn a_disabled_entry_answers_its_edit_with_the_truth() {
 
   assert!(input_of(&root).disabled());
   assert_eq!(
-    report_edit::<Web>(node, &Edit::new("123"), false),
+    edited(node, &Edit::new("123"), false),
     Verdict::Replace(Edit::new("12"))
   );
   assert_eq!(bound.get(), "12");
-  assert_eq!(
-    report_edit::<Web>(node, &Edit::new("12"), true),
-    Verdict::Accept
-  );
+  assert_eq!(edited(node, &Edit::new("12"), true), Verdict::Accept);
 }
 
 /// The verdict is an edit's only write-back: the `<input>` is not reconciled with the
 /// truth while the edit is reported.
 #[wasm_bindgen_test]
-fn report_edit_does_not_reconcile() {
+fn a_reported_edit_is_not_reconciled() {
   let (_guard, root) = fresh_root();
   let node =
     mount(|| BasicTextField::new(TextEntry::new().set_value("12").handle_change(|_| {})).build());
@@ -1362,7 +1372,7 @@ fn report_edit_does_not_reconcile() {
   input.set_value("12a");
 
   assert_eq!(
-    report_edit::<Web>(node, &Edit::new("12a"), true),
+    edited(node, &Edit::new("12a"), true),
     Verdict::Replace(Edit::new("12"))
   );
 

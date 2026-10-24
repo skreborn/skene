@@ -67,7 +67,7 @@ impl<'a> Env<'a> {
 
   /// The box style of the record, every property resolved.
   pub(crate) fn resolve_box(&self) -> Option<PlainBox> {
-    let kept = &self.records.record(self.handle)?.kind.box_record()?.style;
+    let kept = &self.records.record(self.handle)?.kind.box_record()?.kept;
     let mut style = self.with_resolver(|resolver| kept.resolve(resolver).boxed);
 
     if style.ext.border_glyphs.is_none()
@@ -115,7 +115,7 @@ impl<'a> Env<'a> {
   /// The run style of the record, every property resolved.
   pub(crate) fn resolve_run(&self) -> Option<PlainRun> {
     let record = self.records.record(self.handle)?;
-    let Kind::Run { style: kept, .. } = &record.kind
+    let Kind::Run { kept, .. } = &record.kind
     else {
       return None;
     };

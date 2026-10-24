@@ -83,10 +83,10 @@ pub(crate) struct RunCache {
 
 /// A box-like node's props, its kept style, its resolution and its motion.
 pub(crate) struct BoxRecord {
-  /// The props the node was created with, its style and motion taken into `style`.
+  /// The props the node was created with, its style and motion taken into `kept`.
   pub(crate) props: BoxProps<Terminal>,
   /// The node's style and motion, kept whole.
-  pub(crate) style: KeptStyle,
+  pub(crate) kept: KeptStyle,
   /// The style last resolved and presented, once a frame resolved it.
   pub(crate) cache: Option<BoxCache>,
   /// The node's running transitions and animations.
@@ -104,7 +104,7 @@ impl BoxRecord {
 
     Self {
       props,
-      style: record.compile(Keeping::Everything),
+      kept: record.compile(Keeping::Everything),
       cache: None,
       motion: BoxMotion::default(),
     }
@@ -130,27 +130,34 @@ impl BoxRecord {
 pub(crate) enum Kind {
   Box(BoxRecord),
   Control {
+    /// The native element the control stands in; `None` for one its view draws.
     native: Option<NativeElement>,
     /// The name the control's props were created with.
     label: Option<String>,
+    /// The control's own box.
     inner: BoxRecord,
+    /// The editing state of a text entry; `None` for every other control.
     field: Option<Box<Field>>,
   },
   Overlay {
+    /// The overlay's own box.
     inner: BoxRecord,
     /// The role the overlay carries.
     role: Option<Role>,
+    /// Where the overlay sits.
     placement: Placement,
+    /// The backdrop color painted over the app while open, if any.
     backdrop: Option<Color>,
+    /// Whether the overlay is open.
     open: bool,
     /// The cell the overlay's top-start corner is pinned to, if it is.
     position: Option<(i64, i64)>,
   },
   Run {
-    /// The props the run was created with, its style and motion taken into `style`.
+    /// The props the run was created with, its style and motion taken into `kept`.
     props: RunProps<Terminal>,
     /// The run's style and motion, kept whole.
-    style: KeptStyle,
+    kept: KeptStyle,
     /// The style last resolved and presented, once a frame resolved it.
     cache: Option<RunCache>,
     /// The run's running transitions and animations.
@@ -173,7 +180,7 @@ impl Kind {
 
     Self::Run {
       props,
-      style: record.compile(Keeping::Everything),
+      kept: record.compile(Keeping::Everything),
       cache: None,
       motion: RunMotion::default(),
       extent: None,

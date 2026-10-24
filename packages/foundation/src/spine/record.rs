@@ -1791,6 +1791,8 @@ mod tests {
     let record = probe_record();
     let kept = record.compile(Keeping::Everything);
 
+    assert_eq!(kept.animations().len(), 2, "a box's and a run's animation");
+
     for interaction in [
       Interaction::default(),
       Interaction {
@@ -1814,6 +1816,7 @@ mod tests {
       let direct = kept.resolve(&resolver);
 
       assert_eq!(direct, compiled.resolved());
+      assert!(compiled_read, "a state condition reads the interaction");
       assert_eq!(read.get(), compiled_read, "the interaction is read alike");
       assert_eq!(
         direct.boxed.ext.tint,

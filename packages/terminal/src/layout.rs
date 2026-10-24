@@ -621,14 +621,14 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     // A node whose presentation came out different from the last one repaints.
     let (repaint, active) = match &mut record.kind {
       Kind::Run {
-        style,
+        kept,
         cache,
         motion,
         ..
       } => {
         let target = resolved_run.map(|target| (target, resolved_layout));
 
-        present_run(style, cache, motion, target, &run_keyframes, &frame)
+        present_run(kept, cache, motion, target, &run_keyframes, &frame)
       }
       kind => match kind.box_record_mut() {
         Some(inner) => present_box(inner, resolved_box, &box_keyframes, &frame),
@@ -707,7 +707,7 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
     .box_record()
     .map(|inner| {
       inner
-        .style
+        .kept
         .animations()
         .iter()
         .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
@@ -715,7 +715,7 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
     })
     .unwrap_or_default();
   let run_keyframes = match &record.kind {
-    Kind::Run { style, .. } => style
+    Kind::Run { kept, .. } => kept
       .animations()
       .iter()
       .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
@@ -746,7 +746,7 @@ struct Frame {
 
 /// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
 fn present_run(
-  style: &crate::records::KeptStyle,
+  kept: &crate::records::KeptStyle,
   cache: &mut Option<RunCache>,
   motion: &mut crate::motion::RunMotion,
   resolved: Option<(PlainRun, PlainBox)>,
@@ -762,7 +762,7 @@ fn present_run(
     } = motion.present(
       previous,
       target.clone(),
-      style.transitions(),
+      kept.transitions(),
       keyframes,
       frame.clock,
     );
@@ -803,7 +803,7 @@ fn present_box(
   } = inner.motion.present(
     inner.cache.as_ref().map(|cache| &cache.target),
     target.clone(),
-    inner.style.transitions(),
+    inner.kept.transitions(),
     keyframes,
     frame.clock,
   );

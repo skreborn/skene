@@ -9,7 +9,7 @@
 //! segment holding it, which both leaves count alike.
 
 use std::cell::RefCell;
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 use std::collections::VecDeque;
 
 use skene_foundation::web::HydrationSource;
@@ -39,14 +39,14 @@ type State = (
 /// order (`null` for one that did not settle), then the tag-keyed entries sorted by
 /// tag, then each lazy segment's entries in the segment's own creation order, the
 /// segments in the order their content built.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 fn encode_state(state: &State) -> String {
   serde_json::to_string(state).unwrap_or_else(|_| "[[],[],[]]".to_owned())
 }
 
 /// Decodes the state produced by [`encode_state`]. Malformed state adopts nothing rather
 /// than panicking.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 fn decode_state(state: &str) -> State {
   serde_json::from_str(state).unwrap_or_default()
 }
@@ -59,7 +59,7 @@ thread_local! {
   static LAZY_COUNTS: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
 }
 
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 thread_local! {
   /// The server-rendered values outside any lazy segment, to adopt in creation order.
   static ADOPTED: RefCell<VecDeque<Option<String>>> = const { RefCell::new(VecDeque::new()) };
@@ -71,7 +71,7 @@ thread_local! {
   static TAGGED: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
 }
 
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 thread_local! {
   /// Each critical resource's serializer with the lazy segment it was created in, in
   /// creation order; drained once the render settles.
@@ -136,7 +136,7 @@ fn reset_regions() {
 
 /// Takes the next resource's adopted server value in the segment being built, if
 /// hydrating left one.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 #[must_use]
 pub(crate) fn adopt_next() -> Option<String> {
   REGION.with(|region| {
@@ -156,7 +156,7 @@ pub(crate) fn adopt_next() -> Option<String> {
 }
 
 /// The server never adopts.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 #[inline(always)]
 #[must_use]
 #[expect(
@@ -168,7 +168,7 @@ pub(crate) fn adopt_next() -> Option<String> {
 }
 
 /// Takes the adopted server value registered under `tag`, if hydrating left one.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 #[must_use]
 pub(crate) fn adopt_tagged(tag: &str) -> Option<String> {
   TAGGED.with(|tagged| {
@@ -180,7 +180,7 @@ pub(crate) fn adopt_tagged(tag: &str) -> Option<String> {
 }
 
 /// The server never adopts.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 #[inline(always)]
 #[must_use]
 #[expect(
@@ -192,13 +192,13 @@ pub(crate) fn adopt_tagged(_tag: &str) -> Option<String> {
 }
 
 /// A no-op on the client.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 #[inline(always)]
 pub(crate) fn register_source(_source: HydrationSource) {}
 
 /// Registers a critical resource's serializer under the segment being built, to be
 /// drained once the render settles.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 pub(crate) fn register_source(source: HydrationSource) {
   let region = REGION.with(|region| region.borrow().clone());
 
@@ -206,7 +206,7 @@ pub(crate) fn register_source(source: HydrationSource) {
 }
 
 /// A no-op on the client.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 #[inline(always)]
 pub(crate) fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 
@@ -215,7 +215,7 @@ pub(crate) fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 /// # Panics
 ///
 /// Panics when `tag` is already registered in this render.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 pub(crate) fn register_tagged_source(tag: &str, source: HydrationSource) {
   TAGGED_SOURCES.with(|sources| {
     let mut sources = sources.borrow_mut();
@@ -231,7 +231,7 @@ pub(crate) fn register_tagged_source(tag: &str, source: HydrationSource) {
 
 /// Stages the server's serialized resource `state` for the resources built next to
 /// adopt, by segment and creation order and by tag.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 pub(crate) fn stage(state: &str) {
   let (ordered, tagged, lazy) = decode_state(state);
 
@@ -249,13 +249,13 @@ pub(crate) fn stage(state: &str) {
 /// Ends hydration: the order-keyed values no resource adopted are dropped, so a
 /// resource built after the served tree loads rather than taking a value served for
 /// another.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 pub(crate) fn finish() {
   ADOPTED.with(|adopted| adopted.borrow_mut().clear());
 }
 
 /// Forgets every registered resource serializer, so a render starts clean.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 pub(crate) fn reset_sources() {
   reset_regions();
   SOURCES.with(|sources| sources.borrow_mut().clear());
@@ -263,7 +263,7 @@ pub(crate) fn reset_sources() {
 }
 
 /// Drains the registered sources into the encoded hydration state.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 pub(crate) fn collect_state() -> String {
   let mut ordered = Vec::new();
   let mut lazy: Vec<LazyEntries<Vec<Option<String>>>> = Vec::new();

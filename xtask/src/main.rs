@@ -82,6 +82,11 @@ const STEPS: &[Step] = &[
     stamped: true,
   },
   Step {
+    name: "selection",
+    run: selection,
+    stamped: true,
+  },
+  Step {
     name: "clippy:release",
     run: clippy_release,
     stamped: true,
@@ -153,8 +158,11 @@ const APPLE: &str = "aarch64-apple-darwin";
 /// which would need Apple's SDK.
 const APPLE_PACKAGES: &[&str] = &["skene-terminal"];
 
-/// The flag that names the web's server leaf in a build.
-const SERVER_CFG: &str = r#"--cfg skene_platform="server""#;
+/// The flag that names the web in a build: on [`WASM`], its browser leaf.
+const WEB_CFG: &str = r#"--cfg skene_platform="web""#;
+
+/// The flags that name the web's server leaf in a build.
+const SERVER_CFG: &str = r#"--cfg skene_platform="web" --cfg skene_server"#;
 
 /// The five project documents, which no crate compiles and no stamped step reads; every
 /// other file, every other document among them, is an input of a stamped step.
@@ -490,10 +498,33 @@ impl Gate {
     )
   }
 
-  /// A cargo command building for the server leaf on the host's target, its cfg in the
-  /// target's rustc and rustdoc flags, in a target directory of its own; `--target` goes
-  /// before any `--`.
+  /// A cargo command building for the server leaf on the host's target, its cfgs in the
+  /// target's rustc and rustdoc flags, in a target directory of its own.
   fn server_cargo<I, S>(&self, arguments: I) -> Command
+  where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+  {
+    let mut command = self.cargo_for(&self.host, SERVER_CFG, arguments);
+
+    command.env("CARGO_TARGET_DIR", self.target.join("server"));
+
+    command
+  }
+
+  /// A cargo command building for the browser leaf, its cfg in [`WASM`]'s rustc and
+  /// rustdoc flags.
+  fn wasm_cargo<I, S>(&self, arguments: I) -> Command
+  where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+  {
+    self.cargo_for(WASM, WEB_CFG, arguments)
+  }
+
+  /// A cargo command building for `target` with `flags` in its rustc and rustdoc flags
+  /// alone; `--target` goes before any `--`.
+  fn cargo_for<I, S>(&self, target: &str, flags: &str, arguments: I) -> Command
   where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
@@ -507,14 +538,13 @@ impl Gate {
       .position(|argument| argument == "--")
       .unwrap_or(arguments.len());
 
-    arguments.splice(end..end, ["--target".into(), self.host.clone().into()]);
+    arguments.splice(end..end, ["--target".into(), target.into()]);
 
     let mut command = self.cargo(arguments);
 
     command
-      .env(Self::target_flags(&self.host, "RUSTFLAGS"), SERVER_CFG)
-      .env(Self::target_flags(&self.host, "RUSTDOCFLAGS"), SERVER_CFG)
-      .env("CARGO_TARGET_DIR", self.target.join("server"));
+      .env(Self::target_flags(target, "RUSTFLAGS"), flags)
+      .env(Self::target_flags(target, "RUSTDOCFLAGS"), flags);
 
     command
   }
@@ -659,6 +689,57 @@ fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(command)
 }
 
+/// What skene-web reports for each build it refuses: the flags naming the platform
+/// (none, then on the host's target), the message it fails with.
+const REFUSED: &[(Option<&str>, &str)] = &[
+  (None, "skene-web builds for the platform its build names"),
+  (
+    Some(WEB_CFG),
+    r#"skene_platform = "web" builds the browser on wasm32-unknown-unknown alone"#,
+  ),
+  (
+    Some(r#"--cfg skene_platform="linux""#),
+    "skene-web realizes no linux yet",
+  ),
+];
+
+/// Holds skene-web to refusing each build [`REFUSED`] names with its own message alone.
+fn selection(gate: &Gate, log: &mut Log) -> Outcome {
+  let mut problems = Vec::new();
+
+  for (flags, message) in REFUSED {
+    let arguments = ["check", "--locked", "-p", "skene-web"];
+    let command = match flags {
+      None => gate.cargo(arguments),
+      Some(flags) => {
+        let mut command = gate.cargo_for(&gate.host, flags, arguments);
+
+        command.env("CARGO_TARGET_DIR", gate.target.join("selection"));
+
+        command
+      }
+    };
+    let described = describe(&command);
+    let ran = log.run(command)?;
+    let alone = ran
+      .output
+      .contains("could not compile `skene-web` (lib) due to 1 previous error");
+
+    if ran.success || !ran.output.contains(message) || !alone {
+      problems.push(format!(
+        "`{described}` did not fail with skene-web's message alone: {message}"
+      ));
+    }
+  }
+
+  if problems.is_empty() {
+    Ok(())
+  }
+  else {
+    Err(problems.join("\n"))
+  }
+}
+
 fn clippy_release(gate: &Gate, log: &mut Log) -> Outcome {
   let workspace = Workspace::read(&gate.root)?;
   let mut host = gate.cargo(["clippy", "--all-targets", "--locked", "--release"]);
@@ -689,25 +770,21 @@ fn clippy_server(gate: &Gate, log: &mut Log) -> Outcome {
 }
 
 fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
-  log.check(gate.cargo([
+  log.check(gate.wasm_cargo([
     "clippy",
     "--workspace",
     "--all-targets",
     "--locked",
-    "--target",
-    WASM,
     "--",
     "-D",
     "warnings",
   ]))?;
-  log.check(gate.cargo([
+  log.check(gate.wasm_cargo([
     "clippy",
     "-p",
     "skene-web",
     "--lib",
     "--locked",
-    "--target",
-    WASM,
     "--",
     "-D",
     "warnings",
@@ -749,11 +826,12 @@ fn doc_server(gate: &Gate, log: &mut Log) -> Outcome {
 
 fn doc_wasm(gate: &Gate, log: &mut Log) -> Outcome {
   let workspace = Workspace::read(&gate.root)?;
-  let mut command = gate.cargo(["doc", "--no-deps", "--locked", "--target", WASM]);
+  let mut command = gate.wasm_cargo(["doc", "--no-deps", "--locked"]);
 
-  command
-    .args(packages(&workspace.web_build()))
-    .env("RUSTDOCFLAGS", "-D warnings");
+  command.args(packages(&workspace.web_build())).env(
+    Gate::target_flags(WASM, "RUSTDOCFLAGS"),
+    format!("{WEB_CFG} -D warnings"),
+  );
   log.check(command)
 }
 
@@ -812,11 +890,10 @@ fn msrv(gate: &Gate, log: &mut Log) -> Outcome {
     .env("CARGO_TARGET_DIR", gate.target.join("msrv").join("server"));
   log.check(server)?;
 
-  let mut browser = gate.cargo([toolchain.as_str()]);
+  let mut browser = gate.wasm_cargo([toolchain.as_str()].into_iter().chain(check));
 
   browser
-    .args(check)
-    .args(["--workspace", "--target", WASM])
+    .arg("--workspace")
     .env("CARGO_TARGET_DIR", gate.target.join("msrv").join("browser"));
   log.check(browser)
 }

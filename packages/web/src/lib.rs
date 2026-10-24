@@ -6,8 +6,13 @@
 //! platform. The medium's own contribution is [`Typography`], the [`media`] module and
 //! the entry points: `launch` in the browser, `render_to_string`, `render_to_stream`
 //! and `render_main` on the server leaf, and [`macro@main`] expanding to whichever the
-//! target has. [`platform`] is the web platform itself, for a view written against the
+//! build names. [`platform`] is the web platform itself, for a view written against the
 //! DOM or the server's markup.
+//!
+//! A build names the web by `--cfg skene_platform="web"`: the browser leaf on
+//! `wasm32-unknown-unknown`, and the server leaf on any target with `--cfg skene_server`
+//! beside it. Every other build fails with a `compile_error!` saying why, and a terminal
+//! build compiles the crate empty.
 //!
 //! A length is a plain number of logical pixels, an `i32` or an `f32`, wherever one is
 //! taken: a setter, a derived value, a condition's variant, a token's definition and
@@ -34,47 +39,101 @@
 //!   ));
 //! ```
 
-#[cfg(skene_web_platform = "none")]
-compile_error!(
-  "skene-web builds for one of its two leaves: the browser's, on `--target \
-   wasm32-unknown-unknown`, or the server's, under `--cfg skene_platform=\"server\"`"
-);
+#![cfg(not(skene_platform = "terminal"))]
 
+#[cfg(not(any(
+  skene_platform = "android",
+  skene_platform = "ios",
+  skene_platform = "linux",
+  skene_platform = "macos",
+  skene_platform = "web",
+  skene_platform = "windows",
+)))]
+compile_error!(
+  "skene-web builds for the platform its build names: `--cfg skene_platform=\"web\"` in \
+   the rustflags of `--target wasm32-unknown-unknown` for the browser, with `--cfg \
+   skene_server` beside it for the server leaf (`cargo check-web`, `cargo check-server`)"
+);
+#[cfg(all(
+  skene_platform = "web",
+  not(skene_server),
+  not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
+compile_error!(
+  "skene_platform = \"web\" builds the browser on wasm32-unknown-unknown alone: the \
+   server leaf, on any target, sets `--cfg skene_server` beside it"
+);
+#[cfg(skene_platform = "android")]
+compile_error!("skene-web realizes no android yet: its builds name `skene_platform = \"web\"`");
+#[cfg(skene_platform = "ios")]
+compile_error!("skene-web realizes no ios yet: its builds name `skene_platform = \"web\"`");
+#[cfg(skene_platform = "linux")]
+compile_error!("skene-web realizes no linux yet: its builds name `skene_platform = \"web\"`");
+#[cfg(skene_platform = "macos")]
+compile_error!("skene-web realizes no macos yet: its builds name `skene_platform = \"web\"`");
+#[cfg(skene_platform = "windows")]
+compile_error!("skene-web realizes no windows yet: its builds name `skene_platform = \"web\"`");
+
+#[cfg(skene_platform = "web")]
 pub mod head;
+#[cfg(skene_platform = "web")]
 pub mod media;
+#[cfg(skene_platform = "web")]
 pub mod platform;
+#[cfg(skene_platform = "web")]
 pub mod prelude;
-#[cfg(skene_web_platform = "browser")]
+#[cfg(all(skene_platform = "web", not(skene_server)))]
 pub mod split;
-#[cfg(skene_web_platform = "browser")]
+#[cfg(all(skene_platform = "web", not(skene_server)))]
 pub mod testing;
+#[cfg(skene_platform = "web")]
 pub mod view_transitions;
+#[cfg(skene_platform = "web")]
 pub mod window;
 
-#[cfg(skene_web_platform = "browser")]
+#[cfg(all(skene_platform = "web", not(skene_server)))]
 mod browser;
+#[cfg(skene_platform = "web")]
 mod compile;
+#[cfg(skene_platform = "web")]
 mod condition;
+#[cfg(skene_platform = "web")]
 mod declarations;
+#[cfg(skene_platform = "web")]
 mod expr;
-#[cfg(all(skene_web_platform = "browser", feature = "gpu"))]
+#[cfg(all(skene_platform = "web", not(skene_server), feature = "gpu"))]
 mod gpu;
+#[cfg(skene_platform = "web")]
 mod hints;
+#[cfg(skene_platform = "web")]
 mod interner;
+#[cfg(skene_platform = "web")]
 mod link_policy;
+#[cfg(skene_platform = "web")]
 mod logging;
+#[cfg(skene_platform = "web")]
 mod low_level;
+#[cfg(skene_platform = "web")]
 mod markup;
+#[cfg(skene_platform = "web")]
 mod motion;
+#[cfg(skene_platform = "web")]
 mod realize;
+#[cfg(skene_platform = "web")]
 mod resource;
+#[cfg(skene_platform = "web")]
 mod resource_state;
+#[cfg(skene_platform = "web")]
 mod routing;
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 mod server;
+#[cfg(skene_platform = "web")]
 mod style_book;
+#[cfg(skene_platform = "web")]
 mod task;
+#[cfg(skene_platform = "web")]
 mod token;
+#[cfg(skene_platform = "web")]
 mod views;
 
 /// The web medium's shared vocabulary: the style extension, the typography set and the
@@ -215,12 +274,13 @@ pub use skene_foundation::{
 pub use skene_macros::{lazy, web_main as main};
 pub use skene_reactive as reactive;
 pub use tracing;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(skene_platform = "web", not(skene_server)))]
 #[doc(hidden)]
 pub use wasm_bindgen;
 
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub use self::platform::Rendered;
+#[cfg(skene_platform = "web")]
 pub use crate::{
   link_policy::{LinkAnnotation, LinkPolicy},
   media::{chosen_scheme, derive_scheme, set_scheme},
@@ -271,12 +331,15 @@ pub use crate::{
   },
 };
 
-/// The realization the build selected: the web's, in the browser
-/// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`).
+#[cfg(skene_platform = "web")]
+/// The realization the build selected: the web's, in the browser and on a server
+/// render (`--cfg skene_server`).
 pub type Active = platform::Web;
 
+#[cfg(skene_platform = "web")]
 skene_foundation::facade!(Active, f32, "logical pixels");
 
+#[cfg(skene_platform = "web")]
 /// Wraps a view that only a client can realize.
 ///
 /// It builds once the page stands [`hydrated`](media::hydrated), so a server renders
@@ -291,7 +354,7 @@ pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
 
 /// Mounts and runs the application in the browser; a server-rendered page is hydrated
 /// in place.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(all(skene_platform = "web", not(skene_server)))]
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
@@ -308,7 +371,7 @@ where
 ///
 /// It builds the tree, drives its resources until they settle, and serializes the
 /// result plus the resource state for hydration; see [`platform::render_to_string`].
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
@@ -320,7 +383,7 @@ where
 /// Renders the application for the given request path: the router (when installed via
 /// [`install_router`]) resolves against `path`, and the render proceeds as
 /// [`render_to_string`].
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub fn render_to_string_at<V, F>(path: &str, app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
@@ -331,11 +394,11 @@ where
   render_to_string(app)
 }
 
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub use skene_dev::{DEV_VARIABLE, HINTS_VARIABLE, NONCE_VARIABLE, ROUTES_MARKERS};
 
 /// What `app-server --help` prints.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 const USAGE: &str = "usage: app-server [path | --stream path | --routes | --serve | --help]
 
   path            render the page at path (default /) to stdout
@@ -364,7 +427,7 @@ the pages join the dev loop.";
 ///
 /// The app's server build is a plain command: `app-server /some/path` prints the
 /// document.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub fn render_main<V, F>(bundle: &str, app: F)
 where
   F: Fn() -> V + Clone + 'static,
@@ -449,13 +512,13 @@ where
 /// with the deltas beside the content they style: a client with no JavaScript receives
 /// a correct, styled document progressively.
 #[derive(Debug)]
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 #[must_use]
 pub struct Stream {
   chunks: Vec<String>,
 }
 
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 impl Stream {
   /// The chunks, in flush order.
   #[inline(always)]
@@ -487,7 +550,7 @@ impl Stream {
 /// boundary's slow content: the returned [`Stream`]'s chunks, in document order with
 /// their styles, are written to the response as they are produced, so the client sees
 /// the page progressively, without waiting on the slowest data and without JavaScript.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub fn render_to_stream<V, F>(app: F) -> Stream
 where
   F: FnOnce() -> V + 'static,
@@ -524,7 +587,7 @@ where
 /// The flushes are the opening shell, a body chunk per settled [`Deferred`] boundary,
 /// and the closing tail, and they concatenate to [`render_to_stream`]'s
 /// [`document`](Stream::document), so writing each one to a response streams the page.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
 where
   F: FnOnce() -> V + 'static,
@@ -550,7 +613,7 @@ where
 /// nonce the page's inline scripts carry as `Script-Nonce`; a response's are the
 /// complete page. Each is for that request alone, and a request without them renders
 /// against the defaults.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 pub fn serve_renders<V, F>(app: F)
 where
   F: Fn() -> V + Clone + 'static,
@@ -587,7 +650,7 @@ where
 /// The stream a protocol writes to: the process's standard output, taken aside, and
 /// standard output itself pointed at standard error, so what the app prints stays out of
 /// the protocol's way. Standard output as it is where it cannot be taken aside.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 fn protocol_output() -> Box<dyn std::io::Write> {
   #[cfg(unix)]
   {
@@ -606,7 +669,7 @@ fn protocol_output() -> Box<dyn std::io::Write> {
 /// Reads one length-framed message: `Content-Length: <bytes>` on a line, an empty
 /// line, and that many bytes of UTF-8; `None` at the end of the input or for a
 /// malformed message.
-#[cfg(skene_web_platform = "server")]
+#[cfg(all(skene_platform = "web", skene_server))]
 fn read_framed(input: &mut impl std::io::BufRead) -> Option<String> {
   let mut header = String::new();
 

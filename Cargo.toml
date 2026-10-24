@@ -23,7 +23,6 @@ proptest = { default-features = false, features = ["std"], version = "1" }
 quote = "1"
 rustc-hash = "2.1"
 serde_json = "1"
-skene-build = { path = "packages/build", version = "0.1.0" }
 skene-conformance = { path = "packages/conformance", version = "0.1.0" }
 skene-dev = { path = "packages/dev", version = "0.1.0" }
 skene-foundation = { path = "packages/foundation", version = "0.1.0" }
@@ -72,7 +71,10 @@ lto = "thin"
 missing_debug_implementations = "warn"
 missing_docs = "warn"
 unreachable_pub = "warn"
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(skene_platform, values("server"))'] }
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(skene_platform, values("android", "ios", "linux", "macos", "terminal", "web", "windows"))',
+  'cfg(skene_server)',
+] }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

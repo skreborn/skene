@@ -112,7 +112,8 @@ lays out through the settle loop its frame runs, and a platform whose layout is 
 toolkit's keeps the default, which does nothing.
 
 - **Why a trait and not name-resolved free functions.** A missing function is only an
-  error on a path that names it, and those paths are target-gated; a trait makes a gap a
+  error on a path that names it, and those paths are gated on the build's platform; a
+  trait makes a gap a
   hard error. That is what makes every platform complete: a build that compiles has
   every method a view can reach.
 - **Why the scene is in the spine.** The scene *calls* nothing: the spine mutates it and then
@@ -1160,16 +1161,21 @@ into a layer and interpolate named pairs.
 
 ### Web (`skene-web`)
 
-Two leaves over one node record, selected by the build and enforced by it: the browser
-leaf compiles on `wasm32-unknown-unknown` alone and the server leaf where the build names
-the server platform (`--cfg skene_platform="server"`, on any host), and the `WebDom`
-escape trait exists on the browser leaf alone, so the server leaf *cannot* touch the DOM.
+Two leaves of one platform over one node record, selected by the build's cfg alone and
+enforced by it: a build naming the web (`--cfg skene_platform="web"`) compiles the
+browser leaf (`not(skene_server)`), on `wasm32-unknown-unknown` alone, and the server
+leaf where `--cfg skene_server` stands beside it, on any target. Every item of the crate
+reaching a leaf is gated on the web, so a build naming no platform, the web without
+`skene_server` on another target, or a pixel platform the crate does not realize fails
+with one `compile_error!` of its own and nothing else, and a terminal build compiles it
+empty. The `WebDom` escape trait exists on the browser leaf alone, so the server leaf
+*cannot* touch the DOM; each leaf's dependencies are keyed on the same cfgs.
 What both realize is written once, in a `Realizer` over the `Sink` the DOM and the
 string tree implement: the records, the element choices, attributes, classes, slots,
 token definitions, control state and accessibility, so the two cannot drift; each leaf
 adds only what is its own:
 
-- **browser** (`skene_web_platform = "browser"`)—the browser. DOM sink, the stylesheet
+- **browser** (`not(skene_server)`)—the browser. DOM sink, the stylesheet
   sink, root-level event delegation with a stamped node id (one listener per event type,
   `scroll` and enter/leave included, an event a handler causes, as the `focusin` of a
   focus it moves, delivered at once inside it), one shared `ResizeObserver`, hydration
@@ -1181,7 +1187,7 @@ adds only what is its own:
   element given exactly the client's classes, and the order-keyed resource values no
   resource adopted dropped), scroll and focus restoration keyed by a segment's end
   anchor, the `WebDom` escape trait, the History binding and the head.
-- **server** (`skene_web_platform = "server"`)—the serializer. Renders its string tree to HTML plus
+- **server** (`skene_server`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until
   a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`
   boundaries with a style delta per chunk; serializes resource state for the client to
@@ -1527,11 +1533,22 @@ extension traits.
 ## Selection and entry
 
 Selection is by **facade dependency** first—a web app depends on `skene-web`, a
-terminal app on `skene-terminal`—and by target within a facade: `skene-web` resolves
-`wasm32-unknown-unknown` to the web's browser leaf, a build naming the server platform
-(`--cfg skene_platform="server"`) to its server leaf on any host, and every other host
-to no leaf, which `skene-web` refuses with a `compile_error!` naming the two; no cargo
-feature selects any of them. Where one triple hosts
+terminal app on `skene-terminal`—and by the build's cfg within a facade: `skene-web`
+compiles under `--cfg skene_platform="web"`, its browser leaf on `wasm32-unknown-unknown`
+and its server leaf, on any target, where `--cfg skene_server` stands beside it, and it
+refuses every other build with a `compile_error!` of its own: one naming no platform,
+the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
+does not realize yet, while a terminal build compiles it empty. No build script infers
+a leaf and no cargo feature selects one. `#[main]` and `#[lazy]` expand per leaf on the
+same cfgs, so a server build never emits the browser entry or splits a lazy body, and
+the gate's `selection` step holds each refusal to its message alone. The CLI names the
+cfgs for the target it builds, through the target's rustflags; this repository's root
+names no platform, and its cargo aliases (`cargo check-web`, `cargo check-server` and
+their `clippy`, `doc` and `test` kin) carry the web's cfgs and triples, each over the
+whole workspace in the target directory the gate builds it in. docs.rs documents each
+leaf of `skene-web` and `skene-simple-web` from their metadata's `cargo-args`, which name
+the browser in `wasm32-unknown-unknown`'s rustflags and rustdocflags and the server leaf
+in `x86_64-unknown-linux-gnu`'s. Where one triple hosts
 several platforms the build names the platform by a cfg, chosen once and unifying
 nothing, as `getrandom` names its backend. Target-gating stays the enforcement layer
 where it applies. A cargo feature is an opt-in upgrade that enables optional
@@ -1604,9 +1621,10 @@ force, so a route's head leaves with the route; the server serializes what is in
 and the browser applies it to the live head, adopting the elements a server render
 left. The title is the window's (`window::set_title`), shared with the terminal: the
 latest live one is in force, and each platform shows it, the web in the head. The app's server binary is built natively with the
-server platform named (`skene build web --static` and `skene run web --ssr` do it, for
-the host target alone so build scripts and proc macros never see the cfg; by hand,
-`RUSTFLAGS='--cfg skene_platform="server"' cargo rustc --lib --crate-type bin`), and
+web and its server leaf named (`skene build web --static` and `skene run web --ssr` do
+it, for the host target alone so build scripts and proc macros never see the cfgs; by
+hand, `cargo rustc --lib --crate-type bin --target host-tuple --config 'build.rustflags
+= ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]'`), and
 `#[main]` makes it a plain command booting its own crate's bundle: `app /path`
 prints the page, `--routes` the enumerable routes, `--stream /path` the page as it
 flushes, and `--serve` renders one length-framed request after another read from

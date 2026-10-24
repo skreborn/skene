@@ -133,7 +133,7 @@ impl Map<skene_web::platform::Web> {
   }
 
   /// The canvas the map paints.
-  #[cfg(skene_web_platform = "browser")]
+  #[cfg(all(skene_platform = "web", not(skene_server)))]
   fn canvas(self) -> NodeId {
     use skene_web::platform::{Web, WebDom, WebMarkup};
     use wasm_bindgen::JsCast;
@@ -158,14 +158,14 @@ impl Map<skene_web::platform::Web> {
   }
 
   /// The sea's box: a server render never builds the canvas.
-  #[cfg(skene_web_platform = "server")]
+  #[cfg(all(skene_platform = "web", skene_server))]
   fn canvas(self) -> NodeId {
     self.surface("div", |_| {})
   }
 }
 
 /// Paints the map: land over the sea, a road across it.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(all(skene_platform = "web", not(skene_server)))]
 fn paint(canvas: &web_sys::HtmlCanvasElement, width: u32, height: u32) {
   use wasm_bindgen::JsCast;
 

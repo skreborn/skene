@@ -286,7 +286,10 @@ pub(crate) fn build_terminal(app: &App, release: bool) -> Result<(), String> {
 
 /// Builds the app's browser wasm.
 fn build_wasm(app: &App, release: bool) -> Result<Built, String> {
-  let mut command = build_library(app, "cdylib", "wasm32-unknown-unknown");
+  let target = "wasm32-unknown-unknown";
+  let mut command = build_library(app, "cdylib", target);
+
+  name_platform(&mut command, target, WEB);
 
   // A split build keeps what the split tool reads—relocations, symbol names, unfused
   // functions—with the extra flags scoped to the app's own compile.
@@ -374,31 +377,42 @@ fn optimize(app: &App, out: &Path) -> Result<(), String> {
   }
 }
 
-/// The flag naming the server platform.
-const SERVER_CFG: &str = "--cfg skene_platform=\"server\"";
+/// The cfg naming the web, the browser's alone.
+const WEB: &[&str] = &["skene_platform=\"web\""];
 
-/// Names the server platform for what the build `command` compiles for `host` alone,
-/// never its build scripts or proc macros: through the target's rustflags, or, where
-/// `RUSTFLAGS` or `CARGO_ENCODED_RUSTFLAGS` supersedes those, joined to it.
-fn name_server_platform(command: &mut Command, host: &str) {
+/// The cfgs naming the web's server leaf.
+const SERVER: &[&str] = &["skene_platform=\"web\"", "skene_server"];
+
+/// Names `cfgs` for what the build `command` compiles for `target` alone, never its
+/// build scripts or proc macros: through the target's rustflags, or, where `RUSTFLAGS`
+/// or `CARGO_ENCODED_RUSTFLAGS` supersedes those, joined to it.
+fn name_platform(command: &mut Command, target: &str, cfgs: &[&str]) {
   if let Ok(mut flags) = std::env::var("CARGO_ENCODED_RUSTFLAGS") {
-    if !flags.is_empty() {
-      flags.push('\x1f');
+    for cfg in cfgs {
+      if !flags.is_empty() {
+        flags.push('\x1f');
+      }
+
+      flags.push_str("--cfg\x1f");
+      flags.push_str(cfg);
     }
 
-    flags.push_str("--cfg\x1fskene_platform=\"server\"");
     command.env("CARGO_ENCODED_RUSTFLAGS", flags);
 
     return;
   }
 
   if let Ok(mut flags) = std::env::var("RUSTFLAGS") {
-    if !flags.contains(SERVER_CFG) {
-      if !flags.is_empty() {
-        flags.push(' ');
-      }
+    for cfg in cfgs {
+      let flag = format!("--cfg {cfg}");
 
-      flags.push_str(SERVER_CFG);
+      if !flags.contains(&flag) {
+        if !flags.is_empty() {
+          flags.push(' ');
+        }
+
+        flags.push_str(&flag);
+      }
     }
 
     command.env("RUSTFLAGS", flags);
@@ -406,18 +420,26 @@ fn name_server_platform(command: &mut Command, host: &str) {
     return;
   }
 
-  command.arg("--config").arg(format!(
-    r#"target.{host}.rustflags=["--cfg", "skene_platform=\"server\""]"#
-  ));
+  command.arg("--config").arg(rustflags_config(target, cfgs));
 }
 
-/// Builds the app's server binary for the host, with the server platform named, and
+/// The `--config` value setting `target`'s rustflags to `cfgs`.
+fn rustflags_config(target: &str, cfgs: &[&str]) -> String {
+  let flags: Vec<String> = cfgs
+    .iter()
+    .map(|cfg| format!(r#""--cfg", "{}""#, cfg.replace('"', "\\\"")))
+    .collect();
+
+  format!("target.{target}.rustflags=[{}]", flags.join(", "))
+}
+
+/// Builds the app's server binary for the host, with the web's server leaf named, and
 /// returns its path.
 pub(crate) fn build_server(app: &App, release: bool) -> Result<Built, String> {
   let host = host_triple()?;
   let mut command = build_library(app, "bin", host);
 
-  name_server_platform(&mut command, host);
+  name_platform(&mut command, host, SERVER);
 
   if release {
     command.arg("--release");
@@ -498,7 +520,7 @@ fn route_file(route: &str) -> PathBuf {
 mod tests {
   use std::fs;
 
-  use super::WebOut;
+  use super::{SERVER, WEB, WebOut, rustflags_config};
 
   /// A build dropped unpublished leaves the output standing and its staging gone, and a
   /// published one replaces the output whole.
@@ -528,5 +550,19 @@ mod tests {
     assert_eq!(fs::read_to_string(web.join("index.html")).unwrap(), "new");
 
     fs::remove_dir_all(&dist).unwrap();
+  }
+
+  /// The browser's build names the web and the server's names its leaf beside it, each
+  /// as a TOML array cargo reads for the target alone.
+  #[test]
+  fn a_build_names_its_platform_in_the_targets_rustflags() {
+    assert_eq!(
+      rustflags_config("wasm32-unknown-unknown", WEB),
+      r#"target.wasm32-unknown-unknown.rustflags=["--cfg", "skene_platform=\"web\""]"#
+    );
+    assert_eq!(
+      rustflags_config("x86_64-unknown-linux-gnu", SERVER),
+      r#"target.x86_64-unknown-linux-gnu.rustflags=["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]"#
+    );
   }
 }

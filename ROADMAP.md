@@ -26,13 +26,12 @@ in a code comment.
     signature carries a type parameter (the author's order, 2026-10-23).
     - Selection: `--cfg skene_platform="<p>"` names the platform of every build,
     `Platform::CURRENT` answers it as a const enum, and a build naming none fails with
-    one `compile_error!`; the server leaf is the `web` build on the host with
-    `--cfg skene_server`, answered by `Platform::IS_SERVER`, and this repository's root
-    names no default platform, a cargo alias per platform and the checked-in
-    rust-analyzer settings naming one. Each platform has its module, `platform::<p>`, its data types
-    present in every build and its controls in its own alone; `platform::apple` is the
-    one grouping (`Platform::IS_APPLE`, `set_apple_*`). Every `P: Realization` above
-    the realizations goes.
+    one `compile_error!`; `Platform::IS_SERVER` answers the server leaf, and this
+    repository's root names no default platform, a cargo alias per platform and the
+    checked-in rust-analyzer settings naming one. Each platform has its module,
+    `platform::<p>`, its data types present in every build and its controls in its own
+    alone; `platform::apple` is the one grouping (`Platform::IS_APPLE`, `set_apple_*`).
+    Every `P: Realization` above the realizations goes.
     - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
     come from the macro the shared properties come from, with their `derive_` twins and
     their backing fields cfg-gated; another platform's setter compiles and does nothing.
@@ -617,18 +616,24 @@ in a code comment.
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
     (Cloudflare Workers, Deno Deploy, Netlify and Supabase edge, Node, Bun), where the
     server leaf already renders on `wasm32-unknown-unknown` after two small patches;
-    four cheap steps keep that build cheap to add, and the isolate leaf itself (an
+    three cheap steps keep that build cheap to add, and the isolate leaf itself (an
     async settle loop, a JavaScript timer and clock, exports returning a `Promise` and
     a `ReadableStream`, a per-isolate render queue, a fourth test tier under Node;
     600–900 lines) waits until someone asks.
     - The render deadline through a clock that works on every target, `Instant`
     natively and the JavaScript clock on `wasm32-unknown-unknown`.
-    - `#[main]` never emitting the browser entry in a server build.
     - All blocking behind one seam: the settle loop async, with a native `block_on`
     over today's condition variable, and `AGENTS.md` stating that the server leaf
     blocks only there.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
+
+31. **Confirm docs.rs documents both web leaves.** `skene-web` and `skene-simple-web`
+    name each target's leaf through `cargo-args` setting `target.<triple>.rustflags` and
+    `rustdocflags`, and cargo takes a target's flags over `build.*` and an environment
+    variable over both, so on the first publish either docs.rs's own rustdoc flags or
+    these may be dropped: check both targets' pages, and move the cfgs to wherever
+    docs.rs's flags merge with them if either is missing.
 
 Watched, not scheduled:
 

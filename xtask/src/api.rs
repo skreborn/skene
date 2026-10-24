@@ -19,6 +19,7 @@ use crate::{
   Outcome,
   SERVER_CFG,
   WASM,
+  WEB_CFG,
   describe,
   manifests::{WEB, Workspace},
 };
@@ -67,7 +68,6 @@ struct Snapshot {
 /// Every snapshot: each library crate reaching no web on the host, each reaching the web
 /// on the server leaf, and those whose surface differs by leaf on each of theirs.
 const SNAPSHOTS: &[Snapshot] = &[
-  Snapshot::new("skene-build", Leaf::Host),
   Snapshot::new("skene-conformance", Leaf::Host),
   Snapshot::new("skene-dev", Leaf::Host),
   Snapshot::new("skene-foundation", Leaf::Host),
@@ -123,6 +123,8 @@ impl Snapshot {
       Leaf::Browser => {
         command
           .args(["--target", WASM])
+          .env(Gate::target_flags(WASM, "RUSTFLAGS"), WEB_CFG)
+          .env(Gate::target_flags(WASM, "RUSTDOCFLAGS"), WEB_CFG)
           .env("CARGO_TARGET_DIR", gate.target.join("api"));
       }
     }

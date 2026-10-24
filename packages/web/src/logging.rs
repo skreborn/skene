@@ -44,7 +44,7 @@ impl Subscriber for LogSubscriber {
 }
 
 /// Writes `line` to the browser console at `level`.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 fn emit(level: Level, line: &str) {
   let value = wasm_bindgen::JsValue::from_str(line);
 
@@ -56,7 +56,7 @@ fn emit(level: Level, line: &str) {
 }
 
 /// Writes `line` to standard error, led by its `level`.
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 fn emit(level: Level, line: &str) {
   eprintln!("{level} {line}");
 }

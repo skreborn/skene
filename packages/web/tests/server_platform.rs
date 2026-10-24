@@ -1,9 +1,8 @@
 //! The server leaf over the new model: the string tree serialized against the real
 //! sink, its classes content-addressed and its stylesheet real CSS.
 //!
-//! Run with the server platform selected:
-//! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test server_platform`.
-#![cfg(skene_web_platform = "server")]
+//! Run on the server leaf: `cargo test-server --test server_platform`.
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_foundation::{
   AnyKind,

@@ -3,7 +3,7 @@
 //! picture and dialog it shows is named, as a reader finds it.
 //!
 //! Run in a headless browser:
-//! `cargo test -p gallery --target wasm32-unknown-unknown --test browser_axe`.
+//! `cargo test-web --test browser_axe`.
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use std::fmt::Write as _;

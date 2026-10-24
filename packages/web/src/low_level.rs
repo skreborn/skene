@@ -42,7 +42,7 @@ pub trait WebMarkup: Realization {
 /// The browser leaf: the live DOM behind a node.
 ///
 /// Not implemented on the server leaf, so a view bound on it fails to compile there.
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 #[diagnostic::on_unimplemented(
   message = "`{Self}` has no DOM",
   label = "a view bound on `WebDom` exists on the browser leaf alone; bound on `WebMarkup` it exists on the server leaf too"

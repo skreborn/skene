@@ -125,7 +125,6 @@ with the mouse off a plain drag is the terminal's.
 | `skene-simple-web` | `packages/simple-web` | The Simple views on the web, as on the terminal, the palette in pixels. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
-| `skene-build` | `packages/build` | The build script naming the web leaf a build compiles for, a build-dependency of every crate with code per leaf. |
 | `skene-dev` | `packages/dev` | The dev loop's protocol between the `skene` command and the app it runs, and the `Document` a web page is served as, the server leaf's pages and the command's client-rendered shell alike. |
 | `skene-cli` | `packages/cli` | `skene new app <name> <platform>...`, `skene new lib <name> <platform>...`, `skene build web [--static]`, `skene build terminal`, `skene run web [--ssr]`, `skene run terminal` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets, and the `public` directory served at the site's root; it depends on no facade, writing its shell through `skene-dev`'s `Document`. |
 
@@ -186,11 +185,13 @@ workspace-local CLI (`cargo install --path packages/cli` makes it `skene`). A re
 web build runs its bundle through binaryen's `wasm-opt` where it is installed.
 
 The server build of a web app is a plain, native command, with no integration at all:
-its library built as a binary with the server platform named.
+its library built as a binary for the host, the build naming the web and its server leaf
+beside it.
 
 ```sh
-RUSTFLAGS='--cfg skene_platform="server"' cargo rustc -p counter --lib --crate-type bin
-target/debug/counter /   # prints the page
+cargo rustc -p counter --lib --crate-type bin --target host-tuple \
+  --config 'build.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]'
+target/x86_64-unknown-linux-gnu/debug/counter /   # prints the page, on an x86-64 Linux host
 ```
 
 ## Testing
@@ -202,7 +203,8 @@ cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` 
 
 The gate checks formatting, manifest order, every patched crate vendored under
 `vendor/`, the house rules, unused dependencies, clippy and rustdoc on every leaf,
-clippy on the terminal's macOS paths, manifests free of cargo features, the minimum Rust
+`skene-web` refusing with its own message a build that names no platform or one it does
+not realize, clippy on the terminal's macOS paths, manifests free of cargo features, the minimum Rust
 version in the host's, the server's and the browser's builds, and three test tiers. A
 crate reaching `skene-web` is built for the web's leaves alone, and the host tier runs
 every other crate's tests: the foundation's and the layout engine's unit tests and the

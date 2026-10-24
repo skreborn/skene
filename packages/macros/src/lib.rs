@@ -10,10 +10,14 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 
 /// Marks a web app's entry point: a function returning the app's view.
 ///
-/// Expands to the app crate's `main` for whichever leaf the build targets: in the
-/// browser it launches the app, hydrating a server-rendered page in place; on the
-/// server leaf it renders the requested path to stdout. The crate is the app's library
-/// alone: the `skene` command builds it as each target's crate type.
+/// Expands to the app crate's `main` for the leaf the build names: in the browser
+/// (`skene_platform = "web"`) it launches the app, hydrating a server-rendered page in
+/// place; on the server leaf (`skene_server` beside it) it renders the requested path to
+/// stdout. The crate is the app's library alone: the `skene` command builds it as each
+/// leaf's crate type, and its `check-cfg` declares the two cfgs the expansion reads.
+///
+/// The attribute takes no arguments and the function no parameters and no generics:
+/// the build names the platform.
 ///
 /// ```ignore
 /// #[skene_web::main]
@@ -22,14 +26,17 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn web_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
-  let function = parse_macro_input!(item as ItemFn);
+pub fn web_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+  let function = match entry(attr, item) {
+    Ok(function) => function,
+    Err(error) => return error,
+  };
   let name = &function.sig.ident;
 
   quote! {
     #function
 
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    #[cfg(all(skene_platform = "web", not(skene_server)))]
     #[doc(hidden)]
     #[::skene_web::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_web::wasm_bindgen)]
     pub fn __skene_start() {
@@ -38,15 +45,13 @@ pub fn web_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // The split tool roots its call graph at a function named `main`; the entry
     // exports an empty one, except to its own tests, whose harness brings the entry.
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown", not(test)))]
+    #[cfg(all(skene_platform = "web", not(skene_server), not(test)))]
     #[unsafe(no_mangle)]
     extern "C" fn main() {}
 
-    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+    #[cfg(all(skene_platform = "web", skene_server))]
     #[doc(hidden)]
-    #[allow(unexpected_cfgs)]
     pub fn main() {
-      #[cfg(skene_platform = "server")]
       ::skene_web::render_main(env!("CARGO_CRATE_NAME"), #name);
     }
   }
@@ -58,6 +63,9 @@ pub fn web_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// Expands to the app crate's `main`, launching the app in the terminal. The crate is
 /// the app's library alone: the `skene` command builds it as a binary.
 ///
+/// The attribute takes no arguments and the function no parameters and no generics:
+/// the build names the platform.
+///
 /// ```ignore
 /// #[skene_terminal::main]
 /// fn app() -> impl View {
@@ -65,8 +73,11 @@ pub fn web_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn terminal_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
-  let function = parse_macro_input!(item as ItemFn);
+pub fn terminal_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+  let function = match entry(attr, item) {
+    Ok(function) => function,
+    Err(error) => return error,
+  };
   let name = &function.sig.ident;
 
   quote! {
@@ -81,6 +92,45 @@ pub fn terminal_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
   .into()
 }
 
+/// The function an entry attribute marks: one taking no parameters and no generics,
+/// under an attribute taking no arguments, since the build names the platform; else the
+/// error saying why, beside the function as written.
+fn entry(attr: TokenStream, item: TokenStream) -> Result<ItemFn, TokenStream> {
+  let function = syn::parse::<ItemFn>(item).map_err(syn::Error::into_compile_error)?;
+  let attr = proc_macro2::TokenStream::from(attr);
+  let refused = if !attr.is_empty() {
+    Some(syn::Error::new_spanned(
+      attr,
+      "an entry takes no arguments: the build names its platform",
+    ))
+  }
+  else if !function.sig.generics.params.is_empty() || function.sig.generics.where_clause.is_some()
+  {
+    Some(syn::Error::new_spanned(
+      &function.sig.generics,
+      "an entry is not generic: it returns the app's view",
+    ))
+  }
+  else if !function.sig.inputs.is_empty() {
+    Some(syn::Error::new_spanned(
+      &function.sig.inputs,
+      "an entry takes no parameters: it returns the app's view",
+    ))
+  }
+  else {
+    None
+  };
+
+  match refused {
+    Some(error) => {
+      let error = error.into_compile_error();
+
+      Err(quote! { #function #error }.into())
+    }
+    None => Ok(function),
+  }
+}
+
 /// Marks an async function as lazily loaded: on the web its body splits into a
 /// separately-fetched wasm module, downloaded on the first call.
 ///
@@ -88,8 +138,8 @@ pub fn terminal_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// then the body. Functions sharing a module name—`#[lazy(admin)]`—split into modules
 /// that share their common code; a bare `#[lazy]` names the module after the function.
 /// Splitting happens in `skene build web` when `skene.toml` sets `[web] split = true`,
-/// which a build carrying lazy functions requires; every other target calls the body
-/// directly.
+/// which a browser build carrying lazy functions requires; every other build, the
+/// server leaf's among them, calls the body directly.
 ///
 /// Pair with [`AsyncView`](../skene_web/struct.AsyncView.html) to render a lazy function's view:
 /// `AsyncView::new().set_child_loader(settings)`.
@@ -195,7 +245,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
   let statements = &function.block.stmts;
 
   quote! {
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    #[cfg(all(skene_platform = "web", not(skene_server)))]
     #(#attributes)*
     #visibility #wrapper_signature {
       #[expect(improper_ctypes_definitions)]
@@ -225,7 +275,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
       unsafe { #import(#(#arguments),*) }.await
     }
 
-    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+    #[cfg(not(all(skene_platform = "web", not(skene_server))))]
     #function
   }
   .into()

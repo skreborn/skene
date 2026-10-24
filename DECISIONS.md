@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **A `server` value of `skene_platform`** (2026-10-23), the server leaf named as a
+  platform of its own (`--cfg skene_platform="server"`, a `Platform::Server` variant):
+  the server leaf is the web platform's leaf, rendering the web's markup from the same
+  views, so it is the `web` build with `--cfg skene_server` beside it, `Platform::CURRENT`
+  answering `Web` on both leaves and the const `Platform::IS_SERVER` telling them apart.
+  Revisit when the server leaf's vocabulary must diverge from the browser's in a way app
+  code matches on.
 - **A fixture realization for the spine's own tests** (2026-10-23), a `TestPlatform`
   logging the calls the scene mirrors, or a `#[cfg(test)]` realization realizing
   nothing, kept so the spine's structure, dispatch and reconcile tests run without a
@@ -325,10 +332,10 @@ supersedes.
 - **A WASI server leaf** (2026-09-17), under a wasmtime runner or as a `wasi:http`
   handler: it needs a second transport for every client, and the demand for wasm
   rendering is on JavaScript isolates. The server leaf compiles natively, selected by
-  `--cfg skene_platform="server"`, so every crate on the host reaches a render; a wasm
-  host is a runner someone may write, for pages that await nothing until the settle loop
-  is async. Revisit when an app must render where only WASI runs, and WASI's clients
-  cover what its pages fetch.
+  `--cfg skene_platform="web"` with `--cfg skene_server`, so every crate on the host
+  reaches a render; a wasm host is a runner someone may write, for pages that await
+  nothing until the settle loop is async. Revisit when an app must render where only
+  WASI runs, and WASI's clients cover what its pages fetch.
 - **Islands architecture** (2026-09-16): compiled no-JS styling already removes most
   reasons a static page ships wasm. Revisit when static pages measured in practice ship
   wasm for a small interactive part of a large page.

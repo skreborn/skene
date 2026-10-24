@@ -1,0 +1,5 @@
+error: an entry takes no parameters: it returns the app's view
+ --> tests/compile_fail/an_entry_with_a_parameter.rs:6:8
+  |
+6 | fn app(greeting: &'static str) -> impl View {
+  |        ^^^^^^^^^^^^^^^^^^^^^^

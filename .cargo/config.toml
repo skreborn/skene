@@ -1,6 +1,98 @@
 [alias]
 skene = "run --package skene-cli --profile cli --"
 xtask = "run --package xtask --"
+# The web's builds at this repository's root, which names no default platform: its
+# browser leaf on wasm32 and its server leaf on the host, each in the target directory
+# the gate builds it in. `--workspace` takes every member, so a `-p` beside it narrows
+# nothing.
+check-web = [
+  "check",
+  "--workspace",
+  "--target",
+  "wasm32-unknown-unknown",
+  "--config",
+  'target.wasm32-unknown-unknown.rustflags = ["--cfg", "skene_platform=\"web\""]',
+  "--config",
+  'target.wasm32-unknown-unknown.rustdocflags = ["--cfg", "skene_platform=\"web\""]',
+]
+clippy-web = [
+  "clippy",
+  "--workspace",
+  "--target",
+  "wasm32-unknown-unknown",
+  "--config",
+  'target.wasm32-unknown-unknown.rustflags = ["--cfg", "skene_platform=\"web\""]',
+  "--config",
+  'target.wasm32-unknown-unknown.rustdocflags = ["--cfg", "skene_platform=\"web\""]',
+]
+doc-web = [
+  "doc",
+  "--workspace",
+  "--target",
+  "wasm32-unknown-unknown",
+  "--config",
+  'target.wasm32-unknown-unknown.rustflags = ["--cfg", "skene_platform=\"web\""]',
+  "--config",
+  'target.wasm32-unknown-unknown.rustdocflags = ["--cfg", "skene_platform=\"web\""]',
+]
+test-web = [
+  "test",
+  "--workspace",
+  "--target",
+  "wasm32-unknown-unknown",
+  "--config",
+  'target.wasm32-unknown-unknown.rustflags = ["--cfg", "skene_platform=\"web\""]',
+  "--config",
+  'target.wasm32-unknown-unknown.rustdocflags = ["--cfg", "skene_platform=\"web\""]',
+]
+check-server = [
+  "check",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/server",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+]
+clippy-server = [
+  "clippy",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/server",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+]
+doc-server = [
+  "doc",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/server",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+]
+test-server = [
+  "test",
+  "--workspace",
+  "--target",
+  "host-tuple",
+  "--target-dir",
+  "target/server",
+  "--config",
+  '''target.'cfg(all())'.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]''',
+  "--config",
+  'build.rustdocflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+]
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"

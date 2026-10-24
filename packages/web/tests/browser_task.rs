@@ -1,8 +1,8 @@
 //! Tasks on the web platform's event loop, and their scope-bound cancellation.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-web --target wasm32-unknown-unknown`.
-#![cfg(skene_web_platform = "browser")]
+//! `cargo test-web --test browser_task`.
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::{cell::Cell, rc::Rc};
 

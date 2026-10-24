@@ -2,11 +2,12 @@
 //! [`Realization`](skene_foundation::Realization) trait.
 //!
 //! For a library author writing a view directly against the browser DOM or the server's
-//! markup. The browser leaf (`skene_web_platform = "browser"`) realizes against a live
-//! DOM and the server leaf (`skene_web_platform = "server"`) against a string tree,
-//! both emitting the same web semantics, so a node styled the same way gets the same
-//! content-addressed class on either leaf and a served page hydrates in place. Each
-//! leaf implements [`Realization`](skene_foundation::Realization) and
+//! markup. The browser leaf (`skene_platform = "web"` on `wasm32-unknown-unknown`)
+//! realizes against a live DOM and the server leaf (`--cfg skene_server` beside it, on
+//! any target) against a string tree, both emitting the same web semantics, so a node
+//! styled the same way gets the same content-addressed class on either leaf and a
+//! served page hydrates in place. Each leaf implements
+//! [`Realization`](skene_foundation::Realization) and
 //! [`WebHydration`](skene_foundation::web::WebHydration) for [`Web`] and exposes its
 //! own entry points beside them: the executor (`drive`), the document head and the path
 //! (the browser's history, the server's request).
@@ -17,15 +18,15 @@
 //! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 pub use skene_dev::Document;
 pub use skene_dev::STATE_SCRIPT_ID;
 
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 pub use crate::browser::boot_with_dev_state;
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 pub use crate::browser::uninstall;
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 pub use crate::browser::{
   add_head_element,
   adopt_restoration,
@@ -52,9 +53,9 @@ pub use crate::browser::{
   view_transitions_enabled,
   watch_media,
 };
-#[cfg(skene_web_platform = "browser")]
+#[cfg(not(skene_server))]
 pub use crate::low_level::WebDom;
-#[cfg(skene_web_platform = "server")]
+#[cfg(skene_server)]
 pub use crate::server::{
   Rendered,
   StreamPiece,

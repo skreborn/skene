@@ -11,7 +11,7 @@ use std::{
   thread,
 };
 
-use crate::{Gate, Log, Outcome, WASM, manifests};
+use crate::{Gate, Log, Outcome, manifests};
 
 /// A `cargo test` run on the browser leaf.
 struct Run {
@@ -322,29 +322,13 @@ pub(crate) fn run(gate: &Gate, log: &mut Log) -> Outcome {
 
 /// Links every library's tests for the browser and builds every run's binaries.
 fn build(gate: &Gate, log: &mut Log) -> Result<Vec<Binary>, String> {
-  log.check(gate.cargo([
-    "test",
-    "--locked",
-    "--workspace",
-    "--lib",
-    "--no-run",
-    "--target",
-    WASM,
-  ]))?;
+  log.check(gate.wasm_cargo(["test", "--locked", "--workspace", "--lib", "--no-run"]))?;
 
   let mut binaries = Vec::new();
 
   for run in RUNS {
     let directory = manifests::package_directory(&gate.root, run.package)?;
-    let mut command = gate.cargo([
-      "test",
-      "--locked",
-      "--no-run",
-      "--target",
-      WASM,
-      "-p",
-      run.package,
-    ]);
+    let mut command = gate.wasm_cargo(["test", "--locked", "--no-run", "-p", run.package]);
 
     command.args(run.arguments);
 

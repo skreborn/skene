@@ -8,7 +8,7 @@
 //!
 //! Gated to the web's two leaves, whose links and lazy modules these are.
 
-#![cfg(any(target_arch = "wasm32", skene_platform = "server"))]
+#![cfg(skene_platform = "web")]
 
 use skene_simple_web::prelude::*;
 use skene_web::{

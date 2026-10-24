@@ -521,9 +521,49 @@ mod tests {
     assert_eq!(app.package_dirs.first(), Some(&app.dir));
     assert!(builds_from("web"));
     assert!(builds_from("foundation"));
-    assert!(builds_from("build"));
     assert!(!builds_from("cli"));
     assert!(!builds_from("terminal"));
+  }
+
+  /// A build dependency is a package the app builds from, and a dev dependency is not.
+  #[test]
+  fn an_app_builds_from_its_build_dependencies() {
+    let root = std::env::temp_dir().join(format!("skene-local-packages-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    let package = |name: &str, dependencies: &str| {
+      let dir = root.join(name);
+
+      fs::create_dir_all(dir.join("src")).unwrap();
+      fs::write(dir.join("src/lib.rs"), "").unwrap();
+      fs::write(
+        dir.join("Cargo.toml"),
+        format!("[package]\nname = \"{name}\"\nedition = \"2024\"\n{dependencies}"),
+      )
+      .unwrap();
+    };
+
+    fs::create_dir_all(&root).unwrap();
+    fs::write(
+      root.join("Cargo.toml"),
+      "[workspace]\nresolver = \"3\"\nmembers = [\"app\", \"check\", \"tool\"]\n",
+    )
+    .unwrap();
+    package(
+      "app",
+      "[build-dependencies]\ntool = { path = \"../tool\" }\n[dev-dependencies]\ncheck = { \
+       path = \"../check\" }\n",
+    );
+    package("check", "");
+    package("tool", "");
+
+    let app = App::load(&root.join("app")).unwrap();
+
+    assert_eq!(
+      app.package_dirs,
+      [app.dir.clone(), app.workspace_root.join("tool")]
+    );
+
+    let _ = fs::remove_dir_all(&root);
   }
 
   /// The public directory's files land at the output's root, and a path from the site's

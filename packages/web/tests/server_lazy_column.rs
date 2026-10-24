@@ -1,7 +1,7 @@
 //! Server rendering of the virtual list: an unmeasured viewport serializes only the
 //! overscan margin, the rest as spacer extent.
 
-#![cfg(skene_web_platform = "server")]
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::{
   LazyColumn,

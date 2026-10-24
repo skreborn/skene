@@ -1,7 +1,7 @@
 //! Server rendering of suspense: the render settles through the boundary, so the
 //! content serializes and the fallback never does.
 
-#![cfg(skene_web_platform = "server")]
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::{
   DeferredBase,

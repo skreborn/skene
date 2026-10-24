@@ -1,8 +1,8 @@
 //! Asynchronously loaded data, from the load to the swapped-in tree.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_resource`.
-#![cfg(skene_web_platform = "browser")]
+//! `cargo test-web --test browser_resource`.
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::{cell::Cell, rc::Rc};
 

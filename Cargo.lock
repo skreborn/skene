@@ -15,7 +15,6 @@ dependencies = [
 name = "acme-map"
 version = "0.1.0"
 dependencies = [
- "skene-build",
  "skene-foundation",
  "skene-web",
  "wasm-bindgen",
@@ -2487,10 +2486,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33f4fe9184a62d842c9ef383018f3306d8ba224fd9d836f56d7288308847c256"
 
 [[package]]
-name = "skene-build"
-version = "0.1.0"
-
-[[package]]
 name = "skene-cli"
 version = "0.1.0"
 dependencies = [
@@ -2689,7 +2684,6 @@ dependencies = [
  "rustix",
  "serde_json",
  "sfv",
- "skene-build",
  "skene-dev",
  "skene-foundation",
  "skene-macros",

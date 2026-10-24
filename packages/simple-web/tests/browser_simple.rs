@@ -4,7 +4,7 @@
 //! element's style.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-simple-web --target wasm32-unknown-unknown --test browser_simple`.
+//! `cargo test-web --test browser_simple`.
 
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 

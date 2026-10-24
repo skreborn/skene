@@ -9,7 +9,7 @@ publish = false
 skene-foundation.workspace = true
 skene-web.workspace = true
 
-[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dependencies]
 wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [
   "CanvasRenderingContext2d",
@@ -18,7 +18,7 @@ web-sys = { workspace = true, features = [
   "HtmlCanvasElement",
 ] }
 
-[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dev-dependencies]
 wasm-bindgen-test.workspace = true
 web-sys = { workspace = true, features = [
   "Document",
@@ -27,9 +27,6 @@ web-sys = { workspace = true, features = [
   "Node",
   "Window",
 ] }
-
-[build-dependencies]
-skene-build.workspace = true
 
 [lints]
 workspace = true

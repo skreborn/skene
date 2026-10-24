@@ -6,8 +6,8 @@
 //! its canvas; `browser_dom` covers the GPU path with WebGPU switched on.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_painted`.
-#![cfg(skene_web_platform = "browser")]
+//! `cargo test-web --test browser_painted`.
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use skene_foundation::{ColumnBase, Dimension, PaintedBase};
 use skene_web::{

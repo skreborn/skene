@@ -1,6 +1,6 @@
 //! Routing on the server leaf: the requested path resolves the route the render shows.
 
-#![cfg(skene_web_platform = "server")]
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::{
   Text,

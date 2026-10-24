@@ -12,7 +12,7 @@
 //! motion steps both sides alike: the resolved one through the foundation's
 //! [`Motion`], retargeted as each step writes and sampled at its elapsed time, the
 //! engine's by seeking its animations.
-#![cfg(skene_web_platform = "browser")]
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::cell::{Cell, RefCell};
 

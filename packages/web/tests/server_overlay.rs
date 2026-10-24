@@ -1,6 +1,6 @@
 //! Server rendering of overlays: top-layer elements serialized closed.
 
-#![cfg(skene_web_platform = "server")]
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_foundation::{
   Color,

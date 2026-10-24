@@ -6,8 +6,8 @@
 //! bytes the server leaf renders for it, which `server_snapshot` holds.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_hydrate`.
-#![cfg(skene_web_platform = "browser")]
+//! `cargo test-web --test browser_hydrate`.
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::{
   cell::{Cell, RefCell},

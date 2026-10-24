@@ -1,7 +1,7 @@
 //! Server rendering of the text field: the input as the control's own element, the
 //! void-tag form, value and placeholder serialization, styling, and inert handlers.
 
-#![cfg(skene_web_platform = "server")]
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::{
   BasicTextField,

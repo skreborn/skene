@@ -3,7 +3,7 @@
 //! across refactors of the realization pipeline; `browser_hydrate` hydrates the same
 //! bytes in a browser.
 
-#![cfg(skene_web_platform = "server")]
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::render_to_string;
 

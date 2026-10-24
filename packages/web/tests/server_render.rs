@@ -1,8 +1,7 @@
 //! Server-side rendering: a view tree to HTML, against the real string sink.
 //!
-//! Run with the server platform selected:
-//! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test server_render`.
-#![cfg(skene_web_platform = "server")]
+//! Run on the server leaf: `cargo test-server --test server_render`.
+#![cfg(all(skene_platform = "web", skene_server))]
 
 use std::time::Duration;
 

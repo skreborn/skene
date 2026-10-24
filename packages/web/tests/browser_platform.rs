@@ -4,8 +4,8 @@
 //! hydration of the server leaf's markup, and the hash a key takes.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-web --target wasm32-unknown-unknown --test browser_platform`.
-#![cfg(skene_web_platform = "browser")]
+//! `cargo test-web --test browser_platform`.
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use std::{cell::Cell, rc::Rc};
 

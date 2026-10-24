@@ -1,8 +1,8 @@
 //! The map against a real DOM: a `<canvas>` of the map's size inside its container.
 //!
 //! Run in a headless browser:
-//! `cargo test -p acme-map --target wasm32-unknown-unknown --test browser_map`.
-#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+//! `cargo test-web --test browser_map`.
+#![cfg(all(skene_platform = "web", not(skene_server)))]
 
 use acme_map::Map;
 use skene_foundation::{Size, View};

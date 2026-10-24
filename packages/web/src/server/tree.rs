@@ -4,6 +4,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use rustc_hash::FxHashSet;
+use skene_dev::Document;
 use skene_foundation::{
   NodeId,
   PickerOption,
@@ -15,7 +16,6 @@ use super::{PREEMPT_SCHEME, PREEMPT_SCHEME_SCRIPT, ROOT, SCRIPT_NONCE, VIEW_TRAN
 use crate::{
   compile::slot_registrations,
   condition::CLASS_PLACEHOLDER,
-  document::{escape_attr, escape_text, push_script},
   markup::{FormElement, MARKER_ATTRIBUTE, STYLE_ATTRIBUTE, STYLE_ID},
   motion::VIEW_TRANSITION_RULE,
   platform::Web,
@@ -149,7 +149,7 @@ impl Element {
       out.push('\n');
     }
 
-    escape_text(text, out);
+    Document::escape_text(text, out);
   }
 
   fn emit_comment(text: &str, out: &mut String) {
@@ -186,7 +186,7 @@ impl Element {
 
           if !value.is_empty() {
             out.push_str("=\"");
-            escape_attr(value, out);
+            Document::escape_attribute(value, out);
             out.push('"');
           }
         }
@@ -244,7 +244,7 @@ impl Element {
     }
 
     out.push_str(" style=\"");
-    escape_attr(&style, out);
+    Document::escape_attribute(&style, out);
     out.push('"');
   }
 
@@ -252,7 +252,7 @@ impl Element {
   fn emit_options(&self, out: &mut String) {
     for option in &self.options {
       out.push_str("<option value=\"");
-      escape_attr(&option.value, out);
+      Document::escape_attribute(&option.value, out);
       out.push('"');
 
       if self.chosen.as_deref() == Some(option.value.as_str()) {
@@ -264,7 +264,7 @@ impl Element {
       }
 
       out.push('>');
-      escape_text(&option.name, out);
+      Document::escape_text(&option.name, out);
       out.push_str("</option>");
     }
   }
@@ -580,7 +580,7 @@ impl Tree {
 
     if PREEMPT_SCHEME.with(Cell::get) {
       SCRIPT_NONCE.with(|nonce| {
-        push_script(
+        Document::push_script(
           &mut out,
           nonce.borrow().as_deref(),
           false,
@@ -591,7 +591,7 @@ impl Tree {
 
     if let Some(title) = self.head.title() {
       out.push_str("<title>");
-      escape_text(title, &mut out);
+      Document::escape_text(title, &mut out);
       out.push_str("</title>");
     }
 
@@ -603,7 +603,7 @@ impl Tree {
         out.push(' ');
         out.push_str(name);
         out.push_str("=\"");
-        escape_attr(value, &mut out);
+        Document::escape_attribute(value, &mut out);
         out.push('"');
       }
 

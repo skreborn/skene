@@ -1,8 +1,16 @@
 //! The dev loop's protocol between the `skene` command and the app it runs: the exit
 //! status asking for a respawn, the variables the command sets, the lines it writes on
 //! a terminal app's control pipe, and the names a served page carries.
+//!
+//! Beside the protocol, the [`Document`] a web page is served as: one template for the
+//! server leaf's pages and the command's client-rendered shell, with the dev loop's
+//! script a page in the loop carries.
+
+mod document;
 
 use std::path::PathBuf;
+
+pub use self::document::{Document, STATE_SCRIPT_ID};
 
 /// The exit status an app ends a swap with where it cannot become the next binary in
 /// place, asking the launcher to spawn it.

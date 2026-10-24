@@ -16,6 +16,7 @@ mod tree;
 
 use std::cell::{Cell, RefCell};
 
+use skene_dev::Document;
 use skene_foundation::{Boundary, NodeId, NodeKind, NodeMap, Scene, View};
 use skene_reactive::{Owner, batch, provide_context};
 
@@ -38,7 +39,6 @@ use self::{
   tree::{Frame, StringTree, Tree},
 };
 use crate::{
-  document::{Document, state_script},
   hints::RenderHints,
   platform::Web,
   realize::{Realized, Realizer},
@@ -195,7 +195,7 @@ impl Rendered {
   /// escaped so it closes nothing, for a page of the app's own to embed.
   #[must_use]
   pub fn state_script(&self) -> String {
-    state_script(&self.state)
+    Document::state_script(&self.state)
   }
 
   /// The page's language, when the app set one.

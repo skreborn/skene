@@ -35,6 +35,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
+use skene_dev::STATE_SCRIPT_ID;
 use skene_foundation::{
   EventKind,
   NodeId,
@@ -69,7 +70,6 @@ use super::{
   platform::Web,
   realize::{Realized, Realizer, Record},
 };
-use crate::resource_state::STATE_SCRIPT_ID;
 
 /// The DOM node type of a comment.
 const COMMENT_NODE: u16 = 8;

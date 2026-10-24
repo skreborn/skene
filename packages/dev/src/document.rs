@@ -1,7 +1,11 @@
 //! The document a page is served as: one template for the server leaf's pages and the
 //! CLI's client-rendered shell.
 
-use crate::resource_state::STATE_SCRIPT_ID;
+use crate::DEV_META;
+
+/// The id of the `<script>` element carrying the hydration state, shared by the server's
+/// page assembly and the client's `launch`.
+pub const STATE_SCRIPT_ID: &str = "skene-state";
 
 /// The dev loop's script: it keeps the state snapshot in the page's own storage across a
 /// reload—the origin private file system on the dev server's word, session storage as
@@ -39,7 +43,7 @@ impl Document {
 
     if let Some(language) = &self.language {
       out.push_str(" lang=\"");
-      escape_attr(language, &mut out);
+      Self::escape_attribute(language, &mut out);
       out.push('"');
     }
 
@@ -50,17 +54,17 @@ impl Document {
 
     if let Some(bundle) = &self.bundle {
       out.push_str("<link rel=\"modulepreload\" href=\"/");
-      escape_attr(bundle, &mut out);
+      Self::escape_attribute(bundle, &mut out);
       out.push_str(".js\"><link rel=\"preload\" href=\"/");
-      escape_attr(bundle, &mut out);
+      Self::escape_attribute(bundle, &mut out);
       out.push_str("_bg.wasm\" as=\"fetch\" type=\"application/wasm\" crossorigin>");
     }
 
     if self.dev {
       out.push_str("<meta name=\"");
-      out.push_str(skene_dev::DEV_META);
+      out.push_str(DEV_META);
       out.push_str("\">");
-      push_script(&mut out, self.nonce.as_deref(), false, DEV_SCRIPT);
+      Self::push_script(&mut out, self.nonce.as_deref(), false, DEV_SCRIPT);
     }
 
     out.push_str(head);
@@ -77,86 +81,83 @@ impl Document {
     let mut out = String::new();
 
     if let Some(state) = state {
-      out.push_str(&state_script(state));
+      out.push_str(&Self::state_script(state));
     }
 
     if let Some(bundle) = &self.bundle {
       let boot = format!(
         "import init from {};init();",
-        script_string(&format!("/{bundle}.js"))
+        Self::script_string(&format!("/{bundle}.js"))
       );
 
-      push_script(&mut out, self.nonce.as_deref(), true, &boot);
+      Self::push_script(&mut out, self.nonce.as_deref(), true, &boot);
     }
 
     out.push_str("</body></html>");
 
     out
   }
-}
 
-/// Appends an inline script running `body`, a module when `module` is set, carrying
-/// `nonce` where there is one; `body` must hold no `</`.
-pub(crate) fn push_script(out: &mut String, nonce: Option<&str>, module: bool, body: &str) {
-  out.push_str("<script");
+  /// Appends an inline script running `body`, a module when `module` is set, carrying
+  /// `nonce` where there is one; `body` must hold no `</`.
+  pub fn push_script(out: &mut String, nonce: Option<&str>, module: bool, body: &str) {
+    out.push_str("<script");
 
-  if module {
-    out.push_str(" type=\"module\"");
+    if module {
+      out.push_str(" type=\"module\"");
+    }
+
+    if let Some(nonce) = nonce {
+      out.push_str(" nonce=\"");
+      Self::escape_attribute(nonce, out);
+      out.push('"');
+    }
+
+    out.push('>');
+    out.push_str(body);
+    out.push_str("</script>");
   }
 
-  if let Some(nonce) = nonce {
-    out.push_str(" nonce=\"");
-    escape_attr(nonce, out);
-    out.push('"');
+  /// The script element carrying the hydration `state`, its markup escaped so it closes
+  /// nothing: what a page of an app's own embeds for the client to read.
+  #[must_use]
+  pub fn state_script(state: &str) -> String {
+    format!(
+      "<script id=\"{STATE_SCRIPT_ID}\" type=\"application/json\">{}</script>",
+      state.replace('<', "\\u003c"),
+    )
   }
 
-  out.push('>');
-  out.push_str(body);
-  out.push_str("</script>");
-}
-
-/// `text` as a JavaScript string literal that closes no element it sits in.
-fn script_string(text: &str) -> String {
-  serde_json::to_string(text)
-    .expect("a string serializes")
-    .replace('<', "\\u003c")
-}
-
-/// The script element carrying the hydration `state`, its markup escaped so it closes
-/// nothing: what a page of an app's own embeds for the client to read.
-pub(crate) fn state_script(state: &str) -> String {
-  format!(
-    "<script id=\"{STATE_SCRIPT_ID}\" type=\"application/json\">{}</script>",
-    state.replace('<', "\\u003c"),
-  )
-}
-
-/// Appends `text` with the characters HTML text content reserves escaped.
-#[cfg_attr(
-  skene_web_platform = "headless",
-  expect(dead_code, reason = "the server leaf alone serializes text")
-)]
-pub(crate) fn escape_text(text: &str, out: &mut String) {
-  for character in text.chars() {
-    match character {
-      '&' => out.push_str("&amp;"),
-      '<' => out.push_str("&lt;"),
-      '>' => out.push_str("&gt;"),
-      other => out.push(other),
+  /// Appends `text` with the characters HTML text content reserves escaped.
+  pub fn escape_text(text: &str, out: &mut String) {
+    for character in text.chars() {
+      match character {
+        '&' => out.push_str("&amp;"),
+        '<' => out.push_str("&lt;"),
+        '>' => out.push_str("&gt;"),
+        other => out.push(other),
+      }
     }
   }
-}
 
-/// Appends `value` with the characters an HTML attribute value reserves escaped.
-pub(crate) fn escape_attr(value: &str, out: &mut String) {
-  for character in value.chars() {
-    match character {
-      '&' => out.push_str("&amp;"),
-      '<' => out.push_str("&lt;"),
-      '>' => out.push_str("&gt;"),
-      '"' => out.push_str("&quot;"),
-      other => out.push(other),
+  /// Appends `value` with the characters an HTML attribute value reserves escaped.
+  pub fn escape_attribute(value: &str, out: &mut String) {
+    for character in value.chars() {
+      match character {
+        '&' => out.push_str("&amp;"),
+        '<' => out.push_str("&lt;"),
+        '>' => out.push_str("&gt;"),
+        '"' => out.push_str("&quot;"),
+        other => out.push(other),
+      }
     }
+  }
+
+  /// `text` as a JavaScript string literal that closes no element it sits in.
+  fn script_string(text: &str) -> String {
+    serde_json::to_string(text)
+      .expect("a string serializes")
+      .replace('<', "\\u003c")
   }
 }
 

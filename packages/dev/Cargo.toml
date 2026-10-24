@@ -3,9 +3,12 @@ name = "skene-dev"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The dev loop's protocol between the skene command and the app it runs"
+description = "The dev loop's protocol between the skene command and the app it runs, and the document a web page is served as"
 license.workspace = true
 repository.workspace = true
+
+[dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true

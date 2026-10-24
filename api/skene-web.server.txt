@@ -161,6 +161,8 @@ pub fn skene_web::media::set_scheme(core::option::Option<skene_foundation::spine
 pub fn skene_web::media::viewport() -> skene_reactive::signal::ReadSignal<skene_web::Size>
 pub fn skene_web::media::watch(&skene_web::Media) -> skene_reactive::memo::Memo<bool>
 pub mod skene_web::platform
+pub use skene_web::platform::Document
+pub use skene_web::platform::STATE_SCRIPT_ID
 pub enum skene_web::platform::StreamPiece<'a>
 pub skene_web::platform::StreamPiece::Chunk(alloc::string::String)
 pub skene_web::platform::StreamPiece::Shell
@@ -222,24 +224,6 @@ pub fn skene_web::platform::Declarations::fmt(&self, &mut core::fmt::Formatter<'
 impl core::hash::Hash for skene_web::platform::Declarations
 pub fn skene_web::platform::Declarations::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::StructuralPartialEq for skene_web::platform::Declarations
-pub struct skene_web::platform::Document
-pub skene_web::platform::Document::bundle: core::option::Option<alloc::string::String>
-pub skene_web::platform::Document::dev: bool
-pub skene_web::platform::Document::language: core::option::Option<alloc::string::String>
-pub skene_web::platform::Document::nonce: core::option::Option<alloc::string::String>
-impl skene_web::platform::Document
-pub fn skene_web::platform::Document::closing(&self, core::option::Option<&str>) -> alloc::string::String
-pub fn skene_web::platform::Document::opening(&self, &str, &str) -> alloc::string::String
-impl core::clone::Clone for skene_web::platform::Document
-pub fn skene_web::platform::Document::clone(&self) -> skene_web::platform::Document
-impl core::cmp::Eq for skene_web::platform::Document
-impl core::cmp::PartialEq for skene_web::platform::Document
-pub fn skene_web::platform::Document::eq(&self, &skene_web::platform::Document) -> bool
-impl core::default::Default for skene_web::platform::Document
-pub fn skene_web::platform::Document::default() -> skene_web::platform::Document
-impl core::fmt::Debug for skene_web::platform::Document
-pub fn skene_web::platform::Document::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_web::platform::Document
 pub struct skene_web::platform::RenderHints
 pub skene_web::platform::RenderHints::device_pixel_ratio: f32
 pub skene_web::platform::RenderHints::hover: bool
@@ -404,7 +388,6 @@ impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::Web, S> for skene_web::Theme<S>
 pub const skene_web::platform::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::SCHEME_ATTRIBUTE: &str
-pub const skene_web::platform::STATE_SCRIPT_ID: &str
 pub trait skene_web::platform::WebMarkup: skene_foundation::spine::realization::Realization
 pub fn skene_web::platform::WebMarkup::create_element(skene_foundation::spine::node::NodeId, &'static str)
 pub fn skene_web::platform::WebMarkup::remove_attribute(skene_foundation::spine::node::NodeId, &str)

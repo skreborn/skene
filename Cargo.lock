@@ -2503,7 +2503,6 @@ dependencies = [
  "rustix",
  "serde",
  "skene-dev",
- "skene-web",
  "toml",
  "url",
  "walkdir",
@@ -2538,6 +2537,9 @@ dependencies = [
 [[package]]
 name = "skene-dev"
 version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "skene-foundation"

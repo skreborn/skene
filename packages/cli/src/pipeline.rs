@@ -128,14 +128,14 @@ impl Drop for WebOut {
   }
 }
 
-/// Writes the generated CSR boot page into `out`: the web platform's document around an
-/// empty body, titled after the package, booting the bundle and, in `dev`, joining the
-/// dev loop.
+/// Writes the generated CSR boot page into `out`: the served document around an empty
+/// body, titled after the package, booting the bundle and, in `dev`, joining the dev
+/// loop.
 fn write_page(app: &App, dev: bool, out: &Path) -> Result<(), String> {
-  let document = skene_web::platform::Document {
+  let document = skene_dev::Document {
     bundle: Some(app.stem.clone()),
     dev,
-    ..skene_web::platform::Document::default()
+    ..skene_dev::Document::default()
   };
   let mut title = String::from("<title>");
 

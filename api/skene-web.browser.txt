@@ -157,6 +157,7 @@ pub fn skene_web::media::set_scheme(core::option::Option<skene_foundation::spine
 pub fn skene_web::media::viewport() -> skene_reactive::signal::ReadSignal<skene_web::Size>
 pub fn skene_web::media::watch(&skene_web::Media) -> skene_reactive::memo::Memo<bool>
 pub mod skene_web::platform
+pub use skene_web::platform::STATE_SCRIPT_ID
 pub enum skene_web::platform::WebTokenValue
 pub skene_web::platform::WebTokenValue::Color(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, f32>)
 pub skene_web::platform::WebTokenValue::Dimension(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::dimension::Dimension<f32>, f32>)
@@ -374,7 +375,6 @@ impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::Web, S> for skene_web::Theme<S>
 pub const skene_web::platform::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::SCHEME_ATTRIBUTE: &str
-pub const skene_web::platform::STATE_SCRIPT_ID: &str
 pub trait skene_web::platform::WebDom: skene_web::platform::WebMarkup
 pub fn skene_web::platform::WebDom::document() -> web_sys::features::gen_Document::Document
 pub fn skene_web::platform::WebDom::element(skene_foundation::spine::node::NodeId) -> core::option::Option<web_sys::features::gen_Element::Element>

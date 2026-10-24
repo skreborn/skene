@@ -55,8 +55,6 @@ mod browser;
 mod compile;
 mod condition;
 mod declarations;
-#[cfg(not(skene_web_platform = "browser"))]
-mod document;
 mod expr;
 #[cfg(all(skene_web_platform = "browser", feature = "gpu"))]
 mod gpu;

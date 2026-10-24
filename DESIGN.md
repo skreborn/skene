@@ -1626,11 +1626,12 @@ table (`StaticRoutes`) to know what to render. The router depends on the engine 
 
 Server-side rendering is a *capability*, not a server: `render_to_string` /
 `render_to_stream` produce the parts (styles, body, state) or ordered chunks, and
-`Rendered::page` assembles a document. One template, `skene_web::Document`, writes every
-page, the CLI's client-rendered shell among them: the head preloads the client bundle,
-the body ends in the hydration state and the module script booting the bundle, a page
-in the dev loop carries the dev marker and the dev script, and every inline script
-carries the render's nonce. A head registration (`add_meta` and its kin) holds while the
+`Rendered::page` assembles a document. One template, `skene_dev::Document`, which the
+web's `platform` re-exports, writes every page, the CLI's client-rendered shell among
+them, so the CLI depends on no facade: the head preloads the client bundle, the body
+ends in the hydration state and the module script booting the bundle, a page in the dev
+loop carries the dev marker and the dev script, and every inline script carries the
+render's nonce. A head registration (`add_meta` and its kin) holds while the
 owner that made it lives, in one registry the web leaves and the headless platform
 share, `skene_foundation::web::Head`: the latest live element of what it stands for is in
 force, so a route's head leaves with the route; the server serializes what is in force,

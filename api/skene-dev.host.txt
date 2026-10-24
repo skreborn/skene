@@ -13,6 +13,28 @@ pub fn skene_dev::Control::eq(&self, &skene_dev::Control) -> bool
 impl core::fmt::Debug for skene_dev::Control
 pub fn skene_dev::Control::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_dev::Control
+pub struct skene_dev::Document
+pub skene_dev::Document::bundle: core::option::Option<alloc::string::String>
+pub skene_dev::Document::dev: bool
+pub skene_dev::Document::language: core::option::Option<alloc::string::String>
+pub skene_dev::Document::nonce: core::option::Option<alloc::string::String>
+impl skene_dev::Document
+pub fn skene_dev::Document::closing(&self, core::option::Option<&str>) -> alloc::string::String
+pub fn skene_dev::Document::escape_attribute(&str, &mut alloc::string::String)
+pub fn skene_dev::Document::escape_text(&str, &mut alloc::string::String)
+pub fn skene_dev::Document::opening(&self, &str, &str) -> alloc::string::String
+pub fn skene_dev::Document::push_script(&mut alloc::string::String, core::option::Option<&str>, bool, &str)
+pub fn skene_dev::Document::state_script(&str) -> alloc::string::String
+impl core::clone::Clone for skene_dev::Document
+pub fn skene_dev::Document::clone(&self) -> skene_dev::Document
+impl core::cmp::Eq for skene_dev::Document
+impl core::cmp::PartialEq for skene_dev::Document
+pub fn skene_dev::Document::eq(&self, &skene_dev::Document) -> bool
+impl core::default::Default for skene_dev::Document
+pub fn skene_dev::Document::default() -> skene_dev::Document
+impl core::fmt::Debug for skene_dev::Document
+pub fn skene_dev::Document::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_dev::Document
 pub const skene_dev::CONTROL_VARIABLE: &str
 pub const skene_dev::DEV_META: &str
 pub const skene_dev::DEV_VARIABLE: &str
@@ -21,5 +43,6 @@ pub const skene_dev::NONCE_VARIABLE: &str
 pub const skene_dev::ROUTES_MARKERS: [&str; 2]
 pub const skene_dev::SNAPSHOT_GLOBAL: &str
 pub const skene_dev::STATE_GLOBAL: &str
+pub const skene_dev::STATE_SCRIPT_ID: &str
 pub const skene_dev::STATE_VARIABLE: &str
 pub const skene_dev::SWAP_EXIT: i32

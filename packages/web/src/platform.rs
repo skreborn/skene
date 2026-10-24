@@ -17,6 +17,10 @@
 //! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
+#[cfg(not(skene_web_platform = "browser"))]
+pub use skene_dev::Document;
+pub use skene_dev::STATE_SCRIPT_ID;
+
 #[cfg(skene_web_platform = "browser")]
 pub use crate::browser::boot_with_dev_state;
 #[cfg(skene_web_platform = "browser")]
@@ -48,8 +52,6 @@ pub use crate::browser::{
   view_transitions_enabled,
   watch_media,
 };
-#[cfg(not(skene_web_platform = "browser"))]
-pub use crate::document::Document;
 #[cfg(skene_web_platform = "browser")]
 pub use crate::low_level::WebDom;
 #[cfg(skene_web_platform = "server")]
@@ -85,7 +87,6 @@ pub use crate::{
   declarations::Declarations,
   hints::RenderHints,
   low_level::WebMarkup,
-  resource_state::STATE_SCRIPT_ID,
   token::WebTokenValue,
 };
 

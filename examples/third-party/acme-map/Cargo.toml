@@ -7,12 +7,7 @@ publish = false
 
 [dependencies]
 skene-foundation.workspace = true
-
-[target.'cfg(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server"))'.dependencies]
 skene-web.workspace = true
-
-[target.'cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))'.dependencies]
-skene-headless.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 wasm-bindgen.workspace = true

@@ -1,9 +1,9 @@
 //! # skene-web
 //!
 //! The web's shell: a web app's single dependency. It fixes the scalar (logical pixels,
-//! `f32`), names the platform the build selects ([`Active`]: the web platform
-//! in the browser and on a server render, the headless host platform elsewhere) and
-//! aliases every built-in view to it, so app code names no platform. The medium's own
+//! `f32`), names the platform it realizes ([`Active`], the web platform in the browser
+//! and on a server render) and aliases every built-in view to it, so app code names no
+//! platform. The medium's own
 //! contribution is [`Typography`], the [`media`] module and the entry points: `launch`
 //! in the browser, `render_to_string`, `render_to_stream` and `render_main` on the
 //! server leaf, and [`macro@main`] expanding to whichever the target has. [`platform`]
@@ -35,6 +35,12 @@
 //!   ));
 //! ```
 
+#[cfg(skene_web_platform = "none")]
+compile_error!(
+  "skene-web builds for one of its two leaves: the browser's, on `--target \
+   wasm32-unknown-unknown`, or the server's, under `--cfg skene_platform=\"server\"`"
+);
+
 pub mod head;
 pub mod media;
 pub mod platform;
@@ -48,10 +54,6 @@ pub mod window;
 
 #[cfg(skene_web_platform = "browser")]
 mod browser;
-#[cfg_attr(
-  skene_web_platform = "headless",
-  expect(dead_code, reason = "the compiler serves the leaves alone")
-)]
 mod compile;
 mod condition;
 mod declarations;
@@ -59,32 +61,20 @@ mod expr;
 #[cfg(all(skene_web_platform = "browser", feature = "gpu"))]
 mod gpu;
 mod hints;
-#[cfg_attr(
-  all(skene_web_platform = "headless", not(test)),
-  expect(dead_code, reason = "the interner serves the leaves alone")
-)]
 mod interner;
 mod link_policy;
-#[cfg(not(skene_web_platform = "headless"))]
 mod logging;
 mod low_level;
-#[cfg(not(skene_web_platform = "headless"))]
 mod markup;
 mod motion;
-#[cfg(not(skene_web_platform = "headless"))]
 mod realize;
 mod resource;
 mod resource_state;
 mod routing;
 #[cfg(skene_web_platform = "server")]
 mod server;
-#[cfg(not(skene_web_platform = "headless"))]
 mod style_book;
 mod task;
-#[cfg_attr(
-  skene_web_platform = "headless",
-  expect(dead_code, reason = "tokens compile for the leaves alone")
-)]
 mod token;
 mod views;
 
@@ -223,10 +213,6 @@ pub use skene_foundation::{
   typography,
   web::{AsyncViewBase, DeferredBase},
 };
-/// The host leaf, which the builds that only compile on the host build against; no test
-/// runs on it.
-#[cfg(skene_web_platform = "headless")]
-pub use skene_headless as headless;
 pub use skene_macros::{lazy, web_main as main};
 pub use skene_reactive as reactive;
 pub use tracing;
@@ -286,14 +272,9 @@ pub use crate::{
   },
 };
 
-/// The realization the build selected: the web's in the browser (`wasm32-unknown-unknown`)
-/// and on a server render (`--cfg skene_platform="server"`), the headless host's elsewhere.
-#[cfg(not(skene_web_platform = "headless"))]
+/// The realization the build selected: the web's, in the browser
+/// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`).
 pub type Active = platform::Web;
-/// The realization the build selected: the web's in the browser (`wasm32-unknown-unknown`)
-/// and on a server render (`--cfg skene_platform="server"`), the headless host's elsewhere.
-#[cfg(skene_web_platform = "headless")]
-pub type Active = skene_headless::Headless;
 
 skene_foundation::facade!(Active, f32, "logical pixels");
 
@@ -322,24 +303,6 @@ where
 
     tracing::info!("application mounted");
   });
-}
-
-/// Builds the application against the headless platform, under the root owner.
-///
-/// It shows nothing; this is the entry a host build of an app runs.
-#[cfg(skene_web_platform = "headless")]
-pub fn launch<V, F>(app: F)
-where
-  F: FnOnce() -> V + 'static,
-  V: View,
-{
-  skene_headless::install_executor();
-
-  skene_reactive::Owner::root().enter(|| {
-    let _ = skene_foundation::View::into_any(app()).build();
-  });
-
-  tracing::info!("application built against the headless platform");
 }
 
 /// Renders the application, for a server-rendering platform.

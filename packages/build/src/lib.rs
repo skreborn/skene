@@ -11,14 +11,14 @@ use std::env;
 const BROWSER: &str = "browser";
 /// The web's leaf rendering on a server.
 const SERVER: &str = "server";
-/// The headless platform, on every other host.
-const HEADLESS: &str = "headless";
+/// No leaf: a build on any other target that names no platform, which the web refuses.
+const NONE: &str = "none";
 
 /// Names the web leaf this build compiles for and declares `skene_web_platform` and
 /// `skene_platform`.
 ///
 /// The leaf is `server` where the build sets `--cfg skene_platform="server"`, `browser`
-/// on `wasm32-unknown-unknown` otherwise, and `headless` on every other target but on
+/// on `wasm32-unknown-unknown` otherwise, and `none` on every other target but on
 /// docs.rs, where `DOCS_RS` is set and every other target is the `server` leaf.
 ///
 /// # Panics
@@ -27,7 +27,7 @@ const HEADLESS: &str = "headless";
 /// target the web has no leaf for (wasip1, wasip2, emscripten, wasm32v1-none).
 pub fn configure() {
   println!(
-    "cargo::rustc-check-cfg=cfg(skene_web_platform, values(\"{BROWSER}\", \"{SERVER}\", \"{HEADLESS}\"))"
+    "cargo::rustc-check-cfg=cfg(skene_web_platform, values(\"{BROWSER}\", \"{SERVER}\", \"{NONE}\"))"
   );
   println!("cargo::rustc-check-cfg=cfg(skene_platform, values(\"{SERVER}\"))");
   println!("cargo::rerun-if-env-changed=CARGO_CFG_SKENE_PLATFORM");
@@ -71,7 +71,7 @@ fn web_platform(
       "the web has no leaf for {arch}-{os}: the browser's target is wasm32-unknown-unknown"
     )),
     _ if docs_rs => Ok(SERVER),
-    _ => Ok(HEADLESS),
+    _ => Ok(NONE),
   }
 }
 
@@ -80,11 +80,11 @@ mod tests {
   use super::web_platform;
 
   /// The server cfg wins on every target; otherwise the browser's triple is the browser
-  /// leaf and every other host the headless platform.
+  /// leaf and every other host no leaf.
   #[test]
   fn a_build_names_its_web_platform() {
-    assert_eq!(web_platform("x86_64", "linux", "", false), Ok("headless"));
-    assert_eq!(web_platform("aarch64", "macos", "", false), Ok("headless"));
+    assert_eq!(web_platform("x86_64", "linux", "", false), Ok("none"));
+    assert_eq!(web_platform("aarch64", "macos", "", false), Ok("none"));
     assert_eq!(web_platform("wasm32", "unknown", "", false), Ok("browser"));
     assert_eq!(
       web_platform("x86_64", "linux", "server", false),
@@ -104,8 +104,8 @@ mod tests {
     assert_eq!(web_platform("wasm32", "unknown", "", true), Ok("browser"));
   }
 
-  /// An unknown platform and a wasm target without a web leaf fail the build rather
-  /// than landing on the headless platform.
+  /// An unknown platform and a wasm target without a web leaf fail the build script
+  /// itself.
   #[test]
   fn a_build_without_a_web_platform_is_rejected() {
     assert!(web_platform("x86_64", "linux", "servr", false).is_err());

@@ -1,7 +1,7 @@
 //! The window the page draws in: its title, the latest one a live owner sets in force.
 //!
 //! On a server render the title in force serializes into the page's head; in the browser
-//! it is the document's title; on the host the headless platform records it.
+//! it is the document's title.
 
 use crate::Active;
 

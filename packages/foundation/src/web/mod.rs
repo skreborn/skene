@@ -6,8 +6,8 @@
 //! hydrating [`Resource`], the streaming [`Deferred`] and the lazily loaded
 //! [`AsyncView`]); the
 //! portable painting path ([`Painting`], [`Canvas`], [`Painted`]) is the crate root's,
-//! re-exported here. The web's leaves and the headless platform standing in for them
-//! implement against it; the web's facade aliases from it.
+//! re-exported here. The web's leaves implement against it; the web's facade aliases
+//! from it.
 
 mod async_view;
 mod deferred;

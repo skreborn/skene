@@ -2,7 +2,7 @@
 //! platform the build targets.
 //!
 //! In the browser `#[main]` launches it; on the server leaf the same entry renders a
-//! requested path to stdout; on the host it builds against the headless platform.
+//! requested path to stdout.
 
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;

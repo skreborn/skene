@@ -2,7 +2,7 @@
 //! guaranteed core, the editing core over real shaping (bidirectional text, clusters), and
 //! the changes Skene carries in Parley, and drawing through vello.
 //!
-//! Every test shapes in the pinned Inter face headless draws in, subset to Latin-1 and the
+//! Every test shapes in the pinned Inter face kept under `fonts/`, subset to Latin-1 and the
 //! combining acute: a Thai, Hebrew or Arabic case tests the engine's analysis (breaks,
 //! direction, clusters) over `.notdef` glyphs only, never how a font draws the script.
 
@@ -25,7 +25,7 @@ const INTER: Typeface = Typeface::new(
   "Inter",
   include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../headless/fonts/inter-regular.otf"
+    "/fonts/inter-regular.otf"
   )),
 );
 

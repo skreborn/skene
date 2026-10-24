@@ -63,8 +63,8 @@ fn app() -> impl View {
 
 `#[main]` expands to whichever entry the target has: in the browser it launches the
 app, hydrating a server-rendered page in place; on the server leaf it renders the
-requested path to stdout (the server build's `counter /` prints the page); on the
-host it only compiles, against a stand-in that runs nothing.
+requested path to stdout (the server build's `counter /` prints the page). A build
+that names neither leaf fails with a message naming them.
 The app is its library alone, which `skene` builds as each target's crate type.
 
 ## A terminal app
@@ -115,8 +115,7 @@ with the mouse off a plain drag is the terminal's.
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a platform installs an executor into. |
 | `skene-foundation` | `packages/foundation` | The spine: `Scene<P>`, the zero-sized `Realization` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values, knowing nothing of platforms. Beside it, every built-in view: `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Slider`/`RadioGroup`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Basic*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuEntry` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Link` to a route, `Visibility`/`OneOf`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello, and `text`: the attributed text model, the `TextEngine` contract every realization's engine implements, the layout's `TextLeaf`, the `TextIndex` between bytes, code points, UTF-16 and grapheme clusters, and `editing`, the editing core every drawn entry shares, beside the spine's `Edit`, `Verdict`, `Unit` and `AccessText`; `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal `Typography`), `web` (`WebStyle`, the web's `Typography`, the document `Head`, and `WebHydration` with the hydrating `Resource`, the streaming `Deferred` and the lazily loaded `AsyncView`) and `routing` (`Route`, `StaticRoutes`, `Router`, `install_router`: a typed route in a signal, bound to the platform's history through its seams). |
 | `skene-layout` | `packages/layout` | The layout every platform but the web computes: the resolved style model on taffy (`BoxLayout`), generic over the scalar, a `Tree` keyed by the scene's nodes, retained across layouts and written node by node, by a walk of the scene or for the nodes a shared `Restyle` says moved, each node's part classified by its platform, and `TextFlow`, a box's inline runs and boxes laid out as one text through the platform's text engine, answering which run a point falls on. |
-| `skene-parley` | `packages/parley` | The `TextEngine` over the patched Parley (`vendor/parley`), on the typefaces it is given and no system font: paragraphs shaped once and broken per width, on threads off the web for a batch, bidirectional carets and movement, ICU4X's dictionaries for complex-script breaking, and drawing through vello. |
-| `skene-headless` | `packages/headless` | The host leaf `skene-web` selects off its targets, so a host build of a crate reaching the web, which names no leaf, still compiles (`#[main]`'s host arm, acme-map's); no gate step builds it and no test runs on it. |
+| `skene-parley` | `packages/parley` | The `TextEngine` over the patched Parley (`vendor/parley`), on the typefaces it is given and no system font: paragraphs shaped once and broken per width, on threads off the web for a batch, bidirectional carets and movement, ICU4X's dictionaries for complex-script breaking, and drawing through vello. Its tests and `skene-layout`'s shape in the pinned Inter face under `fonts`. |
 | `skene-web` | `packages/web` | The web facade and platform: `f32`, `Active`, a type of its own for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; and `platform`, the web `Realization`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the `WebMarkup` and `WebDom` escape traits, and `skene-dev`'s served `Document`, re-exported. |
 | `skene-terminal` | `packages/terminal` | The terminal facade and platform: `i32` cells, `Terminal`, the same views, its own decoration on them, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams. |
@@ -237,7 +236,7 @@ through the same scene as a built-in; `Painted` is the portable one for pixels, 
 vello scene the platform renders, the web on the CPU or, with `skene-web`'s `gpu`
 feature, on the GPU where the page has WebGPU, and the terminal through the kitty
 graphics protocol where it proves one. `examples/third-party` shows both escape paths: `acme-map` (a canvas
-on the browser leaf, a placeholder before it and on the server, an image box on headless)
+on the browser leaf, a placeholder before it and on the server)
 and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
 where the terminal proves its graphics), each used by its platform's gallery and tested
 on its platform.

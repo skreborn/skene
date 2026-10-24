@@ -5,19 +5,15 @@
 //! it lives, so a route's description and stylesheet leave with the route. The latest
 //! live element of what it stands for is in force (a `meta` by its name or property, a
 //! `base`, any other element by its attributes), so a nested route's description
-//! replaces its parent's until it leaves and identical registrations write one element. On a server
-//! render the registrations in force serialize into the page's `<head>`, which a streamed render
-//! flushes with its shell, so a registration inside a `Deferred` reaches that page only once the
-//! client hydrates; in the browser they apply to the live document, adopting an identical
-//! element a server render left. On the host leaf they are recorded and nothing reads
-//! them.
+//! replaces its parent's until it leaves and identical registrations write one element.
+//! On a server render the registrations in force serialize into the page's `<head>`,
+//! which a streamed render flushes with its shell, so a registration inside a `Deferred`
+//! reaches that page only once the client hydrates; in the browser they apply to the
+//! live document, adopting an identical element a server render left.
 
 use skene_foundation::web::HeadId;
-#[cfg(skene_web_platform = "headless")]
-use skene_headless::{add_head_element, remove_head_entry, set_document_language};
 use skene_reactive::on_cleanup;
 
-#[cfg(not(skene_web_platform = "headless"))]
 use crate::platform::{add_head_element, remove_head_entry, set_document_language};
 
 /// Removes the registration `id` when the current owner is disposed.

@@ -64,7 +64,6 @@ impl LinkPolicy {
 
   /// The attributes of a link to `href` under this policy: `href`, `target` and `rel`,
   /// with no `href` where following it would run script.
-  #[cfg(not(skene_web_platform = "headless"))]
   pub(crate) fn attributes(self, href: &str) -> Vec<(&'static str, String)> {
     let external = crate::markup::leaves_origin(href);
     let new_page = self.new_page.unwrap_or(external);
@@ -103,7 +102,6 @@ impl LinkPolicy {
 
   /// Rewrites the attributes of the link `props` realized at `node`, given the default
   /// policy's, as this policy gives them.
-  #[cfg(not(skene_web_platform = "headless"))]
   pub(crate) fn realize(self, node: NodeId, props: &RunProps<Active>) {
     use crate::low_level::WebMarkup;
 
@@ -123,11 +121,6 @@ impl LinkPolicy {
       Active::set_attribute(node, name, &value);
     }
   }
-
-  /// Writes nothing: the headless platform realizes no markup.
-  #[cfg(skene_web_platform = "headless")]
-  #[expect(clippy::unused_self, reason = "the leaves share one signature")]
-  pub(crate) const fn realize(self, _: NodeId, _: &RunProps<Active>) {}
 }
 
 /// A link's crawler endorsement; the qualifiers are mutually exclusive.

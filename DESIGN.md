@@ -20,7 +20,7 @@ throughout—there is no separate "widget" concept.
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout every platform but the web computes
 (`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
-platforms (`skene-web`, `skene-terminal`, `skene-headless`) on the foundation and, where
+platforms (`skene-web`, `skene-terminal`) on the foundation and, where
 they draw, on those two, the Simple core on the foundation, each platform's Simple crate
 on its facade, and the macros, the transport and the CLI beside them.
 
@@ -36,8 +36,8 @@ sets a property only where a value is given. What a medium lacks is absent at co
 time because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
-platform; each facade names only its own platforms, the web's naming the headless one
-it compiles against off its target, and publishes the selected one as `Active`.
+platform; each facade names only its own platforms, and publishes the selected one as
+`Active`.
 
 ## The scene and the platform
 
@@ -76,8 +76,8 @@ browser's top layer stacks them, and computes the tab order from them
 (`Scene::tab_order`): positioned stops first, then document order, the modal opened
 last containing it with the overlays opened after it. A platform drawing its own
 controls traverses by it, stepping from the focused node by `Scene::tab_from` (from a
-node that is no stop, the nearest stop beside it in document order), the terminal and
-headless alike: headless applies a `Tab` its handlers leave to the platform. The scene answers which overlays a press dismisses
+node that is no stop, the nearest stop beside it in document order), as the terminal
+does. The scene answers which overlays a press dismisses
 (`Scene::dismissed_by_press`) for every platform: from the top down, each overlay the
 press lands outside of, on neither it nor the anchor it opened from, until one it lands
 inside of, a modal ending the descent and dismissed itself; the web leaves a modal's
@@ -91,7 +91,7 @@ as a dialog's focusing steps choose). The scene holds the interaction every plat
 focused node with whether focus shows (a key but a modifier alone sets it, a pointer
 press clears it, a text entry's shows however reached), the pressed node and the hovered
 one, dropping each with its node, and resolves every node's interaction from them
-(`Scene::interaction`), so the terminal and headless resolve states alike; it decides
+(`Scene::interaction`), so every platform that draws resolves states alike; it decides
 whether an entry takes edits (`Scene::is_editable`: neither disabled nor read-only) from
 the control state and reports it holds, which the platforms read rather than copy.
 
@@ -121,8 +121,8 @@ toolkit's keeps the default, which does nothing.
 - **Dispatch is the spine's.** A platform reports an event at a node; the spine walks the
   parents the node had when the dispatch began, as the DOM fixes an event's path, runs
   handlers deepest first, folds `Prevented`, and tells the platform what the platform
-  may still do. The browser's root delegation, the terminal's hit path and the
-  headless platform share one bubbling implementation, so the rule that a view owns the
+  may still do. The browser's root delegation and the terminal's hit path share one
+  bubbling implementation, so the rule that a view owns the
   interactions it handles is enforced, and testable, in one place. The path climbs
   through the start of every segment the node is mounted in before its parent, so a
   `Tooltip` or a `ContextMenu` around `derived`, `Visibility` or `Enhance` hears its content;
@@ -207,10 +207,9 @@ toolkit's keeps the default, which does nothing.
 
   **Real platforms, not a mock platform.** Because the vocabulary carries typed data, a
   real platform receives exactly what the views declare, so the foundation's views test
-  where a platform realizes them and none on the host platform (`skene-headless`), which
-  stays only as what the host builds compile against. The controls, the overlays and the
-  reactive structure test on the platforms that realize them: their behaviors, names and
-  keys, a modal's and a popup's dismissal, a tooltip's timing, a context menu's items, a
+  where a platform realizes them, and no host platform stands in for one. The controls,
+  the overlays and the reactive structure test on the platforms that realize them: their
+  behaviors, names and keys, a modal's and a popup's dismissal, a tooltip's timing, a context menu's items, a
   lazy list's window, a boundary's, a switch's, a show's and an enhancement's swap, a
   wrapper's annotation and a key's restoration in the terminal's in-process tier, through
   real input, the hand-stepped clock and what a reader finds, and their web form (the
@@ -482,9 +481,7 @@ re-export.
   selection, the caret after the text it inserts, and dispatches the bubbling `input`
   (`deleteByCut`, `insertFromPaste`) a browser's own would, so it reports the same way;
   `Edit::holds` makes the report idempotent whichever of the two events an engine sends
-  last. Headless
-  alone still reports through `notify_change` and `notify_selection_change`, reconciled
-  after. A `TextSelection` counts grapheme clusters; where a platform's protocol counts
+  last. A `TextSelection` counts grapheme clusters; where a platform's protocol counts
   in code points or UTF-16 code units it names its unit (`Unit::CodePoint`,
   `Unit::Utf16`) and converts through one index per text (`TextIndex`), as the web does
   for its `<input>`.
@@ -628,8 +625,7 @@ elsewhere, and the overline and the line through as SGR `53` and `9`. A platform
 draws a decoration's lines itself takes them from one computation above its engine,
 over the metrics the engine reports per stretch of text (`RunExtent::decoration_lines`):
 none for an undecorated stretch, two solid lines for a double one, the second above
-an overline's first, and one otherwise, each at least a unit thick; headless draws
-them so. A
+an overline's first, and one otherwise, each at least a unit thick. A
 visitor written once gives overlay, the static/derived split, CSS rendering and taffy
 application their iteration; what remains per property is the field, its CSS name and
 its taffy mapping. `CornerRadius` is the pattern for an optional capability: a style
@@ -709,45 +705,28 @@ Condition     = Media | State | And | Or
   each node's style, text and children written where they changed, revisiting the nodes
   the shared `Restyle` says moved (those queued, in motion or reading an interaction
   that moved, each with the leaf its text flows in, or every node once the definitions,
-  the environment or the structure moved): by the terminal's records as they change, and
-  by the headless platform at each layout, a walk of the scene where the structure moved
-  or a node's part changed its shape and the revisited nodes alone otherwise
-  (`Tree::lay_out_revisited`), at the values its motion presents, the page mounted in a
-  body (`mount`) laying its boxes out along a row that fills the viewport, each growing
-  and shrinking along it, as the web's reset lays out the document's, and a text entry
-  measured at the size Chromium gives its native element (a field nineteen average
-  characters and the width of the face's bounds wide, an editor twenty wide, each its
-  lines tall), stretched where its layout stretches its items as an `<input>` is. There
-  a box whose children are all inline runs lays them out as one text, a `TextFlow` of
-  their runs and inline boxes over the platform's text engine (Text, below), keeping
-  their blanks and newlines as the reset's `white-space: pre-wrap` does and wrapping
-  where the Unicode line breaking algorithm allows across them and around an inline box,
-  laid out at its content's size first, a word too wide for a line of its own broken
-  where the line fills as `overflow-wrap: break-word` breaks it, the blanks a line ends
-  in hanging where it wraps and taking room up to its limit before a newline or at the
-  end, each run's line box on its line's baseline, a box's bottom on it, a run placed
-  in a rectangle per line it is on, clipped off any box beside it and off the blanks
-  hanging past the line's end, and, on headless, the text trimmed to its first line's
-  cap height and its last line's baseline as the reset's
-  `text-box-trim` trims a text box. Headless lays its text out through `skene-parley`
-  in the pinned face the conformance suite draws in, Inter's regular, its metrics
+  the environment or the structure moved): by the terminal's records as they change, or
+  by a walk of the scene where the structure moved or a node's part changed its shape
+  and of the revisited nodes alone otherwise (`Tree::lay_out_revisited`), at the values
+  its motion presents. There a box whose children are all inline runs lays them out as
+  one text, a `TextFlow` of their runs and inline boxes over the platform's text engine
+  (Text, below), keeping their blanks and newlines as the reset's `white-space:
+  pre-wrap` does and wrapping where the Unicode line breaking algorithm allows across
+  them and around an inline box, laid out at its content's size first, a word too wide
+  for a line of its own broken where the line fills as `overflow-wrap: break-word`
+  breaks it, the blanks a line ends in hanging where it wraps and taking room up to its
+  limit before a newline or at the end, each run's line box on its line's baseline, a
+  box's bottom on it, a run placed in a rectangle per line it is on, clipped off any box
+  beside it and off the blanks hanging past the line's end, and, where its platform
+  trims it (`TextFlow::trimmed`), the text trimmed to its first line's cap height and
+  its last line's baseline as the reset's `text-box-trim` trims a text box. The layout's
+  own tests lay their text out through `skene-parley` in the pinned face the conformance
+  suite draws in, Inter's regular, kept in `packages/parley/fonts`, its metrics
   unrounded (kerned, its letter spacing past each cluster, a line its font size times
   its line height tall, each as the typography in force sets them), and where Parley
   reads text as an editor does its reading stands: a tab advances to the next stop
   eight blanks apart, as a browser's `tab-size` sets them, and a newline ending the
-  text opens a line. Headless reports each box's size to the
-  observers bound to it and answers `layout_rect`, `visible_rect` and, through the
-  frames' paint order, `node_at`,
-  a hidden box keeping its place but taking no hit as the web's `visibility: hidden`
-  does, a box clipping its overflow along an axis clipping what lies beneath it to its
-  padding box there and a box's scroll offsets, as `trigger_scroll` reports them,
-  shifting it back, as in a browser. It draws the scene as a browser paints the page
-  (`render_to_image`): each box's background and border, rounded by its corner radius,
-  what a clipping box holds clipped, each run's glyphs as its layout placed them in the
-  pinned face with its decoration's lines, a text entry's value (a field's line in its middle,
-  as a browser draws an `<input>`'s), each painted box's picture and the
-  open overlays above the rest, a border solid whatever its style and a decoration's
-  lines solid whatever theirs. `Dimension` is a fixed length, a `Fraction` of the
+  text opens a line. `Dimension` is a fixed length, a `Fraction` of the
   parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,
@@ -892,7 +871,7 @@ a subtree is not wanted.
 
 `media::viewport()`, `media::scheme()` and `media::reduced_motion()` are signals on every
 facade, backed by the platform: `MediaQueryList` and `resize` in the browser, the
-terminal's size and background, the host leaf's defaults. `media::watch(&media)`
+terminal's size and background. `media::watch(&media)`
 turns any declared condition into a memo rendered from the same query text the class
 compiler renders, so the signal and the stylesheet cannot disagree. A box's measured size
 reaches a view through `Realization::observe_size` (the lazy column's viewport, the slider's
@@ -1222,21 +1201,6 @@ those same bytes in Firefox and Chromium, every served element adopted with the 
 and the inline declarations the server gave it and the server's block the one
 stylesheet, holding every rule the browser interns.
 
-### Headless (`skene-headless`)
-
-The host leaf: the `Realization` `skene-web` selects off its targets, so a host build of
-a crate reaching the web, which names no leaf, still compiles: `#[main]`'s host arm and
-acme-map's. No gate step builds it, every crate reaching `skene-web` being checked,
-documented and tested in the web's own builds alone, and no test runs on it; each
-platform's tests run on the platform itself, as **Real platforms, not a mock platform**
-says. It is the web medium (`StyleExt = WebStyle`), so a view written for the web
-compiles against it unchanged. Every `Realization` method writes into a record per node,
-keyed by its `NodeId`, while the structure stays the scene's alone, and it lays the
-scene out and draws it as the layout bullet of the style model says, its text through
-`skene-parley` in the pinned face; no platform response fires. It leaves with item 1's
-selection (`ROADMAP.md`), its `trigger_*` seams, `user` gestures, queries and task pump
-with it.
-
 ### Native (planned)
 
 One shell per OS—`skene-ios`, `skene-android`, `skene-windows`, `skene-macos` and
@@ -1547,27 +1511,27 @@ Two guarantees, both properties of what is public rather than of any one API.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait and realized through the same scene and node ids as a
   `Container`, so it composes with wrappers, themes, conditions and events. A view
-  library covers every platform of its medium, headless included, through a trait of its
+  library covers every platform of its medium through a trait of its
   own that each platform implements (`impl<P: MapHost> View<P> for Map<P>`), so an app
   names no platform and writes no `cfg`; a blanket impl over one escape trait would allow
   one per view type and push the cfgs into the app. Selecting the platform is what
   selecting the facade already does. `acme-map` (a canvas on the browser leaf through
-  `WebDom`, a placeholder through `WebMarkup` before it and on the server, an image box
-  on headless) and `acme-sparkline` (bars through `CellPainter`) are the standing
+  `WebDom`, a placeholder through `WebMarkup` before it and on the server) and `acme-sparkline` (bars through `CellPainter`) are the standing
   proofs. The portable low-level path for pixel media is `Painted`.
 
 A platform need not be first-party: a crate that implements `Realization`, provides its
 scalar, leaves, extension, a `launch` and views over `skene-foundation` is a facade.
 `Realization` is not sealed, and the shared machinery bounds only on it and the public
-extension traits; the headless platform is exactly such a crate in all but ownership.
+extension traits.
 
 ## Selection and entry
 
 Selection is by **facade dependency** first—a web app depends on `skene-web`, a
 terminal app on `skene-terminal`—and by target within a facade: `skene-web` resolves
 `wasm32-unknown-unknown` to the web's browser leaf, a build naming the server platform
-(`--cfg skene_platform="server"`) to its server leaf on any host, every other host to the
-headless platform, and no cargo feature selects any of them. Where one triple hosts
+(`--cfg skene_platform="server"`) to its server leaf on any host, and every other host
+to no leaf, which `skene-web` refuses with a `compile_error!` naming the two; no cargo
+feature selects any of them. Where one triple hosts
 several platforms the build names the platform by a cfg, chosen once and unifying
 nothing, as `getrandom` names its backend. Target-gating stays the enforcement layer
 where it applies. A cargo feature is an opt-in upgrade that enables optional
@@ -1634,8 +1598,8 @@ them, so the CLI depends on no facade: the head preloads the client bundle, the 
 ends in the hydration state and the module script booting the bundle, a page in the dev
 loop carries the dev marker and the dev script, and every inline script carries the
 render's nonce. A head registration (`add_meta` and its kin) holds while the
-owner that made it lives, in one registry the web leaves and the headless platform
-share, `skene_foundation::web::Head`: the latest live element of what it stands for is in
+owner that made it lives, in one registry the web leaves share,
+`skene_foundation::web::Head`: the latest live element of what it stands for is in
 force, so a route's head leaves with the route; the server serializes what is in force,
 and the browser applies it to the live head, adopting the elements a server render
 left. The title is the window's (`window::set_title`), shared with the terminal: the
@@ -1679,8 +1643,7 @@ boundary's fallback standing until the module arrives.
 
 Framework and app code log through `tracing`. The web leaves install a subscriber at
 launch unless one is set, the browser's writing to the console and the server's to
-standard error; the terminal installs none, its screen being the app's, and neither
-does the host leaf. The spine carries no subscriber.
+standard error; the terminal installs none, its screen being the app's. The spine carries no subscriber.
 
 ## Glossary
 
@@ -1690,7 +1653,7 @@ sense apart where context does not.
 - **Leaf.** A property's leaf (`Leaf`, `StaticLeaf`, `KeptLeaf`): the fixed value,
   token, expression or derived closure at the bottom of a `Value`, conditions choosing
   among leaves. A web leaf: one of the platforms the web facade compiles to, the browser
-  leaf and the server leaf, the headless platform standing in off their targets.
+  leaf and the server leaf.
   A layout's leaf: a node taffy measures through its platform rather than from
   children (`skene_layout::Leaf`), a text's being a `TextFlow`, measured through the
   foundation's `TextLeaf`.
@@ -1712,7 +1675,7 @@ sense apart where context does not.
   written through its fields' accessors. A snapshot's store and restore: what a dev
   reload records and reads back. A platform's record store (see record).
 - **Record.** A platform's record of a node: what it keeps per `NodeId` beside its
-  realization, the terminal's and headless's. A snapshot record: what a run writes for
+  realization, the terminal's. A snapshot record: what a run writes for
   its successor at a dev reload. A node's style record (`Record`): its box and run
   styles and their motion as one erased list under Skene's property names (The style
   model).

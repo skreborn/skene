@@ -18,10 +18,6 @@ skene-reactive.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 
-# The headless platform on every host the build compiles no web leaf for.
-[target.'cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))'.dependencies]
-skene-headless.workspace = true
-
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 async-task = "4"
 console_error_panic_hook = "0.1"

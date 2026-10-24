@@ -46,8 +46,8 @@ fn app() -> impl View {
 ```
 
 `#[main]` expands to the entry the build has: in the browser it hydrates the page the
-server rendered, on the server it renders the requested path, and on the host it only
-compiles, against a stand-in that runs nothing.
+server rendered, and on the server it renders the requested path. A build for neither
+fails, naming the two.
 
 ## Running it
 

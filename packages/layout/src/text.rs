@@ -649,7 +649,7 @@ mod tests {
   /// The face the tests lay text out in.
   const INTER: Typeface = Typeface::new(
     "Inter",
-    include_bytes!("../../headless/fonts/inter-regular.otf"),
+    include_bytes!("../../parley/fonts/inter-regular.otf"),
   );
 
   /// An engine over the face alone, its line metrics fractional.

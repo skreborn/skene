@@ -341,9 +341,6 @@ in a code comment.
 11. **Testing on the real platforms.** No headless platform and no test double: each
     platform is tested on itself, through what its readers read and by the input its
     users give, Linux's harness (item 4) the model.
-    - `skene-headless` leaves with its seams (item 1's selection), and the pinned Inter
-    face in `packages/headless/fonts` moves out with it to a home `skene-layout`'s and
-    `skene-parley`'s tests read it from.
     - Conformance: one suite of scenarios, a page per facade in its own vocabulary, run
     through a `Driver` per platform over its accessibility layer and its real input, on
     the emulators, simulators and runners the gate reaches; goldens per platform, since

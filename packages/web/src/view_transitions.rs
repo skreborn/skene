@@ -9,15 +9,7 @@
 /// `set_transition_name` is paired with its namesake across the change. A served or
 /// generated page carries `@view-transition { navigation: auto }`, so the
 /// cross-document navigations between pages animate the same way. A browser without
-/// view transitions, and the host platform, cut.
-#[cfg_attr(
-  skene_web_platform = "headless",
-  expect(
-    clippy::missing_const_for_fn,
-    reason = "the web leaves' body is not const, and one function has one constness"
-  )
-)]
+/// view transitions cuts.
 pub fn enable() {
-  #[cfg(not(skene_web_platform = "headless"))]
   crate::platform::enable_view_transitions();
 }

@@ -3,10 +3,10 @@
 //! A third-party low-level view covering every platform of the web medium through a
 //! library-local [`MapHost`] trait: on the web a `Map` paints into a `<canvas>` it
 //! creates through `WebDom` once the page runs script, a box of the sea's color
-//! standing in its place through `WebMarkup` before then and on the server, and
-//! headless shows that box as an image named "map". Every form realizes for a node
-//! `LowLevel` mints inside a `Container` that sizes it, so it composes with wrappers,
-//! themes and events as a built-in does, and an app names no platform.
+//! standing in its place through `WebMarkup` before then and on the server. Every form
+//! realizes for a node `LowLevel` mints inside a `Container` that sizes it, so it
+//! composes with wrappers, themes and events as a built-in does, and an app names no
+//! platform.
 
 use std::marker::PhantomData;
 
@@ -24,7 +24,6 @@ use skene_foundation::{
 };
 
 /// The sea the map paints, as CSS.
-#[cfg(not(skene_web_platform = "headless"))]
 const SEA: &str = "oklch(0.72 0.1 230)";
 
 /// A map, sized by the container around it.
@@ -76,7 +75,7 @@ impl<P: Realization> Map<P> {
 /// A platform a [`Map`] realizes on: every platform of the web medium.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is no platform a map realizes on",
-  label = "a map covers the web medium's platforms: its leaves and headless"
+  label = "a map covers the web medium's platforms"
 )]
 pub trait MapHost: Realization<Scalar = f32> {
   /// Realizes `map`, returning its node.
@@ -92,7 +91,6 @@ impl<P: MapHost> View<P> for Map<P> {
   }
 }
 
-#[cfg(not(skene_web_platform = "headless"))]
 impl MapHost for skene_web::platform::Web {
   /// The canvas once the page runs script, the sea's box before then and on the
   /// server.
@@ -109,7 +107,6 @@ impl MapHost for skene_web::platform::Web {
   }
 }
 
-#[cfg(not(skene_web_platform = "headless"))]
 impl Map<skene_web::platform::Web> {
   /// A node realized as an element of `tag` dressed as the map's surface, then handed
   /// to `draw`, inside a container of the map's size.
@@ -164,21 +161,6 @@ impl Map<skene_web::platform::Web> {
   #[cfg(skene_web_platform = "server")]
   fn canvas(self) -> NodeId {
     self.surface("div", |_| {})
-  }
-}
-
-#[cfg(skene_web_platform = "headless")]
-impl MapHost for skene_headless::Headless {
-  /// The sea's box, an image named "map".
-  fn build_map(map: Map<Self>) -> NodeId {
-    use skene_foundation::{Color, ContainerBase, Role};
-
-    let surface = Container::<Self>::new()
-      .set_role(Role::Image)
-      .set_label("map")
-      .set_background(Color::srgb(0.44, 0.71, 0.86));
-
-    map.sized(surface)
   }
 }
 

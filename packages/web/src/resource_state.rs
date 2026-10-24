@@ -8,12 +8,10 @@
 //! own resources: by the segments enclosing it, each by its build order within the
 //! segment holding it, which both leaves count alike.
 
-#[cfg(not(skene_web_platform = "headless"))]
 use std::cell::RefCell;
 #[cfg(skene_web_platform = "browser")]
 use std::collections::VecDeque;
 
-#[cfg(not(skene_web_platform = "headless"))]
 use skene_foundation::web::HydrationSource;
 
 /// A lazy segment's place among the hydrating resources.
@@ -22,18 +20,15 @@ use skene_foundation::web::HydrationSource;
 /// segment holding it; the resources its content builds are matched across the boundary
 /// under this key, in their creation order. Taken with [`enter_lazy`] when the segment
 /// is built and applied with [`within_lazy`] when its content is.
-#[cfg(not(skene_web_platform = "headless"))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
 pub struct LazyRegion(Vec<u32>);
 
 /// A lazy segment's path with its order-keyed entries, in creation order.
-#[cfg(not(skene_web_platform = "headless"))]
 type LazyEntries<V> = (Vec<u32>, V);
 
 /// The state as it crosses the channel: the order-keyed entries outside any lazy
 /// segment, the tag-keyed ones, then each lazy segment's order-keyed entries.
-#[cfg(not(skene_web_platform = "headless"))]
 type State = (
   Vec<Option<String>>,
   Vec<(String, String)>,
@@ -56,7 +51,6 @@ fn decode_state(state: &str) -> State {
   serde_json::from_str(state).unwrap_or_default()
 }
 
-#[cfg(not(skene_web_platform = "headless"))]
 thread_local! {
   /// The lazy segment whose content is building, as its path; empty outside any.
   static REGION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
@@ -92,7 +86,6 @@ thread_local! {
 ///
 /// Called once per lazy segment, when it is built, on both leaves; the content applies
 /// the result through [`within_lazy`].
-#[cfg(not(skene_web_platform = "headless"))]
 pub(crate) fn enter_lazy() -> LazyRegion {
   let index = LAZY_COUNTS.with(|counts| {
     let mut counts = counts.borrow_mut();
@@ -121,7 +114,6 @@ pub(crate) fn enter_lazy() -> LazyRegion {
 /// The resources it creates register or adopt under that segment. A poll of the
 /// content's future is run this way, so a resource created while it loads belongs to
 /// the segment too.
-#[cfg(not(skene_web_platform = "headless"))]
 pub(crate) fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
   let previous = REGION.with(|current| current.replace(region.0.clone()));
 
@@ -137,7 +129,6 @@ pub(crate) fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R
 
 /// Forgets the segment being built and every count, so a render or a hydration starts
 /// outside any lazy segment.
-#[cfg(not(skene_web_platform = "headless"))]
 fn reset_regions() {
   REGION.with(|region| region.borrow_mut().clear());
   LAZY_COUNTS.with(|counts| counts.borrow_mut().clear());

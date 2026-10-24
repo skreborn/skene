@@ -12,9 +12,8 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 ///
 /// Expands to the app crate's `main` for whichever leaf the build targets: in the
 /// browser it launches the app, hydrating a server-rendered page in place; on the
-/// server leaf it renders the requested path to stdout; on every other host it builds
-/// the app against the headless platform. The crate is the app's library alone: the
-/// `skene` command builds it as each target's crate type.
+/// server leaf it renders the requested path to stdout. The crate is the app's library
+/// alone: the `skene` command builds it as each target's crate type.
 ///
 /// ```ignore
 /// #[skene_web::main]
@@ -49,8 +48,6 @@ pub fn web_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     pub fn main() {
       #[cfg(skene_platform = "server")]
       ::skene_web::render_main(env!("CARGO_CRATE_NAME"), #name);
-      #[cfg(not(skene_platform = "server"))]
-      ::skene_web::launch(#name);
     }
   }
   .into()

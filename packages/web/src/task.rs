@@ -9,9 +9,9 @@ use skene_reactive::TaskHandle;
 /// polled again.
 ///
 /// A task started while building a view ends with that view, or with any ancestor of
-/// it. The future runs on the platform's executor: on the web the event loop, on the UI
-/// thread, so it may touch signals and views directly; on the host the headless
-/// platform's queue, drained by `pump_tasks`.
+/// it. The future runs on the platform's executor: in the browser the event loop, on
+/// the UI thread, so it may touch signals and views directly; on a server render the
+/// render's own executor, which drives it until the render settles.
 pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
   install_executor();
 
@@ -21,8 +21,5 @@ pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
 /// Installs the active platform's executor as this thread's spawner.
 #[inline(always)]
 pub(crate) fn install_executor() {
-  #[cfg(not(skene_web_platform = "headless"))]
   crate::platform::install_executor();
-  #[cfg(skene_web_platform = "headless")]
-  skene_headless::install_executor();
 }

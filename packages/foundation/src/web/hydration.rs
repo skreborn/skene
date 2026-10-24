@@ -10,8 +10,7 @@ pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
 /// A platform of the web medium: one a render's state and markup cross on, from a server
 /// render to the client that hydrates it.
 ///
-/// The server leaf carries what settles, the browser leaf adopts it, and the headless
-/// platform standing in for both off the web carries and adopts nothing.
+/// The server leaf carries what settles, and the browser leaf adopts it.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a platform of the web medium",
   label = "hydration crosses from the web's server leaf to its browser leaf"

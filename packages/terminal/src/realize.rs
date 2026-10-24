@@ -6,7 +6,6 @@ use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 use skene_foundation::{
   Availability,
   BoxProps,
-  BoxValue,
   ClipboardAction,
   ColorScheme,
   ControlProps,
@@ -25,11 +24,10 @@ use skene_foundation::{
   PointerEvent,
   Realization,
   RunProps,
-  RunValue,
   Scene,
   Size,
   Slot,
-  StaticLeaf,
+  SlotLeaf,
   TextSelection,
   Timer,
   TokenScope,
@@ -100,15 +98,11 @@ impl Realization for Terminal {
     with_records(|records| records.insert_laid_out(node, Kind::Box(BoxRecord::new(props.clone()))));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<i32, TerminalStyle>>) {
+  fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<i32, TerminalStyle>) {
     with_records(|records| {
       if let Some(record) = records.record_mut(node) {
-        record.slots.insert(slot, leaf.clone().into());
-
-        if let Some(inner) = record.kind.box_record_mut() {
-          inner.mark_stale();
-        }
-
+        record.slots.insert(slot, leaf.clone());
+        record.kind.mark_stale();
         records.queue_restyle(node);
         records.layout_dirty = true;
         records.damage(node);
@@ -219,25 +213,6 @@ impl Realization for Terminal {
       // An inline box flows as one placeholder cluster, as large as its own layout.
       if inline_box && let Some(record) = records.record_mut(node) {
         record.text = crate::layout::INLINE_BOX.to_string();
-      }
-    });
-  }
-
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<TerminalStyle>>) {
-    with_records(|records| {
-      if let Some(record) = records.record_mut(node) {
-        record.slots.insert(slot, leaf.clone().into());
-
-        if let Kind::Run {
-          cache: Some(cache), ..
-        } = &mut record.kind
-        {
-          cache.generation = 0;
-        }
-
-        records.queue_restyle(node);
-        records.layout_dirty = true;
-        records.damage(node);
       }
     });
   }

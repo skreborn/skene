@@ -8,7 +8,6 @@ use std::rc::Rc;
 use skene_foundation::{
   AccessProp,
   BoxProps,
-  BoxValue,
   CheckState,
   ControlProps,
   ControlState,
@@ -21,11 +20,10 @@ use skene_foundation::{
   Placement,
   Point,
   RunProps,
-  RunValue,
   Scene,
   Slot,
+  SlotLeaf,
   StaticBoxStyle,
-  StaticLeaf,
   TokenScope,
   web::WebStyle,
 };
@@ -48,8 +46,7 @@ use crate::{
     inline_definitions,
     layout_fingerprint,
     overlay_fingerprint,
-    render_box_leaf,
-    render_run_leaf,
+    render_slot_leaf,
     run_fingerprint,
     slot_properties,
   },
@@ -505,24 +502,23 @@ impl<S: Sink> Realizer<S> {
     self.insert(node, element, "div", Realized::Scope, adopted);
   }
 
-  /// Writes the box slot `slot` of `node` as the custom property its class reads.
-  pub(crate) fn update_box(
-    &mut self,
-    node: NodeId,
-    slot: Slot,
-    leaf: &StaticLeaf<BoxValue<f32, WebStyle>>,
-  ) {
-    self.write_slot(node, slot, |count| render_box_leaf(leaf, count));
-  }
+  /// Writes the leaf of `node`'s slot `slot` as the custom properties its class reads.
+  pub(crate) fn apply_slot(&mut self, node: NodeId, slot: Slot, leaf: &SlotLeaf<f32, WebStyle>) {
+    let Some(record) = self.records.get(node)
+    else {
+      return;
+    };
 
-  /// Writes the run slot `slot` of `node` as the custom property its class reads.
-  pub(crate) fn update_run(
-    &mut self,
-    node: NodeId,
-    slot: Slot,
-    leaf: &StaticLeaf<RunValue<WebStyle>>,
-  ) {
-    self.write_slot(node, slot, |count| render_run_leaf(leaf, count));
+    if let Some(binding) = record.slots.iter().find(|binding| binding.slot == slot) {
+      let properties = slot_properties(binding.property, binding.position);
+
+      for (property, text) in properties
+        .iter()
+        .zip(render_slot_leaf(leaf, properties.len()))
+      {
+        self.sink.set_property(&record.element, property, &text);
+      }
+    }
   }
 
   /// Writes `focus_order` on the element carrying `node`'s focus.
@@ -888,23 +884,6 @@ impl<S: Sink> Realizer<S> {
       .swap_class(&record.element, previous.as_deref(), &class);
     record.style_class = Some(class);
     record.slots = Rc::from(compiled.slots.as_slice());
-  }
-
-  /// Writes the leaf of `node`'s slot `slot`, rendered by `render` into as many texts as
-  /// it is given, as the custom properties its class reads.
-  fn write_slot(&mut self, node: NodeId, slot: Slot, render: impl FnOnce(usize) -> Vec<String>) {
-    let Some(record) = self.records.get(node)
-    else {
-      return;
-    };
-
-    if let Some(binding) = record.slots.iter().find(|binding| binding.slot == slot) {
-      let properties = slot_properties(binding.property, binding.position);
-
-      for (property, text) in properties.iter().zip(render(properties.len())) {
-        self.sink.set_property(&record.element, property, &text);
-      }
-    }
   }
 
   /// Writes the attributes a control's native `element` carries.

@@ -55,6 +55,8 @@ use skene_foundation::{
   RunStyle,
   RunValue,
   RunVisitor,
+  SlotLeaf,
+  SlotValue,
   Static,
   StaticBoxStyle,
   StaticLeaf,
@@ -358,35 +360,19 @@ pub(crate) fn render_run_value(value: &RunValue<WebStyle>) -> String {
   }
 }
 
-/// The CSS texts a derived box leaf writes into the `count` custom properties of its
-/// slot: a value rendered, a token or an expression referenced in each.
-pub(crate) fn render_box_leaf(
-  leaf: &StaticLeaf<BoxValue<f32, WebStyle>>,
-  count: usize,
-) -> Vec<String> {
-  let texts = static_leaf_texts(leaf, count, |value| render_box_value(&value));
-
-  debug_assert_eq!(
-    record::render_slot_leaf(&leaf.clone().into(), count),
-    texts,
-    "the box leaf {leaf:?} renders from its record apart from its typed value"
-  );
-
-  texts
+/// The CSS texts of an erased value, one per property its target declares: an inset's
+/// block and inline halves, any other value whole.
+pub(crate) fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String> {
+  match value {
+    SlotValue::Box(value) => render_box_value(value),
+    SlotValue::Run(value) => vec![render_run_value(value)],
+  }
 }
 
-/// The CSS texts a derived run leaf writes into the `count` custom properties of its
-/// slot: a value rendered, a token or an expression referenced in each.
-pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<WebStyle>>, count: usize) -> Vec<String> {
-  let texts = static_leaf_texts(leaf, count, |value| vec![render_run_value(&value)]);
-
-  debug_assert_eq!(
-    record::render_slot_leaf(&leaf.clone().into(), count),
-    texts,
-    "the run leaf {leaf:?} renders from its record apart from its typed value"
-  );
-
-  texts
+/// The CSS texts a derived leaf writes into the `count` custom properties of its slot:
+/// a value rendered, a token or an expression referenced in each.
+pub(crate) fn render_slot_leaf(leaf: &SlotLeaf<f32, WebStyle>, count: usize) -> Vec<String> {
+  static_leaf_texts(leaf, count, |value| render_slot_value(&value))
 }
 
 /// The texts of a static leaf for `count` declarations: a fixed value through `fixed`,
@@ -869,7 +855,6 @@ mod record {
     PropertyKey,
     Record,
     RunProps,
-    SlotLeaf,
     SlotValue,
     Static,
     web::WebStyle,
@@ -883,26 +868,10 @@ mod record {
     SlotBinding,
     Source,
     motion,
-    render_box_value,
-    render_run_value,
+    render_slot_value,
     static_leaf_texts,
     target,
   };
-
-  /// The CSS texts of an erased value, one per property its target declares: an inset's
-  /// block and inline halves, any other value whole.
-  pub(super) fn render_slot_value(value: &SlotValue<f32, WebStyle>) -> Vec<String> {
-    match value {
-      SlotValue::Box(value) => render_box_value(value),
-      SlotValue::Run(value) => vec![render_run_value(value)],
-    }
-  }
-
-  /// The CSS texts a derived leaf writes into the `count` custom properties of its slot:
-  /// a value rendered, a token or an expression referenced in each.
-  pub(super) fn render_slot_leaf(leaf: &SlotLeaf<f32, WebStyle>, count: usize) -> Vec<String> {
-    static_leaf_texts(leaf, count, |value| render_slot_value(&value))
-  }
 
   /// A record's keyframe as declarations.
   fn frame_declarations(frame: &Frame<f32, WebStyle>) -> Declarations {

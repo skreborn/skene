@@ -8,29 +8,31 @@ use std::{marker::PhantomData, rc::Rc};
 
 use skene_reactive::Effect;
 
-use crate::{AccessProp, AnyView, BoxSlot, NodeId, NodeKind, Realization, RunSlot, Scene, View};
+use crate::{
+  AccessProp,
+  AnyView,
+  DerivedSlot,
+  NodeId,
+  NodeKind,
+  Realization,
+  Scene,
+  SlotLeaf,
+  StaticLeaf,
+  View,
+};
 
-/// Binds a render effect that computes `slot`'s leaf and writes it into the box
-/// `node`, now and whenever a signal the leaf reads changes.
-pub fn bind_box_slot<P: Realization>(node: NodeId, slot: BoxSlot<P::Scalar, P::StyleExt>) {
-  let BoxSlot { slot, compute, .. } = slot;
+/// Binds a render effect that computes `slot`'s leaf and writes it, erased over its
+/// property, into the slot on `node`, now and whenever a signal the leaf reads changes.
+pub fn bind_slot<P: Realization, K, V: 'static>(node: NodeId, slot: DerivedSlot<K, V>)
+where
+  StaticLeaf<V>: Into<SlotLeaf<P::Scalar, P::StyleExt>>,
+{
+  let DerivedSlot { slot, compute, .. } = slot;
 
   Effect::render(move |_: Option<()>| {
-    let value = compute();
+    let leaf = compute().into();
 
-    P::update_box(node, slot, &value);
-  });
-}
-
-/// Binds a render effect that computes `slot`'s leaf and writes it into the run
-/// `node`, now and whenever a signal the leaf reads changes.
-pub fn bind_run_slot<P: Realization>(node: NodeId, slot: RunSlot<P::StyleExt>) {
-  let RunSlot { slot, compute, .. } = slot;
-
-  Effect::render(move |_: Option<()>| {
-    let value = compute();
-
-    P::update_run(node, slot, &value);
+    P::apply_slot(node, slot, &leaf);
   });
 }
 
@@ -180,7 +182,7 @@ impl<P: Realization> LowLevel<P> {
       P::apply_layout(node, &layout);
 
       for slot in slots {
-        bind_box_slot::<P>(node, slot);
+        bind_slot::<P, _, _>(node, slot);
       }
     }
 

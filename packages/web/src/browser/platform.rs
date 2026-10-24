@@ -13,7 +13,6 @@ use skene_foundation::{
   AccessProp,
   Availability,
   BoxProps,
-  BoxValue,
   ClipboardAction,
   ColorScheme,
   ControlProps,
@@ -32,12 +31,11 @@ use skene_foundation::{
   PointerEvent,
   Realization,
   RunProps,
-  RunValue,
   Scene,
   Size,
   Slot,
+  SlotLeaf,
   StaticBoxStyle,
-  StaticLeaf,
   TextSelection,
   Timer,
   TokenScope,
@@ -299,8 +297,8 @@ impl Realization for Web {
     with_dom(|dom| dom.realizer.create_box(sink, props));
   }
 
-  fn update_box(sink: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, WebStyle>>) {
-    with_dom(|dom| dom.realizer.update_box(sink, slot, leaf));
+  fn apply_slot(sink: NodeId, slot: Slot, leaf: &SlotLeaf<f32, WebStyle>) {
+    with_dom(|dom| dom.realizer.apply_slot(sink, slot, leaf));
   }
 
   fn update_focus_order(sink: NodeId, focus_order: Option<FocusOrder>) {
@@ -435,10 +433,6 @@ impl Realization for Web {
 
   fn create_run(sink: NodeId, props: &RunProps<Self>) {
     with_dom(|dom| dom.realizer.create_run(sink, props));
-  }
-
-  fn update_run(sink: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<WebStyle>>) {
-    with_dom(|dom| dom.realizer.update_run(sink, slot, leaf));
   }
 
   fn set_text(sink: NodeId, text: &str) {

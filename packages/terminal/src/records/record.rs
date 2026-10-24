@@ -153,6 +153,21 @@ impl Kind {
     }
   }
 
+  /// Marks the node's resolution stale while keeping what it presents, so the next
+  /// frame resolves it again and a moved value starts from where the eye left off.
+  pub(crate) const fn mark_stale(&mut self) {
+    match self {
+      Self::Run {
+        cache: Some(cache), ..
+      } => cache.generation = 0,
+      kind => {
+        if let Some(inner) = kind.box_record_mut() {
+          inner.mark_stale();
+        }
+      }
+    }
+  }
+
   /// The generation and the interaction the node's style was resolved under, once a
   /// frame resolved it.
   #[inline(always)]

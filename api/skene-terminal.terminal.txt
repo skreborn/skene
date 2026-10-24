@@ -205,6 +205,7 @@ pub type skene_terminal::platform::terminal::Terminal::Scalar = i32
 pub type skene_terminal::platform::terminal::Terminal::StyleExt = skene_foundation::terminal::ext::TerminalStyle
 pub type skene_terminal::platform::terminal::Terminal::TokenValue = skene_foundation::spine::resolve::TokenValue<i32>
 pub const skene_terminal::platform::terminal::Terminal::FONT_SIZE: f32
+pub fn skene_terminal::platform::terminal::Terminal::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<i32, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_terminal::platform::terminal::Terminal::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_terminal::platform::terminal::Terminal::blur(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::platform::terminal::Terminal::cancel(skene_foundation::spine::realization::Timer)
@@ -240,8 +241,6 @@ pub fn skene_terminal::platform::terminal::Terminal::set_selection(skene_foundat
 pub fn skene_terminal::platform::terminal::Terminal::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_terminal::platform::terminal::Terminal::set_value(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_terminal::platform::terminal::Terminal::set_window_title(core::option::Option<&str>)
-pub fn skene_terminal::platform::terminal::Terminal::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<i32, skene_foundation::terminal::ext::TerminalStyle>>)
-pub fn skene_terminal::platform::terminal::Terminal::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::terminal::ext::TerminalStyle>>)
 pub fn skene_terminal::platform::terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<i32>) -> skene_reactive::memo::Memo<bool>
 impl skene_foundation::spine::view::IntoChildOf<skene_terminal::platform::terminal::Terminal, skene_foundation::spine::view::FlexChild> for skene_terminal::Flexible
 pub fn skene_terminal::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_terminal::Active>

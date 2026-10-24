@@ -48,7 +48,7 @@ use crate::{
   WheelEvent,
   Wrap,
   properties,
-  realize::{Source, bind_box_slot, report_access},
+  realize::{Source, bind_slot, report_access},
 };
 
 /// A box with a layout mode, a declared style, a role, a container name, focus and
@@ -577,7 +577,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     }
 
     for slot in slots {
-      bind_box_slot::<P>(node, slot);
+      bind_slot::<P, _, _>(node, slot);
     }
 
     if let Some(Source::Derived(focus_order)) = self.focus_order {

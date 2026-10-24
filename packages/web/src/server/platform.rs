@@ -6,7 +6,6 @@ use std::{cell::RefCell, rc::Rc, thread::LocalKey, time::Duration};
 use skene_foundation::{
   AccessProp,
   BoxProps,
-  BoxValue,
   ColorScheme,
   ControlProps,
   ControlState,
@@ -21,12 +20,11 @@ use skene_foundation::{
   PickerOption,
   Realization,
   RunProps,
-  RunValue,
   Scene,
   Size,
   Slot,
+  SlotLeaf,
   StaticBoxStyle,
-  StaticLeaf,
   TextSelection,
   Timer,
   TokenScope,
@@ -71,8 +69,8 @@ impl Realization for Web {
     with_realizer(|realizer| realizer.create_box(node, props));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, WebStyle>>) {
-    with_realizer(|realizer| realizer.update_box(node, slot, leaf));
+  fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<f32, WebStyle>) {
+    with_realizer(|realizer| realizer.apply_slot(node, slot, leaf));
   }
 
   fn update_focus_order(node: NodeId, focus_order: Option<FocusOrder>) {
@@ -103,10 +101,6 @@ impl Realization for Web {
 
   fn create_run(node: NodeId, props: &RunProps<Self>) {
     with_realizer(|realizer| realizer.create_run(node, props));
-  }
-
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<WebStyle>>) {
-    with_realizer(|realizer| realizer.update_run(node, slot, leaf));
   }
 
   fn set_text(node: NodeId, text: &str) {

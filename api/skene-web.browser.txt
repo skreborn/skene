@@ -282,6 +282,7 @@ pub type skene_web::platform::web::Web::StyleExt = skene_foundation::web::ext::W
 pub type skene_web::platform::web::Web::TokenValue = skene_web::platform::web::WebTokenValue
 pub const skene_web::platform::web::Web::FONT_SIZE: f32
 pub fn skene_web::platform::web::Web::apply_layout(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::StaticBoxStyle<Self>)
+pub fn skene_web::platform::web::Web::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
 pub fn skene_web::platform::web::Web::blur(skene_foundation::spine::node::NodeId)
 pub fn skene_web::platform::web::Web::cancel(skene_foundation::spine::realization::Timer)
@@ -324,9 +325,7 @@ pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::No
 pub fn skene_web::platform::web::Web::set_value(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_web::platform::web::Web::set_window_title(core::option::Option<&str>)
 pub fn skene_web::platform::web::Web::update_access(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::values::access::AccessProp])
-pub fn skene_web::platform::web::Web::update_box(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::box_style::BoxValue<f32, skene_foundation::web::ext::WebStyle>>)
 pub fn skene_web::platform::web::Web::update_focus_order(skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::values::focus_order::FocusOrder>)
-pub fn skene_web::platform::web::Web::update_run(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::run_style::RunValue<skene_foundation::web::ext::WebStyle>>)
 pub fn skene_web::platform::web::Web::watch_media(&skene_foundation::spine::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::web::Web, skene_foundation::spine::view::FlexChild> for skene_web::Flexible
 pub fn skene_web::Flexible::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>

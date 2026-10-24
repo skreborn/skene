@@ -6,7 +6,6 @@ use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   BoxProps,
-  BoxValue,
   ControlProps,
   ControlState,
   Definition,
@@ -17,12 +16,11 @@ use super::{
   OverlayProps,
   PickerOption,
   RunProps,
-  RunValue,
   Scalar,
   Scene,
   Slot,
+  SlotLeaf,
   StaticBoxStyle,
-  StaticLeaf,
   StyleExtension,
   TokenScope,
 };
@@ -237,14 +235,10 @@ pub trait Realization: Copy + Default + 'static {
   /// Realizes the box `node`.
   fn create_box(node: NodeId, props: &BoxProps<Self>);
 
-  /// Writes the leaf a derived leaf computed into its slot on a box, or in the layout a
-  /// wrapper gave a run or a low-level node: a value, or a token or expression the
-  /// platform resolves where it reads the slot.
-  fn update_box(
-    node: NodeId,
-    slot: Slot,
-    leaf: &StaticLeaf<BoxValue<Self::Scalar, Self::StyleExt>>,
-  );
+  /// Writes the leaf a derived leaf computed into its slot on `node`, a box's, a run's,
+  /// or one in the layout a wrapper gave a run or a low-level node: a value, or a token
+  /// or expression the platform resolves where it reads the slot.
+  fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<Self::Scalar, Self::StyleExt>);
 
   /// Replaces a box's place in focus traversal; `None` takes it out of focus. A platform
   /// reading it from the scene ([`Scene::focus_order`]) needs nothing here.
@@ -284,17 +278,13 @@ pub trait Realization: Copy + Default + 'static {
   /// Gives the node a low-level view made, `node`, the per-child layout a wrapper
   /// annotated it with: its flexibility, alignment, pinning and grid placement, as a
   /// box style holding nothing else, each derived leaf a slot
-  /// [`update_box`](Self::update_box) writes. A platform that lays out from the
+  /// [`apply_slot`](Self::apply_slot) writes. A platform that lays out from the
   /// scene's annotations needs nothing here.
   #[inline(always)]
   fn apply_layout(_node: NodeId, _layout: &StaticBoxStyle<Self>) {}
 
   /// Realizes the text run `node`.
   fn create_run(node: NodeId, props: &RunProps<Self>);
-
-  /// Writes the leaf a derived leaf computed into its slot on a run: a value, or a
-  /// token or expression the platform resolves where it reads the slot.
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
 
   /// Replaces a run's text.
   fn set_text(node: NodeId, text: &str);

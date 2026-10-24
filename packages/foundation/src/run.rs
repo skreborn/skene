@@ -29,7 +29,7 @@ use crate::{
   Transition,
   TypeMetrics,
   Value,
-  realize::{bind_box_slot, bind_run_slot},
+  realize::bind_slot,
   typography,
 };
 
@@ -225,11 +225,11 @@ impl<P: Realization> Run<P> {
     }
 
     for slot in slots {
-      bind_run_slot::<P>(node, slot);
+      bind_slot::<P, _, _>(node, slot);
     }
 
     for slot in layout_slots {
-      bind_box_slot::<P>(node, slot);
+      bind_slot::<P, _, _>(node, slot);
     }
 
     Redefinition::define_all::<P>(node, redefinitions);

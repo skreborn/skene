@@ -100,8 +100,8 @@ the control state and reports it holds, which the platforms read rather than cop
 **`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts). Its methods are the
-portable vocabulary over node ids: realize and update boxes, controls, overlays and
-runs, realize anchors and scopes, mirror tree mutations, define tokens on a
+portable vocabulary over node ids: realize boxes, controls, overlays and runs, write a
+derived slot's erased leaf into it (`apply_slot`), realize anchors and scopes, mirror tree mutations, define tokens on a
 `TokenScope` (one call, a node's or the root's, the root a scope like any other), register
 event kinds, focus, set values, observe sizes, report media.
 `Painted` and embeds are deliberately outside it—their payloads never cross a crate
@@ -171,8 +171,9 @@ toolkit's keeps the default, which does nothing.
   a terminal drag.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
-  content-addressed class—while each derived leaf binds a render effect that writes its
-  per-node slot. The split is written once against the property visitor.
+  content-addressed class—while each derived leaf binds a render effect that writes one
+  leaf, erased over its property (`SlotLeaf`), into its per-node slot through
+  `apply_slot`. The split is written once against the property visitor.
 - **`Role` guides the platform's concrete choice** (web: `Role::Navigation` → `<nav>`); the
   vocabulary stays semantic, never platform-worded. It is AccessKit's, open to every
   role an accessibility layer knows, so a third party's switch, tab or tree is named as
@@ -799,7 +800,7 @@ Condition     = Media | State | And | Or
   at `Keep::Everything` as well (its entries through the same `Rules`, its frames'
   leaves rendered as the typed keyframes', a container's `size` containment read from
   whether it has a height, its slot bindings the shared half's), and the two compiles
-  are asserted equal, template and slot bindings, as is each derived leaf's text.
+  are asserted equal, template and slot bindings.
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's

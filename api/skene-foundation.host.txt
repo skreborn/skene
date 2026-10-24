@@ -768,8 +768,7 @@ impl<P: skene_foundation::Realization> skene_foundation::realize::LowLevel<P>
 pub fn skene_foundation::realize::LowLevel<P>::realize(skene_foundation::NodeKind, impl core::ops::function::FnOnce(skene_foundation::NodeId)) -> skene_foundation::NodeId
 impl<P: core::fmt::Debug + skene_foundation::Realization> core::fmt::Debug for skene_foundation::realize::LowLevel<P>
 pub fn skene_foundation::realize::LowLevel<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn skene_foundation::realize::bind_box_slot<P: skene_foundation::Realization>(skene_foundation::NodeId, skene_foundation::BoxSlot<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>)
-pub fn skene_foundation::realize::bind_run_slot<P: skene_foundation::Realization>(skene_foundation::NodeId, skene_foundation::RunSlot<<P as skene_foundation::Realization>::StyleExt>)
+pub fn skene_foundation::realize::bind_slot<P: skene_foundation::Realization, K, V: 'static>(skene_foundation::NodeId, skene_foundation::DerivedSlot<K, V>) where skene_foundation::StaticLeaf<V>: core::convert::Into<skene_foundation::SlotLeaf<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>>
 pub fn skene_foundation::realize::describe<P: skene_foundation::Realization>(skene_foundation::NodeId, alloc::vec::Vec<skene_foundation::AccessProp>)
 pub fn skene_foundation::realize::report_access<P: skene_foundation::Realization>(skene_foundation::NodeId, alloc::vec::Vec<skene_foundation::AccessProp>)
 pub mod skene_foundation::routing
@@ -9635,6 +9634,7 @@ pub type skene_foundation::Realization::StyleExt: skene_foundation::StyleExtensi
 pub type skene_foundation::Realization::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_foundation::Definition<skene_foundation::Color, Self::Scalar>> + core::convert::From<skene_foundation::Definition<f32, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Dimension<Self::Scalar>, Self::Scalar>> + 'static
 pub const skene_foundation::Realization::FONT_SIZE: f32
 pub fn skene_foundation::Realization::apply_layout(skene_foundation::NodeId, &skene_foundation::StaticBoxStyle<Self>)
+pub fn skene_foundation::Realization::apply_slot(skene_foundation::NodeId, skene_foundation::Slot, &skene_foundation::SlotLeaf<Self::Scalar, Self::StyleExt>)
 pub fn skene_foundation::Realization::attach(skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
 pub fn skene_foundation::Realization::blur(skene_foundation::NodeId)
 pub fn skene_foundation::Realization::cancel(skene_foundation::Timer)
@@ -9679,9 +9679,7 @@ pub fn skene_foundation::Realization::set_text(skene_foundation::NodeId, &str)
 pub fn skene_foundation::Realization::set_value(skene_foundation::NodeId, &str)
 pub fn skene_foundation::Realization::set_window_title(core::option::Option<&str>)
 pub fn skene_foundation::Realization::update_access(skene_foundation::NodeId, &[skene_foundation::AccessProp])
-pub fn skene_foundation::Realization::update_box(skene_foundation::NodeId, skene_foundation::Slot, &skene_foundation::StaticLeaf<skene_foundation::BoxValue<Self::Scalar, Self::StyleExt>>)
 pub fn skene_foundation::Realization::update_focus_order(skene_foundation::NodeId, core::option::Option<skene_foundation::FocusOrder>)
-pub fn skene_foundation::Realization::update_run(skene_foundation::NodeId, skene_foundation::Slot, &skene_foundation::StaticLeaf<skene_foundation::RunValue<Self::StyleExt>>)
 pub fn skene_foundation::Realization::watch_media(&skene_foundation::Media<Self::Scalar>) -> skene_reactive::memo::Memo<bool>
 pub trait skene_foundation::Renderer
 pub fn skene_foundation::Renderer::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)

@@ -433,6 +433,36 @@ fn flex_grow_distributes_space() {
   });
 }
 
+/// A derived flexibility a wrapper gives a run lays the run out afresh at every change.
+#[test]
+fn a_runs_derived_flexibility_follows_its_signal() {
+  with_platform(|| {
+    let grows = Signal::new(false);
+
+    let _ = terminal::mount(move || {
+      Row::new()
+        .set_children((
+          Flexible::new()
+            .derive_flexibility(move || Flexibility::grow(if grows.get() { 1. } else { 0. }))
+            .set_child(Text::new("a")),
+          Text::new("b"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(6, 1), "ab\n");
+
+    grows.set(true);
+
+    assert_eq!(testing::render_to_text(6, 1), "a    b\n");
+
+    grows.set(false);
+
+    assert_eq!(testing::render_to_text(6, 1), "ab\n");
+  });
+}
+
 /// The one route a link in these tests names.
 #[derive(Clone, PartialEq)]
 struct Home;

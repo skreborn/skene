@@ -288,7 +288,8 @@ mod tests {
   }
 
   /// An app holds its shared crate and a shell per platform named, each depending on the
-  /// shared crate and on its platform's skene crates alone.
+  /// shared crate and on its platform's skene crates alone, and every crate declares the
+  /// cfgs naming the build's platform.
   #[test]
   fn an_app_has_a_shell_per_platform() {
     let files = Kind::App.files("my-app", &[Platform::Web], &Source::Registry);
@@ -314,6 +315,13 @@ mod tests {
     );
     assert!(workspace.contains("skene-web = \"0.1\""), "{workspace}");
     assert!(!workspace.contains("skene-terminal"), "{workspace}");
+    assert!(workspace.contains("'cfg(skene_server)'"), "{workspace}");
+    assert!(
+      ["shared/Cargo.toml", "web/Cargo.toml"]
+        .iter()
+        .all(|member| file(&files, member).contains("[lints]\nworkspace = true")),
+      "every member declares the platform's cfgs"
+    );
     assert!(
       file(&files, "web/src/lib.rs").contains("use my_app_shared::Counter;"),
       "the shell names the shared crate by its Rust name"

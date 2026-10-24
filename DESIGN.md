@@ -113,9 +113,8 @@ toolkit's keeps the default, which does nothing.
 
 - **Why a trait and not name-resolved free functions.** A missing function is only an
   error on a path that names it, and those paths are gated on the build's platform; a
-  trait makes a gap a
-  hard error. That is what makes every platform complete: a build that compiles has
-  every method a view can reach.
+  trait makes a gap a hard error. That is what makes every platform complete: a build
+  that compiles has every method a view can reach.
 - **Why the scene is in the spine.** The scene *calls* nothing: the spine mutates it and then
   calls the platform through the generic parameter. Every platform needs the structure; one
   implementation is smaller and has one reparent semantics.
@@ -1548,9 +1547,11 @@ their `clippy`, `doc` and `test` kin) carry the web's cfgs and triples, each ove
 whole workspace in the target directory the gate builds it in. docs.rs documents each
 leaf of `skene-web` and `skene-simple-web` from their metadata's `cargo-args`, which name
 the browser in `wasm32-unknown-unknown`'s rustflags and rustdocflags and the server leaf
-in `x86_64-unknown-linux-gnu`'s. Where one triple hosts
-several platforms the build names the platform by a cfg, chosen once and unifying
-nothing, as `getrandom` names its backend. Target-gating stays the enforcement layer
+in `x86_64-unknown-linux-gnu`'s. A project `skene new` writes declares both cfgs in its
+workspace's `check-cfg`, which every crate of it inherits, so an app's code and its
+entry's expansion name them without a warning. Where one triple hosts several platforms
+the build names the platform by a cfg, chosen once and unifying nothing, as `getrandom`
+names its backend. Target-gating stays the enforcement layer
 where it applies. A cargo feature is an opt-in upgrade that enables optional
 dependencies alone, never a bound, a type, a variant or a platform, and none is on by
 default: `skene-web`'s `gpu` is the one there is.

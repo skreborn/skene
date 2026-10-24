@@ -6,5 +6,12 @@ members = [{members}]
 version = "0.1.0"
 edition = "2024"
 
+# The cfgs naming the build's platform, which an app's code and `#[main]` read.
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(skene_platform, values("android", "ios", "linux", "macos", "terminal", "web", "windows"))',
+  'cfg(skene_server)',
+] }
+
 [workspace.dependencies]
 {dependencies}

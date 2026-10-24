@@ -331,15 +331,14 @@ pub use crate::{
   },
 };
 
-#[cfg(skene_platform = "web")]
 /// The realization the build selected: the web's, in the browser and on a server
 /// render (`--cfg skene_server`).
+#[cfg(skene_platform = "web")]
 pub type Active = platform::Web;
 
 #[cfg(skene_platform = "web")]
 skene_foundation::facade!(Active, f32, "logical pixels");
 
-#[cfg(skene_platform = "web")]
 /// Wraps a view that only a client can realize.
 ///
 /// It builds once the page stands [`hydrated`](media::hydrated), so a server renders
@@ -348,6 +347,7 @@ skene_foundation::facade!(Active, f32, "logical pixels");
 ///
 /// The place for a low-level view that reaches a platform's raw handles. `build`
 /// returns the node it realizes, exactly as a view's `build` does.
+#[cfg(skene_platform = "web")]
 pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
   Enhance::new(media::hydrated()).set_child_builder(build)
 }

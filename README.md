@@ -204,15 +204,15 @@ cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` 
 The gate checks formatting, manifest order, every patched crate vendored under
 `vendor/`, the house rules, unused dependencies, clippy and rustdoc on every leaf,
 `skene-web` refusing with its own message a build that names no platform or one it does
-not realize, clippy on the terminal's macOS paths, manifests free of cargo features, the minimum Rust
-version in the host's, the server's and the browser's builds, and three test tiers. A
-crate reaching `skene-web` is built for the web's leaves alone, and the host tier runs
-every other crate's tests: the foundation's and the layout engine's unit tests and the
-terminal's in-process tests, which act through real input and read what a reader finds.
-The server tier builds every crate reaching the web on the server leaf natively and runs
-their tests and doctests, the guide's and this README's examples, a byte-exact render
-snapshot and the compile-fail suite (a program per rule the types enforce, beside the
-diagnostic it must raise) among them; the browser tier drives a real Firefox and a real
+not realize, clippy on the terminal's macOS paths, manifests free of cargo features, the
+minimum Rust version in the host's, the server's and the browser's builds, and three
+test tiers. A crate reaching `skene-web` is built for the web's leaves alone, and the
+host tier runs every other crate's tests: the foundation's and the layout engine's unit
+tests and the terminal's in-process tests, which act through real input and read what a
+reader finds. The server tier builds every crate reaching the web on the server leaf
+natively and runs their tests and doctests, the guide's and this README's examples, a
+byte-exact render snapshot and the compile-fail suite (a program per rule the types
+enforce, beside the diagnostic it must raise) among them; the browser tier drives a real Firefox and a real
 Chromium, several sessions at once, the `gallery` example running axe-core over every
 built-in, acts the conformance suite out in both by trusted input over WebDriver, and on
 x86-64 Linux compares every page of the suite against its screenshot golden in a pinned

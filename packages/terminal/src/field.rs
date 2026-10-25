@@ -7,18 +7,13 @@ use std::rc::Rc;
 
 use skene_foundation::{
   ClipboardAction,
-  Content,
-  ContentValue,
   Edit,
   Key,
   KeyEvent,
   Modifiers,
   NamedKey,
-  Report,
   Scene,
   TextSelection,
-  Verdict,
-  report,
   text::{
     Direction,
     TextBoundary,
@@ -29,7 +24,7 @@ use skene_foundation::{
 use crate::{
   Terminal,
   layout::padding_cells,
-  records::{AUTOSCROLL_INTERVAL, Deferred, Drag, EntryEditor, Field, Handle, Records},
+  records::{AUTOSCROLL_INTERVAL, Drag, EntryEditor, Field, Handle, Records},
   with_records,
 };
 
@@ -123,8 +118,9 @@ impl Records {
     let area = self.field_area(handle);
     let (column, row) = self.entry_cell(handle, local_x, local_y);
     let field = self.field(handle)?;
+    let entry = self.entry(handle)?;
 
-    Some(field.point_at(field.visible_window(area), area, column, row))
+    Some(field.point_at(field.visible_window(&entry, area), area, column, row))
   }
 
   /// Whether the node is an editor, whose window scrolls down its wrapped rows.
@@ -135,26 +131,32 @@ impl Records {
   /// An editor's window as it shows in its laid-out area; `None` for any other node.
   pub(crate) fn editor_window(&self, handle: Handle) -> Option<u32> {
     let field = self.field(handle).filter(|field| field.is_editor())?;
+    let entry = self.entry(handle)?;
 
-    u32::try_from(field.visible_window(self.field_area(handle))).ok()
+    u32::try_from(field.visible_window(&entry, self.field_area(handle))).ok()
   }
 
   /// How far an editor's window can scroll in its laid-out area; `None` for any other
   /// node.
   pub(crate) fn editor_window_limit(&self, handle: Handle) -> Option<u32> {
     let field = self.field(handle).filter(|field| field.is_editor())?;
+    let entry = self.entry(handle)?;
 
-    u32::try_from(field.scroll_limit(self.field_area(handle))).ok()
+    u32::try_from(field.scroll_limit(&entry, self.field_area(handle))).ok()
   }
 
   /// Moves an editor's window to `window`, clamped, in its laid-out area.
   pub(crate) fn set_editor_window(&mut self, handle: Handle, window: u32) {
     let area = self.field_area(handle);
+    let Some(entry) = self.entry(handle)
+    else {
+      return;
+    };
 
     if let Some(field) = self.field_mut(handle).filter(|field| field.is_editor()) {
       let window = usize::try_from(window).unwrap_or(usize::MAX);
 
-      field.window = window.min(field.scroll_limit(area));
+      field.window = window.min(field.scroll_limit(&entry, area));
       field.window_area = Some(area);
     }
   }
@@ -168,8 +170,9 @@ impl Records {
     }
 
     let area = self.field_area(handle);
+    let entry = self.entry(handle)?;
     let field = self.field_mut(handle).filter(|field| !field.is_editor())?;
-    let moved = field.scroll_window(area, delta);
+    let moved = field.scroll_window(&entry, area, delta);
 
     if moved {
       self.damage(handle);
@@ -181,9 +184,13 @@ impl Records {
   /// Settles an entry's window around its caret, in its laid-out area.
   pub(crate) fn settle_entry(&mut self, handle: Handle) {
     let area = self.field_area(handle);
+    let Some(entry) = self.entry(handle)
+    else {
+      return;
+    };
 
     if let Some(field) = self.field_mut(handle) {
-      field.settle(area);
+      field.settle(&entry, area);
     }
   }
 
@@ -191,12 +198,12 @@ impl Records {
   /// operation holds is left to it.
   pub(crate) fn fit_entries(&self) {
     for entry in &self.entries {
-      let Some(field) = self.field(*entry)
+      let (Some(field), Some(state)) = (self.field(*entry), self.entry(*entry))
       else {
         continue;
       };
 
-      if let Ok(mut editor) = field.editor.try_borrow_mut() {
+      if let Ok(mut editor) = state.editor().try_borrow_mut() {
         Field::fit(&mut editor, field.lines, self.field_area(*entry));
       }
     }
@@ -206,17 +213,21 @@ impl Records {
   /// out again, and a changed value or selection settles its window and repaints it.
   pub(crate) fn settle_changes(&mut self, handle: Handle) {
     let area = self.field_area(handle);
+    let Some(entry) = self.entry(handle)
+    else {
+      return;
+    };
     let Some(field) = self.field_mut(handle)
     else {
       return;
     };
-    let changed = field.take_changed();
+    let changed = entry.take_changed();
 
     if !(changed.text || changed.selection) {
       return;
     }
 
-    field.settle(area);
+    field.settle(&entry, area);
     self.damage(handle);
 
     if changed.text {
@@ -232,14 +243,13 @@ impl Records {
     handle: Handle,
     operation: impl FnOnce(&mut EntryEditor) + 'static,
   ) {
-    let Some(field) = self.field_mut(handle)
+    let Some(entry) = self.entry(handle)
     else {
       return;
     };
-    let editor = Rc::clone(&field.editor);
-    let Ok(mut editor) = editor.try_borrow_mut()
+    let Ok(mut editor) = entry.editor().try_borrow_mut()
     else {
-      field.deferred.push(Box::new(operation));
+      entry.defer(operation);
 
       return;
     };
@@ -284,7 +294,7 @@ impl Records {
   /// Places `entry`'s selection from outside its editing, each index clamped into the
   /// value; it is not reported back.
   pub(crate) fn place_entry_selection(&mut self, entry: Handle, selection: TextSelection) {
-    let Some(reported) = self.field(entry).map(Field::reported)
+    let Some(reported) = self.entry(entry).map(|state| state.reported())
     else {
       return;
     };
@@ -326,7 +336,7 @@ impl Records {
   /// selection kept from the clipboard and its history dropped, as the editing core keeps
   /// a secure text.
   pub(crate) fn set_entry_secure(&mut self, entry: Handle, secure: bool) {
-    let Some(mask) = self.field(entry).map(|field| Rc::clone(&field.mask))
+    let Some(mask) = self.entry(entry).map(|state| Rc::clone(state.mask()))
     else {
       return;
     };
@@ -344,7 +354,7 @@ impl Records {
 
   /// Whether `entry` is a secure text entry.
   pub(crate) fn is_secure_entry(&self, entry: Handle) -> bool {
-    self.field(entry).is_some_and(Field::is_secure)
+    self.entry(entry).is_some_and(|state| state.is_secure())
   }
 
   /// Whether the caret position at an entry's local cell lies inside its selection.
@@ -359,15 +369,14 @@ impl Records {
       return false;
     };
 
-    self
-      .field(handle)
-      .and_then(|field| field.editor.try_borrow().ok())
-      .is_some_and(|editor| {
+    self.entry(handle).is_some_and(|entry| {
+      entry.editor().try_borrow().is_ok_and(|editor| {
         let selected = editor.selected();
         let at = editor.byte_at(x, y);
 
         selected.contains(&at)
       })
+    })
   }
 
   /// The caret drag's overshoot: how far past the entry's visible value the pointer is
@@ -379,6 +388,7 @@ impl Records {
       return None;
     };
     let field = self.field(handle)?;
+    let entry = self.entry(handle)?;
     let area = self.field_area(handle);
     let (origin_x, origin_y) = self.screen_origin(handle);
     let (inset_x, inset_y) = self.field_inset(handle);
@@ -399,12 +409,12 @@ impl Records {
     else {
       return None;
     };
-    let window = field.visible_window(area);
+    let window = field.visible_window(&entry, area);
     let room = if overshoot < 0 {
       window > 0
     }
     else {
-      window < field.scroll_limit(area)
+      window < field.scroll_limit(&entry, area)
     };
 
     room.then_some((handle, overshoot))
@@ -445,11 +455,12 @@ impl Records {
     let (origin_x, origin_y) = self.screen_origin(handle);
     let (x, y) = self.last_pointer;
     let (column, row) = self.entry_cell(handle, i64::from(x) - origin_x, i64::from(y) - origin_y);
+    let entry = self.entry(handle)?;
     let field = self.field_mut(handle)?;
     #[expect(clippy::cast_possible_truncation, reason = "at least one whole step")]
     let delta = overshoot.saturating_mul(steps as i64);
 
-    field.scroll_window(area, delta);
+    field.scroll_window(&entry, area, delta);
 
     let point = field.point_at(field.window, area, column, row);
 
@@ -473,18 +484,18 @@ fn operate<R>(
     skene_foundation::lay_out::<Terminal>();
   }
 
-  let (editor, lines, area, editable) = with_records(|records| {
+  let (state, lines, area, editable) = with_records(|records| {
     let field = records.field(entry)?;
 
     Some((
-      Rc::clone(&field.editor),
+      records.entry(entry)?,
       field.lines,
       records.field_area(entry),
       records.is_editable(entry),
     ))
   })?;
   let result = {
-    let mut editor = editor.try_borrow_mut().ok()?;
+    let mut editor = state.editor().try_borrow_mut().ok()?;
 
     Field::fit(&mut editor, lines, area);
     editor.set_read_only(!editable);
@@ -499,29 +510,16 @@ fn operate<R>(
 /// Settles an operation on the editor of `entry` once it has ended: the operations that
 /// waited for it run, what they and it changed settles, and moved selections are reported.
 fn finish(entry: Handle) {
-  loop {
-    let waiting = with_records(|records| {
-      let field = records.field(entry)?;
+  if let Some(state) = with_records(|records| records.entry(entry)) {
+    while state.has_deferred() {
+      let Ok(mut editor) = state.editor().try_borrow_mut()
+      else {
+        break;
+      };
 
-      (!field.deferred.is_empty()).then(|| Rc::clone(&field.editor))
-    });
-    let Some(editor) = waiting
-    else {
-      break;
-    };
-    let Ok(mut editor) = editor.try_borrow_mut()
-    else {
-      break;
-    };
-    let deferred: Vec<Deferred> = with_records(|records| {
-      records
-        .field_mut(entry)
-        .map(|field| std::mem::take(&mut field.deferred))
-        .unwrap_or_default()
-    });
-
-    for operation in deferred {
-      operation(&mut editor);
+      for operation in state.take_deferred() {
+        operation(&mut editor);
+      }
     }
   }
 
@@ -533,20 +531,11 @@ fn finish(entry: Handle) {
 /// entry's node as a change of what it shows that its toolkit applied, and shows the
 /// truth the verdict answers with.
 pub(crate) fn report_selections() {
-  let reports = with_records(|records| records.selection_reports());
+  let entries = with_records(|records| records.entry_states());
 
-  for (node, shown) in reports {
-    let verdict = report::<Terminal>(
-      node,
-      Report::Change {
-        content: Content::Edit,
-        proposed: ContentValue::Edit(&shown),
-        applied: true,
-      },
-    );
-
-    if let Verdict::Replace(truth) = verdict {
-      with_records(|records| records.show_entry(node, &truth));
+  for entry in entries {
+    if let Some(truth) = entry.report_selection() {
+      with_records(|records| records.show_entry(entry.node(), &truth));
     }
   }
 }

@@ -281,6 +281,12 @@ impl<E: TextEngine> Editor<E> {
     &self.text
   }
 
+  /// The engine the text is laid out by.
+  #[inline(always)]
+  pub const fn engine(&self) -> &E {
+    &self.engine
+  }
+
   /// The text's index.
   #[inline(always)]
   pub const fn index(&self) -> &TextIndex {

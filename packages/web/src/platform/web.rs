@@ -17,7 +17,9 @@
 //! ([`Realization::Native`](skene_foundation::Realization::Native)) is the live
 //! `Element`, and the server leaf's is the markup it renders as the placeholder a
 //! hydrating browser adopts in place. [`RenderHints`] is the environment a server render
-//! answers with, parsed from a request's client hints.
+//! answers with, parsed from a request's client hints. Every text entry is the web's form
+//! element, edited by the browser, so the web draws no entry and its editing state is
+//! [`Undrawn`].
 
 mod native_view;
 
@@ -100,3 +102,8 @@ pub use crate::{
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Web;
+
+/// The web's drawn entry's editing state: none, since every text entry is its `<input>` or
+/// `<textarea>`, edited by the browser, so the shared editing state cannot be reached.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Undrawn {}

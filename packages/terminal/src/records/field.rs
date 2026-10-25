@@ -1,21 +1,12 @@
-//! A text entry's editing state: the shared editing core over the cell engine, masked
-//! where the entry is secure, held apart from the records so it runs with none of them
-//! borrowed, and the window the entry shows its value through.
+//! A text entry's presentation: the window the entry shows its value through, over the
+//! editing state the scene keeps for it, the shared editing core over the cell engine,
+//! masked where the entry is secure, which runs with no records borrowed.
 
-use std::{
-  cell::{Cell, RefCell},
-  rc::Rc,
-};
+use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{
-  Content,
-  ContentValue,
-  Edit,
   NodeId,
-  Report,
-  TextSelection,
-  Verdict,
-  report,
+  Scene,
   text::{
     Laid as _,
     MaskState,
@@ -23,7 +14,7 @@ use skene_foundation::{
     Position,
     TextIndex,
     TextWrap,
-    editing::{Arbiter, Editor, Notice},
+    editing::{self, Editor},
   },
 };
 
@@ -39,48 +30,11 @@ use crate::{
 /// An entry's editing core, over the cell engine masked as its [`MaskState`] says.
 pub(crate) type EntryEditor = Editor<Masked<CellEngine>>;
 
+/// An entry's editing state, which the scene keeps for its node.
+pub(crate) type EntryState = editing::Entry<CellEngine>;
+
 /// What a secure entry draws each cluster of its value as.
 const MARK: char = '\u{2022}';
-
-/// An operation on an entry's editor that waits for the operation under way on it to end.
-pub(crate) type Deferred = Box<dyn FnOnce(&mut EntryEditor)>;
-
-/// What an entry's editor changed since its changes were last taken.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct Changed {
-  /// Whether the value changed.
-  pub(crate) text: bool,
-  /// Whether the selection moved.
-  pub(crate) selection: bool,
-}
-
-/// The arbiter of an entry's edits: each is reported to the entry's node, its text and its
-/// selection as one, and the verdict its controller answers with is what the entry shows.
-struct Reporter {
-  node: NodeId,
-  reported: Rc<Cell<TextSelection>>,
-}
-
-impl Arbiter for Reporter {
-  fn propose(&mut self, proposed: &Edit, applied: bool, _composing: bool) -> Verdict {
-    if let Some(selection) = proposed.selection {
-      self.reported.set(selection);
-    }
-
-    report::<Terminal>(
-      self.node,
-      Report::Change {
-        content: Content::Edit,
-        proposed: ContentValue::Edit(proposed),
-        applied,
-      },
-    )
-  }
-
-  fn settle(&mut self) -> Option<Edit> {
-    None
-  }
-}
 
 /// One cluster of an entry's visible value: the cell it starts in and the row it is on
 /// within the entry's area, its text and the cells it advances, and whether it is
@@ -103,19 +57,9 @@ pub(crate) struct Visible {
   pub(crate) caret: Option<(usize, usize)>,
 }
 
-/// A text entry's editing state: the editing core, shared with the operations that run it
-/// once the records are released, and the window over its value.
+/// A text entry's presentation: the window over its value, which the editing state the
+/// scene keeps for the entry ([`EntryState`]) holds.
 pub(crate) struct Field {
-  /// The editing core; borrowed only by an operation on it, and by readers between them.
-  pub(crate) editor: Rc<RefCell<EntryEditor>>,
-  /// Whether the editor's engine masks the value, shared with the engine.
-  pub(crate) mask: Rc<MaskState>,
-  /// What the editor changed since the last [`take_changed`](Self::take_changed).
-  changed: Rc<Cell<Changed>>,
-  /// The selection last reported, or written from outside.
-  reported: Rc<Cell<TextSelection>>,
-  /// The operations waiting for the one under way on the editor to end.
-  pub(crate) deferred: Vec<Deferred>,
   /// The first visible cell of a field, or the first visible row of an editor; moves only
   /// to keep the caret in view, under an autoscroll, or under the wheel.
   pub(crate) window: usize,
@@ -131,43 +75,26 @@ pub(crate) struct Field {
 }
 
 impl Field {
-  /// A fresh, empty entry of `node` showing `lines` rows, with no placeholder: an editor
-  /// wrapping its lines at its width where they are more than one, else a field of one
-  /// unwrapped line.
-  pub(crate) fn new(node: NodeId, lines: u16) -> Self {
-    let lines = lines.max(1);
-    let multiline = lines > 1;
-    let changed = Rc::new(Cell::new(Changed::default()));
-    let reported = Rc::new(Cell::new(TextSelection::collapsed(0)));
-    let mask = Rc::new(MaskState::new(MARK));
-    let mut editor = Self::editor_of(multiline, Rc::clone(&mask));
-    let notices = Rc::clone(&changed);
-
-    editor.set_arbiter(Reporter {
-      node,
-      reported: Rc::clone(&reported),
-    });
-    editor.set_notifier(move |notice: Notice| {
-      let held = notices.get();
-
-      notices.set(Changed {
-        text: held.text || notice.text,
-        selection: held.selection || notice.selection || notice.text,
-      });
-    });
-
+  /// A fresh entry showing `lines` rows, with no placeholder: an editor where they are
+  /// more than one, else a field of one line.
+  pub(crate) fn new(lines: u16) -> Self {
     Self {
-      editor: Rc::new(RefCell::new(editor)),
-      mask,
-      changed,
-      reported,
-      deferred: Vec::new(),
       window: 0,
       window_area: None,
       placeholder: None,
-      lines,
+      lines: lines.max(1),
       widest: Cell::new(0),
     }
+  }
+
+  /// The editing state of the fresh, empty entry `node`: an editor wrapping its lines at
+  /// its width where `multiline`, else a field of one unwrapped line, its value masked by
+  /// [`MARK`] once it is secure.
+  pub(crate) fn entry(node: NodeId, multiline: bool) -> EntryState {
+    EntryState::new::<Terminal>(
+      node,
+      Self::editor_of(multiline, Rc::new(MaskState::new(MARK))),
+    )
   }
 
   /// An editing core over the cell engine masked as `mask` says, at one cell's scale: of
@@ -191,69 +118,15 @@ impl Field {
     self.lines > 1
   }
 
-  /// What the editor changed since the last take, taken.
-  pub(crate) fn take_changed(&self) -> Changed {
-    self.changed.take()
-  }
-
-  /// The selection last reported, or written from outside, shared with what writes it.
-  pub(crate) fn reported(&self) -> Rc<Cell<TextSelection>> {
-    Rc::clone(&self.reported)
-  }
-
-  /// The value with the selection, when the selection differs from the one last
-  /// reported or written from outside, which it becomes; `None` too while an operation
-  /// holds the editor.
-  pub(crate) fn selection_report(&self) -> Option<Edit> {
-    let editor = self.editor.try_borrow().ok()?;
-    let selection = editor.selection();
-
-    (selection != self.reported.replace(selection))
-      .then(|| Edit::new(editor.text()).with_selection(selection))
-  }
-
-  /// The value with the selection, `None` while an operation holds the editor.
-  pub(crate) fn shown(&self) -> Option<Edit> {
-    let editor = self.editor.try_borrow().ok()?;
-
-    Some(Edit::new(editor.text()).with_selection(editor.selection()))
-  }
-
-  /// The value as it shows, a mark a cluster where the entry is secure; `None` while an
-  /// operation holds the editor.
-  pub(crate) fn value(&self) -> Option<String> {
-    Some(self.mask.shown(self.editor.try_borrow().ok()?.text()))
-  }
-
-  /// Whether the entry is secure: its value masked, and kept from the clipboard.
-  pub(crate) fn is_secure(&self) -> bool {
-    self.mask.is_masked()
-  }
-
-  /// The selected text, `None` while the selection is collapsed, the entry is secure or an
-  /// operation holds the editor.
-  pub(crate) fn selected_text(&self) -> Option<String> {
-    let editor = self.editor.try_borrow().ok()?;
-    let selected = editor.selected();
-
-    (!selected.is_empty() && !editor.is_secure()).then(|| editor.text()[selected].to_owned())
-  }
-
-  /// Whether a range of the value is selected.
-  pub(crate) fn has_selection(&self) -> bool {
-    self
-      .editor
-      .try_borrow()
-      .is_ok_and(|editor| !editor.selected().is_empty())
-  }
-
-  /// The cells the value's widest line spans; while an operation holds the editor, as
-  /// last read.
-  pub(crate) fn widest(&self) -> usize {
-    if let Ok(editor) = self.editor.try_borrow() {
+  /// The cells the value `entry` holds spans at its widest line; while an operation
+  /// holds the editor, or where the entry cannot be read, as last read.
+  pub(crate) fn widest(&self, entry: Option<&EntryState>) -> usize {
+    if let Some(entry) = entry
+      && let Ok(editor) = entry.editor().try_borrow()
+    {
       self
         .widest
-        .set(Self::widest_of(&self.mask.shown(editor.text())));
+        .set(Self::widest_of(&entry.mask().shown(editor.text())));
     }
 
     self.widest.get()
@@ -296,7 +169,7 @@ impl Field {
 
   /// Every cluster the editor's value draws, in bytes of the value, with what it shows:
   /// the cluster itself, or a secure entry's mark.
-  fn drawn_value(&self, editor: &EntryEditor) -> Vec<(Drawn, String)> {
+  fn drawn_value(editor: &EntryEditor) -> Vec<(Drawn, String)> {
     let laid = editor.laid();
     let value = editor.text();
 
@@ -307,7 +180,7 @@ impl Field {
         .collect();
     }
 
-    let shown = self.mask.shown(value);
+    let shown = editor.engine().substitute().shown(value);
 
     drawn(laid.inner(), &shown, &TextIndex::new(&shown))
       .into_iter()
@@ -329,8 +202,7 @@ impl Field {
       return window;
     }
 
-    self
-      .drawn_value(editor)
+    Self::drawn_value(editor)
       .into_iter()
       .find(|(cluster, _)| cluster.column < window && window < cluster.column + cluster.advance)
       .map_or(window, |(cluster, _)| cluster.column + cluster.advance)
@@ -363,10 +235,10 @@ impl Field {
     }
   }
 
-  /// Settles the window around the caret in `area`: held where the caret stays in view,
-  /// else moved the least that shows it.
-  pub(crate) fn settle(&mut self, area: Area) {
-    let Ok(editor) = self.editor.try_borrow()
+  /// Settles the window over the value `entry` holds around the caret in `area`: held
+  /// where the caret stays in view, else moved the least that shows it.
+  pub(crate) fn settle(&mut self, entry: &EntryState, area: Area) {
+    let Ok(editor) = entry.editor().try_borrow()
     else {
       return;
     };
@@ -377,28 +249,28 @@ impl Field {
     self.window_area = Some(area);
   }
 
-  /// How far the window can scroll from its start in `area`; nothing while an operation
-  /// holds the editor.
-  pub(crate) fn scroll_limit(&self, area: Area) -> usize {
-    self
-      .editor
+  /// How far the window over the value `entry` holds can scroll from its start in `area`;
+  /// nothing while an operation holds the editor.
+  pub(crate) fn scroll_limit(&self, entry: &EntryState, area: Area) -> usize {
+    entry
+      .editor()
       .try_borrow()
       .map_or(0, |editor| self.window_limit(&editor, area))
   }
 
-  /// The window as the entry shows it in `area`.
-  pub(crate) fn visible_window(&self, area: Area) -> usize {
-    self
-      .editor
+  /// The window as the entry shows the value `entry` holds in `area`.
+  pub(crate) fn visible_window(&self, entry: &EntryState, area: Area) -> usize {
+    entry
+      .editor()
       .try_borrow()
       .map_or(self.window, |editor| self.shown_window(&editor, area))
   }
 
-  /// Scrolls the window by `delta` (rows of an editor, cells of a field) in `area`,
-  /// clamped to its extent and leaving the caret where it is; `false` when it cannot move
-  /// that way.
-  pub(crate) fn scroll_window(&mut self, area: Area, delta: i64) -> bool {
-    let Ok(editor) = self.editor.try_borrow()
+  /// Scrolls the window over the value `entry` holds by `delta` (rows of an editor, cells
+  /// of a field) in `area`, clamped to its extent and leaving the caret where it is;
+  /// `false` when it cannot move that way.
+  pub(crate) fn scroll_window(&mut self, entry: &EntryState, area: Area, delta: i64) -> bool {
+    let Ok(editor) = entry.editor().try_borrow()
     else {
       return false;
     };
@@ -444,10 +316,10 @@ impl Field {
     (point.x, point.y)
   }
 
-  /// What the entry shows in `area`: its value's clusters in the window, or its
-  /// placeholder's while the value is empty, the selection marked where `focused`, and
-  /// the caret's cell. Nothing shows while an operation holds the editor.
-  pub(crate) fn visible(&self, area: Area, focused: bool) -> Visible {
+  /// What the entry shows in `area`: the clusters of the value `entry` holds in the
+  /// window, or its placeholder's while the value is empty, the selection marked where
+  /// `focused`, and the caret's cell. Nothing shows while an operation holds the editor.
+  pub(crate) fn visible(&self, entry: &EntryState, area: Area, focused: bool) -> Visible {
     let inner = area.columns.max(1);
     let rows = if self.is_editor() {
       area.rows.max(1)
@@ -455,7 +327,7 @@ impl Field {
     else {
       1
     };
-    let Ok(editor) = self.editor.try_borrow()
+    let Ok(editor) = entry.editor().try_borrow()
     else {
       return Visible {
         clusters: Vec::new(),
@@ -508,7 +380,7 @@ impl Field {
     else {
       let selected = editor.selected();
 
-      for (cluster, shown) in self.drawn_value(&editor) {
+      for (cluster, shown) in Self::drawn_value(&editor) {
         let (Some(column), Some(row)) = (
           cluster.column.checked_sub(shift_x),
           cluster.top.checked_sub(shift_y),
@@ -558,18 +430,22 @@ impl Records {
     self.record_mut(handle)?.kind.field_mut()
   }
 
-  /// What every entry whose selection changed since it was last reported or written
-  /// from outside shows, its value with that selection, with the entry's node.
-  pub(crate) fn selection_reports(&self) -> Vec<(NodeId, Edit)> {
+  /// The editing state the scene keeps for the entry at `handle`, where it is one and
+  /// the scene is free to read.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the records, and an entry's editing state is asked of it as its window is"
+  )]
+  pub(crate) fn entry(&self, handle: super::Handle) -> Option<Rc<EntryState>> {
+    Scene::<Terminal>::entry_of(handle)
+  }
+
+  /// Every entry's editing state, in build order.
+  pub(crate) fn entry_states(&self) -> Vec<Rc<EntryState>> {
     self
       .entries
       .iter()
-      .filter_map(|entry| {
-        let record = self.record(*entry)?;
-        let selection = record.kind.field()?.selection_report()?;
-
-        Some((record.node?, selection))
-      })
+      .filter_map(|entry| self.entry(*entry))
       .collect()
   }
 }

@@ -27,10 +27,7 @@ in a code comment.
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
     on the web over the form element CSS styles; a shared option is semantic
-    (`Button::set_prominent`) rather than a per-platform preset. `TextEntry::on_key`
-    takes the core's `Binding` table once every field is drawn, the terminal's key
-    default consulting it until then, and the engine and editor move from the drawing
-    realization onto the platform's seam.
+    (`Button::set_prominent`) rather than a per-platform preset.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
     re-inking its built-in. The core holds colors, named sizes and logic and no view, so
@@ -57,7 +54,11 @@ in a code comment.
     browser's are; a paragraph is kept as one laid-out paragraph of its runs, which
     places them and their inline boxes for the frames, a paragraph's document selection
     and its text content kept once above the engine, in the runtime, where each
-    realization keeps them today.
+    realization keeps them today. A drawn entry's key default is written once there
+    too, over the shared entry the scene keeps: the core's `Binding` table, run after
+    the app's key handlers as a browser's `<input>` default runs (so never as a
+    `TextEntry::on_key`, which would run before them), the terminal's own key default
+    consulting the table until then.
     - Layout: taffy owns it on every platform but the web, one tree per container, the
     platform's measure as its leaves, a minimum as a floor and fractional rectangles;
     layout-only nodes flatten by type, since only `Container` is decorated; layout

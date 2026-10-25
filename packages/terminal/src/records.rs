@@ -18,6 +18,7 @@ use skene_foundation::{
   NodeId,
   NodeMap,
   PointerButtons,
+  Scene,
   Shortcut,
   Timers,
 };
@@ -26,7 +27,7 @@ use skene_layout::{Restyle, Tree};
 use self::environment::MediaState;
 pub(crate) use self::{
   environment::Contrast,
-  field::{Deferred, EntryEditor, Field, Visible},
+  field::{EntryEditor, EntryState, Field, Visible},
   frames::{Clock, FRAME_INTERVAL},
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
   record::{
@@ -43,7 +44,7 @@ pub(crate) use self::{
     RunCache,
   },
 };
-use crate::{Clipboard, layout::CellLeaf, paint::Buffer, selection::Selection};
+use crate::{Clipboard, Terminal, layout::CellLeaf, paint::Buffer, selection::Selection};
 
 /// The size the platform reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
@@ -324,8 +325,9 @@ impl Records {
         continue;
       };
 
-      if let Some(field) = record.kind.field()
-        && let Ok(mut editor) = field.editor.try_borrow_mut()
+      if record.kind.field().is_some()
+        && let Some(entry) = Scene::<Terminal>::entry_of(handle)
+        && let Ok(mut editor) = entry.editor().try_borrow_mut()
       {
         editor.relayout();
       }

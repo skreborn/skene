@@ -34,7 +34,7 @@ use crate::{
     paragraph_runs,
     paragraph_text,
   },
-  records::{Drag, Field, Handle, Kind, Records},
+  records::{Drag, Handle, Kind, Records},
   text,
 };
 
@@ -312,7 +312,7 @@ impl Records {
 
   /// Whether the entry `entry` holds a selection.
   pub(crate) fn entry_has_selection(&self, entry: Handle) -> bool {
-    self.field(entry).is_some_and(Field::has_selection)
+    self.entry(entry).is_some_and(|state| state.has_selection())
   }
 
   /// Whether anything is selected: a range over the document's runs, or one inside the
@@ -329,7 +329,7 @@ impl Records {
   /// selected.
   pub(crate) fn selected_text(&self) -> Option<String> {
     if let Some(entry) = self.clipboard_entry() {
-      return self.field(entry)?.selected_text();
+      return self.entry(entry)?.selected_text();
     }
 
     let (start, end, runs) = self.selection_span()?;

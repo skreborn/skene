@@ -92,8 +92,8 @@ to a recycled node, in the scene and in a platform's records alike. Token resolu
 structure back from a platform. The scene also records each node's place in focus
 traversal and each overlay's state, the open ones in the order they opened, as a
 browser's top layer stacks them, and computes the tab order from them
-(`Scene::tab_order`): positioned stops first, then document order, the modal opened
-last containing it with the overlays opened after it. A platform drawing its own
+(`Scene::tab_order`): document order, the modal opened last containing it with the
+overlays opened after it. A platform drawing its own
 controls traverses by it, stepping from the focused node by `Scene::tab_from` (from a
 node that is no stop, the nearest stop beside it in document order), as the terminal
 does. The scene answers which overlays a press dismisses
@@ -140,7 +140,8 @@ the control state and reports it holds, which the platforms read rather than cop
 **`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts), `Native` (the
-platform's own view the native door adopts), with the constants
+platform's own view the native door adopts), `Entry` (the editing state the scene keeps
+for each text entry the platform draws), with the constants
 `FONT_SIZE` (the size in force where no typography defines one) and `KEEP` (the `Keep`
 level of a style its toolkit keeps unresolved). Its methods are the portable vocabulary
 over node ids:
@@ -156,6 +157,17 @@ over node ids:
   `NodeSpec` and the view, answering as `create` does): an ordinary node from then on,
   placed, styled by the layout a wrapper gives it and removed as any other. `native`
   hands back the view realizing a node, `None` where the platform has none.
+- **Name an entry's editing state** (`entry`, from the node and whether it is
+  multiline): the shared entry (`text::editing::Entry`) over the platform's text
+  engine, its text and paragraph style and the mark a secure entry draws, which the
+  scene asks for as `Scene::realize` realizes a text entry, before `create`, keeps on the
+  node and drops with it (after its borrow is released, as a handler is), handing it out
+  shared (`Scene::entry`, `Scene::entry_of` where the scene may be borrowed) so an
+  operation on it runs with the scene released. The spine names nothing of the text
+  module, so the item is the entry itself rather than the engine: the terminal's is
+  `Entry<CellEngine>`, and the web, whose entries are its form elements, edited by the
+  browser, names the uninhabited `platform::web::Undrawn` and keeps the default `None`,
+  as its door would with an uninhabited `Native`.
 - **Style** each box, control, overlay and run once, right after its creation and before
   any token definition on it: `apply_style` hands it the node's record compiled at
   `Keep::Everything` (a style that sets nothing included; a low-level node receives the
@@ -1319,6 +1331,17 @@ engine, over the geometry it reports.
   deletion by cluster and by word; Home and End, the whole text's under Ctrl; and the
   arrows, up and down in an editor alone, while a composing key and `Ctrl-Shift-A` bind
   nothing and a key typing one cluster inserts it.
+- **A drawn entry's editing state** (`text::editing::Entry<E>`) is the shared half's,
+  kept by the scene per node for a realization that draws its entries
+  (`Realization::Entry`, `Realization::entry`) and dropped with the node: the editor
+  over `Masked<E>` and its `MaskState`, the changes it noted since they were last taken
+  (`take_changed`), the selection last reported, the operations deferred until the one
+  holding the editor ends (`defer`, `take_deferred`), and the arbiter reporting each edit
+  at the entry's node through `report`, its text and selection as one, the verdict
+  deciding what it shows. A moved caret is reported by `report_selection` as a change the
+  toolkit applied, answered with the truth to show where the verdict replaces it. The
+  realization keeps only its presentation of the entry (the terminal its window over the
+  value) and the keys it binds to the core's commands.
 
 ## State
 
@@ -1697,12 +1720,16 @@ nothing where the terminal cannot draw it. The loop handles every event already 
 the next frame, and a run of pointer motion collapses to where it ends, as a browser
 coalesces `pointermove`, so a fast drag never falls behind the pointer. Selection is anchored in source space so it
 survives reflow; wheel gestures latch their target. A text entry is the editing core's
-first client: its `Editor` over the cell engine (a field one unwrapped line, an editor
-wrapped at its content width) is held apart from the records, so an operation on it—a
-key, a press or a drag, a paste, a write from the app—runs with none of them borrowed
-and what it changed (damage, restyle, the window, a moved selection to report) is
-settled after, an operation reaching an editor another holds (a handler that moves
-focus, say) waiting for that one to end. Its box its style leaves unsized lays out at
+first client: its editing state is the shared entry the scene keeps for its node
+(`Entry<CellEngine>`, its `Editor` over the cell engine, a field one unwrapped line and
+an editor wrapped at its content width, a secure entry's mark `•`), and the terminal's
+`Field` record keeps only its presentation over it—the window over the value and the
+area it was settled in, the placeholder, the lines it asks for and its widest line—
+reading the entry through the scene. So an operation on the editor—a key, a press or
+a drag, a paste, a write from the app—runs with neither the records nor the scene
+borrowed and what it changed (damage, restyle, the window, a moved selection to
+report) is settled after, an operation reaching an editor another holds (a handler
+that moves focus, say) deferred on the entry until that one ends. Its box its style leaves unsized lays out at
 its native size, eight cells or its value's widest line and the caret's cell past it,
 and its lines tall, as an `<input>`'s intrinsic size: its content size, so the basis it
 grows from beside a growing sibling, and the least a layout stretching or shrinking it

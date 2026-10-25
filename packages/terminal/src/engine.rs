@@ -41,10 +41,11 @@ thread_local! {
   };
 }
 
-/// The terminal's text engine: Parley over the cell typeface, a tab's stops a cell apart,
-/// laying out in place of a cluster the stand-in [`StandIns`] names, every position it
+/// The terminal's text engine: Parley over the cell typeface, a tab's stops a cell apart.
+///
+/// It lays out in place of a cluster the stand-in [`StandIns`] names, every position it
 /// reports and takes a byte of the real text.
-pub(crate) type CellEngine = Substituted<ParleyEngine, StandIns>;
+pub type CellEngine = Substituted<ParleyEngine, StandIns>;
 
 /// A text laid out through the [`CellEngine`].
 pub(crate) type CellLaid = SubstitutedLaid<ParleyLaid>;
@@ -62,12 +63,14 @@ pub(crate) fn paragraph_style() -> ParagraphStyle {
     .with_line_height(LineHeight::Absolute(1.))
 }
 
-/// What the cell typeface lays out in place of a cluster: a tab as the blank it shows as,
-/// one cell at its run's scale, and where the terminal clusters (mode 2027) and draws a
-/// cluster wider or narrower than its code points sum to, one character as wide as the
-/// terminal draws it, which a line breaks around as it does around an ideograph.
+/// What the cell typeface lays out in place of a cluster.
+///
+/// A tab lays out as the blank it shows as, one cell at its run's scale; where the
+/// terminal clusters (mode 2027) and draws a cluster wider or narrower than its code
+/// points sum to, the cluster lays out as one character as wide as the terminal draws it,
+/// which a line breaks around as it does around an ideograph.
 #[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct StandIns;
+pub struct StandIns;
 
 impl Substitute for StandIns {
   fn substitute(&self, cluster: &str, _start: usize) -> Option<char> {

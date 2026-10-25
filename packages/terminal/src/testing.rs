@@ -10,7 +10,7 @@
 mod pty;
 pub mod user;
 
-use std::{rc::Rc, time::Duration};
+use std::time::Duration;
 
 use skene_foundation::{
   AccessText,
@@ -194,15 +194,13 @@ skene_foundation::access_queries!(Terminal, name_facts);
 /// What the accessible-name computation reads of `node`: a field's text runs among it, read
 /// from its editor once the records are released.
 fn name_facts(node: NodeId) -> NameFacts {
-  let (facts, editor) = with_records(|records| {
+  let (facts, entry) = with_records(|records| {
     let Some(record) = records.record(node)
     else {
       return (NameFacts::default(), None);
     };
-    let editor = match &record.kind {
-      Kind::Control {
-        field: Some(field), ..
-      } => Some(Rc::clone(&field.editor)),
+    let entry = match &record.kind {
+      Kind::Control { field: Some(_), .. } => records.entry(node),
       _ => None,
     };
     let access = || Scene::<Terminal>::read(|scene| scene.access(node));
@@ -222,9 +220,9 @@ fn name_facts(node: NodeId) -> NameFacts {
           *native,
           label.clone(),
           field.as_ref().and_then(|field| field.placeholder.clone()),
-          field.as_ref().and_then(|field| field.value()),
+          entry.as_ref().and_then(|entry| entry.value()),
         );
-        let secure = field.as_ref().is_some_and(|field| field.is_secure());
+        let secure = entry.as_ref().is_some_and(|entry| entry.is_secure());
 
         match facts.role {
           Some(Role::TextInput) if secure => NameFacts {
@@ -241,10 +239,11 @@ fn name_facts(node: NodeId) -> NameFacts {
       ..facts
     };
 
-    (facts, editor)
+    (facts, entry)
   });
-  let text_runs = editor.and_then(|editor| {
-    editor
+  let text_runs = entry.and_then(|entry| {
+    entry
+      .editor()
       .try_borrow()
       .ok()
       .map(|editor| AccessText::of(&editor))

@@ -1049,7 +1049,15 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
       let area = records.field_area(handle);
-      let mut visible = field.visible(area, focused);
+      let Some(entry) = records.entry(handle)
+      else {
+        return NodePaint::Box {
+          background,
+          border,
+          shadow,
+        };
+      };
+      let mut visible = field.visible(&entry, area, focused);
       let run = crate::resolve::Env::of(records, handle).resolve_entry_run();
 
       if !(focused && area.columns > 0) {

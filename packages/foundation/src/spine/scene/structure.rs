@@ -213,6 +213,10 @@ impl<P: Realization> Scene<P> {
         self.graveyard.push(*handlers);
       }
 
+      if let Some(entry) = record.editing {
+        self.retired.push(entry);
+      }
+
       if record.overlay.is_some_and(|overlay| overlay.open) {
         self.open_overlays.retain(|open| *open != node);
       }

@@ -5,9 +5,13 @@
 //! [`Cells`], the handle addressing its box's cells from their own origin, and the
 //! module exists in the terminal's build alone, so cell-reaching code compiles for the
 //! terminal alone. The terminal has no toolkit's view to adopt, so its native view is
-//! [`Unadoptable`] and the native door cannot be reached there.
+//! [`Unadoptable`] and the native door cannot be reached there. Its text engine is the
+//! [`CellEngine`], which every text lays out through and its drawn entries edit over.
 
-pub use crate::cells::{CellPainter, Cells};
+pub use crate::{
+  cells::{CellPainter, Cells},
+  engine::{CellEngine, StandIns},
+};
 
 /// The terminal platform: a zero-sized
 /// [`Realization`](skene_foundation::Realization).

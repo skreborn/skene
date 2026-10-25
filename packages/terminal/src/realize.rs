@@ -33,6 +33,7 @@ use skene_foundation::{
   SlotLeaf,
   Timer,
   TokenScope,
+  text::editing::Entry,
 };
 use skene_reactive::{Memo, ReadSignal, Set};
 
@@ -42,7 +43,7 @@ use crate::{
   Typography,
   cells::{CellPainter, Painter},
   interaction,
-  platform::terminal::{Terminal, Unadoptable},
+  platform::terminal::{CellEngine, Terminal, Unadoptable},
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
 
@@ -92,6 +93,7 @@ impl Realization for Terminal {
   type StyleExt = TerminalStyle;
   type TokenValue = skene_foundation::TokenValue<i32>;
   type Native = Unadoptable;
+  type Entry = Entry<CellEngine>;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -108,7 +110,7 @@ impl Realization for Terminal {
         let field = control
           .native
           .is_some_and(NativeElement::is_text_entry)
-          .then(|| Box::new(Field::new(node, control.lines)));
+          .then(|| Box::new(Field::new(control.lines)));
         let entry = field.is_some();
 
         with_records(|records| {
@@ -198,6 +200,10 @@ impl Realization for Terminal {
     }
   }
 
+  fn entry(node: NodeId, multiline: bool) -> Option<Entry<CellEngine>> {
+    Some(Field::entry(node, multiline))
+  }
+
   fn adopt(_node: NodeId, native: Unadoptable, _spec: &NodeSpec) -> bool {
     match native {}
   }
@@ -273,7 +279,7 @@ impl Realization for Terminal {
       return None;
     }
 
-    let shown = try_with_records(|records| records.field(node)?.shown()).flatten()?;
+    let shown = try_with_records(|records| records.entry(node)?.shown()).flatten()?;
 
     Some(read(ContentValue::Edit(&shown)))
   }

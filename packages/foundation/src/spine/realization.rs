@@ -239,6 +239,11 @@ pub trait Realization: Copy + Default + 'static {
   /// The platform's own view the native door adopts into the scene; an uninhabited type
   /// of the platform's own where its door adopts nothing, so the door cannot be reached.
   type Native: Clone + 'static;
+  /// The editing state the scene keeps for each text entry the platform draws: the
+  /// foundation's shared entry (`text::editing::Entry`) over the platform's text engine;
+  /// an uninhabited type of the platform's own where its toolkit edits every entry, so
+  /// the state cannot be reached.
+  type Entry: 'static;
 
   /// The thread-local holding this platform's scene.
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
@@ -260,6 +265,18 @@ pub trait Realization: Copy + Default + 'static {
   /// gives it and removed as any other, the view keeping what it draws; returns whether
   /// the platform made a node, as [`create`](Self::create) does.
   fn adopt(node: NodeId, native: Self::Native, spec: &NodeSpec) -> bool;
+
+  /// The editing state of the text entry `node`, of several lines where `multiline`, of
+  /// one otherwise: the platform's engine, its text and paragraph style and the mark a
+  /// secure entry draws in place of each cluster. The scene asks once, as it realizes the
+  /// node and before [`create`](Self::create), keeps it while the node lives and hands it
+  /// out shared ([`Scene::entry`]); `None`, the default, for a toolkit that edits its
+  /// entries itself.
+  #[inline(always)]
+  #[must_use]
+  fn entry(_node: NodeId, _multiline: bool) -> Option<Self::Entry> {
+    None
+  }
 
   /// The platform's own view realizing `node`, a node adopted or one the platform made;
   /// `None`, the default, where it has none.

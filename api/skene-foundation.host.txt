@@ -1549,6 +1549,22 @@ impl core::hash::Hash for skene_foundation::text::editing::SelectionEnd
 pub fn skene_foundation::text::editing::SelectionEnd::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_foundation::text::editing::SelectionEnd
 impl core::marker::StructuralPartialEq for skene_foundation::text::editing::SelectionEnd
+pub struct skene_foundation::text::editing::Changed
+pub skene_foundation::text::editing::Changed::selection: bool
+pub skene_foundation::text::editing::Changed::text: bool
+impl core::clone::Clone for skene_foundation::text::editing::Changed
+pub fn skene_foundation::text::editing::Changed::clone(&self) -> skene_foundation::text::editing::Changed
+impl core::cmp::Eq for skene_foundation::text::editing::Changed
+impl core::cmp::PartialEq for skene_foundation::text::editing::Changed
+pub fn skene_foundation::text::editing::Changed::eq(&self, &skene_foundation::text::editing::Changed) -> bool
+impl core::default::Default for skene_foundation::text::editing::Changed
+pub fn skene_foundation::text::editing::Changed::default() -> skene_foundation::text::editing::Changed
+impl core::fmt::Debug for skene_foundation::text::editing::Changed
+pub fn skene_foundation::text::editing::Changed::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_foundation::text::editing::Changed
+pub fn skene_foundation::text::editing::Changed::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_foundation::text::editing::Changed
+impl core::marker::StructuralPartialEq for skene_foundation::text::editing::Changed
 pub struct skene_foundation::text::editing::Clause
 pub skene_foundation::text::editing::Clause::range: core::ops::range::Range<usize>
 pub skene_foundation::text::editing::Clause::style: skene_foundation::text::editing::ClauseStyle
@@ -1589,6 +1605,7 @@ pub fn skene_foundation::text::editing::Editor<E>::caret_rect(&self) -> skene_fo
 pub const fn skene_foundation::text::editing::Editor<E>::composition(&self) -> core::option::Option<&skene_foundation::text::editing::Composition>
 pub fn skene_foundation::text::editing::Editor<E>::count_in(&self, skene_foundation::Unit) -> usize
 pub fn skene_foundation::text::editing::Editor<E>::drag(&mut self, f32, f32) -> bool
+pub const fn skene_foundation::text::editing::Editor<E>::engine(&self) -> &E
 pub const fn skene_foundation::text::editing::Editor<E>::focus(&self) -> skene_foundation::text::Position
 pub const fn skene_foundation::text::editing::Editor<E>::index(&self) -> &skene_foundation::text::TextIndex
 pub fn skene_foundation::text::editing::Editor<E>::index_at(&self, f32, f32, skene_foundation::Unit) -> usize
@@ -1631,6 +1648,27 @@ pub fn skene_foundation::text::editing::Editor<E>::unmark(&mut self) -> bool
 pub fn skene_foundation::text::editing::Editor<E>::write(&mut self, &skene_foundation::Edit) -> bool
 impl<E: skene_foundation::text::TextEngine + core::fmt::Debug> core::fmt::Debug for skene_foundation::text::editing::Editor<E>
 pub fn skene_foundation::text::editing::Editor<E>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::text::editing::Entry<E: skene_foundation::text::TextEngine>
+impl<E: skene_foundation::text::TextEngine + 'static> skene_foundation::text::editing::Entry<E>
+pub fn skene_foundation::text::editing::Entry<E>::new<P: skene_foundation::Realization>(skene_foundation::NodeId, skene_foundation::text::editing::Editor<skene_foundation::text::Masked<E>>) -> Self
+impl<E: skene_foundation::text::TextEngine> skene_foundation::text::editing::Entry<E>
+pub fn skene_foundation::text::editing::Entry<E>::defer(&self, impl core::ops::function::FnOnce(&mut skene_foundation::text::editing::Editor<skene_foundation::text::Masked<E>>) + 'static)
+pub const fn skene_foundation::text::editing::Entry<E>::editor(&self) -> &core::cell::RefCell<skene_foundation::text::editing::Editor<skene_foundation::text::Masked<E>>>
+pub fn skene_foundation::text::editing::Entry<E>::has_deferred(&self) -> bool
+pub fn skene_foundation::text::editing::Entry<E>::has_selection(&self) -> bool
+pub fn skene_foundation::text::editing::Entry<E>::is_secure(&self) -> bool
+pub const fn skene_foundation::text::editing::Entry<E>::mask(&self) -> &alloc::rc::Rc<skene_foundation::text::MaskState>
+pub const fn skene_foundation::text::editing::Entry<E>::node(&self) -> skene_foundation::NodeId
+pub fn skene_foundation::text::editing::Entry<E>::report_selection(&self) -> core::option::Option<skene_foundation::Edit>
+pub fn skene_foundation::text::editing::Entry<E>::reported(&self) -> alloc::rc::Rc<core::cell::Cell<skene_foundation::TextSelection>>
+pub fn skene_foundation::text::editing::Entry<E>::selected_text(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_foundation::text::editing::Entry<E>::selection_report(&self) -> core::option::Option<skene_foundation::Edit>
+pub fn skene_foundation::text::editing::Entry<E>::shown(&self) -> core::option::Option<skene_foundation::Edit>
+pub fn skene_foundation::text::editing::Entry<E>::take_changed(&self) -> skene_foundation::text::editing::Changed
+pub fn skene_foundation::text::editing::Entry<E>::take_deferred(&self) -> alloc::vec::Vec<skene_foundation::text::editing::Deferred<E>>
+pub fn skene_foundation::text::editing::Entry<E>::value(&self) -> core::option::Option<alloc::string::String>
+impl<E: skene_foundation::text::TextEngine> core::fmt::Debug for skene_foundation::text::editing::Entry<E>
+pub fn skene_foundation::text::editing::Entry<E>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::text::editing::History
 impl skene_foundation::text::editing::History
 pub const fn skene_foundation::text::editing::History::break_run(&mut self)
@@ -1701,6 +1739,7 @@ pub fn skene_foundation::text::editing::Arbiter::settle(&mut self) -> core::opti
 impl skene_foundation::text::editing::Arbiter for skene_foundation::text::editing::ControlledText
 pub fn skene_foundation::text::editing::ControlledText::propose(&mut self, &skene_foundation::Edit, bool, bool) -> skene_foundation::Verdict
 pub fn skene_foundation::text::editing::ControlledText::settle(&mut self) -> core::option::Option<skene_foundation::Edit>
+pub type skene_foundation::text::editing::Deferred<E> = alloc::boxed::Box<dyn core::ops::function::FnOnce(&mut skene_foundation::text::editing::Editor<skene_foundation::text::Masked<E>>)>
 pub enum skene_foundation::text::Affinity
 pub skene_foundation::text::Affinity::Downstream
 pub skene_foundation::text::Affinity::Upstream
@@ -7714,6 +7753,8 @@ impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::adopt(&skene_foundation::NodeSpec, <P as skene_foundation::Realization>::Native, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::contains(&self, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::Scene<P>::create(&mut self, skene_foundation::NodeKind, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::entry(&self, skene_foundation::NodeId) -> core::option::Option<alloc::rc::Rc<<P as skene_foundation::Realization>::Entry>>
+pub fn skene_foundation::Scene<P>::entry_of(skene_foundation::NodeId) -> core::option::Option<alloc::rc::Rc<<P as skene_foundation::Realization>::Entry>>
 pub fn skene_foundation::Scene<P>::is_borrowed() -> bool
 pub fn skene_foundation::Scene<P>::new() -> Self
 pub fn skene_foundation::Scene<P>::node_at(&self, &skene_reactive::path::SnapshotPlace) -> core::option::Option<skene_foundation::NodeId>
@@ -10174,6 +10215,7 @@ pub fn skene_foundation::Length::literal(f32) -> skene_foundation::ExprNode
 impl skene_foundation::Quantity for skene_foundation::Number
 pub fn skene_foundation::Number::literal(f32) -> skene_foundation::ExprNode
 pub trait skene_foundation::Realization: core::marker::Copy + core::default::Default + 'static
+pub type skene_foundation::Realization::Entry: 'static
 pub type skene_foundation::Realization::Native: core::clone::Clone + 'static
 pub type skene_foundation::Realization::Scalar: skene_foundation::Scalar
 pub type skene_foundation::Realization::StyleExt: skene_foundation::StyleExtension
@@ -10195,6 +10237,7 @@ pub fn skene_foundation::Realization::create(skene_foundation::NodeId, &skene_fo
 pub fn skene_foundation::Realization::current_path() -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Realization::define_tokens(skene_foundation::TokenScope, &skene_foundation::Definitions<Self::TokenValue>)
 pub fn skene_foundation::Realization::destroy(skene_foundation::NodeId)
+pub fn skene_foundation::Realization::entry(skene_foundation::NodeId, bool) -> core::option::Option<Self::Entry>
 pub fn skene_foundation::Realization::focus(skene_foundation::NodeId)
 pub fn skene_foundation::Realization::focus_visible() -> bool
 pub fn skene_foundation::Realization::hide(skene_foundation::NodeId, skene_foundation::NodeId)

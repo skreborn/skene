@@ -257,8 +257,8 @@ fn focus_snapshot() -> Option<(SnapshotPlace, Option<Caret>)> {
   let (focused, caret) = crate::try_with_records(|records| {
     let focused = records.focused()?;
     let caret = records
-      .field(focused)
-      .and_then(|field| Some(field.editor.try_borrow().ok()?.selection()))
+      .entry(focused)
+      .and_then(|entry| Some(entry.editor().try_borrow().ok()?.selection()))
       .map(|selection| {
         (
           selection.end,

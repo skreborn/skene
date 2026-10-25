@@ -434,6 +434,22 @@ supersedes.
   reader tabs through is the order a reader reads, and an app that wants another order
   builds its views in it. `FocusOrder` keeps `Auto` and `Skip`. Revisit when a reader or
   a platform needs an order the child order cannot express.
+- **A drawn entry's editing state opened by its behavior** (2026-10-25), the
+  `TextEntry` behavior asking the realization for the entry through `ControlOps` as it
+  attaches: the scene already knows, from the node's spec, that it realizes a text
+  entry and how many lines it shows, and it is what must drop the state with the node,
+  so it asks the realization (`Realization::entry`) as it realizes the node, before
+  `create`, and a behavior's table gains no operation only one kind of control needs.
+  Revisit when a control other than a text entry needs editing state the scene keeps.
+- **The text engine as the seam's item** (2026-10-25), `Realization::Engine:
+  TextEngine` with a constructor handing back an `Editor<Masked<Engine>>`: the seam is
+  the spine's, which names nothing of the foundation beyond itself, and the engine's
+  contract and the editor are the text module's, so the seam's item is the entry the
+  scene keeps (`Realization::Entry`, the terminal's `Entry<CellEngine>`), naming the
+  engine through it, and the web's an uninhabited type rather than an uninhabited
+  engine with an uninhabited paragraph and layout. Revisit when code generic over the
+  realization needs its engine to lay text out, which the drawn platforms' shared
+  runtime (item 2) may.
 - **Content-addressed token tags on display-wide colors** (2026-10-14), a toolkit's
   named colors tagged by their definition's content: a palette switch changed every tag
   and so restyled every node naming one. A palette switch touches no node: named

@@ -70,7 +70,12 @@ use super::{
   try_with_dom,
   with_dom,
 };
-use crate::{LinkPolicy, platform::web::Web, realize::Realized, token::WebTokenValue};
+use crate::{
+  LinkPolicy,
+  platform::web::{Undrawn, Web},
+  realize::Realized,
+  token::WebTokenValue,
+};
 
 /// Whether the engine places a box against a CSS anchor (`position-area`), decided
 /// once per page.
@@ -290,6 +295,7 @@ impl Realization for Web {
   type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
   type Native = Element;
+  type Entry = Undrawn;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE

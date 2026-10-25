@@ -37,7 +37,18 @@ use crate::{
   engine::{CellEngine, CellLaid, engine, paragraph_style},
   motion::{Clock, Presented},
   paint::{ShadowPaint, run_scale},
-  records::{BoxCache, Field, Handle, Kind, PlainBox, PlainRun, Record, Records, RunCache},
+  records::{
+    BoxCache,
+    EntryState,
+    Field,
+    Handle,
+    Kind,
+    PlainBox,
+    PlainRun,
+    Record,
+    Records,
+    RunCache,
+  },
   resolve::Env,
   text::{self, CellScale},
 };
@@ -904,9 +915,14 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     Kind::Control { inner, field, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
       let mut style = resolved.taffy_style(inner.facts.layout, place);
-      let leaf = field
-        .as_ref()
-        .map(|field| entry_leaf(&mut style, &resolved, field));
+      let leaf = field.as_ref().map(|field| {
+        entry_leaf(
+          &mut style,
+          &resolved,
+          field,
+          records.entry(handle).as_deref(),
+        )
+      });
 
       if fills_root {
         style.flex_grow = 1.;
@@ -1056,9 +1072,14 @@ pub(crate) fn padding_cells(style: &PlainBox) -> Inset<u32> {
 /// past its value's widest line, and its lines tall; where `style` leaves it unsized, the
 /// native size, its chrome included, is the least a layout stretching or shrinking it
 /// leaves it.
-fn entry_leaf(style: &mut Style, resolved: &PlainBox, field: &Field) -> CellLeaf {
+fn entry_leaf(
+  style: &mut Style,
+  resolved: &PlainBox,
+  field: &Field,
+  entry: Option<&EntryState>,
+) -> CellLeaf {
   let chrome = chrome(resolved);
-  let columns = (field.widest() + 1)
+  let columns = (field.widest(entry) + 1)
     .max(field.placeholder.as_deref().map_or(0, Field::widest_of))
     .max(8);
   let native = Size::new(

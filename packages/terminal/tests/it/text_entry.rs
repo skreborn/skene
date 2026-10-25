@@ -4,7 +4,14 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_terminal::{self as terminal, TextEntry, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  Scene,
+  TextEntry,
+  platform::terminal::Terminal,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{colors_at, is_live, red, rgb, rows, white, with_platform};
 
@@ -1481,5 +1488,39 @@ fn a_secure_fields_runs_read_marks() {
 
     assert_eq!(runs, ["\u{2022}\u{2022}\u{2022}\u{2022}"]);
     assert_eq!(entry.value(), Some("\u{2022}\u{2022}\u{2022}\u{2022}"));
+  });
+}
+
+/// A drawn entry's editing state is the scene's: kept for its node, holding what the
+/// entry shows, and dropped with the node.
+#[test]
+fn an_entrys_editing_state_lives_and_goes_with_its_node() {
+  with_platform(|| {
+    let shown = Signal::new(true);
+    let _ = terminal::mount(move || {
+      derived(move || {
+        if !shown.get() {
+          return Text::new("gone").build();
+        }
+
+        BasicTextField::new(TextEntry::new().set_placeholder("name").set_value("hi"))
+          .into_any()
+          .build()
+      })
+    });
+    let _ = testing::render_to_text(10, 1);
+    let node = testing::find_by_role(Role::TextInput, "name").expect("the field");
+    let entry = Scene::<Terminal>::entry_of(node).expect("the scene keeps the field's entry");
+
+    assert_eq!(entry.editor().borrow().text(), "hi");
+    assert_eq!(entry.node(), node);
+
+    let kept = Rc::downgrade(&entry);
+
+    drop(entry);
+    shown.set(false);
+
+    assert!(testing::render_to_text(10, 1).starts_with("gone"));
+    assert!(kept.upgrade().is_none(), "the entry went with its node");
   });
 }

@@ -37,6 +37,8 @@ use crate::spine::{
   Definitions,
   EventKind,
   FocusOrder,
+  NativeElement,
+  NodeFacts,
   NodeId,
   NodeSpec,
   Part,
@@ -97,6 +99,7 @@ pub struct NodeRecord<P: Realization> {
   focus_order: Option<FocusOrder>,
   overlay: Option<OverlayRecord>,
   sink: Option<Rc<dyn ControlSink>>,
+  editing: Option<Rc<P::Entry>>,
 }
 
 impl<P: Realization> std::fmt::Debug for NodeRecord<P> {
@@ -252,6 +255,7 @@ pub struct Scene<P: Realization> {
   pending_annotation: Option<Annotation<P>>,
   tokens: TokenState<P::TokenValue>,
   graveyard: Vec<HandlerSet>,
+  retired: Vec<Rc<P::Entry>>,
   mirrors: Vec<Mirror<P>>,
   open_overlays: Vec<NodeId>,
   held: Held,
@@ -284,6 +288,7 @@ impl<P: Realization> Scene<P> {
       pending_annotation: None,
       tokens: TokenState::new(),
       graveyard: Vec::new(),
+      retired: Vec::new(),
       mirrors: Vec::new(),
       open_overlays: Vec::new(),
       held: Held::new(),
@@ -298,8 +303,8 @@ impl<P: Realization> Scene<P> {
   /// Runs `f` on the platform's scene.
   ///
   /// The mutations `f` recorded are mirrored into the platform after the scene is
-  /// released, in order, and handlers released inside `f` are dropped after that, so
-  /// a platform's mutation or a captured value's drop may reach the scene again.
+  /// released, in order, and handlers and entries released inside `f` are dropped after
+  /// that, so a platform's mutation or a captured value's drop may reach the scene again.
   ///
   /// # Panics
   ///
@@ -310,6 +315,7 @@ impl<P: Realization> Scene<P> {
       let result = operation(&mut scene);
       let mirrors = std::mem::take(&mut scene.mirrors);
       let graveyard = std::mem::take(&mut scene.graveyard);
+      let retired = std::mem::take(&mut scene.retired);
 
       drop(scene);
 
@@ -318,6 +324,7 @@ impl<P: Realization> Scene<P> {
       }
 
       drop(graveyard);
+      drop(retired);
 
       result
     })
@@ -401,6 +408,7 @@ impl<P: Realization> Scene<P> {
       focus_order: None,
       overlay: None,
       sink: None,
+      editing: None,
     };
 
     self.nodes.insert(record)
@@ -415,6 +423,17 @@ impl<P: Realization> Scene<P> {
   /// Panics past 2^32 live nodes, or if the scene is borrowed.
   pub fn realize(spec: &NodeSpec, annotation: Option<Annotation<P>>) -> NodeId {
     let node = Self::with(|scene| scene.mint(spec, annotation));
+
+    if let NodeFacts::Control(control) = &spec.facts
+      && control.native.is_some_and(NativeElement::is_text_entry)
+      && let Some(entry) = P::entry(node, control.lines > 1)
+    {
+      Self::with(|scene| {
+        if let Some(record) = scene.record_mut(node) {
+          record.editing = Some(Rc::new(entry));
+        }
+      });
+    }
 
     if !P::create(node, spec) {
       Self::with(|scene| {
@@ -458,6 +477,20 @@ impl<P: Realization> Scene<P> {
     }
 
     node
+  }
+
+  /// The editing state of the text entry `node` the platform draws, shared; `None` for
+  /// any other node, and for an entry its toolkit edits; see [`Realization::entry`].
+  #[must_use]
+  pub fn entry(&self, node: NodeId) -> Option<Rc<P::Entry>> {
+    self.record(node)?.editing.clone()
+  }
+
+  /// The editing state of the text entry `node` the platform draws, shared, where the
+  /// scene is free to read; see [`entry`](Self::entry).
+  #[must_use]
+  pub fn entry_of(node: NodeId) -> Option<Rc<P::Entry>> {
+    P::scene().with(|cell| cell.try_borrow().ok()?.entry(node))
   }
 
   /// The live node created at `position`, if any.

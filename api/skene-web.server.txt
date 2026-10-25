@@ -192,6 +192,18 @@ pub skene_web::platform::web::StreamPiece::Shell::styles: &'a str
 pub skene_web::platform::web::StreamPiece::Tail(alloc::string::String)
 impl<'a> core::fmt::Debug for skene_web::platform::web::StreamPiece<'a>
 pub fn skene_web::platform::web::StreamPiece<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_web::platform::web::Undrawn
+impl core::clone::Clone for skene_web::platform::web::Undrawn
+pub fn skene_web::platform::web::Undrawn::clone(&self) -> skene_web::platform::web::Undrawn
+impl core::cmp::Eq for skene_web::platform::web::Undrawn
+impl core::cmp::PartialEq for skene_web::platform::web::Undrawn
+pub fn skene_web::platform::web::Undrawn::eq(&self, &skene_web::platform::web::Undrawn) -> bool
+impl core::fmt::Debug for skene_web::platform::web::Undrawn
+pub fn skene_web::platform::web::Undrawn::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::platform::web::Undrawn
+pub fn skene_web::platform::web::Undrawn::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_web::platform::web::Undrawn
+impl core::marker::StructuralPartialEq for skene_web::platform::web::Undrawn
 pub enum skene_web::platform::web::WebTokenValue
 pub skene_web::platform::web::WebTokenValue::Color(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, f32>)
 pub skene_web::platform::web::WebTokenValue::Dimension(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::dimension::Dimension<f32>, f32>)
@@ -307,6 +319,7 @@ impl skene_foundation::pinned::PinnedBase<skene_web::platform::web::Web> for ske
 impl skene_foundation::span::RichTextBase<skene_web::platform::web::Web> for skene_web::RichText
 impl skene_foundation::span::SpanBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::spine::realization::Realization for skene_web::platform::web::Web
+pub type skene_web::platform::web::Web::Entry = skene_web::platform::web::Undrawn
 pub type skene_web::platform::web::Web::Native = skene_web::platform::web::NativeMarkup
 pub type skene_web::platform::web::Web::Scalar = f32
 pub type skene_web::platform::web::Web::StyleExt = skene_foundation::web::ext::WebStyle

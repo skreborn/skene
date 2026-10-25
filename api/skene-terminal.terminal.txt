@@ -189,6 +189,16 @@ pub fn skene_terminal::platform::terminal::Cells<'a>::set_foreground(&mut self, 
 pub const fn skene_terminal::platform::terminal::Cells<'a>::size(&self) -> skene_foundation::spine::values::size::Size<u32>
 impl core::fmt::Debug for skene_terminal::platform::terminal::Cells<'_>
 pub fn skene_terminal::platform::terminal::Cells<'_>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_terminal::platform::terminal::StandIns
+impl core::clone::Clone for skene_terminal::platform::terminal::StandIns
+pub fn skene_terminal::platform::terminal::StandIns::clone(&self) -> skene_terminal::platform::terminal::StandIns
+impl core::default::Default for skene_terminal::platform::terminal::StandIns
+pub fn skene_terminal::platform::terminal::StandIns::default() -> skene_terminal::platform::terminal::StandIns
+impl core::fmt::Debug for skene_terminal::platform::terminal::StandIns
+pub fn skene_terminal::platform::terminal::StandIns::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_terminal::platform::terminal::StandIns
+impl skene_foundation::text::mask::Substitute for skene_terminal::platform::terminal::StandIns
+pub fn skene_terminal::platform::terminal::StandIns::substitute(&self, &str, usize) -> core::option::Option<char>
 pub struct skene_terminal::platform::terminal::Terminal
 impl core::clone::Clone for skene_terminal::platform::terminal::Terminal
 pub fn skene_terminal::platform::terminal::Terminal::clone(&self) -> skene_terminal::platform::terminal::Terminal
@@ -226,6 +236,7 @@ impl skene_foundation::pinned::PinnedBase<skene_terminal::platform::terminal::Te
 impl skene_foundation::span::RichTextBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::RichText
 impl skene_foundation::span::SpanBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Span
 impl skene_foundation::spine::realization::Realization for skene_terminal::platform::terminal::Terminal
+pub type skene_terminal::platform::terminal::Terminal::Entry = skene_foundation::text::editing::entry::Entry<skene_foundation::text::mask::Substituted<skene_parley::engine::ParleyEngine, skene_terminal::platform::terminal::StandIns>>
 pub type skene_terminal::platform::terminal::Terminal::Native = skene_terminal::platform::terminal::Unadoptable
 pub type skene_terminal::platform::terminal::Terminal::Scalar = i32
 pub type skene_terminal::platform::terminal::Terminal::StyleExt = skene_foundation::terminal::ext::TerminalStyle
@@ -245,6 +256,7 @@ pub fn skene_terminal::platform::terminal::Terminal::commit_navigation(alloc::bo
 pub fn skene_terminal::platform::terminal::Terminal::create(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_terminal::platform::terminal::Terminal::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<skene_terminal::TokenValue>)
 pub fn skene_terminal::platform::terminal::Terminal::destroy(skene_foundation::spine::node::NodeId)
+pub fn skene_terminal::platform::terminal::Terminal::entry(skene_foundation::spine::node::NodeId, bool) -> core::option::Option<skene_foundation::text::editing::entry::Entry<skene_terminal::platform::terminal::CellEngine>>
 pub fn skene_terminal::platform::terminal::Terminal::focus(skene_foundation::spine::node::NodeId)
 pub fn skene_terminal::platform::terminal::Terminal::focus_visible() -> bool
 pub fn skene_terminal::platform::terminal::Terminal::hide(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
@@ -356,6 +368,7 @@ pub trait skene_terminal::platform::terminal::CellPainter
 pub fn skene_terminal::platform::terminal::CellPainter::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 impl skene_terminal::platform::terminal::CellPainter for skene_terminal::platform::terminal::Terminal
 pub fn skene_terminal::platform::terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
+pub type skene_terminal::platform::terminal::CellEngine = skene_foundation::text::mask::Substituted<skene_parley::engine::ParleyEngine, skene_terminal::platform::terminal::StandIns>
 pub mod skene_terminal::prelude
 pub use skene_terminal::prelude::AccessProp
 pub use skene_terminal::prelude::Alignment

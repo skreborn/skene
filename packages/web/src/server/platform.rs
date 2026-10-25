@@ -40,7 +40,7 @@ use super::{
 };
 use crate::{
   LinkPolicy,
-  platform::web::{NativeMarkup, Web},
+  platform::web::{NativeMarkup, Undrawn, Web},
   token::WebTokenValue,
 };
 
@@ -60,6 +60,7 @@ impl Realization for Web {
   type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
   type Native = NativeMarkup;
+  type Entry = Undrawn;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE

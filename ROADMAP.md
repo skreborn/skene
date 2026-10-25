@@ -457,9 +457,8 @@ in a code comment.
     - Forms: an entry's `Secure` and `Keyboard` contents carried by every further
     platform's input protocol as it lands, the one field masked under the platform's
     secure-entry flag and its keyboard, autofill and hints in the protocol's own terms
-    (text-input-v3's content purpose and hints, `UITextInputTraits`, `EditorInfo`); an
-    entry's `Edit` content written as a contract, a no-op when equal and never while an
-    IME composes; a `Form` view emitting a real `<form>` with field names and typed
+    (text-input-v3's content purpose and hints, `UITextInputTraits`, `EditorInfo`); a
+    `Form` view emitting a real `<form>` with field names and typed
     buttons, its GET submission a route with a query, so constraints such as `required`
     hold without script, and elsewhere its explicit submit and cancel drive the
     platform's credential commit (Android's autofill, app-initiated saving on Apple);

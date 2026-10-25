@@ -895,7 +895,7 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
 
 /// A server-rendered secure field is adopted as the password input it was served as:
 /// what the reader typed before the bundle arrived reaches the signal as their edit, and
-/// the input keeps its type, its value and the reader's caret.
+/// the input keeps its type, never written, its value and the reader's caret.
 #[wasm_bindgen_test]
 fn a_secure_field_typed_before_the_bundle_stays_a_password_input() {
   use skene_web::{BasicTextField, TextEntry, TextSelection, reactive::Signal};
@@ -941,8 +941,15 @@ fn a_secure_field_typed_before_the_bundle_stays_a_password_input() {
 
   let value = Signal::new("ab".to_owned());
   let selection = Signal::new(TextSelection::new(2, 2));
+  let observer = observe_type(&server_input);
 
   hydrate(root.clone(), "", move || field(value, selection));
+
+  assert_eq!(
+    observer.take_records().length(),
+    0,
+    "the adopted input's type was never written"
+  );
 
   assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(value.get(), "abc", "the typed text reached the signal");
@@ -968,6 +975,22 @@ fn a_secure_field_typed_before_the_bundle_stays_a_password_input() {
 
   web::uninstall();
   root.remove();
+}
+
+/// An observer of every write of `element`'s `type` attribute.
+fn observe_type(element: &Element) -> web_sys::MutationObserver {
+  let observer = web_sys::MutationObserver::new(&js_sys::Function::new_no_args(""))
+    .expect("a mutation observer");
+  let options = web_sys::MutationObserverInit::new();
+  let filter: js_sys::Array =
+    std::iter::once(skene_web::wasm_bindgen::JsValue::from_str("type")).collect();
+
+  options.set_attribute_filter(&filter);
+  observer
+    .observe_with_options(element, &options)
+    .expect("observing the element");
+
+  observer
 }
 
 /// Text typed into a server-rendered editor before the bundle arrived reaches the

@@ -287,11 +287,13 @@ impl EditController {
     let answering = Rc::clone(&controller);
 
     *controller.shown.borrow_mut() = contents::EDIT.read::<P>(node);
+
     install::<P>(
       node,
       Content::Edit,
       Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
     );
+
     Effect::render(move |_: Option<()>| controller.write::<P>(node));
   }
 
@@ -314,6 +316,7 @@ impl EditController {
           .selection
           .or_else(|| shown.and_then(|shown| shown.selection)),
       });
+
       self.writing.set(true);
       contents::EDIT.write::<P>(node, &edit);
       self.writing.set(false);
@@ -380,6 +383,7 @@ fn install<P: Realization>(node: NodeId, content: Content, answer: Rc<ReportHand
         .is_none(),
       "a node's content has one controller"
     );
+
     scene.handle(node, Handler::Report(content, answer));
   });
 }
@@ -499,11 +503,13 @@ impl<T: Controllable> Controller<T> {
     let answering = Rc::clone(&controller);
 
     *controller.shown.borrow_mut() = controller.key.read::<P>(node);
+
     install::<P>(
       node,
       controller.key.content(),
       Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
     );
+
     Effect::render(move |_: Option<()>| controller.write::<P>(node));
   }
 

@@ -148,8 +148,9 @@ Each layout is its own view—`Row`, `Column`, `Grid`, `Stack`—exposing only t
 properties it honors; per-child properties ride in `Flexible`, `Pinned` and `GridCell`,
 accepted only by the matching container. `Container` is the one decorated box around
 exactly one child. A control is `Control<B: Behavior>`; `BasicButton`, `BasicCheckbox`,
-`BasicSlider`, `BasicRadioGroup`, `BasicPicker`, `BasicTextField` and `BasicTextEditor` are
-aliases over the shipped behaviors, and the `Simple*` components dress them:
+`BasicSlider`, `BasicTextField` and `BasicTextEditor` are aliases over the shipped
+behaviors, `BasicRadioGroup<T>`, `BasicListbox<C>` and `BasicPicker<T>` are views typed by
+what they choose, a value of the app's own type, and the `Simple*` components dress them:
 
 ```rust,ignore
 SimpleButton::new("Save").handle_activate(save),

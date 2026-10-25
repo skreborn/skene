@@ -336,6 +336,7 @@ impl Records {
       editor.set_secure(secure);
       editor.relayout();
     });
+
     self.queue_restyle(entry);
     self.layout_dirty = true;
     self.damage(entry);

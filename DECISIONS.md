@@ -819,6 +819,21 @@ supersedes.
   margin and an inset keep their sign, and layout takes any other length below zero
   as CSS does, a size as auto, a track list as dropped, a padding, a border or a
   spacing as none. Not revisited while lengths are signed.
+- **A typed seam function per content and per report** (2026-10-24): the realization
+  took `set_value`, `set_selection`, `set_checked`, `set_options`, `set_text` and
+  `set_overlay_position`, one function per content, and reported a user's change
+  through `notify_change`, `notify_selection_change`, `notify_toggle` and
+  `report_edit`, so a value and what constrains it crossed as separate calls and each
+  report kept its own echo and repair rules. Every content now crosses whole through
+  one typed `write` and `read` keyed by Skene's name, and every change through one
+  `report` saying whether the toolkit applied it, answered by the node's `Controller`.
+  Revisit when a toolkit cannot take a content's parts as one write.
+- **A choice held as a `String`** (2026-10-25): a radio group, a listbox, a menu and the
+  picker named each option by a string, which an app converted its own values to and
+  parsed back from. A choice is now a value of the app's own `Choice` type, erased to
+  `AnyChoice` and `AnyChosen` in the cores and keyed by its ordinal in the `Roster`
+  where a scriptless form needs a name. Revisit when a choice must cross a boundary that
+  cannot carry an erased value.
 - **The web re-checking a radio group's chosen radio itself, set aside for a re-read
   of every member** (2026-10-24): since 2026-10-23 a toggle report on one member
   re-read and rewrote every member's checked state in the shared half, so the web

@@ -514,9 +514,11 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   the members'; `RadioGroup`, `Listbox` and `Menu` are collections under a
   `CollectionPolicy`), `Behavior` is public, and the keyboard tables live in the
   behaviors, so a third party's control and the terminal's slider get the same keys as
-  the browser's. `BasicButton`, `BasicCheckbox`, `BasicSlider`,
-  `BasicRadioGroup`/`BasicRadio`, `BasicListbox`/`BasicListboxOption`, `BasicTextField`
-  and `BasicTextEditor` are aliases over them, and `BasicPicker` is composed from them.
+  the browser's. `BasicButton`, `BasicCheckbox`, `BasicSlider`, `BasicRadio`,
+  `BasicListboxOption`, `BasicTextField` and `BasicTextEditor` are aliases over them,
+  `BasicRadioGroup<T>` and `BasicListbox<C>` are each facade's views of a control over a
+  `RadioGroup` or a `Listbox`, typed by what it chooses, and `BasicPicker<T>` is
+  composed from them.
   A listbox and the closed picker face have type-ahead (`TypeAhead`, its buffer reset on
   the realization's `schedule`) over the names the options' labels supply as they read
   now (`Label::set_name`, `Label::derive_name`), and the face's verdict on a typed key

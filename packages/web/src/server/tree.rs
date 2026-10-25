@@ -370,6 +370,15 @@ impl Sink for StringTree {
     self.write(*element, |element| element.set_attribute(name, value));
   }
 
+  fn attribute(&self, element: &u32, name: &str) -> Option<String> {
+    self
+      .element(*element)?
+      .attributes
+      .iter()
+      .find(|(existing, _)| existing == name)
+      .map(|(_, value)| value.clone())
+  }
+
   fn remove_attribute(&mut self, element: &u32, name: &str) {
     self.write(*element, |element| {
       element.remove_attributes(|existing| existing == name);

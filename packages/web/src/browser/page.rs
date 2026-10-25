@@ -193,6 +193,10 @@ impl Sink for Page {
     }
   }
 
+  fn attribute(&self, element: &web_sys::Node, name: &str) -> Option<String> {
+    element.dyn_ref::<Element>()?.get_attribute(name)
+  }
+
   fn remove_attribute(&mut self, element: &web_sys::Node, name: &str) {
     if let Some(element) = element.dyn_ref::<Element>() {
       let _ = element.remove_attribute(name);

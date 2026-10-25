@@ -112,6 +112,9 @@ pub(crate) trait Sink {
   /// Sets the attribute `name` of `element` to `value`.
   fn set_attribute(&mut self, element: &Self::Element, name: &str, value: &str);
 
+  /// The value of the attribute `name` of `element`, where it has one.
+  fn attribute(&self, element: &Self::Element, name: &str) -> Option<String>;
+
   /// Removes the attribute `name` of `element`.
   fn remove_attribute(&mut self, element: &Self::Element, name: &str);
 
@@ -415,7 +418,7 @@ impl<S: Sink> Realizer<S> {
       Some(native) if native.is_bare() => {
         let (root, adopted) = self.create_element(node, native.tag, realized);
 
-        self.write_native_attributes(&root, native, control);
+        self.write_native_attributes(&root, native, control, adopted);
 
         if adopted {
           self.sink.note_live_state(node, &root, native);
@@ -427,7 +430,7 @@ impl<S: Sink> Realizer<S> {
         let (root, _) = self.create_element(node, "label", realized);
         let (input, adopted) = self.sink.create_element(native.tag);
 
-        self.write_native_attributes(&input, native, control);
+        self.write_native_attributes(&input, native, control, adopted);
         self.sink.set_attribute(&input, "class", NATIVE_CLASS);
 
         if adopted {
@@ -977,8 +980,8 @@ impl<S: Sink> Realizer<S> {
   }
 
   /// Shows the text entry `node`'s secure flag or keyboard, as `value` says, on its form
-  /// element: its `type` where it changes, keeping the value and the selection shown, and
-  /// the keyboard's attributes beside it.
+  /// element: its `type` where the element's own differs, keeping the value and the
+  /// selection shown, and the keyboard's attributes beside it.
   fn write_entry(&mut self, node: NodeId, value: ContentValue<'_>) {
     let Some(record) = self.records.get_mut(node)
     else {
@@ -993,8 +996,6 @@ impl<S: Sink> Realizer<S> {
     else {
       return;
     };
-    let before = native.entry_type(*secure, *keyboard);
-
     match value {
       ContentValue::Secure(written) => *secure = written,
       ContentValue::Keyboard(written) => *keyboard = written,
@@ -1005,8 +1006,9 @@ impl<S: Sink> Realizer<S> {
     let attributes =
       matches!(value, ContentValue::Keyboard(_)).then(|| keyboard_attributes(*keyboard));
     let carrier = record.carrier().clone();
+    let before = self.sink.attribute(&carrier, "type");
 
-    if let Some(kind) = after.filter(|_| after != before) {
+    if let Some(kind) = after.filter(|kind| before.as_deref() != Some(kind)) {
       let shown = self.sink.shown(&carrier).and_then(|shown| shown.selection);
 
       self.sink.set_attribute(&carrier, "type", kind);
@@ -1270,14 +1272,21 @@ impl<S: Sink> Realizer<S> {
     record.slots = Rc::from(compiled.slots.as_slice());
   }
 
-  /// Writes the attributes a control's native `element` carries.
+  /// Writes the attributes a control's native `element` carries, all but its `type`
+  /// where `adopted`: an adopted element keeps the type the server's markup gave it,
+  /// which a text entry's contents change only where they say otherwise.
   fn write_native_attributes(
     &mut self,
     element: &S::Element,
     native: FormElement,
     control: &ControlFacts,
+    adopted: bool,
   ) {
     for (name, value) in native_attributes(native, control) {
+      if adopted && name == "type" {
+        continue;
+      }
+
       self.sink.set_attribute(element, name, &value);
     }
   }

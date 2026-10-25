@@ -17,6 +17,7 @@ use skene_foundation::{
   ContainerName,
   ContainerQuery,
   Control,
+  ControlBase,
   ControlState,
   DecorationBase,
   DecorationWithCornerRadius,
@@ -393,6 +394,36 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
     )),
     "{styles}"
   );
+}
+
+/// A switch renders as the page's own checkbox made a switch, its role and its state
+/// in markup without script, its track drawn beside it.
+#[test]
+fn a_switch_is_a_native_switch_in_markup() {
+  let rendered = render_to_string(|| {
+    skene_web::Toggle::new()
+      .set_checked(true)
+      .set_label("Wi-Fi")
+  });
+  let body = rendered.body();
+
+  assert!(
+    body.starts_with("<label data-h=\"1\" data-skene-control"),
+    "{body}"
+  );
+  assert!(
+    body.contains(
+      "<input data-h=\"2\" type=\"checkbox\" switch role=\"switch\" aria-label=\"Wi-Fi\""
+    ),
+    "{body}"
+  );
+  assert!(body.contains("checked"), "the state in markup: {body}");
+
+  let input_end = body.find("</label>").expect("the label closes");
+  let track = body.find("<div").expect("the track part");
+  let caption = body.find(">Wi-Fi<").expect("the caption");
+
+  assert!(track < caption && caption < input_end, "{body}");
 }
 
 /// A native view's placeholder carries the layout its wrapper gave it in its class.

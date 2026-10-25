@@ -52,8 +52,8 @@ type Colors = SystemColors<f32>;
 /// pixels tall, padded 4 above and below and 12 at the sides inside a border of 2, its
 /// label centered, its corners rounded by 6; filled with [`SystemColors::CONTROL`] and
 /// its hover and pressed variants, where prominent the accent's darkened by a tenth of
-/// Oklch lightness, and the resting one while disabled; its label in
-/// [`SystemColors::INK`] ([`SystemColors::ON_ACCENT`] where prominent,
+/// Oklch lightness, and [`SystemColors::CONTROL`] while disabled, prominent or not; its
+/// label in [`SystemColors::INK`] ([`SystemColors::ON_ACCENT`] where prominent,
 /// [`SystemColors::MUTED_INK`] while disabled); its border invisible but while focus
 /// shows, a ring in the accent ([`SystemColors::INK`] where prominent); the click cursor,
 /// the default one while disabled. A prominence that follows a signal re-inks the button

@@ -46,11 +46,12 @@ type Colors = SystemColors<i32>;
 /// derived label changes in place. [`set_prominent`](Self::set_prominent) shows it as its
 /// screen's primary action. Its defaults, each a value its setters replace: a cell of
 /// padding at either side, its label centered; filled with [`SystemColors::CONTROL`] and
-/// its hover and pressed variants, the accent's where prominent, and the resting one
-/// while disabled; its label in [`SystemColors::INK`] ([`SystemColors::ON_ACCENT`] where
-/// prominent, [`SystemColors::MUTED_INK`] while disabled); while focus shows, its cells
-/// in the accent under [`SystemColors::ON_ACCENT`], reversed where prominent; the click
-/// cursor, the default one while disabled. A prominence that follows a signal re-inks the
+/// its hover and pressed variants, the accent's where prominent, and
+/// [`SystemColors::CONTROL`] while disabled, prominent or not; its label in
+/// [`SystemColors::INK`] ([`SystemColors::ON_ACCENT`] where prominent,
+/// [`SystemColors::MUTED_INK`] while disabled); while focus shows, its cells in the accent
+/// under [`SystemColors::ON_ACCENT`], reversed where prominent; the click cursor, the
+/// default one while disabled. A prominence that follows a signal re-inks the
 /// button in place. [`set_label`](ControlBase::set_label) replaces the label, and
 /// [`set_child`](ControlBase::set_child) adds a body beside it.
 ///

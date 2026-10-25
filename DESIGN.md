@@ -936,9 +936,9 @@ re-export.
   a derived leaf where it follows a signal, so a prominence that changes re-inks the
   button in place. In pixels the button is at least 32 tall, padded 4 by 12 inside a
   border of 2 rounded by 6, filled with `CONTROL` and its hover and pressed variants
-  (the accent's darkened by a tenth of Oklch lightness where prominent, the resting one
-  while disabled), its label in `INK`
-  (`ON_ACCENT` where prominent, `MUTED_INK` disabled), and its border a ring in the
+  (the accent's darkened by a tenth of Oklch lightness where prominent, and `CONTROL`
+  while disabled, prominent or not), its label in `INK` (`ON_ACCENT` where prominent,
+  `MUTED_INK` disabled), and its border a ring in the
   accent (`INK` where prominent) while focus shows; in cells it is padded a cell at
   either side, and focus shows as accent cells under `ON_ACCENT`, reversed where
   prominent. The checkbox's default `Part::Mark` is an 18-pixel box in `FIELD` and

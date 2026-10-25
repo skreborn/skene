@@ -16,6 +16,7 @@ use skene_terminal::{
   NodeId,
   Part,
   Prevent,
+  Scene,
   WheelEvent,
   behavior::{
     Activate,
@@ -31,6 +32,7 @@ use skene_terminal::{
     TextEntry,
     Toggle,
   },
+  platform::terminal::Terminal,
   prelude::*,
   testing,
   testing::user,
@@ -2071,6 +2073,10 @@ fn a_checkbox_draws_its_mark_and_a_mark_of_its_users_replaces_it() {
 
     assert_eq!(rows(&frame), "[ ] Agree\n<> Mine\n", "{frame}");
     assert_eq!(read(checkbox).role(), Role::CheckBox);
+    assert!(
+      Scene::<Terminal>::with(|scene| scene.find_part(checkbox, Part::Mark)).is_some(),
+      "the default mark is the checkbox's mark"
+    );
 
     testing::trigger_key("Tab");
     testing::trigger_key(" ");
@@ -2104,6 +2110,22 @@ fn a_switch_is_reported_as_one_and_its_thumb_moves_as_it_turns_on() {
     assert_eq!(rows(&frame), "\u{25cf}   Wi-Fi\n", "{frame}");
     assert_eq!(read(switch).role(), Role::Switch);
     assert!(!is_checked(switch));
+
+    let (track, thumb) = Scene::<Terminal>::with(|scene| {
+      (
+        scene.find_part(switch, Part::Track),
+        scene.find_part(switch, Part::Thumb),
+      )
+    });
+    let track = track.expect("the default track is the switch's track");
+    let thumb = thumb.expect("its thumb is the switch's thumb");
+
+    assert!(
+      Scene::<Terminal>::with(|scene| {
+        std::iter::successors(Some(thumb), |node| scene.parent(*node)).any(|node| node == track)
+      }),
+      "the track holds the thumb"
+    );
 
     let track = colors_at(12, 1, 1, 0).1;
 

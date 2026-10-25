@@ -323,7 +323,7 @@ impl skene_foundation::visibility::VisibilityBase<skene_terminal::platform::term
 impl skene_terminal::platform::terminal::CellPainter for skene_terminal::platform::terminal::Terminal
 pub fn skene_terminal::platform::terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, B> for skene_terminal::Control<B>
-impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::control::ControlCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior> skene_foundation::surface::DecorationBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::surface::MotionBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B>
@@ -334,18 +334,18 @@ pub fn skene_terminal::BasicListbox<C>::build(self) -> skene_foundation::spine::
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicListbox<C>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicListbox<C>
 impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<skene_terminal::platform::terminal::Terminal, K> for skene_terminal::OneOf<K>
-impl<K> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::OneOf<K> where skene_foundation::one_of::OneOf<skene_terminal::Active, K>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<K> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::OneOf<K> where skene_foundation::one_of::OneOf<skene_terminal::Active, K>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::one_of::OneOfCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_terminal::platform::terminal::Terminal, R> for skene_terminal::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Link<R> where skene_foundation::link::Link<skene_terminal::Active, R>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Link<R> where skene_foundation::link::Link<skene_terminal::Active, R>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::link::LinkCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Theme<S> where skene_foundation::theme::Theme<skene_terminal::Active, S>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Theme<S> where skene_foundation::theme::Theme<skene_terminal::Active, S>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::theme::ThemeCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::theme::ThemeBase<skene_terminal::platform::terminal::Terminal, S> for skene_terminal::Theme<S>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_terminal::platform::terminal::Terminal, T> for skene_terminal::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_terminal::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_terminal::platform::terminal::Terminal, T> for skene_terminal::BasicPicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_terminal::Active, T>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_terminal::Active, T>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::picker::BasicPickerCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicRadioGroup<T> where Self: 'static
 pub fn skene_terminal::BasicRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
@@ -570,7 +570,7 @@ impl<T: skene_foundation::control::choice::Choice> core::default::Default for sk
 pub fn skene_terminal::BasicPicker<T>::default() -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_terminal::platform::terminal::Terminal, T> for skene_terminal::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_terminal::BasicPicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_terminal::Active, T>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_terminal::Active, T>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::picker::BasicPickerCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_terminal::BasicPicker<T>
 pub type skene_terminal::BasicPicker<T>::Inner = skene_foundation::picker::BasicPicker<skene_terminal::platform::terminal::Terminal, T>
@@ -721,7 +721,7 @@ impl<B: skene_foundation::control::Behavior + core::default::Default> core::defa
 pub fn skene_terminal::Control<B>::default() -> Self
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, B> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::AnyKind for skene_terminal::Control<B>
-impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::control::ControlCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::wraps::Wraps for skene_terminal::Control<B>
 pub type skene_terminal::Control<B>::Inner = skene_foundation::control::Control<skene_terminal::platform::terminal::Terminal, B>
@@ -874,7 +874,7 @@ impl<R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug fo
 pub fn skene_terminal::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_terminal::platform::terminal::Terminal, R> for skene_terminal::Link<R>
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_terminal::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Link<R> where skene_foundation::link::Link<skene_terminal::Active, R>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Link<R> where skene_foundation::link::Link<skene_terminal::Active, R>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::link::LinkCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::wraps::Wraps for skene_terminal::Link<R>
 pub type skene_terminal::Link<R>::Inner = skene_foundation::link::Link<skene_terminal::platform::terminal::Terminal, R>
@@ -889,7 +889,7 @@ impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<sken
 impl<K: core::fmt::Debug> core::fmt::Debug for skene_terminal::OneOf<K>
 pub fn skene_terminal::OneOf<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<K> skene_foundation::spine::view::AnyKind for skene_terminal::OneOf<K>
-impl<K> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::OneOf<K> where skene_foundation::one_of::OneOf<skene_terminal::Active, K>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<K> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::OneOf<K> where skene_foundation::one_of::OneOf<skene_terminal::Active, K>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::one_of::OneOfCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<K> skene_foundation::spine::wraps::Wraps for skene_terminal::OneOf<K>
 pub type skene_terminal::OneOf<K>::Inner = skene_foundation::one_of::OneOf<skene_terminal::platform::terminal::Terminal, K>
@@ -1053,7 +1053,7 @@ pub struct skene_terminal::prelude::Theme<S: skene_foundation::spine::token::Tok
 impl<S: core::fmt::Debug + skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> core::fmt::Debug for skene_terminal::Theme<S>
 pub fn skene_terminal::Theme<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S>
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Theme<S> where skene_foundation::theme::Theme<skene_terminal::Active, S>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Theme<S> where skene_foundation::theme::Theme<skene_terminal::Active, S>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::theme::ThemeCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::wraps::Wraps for skene_terminal::Theme<S>
 pub type skene_terminal::Theme<S>::Inner = skene_foundation::theme::Theme<skene_terminal::platform::terminal::Terminal, S>
@@ -1322,7 +1322,7 @@ impl<T: skene_foundation::control::choice::Choice> core::default::Default for sk
 pub fn skene_terminal::BasicPicker<T>::default() -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_terminal::platform::terminal::Terminal, T> for skene_terminal::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_terminal::BasicPicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_terminal::Active, T>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_terminal::Active, T>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::picker::BasicPickerCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_terminal::BasicPicker<T>
 pub type skene_terminal::BasicPicker<T>::Inner = skene_foundation::picker::BasicPicker<skene_terminal::platform::terminal::Terminal, T>
@@ -1491,7 +1491,7 @@ impl<B: skene_foundation::control::Behavior + core::default::Default> core::defa
 pub fn skene_terminal::Control<B>::default() -> Self
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, B> for skene_terminal::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::AnyKind for skene_terminal::Control<B>
-impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Control<B> where skene_foundation::control::Control<skene_terminal::Active, B>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::control::ControlCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::wraps::Wraps for skene_terminal::Control<B>
 pub type skene_terminal::Control<B>::Inner = skene_foundation::control::Control<skene_terminal::platform::terminal::Terminal, B>
@@ -1644,7 +1644,7 @@ impl<R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug fo
 pub fn skene_terminal::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_terminal::platform::terminal::Terminal, R> for skene_terminal::Link<R>
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_terminal::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Link<R> where skene_foundation::link::Link<skene_terminal::Active, R>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Link<R> where skene_foundation::link::Link<skene_terminal::Active, R>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::link::LinkCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::wraps::Wraps for skene_terminal::Link<R>
 pub type skene_terminal::Link<R>::Inner = skene_foundation::link::Link<skene_terminal::platform::terminal::Terminal, R>
@@ -1659,7 +1659,7 @@ impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<sken
 impl<K: core::fmt::Debug> core::fmt::Debug for skene_terminal::OneOf<K>
 pub fn skene_terminal::OneOf<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<K> skene_foundation::spine::view::AnyKind for skene_terminal::OneOf<K>
-impl<K> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::OneOf<K> where skene_foundation::one_of::OneOf<skene_terminal::Active, K>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<K> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::OneOf<K> where skene_foundation::one_of::OneOf<skene_terminal::Active, K>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::one_of::OneOfCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<K> skene_foundation::spine::wraps::Wraps for skene_terminal::OneOf<K>
 pub type skene_terminal::OneOf<K>::Inner = skene_foundation::one_of::OneOf<skene_terminal::platform::terminal::Terminal, K>
@@ -1841,7 +1841,7 @@ pub struct skene_terminal::Theme<S: skene_foundation::spine::token::TokenSet<ske
 impl<S: core::fmt::Debug + skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> core::fmt::Debug for skene_terminal::Theme<S>
 pub fn skene_terminal::Theme<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::AnyKind for skene_terminal::Theme<S>
-impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Theme<S> where skene_foundation::theme::Theme<skene_terminal::Active, S>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
+impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Theme<S> where skene_foundation::theme::Theme<skene_terminal::Active, S>: skene_foundation::thin::Thin<skene_terminal::Active, Core = skene_foundation::theme::ThemeCore<skene_terminal::Active>>, Self: 'static
 pub fn skene_terminal::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::spine::wraps::Wraps for skene_terminal::Theme<S>
 pub type skene_terminal::Theme<S>::Inner = skene_foundation::theme::Theme<skene_terminal::platform::terminal::Terminal, S>

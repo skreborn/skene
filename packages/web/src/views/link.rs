@@ -44,6 +44,7 @@ use crate::Active;
 /// let about = Link::new(Page::About).set_child(Text::new("About"));
 /// ```
 #[derive(Debug, View, Wraps)]
+#[view(core = skene_foundation::LinkCore<Active>)]
 #[must_use]
 pub struct Link<R: Route>(skene_foundation::Link<Active, R>);
 

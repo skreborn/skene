@@ -1,6 +1,7 @@
 //! The derives of a facade's view over the foundation's: `Wraps`, a tuple struct of one
 //! field, beside any `PhantomData` markers, holding that field as its whole content, and
-//! `View`, that struct building as the view it holds for its facade's `Active`.
+//! `View`, that struct building as the view it holds for its facade's `Active`, or as
+//! the core that view is thin over where `#[view(core = …)]` names it.
 
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, TokenStream, TokenTree};
@@ -141,6 +142,30 @@ fn names_any(tokens: TokenStream, names: &[Ident]) -> bool {
   })
 }
 
+/// The core `#[view(core = …)]` names on `input`, if any.
+fn core(input: &DeriveInput) -> syn::Result<Option<Type>> {
+  let mut core = None;
+
+  for attribute in &input.attrs {
+    if !attribute.path().is_ident("view") {
+      continue;
+    }
+
+    attribute.parse_nested_meta(|meta| {
+      if meta.path.is_ident("core") {
+        core = Some(meta.value()?.parse()?);
+
+        Ok(())
+      }
+      else {
+        Err(meta.error("`#[view]` takes `core = <the core the view is thin over>`"))
+      }
+    })?;
+  }
+
+  Ok(core)
+}
+
 /// Expands `#[derive(View)]` on `input`.
 pub(crate) fn derive_view(input: &DeriveInput) -> syn::Result<TokenStream> {
   view(input, facades())
@@ -153,6 +178,7 @@ fn view(
   facades: Vec<(TokenStream, &'static str)>,
 ) -> syn::Result<TokenStream> {
   let (inner, _) = field(input, "View")?;
+  let core = core(input)?;
   let name = &input.ident;
   let foundation = foundation().unwrap_or_else(|| quote!(::skene_foundation));
 
@@ -182,7 +208,16 @@ fn view(
     let gate = gated.then(|| quote!(#[cfg(skene_platform = #platform)]));
     let mut generics = input.generics.clone();
 
-    if generic {
+    if let Some(core) = &core {
+      generics
+        .make_where_clause()
+        .predicates
+        .extend::<[syn::WherePredicate; 2]>([
+          parse_quote!(#inner: #foundation::Thin<#active, Core = #core>),
+          parse_quote!(Self: 'static),
+        ]);
+    }
+    else if generic {
       generics
         .make_where_clause()
         .predicates
@@ -199,7 +234,16 @@ fn view(
     }
 
     let (_, _, view_where_clause) = generics.split_for_impl();
-    let body = if params.is_empty() || generic {
+    let body = if let Some(core) = &core {
+      quote! {
+        fn build(core: #core) -> #foundation::NodeId {
+          #foundation::View::<#active>::build(core)
+        }
+
+        build(#foundation::Thin::<#active>::into_core(self.0))
+      }
+    }
+    else if params.is_empty() || generic {
       quote!(#foundation::View::<#active>::build(self.0))
     }
     else {
@@ -325,6 +369,43 @@ mod tests {
       "{expansion}"
     );
     assert!(!expansion.contains("fnbuild(inner"), "{expansion}");
+  }
+
+  #[test]
+  fn a_view_naming_its_core_builds_the_core_through_a_function_that_is_not_generic() {
+    let input = parse_quote!(
+      #[view(core = ControlCore<Active>)]
+      struct Control<B: Behavior>(Core<B>);
+    );
+    let expansion = compact(&expand(&input, &["web"]));
+
+    assert!(
+      expansion.contains(
+        "impl<B:Behavior>::skene_foundation::View<::skene_web::Active>forControl<B>whereCore<B>\
+         :::skene_foundation::Thin<::skene_web::Active,Core=ControlCore<Active>>,Self:'static{"
+      ),
+      "{expansion}"
+    );
+    assert!(
+      expansion.contains("fnbuild(core:ControlCore<Active>)->::skene_foundation::NodeId{"),
+      "{expansion}"
+    );
+    assert!(
+      expansion
+        .contains("build(::skene_foundation::Thin::<::skene_web::Active>::into_core(self.0))"),
+      "{expansion}"
+    );
+  }
+
+  #[test]
+  fn a_view_attribute_naming_anything_but_its_core_is_refused() {
+    let input: DeriveInput = parse_quote!(
+      #[view(shape = Core)]
+      struct Control<B>(Core<B>);
+    );
+    let error = view(&input, Vec::new()).expect_err("the attribute is refused");
+
+    assert!(error.to_string().starts_with("`#[view]` takes"), "{error}");
   }
 
   #[test]

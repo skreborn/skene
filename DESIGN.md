@@ -36,8 +36,14 @@ sets a property only where a value is given. It derives `View` too, which builds
 its facade's `Active` and no other: a derived view belongs to one facade, and its build
 is a function the facade's crate compiles once, a view generic over the app's types
 building through one that is not wherever its field names none of them, so an app's
-rebuild compiles the app's code and not the built-ins'. What a medium lacks is absent at
-compile time because the platform's associated types say so.
+rebuild compiles the app's code and not the built-ins'. A view whose field is generic in
+the app's types is `Thin` over a core that is not, and its derive names the core
+(`#[view(core = ControlCore<Active>)]`), building it through a function generic in
+nothing: a control over any behavior builds a `ControlCore`, a theme of any palette a
+`ThemeCore`, a switch over any key a `OneOfCore`, a link to any route a `LinkCore` and a
+picker of any value a `BasicPickerCore`, each compiled once, in the facade, the app
+compiling only the erasure into it. What a medium lacks is absent at compile time
+because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
 platform; each facade names only its own platforms, and publishes the selected one as
@@ -465,9 +471,13 @@ a click dispatched through the scene, a part's node, a walk of a subtree in tree
 the platform's clock for `schedule` and `cancel`, a size observation and a pointer's
 local position in `f32`, a length rounded to the realization's unit, and the
 `ContentOps` beneath the controllers) as plain functions, filled once per build by
-`ControlOps::of::<P>()` in `Control<P, B>`'s build, never a `dyn` realization; so a
+`ControlOps::of::<P>()` in the control's build, never a `dyn` realization; so a
 third party's behavior is written exactly as the shipped ones are, naming no
-realization, and each facade re-exports `ControlHandle` and `ControlOps` for it.
+realization, and each facade re-exports `ControlHandle` and `ControlOps` for it. A
+`Control<P, B>` is `Thin` over a `ControlCore<P>`, the control with its behavior held as
+an `Rc<dyn Behavior>`, and `ControlCore`'s build is the one control build, its
+registration and every acting handler running over the erased behavior, so the build is
+compiled once per realization whatever the behaviors an app writes.
 `Toggle`, `Slider`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`)
 ship; a collection's `CollectionPolicy` says what it and its members are, which keys
 move between the members and what a move and a choice do, and `RadioGroup` (with
@@ -575,7 +585,8 @@ re-export.
   `choosing`), in a `ControlledChoice` its typed setters fill. So `Collection`,
   `NativePicker`, `Roster` and `BasicPickerCore` are each one type whatever the app's,
   and the typed views are thin over them: `BasicPicker<P, T>` holds a `BasicPickerCore`
-  and builds it (`Thin`, a view over the app's types whose core is not), its face given
+  and builds it (`Thin`, a view over the app's types whose core is not, as a control is
+  over its `ControlCore`), its face given
   a `Memo<Option<T>>`; a facade's `BasicRadioGroup<T>` and `BasicListbox<C: Chosen>`
   hold the control over the collection beside a `PhantomData` marker, the derives
   taking such markers beside the one field, and take their typed `set_chosen`,

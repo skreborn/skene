@@ -364,9 +364,14 @@ pub fn derive_wraps(input: TokenStream) -> TokenStream {
 /// names them builds generic in them alone. A crate reaching both facades, a crate of
 /// documents' examples, gets a build for each under the cfg naming its platform.
 ///
+/// `#[view(core = Core)]` names the core a field generic in the struct's parameters is
+/// [`Thin`](../skene_foundation/trait.Thin.html) over: the struct then builds that core
+/// through a function generic in nothing, compiled once, in the deriving crate, so a
+/// view over the app's own types (`Control<B>` over any behavior) compiles one build.
+///
 /// The generated code names the foundation through the deriving crate's direct
 /// dependency on `skene-foundation`.
-#[proc_macro_derive(View)]
+#[proc_macro_derive(View, attributes(view))]
 pub fn derive_view(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
 

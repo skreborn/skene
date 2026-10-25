@@ -45,6 +45,7 @@ use crate::Active;
 ///   ));
 /// ```
 #[derive(Debug, View, Wraps)]
+#[view(core = skene_foundation::BasicPickerCore<Active>)]
 #[must_use]
 pub struct BasicPicker<T: Choice>(skene_foundation::BasicPicker<Active, T>);
 

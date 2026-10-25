@@ -91,6 +91,7 @@ use crate::{
   Spacing,
   StaticLeaf,
   Text,
+  Thin,
   Value,
   View,
   WheelEvent,
@@ -444,6 +445,11 @@ impl<P: Realization> From<&str> for Label<P> {
 #[must_use]
 pub struct Control<P: Realization, B: Behavior> {
   behavior: B,
+  members: Members<P>,
+}
+
+/// Everything a control carries beside its behavior.
+struct Members<P: Realization> {
   inner: LayoutBox<P, PlainChild>,
   label: Option<Label<P>>,
   accessible_name: Option<Source<String>>,
@@ -479,19 +485,21 @@ impl<P: Realization, B: Behavior> Control<P, B> {
 
     Self {
       behavior,
-      inner,
-      label: None,
-      disabled: None,
-      required: None,
-      read_only: None,
-      invalid: None,
-      described_by: None,
-      labelled_by: None,
-      accessible_name: None,
-      focus_order: None,
-      parts: Vec::new(),
-      observers: Vec::new(),
-      child: None,
+      members: Members {
+        inner,
+        label: None,
+        disabled: None,
+        required: None,
+        read_only: None,
+        invalid: None,
+        described_by: None,
+        labelled_by: None,
+        accessible_name: None,
+        focus_order: None,
+        parts: Vec::new(),
+        observers: Vec::new(),
+        child: None,
+      },
     }
   }
 }
@@ -511,7 +519,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
       "where the control's parts, body and label sit on the cross axis; centered unless told otherwise";
   }
 
-  crate::forward! { inner;
+  crate::forward! { members.inner;
     /// Binds `handle` to the control once built: an overlay is placed against it, focus
     /// moves to it and its measured size is reported through the handle.
     fn bind_handle(handle: crate::NodeHandle<P>);
@@ -527,7 +535,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// told otherwise.
   #[inline(always)]
   pub fn set_axis(mut self, axis: Axis) -> Self {
-    self.inner = self.inner.set_layout(Layout::Flex {
+    self.members.inner = self.members.inner.set_layout(Layout::Flex {
       axis,
       reversed: false,
     });
@@ -540,7 +548,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// A string builds a [`Text`] and names the control; [`Label::new`] mounts any view
   /// and leaves the name to the platform.
   pub fn set_label(mut self, label: impl Into<Label<P>>) -> Self {
-    self.label = Some(label.into());
+    self.members.label = Some(label.into());
 
     self
   }
@@ -548,7 +556,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Sets the name the control reports to assistive technology, over its caption's: for
   /// a control no caption names, such as a button drawn by an icon alone.
   pub fn set_accessible_name(mut self, name: impl Into<String>) -> Self {
-    self.accessible_name = Some(Source::Fixed(name.into()));
+    self.members.accessible_name = Some(Source::Fixed(name.into()));
 
     self
   }
@@ -556,7 +564,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Derives the name the control reports to assistive technology from the signals
   /// `name` reads.
   pub fn derive_accessible_name(mut self, name: impl Fn() -> String + 'static) -> Self {
-    self.accessible_name = Some(Source::derive(name));
+    self.members.accessible_name = Some(Source::derive(name));
 
     self
   }
@@ -566,14 +574,14 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// [`AccessProp::Disabled`].
   #[inline(always)]
   pub fn set_disabled(mut self, disabled: bool) -> Self {
-    self.disabled = Some(Source::Fixed(disabled));
+    self.members.disabled = Some(Source::Fixed(disabled));
 
     self
   }
 
   /// Derives whether the control is disabled from the signals `disabled` reads.
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
-    self.disabled = Some(Source::derive(disabled));
+    self.members.disabled = Some(Source::derive(disabled));
 
     self
   }
@@ -581,14 +589,14 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Sets whether a value must be supplied before the form the control is in submits.
   #[inline(always)]
   pub fn set_required(mut self, required: bool) -> Self {
-    self.required = Some(Source::Fixed(required));
+    self.members.required = Some(Source::Fixed(required));
 
     self
   }
 
   /// Derives whether the control is required from the signals `required` reads.
   pub fn derive_required(mut self, required: impl Fn() -> bool + 'static) -> Self {
-    self.required = Some(Source::derive(required));
+    self.members.required = Some(Source::derive(required));
 
     self
   }
@@ -596,14 +604,14 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Sets whether the control's value is shown but not editable.
   #[inline(always)]
   pub fn set_read_only(mut self, read_only: bool) -> Self {
-    self.read_only = Some(Source::Fixed(read_only));
+    self.members.read_only = Some(Source::Fixed(read_only));
 
     self
   }
 
   /// Derives whether the control is read-only from the signals `read_only` reads.
   pub fn derive_read_only(mut self, read_only: impl Fn() -> bool + 'static) -> Self {
-    self.read_only = Some(Source::derive(read_only));
+    self.members.read_only = Some(Source::derive(read_only));
 
     self
   }
@@ -612,14 +620,14 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// follows.
   #[inline(always)]
   pub fn set_invalid(mut self, invalid: bool) -> Self {
-    self.invalid = Some(Source::Fixed(invalid));
+    self.members.invalid = Some(Source::Fixed(invalid));
 
     self
   }
 
   /// Derives whether the control is invalid from the signals `invalid` reads.
   pub fn derive_invalid(mut self, invalid: impl Fn() -> bool + 'static) -> Self {
-    self.invalid = Some(Source::derive(invalid));
+    self.members.invalid = Some(Source::derive(invalid));
 
     self
   }
@@ -627,7 +635,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Sets the node whose text describes the control, for assistive technology.
   #[inline(always)]
   pub const fn set_described_by(mut self, node: NodeId) -> Self {
-    self.described_by = Some(node);
+    self.members.described_by = Some(node);
 
     self
   }
@@ -636,7 +644,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// caption [`set_label`](Self::set_label) builds, if any.
   #[inline(always)]
   pub const fn set_labelled_by(mut self, node: NodeId) -> Self {
-    self.labelled_by = Some(node);
+    self.members.labelled_by = Some(node);
 
     self
   }
@@ -644,7 +652,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Sets the control's place in focus traversal, over the behavior's default.
   #[inline(always)]
   pub fn set_focus_order(mut self, focus_order: FocusOrder) -> Self {
-    self.focus_order = Some(Source::Fixed(focus_order));
+    self.members.focus_order = Some(Source::Fixed(focus_order));
 
     self
   }
@@ -652,7 +660,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Derives the control's place in focus traversal from the signals `focus_order`
   /// reads, over the behavior's default.
   pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
-    self.focus_order = Some(Source::derive(focus_order));
+    self.members.focus_order = Some(Source::derive(focus_order));
 
     self
   }
@@ -660,21 +668,21 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Adds `view` as the part `part` of the control, a styling target its conditions
   /// resolve against the control.
   pub fn set_part(mut self, part: Part, view: impl View<P>) -> Self {
-    self.parts.push((part, view.into_any()));
+    self.members.parts.push((part, view.into_any()));
 
     self
   }
 
   /// Sets the drawn body.
   pub fn set_child(mut self, child: impl View<P>) -> Self {
-    self.child = Some(child.into_any());
+    self.members.child = Some(child.into_any());
 
     self
   }
 
   /// Sets the drawn body, built by `child` under the control.
   pub fn set_child_builder<V: View<P>>(mut self, child: impl FnOnce() -> V + 'static) -> Self {
-    self.child = Some(AnyView::new(move || child().build()));
+    self.members.child = Some(AnyView::new(move || child().build()));
 
     self
   }
@@ -683,6 +691,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// behavior activates on.
   pub fn handle_activate(mut self, action: impl Fn() + 'static) -> Self {
     self
+      .members
       .observers
       .push(Handler::Click(Rc::new(move |_: &ClickEvent| {
         action();
@@ -696,14 +705,17 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Runs `action` after the behavior has acted on a key pressed while the control
   /// holds focus.
   pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.observers.push(Handler::KeyDown(observe(action)));
+    self
+      .members
+      .observers
+      .push(Handler::KeyDown(observe(action)));
 
     self
   }
 
   /// Runs `action` on a key released while the control holds focus.
   pub fn handle_key_up(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.observers.push(Handler::KeyUp(observe(action)));
+    self.members.observers.push(Handler::KeyUp(observe(action)));
 
     self
   }
@@ -711,7 +723,10 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Runs `action` after the behavior has acted on a pointer button pressed over the
   /// control.
   pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.push(Handler::PointerDown(observe(action)));
+    self
+      .members
+      .observers
+      .push(Handler::PointerDown(observe(action)));
 
     self
   }
@@ -719,14 +734,20 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Runs `action` after the behavior has acted on a pointer button released over the
   /// control.
   pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.push(Handler::PointerUp(observe(action)));
+    self
+      .members
+      .observers
+      .push(Handler::PointerUp(observe(action)));
 
     self
   }
 
   /// Runs `action` after the behavior has acted on the pointer moving over the control.
   pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.push(Handler::PointerMove(observe(action)));
+    self
+      .members
+      .observers
+      .push(Handler::PointerMove(observe(action)));
 
     self
   }
@@ -734,7 +755,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Runs `action` after the behavior has acted on a wheel turned over the control,
   /// before the platform scrolls by it.
   pub fn handle_wheel(mut self, action: impl Fn(&WheelEvent) + 'static) -> Self {
-    self.observers.push(Handler::Wheel(observe(action)));
+    self.members.observers.push(Handler::Wheel(observe(action)));
 
     self
   }
@@ -742,42 +763,54 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// Runs `action` after the behavior has acted on the platform taking the pointer
   /// pressed over the control for itself, ending the press without a release.
   pub fn handle_pointer_cancel(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.observers.push(Handler::PointerCancel(observe(action)));
+    self
+      .members
+      .observers
+      .push(Handler::PointerCancel(observe(action)));
 
     self
   }
 
   /// Runs `action` when the pointer enters the control.
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.push(Handler::PointerEnter(Rc::new(action)));
+    self
+      .members
+      .observers
+      .push(Handler::PointerEnter(Rc::new(action)));
 
     self
   }
 
   /// Runs `action` when the pointer leaves the control.
   pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.push(Handler::PointerLeave(Rc::new(action)));
+    self
+      .members
+      .observers
+      .push(Handler::PointerLeave(Rc::new(action)));
 
     self
   }
 
   /// Runs `action` when focus enters the control or a node inside it from outside.
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.push(Handler::Focus(Rc::new(action)));
+    self.members.observers.push(Handler::Focus(Rc::new(action)));
 
     self
   }
 
   /// Runs `action` when focus leaves the control and every node inside it.
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.observers.push(Handler::Blur(Rc::new(action)));
+    self.members.observers.push(Handler::Blur(Rc::new(action)));
 
     self
   }
 
   /// Runs `action` with the control's new offsets when it scrolls.
   pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
-    self.observers.push(Handler::Scroll(Rc::new(action)));
+    self
+      .members
+      .observers
+      .push(Handler::Scroll(Rc::new(action)));
 
     self
   }
@@ -801,25 +834,64 @@ impl<P: Realization, B: Behavior> Control<P, B> {
 
 impl<P: Realization, B: Behavior> AnyKind for Control<P, B> {}
 
+impl<P: Realization, B: Behavior> Thin<P> for Control<P, B> {
+  type Core = ControlCore<P>;
+
+  #[inline(always)]
+  fn into_core(self) -> ControlCore<P> {
+    ControlCore {
+      behavior: Rc::new(self.behavior),
+      members: self.members,
+    }
+  }
+}
+
 impl<P: Realization, B: Behavior> View<P> for Control<P, B> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    self.into_core().build()
+  }
+}
+
+/// A [`Control`] with its behavior's type erased: what every control builds, whatever
+/// its behavior, the control thin over it.
+#[must_use]
+pub struct ControlCore<P: Realization> {
+  behavior: Rc<dyn Behavior>,
+  members: Members<P>,
+}
+
+impl<P: Realization> std::fmt::Debug for ControlCore<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ControlCore")
+      .finish_non_exhaustive()
+  }
+}
+
+impl<P: Realization> AnyKind for ControlCore<P> {}
+
+impl<P: Realization> View<P> for ControlCore<P> {
   fn build(self) -> NodeId {
     let Self {
       behavior,
-      mut inner,
-      label,
-      disabled,
-      required,
-      read_only,
-      invalid,
-      described_by,
-      labelled_by: named_by,
-      accessible_name,
-      focus_order,
-      parts,
-      observers,
-      child,
+      members:
+        Members {
+          mut inner,
+          label,
+          disabled,
+          required,
+          read_only,
+          invalid,
+          described_by,
+          labelled_by: named_by,
+          accessible_name,
+          focus_order,
+          parts,
+          observers,
+          child,
+        },
     } = self;
-    let behavior = Rc::new(behavior);
     let owner = Owner::current().child();
 
     owner.enter(move || {
@@ -897,9 +969,9 @@ impl<P: Realization, B: Behavior> View<P> for Control<P, B> {
         }),
       };
 
-      bind_reports::<P, B>(&handle, &behavior, &flags, focus_order);
+      bind_reports::<P>(&handle, &behavior, &flags, focus_order);
       behavior.attach(&handle);
-      register::<P, B>(node, &behavior, &handle, &disabled, observers);
+      register::<P>(node, &behavior, &handle, &disabled, observers);
       mount_contents::<P>(
         node,
         placement,
@@ -981,9 +1053,9 @@ struct Flags {
 
 /// Binds the render effects writing the control's state, accessibility and focus
 /// order, each re-applied when what it reads changes or the handle is refreshed.
-fn bind_reports<P: Realization, B: Behavior>(
+fn bind_reports<P: Realization>(
   handle: &Rc<ControlHandle>,
-  behavior: &Rc<B>,
+  behavior: &Rc<dyn Behavior>,
   flags: &Flags,
   focus_order: Option<Source<FocusOrder>>,
 ) {
@@ -1075,13 +1147,13 @@ fn bind_reports<P: Realization, B: Behavior>(
 }
 
 /// What every acting handler shares: the behavior, its handle and the disabled read.
-struct Actor<B: Behavior> {
-  behavior: Rc<B>,
+struct Actor {
+  behavior: Rc<dyn Behavior>,
   handle: Rc<ControlHandle>,
   disabled: Rc<dyn Fn() -> bool>,
 }
 
-impl<B: Behavior> Clone for Actor<B> {
+impl Clone for Actor {
   fn clone(&self) -> Self {
     Self {
       behavior: Rc::clone(&self.behavior),
@@ -1091,13 +1163,13 @@ impl<B: Behavior> Clone for Actor<B> {
   }
 }
 
-impl<B: Behavior> Actor<B> {
+impl Actor {
   /// The behavior's handler for an event of `kind`, `None` for a kind no behavior
   /// acts on: a disabled control answers without acting, and a key an input method is
   /// composing never reaches the behavior.
   fn acting(&self, kind: EventKind) -> Option<Handler> {
     let pointer = |phase: PointerPhase| {
-      self.act(kind, move |behavior: &B, event: &PointerEvent, handle| {
+      self.act(kind, move |behavior, event: &PointerEvent, handle| {
         behavior.on_pointer(phase, event, handle)
       })
     };
@@ -1172,7 +1244,7 @@ impl<B: Behavior> Actor<B> {
   fn act<E: ?Sized + 'static>(
     &self,
     kind: EventKind,
-    act: impl Fn(&B, &E, &ControlHandle) -> Prevent + 'static,
+    act: impl Fn(&dyn Behavior, &E, &ControlHandle) -> Prevent + 'static,
   ) -> Rc<Acting<E>> {
     let actor = self.clone();
     let when_disabled = match kind {
@@ -1189,7 +1261,7 @@ impl<B: Behavior> Actor<B> {
         when_disabled
       }
       else {
-        act(&actor.behavior, event, &actor.handle)
+        act(&*actor.behavior, event, &actor.handle)
       }
     })
   }
@@ -1197,9 +1269,9 @@ impl<B: Behavior> Actor<B> {
 
 /// Registers the behavior's handler for each event it acts on, then the observers:
 /// the behavior acts first and its verdict stands, and the observers see what it did.
-fn register<P: Realization, B: Behavior>(
+fn register<P: Realization>(
   node: NodeId,
-  behavior: &Rc<B>,
+  behavior: &Rc<dyn Behavior>,
   handle: &Rc<ControlHandle>,
   disabled: &Rc<dyn Fn() -> bool>,
   observers: Vec<Handler>,
@@ -1356,7 +1428,7 @@ pub trait BasicListboxBase<P: Realization, C: Chosen>: Wraps<Inner = Control<P, 
 impl<P: Realization, B: Behavior> HasBoxStyle<P> for Control<P, B> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
-    self.inner.style_mut()
+    self.members.inner.style_mut()
   }
 }
 
@@ -1368,10 +1440,14 @@ impl<P: Realization, B: Behavior> HasLayoutBox<P> for Control<P, B> {
     self,
     map: impl FnOnce(LayoutBox<P, PlainChild>) -> LayoutBox<P, PlainChild>,
   ) -> Self {
-    Self {
-      inner: map(self.inner),
-      ..self
-    }
+    let Self {
+      behavior,
+      mut members,
+    } = self;
+
+    members.inner = map(members.inner);
+
+    Self { behavior, members }
   }
 }
 

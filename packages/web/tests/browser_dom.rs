@@ -46,6 +46,7 @@ use skene_foundation::{
   Line,
   LinkBase,
   MotionBase,
+  OneOfBase,
   OverlayBase,
   PaintedBase,
   PinnedBase,
@@ -104,6 +105,7 @@ use skene_web::{
   Modifiers,
   NamedKey,
   NodeHandle,
+  OneOf,
   Overlay,
   Pinned,
   Radio,
@@ -2932,6 +2934,60 @@ fn a_hidden_subtree_keeps_its_scroll_and_focus() {
     Some(focusable),
     "the focus returned with it"
   );
+}
+
+/// A switch shows the case its key names, keeps a case it hides and shows that same
+/// case again, built once, and shows nothing while its key names no case.
+#[wasm_bindgen_test]
+fn a_switch_shows_the_case_its_key_names() {
+  let (_guard, root) = fresh_root();
+  let key = Signal::new("first");
+  let builds = Rc::new(Cell::new(0));
+
+  let _ = mount({
+    let builds = Rc::clone(&builds);
+
+    move || {
+      Container::new()
+        .set_child(
+          OneOf::new()
+            .derive_key(move || key.get())
+            .add_case("first", move || {
+              builds.set(builds.get() + 1);
+
+              Text::new("first")
+            })
+            .add_case("second", || Text::new("second")),
+        )
+        .build()
+    }
+  });
+
+  let holder = only_child(&root);
+  let first = holder.first_element_child().expect("the first case");
+
+  assert_eq!(holder.text_content().as_deref(), Some("first"));
+
+  key.set("second");
+  web::end_turn();
+
+  assert_eq!(holder.text_content().as_deref(), Some("second"));
+  assert!(!first.is_connected(), "the hidden case left the document");
+
+  key.set("none");
+  web::end_turn();
+
+  assert_eq!(holder.text_content().as_deref(), Some(""));
+
+  key.set("first");
+  web::end_turn();
+
+  assert_eq!(
+    holder.first_element_child(),
+    Some(first),
+    "the same case returned"
+  );
+  assert_eq!(builds.get(), 1, "a case builds once");
 }
 
 /// A rebuilt subtree of the same shape starts afresh: what the content that left held

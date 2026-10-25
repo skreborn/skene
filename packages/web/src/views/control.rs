@@ -50,6 +50,7 @@ use crate::Active;
 ///   .handle_activate(move || count.update(|count| *count += 1));
 /// ```
 #[derive(Debug, View, Wraps)]
+#[view(core = skene_foundation::ControlCore<Active>)]
 #[must_use]
 pub struct Control<B: Behavior>(skene_foundation::Control<Active, B>);
 

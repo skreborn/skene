@@ -21,6 +21,7 @@ use crate::{Active, TokenValue};
 ///   .set_child_builder(|| Text::new("Set in eighteen pixels"));
 /// ```
 #[derive(Debug, View, Wraps)]
+#[view(core = skene_foundation::ThemeCore<Active>)]
 #[must_use]
 pub struct Theme<S: TokenSet<TokenValue>>(skene_foundation::Theme<Active, S>);
 

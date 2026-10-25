@@ -1,14 +1,13 @@
 //! One of several branches shown by key, each built once.
 
-use std::{cell::RefCell, marker::PhantomData};
+use std::cell::RefCell;
 
 use skene_reactive::{Effect, Owner, untrack};
 
-use crate::{AnyKind, AnyView, NodeId, Piece, Realization, Segment, View, Wraps};
+use crate::{AnyKind, AnyView, NodeId, Piece, Realization, Segment, Thin, View, Wraps};
 
-/// One branch: its key, its builder until it is built, and its piece afterwards.
-struct Case<P: Realization, K> {
-  key: K,
+/// One branch: its builder until it is built, and its piece afterwards.
+struct Case<P: Realization> {
   build: Option<Box<dyn FnOnce() -> AnyView<P>>>,
   piece: Option<Piece>,
 }
@@ -24,8 +23,8 @@ struct Case<P: Realization, K> {
 #[must_use]
 pub struct OneOf<P: Realization, K> {
   key: Option<Box<dyn Fn() -> K>>,
-  cases: Vec<Case<P, K>>,
-  platform: PhantomData<fn() -> P>,
+  keys: Vec<K>,
+  cases: Vec<Case<P>>,
 }
 
 impl<P: Realization, K> std::fmt::Debug for OneOf<P, K> {
@@ -47,8 +46,8 @@ impl<P: Realization, K: PartialEq + 'static> OneOf<P, K> {
   pub const fn new() -> Self {
     Self {
       key: None,
+      keys: Vec::new(),
       cases: Vec::new(),
-      platform: PhantomData,
     }
   }
 
@@ -73,8 +72,8 @@ impl<P: Realization, K: PartialEq + 'static> OneOf<P, K> {
   /// Adds the branch shown under `key`, built by `case` the first time the key is
   /// current.
   pub fn add_case<V: View<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
+    self.keys.push(key);
     self.cases.push(Case {
-      key,
       build: Some(Box::new(move || case().into_any())),
       piece: None,
     });
@@ -85,11 +84,56 @@ impl<P: Realization, K: PartialEq + 'static> OneOf<P, K> {
 
 impl<P: Realization, K> AnyKind for OneOf<P, K> {}
 
+impl<P: Realization, K: PartialEq + 'static> Thin<P> for OneOf<P, K> {
+  type Core = OneOfCore<P>;
+
+  fn into_core(self) -> OneOfCore<P> {
+    let keys = self.keys;
+
+    OneOfCore {
+      index: self.key.map(|key| -> Box<dyn Fn() -> Option<usize>> {
+        Box::new(move || {
+          let key = key();
+
+          keys.iter().position(|case| *case == key)
+        })
+      }),
+      cases: self.cases,
+    }
+  }
+}
+
 impl<P: Realization, K: PartialEq + 'static> View<P> for OneOf<P, K> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    self.into_core().build()
+  }
+}
+
+/// A [`OneOf`] with its key's type erased: what every switch builds, whatever its key,
+/// the switch thin over it.
+///
+/// Its cases are keyed by their index, in the order they were added, and it shows the
+/// case at the index its key maps to, none while the key matches no case.
+#[must_use]
+pub struct OneOfCore<P: Realization> {
+  index: Option<Box<dyn Fn() -> Option<usize>>>,
+  cases: Vec<Case<P>>,
+}
+
+impl<P: Realization> std::fmt::Debug for OneOfCore<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("OneOfCore").finish_non_exhaustive()
+  }
+}
+
+impl<P: Realization> AnyKind for OneOfCore<P> {}
+
+impl<P: Realization> View<P> for OneOfCore<P> {
   fn build(self) -> NodeId {
     let segment = Segment::<P>::new();
     let start = segment.start();
-    let Some(key) = self.key
+    let Some(index) = self.index
     else {
       return start;
     };
@@ -97,8 +141,7 @@ impl<P: Realization, K: PartialEq + 'static> View<P> for OneOf<P, K> {
     let cases = RefCell::new(self.cases);
 
     Effect::render(move |previous: Option<Option<usize>>| {
-      let key = key();
-      let index = cases.borrow().iter().position(|case| case.key == key);
+      let index = index();
       let previous = previous.flatten();
 
       if previous == index {

@@ -12,6 +12,7 @@ use crate::{
   NodeSpec,
   Realization,
   Scene,
+  Thin,
   TokenScope,
   TokenSet,
   View,
@@ -74,7 +75,56 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> Theme<P, S> {
 
 impl<P: Realization, S: TokenSet<P::TokenValue>> AnyKind for Theme<P, S> {}
 
+impl<P: Realization, S: TokenSet<P::TokenValue>> Thin<P> for Theme<P, S> {
+  type Core = ThemeCore<P>;
+
+  fn into_core(self) -> ThemeCore<P> {
+    let palette = self.palette;
+
+    ThemeCore {
+      provide: Box::new(move || {
+        let memo = match palette {
+          Source::Fixed(palette) => Memo::new(move |_| palette.clone()),
+          Source::Derived(palette) => Memo::new(move |_| palette()),
+        };
+
+        provide_context(memo);
+
+        Box::new(move || memo.with(Definitions::of))
+      }),
+      child: self.child,
+    }
+  }
+}
+
 impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    self.into_core().build()
+  }
+}
+
+/// What a theme provides beneath it, run under the theme's owner: it provides the
+/// palette through context and returns the palette's definitions as they read now.
+type Provide<V> = Box<dyn FnOnce() -> Box<dyn Fn() -> Definitions<V>>>;
+
+/// A [`Theme`] with its token set's type erased: what every theme builds, whatever its
+/// palette, the theme thin over it.
+#[must_use]
+pub struct ThemeCore<P: Realization> {
+  provide: Provide<P::TokenValue>,
+  child: Option<ChildBuilder<P>>,
+}
+
+impl<P: Realization> std::fmt::Debug for ThemeCore<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("ThemeCore").finish_non_exhaustive()
+  }
+}
+
+impl<P: Realization> AnyKind for ThemeCore<P> {}
+
+impl<P: Realization> View<P> for ThemeCore<P> {
   fn build(self) -> NodeId {
     let Some(child) = self.child
     else {
@@ -84,18 +134,13 @@ impl<P: Realization, S: TokenSet<P::TokenValue>> View<P> for Theme<P, S> {
     let scope = Scene::<P>::realize(&spec, None);
 
     let owner = Owner::current().child();
-    let palette = self.palette;
+    let provide = self.provide;
 
     owner.enter(|| {
-      let memo = match palette {
-        Source::Fixed(palette) => Memo::new(move |_| palette.clone()),
-        Source::Derived(palette) => Memo::new(move |_| palette()),
-      };
-
-      provide_context(memo);
+      let definitions = provide();
 
       Effect::render(move |_: Option<()>| {
-        let definitions = memo.with(Definitions::of);
+        let definitions = definitions();
 
         Scene::<P>::with(|scene| scene.define_tokens(TokenScope::Node(scope), definitions));
       });

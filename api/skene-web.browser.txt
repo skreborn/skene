@@ -421,7 +421,7 @@ pub fn skene_web::platform::web::Web::set_attribute(skene_foundation::spine::nod
 pub fn skene_web::platform::web::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::web::Declarations)
 pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::NodeId, &str)
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::control::ControlCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
@@ -432,18 +432,18 @@ pub fn skene_web::BasicListbox<C>::build(self) -> skene_foundation::spine::node:
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
 impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<skene_web::platform::web::Web, K> for skene_web::OneOf<K>
-impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::one_of::OneOfCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_web::platform::web::Web, R> for skene_web::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::Active, R>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::Active, R>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::link::LinkCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Theme<S> where skene_foundation::theme::Theme<skene_web::Active, S>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Theme<S> where skene_foundation::theme::Theme<skene_web::Active, S>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::theme::ThemeCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::picker::BasicPickerCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T> where Self: 'static
 pub fn skene_web::BasicRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
@@ -685,7 +685,7 @@ impl<T: skene_foundation::control::choice::Choice> core::default::Default for sk
 pub fn skene_web::BasicPicker<T>::default() -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::BasicPicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::picker::BasicPickerCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::BasicPicker<T>
 pub type skene_web::BasicPicker<T>::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web, T>
@@ -770,7 +770,7 @@ impl<B: skene_foundation::control::Behavior + core::default::Default> core::defa
 pub fn skene_web::Control<B>::default() -> Self
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::AnyKind for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::control::ControlCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::wraps::Wraps for skene_web::Control<B>
 pub type skene_web::Control<B>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, B>
@@ -901,7 +901,7 @@ impl<R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug fo
 pub fn skene_web::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_web::platform::web::Web, R> for skene_web::Link<R>
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_web::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::Active, R>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::Active, R>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::link::LinkCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::wraps::Wraps for skene_web::Link<R>
 pub type skene_web::Link<R>::Inner = skene_foundation::link::Link<skene_web::platform::web::Web, R>
@@ -938,7 +938,7 @@ impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<sken
 impl<K: core::fmt::Debug> core::fmt::Debug for skene_web::OneOf<K>
 pub fn skene_web::OneOf<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<K> skene_foundation::spine::view::AnyKind for skene_web::OneOf<K>
-impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::one_of::OneOfCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<K> skene_foundation::spine::wraps::Wraps for skene_web::OneOf<K>
 pub type skene_web::OneOf<K>::Inner = skene_foundation::one_of::OneOf<skene_web::platform::web::Web, K>
@@ -1085,7 +1085,7 @@ pub struct skene_web::prelude::Theme<S: skene_foundation::spine::token::TokenSet
 impl<S: core::fmt::Debug + skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> core::fmt::Debug for skene_web::Theme<S>
 pub fn skene_web::Theme<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::AnyKind for skene_web::Theme<S>
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Theme<S> where skene_foundation::theme::Theme<skene_web::Active, S>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Theme<S> where skene_foundation::theme::Theme<skene_web::Active, S>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::theme::ThemeCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::wraps::Wraps for skene_web::Theme<S>
 pub type skene_web::Theme<S>::Inner = skene_foundation::theme::Theme<skene_web::platform::web::Web, S>
@@ -1277,7 +1277,7 @@ impl<T: skene_foundation::control::choice::Choice> core::default::Default for sk
 pub fn skene_web::BasicPicker<T>::default() -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::BasicPicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::picker::BasicPickerCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::BasicPicker<T>
 pub type skene_web::BasicPicker<T>::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web, T>
@@ -1362,7 +1362,7 @@ impl<B: skene_foundation::control::Behavior + core::default::Default> core::defa
 pub fn skene_web::Control<B>::default() -> Self
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::AnyKind for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::control::ControlCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::wraps::Wraps for skene_web::Control<B>
 pub type skene_web::Control<B>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, B>
@@ -1506,7 +1506,7 @@ impl<R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug fo
 pub fn skene_web::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_web::platform::web::Web, R> for skene_web::Link<R>
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::AnyKind for skene_web::Link<R>
-impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::Active, R>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<R: skene_foundation::routing::Route> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Link<R> where skene_foundation::link::Link<skene_web::Active, R>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::link::LinkCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Link<R>::build(self) -> skene_foundation::spine::node::NodeId
 impl<R: skene_foundation::routing::Route> skene_foundation::spine::wraps::Wraps for skene_web::Link<R>
 pub type skene_web::Link<R>::Inner = skene_foundation::link::Link<skene_web::platform::web::Web, R>
@@ -1543,7 +1543,7 @@ impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<sken
 impl<K: core::fmt::Debug> core::fmt::Debug for skene_web::OneOf<K>
 pub fn skene_web::OneOf<K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<K> skene_foundation::spine::view::AnyKind for skene_web::OneOf<K>
-impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::one_of::OneOfCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
 impl<K> skene_foundation::spine::wraps::Wraps for skene_web::OneOf<K>
 pub type skene_web::OneOf<K>::Inner = skene_foundation::one_of::OneOf<skene_web::platform::web::Web, K>
@@ -1690,7 +1690,7 @@ pub struct skene_web::Theme<S: skene_foundation::spine::token::TokenSet<skene_we
 impl<S: core::fmt::Debug + skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> core::fmt::Debug for skene_web::Theme<S>
 pub fn skene_web::Theme<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::AnyKind for skene_web::Theme<S>
-impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Theme<S> where skene_foundation::theme::Theme<skene_web::Active, S>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Theme<S> where skene_foundation::theme::Theme<skene_web::Active, S>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::theme::ThemeCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::spine::wraps::Wraps for skene_web::Theme<S>
 pub type skene_web::Theme<S>::Inner = skene_foundation::theme::Theme<skene_web::platform::web::Web, S>

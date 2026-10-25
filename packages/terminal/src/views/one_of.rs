@@ -29,6 +29,7 @@ use crate::Active;
 ///   .add_case(Tab::Archive, || Text::new("Archive"));
 /// ```
 #[derive(Debug, View, Wraps)]
+#[view(core = skene_foundation::OneOfCore<Active>)]
 #[must_use]
 pub struct OneOf<K>(skene_foundation::OneOf<Active, K>);
 

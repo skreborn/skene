@@ -119,13 +119,26 @@ macro_rules! alignment_properties {
   };
 }
 
-/// Generates builder methods forwarding to the same-named methods of the field
-/// `$field`, each rebuilding the field and returning `self`.
+/// Generates builder methods forwarding to the same-named methods of the field `$field`,
+/// or of the field `$field` of the field `$outer` (`members.inner`), each rebuilding the
+/// field and returning `self`.
 ///
 /// A method's generic parameters sit in brackets after its name:
 /// `fn handle_click[R: Into<Bubbling>](action: impl Fn() -> R + 'static);`.
 #[macro_export]
 macro_rules! forward {
+  ($outer:ident . $field:ident; $(
+    $(#[$meta:meta])*
+    fn $name:ident $([$($generics:tt)*])? ($($argument:ident: $type:ty),* $(,)?);
+  )+) => {$(
+    $(#[$meta])*
+    #[inline(always)]
+    pub fn $name $(<$($generics)*>)? (mut self, $($argument: $type),*) -> Self {
+      self.$outer.$field = self.$outer.$field.$name($($argument),*);
+
+      self
+    }
+  )+};
   ($field:tt; $(
     $(#[$meta:meta])*
     fn $name:ident $([$($generics:tt)*])? ($($argument:ident: $type:ty),* $(,)?);

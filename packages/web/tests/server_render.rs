@@ -134,6 +134,26 @@ fn an_enhancement_renders_its_fallback() {
   assert!(!page.body().contains("<canvas"), "{}", page.body());
 }
 
+/// A switch renders the case its key names alone, and nothing for a key no case has.
+#[test]
+fn a_switch_renders_the_case_its_key_names() {
+  use skene_foundation::OneOfBase;
+  use skene_web::OneOf;
+
+  for (key, shown) in [(2, Some("second")), (3, None)] {
+    let page = render_to_string(move || {
+      OneOf::new()
+        .derive_key(move || key)
+        .add_case(1, || Text::new("first"))
+        .add_case(2, || Text::new("second"))
+    });
+    let body = page.body();
+
+    assert!(!body.contains("first"), "{body}");
+    assert_eq!(body.contains(">second</span>"), shown.is_some(), "{body}");
+  }
+}
+
 /// The role vocabulary is AccessKit's, open past the shipped controls: a switch is
 /// spelled in ARIA on a generic element, and a heading is the element of the level it
 /// reports.

@@ -863,3 +863,11 @@ supersedes.
   write of the chosen key that checks the truth's radio, a refused choice repaired by
   that write, keeping no decision of its own, and nothing is re-read. Revisit when a
   platform's grouping of its members cannot be told through those two contents.
+- **A control's build monomorphized per behavior** (2026-10-25): `Control<P, B>` built
+  its node, its reports, its acting handlers and its registration generic in `B`, so
+  every behavior an app or a library wrote, and every built-in alias an app used,
+  instantiated the whole control build again in the crate that named it. A control is
+  now `Thin` over a `ControlCore<P>` holding its behavior as an `Rc<dyn Behavior>`, and
+  the facade builds that core once, a theme, a switch and a link alike over their
+  `ThemeCore`, `OneOfCore` and `LinkCore`. Revisit if dispatch through the erased
+  behavior shows in a measured profile.

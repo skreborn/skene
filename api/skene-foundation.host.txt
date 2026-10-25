@@ -5603,10 +5603,21 @@ impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foun
 pub fn skene_foundation::Control<P, B>::add_animation(self, skene_foundation::Animation<skene_foundation::BoxKeyframe<P>>) -> Self
 pub fn skene_foundation::Control<P, B>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
 pub fn skene_foundation::Control<P, B>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::Thin<P> for skene_foundation::Control<P, B>
+pub type skene_foundation::Control<P, B>::Core = skene_foundation::ControlCore<P>
+pub fn skene_foundation::Control<P, B>::into_core(self) -> skene_foundation::ControlCore<P>
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::View<P> for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Control<P, B>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Control<P, B>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::ControlCore<P: skene_foundation::Realization>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::ControlCore<P>
+pub fn skene_foundation::ControlCore<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::ControlCore<P>
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::ControlCore<P>
+pub fn skene_foundation::ControlCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::ControlCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::ControlCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::ControlFacts
 pub skene_foundation::ControlFacts::boxed: skene_foundation::BoxFacts
 pub skene_foundation::ControlFacts::label: core::option::Option<alloc::string::String>
@@ -6659,10 +6670,21 @@ pub fn skene_foundation::Link<P, R>::set_child(self, impl skene_foundation::View
 impl<P: core::fmt::Debug + skene_foundation::Realization, R: core::fmt::Debug + skene_foundation::routing::Route> core::fmt::Debug for skene_foundation::Link<P, R>
 pub fn skene_foundation::Link<P, R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization, R: skene_foundation::routing::Route> skene_foundation::AnyKind for skene_foundation::Link<P, R>
+impl<P: skene_foundation::Realization, R: skene_foundation::routing::Route> skene_foundation::Thin<P> for skene_foundation::Link<P, R>
+pub type skene_foundation::Link<P, R>::Core = skene_foundation::LinkCore<P>
+pub fn skene_foundation::Link<P, R>::into_core(self) -> skene_foundation::LinkCore<P>
 impl<P: skene_foundation::Realization, R: skene_foundation::routing::Route> skene_foundation::View<P> for skene_foundation::Link<P, R>
 pub fn skene_foundation::Link<P, R>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Link<P, R>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Link<P, R>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::LinkCore<P: skene_foundation::Realization>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::LinkCore<P>
+pub fn skene_foundation::LinkCore<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::LinkCore<P>
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::LinkCore<P>
+pub fn skene_foundation::LinkCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::LinkCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::LinkCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::ListboxPolicy
 impl core::clone::Clone for skene_foundation::ListboxPolicy
 pub fn skene_foundation::ListboxPolicy::clone(&self) -> skene_foundation::ListboxPolicy
@@ -7022,6 +7044,9 @@ pub const fn skene_foundation::OneOf<P, K>::new() -> Self
 pub fn skene_foundation::OneOf<P, K>::set_key(self, K) -> Self where K: core::clone::Clone
 impl<P: skene_foundation::Realization, K: core::cmp::PartialEq + 'static> core::default::Default for skene_foundation::OneOf<P, K>
 pub fn skene_foundation::OneOf<P, K>::default() -> Self
+impl<P: skene_foundation::Realization, K: core::cmp::PartialEq + 'static> skene_foundation::Thin<P> for skene_foundation::OneOf<P, K>
+pub type skene_foundation::OneOf<P, K>::Core = skene_foundation::OneOfCore<P>
+pub fn skene_foundation::OneOf<P, K>::into_core(self) -> skene_foundation::OneOfCore<P>
 impl<P: skene_foundation::Realization, K: core::cmp::PartialEq + 'static> skene_foundation::View<P> for skene_foundation::OneOf<P, K>
 pub fn skene_foundation::OneOf<P, K>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::OneOf<P, K>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -7029,6 +7054,14 @@ pub fn skene_foundation::OneOf<P, K>::set_key(self, impl core::hash::Hash) -> sk
 impl<P: skene_foundation::Realization, K> core::fmt::Debug for skene_foundation::OneOf<P, K>
 pub fn skene_foundation::OneOf<P, K>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization, K> skene_foundation::AnyKind for skene_foundation::OneOf<P, K>
+pub struct skene_foundation::OneOfCore<P: skene_foundation::Realization>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::OneOfCore<P>
+pub fn skene_foundation::OneOfCore<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::OneOfCore<P>
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::OneOfCore<P>
+pub fn skene_foundation::OneOfCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::OneOfCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::OneOfCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Overlay<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Overlay<P>
 pub fn skene_foundation::Overlay<P>::bind_open(self, skene_reactive::signal::Signal<bool>) -> Self
@@ -8177,10 +8210,21 @@ pub fn skene_foundation::Theme<P, S>::set_child_builder<V: skene_foundation::Vie
 impl<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>> core::fmt::Debug for skene_foundation::Theme<P, S>
 pub fn skene_foundation::Theme<P, S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>> skene_foundation::AnyKind for skene_foundation::Theme<P, S>
+impl<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>> skene_foundation::Thin<P> for skene_foundation::Theme<P, S>
+pub type skene_foundation::Theme<P, S>::Core = skene_foundation::ThemeCore<P>
+pub fn skene_foundation::Theme<P, S>::into_core(self) -> skene_foundation::ThemeCore<P>
 impl<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>> skene_foundation::View<P> for skene_foundation::Theme<P, S>
 pub fn skene_foundation::Theme<P, S>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Theme<P, S>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Theme<P, S>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::ThemeCore<P: skene_foundation::Realization>
+impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::ThemeCore<P>
+pub fn skene_foundation::ThemeCore<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::ThemeCore<P>
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::ThemeCore<P>
+pub fn skene_foundation::ThemeCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::ThemeCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::ThemeCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 pub struct skene_foundation::Timer(pub u64)
 impl core::clone::Clone for skene_foundation::Timer
 pub fn skene_foundation::Timer::clone(&self) -> skene_foundation::Timer
@@ -8496,12 +8540,15 @@ impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_found
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Column<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Container<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::ContextMenu<P>
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::ControlCore<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Enhance<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::ErrorBoundary<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Grid<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Keymap<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::LazyColumn<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::LazyRow<P>
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::LinkCore<P>
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::OneOfCore<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Overlay<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::RichText<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Row<P>
@@ -8509,6 +8556,7 @@ impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_found
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Stack<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Suspense<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Text<P>
+impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::ThemeCore<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Tooltip<P>
 impl<P: skene_foundation::Realization> skene_foundation::AnyKind for skene_foundation::Visibility<P>
 impl<P: skene_foundation::web::WebHydration> skene_foundation::AnyKind for skene_foundation::web::AsyncView<P>
@@ -10424,6 +10472,18 @@ pub fn S::watch() -> skene_reactive::memo::Memo<S>
 pub trait skene_foundation::Thin<P: skene_foundation::Realization>
 pub type skene_foundation::Thin::Core: skene_foundation::View<P>
 pub fn skene_foundation::Thin::into_core(self) -> Self::Core
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::Thin<P> for skene_foundation::Control<P, B>
+pub type skene_foundation::Control<P, B>::Core = skene_foundation::ControlCore<P>
+pub fn skene_foundation::Control<P, B>::into_core(self) -> skene_foundation::ControlCore<P>
+impl<P: skene_foundation::Realization, K: core::cmp::PartialEq + 'static> skene_foundation::Thin<P> for skene_foundation::OneOf<P, K>
+pub type skene_foundation::OneOf<P, K>::Core = skene_foundation::OneOfCore<P>
+pub fn skene_foundation::OneOf<P, K>::into_core(self) -> skene_foundation::OneOfCore<P>
+impl<P: skene_foundation::Realization, R: skene_foundation::routing::Route> skene_foundation::Thin<P> for skene_foundation::Link<P, R>
+pub type skene_foundation::Link<P, R>::Core = skene_foundation::LinkCore<P>
+pub fn skene_foundation::Link<P, R>::into_core(self) -> skene_foundation::LinkCore<P>
+impl<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>> skene_foundation::Thin<P> for skene_foundation::Theme<P, S>
+pub type skene_foundation::Theme<P, S>::Core = skene_foundation::ThemeCore<P>
+pub fn skene_foundation::Theme<P, S>::into_core(self) -> skene_foundation::ThemeCore<P>
 impl<P: skene_foundation::Realization, T: skene_foundation::Choice> skene_foundation::Thin<P> for skene_foundation::BasicPicker<P, T>
 pub type skene_foundation::BasicPicker<P, T>::Core = skene_foundation::BasicPickerCore<P>
 pub fn skene_foundation::BasicPicker<P, T>::into_core(self) -> skene_foundation::BasicPickerCore<P>
@@ -10540,6 +10600,10 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::ContextMenu<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::ContextMenu<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::ContextMenu<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::ControlCore<P>
+pub fn skene_foundation::ControlCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::ControlCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::ControlCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::Enhance<P>
 pub fn skene_foundation::Enhance<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Enhance<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -10564,10 +10628,18 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::LazyRow<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::LazyRow<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::LazyRow<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::LinkCore<P>
+pub fn skene_foundation::LinkCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::LinkCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::LinkCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::NodeId
 pub fn skene_foundation::NodeId::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::NodeId::into_any(self) -> skene_foundation::AnyView<P>
 pub fn skene_foundation::NodeId::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::OneOfCore<P>
+pub fn skene_foundation::OneOfCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::OneOfCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::OneOfCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::Overlay<P>
 pub fn skene_foundation::Overlay<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Overlay<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
@@ -10596,6 +10668,10 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::Text<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Text<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Text<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::ThemeCore<P>
+pub fn skene_foundation::ThemeCore<P>::build(self) -> skene_foundation::NodeId
+pub fn skene_foundation::ThemeCore<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
+pub fn skene_foundation::ThemeCore<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
 impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_foundation::Tooltip<P>
 pub fn skene_foundation::Tooltip<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Tooltip<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized

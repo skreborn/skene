@@ -525,6 +525,9 @@ in a code comment.
     today misses `MenuItemContent` (a context menu's item view's argument) and
     `Boundary` on both; the seam's `define_tokens` names its node for what it is, any
     node defining tokens, not a scope.
+    - `OneOf`'s `set_key` shares its name with `View::set_key`, so where a facade's
+    prelude is in scope `OneOf::new().set_key(key)` is ambiguous and only `derive_key`
+    compiles; the key of the case shown takes a name of its own.
 18. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no

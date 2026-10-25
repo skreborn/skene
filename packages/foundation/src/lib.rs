@@ -56,7 +56,10 @@
 //! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
 //! [`TextEntry`] ship, and the `Basic*` aliases name the control over each; a choice's
 //! value is the app's own type, a [`Choice`], which the cores hold erased ([`AnyChoice`],
-//! [`AnyChosen`]) and the typed views are [`Thin`] over. [`Overlay`] is content above the
+//! [`AnyChosen`]) and the typed views are [`Thin`] over. A control is [`Thin`] over a
+//! [`ControlCore`] holding its behavior erased, as a theme, a switch and a link are over
+//! a [`ThemeCore`], a [`OneOfCore`] and a [`LinkCore`], so each builds once whatever the
+//! app's types. [`Overlay`] is content above the
 //! app, opened and closed by the app and placed against the view a [`NodeHandle`] is bound
 //! to, which focus also moves to and whose measured size it reports; [`BasicPicker`]
 //! composes a popup face, an overlay and a listbox. [`LazyColumn`] and [`LazyRow`] scroll a
@@ -150,6 +153,7 @@ pub use crate::{
     CollectionPolicy,
     Control,
     ControlBase,
+    ControlCore,
     ControlHandle,
     ControlOps,
     Controlled,
@@ -200,9 +204,9 @@ pub use crate::{
     item_window,
     item_window_over,
   },
-  link::{Link, LinkBase},
+  link::{Link, LinkBase, LinkCore},
   node_handle::NodeHandle,
-  one_of::{OneOf, OneOfBase},
+  one_of::{OneOf, OneOfBase, OneOfCore},
   overlay::{Overlay, OverlayBase},
   painted::{Painted, PaintedBase},
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
@@ -224,7 +228,7 @@ pub use crate::{
   },
   suspense::{Suspense, SuspenseBase},
   text::{Text, TextBase},
-  theme::{Theme, ThemeBase, ThemedIn},
+  theme::{Theme, ThemeBase, ThemeCore, ThemedIn},
   thin::Thin,
   tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip, TooltipBase},
   type_metrics::TypeMetrics,

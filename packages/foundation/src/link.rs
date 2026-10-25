@@ -17,6 +17,7 @@ use crate::{
   Prevent,
   Realization,
   Scene,
+  Thin,
   View,
   Wraps,
   empty,
@@ -64,7 +65,56 @@ impl<P: Realization, R: Route> Link<P, R> {
 
 impl<P: Realization, R: Route> AnyKind for Link<P, R> {}
 
+impl<P: Realization, R: Route> Thin<P> for Link<P, R> {
+  type Core = LinkCore<P>;
+
+  fn into_core(self) -> LinkCore<P> {
+    let route = self.route;
+
+    LinkCore {
+      inner: self.inner,
+      child: self.child,
+      follow: Box::new(move || {
+        let router = Router::<R>::current()?;
+
+        Some(Box::new(move || router.navigate(route.clone())))
+      }),
+    }
+  }
+}
+
 impl<P: Realization, R: Route> View<P> for Link<P, R> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    self.into_core().build()
+  }
+}
+
+/// How a link follows its destination: called while it builds, where an ancestor's
+/// router is in scope, it returns the navigation, or `None` without a router.
+type Follow = Box<dyn FnOnce() -> Option<Box<dyn Fn()>>>;
+
+/// A [`Link`] with its route's type erased: what every link builds, whatever its
+/// route, the link thin over it.
+///
+/// It holds the box carrying the destination's path, the view inside it, and the
+/// navigation to the destination through the router in scope when it builds.
+#[must_use]
+pub struct LinkCore<P: Realization> {
+  inner: LayoutBox<P>,
+  child: Option<AnyView<P>>,
+  follow: Follow,
+}
+
+impl<P: Realization> std::fmt::Debug for LinkCore<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("LinkCore").finish_non_exhaustive()
+  }
+}
+
+impl<P: Realization> AnyKind for LinkCore<P> {}
+
+impl<P: Realization> View<P> for LinkCore<P> {
   fn build(self) -> NodeId {
     let Some(child) = self.child
     else {
@@ -73,9 +123,9 @@ impl<P: Realization, R: Route> View<P> for Link<P, R> {
     let node = self.inner.add_child(child).build();
     // Captured while building, where an ancestor's `provide` is in scope; an event
     // arrives outside any scope. No router leaves the link to the platform.
-    let router = Router::<R>::current();
+    let navigate = (self.follow)();
     let follow = Rc::new(move |modifiers: Modifiers| {
-      let Some(router) = router
+      let Some(navigate) = &navigate
       else {
         return Prevent::None;
       };
@@ -84,7 +134,7 @@ impl<P: Realization, R: Route> View<P> for Link<P, R> {
         return Prevent::None;
       }
 
-      router.navigate(self.route.clone());
+      navigate();
 
       Prevent::Realization
     });

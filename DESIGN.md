@@ -118,8 +118,8 @@ as a dialog's focusing steps choose). The tab order is the scene's child order a
 opens with nothing focused but a control set to autofocus: the scene notes each request
 (`Scene::note_autofocus`) and settles the opening focus once, as the mount that opens the
 window ends (`Scene::take_autofocus`: the first requesting node in document order that
-has a place in focus traversal, so a disabled one is passed over, its focus not
-showing), every later request ignored. The scene holds the interaction every platform reports: the
+has a place in focus traversal and no open modal blocks, so a disabled one is passed
+over, its focus not showing), every later request ignored. The scene holds the interaction every platform reports: the
 focused node with whether focus shows (a key but a modifier alone sets it, a pointer
 press clears it, a text entry's shows however reached), the pressed node and the hovered
 one, dropping each with its node, and resolves every node's interaction from them

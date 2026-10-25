@@ -1767,6 +1767,7 @@ fn a_controls_observers_hear_the_events_they_observe() {
 /// A stepper: a third party's behavior, built through the public trait alone.
 struct Stepper {
   count: Signal<i32>,
+  order: FocusOrder,
 }
 
 impl Behavior for Stepper {
@@ -1809,42 +1810,54 @@ impl Behavior for Stepper {
   }
 
   fn focus_order(&self) -> Option<FocusOrder> {
-    Some(FocusOrder::Auto)
+    Some(self.order)
   }
 }
 
 /// A third-party behavior gets focus, decoration, parts, observers and reactive reports
-/// from the same builder as the shipped ones: its place in the tab order follows the
-/// scene's child order, its keys and the wheel step it, and its focus variant paints.
+/// from the same builder as the shipped ones: its own focus order is honored, one that
+/// skips passed over and one reached in the scene's child order, its keys and the wheel
+/// step it, and its focus variant paints.
 #[test]
 fn a_third_party_behavior_builds_through_public_types_alone() {
   with_platform(|| {
     let count = Signal::new(0);
     let seen = Rc::new(Cell::new(0u32));
     let observed = Rc::clone(&seen);
-    let [_, node] = mount_nodes(move || {
+    let [first, _, node] = mount_nodes(move || {
       [
         BasicButton::new(Activate::new()).set_label("first").build(),
-        Control::new(Stepper { count })
-          .set_width(4)
-          .set_height(1)
-          .set_accessible_name("Count")
-          .set_background(red().when(State::FocusVisible, blue()))
-          .set_part(Part::Face, Text::new("0"))
-          .handle_key_down(move |_| observed.set(observed.get() + 1))
-          .build(),
+        Control::new(Stepper {
+          count: Signal::new(0),
+          order: FocusOrder::Skip,
+        })
+        .set_width(4)
+        .set_height(1)
+        .set_accessible_name("Skipped")
+        .build(),
+        Control::new(Stepper {
+          count,
+          order: FocusOrder::Auto,
+        })
+        .set_width(4)
+        .set_height(1)
+        .set_accessible_name("Count")
+        .set_background(red().when(State::FocusVisible, blue()))
+        .set_part(Part::Face, Text::new("0"))
+        .handle_key_down(move |_| observed.set(observed.get() + 1))
+        .build(),
       ]
     });
     let frame = testing::render_to_text(40, 12);
     let (column, row) = locate(&frame, "0");
 
-    assert_eq!(row, 1, "the face part draws in the control: {frame}");
+    assert_eq!(row, 2, "the face part draws in the control: {frame}");
 
     testing::trigger_key("Tab");
 
-    assert_ne!(
+    assert_eq!(
       testing::focused_node(),
-      Some(node),
+      Some(first),
       "the button before it comes first"
     );
 
@@ -1853,10 +1866,10 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
     assert_eq!(
       testing::focused_node(),
       Some(node),
-      "the child order goes on"
+      "the stepper that skips is passed over, and the child order goes on"
     );
     assert_eq!(
-      colors_at(40, 12, usize::from(column), 1).1,
+      colors_at(40, 12, usize::from(column), usize::from(row)).1,
       Some(rgb(blue()))
     );
 
@@ -1868,7 +1881,7 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
     assert_eq!(seen.get(), 3);
     assert_eq!(read(node).numeric_value(), Some(2.));
 
-    testing::trigger_mouse_scroll(column, 1, 0, -3);
+    testing::trigger_mouse_scroll(column, row, 0, -3);
 
     assert_eq!(count.get_untracked(), 3, "the stepper takes the turn");
   });

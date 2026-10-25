@@ -69,9 +69,10 @@ impl<P: Realization> Scene<P> {
 
   /// Settles the focus the window under `root` opens with, once, as the mount that
   /// opens it ends: the first node in document order that asked for it and has a place
-  /// in focus traversal, closed overlays and the subtrees `hidden` answers for passed
-  /// over; `None` where none did, and every later call. Focus moved there does not
-  /// show, as Chromium's autofocus does not, until a key shows it.
+  /// in focus traversal, closed overlays, the subtrees `hidden` answers for and the
+  /// nodes an open modal blocks passed over; `None` where none did, and every later
+  /// call. Focus moved there does not show, as Chromium's autofocus does not, until a
+  /// key shows it.
   pub fn take_autofocus(
     &mut self,
     root: NodeId,
@@ -106,7 +107,13 @@ impl<P: Realization> Scene<P> {
       stack.extend(self.children_reversed(current));
     }
 
-    let opening = Autofocus::opening(&asked, candidates);
+    let overlays = self.overlay_stack(&self.open_overlays);
+    let opening = Autofocus::opening(
+      &asked,
+      candidates
+        .into_iter()
+        .filter(|node| overlays.reaches(|| self.ancestry(*node))),
+    );
 
     if opening.is_some() {
       self.held.set_focus_visible(false);
@@ -171,9 +178,9 @@ impl<P: Realization> Scene<P> {
   }
 
   /// The tab stops under `root` in traversal order, with `overlays` the open overlays
-  /// in the order they opened: document order, the scene's child order; closed overlays and the
-  /// subtrees `hidden` answers for skipped, and the topmost modal containing the order with the
-  /// overlays opened after it.
+  /// in the order they opened: document order, the scene's child order; closed overlays
+  /// and the subtrees `hidden` answers for skipped, and the topmost modal containing the
+  /// order with the overlays opened after it.
   #[must_use]
   pub fn tab_order(
     &self,

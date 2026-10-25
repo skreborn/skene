@@ -802,3 +802,47 @@ fn a_focus_handle_moves_focus_to_its_bound_view() {
     assert_eq!(testing::focused_node(), None);
   });
 }
+
+/// A window opening under an open modal opens its focus inside it: a control set to
+/// autofocus that the modal blocks is passed over, and one inside the modal takes it.
+#[test]
+fn an_open_modal_blocks_the_autofocus_beneath_it() {
+  with_platform(|| {
+    let (page, first, inside) = (NodeHandle::new(), NodeHandle::new(), NodeHandle::new());
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new())
+            .set_label("page")
+            .set_autofocus(true)
+            .bind_handle(page)
+            .into_any(),
+          Overlay::modal()
+            .set_open(true)
+            .set_child(
+              Column::new().set_children((
+                BasicButton::new(Activate::new())
+                  .set_label("first")
+                  .bind_handle(first),
+                BasicButton::new(Activate::new())
+                  .set_label("inside")
+                  .set_autofocus(true)
+                  .bind_handle(inside),
+              )),
+            )
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(12, 4);
+
+    assert_ne!(testing::focused_node(), page.node(), "the modal blocks it");
+    assert_eq!(
+      testing::focused_node(),
+      inside.node(),
+      "the modal's own control set to autofocus takes it"
+    );
+  });
+}

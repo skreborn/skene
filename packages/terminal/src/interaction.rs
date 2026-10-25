@@ -128,10 +128,9 @@ impl Records {
     Scene::<Terminal>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), handle))
   }
 
-  /// The tab stops in traversal order, as the scene orders them: positioned ones
-  /// first by position, then the rest in document order; closed overlays and hidden
-  /// boxes excluded, and an open modal containing the whole order with the overlays
-  /// opened after it.
+  /// The tab stops in traversal order, as the scene orders them: document order, the
+  /// scene's child order; closed overlays and hidden boxes excluded, and an open modal
+  /// containing the whole order with the overlays opened after it.
   pub(crate) fn tab_order(&self) -> Vec<Handle> {
     self.tab_stops()
   }

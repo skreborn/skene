@@ -82,7 +82,7 @@ struct Suite {
 const SUITE: Suite = Suite {
   package: "skene-conformance-web",
   harness: "harness",
-  scenarios: 30,
+  scenarios: 31,
   pages: 20,
 };
 

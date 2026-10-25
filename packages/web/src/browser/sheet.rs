@@ -9,10 +9,9 @@ use wasm_bindgen::JsCast;
 use web_sys::{Document, Element, HtmlHeadElement};
 
 use crate::{
-  compile::slot_registrations,
   condition::CLASS_PLACEHOLDER,
   markup::STYLE_ATTRIBUTE,
-  style_book::{RESET_CSS, STYLE_LAYER, StyleSink, push_style_text},
+  style_book::{STYLE_LAYER, StyleSink, base_stylesheet, push_style_text},
 };
 
 pub(super) struct Sheet {
@@ -26,9 +25,9 @@ pub(super) struct Sheet {
 }
 
 impl Sheet {
-  /// A sheet writing into `head`, starting from the reset and the slot registrations.
+  /// A sheet writing into `head`, starting from the base stylesheet.
   pub(super) fn new(document: &Document, head: &HtmlHeadElement) -> Self {
-    let base_text = format!("{RESET_CSS}{}", slot_registrations());
+    let base_text = base_stylesheet();
     let base = style_element(document);
 
     base.set_text_content(Some(&base_text));

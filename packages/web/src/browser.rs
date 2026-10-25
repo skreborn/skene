@@ -60,6 +60,7 @@ use super::{
   markup::{MARKER_ATTRIBUTE, STYLE_ID},
   platform::web::Web,
   realize::{Realized, Realizer, Record},
+  token::WebTokenValue,
 };
 
 /// The DOM node type of a comment.
@@ -523,6 +524,7 @@ fn install_at(root: Element, hydrating: bool) {
       hydration,
     ));
   });
+  WebTokenValue::claim_system_colors();
 
   restore::provide_restoration();
 }

@@ -57,7 +57,9 @@ platforms' builds and compiles empty in the other's.
 `Scene<P: Realization>` is a generational arena of node records—parent, children as a list of linked siblings (a move
 relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
 the token definitions a theme placed on the node, the query-container name, the
-handlers. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
+handlers; beside them, the root's definitions every node falls back to, the platform's
+colors (`SystemColors`) among them, which the realization defines there as it is
+installed. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
 index and generation, as the layout engine's tests key their canned trees, and one no
 live node holds resolves to nothing in the scene), and the platform keys its own record of the
 node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing
@@ -1186,6 +1188,17 @@ the root rule's class, and the terminal re-resolves its styles as it does for a 
 `Typography` (all text inheritance on both facades) and the Simple library's
 `SimpleGlyphs` (its terminal marks, a set only a platform with text tokens over cells can
 theme) are token sets, so the framework has one inheritance mechanism.
+`SystemColors<N>` (`skene_foundation::SystemColors`, a facade's `SystemColors` in its
+unit) is the platform's colors, as CSS's system colors are: sixteen color tokens (the
+ink, a muted ink, the window, a control with its hover and pressed fills, a border, the
+accent with its hover and pressed variants and what sits on it, a track, a knob, a field,
+and a selection active and inactive) naming no look, which the built-ins' defaults read.
+Each realization defines them at the root as it is installed, claiming the set's root
+definitions (`Scene::define_root_set`) so a read of the set below no theme lays nothing
+over the platform's, and a theme redefines any of them as it does any token. Its
+`Default`, a neutral light look turning dark under `Media::Dark` built from public
+constructors, is what `ThemedIn` hands out where no theme provides the set and what a
+theme of the set itself defines; the platform's own colors are the realization's.
 Nothing below a component library knows what a palette is: `skene-simple` owns
 `SimplePalette`, and a third party's palette gets its `Theme`, `current()` and
 `watch()` from the same blanket.
@@ -1555,6 +1568,21 @@ and attributes and the server's markup is the browser's; the browser leaf takes 
 as a text entry, and its `clipboard_availability` disables copying and cutting in a
 password input, whose selection its clipboard never reads.
 
+Both leaves open their stylesheet with the same base (`base_stylesheet`): the reset, the
+platform's colors at the root and the base slots' registrations. The platform's colors
+(`SystemColors`) are each registered as a `<color>` and defined in the reset's layer on
+`:where(:root)` as CSS's system colors (`CanvasText`, `GrayText`, `Canvas`,
+`ButtonFace`, `ButtonBorder`, `AccentColor` and `AccentColorText`, `Field`,
+`Highlight`), a hover and a pressed variant as a `color-mix(in oklab, ...)` of the
+colors before it, and an engine without `AccentColor` takes a blue of its own under
+`@supports not`. The root's `color-scheme` is `light`, and `dark` through the scheme
+guard, the platform's preference unless the root's `data-skene-scheme` says light and
+the app's choice where it says dark, so a scriptless page follows both and one write of
+the attribute re-inks every system color. The rule is the realization's own text rather
+than a `WebTokenValue`, which holds only a `Definition<Color>`; each leaf claims the
+set's root definitions as it is installed, so nothing is laid over the rule, and a theme
+redefining one defines it on its scope as any token, its registration already made.
+
 A choice's scriptless form is keyed alike on both leaves: a radio's `name` is its
 group's element id and its `value` its key in its group, and a `<select>`'s
 `<option value>` is each option's key, both the member's ordinal in its `Roster`, which
@@ -1880,6 +1908,17 @@ the nearest xterm default, and a paint that mixes into an unset cell—a shadow,
 scrollbar's track—mixes against the reported foreground and background where the
 scheme in force is the detected one, against white on black or black on white where
 the app chose the other scheme, so the contrast is the terminal's real one.
+
+The platform's colors (`SystemColors`) are defined at the root from the same replies as
+the platform is installed, and defined afresh as a reply arrives or the app's scheme
+choice moves (`define_system_colors`, definitions equal to those in force changing
+nothing): the ink and the window are the colors an unset cell shows, the accent the
+reported blue of the base colors under the lighter or the darker of the two, whichever
+stands out on it, and the rest mixes of the ink into the window, white on black for the
+dark scheme the terminal assumes until it reports its colors. A cell painted in the
+terminal's own reported foreground or background, where the scheme in force is the
+detected one, is written as the cell's default color (`SGR 39` and `49`), so a 16-color
+terminal keeps its own; the cells themselves keep the color, so a frame reads the same.
 
 Decoration is painted in pixels beneath the text where the terminal shows graphics. A
 box whose decoration asks for more than cells draw—a corner radius, a border, a

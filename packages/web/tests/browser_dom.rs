@@ -117,12 +117,16 @@ use skene_web::{
   Span,
   Stack,
   Suspense,
+  SystemColors,
   TOOLTIP_GRACE,
   Text,
   TextDecoration,
   TextDecorationStyle,
   TextSelection,
   Theme,
+  Token,
+  TokenName,
+  TokenSet,
   Tooltip,
   Typography,
   View,
@@ -2934,6 +2938,80 @@ fn a_typography_theme_reaches_the_text_beneath_it() {
   assert_eq!(computed(&themed, "line-height"), "40px");
   assert_eq!(computed(&themed, "letter-spacing"), "1px");
   assert_eq!(computed(&own, "font-size"), "12px");
+}
+
+/// A set of one's own redefining the accent among the platform's colors.
+#[derive(Debug, Clone, PartialEq)]
+struct OwnAccent {
+  /// The accent.
+  accent: Token<Color>,
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for OwnAccent {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.accent.define()]
+  }
+}
+
+/// The root defines each of the platform's colors as a color the engine resolves, and a
+/// theme redefining one reaches a box beneath it while a box outside keeps the root's.
+#[wasm_bindgen_test]
+fn the_root_defines_the_platforms_colors_and_a_theme_redefines_them() {
+  let (_guard, root) = fresh_root();
+  let red = Color::srgb(1., 0., 0.);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_width(4)
+          .set_height(4)
+          .set_background(SystemColors::ACCENT),
+        Theme::new(OwnAccent {
+          accent: Token::new(SystemColors::ACCENT.name().as_str(), red),
+        })
+        .set_child_builder(|| {
+          Container::new()
+            .set_width(4)
+            .set_height(4)
+            .set_background(SystemColors::ACCENT)
+        }),
+      ))
+      .build()
+  });
+
+  let document_root = document().document_element().expect("a document element");
+
+  for reference in SystemColors::NAMES {
+    let value = computed(&document_root, &format!("--{}", reference.name()));
+
+    assert!(
+      !value.is_empty() && value != "rgba(0, 0, 0, 0)",
+      "the root defines {} as a color, not {value:?}",
+      reference.name()
+    );
+  }
+
+  let column = only_child(&root);
+  let outside = column
+    .first_element_child()
+    .expect("the box outside the theme");
+  let scope = column.last_element_child().expect("the theme's scope");
+  let inside = only_child(&scope);
+
+  assert_eq!(
+    computed(&inside, "background-color"),
+    probe(&root, &css(red))
+  );
+  assert_eq!(
+    computed(&outside, "background-color"),
+    probe(&root, &format!("var(--{})", SystemColors::ACCENT.name())),
+    "the root's accent"
+  );
+  assert_ne!(
+    computed(&outside, "background-color"),
+    probe(&root, &css(red))
+  );
 }
 
 /// A text entry's value is inked and weighted by the typography in force, as a run is.

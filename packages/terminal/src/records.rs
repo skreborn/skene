@@ -26,7 +26,7 @@ use skene_layout::{Restyle, Tree};
 
 use self::environment::MediaState;
 pub(crate) use self::{
-  environment::Contrast,
+  environment::{Contrast, OwnColors},
   field::{EntryEditor, EntryState, Field, Visible},
   frames::{Clock, FRAME_INTERVAL},
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
@@ -44,7 +44,14 @@ pub(crate) use self::{
     RunCache,
   },
 };
-use crate::{Clipboard, Terminal, layout::CellLeaf, paint::Buffer, selection::Selection};
+use crate::{
+  Clipboard,
+  Terminal,
+  detect::Palette,
+  layout::CellLeaf,
+  paint::Buffer,
+  selection::Selection,
+};
 
 /// The size the platform reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
@@ -133,6 +140,8 @@ pub(crate) struct Records {
   pub(crate) detected_foreground: Option<(u8, u8, u8)>,
   /// The terminal's own background, where it reported one (OSC 11).
   pub(crate) detected_background: Option<(u8, u8, u8)>,
+  /// The terminal's sixteen base colors, as it reported them (OSC 4).
+  pub(crate) palette: Palette,
   /// The color scheme the app has chosen, overriding the detected background.
   pub(crate) choice: Option<ColorScheme>,
   /// The scheduled actions, each due at a clock reading.
@@ -234,6 +243,7 @@ impl Records {
       detected_dark: true,
       detected_foreground: None,
       detected_background: None,
+      palette: Palette::DEFAULT,
       choice: None,
       timers: Timers::new(),
       reveal: None,

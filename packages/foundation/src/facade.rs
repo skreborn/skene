@@ -101,6 +101,9 @@ macro_rules! facade {
     pub type Definition<T> = $crate::Definition<T, $scalar>;
     /// A token as a palette holds it; see [`skene_foundation::Token`].
     pub type Token<T> = $crate::Token<T, $scalar>;
+    /// The platform's colors, which the realization defines at the root; see
+    /// [`skene_foundation::SystemColors`].
+    pub type SystemColors = $crate::SystemColors<$scalar>;
     #[doc = concat!("Spacing on the four edges of a box, in ", $unit, ".")]
     pub type Inset<T = $scalar> = $crate::Inset<T>;
     #[doc = concat!("A dimension, in ", $unit, " or as a fraction of the parent.")]

@@ -40,6 +40,7 @@ use crate::{
     press,
     run_due_timers,
     set_detected_background,
+    set_detected_foreground,
     set_detected_scheme,
   },
   frame,
@@ -386,7 +387,7 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 /// the background's luminance.
 pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) {
   trigger(|| {
-    with_records(|records| records.detected_foreground = Some(foreground));
+    set_detected_foreground(foreground);
     set_detected_background(background);
   });
 }

@@ -87,6 +87,11 @@ impl Palette {
     std::mem::replace(entry, color) != color
   }
 
+  /// The base color at `index`, the first past the sixteen.
+  pub(crate) fn color(&self, index: usize) -> (u8, u8, u8) {
+    self.0.get(index).copied().unwrap_or(self.0[0])
+  }
+
   /// The index of the base color nearest to `color`.
   pub(crate) fn nearest(&self, color: (u8, u8, u8)) -> u8 {
     #[expect(

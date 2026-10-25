@@ -8,6 +8,20 @@ supersedes.
 
 ## Decided against
 
+- **The web's system colors as a token value** (2026-10-25), a keyword kind of
+  `WebTokenValue` (or a `Color` naming a system color) so the root's `SystemColors`
+  would cross the seam as any root definition does: CSS's system colors are keywords no
+  `Definition<Color>` holds, and a value of that kind would widen the public token value
+  for the one root the realization defines, so the web writes the root rule as text of
+  its own beside the reset and claims the set's root definitions instead. Revisit when
+  another web definition needs a CSS color no `Color` expresses, or a drawing platform
+  needs the web's root definitions in the scene.
+- **The terminal's own colors marked in the token value** (2026-10-25), a root
+  `SystemColors` token resolving to a marker the paint writes as the cell's default
+  color: a resolved color carries no origin, so the writer instead writes as the
+  default any cell color equal to the reported foreground or background, which shows
+  the same in a terminal that draws its default in that color. Revisit if a color
+  equal to the terminal's own must be written as RGB.
 - **Styled built-ins under names other than their behaviors'** (2026-10-25), such as
   `Switch` for the toggle and `RadioButton` for the radio, so the shipped behaviors
   could stay at each facade's root beside the views: the drawn views take the

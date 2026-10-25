@@ -49,8 +49,9 @@
 //! [`GridCell`] annotate the box built under them. A run ([`Text`], [`Span`], [`RichText`])
 //! inherits through the [`typography`] tokens. [`Visibility`], [`OneOf`], [`Suspense`] and
 //! [`ErrorBoundary`] mount between anchors and keep the branches they hide. [`Theme`]
-//! defines a token set beneath it, and [`ThemedIn`] reads the set in force. [`Control`] is
-//! the one control builder, over a [`Behavior`] saying what the interaction is, acting
+//! defines a token set beneath it, and [`ThemedIn`] reads the set in force; [`SystemColors`]
+//! is the set naming the platform's colors, which each realization defines at the root. [`Control`]
+//! is the one control builder, over a [`Behavior`] saying what the interaction is, acting
 //! through a [`ControlHandle`] whose [`ControlOps`] reach the build's realization as plain
 //! functions, so a behavior names none; [`Activate`], [`Toggle`], [`Slider`],
 //! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
@@ -105,6 +106,7 @@ mod spine;
 mod stack;
 mod surface;
 mod suspense;
+mod system_colors;
 pub mod terminal;
 pub mod text;
 mod theme;
@@ -227,6 +229,7 @@ pub use crate::{
     RunWithTypeMetrics,
   },
   suspense::{Suspense, SuspenseBase},
+  system_colors::SystemColors,
   text::{Text, TextBase},
   theme::{Theme, ThemeBase, ThemeCore, ThemedIn},
   thin::Thin,

@@ -59,6 +59,7 @@ use skene_web::{
   Row,
   Stack,
   State,
+  SystemColors,
   Text,
   Theme,
   ThemedIn,
@@ -1063,5 +1064,84 @@ fn a_derived_variants_slot_is_registered() {
       .contains("@property --skene-background-1{syntax:\"*\";inherits:false}"),
     "{}",
     rendered.styles()
+  );
+}
+
+/// A set of one's own redefining the accent among the platform's colors.
+#[derive(Debug, Clone, PartialEq)]
+struct OwnAccent {
+  /// The accent.
+  accent: skene_web::Token<Color>,
+}
+
+impl<V: From<skene_web::Definition<Color>> + 'static> skene_web::TokenSet<V> for OwnAccent {
+  fn definitions(&self) -> Vec<(skene_web::TokenName, V)> {
+    vec![self.accent.define()]
+  }
+}
+
+/// The root defines the platform's colors in the reset's layer as CSS's system colors,
+/// each registered once as a color, an engine without `AccentColor` falling back to a
+/// blue of its own; the root's `color-scheme` follows the platform's preference and the
+/// app's choice through the scheme guard. A read of the set below no theme lays nothing
+/// over them, and a theme redefining one defines it on its scope as any token.
+#[test]
+fn the_root_defines_the_platforms_colors_as_system_colors() {
+  let red = Color::srgb(1., 0., 0.);
+  let rendered = render_to_string(move || {
+    assert_eq!(SystemColors::current(), SystemColors::default());
+
+    Theme::new(OwnAccent {
+      accent: skene_web::Token::new(SystemColors::ACCENT.name().as_str(), red),
+    })
+    .set_child_builder(|| Container::new().set_background(SystemColors::ACCENT))
+  });
+  let styles = rendered.styles();
+  let root = rule(styles, "@layer skene.reset{:where(:root)");
+
+  for declaration in [
+    "color-scheme:light;",
+    "--system-ink:CanvasText;",
+    "--system-muted-ink:GrayText;",
+    "--system-window:Canvas;",
+    "--system-control:ButtonFace;",
+    "--system-control-hover:color-mix(in oklab,var(--system-control),var(--system-ink) 8%);",
+    "--system-border:ButtonBorder;",
+    "--system-accent:AccentColor;",
+    "--system-on-accent:AccentColorText;",
+    "--system-field:Field;",
+    "--system-selection:Highlight;",
+  ] {
+    assert!(root.contains(declaration), "{declaration} in {root}");
+  }
+
+  assert_eq!(
+    rule(styles, "@supports not (color:AccentColor){:where(:root)"),
+    "--system-accent:light-dark(#0075ff,#99c8ff);--system-on-accent:light-dark(#ffffff,#1b1b1b);"
+  );
+  assert!(styles.contains(
+    "@media (prefers-color-scheme: dark){:root:where(:not([data-skene-scheme=\"light\"]))\
+     {color-scheme:dark;}}:root:where([data-skene-scheme=\"dark\"]){color-scheme:dark;}"
+  ));
+
+  for reference in SystemColors::NAMES {
+    let registration = format!(
+      "@property --{}{{syntax:\"<color>\";inherits:true;initial-value:transparent}}",
+      reference.name()
+    );
+
+    assert_eq!(styles.matches(&registration).count(), 1, "{registration}");
+  }
+
+  assert!(
+    !styles.contains(":root{--system"),
+    "nothing laid over the root"
+  );
+
+  let scope = root_class(rendered.body());
+
+  assert_eq!(
+    rule(styles, &format!(".{scope}")),
+    format!("--system-accent:{};", css_color(red))
   );
 }

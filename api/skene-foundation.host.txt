@@ -8160,6 +8160,52 @@ impl<P: skene_foundation::Realization> skene_foundation::View<P> for skene_found
 pub fn skene_foundation::Suspense<P>::build(self) -> skene_foundation::NodeId
 pub fn skene_foundation::Suspense<P>::into_any(self) -> skene_foundation::AnyView<P> where Self: core::marker::Sized
 pub fn skene_foundation::Suspense<P>::set_key(self, impl core::hash::Hash) -> skene_foundation::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_foundation::SystemColors<N: skene_foundation::Scalar>
+pub skene_foundation::SystemColors::accent: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::accent_hover: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::accent_pressed: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::border: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::control: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::control_hover: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::control_pressed: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::field: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::ink: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::knob: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::muted_ink: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::on_accent: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::selection: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::selection_inactive: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::track: skene_foundation::Token<skene_foundation::Color, N>
+pub skene_foundation::SystemColors::window: skene_foundation::Token<skene_foundation::Color, N>
+impl<N: skene_foundation::Scalar> skene_foundation::SystemColors<N>
+pub const skene_foundation::SystemColors<N>::ACCENT: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::ACCENT_HOVER: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::ACCENT_PRESSED: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::BORDER: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::CONTROL: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::CONTROL_HOVER: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::CONTROL_PRESSED: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::FIELD: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::INK: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::KNOB: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::MUTED_INK: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::NAMES: [skene_foundation::TokenRef<skene_foundation::Color>; 16]
+pub const skene_foundation::SystemColors<N>::ON_ACCENT: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::SELECTION: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::SELECTION_INACTIVE: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::TRACK: skene_foundation::TokenRef<skene_foundation::Color>
+pub const skene_foundation::SystemColors<N>::WINDOW: skene_foundation::TokenRef<skene_foundation::Color>
+impl<N: core::clone::Clone + skene_foundation::Scalar> core::clone::Clone for skene_foundation::SystemColors<N>
+pub fn skene_foundation::SystemColors<N>::clone(&self) -> skene_foundation::SystemColors<N>
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar> core::cmp::PartialEq for skene_foundation::SystemColors<N>
+pub fn skene_foundation::SystemColors<N>::eq(&self, &skene_foundation::SystemColors<N>) -> bool
+impl<N: core::cmp::PartialEq + skene_foundation::Scalar> core::marker::StructuralPartialEq for skene_foundation::SystemColors<N>
+impl<N: core::fmt::Debug + skene_foundation::Scalar> core::fmt::Debug for skene_foundation::SystemColors<N>
+pub fn skene_foundation::SystemColors<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: skene_foundation::Scalar, V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, N>>> skene_foundation::TokenSet<V> for skene_foundation::SystemColors<N>
+pub fn skene_foundation::SystemColors<N>::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
+impl<N: skene_foundation::Scalar> core::default::Default for skene_foundation::SystemColors<N>
+pub fn skene_foundation::SystemColors<N>::default() -> Self
 pub struct skene_foundation::Text<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Text<P>
 pub fn skene_foundation::Text<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -10555,6 +10601,8 @@ pub type skene_foundation::BasicPicker<P, T>::Core = skene_foundation::BasicPick
 pub fn skene_foundation::BasicPicker<P, T>::into_core(self) -> skene_foundation::BasicPickerCore<P>
 pub trait skene_foundation::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_foundation::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
+impl<N: skene_foundation::Scalar, V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, N>>> skene_foundation::TokenSet<V> for skene_foundation::SystemColors<N>
+pub fn skene_foundation::SystemColors<N>::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 impl<V> skene_foundation::TokenSet<V> for skene_foundation::terminal::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, i32>> + core::convert::From<skene_foundation::Definition<f32, i32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, i32>> + 'static
 pub fn skene_foundation::terminal::Typography::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 impl<V> skene_foundation::TokenSet<V> for skene_foundation::web::Typography where V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, f32>> + core::convert::From<skene_foundation::Definition<f32, f32>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, f32>> + 'static

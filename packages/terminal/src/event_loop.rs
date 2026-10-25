@@ -290,7 +290,6 @@ where
   }
 
   let mut depth = ColorDepth::Ansi16;
-  let mut palette = detect::Palette::DEFAULT;
   let mut styled_underlines = false;
   let mut synchronized = false;
   // The first cursor position report answers the sizing probe; a later one is a
@@ -364,6 +363,7 @@ where
         _ => crate::records::DEFAULT_SIZE,
       };
       let frame = frame::render(width, height);
+      let (palette, own) = with_records(|records| (records.palette, records.own_colors()));
 
       draw(
         &mut terminal,
@@ -371,6 +371,7 @@ where
         Rendition {
           depth,
           palette,
+          own,
           styled_underlines,
         },
         last_frame.as_ref(),
@@ -620,18 +621,19 @@ where
           set_detected_background((red, green, blue));
         }
         Event::Foreground(red, green, blue) => {
-          with_records(|records| {
-            records.detected_foreground = Some((red, green, blue));
-            records.paint_dirty = true;
-          });
+          set_detected_foreground((red, green, blue));
         }
         // A base color the terminal shows otherwise than the defaults moves what a
         // 16-color paint picks, so the frame is written afresh at that depth.
         Event::Palette(colors) => {
-          let mut moved = false;
+          let moved = with_records(|records| {
+            colors.into_iter().fold(false, |moved, (index, color)| {
+              records.palette.set(index, color) | moved
+            })
+          });
 
-          for (index, color) in colors {
-            moved |= palette.set(index, color);
+          if moved {
+            crate::realize::define_system_colors();
           }
 
           if moved && depth == ColorDepth::Ansi16 {
@@ -745,6 +747,16 @@ fn finish(terminal: &mut impl Device) {
   let _ = terminal.flush();
 }
 
+/// Records the terminal's own foreground, which the platform's colors are defined from;
+/// the frame paints afresh.
+pub(crate) fn set_detected_foreground(foreground: (u8, u8, u8)) {
+  with_records(|records| {
+    records.detected_foreground = Some(foreground);
+    records.paint_dirty = true;
+  });
+  crate::realize::define_system_colors();
+}
+
 /// Records the terminal's own background, which a paint mixes against, and the scheme
 /// its luminance implies; the frame paints afresh.
 pub(crate) fn set_detected_background(background: (u8, u8, u8)) {
@@ -755,7 +767,8 @@ pub(crate) fn set_detected_background(background: (u8, u8, u8)) {
   set_detected_scheme(detect::is_dark(background));
 }
 
-/// Records the detected background, moving the scheme in force where it changes.
+/// Records the detected background, moving the scheme in force where it changes, and
+/// defines the platform's colors afresh.
 pub(crate) fn set_detected_scheme(dark: bool) {
   let write = with_records(|records| {
     let before = records.scheme();
@@ -772,6 +785,8 @@ pub(crate) fn set_detected_scheme(dark: bool) {
 
     Some((records.media().set_scheme, after))
   });
+
+  crate::realize::define_system_colors();
 
   if let Some((write, scheme)) = write {
     skene_reactive::Set::set(&write, scheme);

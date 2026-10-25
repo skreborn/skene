@@ -42,6 +42,7 @@ use crate::{
   hints::RenderHints,
   platform::web::Web,
   realize::{Realized, Realizer},
+  token::WebTokenValue,
 };
 
 /// The element of the string tree standing for the page body, which the root realizes.
@@ -252,6 +253,7 @@ fn begin_render() -> (NodeId, Owner) {
 
   let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, None));
 
+  WebTokenValue::claim_system_colors();
   with_realizer(|realizer| realizer.insert(root, ROOT, "", Realized::Box, false));
 
   (root, skene_reactive::Owner::root().child())

@@ -1156,6 +1156,7 @@ pub type skene_terminal::prelude::Point = skene_foundation::spine::values::point
 pub type skene_terminal::prelude::Rect = skene_foundation::spine::values::rect::Rect<i32>
 pub type skene_terminal::prelude::Size = skene_foundation::spine::values::size::Size<i32>
 pub type skene_terminal::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<i32>
+pub type skene_terminal::prelude::SystemColors = skene_foundation::system_colors::SystemColors<i32>
 pub type skene_terminal::prelude::Token<T> = skene_foundation::spine::token::Token<T, i32>
 pub type skene_terminal::prelude::Value<T> = skene_foundation::spine::leaf::Value<T, skene_terminal::Condition>
 pub mod skene_terminal::testing
@@ -1987,6 +1988,7 @@ pub type skene_terminal::Point = skene_foundation::spine::values::point::Point<i
 pub type skene_terminal::Rect = skene_foundation::spine::values::rect::Rect<i32>
 pub type skene_terminal::Size = skene_foundation::spine::values::size::Size<i32>
 pub type skene_terminal::Spacing = skene_foundation::spine::values::flex::Spacing<i32>
+pub type skene_terminal::SystemColors = skene_foundation::system_colors::SystemColors<i32>
 pub type skene_terminal::Token<T> = skene_foundation::spine::token::Token<T, i32>
 pub type skene_terminal::TokenValue = <skene_terminal::Active as skene_foundation::spine::realization::Realization>::TokenValue
 pub type skene_terminal::Value<T> = skene_foundation::spine::leaf::Value<T, skene_terminal::Condition>

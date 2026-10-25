@@ -25,6 +25,7 @@ use crate::{
     Underline,
   },
   paint,
+  records::OwnColors,
   text::{CellScale, Glyph},
   with_records,
 };
@@ -244,12 +245,14 @@ const fn move_to(column: u16, row: u16) -> MoveTo {
 }
 
 /// What the terminal renders of a cell's attributes: the color depth painted RGB
-/// quantizes to, the base colors it shows, and whether an underline keeps its style
-/// and color.
+/// quantizes to, the base colors it shows, its own foreground and background, which a
+/// cell painted in them shows as its default color, and whether an underline keeps its
+/// style and color.
 #[derive(Clone, Copy)]
 pub(super) struct Rendition {
   pub(super) depth: ColorDepth,
   pub(super) palette: detect::Palette,
+  pub(super) own: OwnColors,
   pub(super) styled_underlines: bool,
 }
 
@@ -269,13 +272,17 @@ impl Rendition {
         self.depth.terminal_color(rgb, &self.palette)
       })
     };
+    let shown =
+      |rgb: Option<(u8, u8, u8)>, own: Option<(u8, u8, u8)>| rgb.filter(|rgb| Some(*rgb) != own);
+    let foreground = shown(cell.foreground, self.own.foreground);
+    let background = shown(cell.background, self.own.background);
 
-    if cell.foreground != current.foreground {
-      let _ = write!(out, "{}", Sgr::Foreground(color(cell.foreground)));
+    if foreground != shown(current.foreground, self.own.foreground) {
+      let _ = write!(out, "{}", Sgr::Foreground(color(foreground)));
     }
 
-    if cell.background != current.background {
-      let _ = write!(out, "{}", Sgr::Background(color(cell.background)));
+    if background != shown(current.background, self.own.background) {
+      let _ = write!(out, "{}", Sgr::Background(color(background)));
     }
 
     if cell.bold != current.bold {
@@ -580,6 +587,10 @@ mod tests {
   const PLAIN: Rendition = Rendition {
     depth: ColorDepth::Ansi16,
     palette: detect::Palette::DEFAULT,
+    own: OwnColors {
+      foreground: None,
+      background: None,
+    },
     styled_underlines: false,
   };
 
@@ -612,8 +623,8 @@ mod tests {
       &buffer,
       Rendition {
         depth: ColorDepth::TrueColor,
-        palette: detect::Palette::DEFAULT,
         styled_underlines: true,
+        ..PLAIN
       },
       None,
       false,
@@ -823,6 +834,44 @@ mod tests {
 
     assert!(String::from_utf8(reported).unwrap().contains("\x1b[34m"));
     assert!(String::from_utf8(plain).unwrap().contains("\x1b[30m"));
+  }
+
+  /// A cell painted in the terminal's own foreground and background is written in its
+  /// default colors, so a 16-color terminal keeps its own, and another color as its
+  /// nearest base color.
+  #[test]
+  fn the_terminals_own_colors_are_written_as_its_defaults() {
+    let mut buffer = paint::Buffer::new(2, 1);
+
+    buffer.cells[0].foreground = Some((220, 220, 220));
+    buffer.cells[0].background = Some((40, 42, 54));
+    buffer.cells[1].foreground = Some((205, 0, 0));
+    buffer.cells[1].background = Some((40, 42, 54));
+
+    let mut out = Vec::new();
+
+    draw(
+      &mut out,
+      &buffer,
+      Rendition {
+        own: OwnColors {
+          foreground: Some((220, 220, 220)),
+          background: Some((40, 42, 54)),
+        },
+        ..PLAIN
+      },
+      None,
+      false,
+      &mut Placed::default(),
+    );
+
+    let written = String::from_utf8(out).unwrap();
+
+    assert!(
+      !written.contains("\x1b[37m") && !written.contains("\x1b[40m"),
+      "{written:?}"
+    );
+    assert!(written.contains("\x1b[31m"), "{written:?}");
   }
 
   /// A picture is transmitted once per image generation and placed over its cells,

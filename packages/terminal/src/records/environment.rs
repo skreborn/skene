@@ -2,6 +2,7 @@
 //! viewport and the pointer, as values and as signals, and the resolution's source.
 
 use skene_foundation::{
+  Color,
   ColorScheme,
   ContainerName,
   Environment,
@@ -16,13 +17,24 @@ use skene_foundation::{
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use super::{Records, record::SlotLeaf};
-use crate::Terminal;
+use crate::{SystemColors, Terminal, Token, detect};
 
 /// The colors an unset cell shows: the ink and the base a paint mixes against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Contrast {
   pub(crate) ink: (u8, u8, u8),
   pub(crate) base: (u8, u8, u8),
+}
+
+/// The terminal's own colors, each where it reported it and the scheme in force is the
+/// one its background implies: a cell painted in either shows the terminal's default
+/// color.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct OwnColors {
+  /// The terminal's own foreground.
+  pub(crate) foreground: Option<(u8, u8, u8)>,
+  /// The terminal's own background.
+  pub(crate) background: Option<(u8, u8, u8)>,
 }
 
 /// The environment as signals, with the write halves the platform drives.
@@ -109,6 +121,69 @@ impl Records {
     Contrast {
       ink: self.detected_foreground.unwrap_or(defaults.ink),
       base: self.detected_background.unwrap_or(defaults.base),
+    }
+  }
+
+  /// The terminal's own colors, where it reported them and the scheme in force is the
+  /// one its background implies.
+  pub(crate) const fn own_colors(&self) -> OwnColors {
+    if self.dark() != self.detected_dark {
+      return OwnColors {
+        foreground: None,
+        background: None,
+      };
+    }
+
+    OwnColors {
+      foreground: self.detected_foreground,
+      background: self.detected_background,
+    }
+  }
+
+  /// The platform's colors as the terminal shows them: the ink and the window are the
+  /// colors an unset cell shows ([`contrast`](Self::contrast)), the accent is the blue of
+  /// its base colors (OSC 4) under the lighter or the darker of the two, whichever
+  /// stands out on it, and the rest are mixes of the ink into the window.
+  pub(crate) fn system_colors(&self) -> SystemColors {
+    let color = |(red, green, blue): (u8, u8, u8)| {
+      Color::srgb(
+        f32::from(red) / 255.,
+        f32::from(green) / 255.,
+        f32::from(blue) / 255.,
+      )
+    };
+    let Contrast { ink, base } = self.contrast();
+    let accent = self.palette.color(4);
+    let (light, dark) = if detect::is_dark(ink) {
+      (base, ink)
+    }
+    else {
+      (ink, base)
+    };
+    let on_accent = if detect::is_dark(accent) { light } else { dark };
+    let (ink, window, accent) = (color(ink), color(base), color(accent));
+    let tint = |amount: f32| window.mix(ink, amount);
+    let token = |reference: skene_foundation::TokenRef<Color>, value: Color| {
+      Token::new(reference.name().as_str(), value)
+    };
+
+    SystemColors {
+      ink: token(SystemColors::INK, ink),
+      muted_ink: token(SystemColors::MUTED_INK, tint(0.6)),
+      window: token(SystemColors::WINDOW, window),
+      control: token(SystemColors::CONTROL, tint(0.15)),
+      control_hover: token(SystemColors::CONTROL_HOVER, tint(0.25)),
+      control_pressed: token(SystemColors::CONTROL_PRESSED, tint(0.35)),
+      border: token(SystemColors::BORDER, tint(0.5)),
+      accent: token(SystemColors::ACCENT, accent),
+      accent_hover: token(SystemColors::ACCENT_HOVER, accent.mix(ink, 0.15)),
+      accent_pressed: token(SystemColors::ACCENT_PRESSED, accent.mix(ink, 0.3)),
+      on_accent: token(SystemColors::ON_ACCENT, color(on_accent)),
+      track: token(SystemColors::TRACK, tint(0.3)),
+      knob: token(SystemColors::KNOB, ink),
+      field: token(SystemColors::FIELD, tint(0.08)),
+      selection: token(SystemColors::SELECTION, window.mix(accent, 0.5)),
+      selection_inactive: token(SystemColors::SELECTION_INACTIVE, tint(0.25)),
     }
   }
 

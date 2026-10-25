@@ -9,7 +9,15 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use skene_foundation::{Definitions, TokenName};
 
 use crate::{
-  compile::{Compiled, KeptStyle, Key, SlotBinding, Template, slot_registration},
+  compile::{
+    Compiled,
+    KeptStyle,
+    Key,
+    SlotBinding,
+    Template,
+    slot_registration,
+    slot_registrations,
+  },
   interner::ClassInterner,
   token::WebTokenValue,
 };
@@ -20,6 +28,16 @@ use crate::{
 /// It declares the framework's cascade layers and fills `skene.reset`, beneath the
 /// compiled rules' `skene.style`.
 pub(crate) const RESET_CSS: &str = include_str!("reset.css");
+
+/// The base stylesheet every web leaf opens with: the reset, the platform's colors at
+/// the root and every base slot's registration.
+pub(crate) fn base_stylesheet() -> String {
+  format!(
+    "{RESET_CSS}{}{}",
+    WebTokenValue::system_colors(),
+    slot_registrations()
+  )
+}
 
 /// Opens the cascade layer every compiled rule sits in, which a `}` closes.
 pub(crate) const STYLE_LAYER: &str = "@layer skene.style{";
@@ -52,12 +70,13 @@ pub(crate) struct StyleBook<K> {
 }
 
 impl<K: StyleSink> StyleBook<K> {
-  /// Bookkeeping over `sheet`, with nothing interned or registered yet.
+  /// Bookkeeping over `sheet`, with nothing interned and nothing registered but the
+  /// platform's colors, which the base stylesheet registers.
   pub(crate) fn new(sheet: K) -> Self {
     Self {
       interner: ClassInterner::new(),
       compiled: FxHashMap::default(),
-      tokens: FxHashSet::default(),
+      tokens: WebTokenValue::system_color_names().collect(),
       slots: FxHashSet::default(),
       sheet,
     }

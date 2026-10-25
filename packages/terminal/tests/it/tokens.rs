@@ -4,7 +4,8 @@
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
 //! The nearest theme's palette answers, as the tree stands after a box moves, an
 //! expression or a derived leaf over a token resolves through it, and the token answers
-//! the scheme where it is read.
+//! the scheme where it is read. The platform's colors at the root follow what the
+//! terminal reports and the app's scheme.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -549,5 +550,112 @@ fn a_theme_reads_its_definitions_with_the_scene_released() {
     card.set(red());
 
     assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())));
+  });
+}
+
+/// A set of one's own redefining the accent among the platform's colors.
+#[derive(Debug, Clone, PartialEq)]
+struct OwnAccent {
+  /// The accent.
+  accent: Token<Color>,
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for OwnAccent {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.accent.define()]
+  }
+}
+
+/// The color the root defines `reference` as.
+fn root_color(reference: TokenRef<Color>) -> (u8, u8, u8) {
+  Scene::<Terminal>::read(
+    |scene| match scene.root_definitions().get(reference.name()) {
+      Some(TokenValue::Color(definition)) => match definition.base() {
+        StaticLeaf::Fixed(color) => rgb(*color),
+        leaf => panic!("{} is a fixed color, not {leaf:?}", reference.name()),
+      },
+      value => panic!("{} is a color, not {value:?}", reference.name()),
+    },
+  )
+}
+
+/// The platform's colors at the root are the terminal's: white on black for the dark
+/// scheme it assumes until it reports its colors, then the foreground and background it
+/// reports and the blue of its base colors as the accent, and the chosen scheme's own
+/// while the app's choice is not what the terminal shows. A box painted in them shows
+/// them, and a theme beneath that redefines one shows its own.
+#[test]
+fn the_system_colors_at_the_root_follow_the_reported_colors_and_the_scheme_choice() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(SystemColors::WINDOW),
+          Theme::new(OwnAccent {
+            accent: Token::new(SystemColors::ACCENT.name().as_str(), red()),
+          })
+          .set_child_builder(|| {
+            Container::new()
+              .set_width(2)
+              .set_height(1)
+              .set_background(SystemColors::ACCENT)
+          }),
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(SystemColors::ACCENT),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(root_color(SystemColors::INK), (255, 255, 255));
+    assert_eq!(root_color(SystemColors::WINDOW), (0, 0, 0));
+    assert_eq!(
+      root_color(SystemColors::ACCENT),
+      (0, 0, 238),
+      "xterm's blue"
+    );
+    assert_eq!(
+      colors_at(2, 3, 0, 1).1,
+      Some(rgb(red())),
+      "the theme's accent"
+    );
+
+    testing::trigger_terminal_colors((220, 220, 220), (40, 42, 54));
+
+    assert_eq!(root_color(SystemColors::INK), (220, 220, 220));
+    assert_eq!(root_color(SystemColors::WINDOW), (40, 42, 54));
+    assert_eq!(root_color(SystemColors::ON_ACCENT), (220, 220, 220));
+    assert_eq!(colors_at(2, 3, 0, 0).1, Some((40, 42, 54)), "the window");
+    assert_eq!(
+      colors_at(2, 3, 0, 1).1,
+      Some(rgb(red())),
+      "the theme's accent"
+    );
+    assert_eq!(
+      colors_at(2, 3, 0, 2).1,
+      Some((0, 0, 238)),
+      "the root's accent"
+    );
+
+    set_scheme(Some(ColorScheme::Light));
+
+    assert_eq!(root_color(SystemColors::INK), (0, 0, 0));
+    assert_eq!(root_color(SystemColors::WINDOW), (255, 255, 255));
+    assert_eq!(colors_at(2, 3, 0, 0).1, Some((255, 255, 255)));
+
+    set_scheme(Some(ColorScheme::Dark));
+
+    assert_eq!(root_color(SystemColors::INK), (220, 220, 220));
+    assert_eq!(root_color(SystemColors::WINDOW), (40, 42, 54));
+    assert_eq!(colors_at(2, 3, 0, 0).1, Some((40, 42, 54)));
+
+    set_scheme(None);
+
+    assert_eq!(root_color(SystemColors::WINDOW), (40, 42, 54));
   });
 }

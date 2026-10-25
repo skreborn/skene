@@ -1,6 +1,22 @@
-//! The token definitions the web accepts, and their custom-property registrations.
+//! The token definitions the web accepts, their custom-property registrations, and the
+//! platform's colors the root defines.
 
-use skene_foundation::{Color, Definition, Dimension, Length, TokenName, TokenValue};
+use std::any::TypeId;
+
+use skene_foundation::{
+  Color,
+  Definition,
+  Definitions,
+  Dimension,
+  Length,
+  Media,
+  Scene,
+  TokenName,
+  TokenRef,
+  TokenValue,
+};
+
+use crate::{SystemColors, condition::Conjunction, platform::web::Web};
 
 /// The erased token definition the web platform stores per token: a color, a number, a
 /// length, or a dimension.
@@ -72,5 +88,141 @@ impl From<WebTokenValue> for TokenValue<f32> {
       WebTokenValue::Length(definition) => Self::Length(definition),
       WebTokenValue::Dimension(definition) => Self::Dimension(definition),
     }
+  }
+}
+
+/// What the root defines one of the platform's colors as.
+enum SystemColor {
+  /// A CSS color: a system color, or a function of them.
+  Css(&'static str),
+  /// The first color mixed toward the second by the percentage, in Oklab.
+  Mix(TokenRef<Color>, TokenRef<Color>, u8),
+}
+
+impl SystemColor {
+  /// The CSS value.
+  fn render(&self) -> String {
+    match self {
+      Self::Css(value) => (*value).to_owned(),
+      Self::Mix(from, to, percent) => {
+        format!(
+          "color-mix(in oklab,var(--{}),var(--{}) {percent}%)",
+          from.name(),
+          to.name()
+        )
+      }
+    }
+  }
+}
+
+/// What the root defines each of the platform's colors ([`SystemColors`]) as.
+const SYSTEM_COLORS: [(TokenRef<Color>, SystemColor); 16] = [
+  (SystemColors::INK, SystemColor::Css("CanvasText")),
+  (SystemColors::MUTED_INK, SystemColor::Css("GrayText")),
+  (SystemColors::WINDOW, SystemColor::Css("Canvas")),
+  (SystemColors::CONTROL, SystemColor::Css("ButtonFace")),
+  (
+    SystemColors::CONTROL_HOVER,
+    SystemColor::Mix(SystemColors::CONTROL, SystemColors::INK, 8),
+  ),
+  (
+    SystemColors::CONTROL_PRESSED,
+    SystemColor::Mix(SystemColors::CONTROL, SystemColors::INK, 16),
+  ),
+  (SystemColors::BORDER, SystemColor::Css("ButtonBorder")),
+  (SystemColors::ACCENT, SystemColor::Css("AccentColor")),
+  (
+    SystemColors::ACCENT_HOVER,
+    SystemColor::Mix(SystemColors::ACCENT, SystemColors::INK, 12),
+  ),
+  (
+    SystemColors::ACCENT_PRESSED,
+    SystemColor::Mix(SystemColors::ACCENT, SystemColors::INK, 24),
+  ),
+  (SystemColors::ON_ACCENT, SystemColor::Css("AccentColorText")),
+  (
+    SystemColors::TRACK,
+    SystemColor::Mix(SystemColors::WINDOW, SystemColors::INK, 20),
+  ),
+  (
+    SystemColors::KNOB,
+    SystemColor::Css("light-dark(Canvas,CanvasText)"),
+  ),
+  (SystemColors::FIELD, SystemColor::Css("Field")),
+  (SystemColors::SELECTION, SystemColor::Css("Highlight")),
+  (
+    SystemColors::SELECTION_INACTIVE,
+    SystemColor::Css("color-mix(in oklab,GrayText 35%,transparent)"),
+  ),
+];
+
+/// What an engine without `AccentColor` defines the accent and what sits on it as: the
+/// blue its own controls are drawn in, per scheme.
+const ACCENT_FALLBACK: [(TokenRef<Color>, SystemColor); 2] = [
+  (
+    SystemColors::ACCENT,
+    SystemColor::Css("light-dark(#0075ff,#99c8ff)"),
+  ),
+  (
+    SystemColors::ON_ACCENT,
+    SystemColor::Css("light-dark(#ffffff,#1b1b1b)"),
+  ),
+];
+
+impl WebTokenValue {
+  /// The rules defining the platform's colors at the root, in the reset's layer: their
+  /// registrations, each a CSS system color the root's `color-scheme` resolves, that
+  /// scheme following the platform's and the app's choice through the scheme guard, so
+  /// a page follows both with no script.
+  ///
+  /// A theme beneath redefines any of them as it does any token.
+  #[must_use]
+  pub(crate) fn system_colors() -> String {
+    let registered = Self::Color(Definition::from(Color::TRANSPARENT));
+    let declarations = |colors: &[(TokenRef<Color>, SystemColor)]| {
+      colors
+        .iter()
+        .fold(String::new(), |mut out, (reference, color)| {
+          out.push_str("--");
+          out.push_str(reference.name().as_str());
+          out.push(':');
+          out.push_str(&color.render());
+          out.push(';');
+
+          out
+        })
+    };
+    let mut out = SYSTEM_COLORS
+      .iter()
+      .map(|(reference, _)| registered.registration(reference.name()))
+      .collect::<String>();
+
+    out.push_str("@layer skene.reset{:where(:root){color-scheme:light;");
+    out.push_str(&declarations(&SYSTEM_COLORS));
+    out.push_str("}@supports not (color:AccentColor){:where(:root){");
+    out.push_str(&declarations(&ACCENT_FALLBACK));
+    out.push_str("}}");
+
+    for conjunction in Conjunction::of_media(&Media::Dark) {
+      conjunction.emit(&mut out, Some(":root"), "", "color-scheme:dark;");
+    }
+
+    out.push('}');
+
+    out
+  }
+
+  /// Claims the root's [`SystemColors`] for [`system_colors`](Self::system_colors)'s
+  /// rules, so a read of the set below no theme lays no definition over the platform's.
+  pub(crate) fn claim_system_colors() {
+    Scene::<Web>::with(|scene| {
+      scene.define_root_set(TypeId::of::<SystemColors>(), Definitions::from(Vec::new()))
+    });
+  }
+
+  /// The names of the platform's colors, which [`system_colors`](Self::system_colors)
+  /// registers.
+  pub(crate) fn system_color_names() -> impl Iterator<Item = TokenName> {
+    SYSTEM_COLORS.iter().map(|(reference, _)| reference.name())
   }
 }

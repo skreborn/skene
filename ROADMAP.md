@@ -539,8 +539,7 @@ in a code comment.
     index API; lazy grids and sticky headers.
     - Style: opacity and transforms as compositor-friendly properties of their own,
     gradients, box shadows, italic, text alignment, ellipsis and a maximum line count,
-    and system colors, shared with stated terminal degradations and the web-only ones
-    in `WebStyle`.
+    shared with stated terminal degradations and the web-only ones in `WebStyle`.
 21. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
     alternate screen the app always takes today; printing above the app; `exec` and
     `suspend`; log capture, to a file or over the attach pipe, since the terminal

@@ -16,13 +16,12 @@ use skene_foundation::{
 
 use super::{PREEMPT_SCHEME, PREEMPT_SCHEME_SCRIPT, ROOT, SCRIPT_NONCE, VIEW_TRANSITIONS};
 use crate::{
-  compile::slot_registrations,
   condition::CLASS_PLACEHOLDER,
   markup::{FormElement, MARKER_ATTRIBUTE, STYLE_ATTRIBUTE, STYLE_ID},
   motion::VIEW_TRANSITION_RULE,
   platform::web::Web,
   realize::{Realizer, Sink},
-  style_book::{RESET_CSS, STYLE_LAYER, StyleSink, push_style_text},
+  style_book::{STYLE_LAYER, StyleSink, base_stylesheet, push_style_text},
 };
 
 /// A position in the in-order stream walk: a node whose opening tag is emitted, the
@@ -576,13 +575,12 @@ impl Tree {
     None
   }
 
-  /// The `<style>` block a document opens with: the reset, the slot registrations, and
-  /// every token registration and live rule not emitted yet, in interning order.
+  /// The `<style>` block a document opens with: the base stylesheet, and every token
+  /// registration and live rule not emitted yet, in interning order.
   pub(super) fn render_styles(&mut self) -> String {
     let mut out = format!("<style id=\"{STYLE_ID}\">");
 
-    out.push_str(RESET_CSS);
-    out.push_str(&slot_registrations());
+    out.push_str(&base_stylesheet());
 
     if VIEW_TRANSITIONS.with(Cell::get) {
       out.push_str(VIEW_TRANSITION_RULE);

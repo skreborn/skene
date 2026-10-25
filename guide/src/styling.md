@@ -90,6 +90,48 @@ fn themed(accent: Signal<Color>) -> impl View {
 
 A theme inside another redefines the tokens for its own subtree alone.
 
+### The platform's colors
+
+`SystemColors` names the platform's colors, as CSS's system colors are: the ink, the
+window, a control's fill and border, the accent and what sits on it, a track, a knob, a
+field and a selection, with a hover and a pressed variant where a control needs one. The
+platform defines them at the root, so a view painted in them looks like the platform it
+runs on: the web defines them as CSS's system colors, so a page follows the reader's
+platform and color scheme with no script, and the terminal defines them from the colors
+it reports. A set of your own that defines one of the names redefines it beneath its
+theme as any token, and everything beneath that reads it follows:
+
+```rust
+use skene_web::{Definition, TokenName, prelude::*};
+
+/// An accent of the app's own, in place of the platform's.
+#[derive(Debug, Clone, PartialEq)]
+struct BrandAccent {
+  accent: Token<Color>,
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for BrandAccent {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.accent.define()]
+  }
+}
+
+fn branded() -> impl View {
+  let accent = Token::new(
+    SystemColors::ACCENT.name().as_str(),
+    Color::srgb(1., 0.58, 0.),
+  );
+
+  Theme::new(BrandAccent { accent }).set_child_builder(|| {
+    Container::new()
+      .set_background(SystemColors::ACCENT)
+      .set_child(Text::new("Ours").set_color(SystemColors::ON_ACCENT))
+  })
+}
+```
+
+A theme of `SystemColors` itself replaces every one of them with the set's definitions.
+
 ## Light and dark
 
 Light and dark are one condition, `Media::Dark`, which a token's definition answers

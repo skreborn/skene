@@ -1172,6 +1172,7 @@ pub type skene_web::prelude::Rect = skene_foundation::spine::values::rect::Rect<
 pub type skene_web::prelude::Resource<T> = skene_foundation::web::resource::Resource<skene_web::Active, T>
 pub type skene_web::prelude::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::prelude::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
+pub type skene_web::prelude::SystemColors = skene_foundation::system_colors::SystemColors<f32>
 pub type skene_web::prelude::Token<T> = skene_foundation::spine::token::Token<T, f32>
 pub type skene_web::prelude::Value<T> = skene_foundation::spine::leaf::Value<T, skene_web::Condition>
 pub mod skene_web::view_transitions
@@ -1783,6 +1784,7 @@ pub type skene_web::Rect = skene_foundation::spine::values::rect::Rect<f32>
 pub type skene_web::Resource<T> = skene_foundation::web::resource::Resource<skene_web::Active, T>
 pub type skene_web::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
+pub type skene_web::SystemColors = skene_foundation::system_colors::SystemColors<f32>
 pub type skene_web::Token<T> = skene_foundation::spine::token::Token<T, f32>
 pub type skene_web::TokenValue = <skene_web::Active as skene_foundation::spine::realization::Realization>::TokenValue
 pub type skene_web::Value<T> = skene_foundation::spine::leaf::Value<T, skene_web::Condition>

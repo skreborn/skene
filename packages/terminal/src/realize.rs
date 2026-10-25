@@ -1,7 +1,7 @@
 //! The terminal's realization of the platform: one record per node beside the scene,
 //! the layout tree those records lay out in, and the environment as signals.
 
-use std::{cell::RefCell, rc::Rc, thread::LocalKey};
+use std::{any::TypeId, cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_foundation::{
   Availability,
@@ -38,6 +38,7 @@ use skene_foundation::{
 use skene_reactive::{Memo, ReadSignal, Set};
 
 use crate::{
+  SystemColors,
   TerminalStyle,
   TokenValue,
   Typography,
@@ -395,6 +396,8 @@ impl Realization for Terminal {
       Some((records.media().set_scheme, after))
     });
 
+    define_system_colors();
+
     if let Some((write, scheme)) = write {
       write.set(scheme);
     }
@@ -525,9 +528,28 @@ pub(crate) fn install() {
   // Every run inherits its text properties through the typography tokens, so the
   // terminal's defaults are defined at the root before any theme redefines them.
   <Typography as skene_foundation::ThemedIn<Terminal>>::define_root();
+  define_system_colors();
   ROOT.with(|held| *held.borrow_mut() = Some(node));
 
   crate::dev::provide_restoration();
+}
+
+/// Defines the platform's colors ([`SystemColors`]) at the root from what the terminal
+/// reports, redefining them where that moved; definitions equal to those in force change
+/// nothing.
+pub(crate) fn define_system_colors() {
+  let definitions = Definitions::of(&with_records(|records| records.system_colors()));
+
+  Scene::<Terminal>::with(|scene| {
+    if scene.define_root_set(TypeId::of::<SystemColors>(), definitions.clone()) {
+      return;
+    }
+
+    let mut root = scene.root_definitions().clone();
+
+    root.overlay(definitions);
+    scene.define_tokens(TokenScope::Root, root);
+  });
 }
 
 /// Uninstalls the terminal platform: empties the scene and the records, and resets the

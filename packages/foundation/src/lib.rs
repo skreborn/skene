@@ -160,6 +160,7 @@ pub use crate::{
     ControlOps,
     Controlled,
     ControlledChoice,
+    HasControl,
     Label,
     LabelPlacement,
     Listbox,

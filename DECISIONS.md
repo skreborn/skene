@@ -8,6 +8,25 @@ supersedes.
 
 ## Decided against
 
+- **Styled built-ins hosted once in the foundation with per-medium defaults**
+  (2026-10-25), one `Button`, `Checkbox` and `Toggle` over `P: Realization` whose
+  defaults each medium supplies as data: the trees the two media compose differ (a drawn
+  box with a check and a pill with a disc against glyph runs and a track of cells, a
+  border ring against reversed cells), so the code would only look alike, and each
+  facade writes its built-ins in parallel files over the foundation's `Control::over`.
+  Revisit when two facades' trees for a control coincide.
+- **The accent itself as a prominent button's fill on the web** (2026-10-25): Chromium
+  answers `AccentColor` with `#0075ff` and `AccentColorText` with white, 4.2:1, below
+  WCAG AA's 4.5:1 for a label, so the web's prominent fill is the accent darkened by a
+  tenth of Oklch lightness, which keeps a light accent's dark text legible too. Revisit
+  when every engine's accent pair reaches 4.5:1, or `contrast-color()` can pick the
+  label's ink on every engine.
+- **A styled built-in holding its defaults in the control** (2026-10-25), a defaults
+  layer inside `Control` that a built-in's own setters (`set_prominent`) rewrite as they
+  are called: the built-in keeps what its defaults depend on beside its control and
+  builds them at build, under every setter, through `Control::over`, so a setter's
+  order never matters, and `HasControl` lets such a view carry every control's members.
+  Revisit when a built-in's defaults must be known before it is built.
 - **The web's system colors as a token value** (2026-10-25), a keyword kind of
   `WebTokenValue` (or a `Color` naming a system color) so the root's `SystemColors`
   would cross the seam as any root definition does: CSS's system colors are keywords no

@@ -30,11 +30,15 @@ use crate::{
 /// state crosses to the platform as its [`Checked`](crate::Content::Checked) content,
 /// which a [`Controller`] holds: a flip the platform reports applied asks for the state
 /// it shows, and one the truth then refuses is undone.
+///
+/// [`switch`](Self::switch) makes it a switch: the same interaction, reported as
+/// [`Role::Switch`], on or off rather than checked.
 #[derive(Default)]
 #[must_use]
 pub struct Toggle {
   checked: Controlled<bool>,
   armed: Cell<bool>,
+  switch: bool,
 }
 
 impl std::fmt::Debug for Toggle {
@@ -57,6 +61,22 @@ impl Toggle {
   #[inline(always)]
   pub fn new() -> Self {
     Self::default()
+  }
+
+  /// An unchecked switch with no handler: a checkbox reported as [`Role::Switch`].
+  #[inline(always)]
+  pub fn switch() -> Self {
+    Self {
+      switch: true,
+      ..Self::default()
+    }
+  }
+
+  /// Whether it is a switch rather than a checkbox.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_switch(&self) -> bool {
+    self.switch
   }
 
   /// The closure the checked state is read through; `false` with none set.
@@ -122,7 +142,12 @@ impl Behavior for Toggle {
 
   #[inline(always)]
   fn role(&self) -> Option<Role> {
-    Some(Role::CheckBox)
+    Some(if self.switch {
+      Role::Switch
+    }
+    else {
+      Role::CheckBox
+    })
   }
 
   #[inline(always)]

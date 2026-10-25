@@ -43,7 +43,9 @@ pub fn app() -> impl View {
                   .set_color(SimplePalette::MUTED_FOREGROUND),
                 palettes(palette),
                 typography(),
-                buttons(),
+                Column::new()
+                  .set_spacing(24)
+                  .set_children((buttons(), built_ins())),
                 tooltips(),
                 toggles(),
                 inputs(),
@@ -180,6 +182,42 @@ fn buttons() -> impl View {
           SimpleButton::new("Disabled").set_disabled(true),
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
+}
+
+fn built_ins() -> impl View {
+  let published = Signal::tagged("published", 0u32);
+  let agreed = Signal::tagged("built-in agreed", true);
+  let wifi = Signal::tagged("built-in wifi", false);
+
+  // The framework's own controls, drawn in the platform's colors: what a component
+  // library's presets build on, each default a value its setters replace.
+  section(
+    "Built-in controls",
+    Column::new().set_spacing(12).set_children((
+      Row::new()
+        .set_spacing(8)
+        .set_wrap(Wrap::Forward)
+        .set_item_alignment(ItemAlignment::Center)
+        .set_children((
+          Button::new("Publish")
+            .set_prominent(true)
+            .handle_activate(move || published.update(|value| *value += 1)),
+          Button::new("Cancel"),
+          Button::new("Disabled").set_disabled(true),
+        )),
+      Row::new()
+        .set_spacing(16)
+        .set_wrap(Wrap::Forward)
+        .set_item_alignment(ItemAlignment::Center)
+        .set_children((
+          Checkbox::new().set_label("Agree").bind_checked(agreed),
+          Toggle::new().set_label("Wi-Fi").bind_checked(wifi),
+        )),
+      Text::derive(move || format!("published {} time(s)", published.get()))
         .set_font_size(13.)
         .set_color(SimplePalette::MUTED_FOREGROUND),
     )),

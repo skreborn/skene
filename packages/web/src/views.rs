@@ -1,6 +1,8 @@
 //! The views of the web's own, each forwarding to the foundation's implementation.
 
 mod async_view;
+mod button;
+mod checkbox;
 mod container;
 mod context_menu;
 mod control;
@@ -24,11 +26,14 @@ mod stack;
 mod suspense;
 mod text;
 mod theme;
+mod toggle;
 mod tooltip;
 mod visibility;
 
 pub use self::{
   async_view::AsyncView,
+  button::Button,
+  checkbox::Checkbox,
   container::Container,
   context_menu::ContextMenu,
   control::{
@@ -65,6 +70,7 @@ pub use self::{
   suspense::Suspense,
   text::Text,
   theme::Theme,
+  toggle::Toggle,
   tooltip::Tooltip,
   visibility::Visibility,
 };

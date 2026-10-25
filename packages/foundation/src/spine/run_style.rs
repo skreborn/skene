@@ -7,7 +7,6 @@ use super::{
   DerivedSlot,
   Fingerprint,
   Keyframe,
-  Plain,
   Property,
   PropertyKey,
   Shape,
@@ -200,23 +199,26 @@ impl<S: Shape, X: StyleExtension, V: RunVisitor<S, X>> RunFieldVisitor<X> for Vi
   }
 }
 
-impl<X: StyleExtension> RunStyle<Plain, X> {
-  /// Lays `over` on this style: every property `over` sets replaces this one's.
+impl<S: Shape, X: StyleExtension> RunStyle<S, X> {
+  /// Lays `over` on this style: every property `over` sets replaces this one's, so a
+  /// style of defaults takes the properties a builder set over them.
   #[inline(always)]
   pub fn overlay(&mut self, over: &Self) {
     Self::for_each_field(&mut Overlay { base: self, over });
   }
 }
 
-struct Overlay<'a, X: StyleExtension> {
-  base: &'a mut RunStyle<Plain, X>,
-  over: &'a RunStyle<Plain, X>,
+struct Overlay<'a, S: Shape, X: StyleExtension> {
+  base: &'a mut RunStyle<S, X>,
+  over: &'a RunStyle<S, X>,
 }
 
-impl<X: StyleExtension> RunFieldVisitor<X> for Overlay<'_, X> {
+impl<S: Shape, X: StyleExtension> RunFieldVisitor<X> for Overlay<'_, S, X> {
   fn field<F: RunField<X>>(&mut self) {
-    if let Some(value) = F::get(self.over) {
-      *F::get_mut(self.base) = Some(value.clone());
+    let value = F::get(self.over);
+
+    if *value != S::Of::<F::Value>::default() {
+      *F::get_mut(self.base) = value.clone();
     }
   }
 }

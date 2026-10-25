@@ -917,6 +917,38 @@ re-export.
   glyph token—painted by the same painters as everything else, so they carry roles,
   accessibility properties and focus order, and the keyboard tables live in the
   behaviors rather than in a match per medium.
+- **The styled built-ins are each facade's own.** `Button`, `Checkbox` and `Toggle` (a
+  switch) are drawn, default-styled controls over `Activate`, `Toggle` and
+  `Toggle::switch` (which reports `Role::Switch`), written in parallel files per facade
+  (`views/button.rs`, `views/checkbox.rs`, `views/toggle.rs`), since the trees the media
+  compose differ; every default reads `SystemColors`, so a theme of the set restyles
+  them all. Each builds its defaults as a control of its own at build and lays the
+  control its user configured over it (`Control::over`: the user's box style overlaid
+  on the defaults' field by field, `BoxStyle::overlay` over any shape, the caption,
+  flags and body replacing the defaults' where set, a part replacing the default part
+  of its kind), so every `set_`/`derive_` its user calls wins whatever its order, and a
+  default changes no layout property with a state. `HasControl` is how a view carries
+  every control's members (`ControlBase`) whether it holds a control as its whole
+  content or beside what its defaults read, as `Button` holds its label, its prominence
+  and its label's color. `Button::new(label)`/`derive(label)` makes the label its
+  content and its name; `set_prominent`/`derive_prominent` is the semantic option
+  showing it as its screen's primary action, each leaf it picks a token where fixed and
+  a derived leaf where it follows a signal, so a prominence that changes re-inks the
+  button in place. In pixels the button is at least 32 tall, padded 4 by 12 inside a
+  border of 2 rounded by 6, filled with `CONTROL` and its hover and pressed variants
+  (the accent's darkened by a tenth of Oklch lightness where prominent, the resting one
+  while disabled), its label in `INK`
+  (`ON_ACCENT` where prominent, `MUTED_INK` disabled), and its border a ring in the
+  accent (`INK` where prominent) while focus shows; in cells it is padded a cell at
+  either side, and focus shows as accent cells under `ON_ACCENT`, reversed where
+  prominent. The checkbox's default `Part::Mark` is an 18-pixel box in `FIELD` and
+  `BORDER` turning to the accent with a check in `ON_ACCENT` while checked, and the
+  glyphs `[ ]` and `[x]` in cells, `set_part(Part::Mark, ..)` replacing either. The
+  switch's default `Part::Track` holds its `Part::Thumb`: a 40 by 24 pill in `TRACK`,
+  the accent while on, with a 16-pixel `KNOB` disc, or three cells with a `●` thumb, the
+  thumb shifted to the end by offset rather than layout while on; on the web its input
+  is `<input type=checkbox switch role=switch>`, kept as the scriptless form as a
+  checkbox's is. The conformance pages keep the `Basic*` controls.
 
 ## The style model
 

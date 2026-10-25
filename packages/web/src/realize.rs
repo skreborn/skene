@@ -27,6 +27,7 @@ use skene_foundation::{
   OverlayFacts,
   OverlayPlacement,
   Placement,
+  Role,
   RunFacts,
   Scene,
   Slot,
@@ -419,7 +420,7 @@ impl<S: Sink> Realizer<S> {
       Some(native) if native.is_bare() => {
         let (root, adopted) = self.create_element(node, native.tag, realized);
 
-        self.write_native_attributes(&root, native, control, adopted);
+        self.write_native_attributes(&root, native, control, spec.role, adopted);
 
         if adopted {
           self.sink.note_live_state(node, &root, native);
@@ -431,7 +432,7 @@ impl<S: Sink> Realizer<S> {
         let (root, _) = self.create_element(node, "label", realized);
         let (input, adopted) = self.sink.create_element(native.tag);
 
-        self.write_native_attributes(&input, native, control, adopted);
+        self.write_native_attributes(&input, native, control, spec.role, adopted);
         self.sink.set_attribute(&input, "class", NATIVE_CLASS);
 
         if adopted {
@@ -1289,9 +1290,10 @@ impl<S: Sink> Realizer<S> {
     element: &S::Element,
     native: FormElement,
     control: &ControlFacts,
+    role: Option<Role>,
     adopted: bool,
   ) {
-    for (name, value) in native_attributes(native, control) {
+    for (name, value) in native_attributes(native, control, role) {
       if adopted && name == "type" {
         continue;
       }

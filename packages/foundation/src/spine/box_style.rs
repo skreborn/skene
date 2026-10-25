@@ -7,7 +7,6 @@ use super::{
   DerivedSlot,
   Fingerprint,
   Keyframe,
-  Plain,
   Property,
   PropertyKey,
   Scalar,
@@ -461,23 +460,26 @@ impl<N: Scalar, S: Shape, X: StyleExtension, V: BoxVisitor<N, S, X>> BoxFieldVis
   }
 }
 
-impl<N: Scalar, X: StyleExtension> BoxStyle<N, Plain, X> {
-  /// Lays `over` on this style: every property `over` sets replaces this one's.
+impl<N: Scalar, S: Shape, X: StyleExtension> BoxStyle<N, S, X> {
+  /// Lays `over` on this style: every property `over` sets replaces this one's, so a
+  /// style of defaults takes the properties a builder set over them.
   #[inline(always)]
   pub fn overlay(&mut self, over: &Self) {
     Self::for_each_field(&mut Overlay { base: self, over });
   }
 }
 
-struct Overlay<'a, N: Scalar, X: StyleExtension> {
-  base: &'a mut BoxStyle<N, Plain, X>,
-  over: &'a BoxStyle<N, Plain, X>,
+struct Overlay<'a, N: Scalar, S: Shape, X: StyleExtension> {
+  base: &'a mut BoxStyle<N, S, X>,
+  over: &'a BoxStyle<N, S, X>,
 }
 
-impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for Overlay<'_, N, X> {
+impl<N: Scalar, S: Shape, X: StyleExtension> BoxFieldVisitor<N, X> for Overlay<'_, N, S, X> {
   fn field<F: BoxField<N, X>>(&mut self) {
-    if let Some(value) = F::get(self.over) {
-      *F::get_mut(self.base) = Some(value.clone());
+    let value = F::get(self.over);
+
+    if *value != S::Of::<F::Value>::default() {
+      *F::get_mut(self.base) = value.clone();
     }
   }
 }
@@ -694,6 +696,28 @@ mod tests {
     assert_eq!(base.background, Some(Color::srgb(0., 0., 1.)));
     assert_eq!(base.padding, Some(Inset::all(1)));
     assert_eq!(base.height, None);
+  }
+
+  /// A declared style overlays as a plain one does, a derived leaf carried across as
+  /// the same closure: what a style of defaults takes from a builder's.
+  #[test]
+  fn a_declared_overlay_carries_what_the_builder_set() {
+    let mut defaults = BoxStyle::<i32, Declared<Condition<i32>>>::default();
+    let mut set = BoxStyle::<i32, Declared<Condition<i32>>>::default();
+    let derived = Value::new(Leaf::derive(|| Color::srgb(0., 1., 0.)));
+
+    defaults.width = Some(Value::new(Leaf::from(Dimension::Length(4))));
+    defaults.background = Some(Value::new(Leaf::from(Color::srgb(1., 0., 0.))));
+    set.background = Some(derived.clone());
+
+    defaults.overlay(&set);
+
+    assert_eq!(
+      defaults.width,
+      Some(Value::new(Leaf::from(Dimension::Length(4))))
+    );
+    assert_eq!(defaults.background, Some(derived), "the same closure");
+    assert_eq!(defaults.padding, None);
   }
 
   /// A visitor sees every shared property once, in declaration order, with the fields

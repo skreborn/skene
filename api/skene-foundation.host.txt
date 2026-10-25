@@ -5028,9 +5028,9 @@ pub fn skene_foundation::BoxStyle<N, skene_foundation::Declared<C>, X>::split_af
 impl<N: skene_foundation::Scalar, S: skene_foundation::Shape, X: skene_foundation::StyleExtension> skene_foundation::BoxStyle<N, S, X>
 pub fn skene_foundation::BoxStyle<N, S, X>::for_each_field<V: skene_foundation::BoxFieldVisitor<N, X>>(&mut V)
 impl<N: skene_foundation::Scalar, S: skene_foundation::Shape, X: skene_foundation::StyleExtension> skene_foundation::BoxStyle<N, S, X>
+pub fn skene_foundation::BoxStyle<N, S, X>::overlay(&mut self, &Self)
+impl<N: skene_foundation::Scalar, S: skene_foundation::Shape, X: skene_foundation::StyleExtension> skene_foundation::BoxStyle<N, S, X>
 pub fn skene_foundation::BoxStyle<N, S, X>::visit<V: skene_foundation::BoxVisitor<N, S, X>>(&self, &mut V)
-impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxStyle<N, skene_foundation::Plain, X>
-pub fn skene_foundation::BoxStyle<N, skene_foundation::Plain, X>::overlay(&mut self, &Self)
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::BoxStyle<N, skene_foundation::Plain, X>
 pub fn skene_foundation::BoxStyle<N, skene_foundation::Plain, X>::value(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> core::option::Option<skene_foundation::BoxValue<N, X>>
 impl<N: core::clone::Clone + skene_foundation::Scalar, S: core::clone::Clone + skene_foundation::Shape, X: core::clone::Clone + skene_foundation::StyleExtension> core::clone::Clone for skene_foundation::BoxStyle<N, S, X> where <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <S as skene_foundation::Shape>::Of: core::clone::Clone, <X as skene_foundation::StyleExtension>::BoxFields: core::clone::Clone
@@ -5557,6 +5557,7 @@ pub struct skene_foundation::Control<P: skene_foundation::Realization, B: skene_
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::Control<P, B>
 pub const fn skene_foundation::Control<P, B>::behavior(&self) -> &B
 pub fn skene_foundation::Control<P, B>::map_behavior(self, impl core::ops::function::FnOnce(B) -> B) -> Self
+pub fn skene_foundation::Control<P, B>::over<D: skene_foundation::Behavior>(self, skene_foundation::Control<P, D>) -> Self
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
 pub fn skene_foundation::Control<P, B>::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -5642,6 +5643,9 @@ pub fn skene_foundation::Control<P, B>::set_padding(self, impl core::convert::In
 pub fn skene_foundation::Control<P, B>::set_width(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Dimension<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::HasBoxStyle<P> for skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::box_style_mut(&mut self) -> &mut skene_foundation::DeclaredBoxStyle<P>
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::HasControl<P, B> for skene_foundation::Control<P, B>
+pub fn skene_foundation::Control<P, B>::control(&self) -> &Self
+pub fn skene_foundation::Control<P, B>::map_control(self, impl core::ops::function::FnOnce(Self) -> Self) -> Self
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::HasLayoutBox<P> for skene_foundation::Control<P, B>
 pub type skene_foundation::Control<P, B>::Kind = skene_foundation::PlainChild
 pub fn skene_foundation::Control<P, B>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> skene_foundation::LayoutBox<P, skene_foundation::PlainChild>) -> Self
@@ -6578,6 +6582,7 @@ pub fn skene_foundation::LayoutBox<P, Kind>::handle_pointer_up<R: core::convert:
 pub fn skene_foundation::LayoutBox<P, Kind>::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::ScrollEvent) + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::handle_wheel<R: core::convert::Into<skene_foundation::Bubbling>>(self, impl core::ops::function::Fn(&skene_foundation::WheelEvent) -> R + 'static) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::new(skene_foundation::Layout) -> Self
+pub fn skene_foundation::LayoutBox<P, Kind>::over(self, Self) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::AccessProp>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_arrangement(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Arrangement, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -7705,9 +7710,9 @@ pub fn skene_foundation::RunStyle<skene_foundation::Declared<C>, X>::split(self)
 impl<S: skene_foundation::Shape, X: skene_foundation::StyleExtension> skene_foundation::RunStyle<S, X>
 pub fn skene_foundation::RunStyle<S, X>::for_each_field<V: skene_foundation::RunFieldVisitor<X>>(&mut V)
 impl<S: skene_foundation::Shape, X: skene_foundation::StyleExtension> skene_foundation::RunStyle<S, X>
+pub fn skene_foundation::RunStyle<S, X>::overlay(&mut self, &Self)
+impl<S: skene_foundation::Shape, X: skene_foundation::StyleExtension> skene_foundation::RunStyle<S, X>
 pub fn skene_foundation::RunStyle<S, X>::visit<V: skene_foundation::RunVisitor<S, X>>(&self, &mut V)
-impl<X: skene_foundation::StyleExtension> skene_foundation::RunStyle<skene_foundation::Plain, X>
-pub fn skene_foundation::RunStyle<skene_foundation::Plain, X>::overlay(&mut self, &Self)
 impl<X: skene_foundation::StyleExtension> skene_foundation::RunStyle<skene_foundation::Plain, X>
 pub fn skene_foundation::RunStyle<skene_foundation::Plain, X>::value(&self, skene_foundation::PropertyKey<<X as skene_foundation::StyleExtension>::Property>) -> core::option::Option<skene_foundation::RunValue<X>>
 impl<C: core::clone::Clone + core::cmp::PartialEq + core::hash::Hash + core::fmt::Debug + 'static, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::RunStyle<skene_foundation::Static<C>, X>
@@ -8362,9 +8367,11 @@ impl skene_foundation::Toggle
 pub fn skene_foundation::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_foundation::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
+pub const fn skene_foundation::Toggle::is_switch(&self) -> bool
 pub fn skene_foundation::Toggle::new() -> Self
 pub fn skene_foundation::Toggle::reads_checked(&self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>
 pub fn skene_foundation::Toggle::set_checked(self, bool) -> Self
+pub fn skene_foundation::Toggle::switch() -> Self
 impl core::default::Default for skene_foundation::Toggle
 pub fn skene_foundation::Toggle::default() -> skene_foundation::Toggle
 impl core::fmt::Debug for skene_foundation::Toggle
@@ -9244,7 +9251,7 @@ pub trait skene_foundation::ContextMenuWithCornerRadius<P: skene_foundation::Rea
 pub fn skene_foundation::ContextMenuWithCornerRadius::set_item_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization, T: skene_foundation::ContextMenuBase<P>> skene_foundation::ContextMenuWithCornerRadius<P> for T where <P as skene_foundation::Realization>::StyleExt: skene_foundation::CornerRadius
 pub fn T::set_item_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
-pub trait skene_foundation::ControlBase<P: skene_foundation::Realization, B: skene_foundation::Behavior>: skene_foundation::Wraps<Inner = skene_foundation::Control<P, B>>
+pub trait skene_foundation::ControlBase<P: skene_foundation::Realization, B: skene_foundation::Behavior>: skene_foundation::HasControl<P, B>
 pub fn skene_foundation::ControlBase::behavior(&self) -> &B
 pub fn skene_foundation::ControlBase::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
 pub fn skene_foundation::ControlBase::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -9269,7 +9276,7 @@ pub fn skene_foundation::ControlBase::handle_pointer_move(self, impl core::ops::
 pub fn skene_foundation::ControlBase::handle_pointer_up(self, impl core::ops::function::Fn(&skene_foundation::PointerEvent) + 'static) -> Self
 pub fn skene_foundation::ControlBase::handle_scroll(self, impl core::ops::function::Fn(&skene_foundation::ScrollEvent) + 'static) -> Self
 pub fn skene_foundation::ControlBase::handle_wheel(self, impl core::ops::function::Fn(&skene_foundation::WheelEvent) + 'static) -> Self
-pub fn skene_foundation::ControlBase::new(B) -> Self
+pub fn skene_foundation::ControlBase::new(B) -> Self where Self: skene_foundation::Wraps<Inner = skene_foundation::Control<P, B>>
 pub fn skene_foundation::ControlBase::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::ControlBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::ControlBase::set_autofocus(self, bool) -> Self
@@ -9949,6 +9956,15 @@ pub fn skene_foundation::Stack<P>::derive_child<V: skene_foundation::IntoChildOf
 pub fn skene_foundation::Stack<P>::derive_children<T, I, K, V>(self, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> V + 'static) -> Self where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::Stack<P>::derive_entries<F, V>(self, F, impl core::ops::function::Fn(skene_reactive::store::AtKey<F>) -> V + 'static) -> Self where F: skene_reactive::store::KeyedField, V: skene_foundation::IntoChildOf<P, Self::Kind>
 pub fn skene_foundation::Stack<P>::set_children(self, impl skene_foundation::IntoChildren<P, Self::Kind>) -> Self
+pub trait skene_foundation::HasControl<P: skene_foundation::Realization, B: skene_foundation::Behavior>: core::marker::Sized
+pub fn skene_foundation::HasControl::control(&self) -> &skene_foundation::Control<P, B>
+pub fn skene_foundation::HasControl::map_control(self, impl core::ops::function::FnOnce(skene_foundation::Control<P, B>) -> skene_foundation::Control<P, B>) -> Self
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior, T: skene_foundation::Wraps<Innerskene_foundation::HasControl<P, B>>> skene_foundation::HasControl<P, B> for T
+pub fn T::control(&self) -> &skene_foundation::Control<P, B>
+pub fn T::map_control(self, impl core::ops::function::FnOnce(skene_foundation::Control<P, B>) -> skene_foundation::Control<P, B>) -> Self
+impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::HasControl<P, B> for skene_foundation::Control<P, B>
+pub fn skene_foundation::Control<P, B>::control(&self) -> &Self
+pub fn skene_foundation::Control<P, B>::map_control(self, impl core::ops::function::FnOnce(Self) -> Self) -> Self
 pub trait skene_foundation::HasLayoutBox<P: skene_foundation::Realization>: core::marker::Sized
 pub type skene_foundation::HasLayoutBox::Kind: 'static
 pub fn skene_foundation::HasLayoutBox::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::LayoutBox<P, Self::Kind>) -> skene_foundation::LayoutBox<P, Self::Kind>) -> Self

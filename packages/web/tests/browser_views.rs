@@ -110,6 +110,7 @@ use skene_web::{
   Row,
   Span,
   Stack,
+  SystemColors,
   Text,
   TextSelection,
   Theme,
@@ -2853,4 +2854,214 @@ fn moving_and_removing_the_focused_element_run_with_the_scene_released() {
     handles[1].node(),
     "focus still reaches the scene"
   );
+}
+
+/// The computed `property` a `<div>` under `parent` gets from the CSS `value`, so a
+/// built-in's default compares as the engine resolves it.
+fn resolved(parent: &Element, property: &str, value: &str) -> String {
+  let element = document().create_element("div").expect("a probe");
+
+  let _ = element.set_attribute("style", &format!("{property}:{value}"));
+  let _ = parent.append_child(&element);
+
+  let color = computed(&element, property);
+
+  element.remove();
+
+  color
+}
+
+/// The computed `property` a `<div>` under `parent` gets from the platform's color
+/// `token`.
+fn system(parent: &Element, property: &str, token: TokenRef<Color>) -> String {
+  resolved(
+    parent,
+    property,
+    &format!("var(--{})", token.name().as_str()),
+  )
+}
+
+/// Every element under `parent` matching `selector`, in document order.
+fn select(parent: &Element, selector: &str) -> Vec<Element> {
+  let found = parent.query_selector_all(selector).expect("a selector");
+
+  (0..found.length())
+    .filter_map(|index| found.item(index)?.dyn_into().ok())
+    .collect()
+}
+
+/// The built-in button is the page's own button, drawn with its defaults in the
+/// platform's colors, and a setter its user calls replaces the default it overrides
+/// while the rest stand.
+#[wasm_bindgen_test]
+fn a_buttons_defaults_apply_under_the_setters_its_user_calls() {
+  let (_guard, root) = fresh_root();
+  let red = Color::srgb(1., 0., 0.);
+  let white = Color::srgb(1., 1., 1.);
+
+  let _ = mount(move || {
+    Row::new()
+      .set_children((
+        skene_web::Button::new("Save"),
+        skene_web::Button::new("Stop")
+          .set_background(red)
+          .set_padding(Inset::all(3))
+          .set_text_color(white),
+      ))
+      .build()
+  });
+
+  let buttons = select(&root, "button");
+  let [save, stop] = buttons.as_slice()
+  else {
+    panic!("two buttons: {}", root.inner_html());
+  };
+  let label = |button: &Element| {
+    button
+      .query_selector("span")
+      .ok()
+      .flatten()
+      .expect("a label")
+  };
+
+  assert_eq!(save.text_content().as_deref(), Some("Save"));
+  assert_eq!(
+    background(save),
+    system(&root, "background-color", SystemColors::CONTROL)
+  );
+  assert_eq!(
+    computed(&label(save), "color"),
+    system(&root, "color", SystemColors::INK)
+  );
+  assert_eq!(computed(save, "padding-left"), "12px");
+  assert_eq!(computed(save, "padding-top"), "4px");
+  assert_eq!(computed(save, "border-top-width"), "2px");
+  assert_eq!(computed(save, "border-top-left-radius"), "6px");
+  assert_eq!(computed(save, "min-height"), "32px");
+  assert_eq!(computed(save, "cursor"), "pointer");
+
+  assert_eq!(background(stop), probe(&root, "background-color", red));
+  assert_eq!(
+    computed(&label(stop), "color"),
+    probe(&root, "color", white)
+  );
+  assert_eq!(
+    computed(stop, "padding-left"),
+    "3px",
+    "a padding its user sets"
+  );
+  assert_eq!(
+    computed(stop, "border-top-left-radius"),
+    "6px",
+    "the defaults it leaves stand"
+  );
+}
+
+/// A prominence the built-in button derives re-inks it in place: the accent's fill,
+/// darkened, under the ink that sits on it, on the same element.
+#[wasm_bindgen_test]
+fn a_buttons_prominence_changes_its_fill_in_place() {
+  let (_guard, root) = fresh_root();
+  let prominent = Signal::new(false);
+
+  let _ = mount(move || {
+    skene_web::Button::new("Go")
+      .derive_prominent(move || prominent.get())
+      .build()
+  });
+
+  let button = only_child(&root);
+  let label = only_child(&button);
+
+  assert_eq!(button.tag_name(), "BUTTON");
+  assert_eq!(
+    background(&button),
+    system(&root, "background-color", SystemColors::CONTROL)
+  );
+
+  prominent.set(true);
+  web::end_turn();
+
+  assert!(only_child(&root) == button, "the same button");
+  assert_eq!(
+    background(&button),
+    resolved(
+      &root,
+      "background-color",
+      &format!(
+        "oklch(from var(--{}) calc(l - 0.1) c h / alpha)",
+        SystemColors::ACCENT.name().as_str()
+      )
+    )
+  );
+  assert_ne!(
+    background(&button),
+    system(&root, "background-color", SystemColors::CONTROL)
+  );
+  assert_eq!(
+    computed(&label, "color"),
+    system(&root, "color", SystemColors::ON_ACCENT)
+  );
+
+  prominent.set(false);
+  web::end_turn();
+
+  assert_eq!(
+    background(&button),
+    system(&root, "background-color", SystemColors::CONTROL)
+  );
+}
+
+/// The built-in checkbox draws its default mark beside the page's own input, filled
+/// with the field's color and with the accent once checked, and a mark its user sets
+/// takes the default's place.
+#[wasm_bindgen_test]
+fn a_checkboxs_default_mark_follows_it_and_a_mark_of_its_users_replaces_it() {
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+  let red = Color::srgb(1., 0., 0.);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        skene_web::Checkbox::new()
+          .set_label("Agree")
+          .bind_checked(checked),
+        skene_web::Checkbox::new().set_label("Mine").set_part(
+          skene_web::Part::Mark,
+          Container::new()
+            .set_width(skene_web::Dimension::Length(10.))
+            .set_height(skene_web::Dimension::Length(10.))
+            .set_background(red),
+        ),
+      ))
+      .build()
+  });
+
+  let labels = select(&root, "label");
+  let [agree, mine] = labels.as_slice()
+  else {
+    panic!("two checkboxes: {}", root.inner_html());
+  };
+  let marks = |label: &Element| select(label, ":scope > div");
+  let [mark] = marks(agree).try_into().expect("one mark");
+
+  assert_eq!(computed(&mark, "width"), "18px");
+  assert_eq!(
+    background(&mark),
+    system(&root, "background-color", SystemColors::FIELD)
+  );
+
+  checked.set(true);
+  web::end_turn();
+
+  assert_eq!(
+    background(&mark),
+    system(&root, "background-color", SystemColors::ACCENT)
+  );
+
+  let [own] = marks(mine).try_into().expect("its user's mark alone");
+
+  assert_eq!(computed(&own, "width"), "10px");
+  assert_eq!(background(&own), probe(&root, "background-color", red));
 }

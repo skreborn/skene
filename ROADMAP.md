@@ -26,8 +26,7 @@ in a code comment.
     signature carries a type parameter (the author's order, 2026-10-23).
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
-    on the web over the form element CSS styles; a shared option is semantic
-    (`Button::set_prominent`) rather than a per-platform preset.
+    on the web over the form element CSS styles.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
     re-inking its built-in. The core holds colors, named sizes and logic and no view, so

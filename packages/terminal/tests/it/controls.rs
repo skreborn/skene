@@ -40,11 +40,13 @@ use crate::common::{
   blue,
   colors_at,
   green,
+  is_live,
   locate,
   mount_nodes,
   read,
   red,
   rgb,
+  rows,
   white,
   with_platform,
 };
@@ -1949,6 +1951,171 @@ fn a_vertical_range_reads_the_pointer_bottom_to_top() {
       holds(bound, 85.),
       "near the top reads high: {}",
       bound.get_untracked()
+    );
+  });
+}
+
+/// The built-in button draws its label centered on the control's fill, takes the
+/// accent where prominent and re-inks in place as a prominence it derives changes, and
+/// a setter its user calls replaces the default it overrides.
+#[test]
+fn a_button_draws_its_defaults_and_its_prominence_re_inks_it_in_place() {
+  with_platform(|| {
+    let prominent = Signal::new(false);
+    let [plain, primary, overridden] = mount_nodes(|| {
+      [
+        terminal::Button::new("Save").build(),
+        terminal::Button::new("Send")
+          .derive_prominent(move || prominent.get())
+          .build(),
+        terminal::Button::new("Stop")
+          .set_background(red())
+          .set_text_color(green())
+          .build(),
+      ]
+    });
+    let frame = testing::render_to_text(10, 3);
+    let column = usize::from(locate(&frame, "Save").0);
+
+    assert_eq!(
+      rows(&frame),
+      "   Save\n   Send\n   Stop\n",
+      "centered: {frame}"
+    );
+    assert_eq!(
+      testing::find_by_role(Role::Button, "Save"),
+      Some(plain),
+      "the label names the button"
+    );
+
+    let fill = |row: usize| colors_at(10, 3, 0, row).1;
+    let ink = |row: usize| colors_at(10, 3, column, row).0;
+    let control = fill(0);
+
+    assert!(
+      control.is_some(),
+      "the control's fill paints the whole button"
+    );
+    assert_eq!(
+      colors_at(10, 3, column, 0).1,
+      control,
+      "beneath its label too"
+    );
+    assert_eq!(fill(1), control, "not prominent yet");
+
+    prominent.set(true);
+
+    assert_ne!(fill(1), control, "prominent: the accent");
+    assert!(is_live(primary), "re-inked in place");
+
+    prominent.set(false);
+
+    assert_eq!(fill(1), control);
+    assert_eq!(fill(2), Some(rgb(red())), "a fill its user sets wins");
+    assert_eq!(ink(2), Some(rgb(green())), "and an ink");
+    assert!(is_live(overridden));
+  });
+}
+
+/// The built-in button's focus shows in the accent, and a disabled one keeps the
+/// control's fill under the muted ink and takes no focus.
+#[test]
+fn a_buttons_focus_shows_in_the_accent_and_a_disabled_one_is_muted() {
+  with_platform(|| {
+    let [_, _] = mount_nodes(|| {
+      [
+        terminal::Button::new("Save").build(),
+        terminal::Button::new("Save").set_disabled(true).build(),
+      ]
+    });
+    let column = usize::from(locate(&testing::render_to_text(10, 2), "Save").0);
+    let fill = |row: usize| colors_at(10, 2, 0, row).1;
+    let ink = |row: usize| colors_at(10, 2, column, row).0;
+    let (rest, rest_ink) = (fill(0), ink(0));
+
+    assert_eq!(fill(1), rest, "disabled: the control's fill");
+    assert_ne!(ink(1), rest_ink, "under the muted ink");
+
+    testing::trigger_key("Tab");
+
+    assert_ne!(fill(0), rest, "focus shows in the accent");
+
+    testing::trigger_key("Tab");
+
+    assert_ne!(fill(0), rest, "the disabled button took no focus");
+    assert_eq!(fill(1), rest);
+  });
+}
+
+/// The built-in checkbox draws its mark as glyphs before its caption, flips by `Space`
+/// and by a click on its caption, and a mark its user sets replaces the default.
+#[test]
+fn a_checkbox_draws_its_mark_and_a_mark_of_its_users_replaces_it() {
+  with_platform(|| {
+    let on = Signal::new(false);
+    let other = Signal::new(true);
+    let [checkbox, _] = mount_nodes(|| {
+      [
+        terminal::Checkbox::new()
+          .set_label("Agree")
+          .bind_checked(on)
+          .build(),
+        terminal::Checkbox::new()
+          .set_label("Mine")
+          .set_part(Part::Mark, Text::new("<>"))
+          .bind_checked(other)
+          .build(),
+      ]
+    });
+    let frame = testing::render_to_text(12, 2);
+
+    assert_eq!(rows(&frame), "[ ] Agree\n<> Mine\n", "{frame}");
+    assert_eq!(read(checkbox).role(), Role::CheckBox);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key(" ");
+
+    assert!(on.get_untracked());
+    assert!(testing::render_to_text(12, 2).starts_with("[x] Agree"));
+    assert!(is_checked(checkbox));
+
+    testing::trigger_mouse_click(5, 0);
+
+    assert!(!on.get_untracked(), "a click on the caption flips it");
+    assert!(testing::render_to_text(12, 2).starts_with("[ ] Agree"));
+  });
+}
+
+/// The built-in switch reports itself a switch, draws a track of three cells with its
+/// thumb at the start, which moves to the end and fills the track with the accent as it
+/// turns on.
+#[test]
+fn a_switch_is_reported_as_one_and_its_thumb_moves_as_it_turns_on() {
+  with_platform(|| {
+    let on = Signal::new(false);
+    let [switch] = mount_nodes(|| {
+      [terminal::Toggle::new()
+        .set_label("Wi-Fi")
+        .bind_checked(on)
+        .build()]
+    });
+    let frame = testing::render_to_text(12, 1);
+
+    assert_eq!(rows(&frame), "\u{25cf}   Wi-Fi\n", "{frame}");
+    assert_eq!(read(switch).role(), Role::Switch);
+    assert!(!is_checked(switch));
+
+    let track = colors_at(12, 1, 1, 0).1;
+
+    user::click(switch);
+
+    assert!(on.get_untracked());
+    assert!(is_checked(switch));
+    assert_eq!(rows(&testing::render_to_text(12, 1)), "  \u{25cf} Wi-Fi\n");
+    assert_ne!(
+      colors_at(12, 1, 1, 0).1,
+      track,
+      "the track takes the accent"
     );
   });
 }

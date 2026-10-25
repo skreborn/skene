@@ -344,16 +344,23 @@ pub(crate) fn range_attributes(range: &Range) -> [(&'static str, String); 4] {
   ]
 }
 
-/// The attributes a control's native element carries: its `type`, the lines of a text
-/// editor, and the accessible name when nothing visible supplies one.
+/// The attributes a control's native element carries: its `type`, the switch a
+/// checkbox whose `role` is [`Role::Switch`] is, the lines of a text editor, and the
+/// accessible name when nothing visible supplies one.
 pub(crate) fn native_attributes(
   native: FormElement,
   control: &ControlFacts,
+  role: Option<Role>,
 ) -> Vec<(&'static str, String)> {
   let mut attributes = Vec::new();
 
   if let Some(kind) = native.kind {
     attributes.push(("type", kind.to_owned()));
+  }
+
+  if native.kind == Some("checkbox") && role == Some(Role::Switch) {
+    attributes.push(("switch", String::new()));
+    attributes.push(("role", "switch".to_owned()));
   }
 
   if native.tag == "textarea" {

@@ -45,6 +45,7 @@ pub use skene_web::Handler
 pub use skene_web::HasBoxStyle
 pub use skene_web::HasChild
 pub use skene_web::HasChildren
+pub use skene_web::HasControl
 pub use skene_web::HasLayoutBox
 pub use skene_web::HasRun
 pub use skene_web::IntoBrush
@@ -307,6 +308,12 @@ impl core::marker::Copy for skene_web::platform::web::Web
 impl core::marker::StructuralPartialEq for skene_web::platform::web::Web
 impl skene_foundation::container::ContainerBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::context_menu::ContextMenuBase<skene_web::platform::web::Web> for skene_web::ContextMenu
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+pub fn skene_web::Button::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>
+pub fn skene_web::Button::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> Self
 impl skene_foundation::enhance::EnhanceBase<skene_web::platform::web::Web> for skene_web::Enhance
 impl skene_foundation::error_boundary::ErrorBoundaryBase<skene_web::platform::web::Web> for skene_web::ErrorBoundary
 impl skene_foundation::flex::ColumnBase<skene_web::platform::web::Web> for skene_web::Column
@@ -377,6 +384,10 @@ impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::web::Web, s
 pub fn skene_web::Pinned::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::AsyncView
 pub fn skene_web::AsyncView::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Button
+pub fn skene_web::Button::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Checkbox
+pub fn skene_web::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Column
 pub fn skene_web::Column::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Container
@@ -413,6 +424,8 @@ impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for sken
 pub fn skene_web::Suspense::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Toggle
+pub fn skene_web::Toggle::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Tooltip
 pub fn skene_web::Tooltip::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Visibility
@@ -420,12 +433,23 @@ pub fn skene_web::Visibility::build(self) -> skene_foundation::spine::node::Node
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::platform::web::NativeView
 pub fn skene_web::platform::web::NativeView::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::stack::StackBase<skene_web::platform::web::Web> for skene_web::Stack
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Button
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Overlay
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Tooltip
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Button
+pub fn skene_web::Button::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Button
+pub type skene_web::Button::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::Button::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Button
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Overlay
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Text
 impl skene_foundation::suspense::SuspenseBase<skene_web::platform::web::Web> for skene_web::Suspense
@@ -720,6 +744,53 @@ pub fn skene_web::BasicRadioGroup<T>::into_inner(self) -> Self::Inner
 pub fn skene_web::BasicRadioGroup<T>::wrap(Self::Inner) -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+pub struct skene_web::prelude::Button
+impl skene_web::Button
+pub fn skene_web::Button::derive<S: core::convert::Into<alloc::string::String>>(impl core::ops::function::Fn() -> S + 'static) -> Self
+pub fn skene_web::Button::derive_prominent(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Button::derive_text_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Button::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Button::set_prominent(self, bool) -> Self
+pub fn skene_web::Button::set_text_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<f32>>>) -> Self
+impl core::fmt::Debug for skene_web::Button
+pub fn skene_web::Button::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+pub fn skene_web::Button::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>
+pub fn skene_web::Button::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> Self
+impl skene_foundation::spine::view::AnyKind for skene_web::Button
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Button
+pub fn skene_web::Button::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Button
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Button
+pub fn skene_web::Button::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Button
+pub type skene_web::Button::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::Button::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Button
+pub struct skene_web::prelude::Checkbox(_)
+impl skene_web::Checkbox
+pub fn skene_web::Checkbox::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
+pub fn skene_web::Checkbox::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Checkbox::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
+pub fn skene_web::Checkbox::new() -> Self
+pub fn skene_web::Checkbox::set_checked(self, bool) -> Self
+impl core::default::Default for skene_web::Checkbox
+pub fn skene_web::Checkbox::default() -> Self
+impl core::fmt::Debug for skene_web::Checkbox
+pub fn skene_web::Checkbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
+impl skene_foundation::spine::view::AnyKind for skene_web::Checkbox
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Checkbox
+pub fn skene_web::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Checkbox
+pub type skene_web::Checkbox::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle>
+pub fn skene_web::Checkbox::inner(&self) -> &Self::Inner
+pub fn skene_web::Checkbox::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Checkbox::into_inner(self) -> Self::Inner
+pub fn skene_web::Checkbox::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Checkbox
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Checkbox
 pub struct skene_web::prelude::Column(_)
 impl core::default::Default for skene_web::Column
 pub fn skene_web::Column::default() -> skene_web::Column
@@ -1100,6 +1171,29 @@ pub fn skene_web::Theme<S>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Theme<S>::into_inner(self) -> Self::Inner
 pub fn skene_web::Theme<S>::wrap(Self::Inner) -> Self
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
+pub struct skene_web::prelude::Toggle(_)
+impl skene_web::Toggle
+pub fn skene_web::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
+pub fn skene_web::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
+pub fn skene_web::Toggle::new() -> Self
+pub fn skene_web::Toggle::set_checked(self, bool) -> Self
+impl core::default::Default for skene_web::Toggle
+pub fn skene_web::Toggle::default() -> Self
+impl core::fmt::Debug for skene_web::Toggle
+pub fn skene_web::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
+impl skene_foundation::spine::view::AnyKind for skene_web::Toggle
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Toggle
+pub fn skene_web::Toggle::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Toggle
+pub type skene_web::Toggle::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle>
+pub fn skene_web::Toggle::inner(&self) -> &Self::Inner
+pub fn skene_web::Toggle::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Toggle::into_inner(self) -> Self::Inner
+pub fn skene_web::Toggle::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Toggle
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Toggle
 pub struct skene_web::prelude::Tooltip(_)
 impl core::fmt::Debug for skene_web::Tooltip
 pub fn skene_web::Tooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1287,6 +1381,53 @@ pub fn skene_web::BasicRadioGroup<T>::into_inner(self) -> Self::Inner
 pub fn skene_web::BasicRadioGroup<T>::wrap(Self::Inner) -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+pub struct skene_web::Button
+impl skene_web::Button
+pub fn skene_web::Button::derive<S: core::convert::Into<alloc::string::String>>(impl core::ops::function::Fn() -> S + 'static) -> Self
+pub fn skene_web::Button::derive_prominent(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Button::derive_text_color<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_web::Button::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_web::Button::set_prominent(self, bool) -> Self
+pub fn skene_web::Button::set_text_color(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<f32>>>) -> Self
+impl core::fmt::Debug for skene_web::Button
+pub fn skene_web::Button::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+pub fn skene_web::Button::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>
+pub fn skene_web::Button::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> Self
+impl skene_foundation::spine::view::AnyKind for skene_web::Button
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Button
+pub fn skene_web::Button::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Button
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Button
+pub fn skene_web::Button::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Button
+pub type skene_web::Button::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::Button::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Button
+pub struct skene_web::Checkbox(_)
+impl skene_web::Checkbox
+pub fn skene_web::Checkbox::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
+pub fn skene_web::Checkbox::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Checkbox::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
+pub fn skene_web::Checkbox::new() -> Self
+pub fn skene_web::Checkbox::set_checked(self, bool) -> Self
+impl core::default::Default for skene_web::Checkbox
+pub fn skene_web::Checkbox::default() -> Self
+impl core::fmt::Debug for skene_web::Checkbox
+pub fn skene_web::Checkbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
+impl skene_foundation::spine::view::AnyKind for skene_web::Checkbox
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Checkbox
+pub fn skene_web::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Checkbox
+pub type skene_web::Checkbox::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle>
+pub fn skene_web::Checkbox::inner(&self) -> &Self::Inner
+pub fn skene_web::Checkbox::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Checkbox::into_inner(self) -> Self::Inner
+pub fn skene_web::Checkbox::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Checkbox
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Checkbox
 pub struct skene_web::Column(_)
 impl core::default::Default for skene_web::Column
 pub fn skene_web::Column::default() -> skene_web::Column
@@ -1697,6 +1838,29 @@ pub fn skene_web::Theme<S>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Theme<S>::into_inner(self) -> Self::Inner
 pub fn skene_web::Theme<S>::wrap(Self::Inner) -> Self
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
+pub struct skene_web::Toggle(_)
+impl skene_web::Toggle
+pub fn skene_web::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
+pub fn skene_web::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
+pub fn skene_web::Toggle::new() -> Self
+pub fn skene_web::Toggle::set_checked(self, bool) -> Self
+impl core::default::Default for skene_web::Toggle
+pub fn skene_web::Toggle::default() -> Self
+impl core::fmt::Debug for skene_web::Toggle
+pub fn skene_web::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
+impl skene_foundation::spine::view::AnyKind for skene_web::Toggle
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Toggle
+pub fn skene_web::Toggle::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Toggle
+pub type skene_web::Toggle::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle>
+pub fn skene_web::Toggle::inner(&self) -> &Self::Inner
+pub fn skene_web::Toggle::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Toggle::into_inner(self) -> Self::Inner
+pub fn skene_web::Toggle::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Toggle
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Toggle
 pub struct skene_web::Tooltip(_)
 impl core::fmt::Debug for skene_web::Tooltip
 pub fn skene_web::Tooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

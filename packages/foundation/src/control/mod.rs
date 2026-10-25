@@ -861,6 +861,69 @@ impl<P: Realization, B: Behavior> Control<P, B> {
 
     self
   }
+
+  /// This control over `defaults`, as if its setters had been called after the
+  /// defaults': its behavior, and everything it sets in place of the default.
+  ///
+  /// Its box goes over the defaults' as [`LayoutBox::over`] says, its caption, name,
+  /// flags, relations, focus order and shortcut replace theirs where it has them, it
+  /// asks for focus where either does, its handlers run after theirs, and its body
+  /// replaces theirs where it has one. Each of its parts takes the place of the
+  /// defaults' part of the same kind, and the rest follow the defaults' in order. A
+  /// styled built-in builds its defaults so, under every setter its user called.
+  pub fn over<D: Behavior>(self, defaults: Control<P, D>) -> Self {
+    let Members {
+      inner,
+      label,
+      accessible_name,
+      disabled,
+      required,
+      read_only,
+      invalid,
+      described_by,
+      labelled_by,
+      focus_order,
+      autofocus,
+      shortcut,
+      parts: mut own,
+      observers,
+      child,
+    } = self.members;
+    let defaults = defaults.members;
+    let mut parts = Vec::with_capacity(defaults.parts.len() + own.len());
+    let mut handlers = defaults.observers;
+
+    for (part, view) in defaults.parts {
+      match own.iter().position(|(mine, _)| *mine == part) {
+        Some(index) => parts.push(own.remove(index)),
+        None => parts.push((part, view)),
+      }
+    }
+
+    parts.extend(own);
+    handlers.extend(observers);
+
+    Self {
+      behavior: self.behavior,
+      members: Members {
+        inner: inner.over(defaults.inner),
+        label: label.or(defaults.label),
+        accessible_name: accessible_name.or(defaults.accessible_name),
+        disabled: disabled.or(defaults.disabled),
+        required: required.or(defaults.required),
+        read_only: read_only.or(defaults.read_only),
+        invalid: invalid.or(defaults.invalid),
+        described_by: described_by.or(defaults.described_by),
+        labelled_by: labelled_by.or(defaults.labelled_by),
+        focus_order: focus_order.or(defaults.focus_order),
+        autofocus: autofocus || defaults.autofocus,
+        shortcut: shortcut.or(defaults.shortcut),
+        parts,
+        observers: handlers,
+        child: child.or(defaults.child),
+      },
+    }
+  }
 }
 
 impl<P: Realization, B: Behavior> AnyKind for Control<P, B> {}
@@ -1517,26 +1580,66 @@ impl<P: Realization, B: Behavior> DecorationBase<P> for Control<P, B> {}
 
 impl<P: Realization, B: Behavior> MotionBase<P> for Control<P, B> {}
 
+/// A view over a [`Control`], which the members every control carries reach through.
+///
+/// The control itself, a facade's view holding one as its whole content, and a styled
+/// built-in holding one beside what it draws by default.
+pub trait HasControl<P: Realization, B: Behavior>: Sized {
+  /// The control.
+  fn control(&self) -> &Control<P, B>;
+
+  /// The view with its control replaced by what `map` makes of it.
+  #[must_use]
+  fn map_control(self, map: impl FnOnce(Control<P, B>) -> Control<P, B>) -> Self;
+}
+
+impl<P: Realization, B: Behavior> HasControl<P, B> for Control<P, B> {
+  #[inline(always)]
+  fn control(&self) -> &Self {
+    self
+  }
+
+  #[inline(always)]
+  fn map_control(self, map: impl FnOnce(Self) -> Self) -> Self {
+    map(self)
+  }
+}
+
+impl<P: Realization, B: Behavior, T: Wraps<Inner: HasControl<P, B>>> HasControl<P, B> for T {
+  #[inline(always)]
+  fn control(&self) -> &Control<P, B> {
+    self.inner().control()
+  }
+
+  #[inline(always)]
+  fn map_control(self, map: impl FnOnce(Control<P, B>) -> Control<P, B>) -> Self {
+    Self::wrap(self.into_inner().map_control(map))
+  }
+}
+
 /// What a facade's [`Control`] carries beyond its decoration and motion.
 ///
 /// Its constructor, its row, its caption, its reported state, its parts and its handlers.
-pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>> {
+pub trait ControlBase<P: Realization, B: Behavior>: HasControl<P, B> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[must_use]
-  fn new(behavior: B) -> Self {
+  fn new(behavior: B) -> Self
+  where
+    Self: Wraps<Inner = Control<P, B>>,
+  {
     Self::wrap(Control::new(behavior))
   }
 
   /// The behavior driving the control.
   fn behavior(&self) -> &B {
-    self.inner().behavior()
+    self.control().behavior()
   }
 
   /// Sets the axis the control's parts, body and label run along; horizontal
   /// unless told otherwise.
   #[must_use]
   fn set_axis(self, axis: Axis) -> Self {
-    Self::wrap(self.into_inner().set_axis(axis))
+    self.map_control(|control| control.set_axis(axis))
   }
 
   /// Sets the spacing between the control's parts, body and label; half an em unless told
@@ -1546,7 +1649,7 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
     self,
     spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,
   ) -> Self {
-    Self::wrap(self.into_inner().set_spacing(spacing))
+    self.map_control(|control| control.set_spacing(spacing))
   }
 
   /// Derives the spacing between the control's parts, body and label from the signals
@@ -1556,7 +1659,7 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
     self,
     spacing: impl Fn() -> R + 'static,
   ) -> Self {
-    Self::wrap(self.into_inner().derive_spacing(spacing))
+    self.map_control(|control| control.derive_spacing(spacing))
   }
 
   /// Sets where the control's parts, body and label sit on the cross axis; centered unless
@@ -1566,7 +1669,7 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
     self,
     alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
   ) -> Self {
-    Self::wrap(self.into_inner().set_item_alignment(alignment))
+    self.map_control(|control| control.set_item_alignment(alignment))
   }
 
   /// Derives where the control's parts, body and label sit on the cross axis from the
@@ -1576,20 +1679,20 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
     self,
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
-    Self::wrap(self.into_inner().derive_item_alignment(alignment))
+    self.map_control(|control| control.derive_item_alignment(alignment))
   }
 
   /// Binds `handle` to the control once built: an overlay is placed against it, focus
   /// moves to it and its measured size is reported through the handle.
   #[must_use]
   fn bind_handle(self, handle: NodeHandle<P>) -> Self {
-    Self::wrap(self.into_inner().bind_handle(handle))
+    self.map_control(|control| control.bind_handle(handle))
   }
 
   /// Sets where the body sits when it fills neither axis.
   #[must_use]
   fn set_alignment(self, alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>) -> Self {
-    Self::wrap(self.into_inner().set_alignment(alignment))
+    self.map_control(|control| control.set_alignment(alignment))
   }
 
   /// Derives where the body sits from the signals `alignment` reads.
@@ -1598,13 +1701,13 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
     self,
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
-    Self::wrap(self.into_inner().derive_alignment(alignment))
+    self.map_control(|control| control.derive_alignment(alignment))
   }
 
   /// Names the control for container queries against its size.
   #[must_use]
   fn set_container_name(self, name: ContainerName) -> Self {
-    Self::wrap(self.into_inner().set_container_name(name))
+    self.map_control(|control| control.set_container_name(name))
   }
 
   /// Sets the caption: a [`Part::Label`](Part::Label) child whose text is the
@@ -1614,7 +1717,7 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   /// mounts any view and leaves the name to the platform.
   #[must_use]
   fn set_label(self, label: impl Into<Label<P>>) -> Self {
-    Self::wrap(self.into_inner().set_label(label))
+    self.map_control(|control| control.set_label(label))
   }
 
   /// Sets the name the control reports to assistive technology, over its
@@ -1622,14 +1725,14 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   /// alone.
   #[must_use]
   fn set_accessible_name(self, name: impl Into<String>) -> Self {
-    Self::wrap(self.into_inner().set_accessible_name(name))
+    self.map_control(|control| control.set_accessible_name(name))
   }
 
   /// Derives the name the control reports to assistive technology from the signals
   /// `name` reads.
   #[must_use]
   fn derive_accessible_name(self, name: impl Fn() -> String + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_accessible_name(name))
+    self.map_control(|control| control.derive_accessible_name(name))
   }
 
   /// Sets whether the control is present but not operable: a disabled control
@@ -1637,77 +1740,77 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   /// [`AccessProp::Disabled`](AccessProp::Disabled).
   #[must_use]
   fn set_disabled(self, disabled: bool) -> Self {
-    Self::wrap(self.into_inner().set_disabled(disabled))
+    self.map_control(|control| control.set_disabled(disabled))
   }
 
   /// Derives whether the control is disabled from the signals `disabled` reads.
   #[must_use]
   fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_disabled(disabled))
+    self.map_control(|control| control.derive_disabled(disabled))
   }
 
   /// Sets whether a value must be supplied before the form the control is in
   /// submits.
   #[must_use]
   fn set_required(self, required: bool) -> Self {
-    Self::wrap(self.into_inner().set_required(required))
+    self.map_control(|control| control.set_required(required))
   }
 
   /// Derives whether the control is required from the signals `required` reads.
   #[must_use]
   fn derive_required(self, required: impl Fn() -> bool + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_required(required))
+    self.map_control(|control| control.derive_required(required))
   }
 
   /// Sets whether the control's value is shown but not editable.
   #[must_use]
   fn set_read_only(self, read_only: bool) -> Self {
-    Self::wrap(self.into_inner().set_read_only(read_only))
+    self.map_control(|control| control.set_read_only(read_only))
   }
 
   /// Derives whether the control is read-only from the signals `read_only` reads.
   #[must_use]
   fn derive_read_only(self, read_only: impl Fn() -> bool + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_read_only(read_only))
+    self.map_control(|control| control.derive_read_only(read_only))
   }
 
   /// Sets whether the control holds an invalid value; the `Invalid` state inside
   /// it follows.
   #[must_use]
   fn set_invalid(self, invalid: bool) -> Self {
-    Self::wrap(self.into_inner().set_invalid(invalid))
+    self.map_control(|control| control.set_invalid(invalid))
   }
 
   /// Derives whether the control is invalid from the signals `invalid` reads.
   #[must_use]
   fn derive_invalid(self, invalid: impl Fn() -> bool + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_invalid(invalid))
+    self.map_control(|control| control.derive_invalid(invalid))
   }
 
   /// Sets the node whose text describes the control, for assistive technology.
   #[must_use]
   fn set_described_by(self, node: NodeId) -> Self {
-    Self::wrap(self.into_inner().set_described_by(node))
+    self.map_control(|control| control.set_described_by(node))
   }
 
   /// Names the control by the text of `node`, a caption placed anywhere, after the
   /// caption [`set_label`](Self::set_label) builds, if any.
   #[must_use]
   fn set_labelled_by(self, node: NodeId) -> Self {
-    Self::wrap(self.into_inner().set_labelled_by(node))
+    self.map_control(|control| control.set_labelled_by(node))
   }
 
   /// Sets the control's place in focus traversal, over the behavior's default.
   #[must_use]
   fn set_focus_order(self, focus_order: FocusOrder) -> Self {
-    Self::wrap(self.into_inner().set_focus_order(focus_order))
+    self.map_control(|control| control.set_focus_order(focus_order))
   }
 
   /// Derives the control's place in focus traversal from the signals
   /// `focus_order` reads, over the behavior's default.
   #[must_use]
   fn derive_focus_order(self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
-    Self::wrap(self.into_inner().derive_focus_order(focus_order))
+    self.map_control(|control| control.derive_focus_order(focus_order))
   }
 
   /// Sets whether the control takes focus as its window opens, where otherwise
@@ -1716,7 +1819,7 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   /// for it.
   #[must_use]
   fn set_autofocus(self, autofocus: bool) -> Self {
-    Self::wrap(self.into_inner().set_autofocus(autofocus))
+    self.map_control(|control| control.set_autofocus(autofocus))
   }
 
   /// Sets the key that activates the control from anywhere in the window, as a click
@@ -1730,110 +1833,110 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   /// its view.
   #[must_use]
   fn set_shortcut(self, shortcut: Shortcut) -> Self {
-    Self::wrap(self.into_inner().set_shortcut(shortcut))
+    self.map_control(|control| control.set_shortcut(shortcut))
   }
 
   /// Adds `view` as the part `part` of the control, a styling target its
   /// conditions resolve against the control.
   #[must_use]
   fn set_part(self, part: Part, view: impl View<P>) -> Self {
-    Self::wrap(self.into_inner().set_part(part, view))
+    self.map_control(|control| control.set_part(part, view))
   }
 
   /// Sets the drawn body.
   #[must_use]
   fn set_child(self, child: impl View<P>) -> Self {
-    Self::wrap(self.into_inner().set_child(child))
+    self.map_control(|control| control.set_child(child))
   }
 
   /// Sets the drawn body, built by `child` under the control.
   #[must_use]
   fn set_child_builder<V: View<P>>(self, child: impl FnOnce() -> V + 'static) -> Self {
-    Self::wrap(self.into_inner().set_child_builder(child))
+    self.map_control(|control| control.set_child_builder(child))
   }
 
   /// Runs `action` after the behavior has acted on an activation: a click, or a key the
   /// behavior activates on.
   #[must_use]
   fn handle_activate(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_activate(action))
+    self.map_control(|control| control.handle_activate(action))
   }
 
   /// Runs `action` after the behavior has acted on a key pressed while the control
   /// holds focus.
   #[must_use]
   fn handle_key_down(self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_key_down(action))
+    self.map_control(|control| control.handle_key_down(action))
   }
 
   /// Runs `action` on a key released while the control holds focus.
   #[must_use]
   fn handle_key_up(self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_key_up(action))
+    self.map_control(|control| control.handle_key_up(action))
   }
 
   /// Runs `action` after the behavior has acted on a pointer button pressed over
   /// the control.
   #[must_use]
   fn handle_pointer_down(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_pointer_down(action))
+    self.map_control(|control| control.handle_pointer_down(action))
   }
 
   /// Runs `action` after the behavior has acted on a pointer button released over
   /// the control.
   #[must_use]
   fn handle_pointer_up(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_pointer_up(action))
+    self.map_control(|control| control.handle_pointer_up(action))
   }
 
   /// Runs `action` after the behavior has acted on the pointer moving over the
   /// control.
   #[must_use]
   fn handle_pointer_move(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_pointer_move(action))
+    self.map_control(|control| control.handle_pointer_move(action))
   }
 
   /// Runs `action` after the behavior has acted on a wheel turned over the
   /// control, before the platform scrolls by it.
   #[must_use]
   fn handle_wheel(self, action: impl Fn(&WheelEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_wheel(action))
+    self.map_control(|control| control.handle_wheel(action))
   }
 
   /// Runs `action` after the behavior has acted on the platform taking the pointer
   /// pressed over the control for itself, ending the press without a release.
   #[must_use]
   fn handle_pointer_cancel(self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_pointer_cancel(action))
+    self.map_control(|control| control.handle_pointer_cancel(action))
   }
 
   /// Runs `action` when the pointer enters the control.
   #[must_use]
   fn handle_pointer_enter(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_pointer_enter(action))
+    self.map_control(|control| control.handle_pointer_enter(action))
   }
 
   /// Runs `action` when the pointer leaves the control.
   #[must_use]
   fn handle_pointer_leave(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_pointer_leave(action))
+    self.map_control(|control| control.handle_pointer_leave(action))
   }
 
   /// Runs `action` when focus enters the control or a node inside it from outside.
   #[must_use]
   fn handle_focus(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_focus(action))
+    self.map_control(|control| control.handle_focus(action))
   }
 
   /// Runs `action` when focus leaves the control and every node inside it.
   #[must_use]
   fn handle_blur(self, action: impl Fn() + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_blur(action))
+    self.map_control(|control| control.handle_blur(action))
   }
 
   /// Runs `action` with the control's new offsets when it scrolls.
   #[must_use]
   fn handle_scroll(self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
-    Self::wrap(self.into_inner().handle_scroll(action))
+    self.map_control(|control| control.handle_scroll(action))
   }
 }

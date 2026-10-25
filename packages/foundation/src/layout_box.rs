@@ -129,6 +129,47 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     &mut self.style
   }
 
+  /// This box over `defaults`: every property and fact this box sets in place of the
+  /// default, its style overlaid on the defaults' field by field, and its motion,
+  /// handlers and bound handles after the defaults'; its layout is its own, and its
+  /// children are the defaults' where it has none.
+  pub fn over(self, defaults: Self) -> Self {
+    let mut style = defaults.style;
+    let mut dynamics = defaults.dynamics;
+    let mut handlers = defaults.handlers;
+    let mut bound = defaults.handles;
+
+    style.overlay(&self.style);
+    dynamics.transitions.extend(self.dynamics.transitions);
+    dynamics.animations.extend(self.dynamics.animations);
+    handlers.extend(self.handlers);
+    bound.extend(self.handles);
+
+    Self {
+      layout: self.layout,
+      role: self.role.or(defaults.role),
+      container: self.container.or(defaults.container),
+      focus_order: self.focus_order.or(defaults.focus_order),
+      access: self.access.or(defaults.access),
+      label: self.label.or(defaults.label),
+      labelled_by: self.labelled_by.or(defaults.labelled_by),
+      style,
+      dynamics,
+      transition_name: self.transition_name.or(defaults.transition_name),
+      destination: self.destination.or(defaults.destination),
+      shortcut: self.shortcut.or(defaults.shortcut),
+      drag_axes: self.drag_axes.or(defaults.drag_axes),
+      handlers,
+      handles: bound,
+      children: if self.children.is_empty() {
+        defaults.children
+      }
+      else {
+        self.children
+      },
+    }
+  }
+
   properties! { style_mut, P;
     set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";

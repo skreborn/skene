@@ -3806,6 +3806,42 @@ fn a_checkbox_is_a_label_over_a_native_input() {
   );
 }
 
+/// A switch is the browser's own checkbox made a switch: its input reports the switch
+/// role and carries the `switch` attribute beside the parts that draw it, its checked
+/// state follows the bound signal, and a real click turns it off again.
+#[wasm_bindgen_test]
+fn a_switch_reports_its_role_and_its_checked_state() {
+  let (_guard, root) = fresh_root();
+  let on = Signal::new(false);
+
+  let _ = mount(move || {
+    skene_web::Toggle::new()
+      .set_label("Wi-Fi")
+      .bind_checked(on)
+      .build()
+  });
+
+  let label = only_child(&root);
+  let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");
+
+  assert_eq!(label.tag_name(), "LABEL");
+  assert_eq!(input.get_attribute("type").as_deref(), Some("checkbox"));
+  assert_eq!(input.get_attribute("role").as_deref(), Some("switch"));
+  assert!(input.has_attribute("switch"));
+  assert_eq!(input.get_attribute("aria-label").as_deref(), Some("Wi-Fi"));
+  assert!(!input.checked());
+
+  on.set(true);
+  web::end_turn();
+
+  assert!(input.checked(), "on: the signal checks it");
+
+  input.click();
+
+  assert!(!on.get(), "a real click turns it off");
+  assert!(!input.checked());
+}
+
 /// A radio group's arrow traversal follows document order, including a member
 /// reconciled into the middle of the set after the group was built: real reconcile,
 /// real elements and a real `keydown`, so the order the platform reports is checked

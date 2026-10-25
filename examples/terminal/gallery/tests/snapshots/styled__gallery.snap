@@ -52,6 +52,18 @@ expression: styled
 
     ╭───────────────────────────────────────────────────╮
     │                                                   │
+    │  Built-in controls                                │
+    │                                                   │
+    │   Publish    Cancel    Disabled                   │
+    │                                                   │
+    │  [x] Agree  ●   Wi-Fi                             │
+    │                                                   │
+    │  published 0 time(s)                              │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
     │  Tooltip                                          │
     │                                                   │
     │   Save    Hover me                                │
@@ -211,18 +223,6 @@ expression: styled
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaabbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -273,6 +273,18 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeeeddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddstttttttsdduvvvvvvudduwwwwwwwwuddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddxxxdfffffddyzzdfffffdddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddgggggggggggggggggggddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddmnnnnmdddffffffffddddddddddddddddddddddddddddddddcaaa
@@ -294,16 +306,16 @@ aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
-aaaacddcdsssssssssdddddddddddddddddddddddddddddddddddcddcaaa
+aaaacddcdAAAAAAAAAdddddddddddddddddddddddddddddddddddcddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
-aaaacddcdsssssssssssssssssssssdddddddddddddddddddddddcddcaaa
+aaaacddcdAAAAAAAAAAAAAAAAAAAAAdddddddddddddddddddddddcddcaaa
 aaaacddcdddddddddddddddddddddddddddddddddddddddddddddcddcaaa
 aaaacddcdddddddddddddddddddddddddddddddddddddddddddddcddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddkkkkkkktummmmmmmmmmmddgggddddddddddddddddddddddddcaaa
+aaaacddkkkkkkkBCmmmmmmmmmmmddgggddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddffffffdddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
@@ -332,9 +344,9 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeeeeeeeeeeeddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddvvvvvvvvvvvdwwwwwwwwwwwdxxxxxxxxxxxdyyyyyyyyyyyddcaaa
+aaaacddDDDDDDDDDDDdEEEEEEEEEEEdFFFFFFFFFFFdGGGGGGGGGGGddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddyyyyyyyyyyydxxxxxxxxxxxdwwwwwwwwwwwdvvvvvvvvvvvddcaaa
+aaaacddGGGGGGGGGGGdFFFFFFFFFFFdEEEEEEEEEEEdDDDDDDDDDDDddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
 aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
@@ -350,12 +362,12 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeedddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddzddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -363,7 +375,7 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzdddddddddcaaa
+aaaacddHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHdddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -431,18 +443,6 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 a surface #09090b
 b ink #a1a1aa, surface #09090b, bold
@@ -462,11 +462,19 @@ o surface #dc2626
 p ink #fafafa, surface #dc2626
 q surface #3f3f46
 r ink #a1a1aa, surface #3f3f46
-s ink #89898b, surface #18181b
-t ink #fafafa, surface #a1a1aa
-u ink #a1a1aa, surface #27272a
-v surface #264c2a
-w surface #336638
-x surface #408046
-y surface #4d9954
-z ink #ffffff, surface #525254
+s surface #0000ee
+t ink #ffffff, surface #0000ee
+u surface #0b0b0b
+v ink #ffffff, surface #0b0b0b
+w ink #808080, surface #0b0b0b
+x ink #ffffff, surface #18181b
+y ink #ffffff, surface #2e2e2e
+z surface #2e2e2e
+A ink #89898b, surface #18181b
+B ink #fafafa, surface #a1a1aa
+C ink #a1a1aa, surface #27272a
+D surface #264c2a
+E surface #336638
+F surface #408046
+G surface #4d9954
+H ink #ffffff, surface #525254

@@ -20,6 +20,36 @@ fn settings(name: Signal<String>, agreed: Signal<bool>) -> impl View {
 }
 ```
 
+## The built-in controls
+
+Beneath any library, the facade draws its own controls in the platform's colors:
+`Button`, `Checkbox` and `Toggle`, a switch. Each comes styled, every default a value
+its setters replace, so a library's preset is a built-in it styles further. A button's
+label is its content and its name, and `set_prominent` marks the screen's primary
+action, which each platform shows in its own idiom: the accent's fill in pixels, accent
+cells in the terminal. A derived prominence re-inks the button in place:
+
+```rust
+use skene_web::prelude::*;
+
+fn form(dirty: Signal<bool>, notify: Signal<bool>, sync: Signal<bool>) -> impl View {
+  Column::new().set_spacing(12).set_children((
+    Checkbox::new().set_label("Email me").bind_checked(notify),
+    Toggle::new().set_label("Sync").bind_checked(sync),
+    Row::new().set_spacing(8).set_children((
+      Button::new("Cancel"),
+      Button::new("Save")
+        .derive_prominent(move || dirty.get())
+        .set_padding(Inset::symmetric(20, 4))
+        .handle_activate(move || dirty.set(false)),
+    )),
+  ))
+}
+```
+
+A checkbox's mark and a switch's track are parts (`Part::Mark`, `Part::Track`), and
+`set_part` replaces the default one with a view of the app's own.
+
 ## The bound signal is the truth
 
 A control reports what its user does, and its signal decides what it shows. `bind_value`

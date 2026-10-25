@@ -24,9 +24,6 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - Controls: the built-ins are drawn on every platform, a behavior over a composed
-    tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
-    on the web over the form element CSS styles.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
     re-inking its built-in. The core holds colors, named sizes and logic and no view, so

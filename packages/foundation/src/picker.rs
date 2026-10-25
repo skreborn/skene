@@ -13,6 +13,7 @@ use crate::{
   Choice,
   Choices,
   Chosen,
+  Container,
   Control,
   ControlOps,
   ControlledChoice,
@@ -20,6 +21,7 @@ use crate::{
   DecorationBase,
   Enhance,
   HasBoxStyle,
+  HasChild,
   HasChildren,
   IntoChildOf,
   IntoChildren,
@@ -33,6 +35,7 @@ use crate::{
   NodeHandle,
   NodeId,
   Overlay,
+  Part,
   Placement,
   PlainChild,
   Popup,
@@ -62,6 +65,7 @@ pub struct BasicPickerCore<P: Realization> {
   disabled: Option<Source<bool>>,
   placement: Placement,
   list: LayoutBox<P, PlainChild>,
+  surface: Option<Container<P>>,
   chosen: ControlledChoice,
   face: Option<Face<P>>,
 }
@@ -123,8 +127,30 @@ impl<P: Realization> BasicPickerCore<P> {
         axis: Axis::Vertical,
         reversed: false,
       }),
+      surface: None,
       chosen: ControlledChoice::new(),
       face: None,
+    }
+  }
+
+  /// This picker over `defaults`: each of its decoration's properties, its caption, its
+  /// disabled setting, its face and its list's box replacing the defaults' where it set
+  /// them, its options the defaults' where it has none; its placement and what it has
+  /// chosen are its own.
+  pub fn over(self, defaults: Self) -> Self {
+    let mut face_style = defaults.face_style;
+
+    face_style.overlay(&self.face_style);
+
+    Self {
+      face_style,
+      label: self.label.or(defaults.label),
+      disabled: self.disabled.or(defaults.disabled),
+      placement: self.placement,
+      list: self.list.over(defaults.list),
+      surface: self.surface.or(defaults.surface),
+      chosen: self.chosen,
+      face: self.face.or(defaults.face),
     }
   }
 }
@@ -246,6 +272,15 @@ impl<P: Realization> BasicPickerCore<P> {
   /// Sets the view drawing the control closed, built from what is chosen.
   pub fn set_face<V: View<P>>(mut self, face: impl FnOnce(Memo<AnyChosen>) -> V + 'static) -> Self {
     self.face = Some(Face(Box::new(move |chosen| face(chosen).into_any())));
+
+    self
+  }
+
+  /// Sets the box the open list draws its options in, its [`Part::List`]: its
+  /// decoration and its sizing; the options are placed in it, so a child it holds is
+  /// replaced. Without one the options sit in the list undecorated.
+  pub fn set_list(mut self, list: Container<P>) -> Self {
+    self.surface = Some(list);
 
     self
   }
@@ -384,6 +419,13 @@ impl<P: Realization, T: Choice> BasicPicker<P, T> {
       })
     })
   }
+
+  /// Sets the box the open list draws its options in, its [`Part::List`]: its
+  /// decoration and its sizing; the options are placed in it, so a child it holds is
+  /// replaced. Without one the options sit in the list undecorated.
+  pub fn set_list(self, list: Container<P>) -> Self {
+    self.map_core(|core| core.set_list(list))
+  }
 }
 
 /// What a facade's [`BasicPicker`] of `T`s carries beyond the face's decoration.
@@ -469,6 +511,14 @@ pub trait BasicPickerBase<P: Realization, T: Choice>: Wraps<Inner = BasicPicker<
   fn set_face<V: View<P>>(self, face: impl FnOnce(Memo<Option<T>>) -> V + 'static) -> Self {
     Self::wrap(self.into_inner().set_face(face))
   }
+
+  /// Sets the box the open list draws its options in, its [`Part::List`]: its
+  /// decoration and its sizing; the options are placed in it, so a child it holds is
+  /// replaced. Without one the options sit in the list undecorated.
+  #[must_use]
+  fn set_list(self, list: impl Wraps<Inner = Container<P>>) -> Self {
+    Self::wrap(self.into_inner().set_list(list.into_inner()))
+  }
 }
 
 /// What the picker's two forms take: the decoration, what each form's control carries,
@@ -477,6 +527,7 @@ struct Parts<P: Realization> {
   face_style: Box<DeclaredBoxStyle<P>>,
   settings: ControlSettings,
   placement: Placement,
+  surface: Option<Container<P>>,
   face: Box<dyn FnOnce(Memo<AnyChosen>) -> AnyView<P>>,
 }
 
@@ -529,6 +580,7 @@ impl<P: Realization> View<P> for BasicPickerCore<P> {
       disabled,
       placement,
       list,
+      surface,
       chosen: controlled,
       face,
     } = self;
@@ -593,6 +645,7 @@ impl<P: Realization> View<P> for BasicPickerCore<P> {
       face_style,
       settings: ControlSettings { caption, disabled },
       placement,
+      surface,
       face,
     };
     // A platform whose tree is live from the start draws the picker outright.
@@ -672,6 +725,7 @@ fn build_drawn<P: Realization>(
     face_style,
     settings,
     placement,
+    surface,
     face,
   } = parts;
   let chosen = Rc::clone(&shared.chosen);
@@ -728,7 +782,7 @@ fn build_drawn<P: Realization>(
     .set_child(
       Control::new(listbox)
         .bind_handle(list_handle)
-        .set_child(shared.options),
+        .set_child(listed::<P>(surface, shared.options)),
     )
     .build();
 
@@ -740,6 +794,21 @@ fn build_drawn<P: Realization>(
   });
 
   node
+}
+
+/// The open list's content: `options` inside `surface`, recorded as the
+/// [`Part::List`], or `options` alone without one.
+fn listed<P: Realization>(surface: Option<Container<P>>, options: NodeId) -> AnyView<P> {
+  match surface {
+    None => options.into_any(),
+    Some(surface) => AnyView::new(move || {
+      let node = surface.set_child(options).build();
+
+      Scene::<P>::with(|scene| scene.set_part(node, Part::List));
+
+      node
+    }),
+  }
 }
 
 /// The closed face's type-ahead, reset on the clock of the realization `ops` reaches: a

@@ -251,7 +251,7 @@ fn open_context_menu(element: &HtmlElement) {
 }
 
 /// What axe finds wrong under `rules` (every rule where `rules` is empty) with the
-/// gallery mounted live, as drawn and with each of its overlays open: a tooltip, the
+/// gallery mounted live, as drawn and with each of its overlays open: a tooltip, each
 /// picker's popup and a context menu.
 async fn audit_the_gallery(rules: &[&str]) -> Vec<String> {
   let (_guard, _root) = fresh_root();
@@ -272,19 +272,33 @@ async fn audit_the_gallery(rules: &[&str]) -> Vec<String> {
   save.blur().expect("blur the described button");
   settle().await;
 
-  let face = element_with_text("[role=combobox]", "");
-
-  face.click();
-  settle().await;
+  let faces = document()
+    .query_selector_all("[role=combobox]")
+    .expect("a selector");
 
   assert!(
-    overlay_open(),
-    "a click on the picker's face opened no popup"
+    faces.length() > 1,
+    "the gallery shows the built-in picker and Simple's"
   );
 
-  found.extend(audit("the picker's popup open", rules).await);
-  press_escape();
-  settle().await;
+  for index in 0..faces.length() {
+    let face: HtmlElement = faces
+      .item(index)
+      .and_then(|face| face.dyn_into().ok())
+      .expect("a face");
+
+    face.click();
+    settle().await;
+
+    assert!(
+      overlay_open(),
+      "a click on the picker's face opened no popup"
+    );
+
+    found.extend(audit(&format!("picker {index}'s popup open"), rules).await);
+    press_escape();
+    settle().await;
+  }
 
   open_context_menu(&element_with_text("[tabindex]", "Right-click me"));
   settle().await;

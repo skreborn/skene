@@ -16,6 +16,7 @@ mod grid_cell;
 mod keymap;
 mod lazy_list;
 mod link;
+mod listbox;
 mod one_of;
 mod overlay;
 mod painted;
@@ -27,6 +28,7 @@ mod span;
 mod stack;
 mod suspense;
 mod text;
+mod text_field;
 mod theme;
 mod toggle;
 mod tooltip;
@@ -62,10 +64,11 @@ pub use self::{
   keymap::Keymap,
   lazy_list::{LazyColumn, LazyRow},
   link::Link,
+  listbox::{Listbox, ListboxOption},
   one_of::OneOf,
   overlay::Overlay,
   painted::Painted,
-  picker::BasicPicker,
+  picker::{BasicPicker, Picker},
   pinned::Pinned,
   radio::{Radio, RadioGroup},
   slider::Slider,
@@ -73,6 +76,7 @@ pub use self::{
   stack::Stack,
   suspense::Suspense,
   text::Text,
+  text_field::{TextEditor, TextField},
   theme::Theme,
   toggle::Toggle,
   tooltip::Tooltip,

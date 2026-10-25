@@ -15,6 +15,25 @@ supersedes.
   border ring against reversed cells), so the code would only look alike, and each
   facade writes its built-ins in parallel files over the foundation's `Control::over`.
   Revisit when two facades' trees for a control coincide.
+- **A picker's and a listbox's options from `(value, caption)` pairs** (2026-10-25),
+  as `SimplePicker::set_options` and the spike's `Picker::add_option` take them: the
+  styled `Picker<T>` and `Listbox<C>` take `ListboxOption` views (`set_options`,
+  `set_children`), styled and wrapped like any control and at any depth beside other
+  views, as a radio group takes its radios, and the picker's face reads the chosen
+  option's name from its roster. Revisit when a list's options must be built from data
+  the list alone holds, such as a list it filters.
+- **A drawn chevron as the pixel picker's indicator** (2026-10-25), a `Painted` mark as
+  the spike's `marks::chevron`: a canvas paints in colors fixed when it records and
+  follows no token, so its ink would not follow `SystemColors` or the scheme, and the
+  web paints it only once a renderer is chosen; the face's indicator is the glyph `▾`
+  in both media, inked from `SystemColors`. Revisit when a painted mark can take its
+  ink from a token, or a box can turn so a bordered corner draws the chevron.
+- **A text entry's selection colors through a `Typography` theme** (2026-10-25), the
+  field wrapping itself in a `Theme` redefining the typography selection tokens: a theme
+  redefines every token of its set, overriding the typography an ancestor gave the
+  field, so the field instead redefines the two selection tokens alone at its own node
+  (`SelectionColors::define`), from `set_selection_color` and
+  `set_selection_background`. Revisit when a theme can redefine a part of its set.
 - **A radio group's options from an option builder** (2026-10-25), the spike's
   `RadioGroup::add_option(tag, caption)` building each radio from a tag and a caption:
   the group takes its radios as children (`add_child`, `set_children` and their kin)

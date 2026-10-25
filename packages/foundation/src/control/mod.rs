@@ -72,6 +72,7 @@ use crate::{
   HasLayoutBox,
   ItemAlignment,
   KeyEvent,
+  Keyboard,
   Layout,
   LayoutBox,
   MotionBase,
@@ -88,10 +89,12 @@ use crate::{
   Role,
   Scene,
   ScrollEvent,
+  SelectionColors,
   Shortcut,
   Spacing,
   StaticLeaf,
   Text,
+  TextSelection,
   Thin,
   Value,
   View,
@@ -1525,6 +1528,104 @@ pub trait BasicListboxBase<P: Realization, C: Chosen>: HasControl<P, Listbox> {
   #[must_use]
   fn bind_chosen(self, signal: Signal<C>) -> Self {
     self.map_control(|control| control.map_behavior(|listbox| listbox.bind_chosen(signal)))
+  }
+}
+
+/// What a facade's text field and text editor carry beyond every control's members:
+/// the text and the selection, both controlled, the hint, the keyboard and the colors
+/// the value is selected in.
+///
+/// The entry is a [`Control`] over a [`TextEntry`]; the colors are its
+/// [`SelectionColors`], which the view redefines at its node as it builds.
+pub trait TextEntryBase<P: Realization>: HasControl<P, TextEntry> {
+  /// The colors the value is selected in, which the view defines as it builds.
+  fn selection_colors_mut(&mut self) -> &mut SelectionColors<P::Scalar>;
+
+  crate::trait_properties! { selection_colors_mut, Condition<P::Scalar>;
+    set_selection_color / derive_selection_color (color) => color: crate::Color,
+      "the text color of the selected value",
+      "A variant testing the environment takes effect; one testing the entry's state does not.";
+    set_selection_background / derive_selection_background (color) => background: crate::Color,
+      "the background behind the selected value",
+      "A variant testing the environment takes effect; one testing the entry's state does not.";
+  }
+
+  /// Sets the text.
+  #[must_use]
+  fn set_value(self, value: impl Into<String>) -> Self {
+    let value = value.into();
+
+    self.map_control(|control| control.map_behavior(|entry| entry.set_value(value)))
+  }
+
+  /// Derives the text from the signals `value` reads.
+  #[must_use]
+  fn derive_value(self, value: impl Fn() -> String + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.derive_value(value)))
+  }
+
+  /// Runs `action` with the text an edit asks for.
+  #[must_use]
+  fn handle_change(self, action: impl Fn(&str) + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.handle_change(action)))
+  }
+
+  /// Binds the text to `signal` in both directions.
+  #[must_use]
+  fn bind_value(self, signal: Signal<String>) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.bind_value(signal)))
+  }
+
+  /// Sets the hint shown while the text is empty.
+  #[must_use]
+  fn set_placeholder(self, placeholder: impl Into<String>) -> Self {
+    let placeholder = placeholder.into();
+
+    self.map_control(|control| control.map_behavior(|entry| entry.set_placeholder(placeholder)))
+  }
+
+  /// Derives the hint shown while the text is empty from the signals `placeholder`
+  /// reads.
+  #[must_use]
+  fn derive_placeholder(self, placeholder: impl Fn() -> String + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.derive_placeholder(placeholder)))
+  }
+
+  /// Sets the keyboard the entry asks the platform for.
+  #[must_use]
+  fn set_keyboard(self, keyboard: Keyboard) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.set_keyboard(keyboard)))
+  }
+
+  /// Derives the keyboard the entry asks the platform for from the signals `keyboard`
+  /// reads.
+  #[must_use]
+  fn derive_keyboard(self, keyboard: impl Fn() -> Keyboard + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.derive_keyboard(keyboard)))
+  }
+
+  /// Sets the selection, in grapheme clusters of the text.
+  #[must_use]
+  fn set_selection(self, selection: TextSelection) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.set_selection(selection)))
+  }
+
+  /// Derives the selection from the signals `selection` reads.
+  #[must_use]
+  fn derive_selection(self, selection: impl Fn() -> TextSelection + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.derive_selection(selection)))
+  }
+
+  /// Runs `action` with the selection after every move of the caret or its anchor.
+  #[must_use]
+  fn handle_selection_change(self, action: impl Fn(TextSelection) + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.handle_selection_change(action)))
+  }
+
+  /// Binds the selection to `signal` in both directions.
+  #[must_use]
+  fn bind_selection(self, signal: Signal<TextSelection>) -> Self {
+    self.map_control(|control| control.map_behavior(|entry| entry.bind_selection(signal)))
   }
 }
 

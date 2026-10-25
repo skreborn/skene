@@ -918,11 +918,14 @@ re-export.
   accessibility properties and focus order, and the keyboard tables live in the
   behaviors rather than in a match per medium.
 - **The styled built-ins are each facade's own.** `Button`, `Checkbox`, `Toggle` (a
-  switch), `RadioGroup<T>`, `Radio` and `Slider` are drawn, default-styled controls over
-  `Activate`, `Toggle`, `Toggle::switch` (which reports `Role::Switch`), the `RadioGroup`
-  collection, its `Radio` member and `Slider`, written in parallel files per facade
-  (`views/button.rs`, `views/checkbox.rs`, `views/toggle.rs`, `views/radio.rs`,
-  `views/slider.rs`), since the trees the media
+  switch), `RadioGroup<T>`, `Radio`, `Slider`, `TextField`, `TextEditor`, `Picker<T>`,
+  `Listbox<C>` and `ListboxOption` are drawn, default-styled controls over `Activate`,
+  `Toggle`, `Toggle::switch` (which reports `Role::Switch`), the `RadioGroup`
+  collection, its `Radio` member, `Slider`, `TextEntry` (single-line and multi-line),
+  `BasicPickerCore`, the `Listbox` collection and its `ListboxOption` member, written in
+  parallel files per facade (`views/button.rs`, `views/checkbox.rs`, `views/toggle.rs`,
+  `views/radio.rs`, `views/slider.rs`, `views/text_field.rs`, `views/picker.rs`,
+  `views/listbox.rs`), since the trees the media
   compose differ; every default reads `SystemColors`, so a theme of the set restyles
   them all. Each builds its defaults as a control of its own at build and lays the
   control its user configured over it (`Control::over`: the user's box style overlaid
@@ -971,7 +974,33 @@ re-export.
   disc ringed in the accent (`INK` while focus shows) or a `KNOB` cell (`ACCENT_PRESSED`
   while focus shows), and the behavior's thumb extent is the default thumb's until
   `set_thumb_extent` says otherwise. On the web the slider keeps its range input covering
-  its label, the scriptless form. The conformance pages keep the `Basic*` controls.
+  its label, the scriptless form. `TextField` and `TextEditor` carry `TextEntryBase`
+  (the text, the hint, the keyboard and the selection, all controlled, through
+  `HasControl`) and the colors their value is selected in, a `SelectionColors` the view
+  defines at its node as it builds (`SelectionColors::define`, redefining the typography
+  selection tokens the entry's value is selected in there, a variant testing the
+  environment kept and one testing the entry's state not); `TextField` adds the secure
+  flag and `TextEditor` its lines, three by default and two at least. Their defaults: a
+  `FIELD` fill (`CONTROL` while disabled) inside a border of 1 in `BORDER`, the accent
+  while focus shows, padded 4 by 8 and rounded by 6 in pixels and a cell at either side
+  in cells, the value selected in `INK` on `SELECTION`. On the web each is its `<input>`
+  or `<textarea>` styled by CSS; in the terminal its window over the entry the scene
+  keeps. `Picker<T>` is a `BasicPicker<T>` laid over defaults (`BasicPickerCore::over`,
+  as `Control::over` does for a control): a face filled with `CONTROL` and its hover and
+  pressed variants, bordered in `BORDER` and ringed in the accent while focus shows or
+  the list is open in pixels, accent cells while focus shows in the terminal; a face
+  showing the chosen option's name, read from the roster through the picker's
+  `ListboxContext` (`Roster::name_of`), and the indicator `▾`, a glyph in both media; a
+  list box (`BasicPickerCore::set_list`, a `Container` the options are placed in,
+  recorded as the `Part::List`) in `FIELD` inside a border in `BORDER`. On the web it
+  stays an `Enhance` over its `NativePicker` `<select>`, which takes the face's
+  decoration, served and swapped as the basic picker's is. `Listbox<C>` holds its
+  options as `RadioGroup<T>` holds its radios, in a `Column` inside a list box of the
+  same look (`set_list` replacing it), beneath its caption; a `ListboxOption`, the
+  option of both, fills with `CONTROL_HOVER` while hovered and `CONTROL` while focused
+  (`CONTROL_PRESSED` in cells), rings in the accent while focus shows in pixels, and its
+  default `Part::Mark` is a check in `INK` showing while chosen and keeping its place
+  otherwise. The conformance pages keep the `Basic*` controls.
 
 ## The style model
 
@@ -1648,7 +1677,11 @@ options, and the browser's `set_choices` shows the same options, rebuilding them
 where they differ; a `<select>`'s report leaves that empty option out, so choosing it
 chooses nothing. At hydration a key the reader chose is reported applied and mapped back
 to its member's value; one naming no member asks nothing, and the controller's write
-repairs it to the truth.
+repairs it to the truth. The styled `Picker<T>` is served and swapped the same way: its
+`<select>` takes the face's decoration, its defaults included, so the scriptless page
+shows the face's fill and outline, and its drawn face and list arrive with the swap.
+A styled field's selection colors are token definitions at its `<input>` or
+`<textarea>`, which the entry's `::selection` rule references.
 
 The crate's `platform` module holds each pixel platform's own vocabulary, a module per
 platform: `platform::web` is the web platform itself (`Web`, its native door

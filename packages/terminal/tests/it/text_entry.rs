@@ -13,7 +13,7 @@ use skene_terminal::{
   testing,
 };
 
-use crate::common::{colors_at, is_live, red, rgb, rows, white, with_platform};
+use crate::common::{colors_at, green, is_live, red, rgb, rows, white, with_platform};
 
 /// Typing into a focused field flows through `bind_value` into the signal and back onto
 /// the frame; the placeholder shows while the value is empty.
@@ -1535,5 +1535,109 @@ fn an_entrys_editing_state_lives_and_goes_with_its_node() {
 
     assert!(testing::render_to_text(10, 2).starts_with("gone"));
     assert!(kept.upgrade().is_none(), "the entry went with its node");
+  });
+}
+
+/// The built-in field draws its defaults in cells: its caption on the row above, its
+/// value padded a cell inside a border in the border color that takes the accent while
+/// focus shows, its value selected on the selection color, and every default a value its
+/// setters replace.
+#[test]
+fn a_text_field_draws_its_defaults_in_cells() {
+  with_platform(|| {
+    let name = Signal::new("Ada".to_owned());
+
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          TextField::new().set_label("Name").bind_value(name),
+          TextField::new()
+            .set_label("Mail")
+            .set_value("a@b")
+            .set_border_color(red())
+            .set_selection_background(green()),
+        ))
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(12, 8),
+      "Name\n┌──────────┐\n│ Ada      │\n└──────────┘\nMail\n┌──────────┐\n│ a@b      │\n└──────────┘\n"
+    );
+
+    let border = colors_at(12, 8, 0, 1).0;
+    let field = colors_at(12, 8, 2, 2).1;
+
+    assert_ne!(border, None, "the border is inked");
+    assert_eq!(
+      colors_at(12, 8, 0, 5).0,
+      Some(rgb(red())),
+      "a set border color replaces the default"
+    );
+
+    testing::trigger_key("Tab");
+
+    let focused = colors_at(12, 8, 0, 1).0;
+    let selected = colors_at(12, 8, 2, 2).1;
+
+    assert_ne!(
+      focused, border,
+      "the border takes the accent while focus shows"
+    );
+    assert_ne!(
+      selected, field,
+      "keyboard focus selects the value on the selection color"
+    );
+    assert_eq!(
+      colors_at(12, 8, 3, 2).1,
+      selected,
+      "the whole value is selected"
+    );
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(colors_at(12, 8, 0, 1).0, border, "the ring goes with focus");
+    assert_eq!(
+      colors_at(12, 8, 2, 6).1,
+      Some(rgb(green())),
+      "a set selection background replaces the default"
+    );
+  });
+}
+
+/// The built-in editor shows three lines unless told otherwise, two at least, inside the
+/// field's border, and takes a newline.
+#[test]
+fn a_text_editor_draws_three_lines_in_cells() {
+  with_platform(|| {
+    let notes = Signal::new(String::new());
+
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          TextEditor::new()
+            .set_width(Dimension::Length(10))
+            .set_placeholder("Notes")
+            .bind_value(notes),
+          TextEditor::new()
+            .set_width(Dimension::Length(10))
+            .set_lines(1)
+            .set_value("one"),
+        ))
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(10, 9),
+      "┌────────┐\n│ Notes  │\n│        │\n│        │\n└────────┘\n┌────────┐\n│ one    │\n│        │\n└────────┘\n",
+      "three lines by default, and two at least"
+    );
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("a");
+    testing::trigger_key("Enter");
+    testing::trigger_key("b");
+
+    assert_eq!(notes.get_untracked(), "a\nb", "an editor takes a newline");
   });
 }

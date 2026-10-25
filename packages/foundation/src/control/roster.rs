@@ -197,6 +197,21 @@ impl Roster {
       .map(Member::key)
   }
 
+  /// The name the first member to join whose value `chosen` holds goes by now, tracked;
+  /// none where it holds no member's or its label supplied no name.
+  #[must_use]
+  pub fn name_of(&self, chosen: &AnyChosen) -> Option<String> {
+    self.changed.track();
+
+    self
+      .members
+      .borrow()
+      .values()
+      .filter(|member| chosen.contains(&member.value))
+      .min_by_key(|member| member.joined)
+      .and_then(Member::name)
+  }
+
   /// The value of the member going by `key`, tracked; none where no member does.
   #[must_use]
   pub fn value_of(&self, key: &str) -> Option<AnyChoice> {

@@ -185,6 +185,7 @@ pub use crate::{
     SliderRange,
     TYPE_AHEAD_RESET,
     TextEntry,
+    TextEntryBase,
     Toggle,
     TypeAhead,
   },
@@ -216,7 +217,7 @@ pub use crate::{
   picker::{BasicPicker, BasicPickerBase, BasicPickerCore},
   pinned::{Pinned, PinnedBase},
   realize::{ChildBuilder, LowLevel},
-  run::Run,
+  run::{Run, SelectionColors},
   span::{RichText, RichTextBase, Span, SpanBase},
   stack::{Stack, StackBase},
   surface::{

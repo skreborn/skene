@@ -194,6 +194,10 @@ fn built_ins() -> impl View {
   let wifi = Signal::tagged("built-in wifi", false);
   let size = Signal::tagged("built-in size", 2u8);
   let level = Signal::tagged("built-in level", 40.0f32);
+  let title = Signal::tagged("built-in title", String::new());
+  let summary = Signal::tagged("built-in summary", String::new());
+  let unit = Signal::tagged("built-in unit", 2u8);
+  let fruit = Signal::tagged("built-in fruit", Some(1u8));
 
   // The framework's own controls, drawn in the platform's colors: what a component
   // library's presets build on, each default a value its setters replace.
@@ -236,6 +240,38 @@ fn built_ins() -> impl View {
             .set_label("Level")
             .set_range(SliderRange::new(0., 100., 5.))
             .bind_value(level),
+        )),
+      Row::new()
+        .set_spacing(16)
+        .set_wrap(Wrap::Forward)
+        .set_item_alignment(ItemAlignment::Start)
+        .set_children((
+          Column::new().set_spacing(8).set_children((
+            TextField::new()
+              .set_label("Title")
+              .set_placeholder("Untitled")
+              .bind_value(title),
+            TextEditor::new()
+              .set_label("Summary")
+              .set_placeholder("A few lines")
+              .bind_value(summary),
+          )),
+          Picker::new()
+            .set_label("Unit")
+            .bind_chosen(unit)
+            .set_options((
+              ListboxOption::new(1u8).set_label("Pixels"),
+              ListboxOption::new(2u8).set_label("Points"),
+              ListboxOption::new(3u8).set_label("Ems"),
+            )),
+          Listbox::new()
+            .set_label("Fruit")
+            .bind_chosen(fruit)
+            .set_children((
+              ListboxOption::new(1u8).set_label("Apple"),
+              ListboxOption::new(2u8).set_label("Cherry"),
+              ListboxOption::new(3u8).set_label("Plum"),
+            )),
         )),
       Text::derive(move || format!("published {} time(s)", published.get()))
         .set_font_size(13.)

@@ -15,6 +15,7 @@ use skene_foundation::{
   Alignment,
   Arrangement,
   Axis,
+  BasicListboxBase,
   BasicPickerBase,
   BoxFacts,
   ColorScheme,
@@ -63,6 +64,7 @@ use skene_foundation::{
   StackBase,
   StaticLeaf,
   TextBase,
+  TextEntryBase,
   ThemeBase,
   TooltipBase,
   Transition,
@@ -3246,5 +3248,250 @@ fn a_sliders_fill_and_thumb_follow_its_value_in_place() {
       .first()
       .is_some_and(|first| *first == fill),
     "the same fill"
+  );
+}
+
+/// The built-in field and editor are the page's own `<input>` and `<textarea>`, drawn
+/// with their defaults in the platform's colors: the field's fill and outline, the
+/// accent ring while focus shows, and the colors the value is selected in, which a setter
+/// its user calls replaces.
+#[wasm_bindgen_test]
+fn a_text_fields_defaults_apply_and_its_selection_takes_the_platforms_colors() {
+  let (_guard, root) = fresh_root();
+  let red = Color::srgb(1., 0., 0.);
+  let name = skene_web::reactive::Signal::new("Ada".to_owned());
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        skene_web::TextField::new()
+          .set_label("Name")
+          .bind_value(name),
+        skene_web::TextEditor::new()
+          .set_label("Notes")
+          .set_selection_background(red),
+      ))
+      .build()
+  });
+
+  let field = root
+    .query_selector("input")
+    .ok()
+    .flatten()
+    .expect("an input");
+  let editor = root
+    .query_selector("textarea")
+    .ok()
+    .flatten()
+    .expect("a textarea");
+
+  assert_eq!(field.unchecked_ref::<HtmlInputElement>().value(), "Ada");
+  assert_eq!(editor.get_attribute("rows").as_deref(), Some("3"));
+
+  for entry in [&field, &editor] {
+    assert_eq!(
+      background(entry),
+      system(&root, "background-color", SystemColors::FIELD)
+    );
+    assert_eq!(
+      computed(entry, "border-top-color"),
+      system(&root, "color", SystemColors::BORDER)
+    );
+    assert_eq!(computed(entry, "border-top-width"), "1px");
+    assert_eq!(computed(entry, "padding-left"), "8px");
+    assert_eq!(computed(entry, "border-top-left-radius"), "6px");
+    assert_eq!(computed(entry, "cursor"), "text");
+  }
+
+  assert_eq!(
+    computed(&field, "--typography-selection-surface"),
+    system(&root, "background-color", SystemColors::SELECTION),
+    "the value is selected on the platform's selection color"
+  );
+  assert_eq!(
+    computed(&field, "--typography-selection-ink"),
+    system(&root, "color", SystemColors::INK)
+  );
+  assert_eq!(
+    computed(&editor, "--typography-selection-surface"),
+    probe(&root, "background-color", red),
+    "a selection background its user sets"
+  );
+
+  html(&field).focus().expect("focus the field");
+
+  assert_eq!(
+    computed(&field, "border-top-color"),
+    system(&root, "color", SystemColors::ACCENT),
+    "the ring while focus shows"
+  );
+}
+
+/// The built-in picker, drawn on a live page, takes its face's defaults and opens its
+/// list in the platform's colors, the chosen option's name and the indicator on the
+/// face and the chosen option's check alone showing; a choice renames the face in place.
+#[wasm_bindgen_test]
+fn a_pickers_face_and_list_take_their_defaults() {
+  let (_guard, root) = fresh_root();
+  let size = skene_web::reactive::Signal::new(2u8);
+
+  let _ = mount(move || {
+    skene_web::Picker::new()
+      .set_label("Size")
+      .bind_chosen(size)
+      .set_options((
+        skene_web::ListboxOption::new(1u8).set_label("Small"),
+        skene_web::ListboxOption::new(2u8).set_label("Large"),
+      ))
+      .build()
+  });
+
+  assert!(
+    root.query_selector("select").expect("query").is_none(),
+    "a live page draws the picker outright"
+  );
+
+  let face = root
+    .query_selector("[role=combobox]")
+    .ok()
+    .flatten()
+    .expect("the face");
+
+  // The list is promoted in place, inside the face's element: the face's own text is
+  // its first two runs.
+  let shown = |face: &Element| {
+    select(face, "span")
+      .iter()
+      .take(2)
+      .filter_map(|run| run.text_content())
+      .collect::<String>()
+  };
+
+  assert_eq!(shown(&face), "Large\u{25be}");
+  assert_eq!(
+    background(&face),
+    system(&root, "background-color", SystemColors::CONTROL)
+  );
+  assert_eq!(
+    computed(&face, "border-top-color"),
+    system(&root, "color", SystemColors::BORDER)
+  );
+  assert_eq!(computed(&face, "min-height"), "32px");
+
+  html(&face).click();
+
+  let options = select(&root, "[role=option]");
+  let [small, large] = options.as_slice()
+  else {
+    panic!("two options: {}", root.inner_html());
+  };
+  let list = large
+    .parent_element()
+    .and_then(|column| column.parent_element())
+    .expect("the list's box");
+
+  assert_eq!(
+    background(&list),
+    system(&root, "background-color", SystemColors::FIELD)
+  );
+  assert_eq!(
+    computed(&list, "border-top-color"),
+    system(&root, "color", SystemColors::BORDER)
+  );
+
+  let check = |option: &Element| {
+    let mark = option
+      .query_selector("span")
+      .ok()
+      .flatten()
+      .and_then(|span| span.parent_element())
+      .expect("the option's mark");
+
+    computed(&mark, "visibility")
+  };
+
+  assert_eq!(
+    check(small),
+    "hidden",
+    "the check shows on the chosen option alone"
+  );
+  assert_eq!(check(large), "visible");
+
+  html(small).click();
+
+  assert_eq!(size.get(), 1, "a choice reaches the signal");
+  assert_eq!(shown(&face), "Small\u{25be}");
+}
+
+/// The built-in listbox lays its options out in its list box, the chosen one's check
+/// showing, and a list box its user sets takes the default's place.
+#[wasm_bindgen_test]
+fn a_listboxs_options_sit_in_its_list_box() {
+  let (_guard, root) = fresh_root();
+  let red = Color::srgb(1., 0., 0.);
+  let fruit = skene_web::reactive::Signal::new(Some(2u8));
+  let options = || {
+    (
+      skene_web::ListboxOption::new(1u8).set_label("Apple"),
+      skene_web::ListboxOption::new(2u8).set_label("Banana"),
+    )
+  };
+
+  let _ = mount(move || {
+    Row::new()
+      .set_children((
+        skene_web::Listbox::new()
+          .set_label("Fruit")
+          .bind_chosen(fruit)
+          .set_children(options()),
+        skene_web::Listbox::<Option<u8>>::new()
+          .set_label("Other")
+          .set_list(Container::new().set_background(red))
+          .set_children(options()),
+      ))
+      .build()
+  });
+
+  let listboxes = select(&root, "[role=listbox]");
+  let [fruits, other] = listboxes.as_slice()
+  else {
+    panic!("two listboxes: {}", root.inner_html());
+  };
+  let list = |listbox: &Element| {
+    listbox
+      .query_selector("[role=option]")
+      .ok()
+      .flatten()
+      .and_then(|option| option.parent_element())
+      .and_then(|column| column.parent_element())
+      .expect("the list's box")
+  };
+
+  assert_eq!(
+    background(&list(fruits)),
+    system(&root, "background-color", SystemColors::FIELD)
+  );
+  assert_eq!(computed(&list(fruits), "border-top-width"), "1px");
+  assert_eq!(
+    background(&list(other)),
+    probe(&root, "background-color", red)
+  );
+  assert_eq!(computed(&list(other), "border-top-width"), "0px");
+
+  let options = select(fruits, "[role=option]");
+  let [apple, banana] = options.as_slice()
+  else {
+    panic!("two options: {}", fruits.inner_html());
+  };
+  let top = |element: &Element| element.get_bounding_client_rect().top();
+
+  assert!(top(banana) > top(apple), "the options stand in a column");
+
+  html(apple).click();
+
+  assert_eq!(fruit.get(), Some(1));
+  assert_eq!(
+    apple.get_attribute("aria-selected").as_deref(),
+    Some("true")
   );
 }

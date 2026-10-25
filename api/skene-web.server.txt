@@ -108,6 +108,7 @@ pub use skene_web::TOOLTIP_GRACE
 pub use skene_web::TextBase
 pub use skene_web::TextDecoration
 pub use skene_web::TextDecorationStyle
+pub use skene_web::TextEntryBase
 pub use skene_web::TextSelection
 pub use skene_web::ThemeBase
 pub use skene_web::Timer
@@ -309,13 +310,26 @@ impl core::marker::StructuralPartialEq for skene_web::platform::web::Web
 impl skene_foundation::container::ContainerBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::context_menu::ContextMenuBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::ListboxPolicy>> for skene_web::ListboxOption
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::RadioPolicy>> for skene_web::Radio
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::slider::Slider> for skene_web::Slider
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextEditor
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
 impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
 pub fn skene_web::Button::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>
 pub fn skene_web::Button::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::activate::Activate>) -> Self
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextEditor
+pub fn skene_web::TextEditor::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
+pub fn skene_web::TextEditor::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
+pub fn skene_web::TextField::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
+pub fn skene_web::TextField::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
+impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
 impl skene_foundation::enhance::EnhanceBase<skene_web::platform::web::Web> for skene_web::Enhance
 impl skene_foundation::error_boundary::ErrorBoundaryBase<skene_web::platform::web::Web> for skene_web::ErrorBoundary
 impl skene_foundation::flex::ColumnBase<skene_web::platform::web::Web> for skene_web::Column
@@ -410,6 +424,8 @@ impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for sken
 pub fn skene_web::LazyColumn::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::LazyRow
 pub fn skene_web::LazyRow::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::ListboxOption
+pub fn skene_web::ListboxOption::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Overlay
 pub fn skene_web::Overlay::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Painted
@@ -430,6 +446,10 @@ impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for sken
 pub fn skene_web::Suspense::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Text
 pub fn skene_web::Text::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Toggle
 pub fn skene_web::Toggle::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Tooltip
@@ -443,22 +463,38 @@ impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> fo
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ListboxOption
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Overlay
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Radio
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Slider
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::TextEditor
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::TextField
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Tooltip
 impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Button
 pub fn skene_web::Button::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
 impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Button
 pub type skene_web::Button::Kind = skene_foundation::spine::view::PlainChild
 pub fn skene_web::Button::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::TextEditor
+pub type skene_web::TextEditor::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::TextEditor::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::TextField
+pub type skene_web::TextField::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::TextField::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Button
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Container
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::ListboxOption
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Overlay
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Radio
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Slider
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::TextEditor
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::TextField
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Text
@@ -487,11 +523,28 @@ pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::Node
 impl<B: skene_foundation::control::Behavior> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::Listbox<C>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>
+pub fn skene_web::Listbox<C>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>) -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub type skene_web::Listbox<C>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_web::Listbox<C>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicListbox<C> where Self: 'static
 pub fn skene_web::BasicListbox<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::build(self) -> skene_foundation::spine::node::NodeId
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub type skene_web::Listbox<C>::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::Listbox<C>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Listbox<C>
 impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<skene_web::platform::web::Web, K> for skene_web::OneOf<K>
 impl<K> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::OneOf<K> where skene_foundation::one_of::OneOf<skene_web::Active, K>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::one_of::OneOfCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::OneOf<K>::build(self) -> skene_foundation::spine::node::NodeId
@@ -509,6 +562,7 @@ impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::Ha
 pub fn skene_web::RadioGroup<T>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>
 pub fn skene_web::RadioGroup<T>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::Picker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::FlexChild
 pub fn skene_web::RadioGroup<T>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
@@ -516,10 +570,13 @@ impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view
 pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T> where Self: 'static
 pub fn skene_web::BasicRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 pub fn skene_web::RadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Picker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 pub fn skene_web::RadioGroup<T>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
@@ -659,6 +716,7 @@ pub use skene_web::prelude::SuspenseBase
 pub use skene_web::prelude::TextBase
 pub use skene_web::prelude::TextDecoration
 pub use skene_web::prelude::TextDecorationStyle
+pub use skene_web::prelude::TextEntryBase
 pub use skene_web::prelude::TextSelection
 pub use skene_web::prelude::ThemeBase
 pub use skene_web::prelude::TokenRef
@@ -1035,6 +1093,50 @@ impl core::fmt::Debug for skene_web::LinkPolicy
 pub fn skene_web::LinkPolicy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_web::LinkPolicy
 impl core::marker::StructuralPartialEq for skene_web::LinkPolicy
+pub struct skene_web::prelude::Listbox<C: skene_foundation::control::choice::Chosen>
+impl<C: skene_foundation::control::choice::Chosen> skene_web::Listbox<C>
+pub const skene_web::Listbox<C>::SPACING: f32
+pub fn skene_web::Listbox<C>::new() -> Self
+pub fn skene_web::Listbox<C>::set_list(self, impl skene_foundation::spine::wraps::Wraps<Inner = skene_foundation::container::Container<skene_web::Active>>) -> Self
+impl<C: core::fmt::Debug + skene_foundation::control::choice::Chosen> core::fmt::Debug for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C: skene_foundation::control::choice::Chosen> core::default::Default for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::default() -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>
+pub fn skene_web::Listbox<C>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>) -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub type skene_web::Listbox<C>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_web::Listbox<C>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::AnyKind for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub type skene_web::Listbox<C>::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::Listbox<C>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub struct skene_web::prelude::ListboxOption(_)
+impl skene_web::ListboxOption
+pub fn skene_web::ListboxOption::new(impl skene_foundation::control::choice::Choice) -> Self
+impl core::fmt::Debug for skene_web::ListboxOption
+pub fn skene_web::ListboxOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::ListboxPolicy>> for skene_web::ListboxOption
+impl skene_foundation::spine::view::AnyKind for skene_web::ListboxOption
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::ListboxOption
+pub fn skene_web::ListboxOption::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::ListboxOption
+pub type skene_web::ListboxOption::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::ListboxPolicy>>
+pub fn skene_web::ListboxOption::inner(&self) -> &Self::Inner
+pub fn skene_web::ListboxOption::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::ListboxOption::into_inner(self) -> Self::Inner
+pub fn skene_web::ListboxOption::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ListboxOption
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::ListboxOption
 pub struct skene_web::prelude::OneOf<K>(_)
 impl<K: core::cmp::PartialEq + 'static> core::default::Default for skene_web::OneOf<K>
 pub fn skene_web::OneOf<K>::default() -> Self
@@ -1078,6 +1180,24 @@ pub fn skene_web::Painted::inner(&self) -> &Self::Inner
 pub fn skene_web::Painted::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Painted::into_inner(self) -> Self::Inner
 pub fn skene_web::Painted::wrap(Self::Inner) -> Self
+pub struct skene_web::prelude::Picker<T: skene_foundation::control::choice::Choice>(_)
+impl<T: skene_foundation::control::choice::Choice> skene_web::Picker<T>
+pub fn skene_web::Picker<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::Picker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::Picker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::Picker<T>
+pub type skene_web::Picker<T>::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web, T>
+pub fn skene_web::Picker<T>::inner(&self) -> &Self::Inner
+pub fn skene_web::Picker<T>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Picker<T>::into_inner(self) -> Self::Inner
+pub fn skene_web::Picker<T>::wrap(Self::Inner) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Picker<T>
 pub struct skene_web::prelude::Pinned(_)
 impl core::default::Default for skene_web::Pinned
 pub fn skene_web::Pinned::default() -> Self
@@ -1255,6 +1375,56 @@ pub fn skene_web::Text::into_inner(self) -> Self::Inner
 pub fn skene_web::Text::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Text
 impl skene_foundation::text::view::TextBase<skene_web::platform::web::Web> for skene_web::Text
+pub struct skene_web::prelude::TextEditor
+impl skene_web::TextEditor
+pub const skene_web::TextEditor::LINES: u16
+pub fn skene_web::TextEditor::new() -> Self
+pub fn skene_web::TextEditor::set_lines(self, u16) -> Self
+impl core::default::Default for skene_web::TextEditor
+pub fn skene_web::TextEditor::default() -> Self
+impl core::fmt::Debug for skene_web::TextEditor
+pub fn skene_web::TextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextEditor
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextEditor
+pub fn skene_web::TextEditor::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
+pub fn skene_web::TextEditor::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
+impl skene_foundation::spine::view::AnyKind for skene_web::TextEditor
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::TextEditor
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::TextEditor
+pub type skene_web::TextEditor::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::TextEditor::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::TextEditor
+pub struct skene_web::prelude::TextField
+impl skene_web::TextField
+pub fn skene_web::TextField::derive_secure(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::TextField::new() -> Self
+pub fn skene_web::TextField::set_secure(self, bool) -> Self
+impl core::default::Default for skene_web::TextField
+pub fn skene_web::TextField::default() -> Self
+impl core::fmt::Debug for skene_web::TextField
+pub fn skene_web::TextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
+pub fn skene_web::TextField::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
+pub fn skene_web::TextField::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
+impl skene_foundation::spine::view::AnyKind for skene_web::TextField
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::TextField
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::TextField
+pub type skene_web::TextField::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::TextField::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::TextField
 pub struct skene_web::prelude::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>>(_)
 impl<S: core::fmt::Debug + skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> core::fmt::Debug for skene_web::Theme<S>
 pub fn skene_web::Theme<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1755,6 +1925,50 @@ impl core::fmt::Debug for skene_web::LinkPolicy
 pub fn skene_web::LinkPolicy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_web::LinkPolicy
 impl core::marker::StructuralPartialEq for skene_web::LinkPolicy
+pub struct skene_web::Listbox<C: skene_foundation::control::choice::Chosen>
+impl<C: skene_foundation::control::choice::Chosen> skene_web::Listbox<C>
+pub const skene_web::Listbox<C>::SPACING: f32
+pub fn skene_web::Listbox<C>::new() -> Self
+pub fn skene_web::Listbox<C>::set_list(self, impl skene_foundation::spine::wraps::Wraps<Inner = skene_foundation::container::Container<skene_web::Active>>) -> Self
+impl<C: core::fmt::Debug + skene_foundation::control::choice::Chosen> core::fmt::Debug for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C: skene_foundation::control::choice::Chosen> core::default::Default for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::default() -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>
+pub fn skene_web::Listbox<C>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>) -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub type skene_web::Listbox<C>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_web::Listbox<C>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::AnyKind for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Listbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub fn skene_web::Listbox<C>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub type skene_web::Listbox<C>::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::Listbox<C>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Listbox<C>
+pub struct skene_web::ListboxOption(_)
+impl skene_web::ListboxOption
+pub fn skene_web::ListboxOption::new(impl skene_foundation::control::choice::Choice) -> Self
+impl core::fmt::Debug for skene_web::ListboxOption
+pub fn skene_web::ListboxOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::ListboxPolicy>> for skene_web::ListboxOption
+impl skene_foundation::spine::view::AnyKind for skene_web::ListboxOption
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::ListboxOption
+pub fn skene_web::ListboxOption::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::ListboxOption
+pub type skene_web::ListboxOption::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::ListboxPolicy>>
+pub fn skene_web::ListboxOption::inner(&self) -> &Self::Inner
+pub fn skene_web::ListboxOption::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::ListboxOption::into_inner(self) -> Self::Inner
+pub fn skene_web::ListboxOption::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ListboxOption
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::ListboxOption
 pub struct skene_web::OneOf<K>(_)
 impl<K: core::cmp::PartialEq + 'static> core::default::Default for skene_web::OneOf<K>
 pub fn skene_web::OneOf<K>::default() -> Self
@@ -1798,6 +2012,24 @@ pub fn skene_web::Painted::inner(&self) -> &Self::Inner
 pub fn skene_web::Painted::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Painted::into_inner(self) -> Self::Inner
 pub fn skene_web::Painted::wrap(Self::Inner) -> Self
+pub struct skene_web::Picker<T: skene_foundation::control::choice::Choice>(_)
+impl<T: skene_foundation::control::choice::Choice> skene_web::Picker<T>
+pub fn skene_web::Picker<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::Picker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::Picker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Picker<T>
+pub fn skene_web::Picker<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::Picker<T>
+pub type skene_web::Picker<T>::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web, T>
+pub fn skene_web::Picker<T>::inner(&self) -> &Self::Inner
+pub fn skene_web::Picker<T>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Picker<T>::into_inner(self) -> Self::Inner
+pub fn skene_web::Picker<T>::wrap(Self::Inner) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Picker<T>
 pub struct skene_web::Pinned(_)
 impl core::default::Default for skene_web::Pinned
 pub fn skene_web::Pinned::default() -> Self
@@ -1992,6 +2224,56 @@ pub fn skene_web::Text::into_inner(self) -> Self::Inner
 pub fn skene_web::Text::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Text
 impl skene_foundation::text::view::TextBase<skene_web::platform::web::Web> for skene_web::Text
+pub struct skene_web::TextEditor
+impl skene_web::TextEditor
+pub const skene_web::TextEditor::LINES: u16
+pub fn skene_web::TextEditor::new() -> Self
+pub fn skene_web::TextEditor::set_lines(self, u16) -> Self
+impl core::default::Default for skene_web::TextEditor
+pub fn skene_web::TextEditor::default() -> Self
+impl core::fmt::Debug for skene_web::TextEditor
+pub fn skene_web::TextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextEditor
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextEditor
+pub fn skene_web::TextEditor::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
+pub fn skene_web::TextEditor::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
+impl skene_foundation::spine::view::AnyKind for skene_web::TextEditor
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::TextEditor
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::TextEditor
+pub fn skene_web::TextEditor::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::TextEditor
+pub type skene_web::TextEditor::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::TextEditor::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::TextEditor
+pub struct skene_web::TextField
+impl skene_web::TextField
+pub fn skene_web::TextField::derive_secure(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_web::TextField::new() -> Self
+pub fn skene_web::TextField::set_secure(self, bool) -> Self
+impl core::default::Default for skene_web::TextField
+pub fn skene_web::TextField::default() -> Self
+impl core::fmt::Debug for skene_web::TextField
+pub fn skene_web::TextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
+impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
+pub fn skene_web::TextField::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
+pub fn skene_web::TextField::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
+impl skene_foundation::spine::view::AnyKind for skene_web::TextField
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::TextField
+impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::TextField
+pub fn skene_web::TextField::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::TextField
+pub type skene_web::TextField::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::TextField::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::TextField
 pub struct skene_web::Theme<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>>(_)
 impl<S: core::fmt::Debug + skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> core::fmt::Debug for skene_web::Theme<S>
 pub fn skene_web::Theme<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

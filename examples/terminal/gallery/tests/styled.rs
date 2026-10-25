@@ -13,7 +13,7 @@ fn the_gallery_paints_as_recorded() {
 
   let _ = terminal::mount(|| terminal_gallery::app().build());
   let _ = testing::pump_tasks();
-  let styled = testing::render_to_styled(60, 220);
+  let styled = testing::render_to_styled(60, 240);
 
   terminal::uninstall();
 

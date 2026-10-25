@@ -11,12 +11,15 @@ use skene_terminal::{
   self as terminal,
   Label,
   NodeId,
+  Part,
+  Scene,
   behavior::{Activate, ListboxOption},
+  platform::terminal::Terminal,
   prelude::*,
   testing,
 };
 
-use crate::common::{colors_at, locate, read, with_platform};
+use crate::common::{colors_at, locate, read, red, rgb, rows, with_platform};
 
 fn picker(unit: Signal<&'static str>) -> SimplePicker<&'static str> {
   SimplePicker::new()
@@ -867,5 +870,164 @@ fn a_picker_places_its_list() {
     let (_, list_row) = locate(&open, "c");
 
     assert!(list_row < face_row, "the list opens above: {open}");
+  });
+}
+
+/// The built-in picker of sizes bound to `size`, its options built-in too.
+fn styled_picker(size: Signal<u8>) -> Picker<u8> {
+  Picker::new()
+    .set_label("Size")
+    .bind_chosen(size)
+    .set_options((
+      terminal::ListboxOption::new(1_u8).set_label("Small"),
+      terminal::ListboxOption::new(2_u8).set_label("Large"),
+    ))
+}
+
+/// Whether `node` sits inside a node recorded as `part`.
+fn inside_part(node: NodeId, part: Part) -> bool {
+  Scene::<Terminal>::with(|scene| {
+    std::iter::successors(Some(node), |node| scene.parent(*node))
+      .any(|node| scene.part(node) == Some(part))
+  })
+}
+
+/// The built-in picker draws its defaults in cells: a face showing the chosen option's
+/// name and the indicator, its caption on the row above, the accent while focus shows;
+/// open, its list framed in the border color, each option's check showing on the chosen
+/// one alone, the list recorded as the picker's [`Part::List`].
+#[test]
+fn the_built_in_picker_draws_its_face_and_list_in_cells() {
+  with_platform(|| {
+    let size = Signal::new(2);
+    let _ = terminal::mount(move || Column::new().add_child(styled_picker(size)).build());
+
+    assert_eq!(
+      rows(&testing::render_to_text(12, 8)),
+      "Size\n Large ▾\n\n\n\n\n\n\n"
+    );
+
+    let resting = colors_at(12, 8, 1, 1).1;
+
+    testing::trigger_key("Tab");
+
+    assert_ne!(
+      colors_at(12, 8, 1, 1).1,
+      resting,
+      "the face takes the accent while focus shows"
+    );
+
+    testing::trigger_key("Enter");
+
+    assert_eq!(
+      rows(&testing::render_to_text(12, 8)),
+      "Size\n Large ▾\n┌──────────┐\n│    Small │\n│ ✓  Large │\n└──────────┘\n\n\n",
+      "the list opens beneath the face, the chosen option checked"
+    );
+    assert!(
+      inside_part(option("Small"), Part::List),
+      "the list is the picker's list"
+    );
+
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key("Enter");
+
+    assert_eq!(size.get_untracked(), 1, "a choice reaches the signal");
+    assert_eq!(
+      rows(&testing::render_to_text(12, 8)),
+      "Size\n Small ▾\n\n\n\n\n\n\n"
+    );
+  });
+}
+
+/// The built-in picker's face and list are values its setters replace: a face of the
+/// app's own and a list box of its own.
+#[test]
+fn the_built_in_pickers_face_and_list_are_replaced_by_its_setters() {
+  with_platform(|| {
+    let size = Signal::new(2);
+    let _ = terminal::mount(move || {
+      Column::new()
+        .add_child(
+          styled_picker(size)
+            .set_list(Container::new().set_background(red()))
+            .set_face(|chosen| Text::derive(move || format!("<{}>", chosen.get().unwrap_or(0)))),
+        )
+        .build()
+    });
+
+    assert_eq!(
+      rows(&testing::render_to_text(12, 8)).lines().nth(1),
+      Some(" <2>")
+    );
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("Enter");
+
+    let frame = rows(&testing::render_to_text(12, 8));
+
+    assert!(
+      !frame.contains('┌'),
+      "the list's own box has no border: {frame}"
+    );
+    assert_eq!(
+      colors_at(12, 8, 6, 2).1,
+      Some(rgb(red())),
+      "the list's own fill: {frame}"
+    );
+  });
+}
+
+/// The built-in listbox draws its options in a framed box beneath its caption, a check
+/// before the chosen one; the arrows move focus and `Space` chooses, and a mark of the
+/// app's own replaces the check, in a cell of its own width.
+#[test]
+fn the_built_in_listbox_draws_its_options_in_cells() {
+  with_platform(|| {
+    let fruit = Signal::new(Some(2));
+    let _ = terminal::mount(move || {
+      Column::new()
+        .add_child(
+          terminal::Listbox::new()
+            .set_label("Fruit")
+            .bind_chosen(fruit)
+            .set_children((
+              terminal::ListboxOption::new(1).set_label("Apple"),
+              terminal::ListboxOption::new(2).set_label("Banana"),
+              terminal::ListboxOption::new(3)
+                .set_label("Cherry")
+                .set_part(Part::Mark, Text::new("*")),
+            )),
+        )
+        .build()
+    });
+
+    assert_eq!(
+      rows(&testing::render_to_text(14, 8)),
+      "Fruit\n\n┌───────────┐\n│    Apple  │\n│ ✓  Banana │\n│ * Cherry  │\n└───────────┘\n\n"
+    );
+
+    let resting = colors_at(14, 8, 4, 4).1;
+
+    testing::trigger_key("Tab");
+
+    assert_ne!(
+      colors_at(14, 8, 4, 4).1,
+      resting,
+      "focus lands on the chosen option, filled while focused"
+    );
+
+    testing::trigger_key("ArrowUp");
+    testing::trigger_key(" ");
+
+    assert_eq!(
+      fruit.get_untracked(),
+      Some(1),
+      "Space chooses the focused option"
+    );
+    assert!(
+      rows(&testing::render_to_text(14, 8)).contains("│ ✓  Apple"),
+      "the check follows the choice"
+    );
   });
 }

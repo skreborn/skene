@@ -413,6 +413,58 @@ fn a_picker_renders_to_a_select() {
   assert!(!body.contains("combobox"), "no drawn face: {body}");
 }
 
+/// The built-in picker's scriptless form is the same `<select>`, taking the face's
+/// decoration: the server renders no drawn face and no list, its options named by their
+/// captions, and the select's class carries the face's defaults in the platform's
+/// colors.
+#[test]
+fn a_styled_picker_renders_to_a_select_in_the_faces_decoration() {
+  let page = render_to_string(|| {
+    skene_web::Picker::new()
+      .set_label("Size")
+      .set_chosen(Size::Medium)
+      .set_options((
+        skene_web::ListboxOption::new(Size::Small).set_label("Small"),
+        skene_web::ListboxOption::new(Size::Medium).set_label("Medium"),
+      ))
+  });
+  let body = page.body();
+  let styles = page.styles();
+
+  assert!(
+    body.contains("<option value=\"0\">Small</option><option value=\"1\" selected>Medium</option>"),
+    "{body}"
+  );
+  assert!(!body.contains("combobox"), "no drawn face: {body}");
+  assert!(!body.contains("\u{25be}"), "no indicator: {body}");
+  assert!(!body.contains("listbox"), "no list: {body}");
+
+  let select = &body[body.find("<select").expect("a select")..];
+  let select = &select[..select.find('>').expect("the tag's end")];
+  let class = select
+    .split("class=\"")
+    .nth(1)
+    .and_then(|rest| rest.split('"').next())
+    .expect("the select's class");
+  let rule = class
+    .split(' ')
+    .filter_map(|class| {
+      let start = styles.find(&format!(".{class}{{"))?;
+
+      Some(&styles[start..start + styles[start..].find('}')?])
+    })
+    .collect::<String>();
+
+  for declaration in [
+    "min-height:32px",
+    "var(--system-control)",
+    "var(--system-border)",
+    "border-radius:6px",
+  ] {
+    assert!(rule.contains(declaration), "{declaration} in {rule}");
+  }
+}
+
 /// A picker whose chosen value is none of its options' renders an empty hidden option
 /// first and selected, so the `<select>` shows nothing chosen rather than its first
 /// option.

@@ -4838,6 +4838,7 @@ pub fn skene_foundation::BasicPicker<P, T>::set_chosen(self, T) -> Self
 pub fn skene_foundation::BasicPicker<P, T>::set_disabled(self, bool) -> Self
 pub fn skene_foundation::BasicPicker<P, T>::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<core::option::Option<T>>) -> V + 'static) -> Self
 pub fn skene_foundation::BasicPicker<P, T>::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
+pub fn skene_foundation::BasicPicker<P, T>::set_list(self, skene_foundation::Container<P>) -> Self
 pub fn skene_foundation::BasicPicker<P, T>::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub fn skene_foundation::BasicPicker<P, T>::set_placement(self, skene_foundation::Placement) -> Self
 impl<P: skene_foundation::Realization, T: skene_foundation::Choice> skene_foundation::BasicPicker<P, T>
@@ -4900,10 +4901,12 @@ pub fn skene_foundation::BasicPickerCore<P>::set_chosen<K: skene_foundation::Cho
 pub fn skene_foundation::BasicPickerCore<P>::set_disabled(self, bool) -> Self
 pub fn skene_foundation::BasicPickerCore<P>::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<skene_foundation::AnyChosen>) -> V + 'static) -> Self
 pub fn skene_foundation::BasicPickerCore<P>::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
+pub fn skene_foundation::BasicPickerCore<P>::set_list(self, skene_foundation::Container<P>) -> Self
 pub fn skene_foundation::BasicPickerCore<P>::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub const fn skene_foundation::BasicPickerCore<P>::set_placement(self, skene_foundation::Placement) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::BasicPickerCore<P>
 pub fn skene_foundation::BasicPickerCore<P>::new() -> Self
+pub fn skene_foundation::BasicPickerCore<P>::over(self, Self) -> Self
 impl<P: skene_foundation::Realization> core::default::Default for skene_foundation::BasicPickerCore<P>
 pub fn skene_foundation::BasicPickerCore<P>::default() -> Self
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::BasicPickerCore<P>
@@ -7609,6 +7612,7 @@ pub fn skene_foundation::Roster::focus_chosen(&self, &skene_foundation::AnyChose
 pub fn skene_foundation::Roster::join(&self, skene_foundation::NodeId, skene_foundation::AnyChoice, core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>, alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>) -> alloc::rc::Rc<str>
 pub fn skene_foundation::Roster::key_of(&self, &skene_foundation::AnyChosen) -> core::option::Option<alloc::rc::Rc<str>>
 pub fn skene_foundation::Roster::leave(&self, skene_foundation::NodeId)
+pub fn skene_foundation::Roster::name_of(&self, &skene_foundation::AnyChosen) -> core::option::Option<alloc::string::String>
 pub fn skene_foundation::Roster::new() -> Self
 pub fn skene_foundation::Roster::options(&self) -> alloc::vec::Vec<skene_foundation::ChoiceOption>
 pub fn skene_foundation::Roster::ordered(&self) -> alloc::vec::Vec<(skene_foundation::NodeId, skene_foundation::AnyChoice)>
@@ -7883,6 +7887,19 @@ impl<P: skene_foundation::Realization> core::default::Default for skene_foundati
 pub fn skene_foundation::Segment<P>::default() -> Self
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Segment<P>
 pub fn skene_foundation::Segment<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::SelectionColors<N: skene_foundation::Scalar>
+pub skene_foundation::SelectionColors::background: core::option::Option<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<N>>>
+pub skene_foundation::SelectionColors::color: core::option::Option<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<N>>>
+impl<N: skene_foundation::Scalar> skene_foundation::SelectionColors<N>
+pub fn skene_foundation::SelectionColors<N>::define<P: skene_foundation::Realization<Scalar = N>>(self, skene_foundation::NodeId)
+pub const fn skene_foundation::SelectionColors<N>::new() -> Self
+pub fn skene_foundation::SelectionColors<N>::over(self, Self) -> Self
+impl<N: core::clone::Clone + skene_foundation::Scalar> core::clone::Clone for skene_foundation::SelectionColors<N>
+pub fn skene_foundation::SelectionColors<N>::clone(&self) -> skene_foundation::SelectionColors<N>
+impl<N: core::default::Default + skene_foundation::Scalar> core::default::Default for skene_foundation::SelectionColors<N>
+pub fn skene_foundation::SelectionColors<N>::default() -> skene_foundation::SelectionColors<N>
+impl<N: core::fmt::Debug + skene_foundation::Scalar> core::fmt::Debug for skene_foundation::SelectionColors<N>
+pub fn skene_foundation::SelectionColors<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Shortcut
 impl skene_foundation::Shortcut
 pub const fn skene_foundation::Shortcut::is_unmodified(&self) -> bool
@@ -8694,6 +8711,7 @@ pub fn skene_foundation::BasicPickerBase::set_chosen(self, T) -> Self
 pub fn skene_foundation::BasicPickerBase::set_disabled(self, bool) -> Self
 pub fn skene_foundation::BasicPickerBase::set_face<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce(skene_reactive::memo::Memo<core::option::Option<T>>) -> V + 'static) -> Self
 pub fn skene_foundation::BasicPickerBase::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
+pub fn skene_foundation::BasicPickerBase::set_list(self, impl skene_foundation::Wraps<Inner = skene_foundation::Container<P>>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_placement(self, skene_foundation::Placement) -> Self
 pub trait skene_foundation::BasicRadioGroupBase<P: skene_foundation::Realization, T: skene_foundation::Choice>: skene_foundation::HasControl<P, skene_foundation::RadioGroup>
@@ -10586,6 +10604,24 @@ pub fn skene_foundation::SuspenseBase::set_fallback_builder<V: skene_foundation:
 pub trait skene_foundation::TextBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::Text<P>>
 pub fn skene_foundation::TextBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::TextBase::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub trait skene_foundation::TextEntryBase<P: skene_foundation::Realization>: skene_foundation::HasControl<P, skene_foundation::TextEntry>
+pub fn skene_foundation::TextEntryBase::bind_selection(self, skene_reactive::signal::Signal<skene_foundation::TextSelection>) -> Self
+pub fn skene_foundation::TextEntryBase::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
+pub fn skene_foundation::TextEntryBase::derive_keyboard(self, impl core::ops::function::Fn() -> skene_foundation::Keyboard + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::derive_placeholder(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::derive_selection(self, impl core::ops::function::Fn() -> skene_foundation::TextSelection + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::derive_selection_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::derive_selection_color<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::derive_value(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::handle_change(self, impl core::ops::function::Fn(&str) + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::handle_selection_change(self, impl core::ops::function::Fn(skene_foundation::TextSelection) + 'static) -> Self
+pub fn skene_foundation::TextEntryBase::selection_colors_mut(&mut self) -> &mut skene_foundation::SelectionColors<<P as skene_foundation::Realization>::Scalar>
+pub fn skene_foundation::TextEntryBase::set_keyboard(self, skene_foundation::Keyboard) -> Self
+pub fn skene_foundation::TextEntryBase::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_foundation::TextEntryBase::set_selection(self, skene_foundation::TextSelection) -> Self
+pub fn skene_foundation::TextEntryBase::set_selection_background(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::TextEntryBase::set_selection_color(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Color, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::TextEntryBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_foundation::ThemeBase<P: skene_foundation::Realization, S: skene_foundation::TokenSet<<P as skene_foundation::Realization>::TokenValue>>: skene_foundation::Wraps<Inner = skene_foundation::Theme<P, S>>
 pub fn skene_foundation::ThemeBase::derive(impl core::ops::function::Fn() -> S + 'static) -> Self
 pub fn skene_foundation::ThemeBase::new(S) -> Self

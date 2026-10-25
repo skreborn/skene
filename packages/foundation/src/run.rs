@@ -6,6 +6,7 @@ use skene_reactive::Effect;
 
 use crate::{
   Animation,
+  Color,
   CompiledStyle,
   Condition,
   DeclaredRunStyle,
@@ -267,6 +268,58 @@ impl<P: Realization> Run<P> {
     Redefinition::define_all::<P>(node, redefinitions);
 
     node
+  }
+}
+
+/// The colors a text entry selects its value in.
+///
+/// They are to an entry what a run's
+/// [`selection_color`](crate::RunBase::set_selection_color) and
+/// [`selection_background`](crate::RunBase::set_selection_background) are to its text:
+/// each one set redefines, at the entry's node, the typography token the entry's value
+/// is selected in, and one unset leaves the inherited token standing.
+///
+/// A value's variants testing the environment take effect, as a token's definition
+/// holds them; a variant testing the entry's own state is not kept.
+#[derive(Debug, Clone, Default)]
+#[must_use]
+pub struct SelectionColors<N: Scalar> {
+  /// The text color while selected.
+  pub color: Option<Value<Color, Condition<N>>>,
+  /// The background behind selected text.
+  pub background: Option<Value<Color, Condition<N>>>,
+}
+
+impl<N: Scalar> SelectionColors<N> {
+  /// No color of either kind.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self {
+      color: None,
+      background: None,
+    }
+  }
+
+  /// These colors over `defaults`: each one set replacing the default's.
+  pub fn over(self, defaults: Self) -> Self {
+    Self {
+      color: self.color.or(defaults.color),
+      background: self.background.or(defaults.background),
+    }
+  }
+
+  /// Redefines, at the entry's `node`, the typography tokens of the colors set: once
+  /// where neither is derived, else whenever a derived one changes.
+  pub fn define<P: Realization<Scalar = N>>(self, node: NodeId) {
+    let redefinitions = [
+      Redefinition::of(typography::SELECTION_INK, self.color),
+      Redefinition::of(typography::SELECTION_SURFACE, self.background),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+
+    Redefinition::define_all::<P>(node, redefinitions);
   }
 }
 

@@ -617,6 +617,17 @@ impl Size {
 /// `selected` one served chosen: the select connected under a fresh root and marked
 /// after the elements the option views make, which build before it and attach nowhere.
 fn served_picker(options: &str) -> (Element, web_sys::HtmlSelectElement) {
+  served_select(options, || {
+    skene_web::View::build(Column::new().set_children(size_options()))
+  })
+}
+
+/// A served `<select>` whose options are `options`, marked after the elements `build`
+/// makes in a scratch root, which stand for the option views that build before it.
+fn served_select(
+  options: &str,
+  build: impl FnOnce() -> skene_web::NodeId,
+) -> (Element, web_sys::HtmlSelectElement) {
   let marker = {
     let scratch = server_root("");
 
@@ -627,7 +638,7 @@ fn served_picker(options: &str) -> (Element, web_sys::HtmlSelectElement) {
       .expect("connect the scratch root");
     web::install(scratch.clone());
 
-    let _ = web::mount(|| skene_web::View::build(Column::new().set_children(size_options())));
+    let _ = web::mount(build);
 
     let count = element_count(&scratch);
 
@@ -686,6 +697,47 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
       .bind_chosen(value)
       .set_options(size_options())
       .set_face(|shown| Text::derive(move || shown.get().map_or("", Size::name).to_owned()))
+  });
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(
+    value.get(),
+    Size::Large,
+    "the reader's choice reached the signal"
+  );
+  assert!(
+    root.query_selector("select").expect("query").is_none(),
+    "the select is gone"
+  );
+  assert_eq!(face_text(&root).as_deref(), Some("Large"));
+
+  web::uninstall();
+  root.remove();
+}
+
+/// The built-in picker's options, each captioned by its size's name.
+fn styled_options() -> [skene_web::ListboxOption; 2] {
+  [Size::Small, Size::Large].map(|size| skene_web::ListboxOption::new(size).set_label(size.name()))
+}
+
+/// The built-in picker hydrates over the server's `<select>` as the basic one does,
+/// carrying the reader's choice into the signal, and swaps it for its drawn face, which
+/// names the chosen option.
+#[wasm_bindgen_test]
+fn a_styled_picker_swaps_its_select_for_its_drawn_face() {
+  let (root, select) = served_select(
+    "<option value=\"0\" selected>Small</option><option value=\"1\">Large</option>",
+    || skene_web::View::build(Column::new().set_children(styled_options())),
+  );
+
+  select.set_value("1");
+
+  let value = skene_web::reactive::Signal::new(Size::Small);
+
+  hydrate(root.clone(), "", move || {
+    skene_web::Picker::new()
+      .bind_chosen(value)
+      .set_options(styled_options())
   });
 
   assert_eq!(web::hydration_mismatches(), 0);

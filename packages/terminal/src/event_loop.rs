@@ -296,6 +296,8 @@ where
   // legacy `F3` the parser mistook.
   let mut sizing_probed = false;
   let mut last_frame: Option<paint::Buffer> = None;
+  // The terminal's own colors the last frame was written under.
+  let mut written_own = crate::records::OwnColors::NONE;
   let mut placed = Placed::default();
   // Whether the clipboard answers (mode 5522), and the text a read has returned so
   // far.
@@ -364,6 +366,13 @@ where
       };
       let frame = frame::render(width, height);
       let (palette, own) = with_records(|records| (records.palette, records.own_colors()));
+
+      // A cell in the terminal's own colors is written otherwise once they move, so the
+      // frame is written afresh.
+      if own != written_own {
+        written_own = own;
+        last_frame = None;
+      }
 
       draw(
         &mut terminal,

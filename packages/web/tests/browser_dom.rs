@@ -2953,8 +2953,9 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for OwnAccent {
   }
 }
 
-/// The root defines each of the platform's colors as a color the engine resolves, and a
-/// theme redefining one reaches a box beneath it while a box outside keeps the root's.
+/// The root defines each of the platform's colors as a color the engine resolves, the
+/// root's scheme following `data-skene-scheme` with no script, and a theme redefining one
+/// reaches a box beneath it while a box outside keeps the root's.
 #[wasm_bindgen_test]
 fn the_root_defines_the_platforms_colors_and_a_theme_redefines_them() {
   let (_guard, root) = fresh_root();
@@ -2991,6 +2992,28 @@ fn the_root_defines_the_platforms_colors_and_a_theme_redefines_them() {
       reference.name()
     );
   }
+
+  let window = format!("--{}", SystemColors::WINDOW.name());
+  let under = |scheme: &str| {
+    document_root
+      .set_attribute("data-skene-scheme", scheme)
+      .expect("the scheme's attribute");
+
+    (
+      computed(&document_root, "color-scheme"),
+      computed(&document_root, &window),
+    )
+  };
+  let light = under("light");
+  let dark = under("dark");
+
+  document_root
+    .remove_attribute("data-skene-scheme")
+    .expect("the scheme's attribute removed");
+
+  assert_eq!(light.0, "light");
+  assert_eq!(dark.0, "dark");
+  assert_ne!(light.1, dark.1, "the window follows the scheme");
 
   let column = only_child(&root);
   let outside = column

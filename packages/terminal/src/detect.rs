@@ -87,7 +87,7 @@ impl Palette {
     std::mem::replace(entry, color) != color
   }
 
-  /// The base color at `index`, the first past the sixteen.
+  /// The base color at `index`, and the first one for an index past the sixteen.
   pub(crate) fn color(&self, index: usize) -> (u8, u8, u8) {
     self.0.get(index).copied().unwrap_or(self.0[0])
   }

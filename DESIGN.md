@@ -1195,7 +1195,8 @@ accent with its hover and pressed variants and what sits on it, a track, a knob,
 and a selection active and inactive) naming no look, which the built-ins' defaults read.
 Each realization defines them at the root as it is installed, claiming the set's root
 definitions (`Scene::define_root_set`) so a read of the set below no theme lays nothing
-over the platform's, and a theme redefines any of them as it does any token. Its
+over the platform's, and a theme redefines any of them as it does any token, each name
+a token of its own, so redefining a fill moves none of its hover and pressed variants. Its
 `Default`, a neutral light look turning dark under `Media::Dark` built from public
 constructors, is what `ThemedIn` hands out where no theme provides the set and what a
 theme of the set itself defines; the platform's own colors are the realization's.
@@ -1918,7 +1919,8 @@ stands out on it, and the rest mixes of the ink into the window, white on black 
 dark scheme the terminal assumes until it reports its colors. A cell painted in the
 terminal's own reported foreground or background, where the scheme in force is the
 detected one, is written as the cell's default color (`SGR 39` and `49`), so a 16-color
-terminal keeps its own; the cells themselves keep the color, so a frame reads the same.
+terminal keeps its own; the cells themselves keep the color, so a frame reads the same,
+and the frame is written afresh as the terminal's own colors move.
 
 Decoration is painted in pixels beneath the text where the terminal shows graphics. A
 box whose decoration asks for more than cells draw—a corner radius, a border, a

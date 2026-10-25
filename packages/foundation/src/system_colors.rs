@@ -11,7 +11,9 @@ use crate::{Color, Definition, Media, Scalar, Token, TokenName, TokenRef, TokenS
 /// color scheme with no script; the terminal defines them from the colors it reports.
 /// A set of one's own that defines one of the names restyles every built-in beneath its
 /// theme that reads it, and a theme of this set replaces every one of them with the set's
-/// definitions. The default is a neutral light look turning dark under the dark scheme,
+/// definitions. Each name is a token of its own: redefining one moves no other, so a
+/// set redefining a control's fill or the accent redefines its hover and pressed
+/// variants beside it. The default is a neutral light look turning dark under the dark scheme,
 /// which [`ThemedIn`](crate::ThemedIn) hands out where no theme provides the set.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]

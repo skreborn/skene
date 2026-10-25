@@ -587,10 +587,7 @@ mod tests {
   const PLAIN: Rendition = Rendition {
     depth: ColorDepth::Ansi16,
     palette: detect::Palette::DEFAULT,
-    own: OwnColors {
-      foreground: None,
-      background: None,
-    },
+    own: OwnColors::NONE,
     styled_underlines: false,
   };
 
@@ -838,7 +835,8 @@ mod tests {
 
   /// A cell painted in the terminal's own foreground and background is written in its
   /// default colors, so a 16-color terminal keeps its own, and another color as its
-  /// nearest base color.
+  /// nearest base color; without the terminal's own, the same cells are written in their
+  /// nearest base colors.
   #[test]
   fn the_terminals_own_colors_are_written_as_its_defaults() {
     let mut buffer = paint::Buffer::new(2, 1);
@@ -848,30 +846,35 @@ mod tests {
     buffer.cells[1].foreground = Some((205, 0, 0));
     buffer.cells[1].background = Some((40, 42, 54));
 
-    let mut out = Vec::new();
+    let written = |own: OwnColors| {
+      let mut out = Vec::new();
 
-    draw(
-      &mut out,
-      &buffer,
-      Rendition {
-        own: OwnColors {
-          foreground: Some((220, 220, 220)),
-          background: Some((40, 42, 54)),
-        },
-        ..PLAIN
-      },
-      None,
-      false,
-      &mut Placed::default(),
-    );
+      draw(
+        &mut out,
+        &buffer,
+        Rendition { own, ..PLAIN },
+        None,
+        false,
+        &mut Placed::default(),
+      );
 
-    let written = String::from_utf8(out).unwrap();
+      String::from_utf8(out).unwrap()
+    };
+    let own = written(OwnColors {
+      foreground: Some((220, 220, 220)),
+      background: Some((40, 42, 54)),
+    });
+    let plain = written(OwnColors::NONE);
 
     assert!(
-      !written.contains("\x1b[37m") && !written.contains("\x1b[40m"),
-      "{written:?}"
+      !own.contains("\x1b[37m") && !own.contains("\x1b[40m"),
+      "{own:?}"
     );
-    assert!(written.contains("\x1b[31m"), "{written:?}");
+    assert!(own.contains("\x1b[31m"), "{own:?}");
+    assert!(
+      plain.contains("\x1b[37m") && plain.contains("\x1b[40m"),
+      "{plain:?}"
+    );
   }
 
   /// A picture is transmitted once per image generation and placed over its cells,

@@ -37,6 +37,14 @@ pub(crate) struct OwnColors {
   pub(crate) background: Option<(u8, u8, u8)>,
 }
 
+impl OwnColors {
+  /// Neither color reported, so every cell is written in its own color.
+  pub(crate) const NONE: Self = Self {
+    foreground: None,
+    background: None,
+  };
+}
+
 /// The environment as signals, with the write halves the platform drives.
 pub(crate) struct MediaState {
   /// The root owner the signals live under.
@@ -128,10 +136,7 @@ impl Records {
   /// one its background implies.
   pub(crate) const fn own_colors(&self) -> OwnColors {
     if self.dark() != self.detected_dark {
-      return OwnColors {
-        foreground: None,
-        background: None,
-      };
+      return OwnColors::NONE;
     }
 
     OwnColors {

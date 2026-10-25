@@ -1,5 +1,4 @@
-//! Raw CSS declarations: what the compiler renders a style's properties into, and the
-//! escape hatch for styling a node with arbitrary CSS.
+//! Raw CSS declarations: what the compiler renders a style's properties into.
 //!
 //! A declaration's value is any CSS text the caller renders: `"8px"`,
 //! `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"`.
@@ -36,19 +35,19 @@ use smallvec::SmallVec;
 /// order they were set in.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[must_use]
-pub struct Declarations(SmallVec<[(&'static str, Cow<'static, str>); 8]>);
+pub(crate) struct Declarations(SmallVec<[(&'static str, Cow<'static, str>); 8]>);
 
 impl Declarations {
   /// Creates an empty declaration set.
   #[inline(always)]
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self::default()
   }
 
   /// Sets one declaration to its CSS text, replacing any previous value for that
   /// property. A `&'static str` (a keyword) is stored without allocating; a rendered
   /// `String` is taken by value.
-  pub fn set(mut self, property: &'static str, value: impl Into<Cow<'static, str>>) -> Self {
+  pub(crate) fn set(mut self, property: &'static str, value: impl Into<Cow<'static, str>>) -> Self {
     let value = value.into();
 
     match self
@@ -63,7 +62,7 @@ impl Declarations {
   }
 
   /// Removes the declaration of `property`, if there is one.
-  pub fn remove(mut self, property: &'static str) -> Self {
+  pub(crate) fn remove(mut self, property: &'static str) -> Self {
     if let Ok(index) = self
       .0
       .binary_search_by_key(&property, |(existing, _)| *existing)
@@ -77,13 +76,13 @@ impl Declarations {
   /// Returns whether no declarations are set.
   #[inline(always)]
   #[must_use]
-  pub fn is_empty(&self) -> bool {
+  pub(crate) fn is_empty(&self) -> bool {
     self.0.is_empty()
   }
 
   /// Renders a [`Color`] to its CSS `oklch(…)` text, ready for [`set`](Self::set).
   #[must_use]
-  pub fn render_color(color: Color) -> String {
+  pub(crate) fn render_color(color: Color) -> String {
     let [lightness, chroma, hue, alpha] = color.to_oklch();
 
     format!("oklch({lightness} {chroma} {hue} / {alpha})")
@@ -91,7 +90,7 @@ impl Declarations {
 
   /// Renders a [`MouseCursor`] to its CSS `cursor` keyword.
   #[must_use]
-  pub const fn render_cursor(cursor: MouseCursor) -> &'static str {
+  pub(crate) const fn render_cursor(cursor: MouseCursor) -> &'static str {
     match cursor {
       MouseCursor::Default => "default",
       MouseCursor::Click => "pointer",
@@ -103,7 +102,7 @@ impl Declarations {
 
   /// Renders an [`Arrangement`] to its CSS distribution keyword.
   #[must_use]
-  pub const fn render_arrangement(arrangement: Arrangement) -> &'static str {
+  pub(crate) const fn render_arrangement(arrangement: Arrangement) -> &'static str {
     match arrangement {
       Arrangement::Start => "flex-start",
       Arrangement::End => "flex-end",
@@ -117,7 +116,7 @@ impl Declarations {
 
   /// Renders an [`ItemAlignment`] to its CSS keyword.
   #[must_use]
-  pub const fn render_item_alignment(alignment: ItemAlignment) -> &'static str {
+  pub(crate) const fn render_item_alignment(alignment: ItemAlignment) -> &'static str {
     match alignment {
       ItemAlignment::Start => "flex-start",
       ItemAlignment::End => "flex-end",
@@ -161,7 +160,7 @@ impl Declarations {
 
   /// Renders a [`Dimension`] to its CSS length text.
   #[must_use]
-  pub fn render_dimension(dimension: Dimension<f32>) -> String {
+  pub(crate) fn render_dimension(dimension: Dimension<f32>) -> String {
     match dimension {
       Dimension::Length(value) => format!("{value}px"),
       Dimension::Fraction(value) => Self::render_fraction(value),
@@ -172,7 +171,7 @@ impl Declarations {
   /// Renders a dimension inset to its block and inline halves (`top bottom`, `start
   /// end`).
   #[must_use]
-  pub fn render_dimension_inset(inset: Inset<Dimension<f32>>) -> [String; 2] {
+  pub(crate) fn render_dimension_inset(inset: Inset<Dimension<f32>>) -> [String; 2] {
     [
       format!(
         "{} {}",
@@ -212,7 +211,7 @@ impl Declarations {
 
   /// Renders a [`GridTrack`] to its CSS track text.
   #[must_use]
-  pub fn render_track(track: GridTrack<f32>) -> String {
+  pub(crate) fn render_track(track: GridTrack<f32>) -> String {
     match track {
       GridTrack::Length(value) => format!("{value}px"),
       GridTrack::Fraction(value) => Self::render_fraction(value),
@@ -236,7 +235,7 @@ impl Declarations {
 
   /// Renders a track list to its space-separated CSS text.
   #[must_use]
-  pub fn render_tracks(tracks: &[GridTrack<f32>]) -> String {
+  pub(crate) fn render_tracks(tracks: &[GridTrack<f32>]) -> String {
     tracks
       .iter()
       .map(|track| Self::render_track(*track))
@@ -247,7 +246,7 @@ impl Declarations {
   /// Renders a grid template to its CSS track text, each line's names in one bracketed
   /// group before the track it starts.
   #[must_use]
-  pub fn render_template(template: &GridTemplate<f32>) -> String {
+  pub(crate) fn render_template(template: &GridTemplate<f32>) -> String {
     let mut parts: Vec<String> = Vec::new();
     let mut names: Vec<String> = Vec::new();
 
@@ -274,7 +273,7 @@ impl Declarations {
 
   /// Renders named grid areas to their CSS text: a quoted row of cell names per row.
   #[must_use]
-  pub fn render_areas(areas: &GridAreas) -> String {
+  pub(crate) fn render_areas(areas: &GridAreas) -> String {
     areas
       .rows()
       .iter()
@@ -293,7 +292,7 @@ impl Declarations {
 
   /// Renders one grid placement axis to its `start / end` CSS text.
   #[must_use]
-  pub fn render_grid_line(line: Line<GridPlacement>) -> String {
+  pub(crate) fn render_grid_line(line: Line<GridPlacement>) -> String {
     let end = Self::render_placement(line.end);
     let mut out = Self::render_placement(line.start);
 
@@ -317,12 +316,6 @@ impl Declarations {
         format!("span {count} {}", Ident(name.as_str()))
       }
     }
-  }
-
-  /// Every declaration as `(property, value)`, in canonical order.
-  #[inline(always)]
-  pub fn iter(&self) -> impl Iterator<Item = (&'static str, &str)> {
-    self.0.iter().map(|(property, value)| (*property, &**value))
   }
 
   /// Renders the declaration block (`prop:value;…`) in canonical order.

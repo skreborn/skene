@@ -19,7 +19,7 @@ use skene_web::{
   TokenName,
   TokenRef,
   TokenSet,
-  platform::web::{self, Declarations, WebTokenValue, mount},
+  platform::web::{self, WebTokenValue, mount},
   prelude::*,
   testing::{Installed, computed, dispatch, document, frames_until, fresh_root, only_child},
   wasm_bindgen::JsCast,
@@ -97,15 +97,19 @@ fn input(element: &Element) -> HtmlInputElement {
   element.clone().dyn_into().expect("an input")
 }
 
+/// A color as the CSS the platform renders it to.
+fn css(color: Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
+
 /// The computed `property` a `<div>` under the page's body gets from
 /// `<property>: <color>`, so colors compare as the engine serializes them.
 fn probe(property: &str, color: Color) -> String {
   let element = document().create_element("div").expect("a probe");
 
-  let _ = element.set_attribute(
-    "style",
-    &format!("{property}:{}", Declarations::render_color(color)),
-  );
+  let _ = element.set_attribute("style", &format!("{property}:{}", css(color)));
   let _ = document().body().expect("a body").append_child(&element);
 
   let color = computed(&element, property);

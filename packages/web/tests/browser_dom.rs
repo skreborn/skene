@@ -135,7 +135,7 @@ use skene_web::{
   derived,
   empty,
   head,
-  platform::web::{self, Declarations, Web, mount},
+  platform::web::{self, Web, mount},
   reactive::{Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, next_frame, only_child, wait},
   wasm_bindgen::{JsCast, JsValue},
@@ -158,6 +158,13 @@ use web_sys::{
 };
 
 wasm_bindgen_test_configure!(run_in_browser);
+
+/// A color as the CSS the platform renders it to.
+fn css(color: Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
 
 /// The computed color a `<div>` under `parent` gets from `color: <value>`, so colors
 /// compare as the engine serializes them.
@@ -260,7 +267,7 @@ fn a_decorated_text_computes_its_line_style_and_color() {
   assert_eq!(computed(&element, "text-decoration-style"), "wavy");
   assert_eq!(
     computed(&element, "text-decoration-color"),
-    probe(&root, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+    probe(&root, &css(Color::srgb(1., 0., 0.)))
   );
 }
 
@@ -2394,7 +2401,7 @@ fn typography_link_ink_reaches_a_link_and_updates() {
   assert_eq!(link.tag_name(), "A");
   assert_eq!(
     computed(&link, "color"),
-    probe(&scope, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+    probe(&scope, &css(Color::srgb(1., 0., 0.)))
   );
 
   link_ink.set(Color::srgb(0., 0., 1.));
@@ -2402,7 +2409,7 @@ fn typography_link_ink_reaches_a_link_and_updates() {
 
   assert_eq!(
     computed(&link, "color"),
-    probe(&scope, &Declarations::render_color(Color::srgb(0., 0., 1.)))
+    probe(&scope, &css(Color::srgb(0., 0., 1.)))
   );
 }
 
@@ -2436,26 +2443,17 @@ fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
   let scope = only_child(&root);
   let text = only_child(&scope);
 
-  assert_eq!(
-    computed(&text, "color"),
-    probe(&scope, &Declarations::render_color(green))
-  );
+  assert_eq!(computed(&text, "color"), probe(&scope, &css(green)));
 
   conditional.set(false);
   web::end_turn();
 
-  assert_eq!(
-    computed(&text, "color"),
-    probe(&scope, &Declarations::render_color(blue))
-  );
+  assert_eq!(computed(&text, "color"), probe(&scope, &css(blue)));
 
   conditional.set(true);
   web::end_turn();
 
-  assert_eq!(
-    computed(&text, "color"),
-    probe(&scope, &Declarations::render_color(green))
-  );
+  assert_eq!(computed(&text, "color"), probe(&scope, &css(green)));
 }
 
 /// A typography theme sizes, weights, spaces and leads the text beneath it, and a text
@@ -2512,7 +2510,7 @@ fn a_text_entry_takes_the_typography_ink_and_weight() {
 
   assert_eq!(
     computed(&input, "color"),
-    probe(&root, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+    probe(&root, &css(Color::srgb(1., 0., 0.)))
   );
   assert_eq!(computed(&input, "font-weight"), "700");
 }
@@ -2538,7 +2536,7 @@ fn typography_link_ink_skips_non_link_text() {
   );
   assert_ne!(
     computed(&text, "color"),
-    probe(&scope, &Declarations::render_color(Color::srgb(1., 0., 0.)))
+    probe(&scope, &css(Color::srgb(1., 0., 0.)))
   );
 }
 
@@ -3185,10 +3183,7 @@ fn links_are_inked_in_the_link_ink_and_underlined() {
   );
   assert_ne!(
     computed(&link, "color"),
-    probe(
-      &scope,
-      &Declarations::render_color(Color::srgb(0.9, 0.9, 0.9))
-    )
+    probe(&scope, &css(Color::srgb(0.9, 0.9, 0.9)))
   );
   assert_eq!(computed(&link, "text-decoration-line"), "underline");
 }

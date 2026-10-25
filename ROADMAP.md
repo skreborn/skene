@@ -40,22 +40,16 @@ in a code comment.
     field is drawn, the terminal's key default consulting it until then, and the engine
     and editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
-    `skene-simple-tui`), a preset a constructor per variant and a `derive_variant`
-    re-inking its built-in, and the native door's view, `platform::<p>::NativeView`, for
-    a native view no built-in covers: on the web the browser leaf adopting its element
-    through `LowLevel::adopt` with a `ControlSink` of its own and the server leaf
-    rendering a markup placeholder, so acme-map leaves `WebDom` and `WebMarkup` for it.
-    `skene new`'s app and library scaffolds take that shape, and the gate compiles what
+    `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
+    re-inking its built-in. `skene new`'s app and library scaffolds take that shape, and the gate compiles what
     they write on every platform they name, so a scaffold cannot fall behind the surface
     it teaches.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.
     - No signature above the realizations names one, every `P: Realization` there
-    going: the web's low-level library is a concrete view of its facade's realization
-    (`Map` through the web's `NativeView`), the conformance suite's pages are written
-    per facade, and Simple's core and the library scaffold's core leave theirs with the
-    Libraries bullet.
+    going: the conformance suite's pages are written per facade, and Simple's core and
+    the library scaffold's core leave theirs with the Libraries bullet.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.
@@ -614,7 +608,7 @@ in a code comment.
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
 28. **A plain toggle draws its box on the web.** The reset's default chrome for an
-    `<input type="checkbox">` or `"radio"` no Skene control builds (one a `WebDom` view
+    `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
 29. **A socket's send wakes its thread.** The host WebSocket's thread writes what was

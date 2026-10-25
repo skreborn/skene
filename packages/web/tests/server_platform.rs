@@ -7,7 +7,6 @@
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 use skene_foundation::{
-  AnyKind,
   BasicCheckbox,
   BasicTextEditor,
   Behavior,
@@ -28,11 +27,8 @@ use skene_foundation::{
   HasChild,
   HasChildren,
   Length,
-  LowLevel,
   Media,
   NativeElement,
-  NodeId,
-  NodeKind,
   Role,
   Row,
   State,
@@ -50,7 +46,7 @@ use skene_foundation::{
 use skene_reactive::{Get, Set, signal};
 use skene_web::{
   Platform,
-  platform::web::{Web, WebMarkup, WebTokenValue, render_to_string},
+  platform::web::{NativeView, Web, WebTokenValue, render_to_string},
   schedule,
 };
 
@@ -399,29 +395,20 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
   );
 }
 
-/// A low-level view: a `<div>` made through the escape trait.
-struct Raw;
-
-impl AnyKind for Raw {}
-
-impl skene_foundation::View<Web> for Raw {
-  fn build(self) -> NodeId {
-    LowLevel::<Web>::realize(NodeKind::Box, |node| Web::create_element(node, "div"))
-  }
-}
-
-/// A low-level node's element carries the layout its wrapper gave it in its class.
+/// A native view's placeholder carries the layout its wrapper gave it in its class.
 #[test]
-fn a_low_level_node_takes_its_wrappers_layout() {
+fn a_native_view_takes_its_wrappers_layout() {
   let rendered = render_to_string(|| {
     Row::<Web>::new().add_child(
       Flexible::<Web>::new()
         .set_flexibility(Flexibility::grow(3.))
-        .set_child(Raw),
+        .set_child(NativeView::new("canvas")),
     )
   });
   let body = rendered.body();
-  let raw = body.rfind("<div").expect("the low-level element");
+  let raw = body
+    .rfind("<canvas")
+    .expect("the native view's placeholder");
   let class = classes(&body[raw..])[0].clone();
 
   assert!(

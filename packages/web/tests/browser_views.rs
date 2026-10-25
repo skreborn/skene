@@ -130,7 +130,7 @@ use skene_web::{
   head,
   install_router,
   media,
-  platform::web::{self, Declarations, Web, mount},
+  platform::web::{self, Web, mount},
   reactive::{Effect, Get, Owner, Set, Signal},
   testing::{computed, dispatch, document, frames_until, fresh_root, only_child, tick},
   wasm_bindgen::{JsCast, closure::Closure},
@@ -158,15 +158,19 @@ fn elements(parent: &Element) -> Vec<Element> {
     .collect()
 }
 
+/// A color as the CSS the platform renders it to.
+fn css(color: Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
+
 /// The computed `property` a `<div>` under `parent` gets from `<property>: <color>`, so
 /// colors compare as the engine serializes them.
 fn probe(parent: &Element, property: &str, color: Color) -> String {
   let element = document().create_element("div").expect("a probe");
 
-  let _ = element.set_attribute(
-    "style",
-    &format!("{property}:{}", Declarations::render_color(color)),
-  );
+  let _ = element.set_attribute("style", &format!("{property}:{}", css(color)));
   let _ = parent.append_child(&element);
 
   let color = computed(&element, property);
@@ -1505,36 +1509,18 @@ impl ControlSink for ColorSink {
   }
 }
 
-/// A view of a test's own adopting a real `<input type=color>` through the native door,
-/// its value controlled by `truth` and asked for through `ask`, every verdict on a
-/// reader's change noted in `verdicts`.
-fn color_well(
+/// Controls the value of `input`, the color input adopted as `node`, through a sink of
+/// the test's own: its value controlled by `truth` and asked for through `ask`, the
+/// sink's writes counted in `writes` and every verdict on a reader's change noted in
+/// `verdicts`.
+fn control_color(
+  node: NodeId,
+  input: &HtmlInputElement,
   truth: impl Fn() -> Hex + 'static,
   ask: impl Fn(&Hex) + 'static,
   writes: Rc<Cell<usize>>,
   verdicts: Rc<RefCell<Vec<Verdict>>>,
-) -> NodeId {
-  let input: HtmlInputElement = document()
-    .create_element("input")
-    .expect("an input")
-    .dyn_into()
-    .expect("an input element");
-
-  input.set_type("color");
-
-  let spec = NodeSpec::new(
-    None,
-    None,
-    None,
-    NodeFacts::Box(BoxFacts {
-      layout: Layout::Document,
-      container: None,
-      transition_name: None,
-      link: false,
-    }),
-  );
-  let node = LowLevel::<Web>::adopt(&spec, input.clone().into());
-
+) {
   LowLevel::<Web>::register_sink(
     node,
     ColorSink {
@@ -1562,6 +1548,38 @@ fn color_well(
   let _ = input.add_event_listener_with_callback("input", on_input.as_ref().unchecked_ref());
 
   on_input.forget();
+}
+
+/// A view of a test's own adopting a real `<input type=color>` it made through the
+/// native door, its value controlled as [`control_color`] controls it.
+fn color_well(
+  truth: impl Fn() -> Hex + 'static,
+  ask: impl Fn(&Hex) + 'static,
+  writes: Rc<Cell<usize>>,
+  verdicts: Rc<RefCell<Vec<Verdict>>>,
+) -> NodeId {
+  let input: HtmlInputElement = document()
+    .create_element("input")
+    .expect("an input")
+    .dyn_into()
+    .expect("an input element");
+
+  input.set_type("color");
+
+  let spec = NodeSpec::new(
+    None,
+    None,
+    None,
+    NodeFacts::Box(BoxFacts {
+      layout: Layout::Document,
+      container: None,
+      transition_name: None,
+      link: false,
+    }),
+  );
+  let node = LowLevel::<Web>::adopt(&spec, input.clone().into());
+
+  control_color(node, &input, truth, ask, writes, verdicts);
 
   node
 }
@@ -1652,6 +1670,77 @@ fn a_door_s_value_is_controlled_through_its_sink() {
   assert_eq!(input.value(), "#00ff00");
   assert_eq!(color.get(), Hex(Rc::from("#00ff00")));
   assert_eq!(writes.get(), 2, "the repair is written once");
+}
+
+/// A native view's element is made from its markup and handed, once adopted, to its
+/// adopt handler, where a sink of the view's own controls its value under a built-in's
+/// contract: a signal's write shows and a refused change is repaired to the truth.
+#[wasm_bindgen_test]
+fn a_native_view_is_adopted_with_its_attributes_and_controlled_through_its_sink() {
+  let (_guard, root) = fresh_root();
+  let color = Signal::new(Hex(Rc::from("#000000")));
+  let writes = Rc::new(Cell::new(0));
+  let verdicts = Rc::new(RefCell::new(Vec::new()));
+  let handed = Rc::new(RefCell::new(None));
+  let node = mount({
+    let writes = Rc::clone(&writes);
+    let verdicts = Rc::clone(&verdicts);
+    let handed = Rc::clone(&handed);
+
+    move || {
+      web::NativeView::new("input")
+        .add_attribute("type", "color")
+        .add_attribute("aria-label", "Ink")
+        .add_attribute("aria-label", "Paint")
+        .handle_adopt(move |node, element| {
+          *handed.borrow_mut() = Some(element.clone());
+          control_color(
+            node,
+            element.unchecked_ref(),
+            move || color.get(),
+            |_| {},
+            writes,
+            verdicts,
+          );
+        })
+        .build()
+    }
+  });
+  let input: HtmlInputElement = root
+    .query_selector("input")
+    .expect("query the input")
+    .and_then(|element| element.dyn_into().ok())
+    .expect("the native view's input under the root");
+
+  assert_eq!(input.type_(), "color", "made from its markup");
+  assert_eq!(
+    input.get_attribute("aria-label").as_deref(),
+    Some("Paint"),
+    "an attribute added again replaces the first"
+  );
+  assert_eq!(
+    handed.borrow().as_ref(),
+    Some(input.unchecked_ref::<Element>()),
+    "the element in hand is the one adopted"
+  );
+  assert_eq!(Web::native(node), handed.borrow().clone());
+  assert_eq!(writes.get(), 0, "the truth the input shows is not written");
+
+  color.set(Hex(Rc::from("#ff0000")));
+  web::end_turn();
+
+  assert_eq!(input.value(), "#ff0000", "a signal's write shows");
+
+  input.set_value("#00ff00");
+  dispatch(&input, "input");
+
+  assert_eq!(
+    *verdicts.borrow(),
+    [Verdict::Refuse],
+    "the change is refused"
+  );
+  assert_eq!(input.value(), "#ff0000", "and repaired inside the event");
+  assert_eq!(writes.get(), 2);
 }
 
 /// A radio choice the handler answers with another key is repaired by one write of the

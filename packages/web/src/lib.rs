@@ -114,8 +114,6 @@ mod link_policy;
 #[cfg(skene_platform = "web")]
 mod logging;
 #[cfg(skene_platform = "web")]
-mod low_level;
-#[cfg(skene_platform = "web")]
 mod markup;
 #[cfg(skene_platform = "web")]
 mod motion;
@@ -446,8 +444,10 @@ impl Platform {
 /// nothing in its place and a hydrating client adopts that empty place before building
 /// it.
 ///
-/// The place for a low-level view that reaches a platform's raw handles. `build`
-/// returns the node it realizes, exactly as a view's `build` does.
+/// The place for a low-level view that reaches the browser alone, as a
+/// [`NativeView`](platform::web::NativeView) whose placeholder would mislead a reader
+/// before the bundle arrives. `build` returns the node it realizes, exactly as a view's
+/// `build` does.
 #[cfg(skene_platform = "web")]
 pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
   Enhance::new(media::hydrated()).set_child_builder(build)

@@ -187,9 +187,10 @@ pointer event is localized against its node's laid-out box, except on the server
 which lays nothing out and hands it back unchanged.
 
 **The native door's seam** is the trait's own: `Realization::Native` is the platform's own
-view (the browser leaf's `web_sys::Element`), and a platform whose door adopts nothing
-names an uninhabited type of its own (`Unadoptable` on the server leaf and in the
-terminal), so its door cannot be reached. `LowLevel::adopt` mints the node and has the
+view (the browser leaf's `web_sys::Element`, the server leaf's `NativeMarkup`, the
+placeholder it renders as markup), and a platform whose door adopts nothing names an
+uninhabited type of its own (`Unadoptable` in the terminal), so its door cannot be
+reached. `LowLevel::adopt` mints the node and has the
 platform adopt the view as it, and `LowLevel::register_sink` registers the library's
 `ControlSink` on it: `read`, `write` and `composing` (`false` by default) of the view's
 values by the door's own names. A door's content is `Content::Door(name)`, keyed by
@@ -306,12 +307,12 @@ toolkit's keeps the default, which does nothing.
   the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-foundation`, since
   both medium cores realize them. Vello is the one renderer, everywhere.
 - **Low-level views are platform-specific views**, written against a platform's escape
-  trait (raw DOM through `WebDom`, markup through `WebMarkup`, cells through
-  `CellPainter`) or adopted through the native door (`LowLevel::adopt`, the browser
-  leaf's live element). `LowLevel::realize` mints a scene node the view realizes
-  through its escape trait, and `LowLevel::adopt` one the platform realizes as the view
-  itself, so either composes with wrappers, themes and events. A door's value crosses
-  erased and is downcast by the door's own key alone.
+  trait (cells through `CellPainter`) or adopted through the native door
+  (`LowLevel::adopt`; on the web `platform::web::NativeView`, an element built from its
+  markup). `LowLevel::realize` mints a scene node the view realizes through its escape
+  trait, and `LowLevel::adopt` one the platform realizes as the view itself, so either
+  composes with wrappers, themes and events. A door's value crosses erased and is
+  downcast by the door's own key alone.
 
   **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
   views in one crate and platforms in others, `impl View for Container` can live in neither
@@ -1018,9 +1019,9 @@ Condition     = Media | State | And | Or
   its motion) and compiles it at `Keep::Everything` by value (`into_kept`, the entries
   moved rather than copied), the `NodeSpec` the node was created from carrying the
   construction facts alone.
-- **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
-  `Declarations`, the sorted, content-addressed declaration set the compiler itself
-  renders into. The typed model carries no passthrough of its own.
+- **Raw CSS** reaches only a native view, through its own markup or element: a
+  `NativeView`'s `style` attribute, or the element its adopt handler holds. The typed
+  model carries no passthrough of its own.
 - **Web** renders the whole set into one interned rule template: base declarations,
   `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
   `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
@@ -1409,8 +1410,9 @@ leaf where `--cfg skene_server` stands beside it, on any target. Every item of t
 reaching a leaf is gated on the web, so a build naming no platform, the web without
 `skene_server` on another target, or a pixel platform the crate does not realize fails
 with one `compile_error!` of its own and nothing else, and a terminal build compiles it
-empty. The `WebDom` escape trait exists on the browser leaf alone, so the server leaf
-*cannot* touch the DOM; each leaf's dependencies are keyed on the same cfgs.
+empty. The DOM's handles (`document`, `element`, the element a `NativeView` hands its
+adopt handler) exist on the browser leaf alone, so the server leaf *cannot* touch the
+DOM; each leaf's dependencies are keyed on the same cfgs.
 What both realize is written once, in a `Realizer` over the `Sink` the DOM and the
 string tree implement: the records, the element choices, attributes, classes, slots,
 token definitions, control state and accessibility, so the two cannot drift; each leaf
@@ -1427,15 +1429,18 @@ adds only what is its own:
   content by its controller's write, a toggle's checked state read as the hydration
   begins, before the client writes any radio of its group, and convergence
   once the tree is built: every server node the client built differently or never built removed, every adopted
-  element given exactly the client's classes, and the order-keyed resource values no
-  resource adopted dropped), scroll and focus restoration keyed by a segment's end
-  anchor, the `WebDom` escape trait, the History binding and the head.
+  element but a native view, which keeps its own, given exactly the client's classes, and the order-keyed resource values no
+  resource adopted dropped, a native view's placeholder adopted in place where the
+  door adopts that very element and removed where it adopts another), scroll and focus
+  restoration keyed by a segment's end anchor, the live element behind a native view,
+  the History binding and the head.
 - **server** (`skene_server`)—the serializer. Renders its string tree to HTML plus
   the interned stylesheet; drives async to a fixpoint on the host executor, parked until
   a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`
   boundaries with a style delta per chunk; serializes resource state for the client to
-  adopt; takes client hints as render input. The raw handles do not exist here, painted
-  content renders empty, and handlers are inert.
+  adopt; takes client hints as render input. A native view renders its markup as its
+  placeholder, taking a marker as any element does. The raw handles do not exist here,
+  painted content renders empty, and handlers are inert.
 
 A text field's secure flag and keyboard are the shared realizer's
 (`FormElement::entry_type`, `keyboard_attributes`), so both leaves write the same `type`
@@ -1456,8 +1461,9 @@ to its member's value; one naming no member asks nothing, and the controller's w
 repairs it to the truth.
 
 The crate's `platform` module holds each pixel platform's own vocabulary, a module per
-platform: `platform::web` is the web platform itself (`Web`, the `WebMarkup` and
-`WebDom` escape traits, `Declarations`, `RenderHints`, the re-exported `Document`, and
+platform: `platform::web` is the web platform itself (`Web`, its native door
+`NativeView` with the `NativeMarkup` it is built from, `RenderHints`, the re-exported
+`Document`, and
 each leaf's entry points and seams: install, mount, hydrate, drive, the head and the
 path), and `platform::{android, apple, ios, linux, macos, windows}` stand empty beside
 it, a platform's data types to exist there in every build and its controls in its own
@@ -1812,25 +1818,24 @@ Two guarantees, both properties of what is public rather than of any one API.
   `skene new lib` creates the same shape: a core holding a palette, a unit trait and a
   view, and a crate per platform named.
 - **A low-level view, against the platform, like a built-in.** It is written against a
-  platform's escape trait and realized through the same scene and node ids as a
-  `Container`, so it composes with wrappers, themes, conditions and events. A view of a
+  platform's escape trait or through its native door and realized through the same
+  scene and node ids as a `Container`, so it composes with wrappers, themes, conditions and events. A view of a
   platform of its own is concrete, as a built-in is: `acme-sparkline`'s `Sparkline` is a
   `View<skene_terminal::Active>` with no parameter, building a sized `Container` and
   handing the platform its cell painter (`<Active as CellPainter>::paint`) and its pixel
   painter (`<Active as Painting>::paint`) for that one box, so an app writes
-  `Sparkline::new(..)` and names no platform. A view library over several platforms of
-  its medium covers them through a trait of its own that each platform implements
-  (`impl<P: MapHost> View<P> for Map<P>`, the web's two leaves), so an app names no
-  platform and writes no `cfg`; a blanket impl over one escape trait would allow one per
-  view type and push the cfgs into the app. Selecting the platform is what selecting the
-  facade already does. A platform's escape traits live in its facade's `platform::<p>`
-  module: `skene_web::platform::web::{WebDom, WebMarkup}` and
+  `Sparkline::new(..)` and names no platform. `acme-map`'s `Map` is likewise a
+  `View<skene_web::Active>`: a `NativeView` canvas inside a sized `Container`, its
+  markup served as is and painted on the browser leaf once its element is in hand, so
+  the web's two leaves are one view with a `cfg` only around the painting, inside the
+  library. Selecting the platform is what selecting the facade already does. A
+  platform's escape traits live in its facade's `platform::<p>` module:
   `skene_terminal::platform::terminal::CellPainter`, which has no `Realization`
   supertrait, so a failed bound states its one rule, that cells are painted on the
-  terminal alone. `acme-map` (a canvas on the browser leaf through `WebDom`, a
-  placeholder through `WebMarkup` before it and on the server) and `acme-sparkline`
-  (bars through `CellPainter`, and as pixels where the terminal proves its graphics) are
-  the standing proofs. The portable low-level path for pixel media is `Painted`.
+  terminal alone; the web has none, its low-level views going through its native door.
+  `acme-map` (a canvas through the web's door) and `acme-sparkline` (bars through
+  `CellPainter`, and as pixels where the terminal proves its graphics) are the standing
+  proofs. The portable low-level path for pixel media is `Painted`.
 - **A compositor platform's own view, through the native door, like a built-in
   control.** `LowLevel::adopt` makes the view an ordinary scene node, and where it holds
   a value the library registers a `ControlSink` of its own on the node, keys the value
@@ -1840,10 +1845,16 @@ Two guarantees, both properties of what is public rather than of any one API.
   value is then controlled as a built-in's is: the truth written when it changes and not
   when the view shows it already, a reader's change asked of the app, and a refused one
   repaired to the truth by one write through the sink. The browser leaf adopts a live
-  `Element`; the server leaf and the terminal adopt nothing. The door's view on the web,
-  `platform::web::NativeView` with its markup placeholder on the server, is open in
-  `ROADMAP.md`; until it lands, the browser test adopting a color input under the
-  contract (`browser_views`) is the door's standing proof.
+  `Element`, the server leaf the `NativeMarkup` it renders as a placeholder, and the
+  terminal nothing. The door's view on the web is `platform::web::NativeView`, built
+  from a tag and its attributes: the server renders them as its placeholder, and the
+  browser creates the element from them or, while hydrating, adopts the served
+  placeholder in place, the door taking the next hydration marker as any element does
+  (`Page::claim`), so the rest of the page hydrates with no mismatch. On the browser
+  leaf `handle_adopt` hands it the element with its node, where a library draws, listens
+  and registers its sink; the browser tests adopting a color input under the contract,
+  as a `NativeView` and as an element of a test's own (`browser_views`), are the door's
+  standing proofs.
 
 A platform need not be first-party: a crate that implements `Realization`, provides its
 scalar, leaves, extension, a `launch` and views over `skene-foundation` is a facade.
@@ -1883,8 +1894,9 @@ platforms (`Web`, `Ios`, `Android`, `Macos`, `Windows`, `Linux`), `CURRENT` answ
 Apple's two; the terminal's is `Terminal` alone. An app that diverges per platform
 matches on it, writing `#[cfg(skene_platform = "<p>")]` only around an arm that names
 a platform's own control. A platform's own vocabulary lives in its `platform::<p>`
-module, its data types in every build and its controls in its own: `platform::web` and
-`platform::terminal` hold each leaf's realization and escape traits, and
+module, its data types in every build and its controls in its own: `platform::web`
+holds each leaf's realization and the web's native door, `platform::terminal` the
+terminal's realization and escape trait, and
 `platform::{android, apple, ios, linux, macos, windows}` are empty until their
 platforms land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a server
 build never emits the browser entry or splits a lazy body, the terminal's `#[main]`

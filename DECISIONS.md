@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **A `NativeView` built under `Enhance`** (2026-10-25), the server's placeholder its
+  fallback and the adopted element its child, built once the page has hydrated: the
+  native door takes the next hydration marker as any element does, so a hydrating
+  browser adopts the served placeholder in place without reordering the hydration, the
+  rest of the page hydrating with no mismatch, and the element is in hand from the
+  build, with no rebuild after it. Revisit if adopting in place reorders the hydration
+  for an element a library must make itself.
 - **A `sleep` future on every facade** (2026-10-25), beside `spawn`, so an async task
   could wait on the platform's clock: timers are userland, and the framework ships only
   the seam no crate can provide, a one-shot action on the platform's clock, which each
@@ -571,6 +578,16 @@ supersedes.
 
 ## Superseded
 
+- **The server leaf's unreachable door** (2026-10-25), its native view an uninhabited
+  `Unadoptable`, so a library's native view existed on the browser leaf alone and the
+  server rendered nothing for it: the server leaf's native view is the `NativeMarkup` a
+  `NativeView` is built from, rendered as the placeholder a hydrating browser adopts in
+  place. Revisit if a server-rendered placeholder misleads a reader before the bundle
+  arrives.
+- **Raw CSS as a public declaration set** (2026-10-25), `platform::web::Declarations`
+  taken by the `WebMarkup` escape trait: a native view's raw CSS is its own `style`
+  attribute, or the element its adopt handler holds, and the declaration set is the
+  compiler's own again. Revisit if a native view needs CSS its markup cannot carry.
 - **Per-platform view realization** (2026-07-31) fell to the orphan rule the moment
   platforms became separate crates, and to the duplication it forced. The typed
   vocabulary replaces it. Not revisited while platforms are separate crates.

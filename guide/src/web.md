@@ -152,8 +152,11 @@ server does around a render. `Platform::IS_APPLE` answers for iOS and macOS toge
 What only one platform has lives in its module, `skene_web::platform::<p>`: its data
 types in every build, so code naming one compiles everywhere, and its controls in its own
 build alone, so code naming one sits in an arm under `#[cfg(skene_platform = "<p>")]`.
-`platform::web` holds the web's: `WebMarkup` and `WebDom`, the escape traits a
-low-level view is written against, and the leaves' own entry points. `platform::apple`
+`platform::web` holds the web's: `NativeView`, the native door through which a
+low-level view puts an element of the DOM in a Skene tree, and the leaves' own entry
+points. A `NativeView` is built from a tag and its attributes; the server renders them as
+its placeholder, and the browser creates the element from them or adopts the served one
+in place while hydrating, handing it to `handle_adopt` to draw into or listen on. `platform::apple`
 holds what iOS and macOS share.
 
 ## Pixels

@@ -51,7 +51,6 @@ use crate::{
     slot_properties,
   },
   condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
-  declarations::Declarations,
   markup::{
     FormElement,
     NATIVE_ACCESS_ATTRIBUTES,
@@ -184,6 +183,8 @@ pub(crate) trait Sink {
 pub(crate) enum Realized {
   /// A box.
   Box,
+  /// A native view adopted through the door, keeping its own attributes and classes.
+  Native,
   /// A control, with the form element it stands in where it has one.
   Control {
     /// The form element, where the control has one.
@@ -507,23 +508,48 @@ impl<S: Sink> Realizer<S> {
     }
   }
 
-  /// Realizes `node`, which a low-level view made, as a new element of `tag`, its style
-  /// the per-child layout a wrapper annotated it with.
-  pub(crate) fn create_low_level(&mut self, node: NodeId, tag: &'static str) {
-    self.create_element(node, tag, Realized::Box);
+  /// Realizes `node` as `element`, the platform's own view adopted through the native
+  /// door, the server's placeholder where `adopted`: a box stating the role `spec` gives
+  /// it, which takes the layout a wrapper gives it and keeps its own look; always
+  /// `true`.
+  #[cfg(not(skene_server))]
+  pub(crate) fn adopt(
+    &mut self,
+    node: NodeId,
+    element: &S::Element,
+    spec: &NodeSpec,
+    adopted: bool,
+  ) -> bool {
+    self.insert(node, element.clone(), "", Realized::Native, adopted);
+    self.finish_adopted(node, element, spec);
 
-    if let Some(record) = self.records.get_mut(node) {
-      record.template = Some(Template::Layout);
-    }
+    true
   }
 
-  /// Realizes `node` as `element`, the platform's own view adopted through the native
-  /// door: a box stating the role `spec` gives it, which takes the layout a wrapper gives
-  /// it and keeps its own look; always `true`.
-  #[cfg(not(skene_server))]
-  pub(crate) fn adopt(&mut self, node: NodeId, element: &S::Element, spec: &NodeSpec) -> bool {
-    self.insert(node, element.clone(), "", Realized::Box, false);
+  /// Realizes `node` as the placeholder `markup` describes, a native view's element the
+  /// browser adopts in place: a box stating the role `spec` gives it, which takes the
+  /// layout a wrapper gives it; always `true`.
+  #[cfg(skene_server)]
+  pub(crate) fn adopt_markup(
+    &mut self,
+    node: NodeId,
+    markup: &crate::platform::web::NativeMarkup,
+    spec: &NodeSpec,
+  ) -> bool {
+    let (element, _) = self.create_element(node, markup.tag(), Realized::Native);
 
+    for (name, value) in markup.attributes() {
+      self.sink.set_attribute(&element, name, value);
+    }
+
+    self.finish_adopted(node, &element, spec);
+
+    true
+  }
+
+  /// Gives the adopted `node`, realized as `element`, the role `spec` states and the
+  /// layout a wrapper gives it.
+  fn finish_adopted(&mut self, node: NodeId, element: &S::Element, spec: &NodeSpec) {
     if let Some(role) = spec.role.and_then(aria_role) {
       self.sink.set_attribute(element, "role", role);
     }
@@ -531,8 +557,6 @@ impl<S: Sink> Realizer<S> {
     if let Some(record) = self.records.get_mut(node) {
       record.template = Some(Template::Layout);
     }
-
-    true
   }
 
   /// Gives `node` the class `style` compiles to under the facts of its construction,
@@ -1124,29 +1148,6 @@ impl<S: Sink> Realizer<S> {
     }) = &mut record.template
     {
       *compiled = placement.placement;
-    }
-  }
-
-  /// Sets the attribute `name` of the element realizing `node`.
-  pub(crate) fn set_attribute(&mut self, node: NodeId, name: &str, value: &str) {
-    if let Some(record) = self.records.get(node) {
-      self.sink.set_attribute(&record.element, name, value);
-    }
-  }
-
-  /// Removes the attribute `name` of the element realizing `node`.
-  pub(crate) fn remove_attribute(&mut self, node: NodeId, name: &str) {
-    if let Some(record) = self.records.get(node) {
-      self.sink.remove_attribute(&record.element, name);
-    }
-  }
-
-  /// Sets `declarations` inline on the element realizing `node`.
-  pub(crate) fn set_declarations(&mut self, node: NodeId, declarations: &Declarations) {
-    if let Some(record) = self.records.get(node) {
-      for (property, value) in declarations.iter() {
-        self.sink.set_property(&record.element, property, value);
-      }
     }
   }
 

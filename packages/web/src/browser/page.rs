@@ -116,6 +116,63 @@ pub(super) struct Page {
   pub(super) composing: Option<web_sys::Node>,
 }
 
+impl Page {
+  /// The server's element of `tag` at the marker the next element takes while hydrating.
+  pub(super) fn served(&self, tag: &str) -> Option<Element> {
+    self
+      .hydration
+      .as_ref()?
+      .elements
+      .get(&self.markers)
+      .filter(|element| element.tag_name().eq_ignore_ascii_case(tag))
+      .cloned()
+  }
+
+  /// Takes the next hydration marker for `native`, an element the native door adopts,
+  /// returning whether it is the server's element at that marker, adopted in place.
+  ///
+  /// The server's element at the marker, where it is another, is its placeholder,
+  /// removed once the hydration finishes; one of another tag is a mismatch.
+  pub(super) fn claim(&mut self, native: &web_sys::Node) -> bool {
+    let marker = self.markers;
+
+    self.markers += 1;
+
+    let Some(hydration) = &mut self.hydration
+    else {
+      return false;
+    };
+    let Some(served) = hydration.elements.remove(&marker)
+    else {
+      return false;
+    };
+
+    if native == AsRef::<web_sys::Node>::as_ref(&served) {
+      let _ = served.remove_attribute(MARKER_ATTRIBUTE);
+
+      return true;
+    }
+
+    let tag = native
+      .dyn_ref::<Element>()
+      .map(Element::tag_name)
+      .unwrap_or_default();
+
+    if !served.tag_name().eq_ignore_ascii_case(&tag) {
+      hydration.mismatches += 1;
+      tracing::error!(
+        "hydration mismatch: server rendered <{}> where the client adopts <{}> (marker {marker})",
+        served.tag_name().to_lowercase(),
+        tag.to_lowercase(),
+      );
+    }
+
+    hydration.stale.push(served);
+
+    false
+  }
+}
+
 impl Sink for Page {
   type Element = web_sys::Node;
   type Extra = Extra;

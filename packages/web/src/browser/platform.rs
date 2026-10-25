@@ -47,7 +47,6 @@ use skene_foundation::{
 use skene_reactive::{Memo, ReadSignal};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{
-  Document,
   Element,
   HtmlDialogElement,
   HtmlElement,
@@ -63,7 +62,6 @@ use super::{
   Node,
   SCENE,
   Timeout,
-  document,
   events,
   events::Listener,
   head,
@@ -72,14 +70,7 @@ use super::{
   try_with_dom,
   with_dom,
 };
-use crate::{
-  LinkPolicy,
-  declarations::Declarations,
-  low_level::{WebDom, WebMarkup},
-  platform::web::Web,
-  realize::Realized,
-  token::WebTokenValue,
-};
+use crate::{LinkPolicy, platform::web::Web, realize::Realized, token::WebTokenValue};
 
 /// Whether the engine places a box against a CSS anchor (`position-area`), decided
 /// once per page.
@@ -330,7 +321,12 @@ impl Realization for Web {
   }
 
   fn adopt(sink: NodeId, native: Element, spec: &NodeSpec) -> bool {
-    with_dom(|dom| dom.realizer.adopt(sink, &native.into(), spec))
+    with_dom(|dom| {
+      let native = native.into();
+      let adopted = dom.realizer.sink.claim(&native);
+
+      dom.realizer.adopt(sink, &native, spec, adopted)
+    })
   }
 
   fn native(sink: NodeId) -> Option<Element> {
@@ -924,38 +920,10 @@ impl Web {
   pub(crate) fn set_link_policy(node: NodeId, policy: LinkPolicy) {
     with_dom(|dom| dom.realizer.set_link_policy(node, policy));
   }
-}
 
-impl WebMarkup for Web {
-  fn create_element(node: NodeId, tag: &'static str) {
-    with_dom(|dom| {
-      dom.realizer.create_low_level(node, tag);
-    });
-  }
-
-  fn set_attribute(sink: NodeId, name: &str, value: &str) {
-    with_dom(|dom| dom.realizer.set_attribute(sink, name, value));
-  }
-
-  fn remove_attribute(sink: NodeId, name: &str) {
-    with_dom(|dom| dom.realizer.remove_attribute(sink, name));
-  }
-
-  fn set_declarations(sink: NodeId, declarations: &Declarations) {
-    with_dom(|dom| dom.realizer.set_declarations(sink, declarations));
-  }
-
-  fn set_text(sink: NodeId, text: &str) {
-    with_dom(|dom| dom.realizer.set_text(sink, text));
-  }
-}
-
-impl WebDom for Web {
-  fn element(sink: NodeId) -> Option<Element> {
-    Self::native(sink)
-  }
-
-  fn document() -> Document {
-    document()
+  /// The server's element of `tag` the next element realized takes while hydrating,
+  /// for the native door to adopt in place; `None` where none is served.
+  pub(crate) fn served(tag: &str) -> Option<Element> {
+    with_dom(|dom| dom.realizer.sink.served(tag))
   }
 }

@@ -40,9 +40,7 @@ use super::{
 };
 use crate::{
   LinkPolicy,
-  declarations::Declarations,
-  low_level::WebMarkup,
-  platform::web::{Unadoptable, Web},
+  platform::web::{NativeMarkup, Web},
   token::WebTokenValue,
 };
 
@@ -61,7 +59,7 @@ impl Realization for Web {
   type Scalar = f32;
   type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
-  type Native = Unadoptable;
+  type Native = NativeMarkup;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -93,8 +91,8 @@ impl Realization for Web {
 
   fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
 
-  fn adopt(_node: NodeId, native: Unadoptable, _spec: &NodeSpec) -> bool {
-    match native {}
+  fn adopt(node: NodeId, native: NativeMarkup, spec: &NodeSpec) -> bool {
+    with_realizer(|realizer| realizer.adopt_markup(node, &native, spec))
   }
 
   fn write(node: NodeId, value: ContentValue<'_>) {
@@ -258,29 +256,5 @@ impl Web {
   /// Opens the link run `node` as `policy` says.
   pub(crate) fn set_link_policy(node: NodeId, policy: LinkPolicy) {
     with_realizer(|realizer| realizer.set_link_policy(node, policy));
-  }
-}
-
-impl WebMarkup for Web {
-  fn create_element(node: NodeId, tag: &'static str) {
-    with_realizer(|realizer| {
-      realizer.create_low_level(node, tag);
-    });
-  }
-
-  fn set_attribute(node: NodeId, name: &str, value: &str) {
-    with_realizer(|realizer| realizer.set_attribute(node, name, value));
-  }
-
-  fn remove_attribute(node: NodeId, name: &str) {
-    with_realizer(|realizer| realizer.remove_attribute(node, name));
-  }
-
-  fn set_declarations(node: NodeId, declarations: &Declarations) {
-    with_realizer(|realizer| realizer.set_declarations(node, declarations));
-  }
-
-  fn set_text(node: NodeId, text: &str) {
-    with_realizer(|realizer| realizer.set_text(node, text));
   }
 }

@@ -10,7 +10,6 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{
-  AnyKind,
   BasicCheckbox,
   Color,
   ColorScheme,
@@ -24,10 +23,7 @@ use skene_foundation::{
   HasChildren,
   Leaf,
   Length,
-  LowLevel,
   Media,
-  NodeId,
-  NodeKind,
   Realization,
   Row,
   State,
@@ -54,7 +50,7 @@ use skene_simple_web::{
 };
 use skene_web::{
   Platform,
-  platform::web::{self, Declarations, Web, WebMarkup, WebTokenValue},
+  platform::web::{self, NativeView, Web, WebTokenValue},
   testing::{Installed, computed, connected_root, document, fresh_root, only_child},
 };
 use wasm_bindgen::JsCast;
@@ -112,6 +108,13 @@ fn red() -> Color {
 
 fn blue() -> Color {
   Color::srgb(0., 0., 1.)
+}
+
+/// A color as the CSS the platform renders it to.
+fn css(color: Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
 }
 
 /// The computed background a `<div>` under `root` gets from the declaration
@@ -213,7 +216,7 @@ fn a_token_color_resolves_through_the_theme() {
   assert_eq!(computed(&scope, "display"), "contents");
   assert_eq!(
     computed(&card, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
+    probe(&root, &css(white()))
   );
   assert!(
     sheet_text().contains(&format!(
@@ -267,7 +270,7 @@ fn a_palette_write_reinks_without_replacing_the_element() {
   assert!(before == after, "the consumer was re-inked, not rebuilt");
   assert_eq!(
     computed(&after, "background-color"),
-    probe(&root, &Declarations::render_color(red()))
+    probe(&root, &css(red()))
   );
   assert_eq!(count.get(), 5);
   assert_eq!(after.text_content().as_deref(), Some("5"));
@@ -294,7 +297,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
 
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
+    probe(&root, &css(white()))
   );
 
   color.set(blue());
@@ -302,7 +305,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
 
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(blue()))
+    probe(&root, &css(blue()))
   );
 
   let sheet = sheet_text();
@@ -314,7 +317,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   let hover = sheet
     .find(&format!(
       ".{class}:where(:hover){{background-color:{};}}",
-      Declarations::render_color(red())
+      css(red())
     ))
     .expect("the hover rule holds the variant");
 
@@ -327,7 +330,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
       .style()
       .get_property_value("--skene-background")
       .unwrap(),
-    Declarations::render_color(blue())
+    css(blue())
   );
 }
 
@@ -364,16 +367,16 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   assert_eq!(slot(), "var(--test-card)");
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
+    probe(&root, &css(white()))
   );
 
   plain.set(true);
   web::end_turn();
 
-  assert_eq!(slot(), Declarations::render_color(red()));
+  assert_eq!(slot(), css(red()));
   assert_eq!(
     computed(&element, "background-color"),
-    probe(&root, &Declarations::render_color(red()))
+    probe(&root, &css(red()))
   );
 }
 
@@ -638,21 +641,10 @@ fn media_reports_the_window() {
   assert_eq!(web::persisted_scheme(), None);
 }
 
-/// A low-level view: a `<div>` made through the escape trait.
-struct Raw;
-
-impl AnyKind for Raw {}
-
-impl View<Web> for Raw {
-  fn build(self) -> NodeId {
-    LowLevel::<Web>::realize(NodeKind::Box, |node| Web::create_element(node, "div"))
-  }
-}
-
-/// A low-level node's element takes the layout its wrapper gave it, a derived property
+/// A native view's element takes the layout its wrapper gave it, a derived property
 /// following its signal.
 #[wasm_bindgen_test]
-fn a_low_level_node_takes_its_wrappers_layout() {
+fn a_native_view_takes_its_wrappers_layout() {
   let (_guard, root) = fresh_root();
   let grow = Signal::new(2.0f32);
 
@@ -661,10 +653,10 @@ fn a_low_level_node_takes_its_wrappers_layout() {
       .set_children((
         Flexible::<Web>::new()
           .set_flexibility(Flexibility::grow(3.))
-          .set_child(Raw),
+          .set_child(NativeView::new("div")),
         Flexible::<Web>::new()
           .derive_flexibility(move || Flexibility::grow(grow.get()))
-          .set_child(Raw),
+          .set_child(NativeView::new("div")),
       ))
       .build()
   });
@@ -764,7 +756,7 @@ fn a_served_page_hydrates_without_mismatch() {
   assert!(block.has_attribute("data-skene-style"));
   assert_eq!(
     computed(&card, "background-color"),
-    probe(&root, &Declarations::render_color(white()))
+    probe(&root, &css(white()))
   );
 
   drop(guard);
@@ -818,7 +810,7 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   );
   assert_eq!(
     computed(&only_child(&scope), "background-color"),
-    probe(&root, &Declarations::render_color(white()))
+    probe(&root, &css(white()))
   );
 }
 

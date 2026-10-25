@@ -1582,32 +1582,49 @@ fn a_disabled_checkbox_keeps_its_input_out_of_the_tab_order() {
   assert!(input.contains("tabindex=\"-1\""), "{body}");
 }
 
-/// A low-level element's `style` attribute and its declarations serialize as one
-/// attribute, the attribute replacing the declarations set before it, as the browser
-/// holds them.
+/// A native view's `style` attribute and the declarations its wrapper's derived layout
+/// writes inline serialize as one attribute, the declarations following the attribute,
+/// as the browser holds them.
 #[test]
-fn a_markup_style_and_its_declarations_serialize_as_one_attribute() {
-  use skene_foundation::{AnyView, NodeKind};
-  use skene_web::{
-    Active,
-    platform::web::{Declarations, WebMarkup},
-  };
+fn a_native_style_and_its_declarations_serialize_as_one_attribute() {
+  use skene_reactive::Get;
+  use skene_web::platform::web::NativeView;
 
   let rendered = render_to_string(|| {
-    AnyView::node(skene_foundation::LowLevel::<Active>::realize(
-      NodeKind::Box,
-      |node| {
-        Active::create_element(node, "div");
-        Active::set_declarations(node, &Declarations::new().set("margin", "0"));
-        Active::set_attribute(node, "style", "color: red");
-        Active::set_declarations(node, &Declarations::new().set("padding", "0"));
-      },
-    ))
+    let grow = skene_reactive::Signal::new(2.0f32);
+
+    Row::new().add_child(
+      Flexible::new()
+        .derive_flexibility(move || Flexibility::grow(grow.get()))
+        .set_child(NativeView::new("div").add_attribute("style", "color: red")),
+    )
   });
   let body = rendered.body();
 
   assert_eq!(body.matches(" style=").count(), 1, "{body}");
-  assert!(body.contains("style=\"color: red;padding:0;\""), "{body}");
+  assert!(body.contains("style=\"color: red;--"), "{body}");
+}
+
+/// A native view renders its markup as its placeholder: its tag and its attributes in
+/// the order they were first added, a value added again replacing the first, each
+/// escaped, with the marker a hydrating browser adopts it by.
+#[test]
+fn a_native_view_renders_its_markup_as_its_placeholder() {
+  use skene_web::platform::web::NativeView;
+
+  let rendered = render_to_string(|| {
+    NativeView::new("canvas")
+      .add_attribute("role", "img")
+      .add_attribute("aria-label", "a \"map\"")
+      .add_attribute("width", "200")
+      .add_attribute("role", "presentation")
+  });
+  let body = rendered.body();
+
+  assert!(
+    body.contains("<canvas data-h=\"1\" role=\"presentation\" aria-label=\"a &quot;map&quot;\" width=\"200\"></canvas>"),
+    "{body}"
+  );
 }
 
 /// A required, read-only text field serializes the native attributes a form enforces

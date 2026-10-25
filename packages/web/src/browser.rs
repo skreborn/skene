@@ -457,7 +457,7 @@ impl Dom {
     }
 
     for node in self.realizer.records.values_mut() {
-      if node.adopted {
+      if node.adopted && !matches!(node.realized, Realized::Native) {
         node.write_classes();
       }
 

@@ -192,18 +192,6 @@ pub skene_web::platform::web::StreamPiece::Shell::styles: &'a str
 pub skene_web::platform::web::StreamPiece::Tail(alloc::string::String)
 impl<'a> core::fmt::Debug for skene_web::platform::web::StreamPiece<'a>
 pub fn skene_web::platform::web::StreamPiece<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub enum skene_web::platform::web::Unadoptable
-impl core::clone::Clone for skene_web::platform::web::Unadoptable
-pub fn skene_web::platform::web::Unadoptable::clone(&self) -> skene_web::platform::web::Unadoptable
-impl core::cmp::Eq for skene_web::platform::web::Unadoptable
-impl core::cmp::PartialEq for skene_web::platform::web::Unadoptable
-pub fn skene_web::platform::web::Unadoptable::eq(&self, &skene_web::platform::web::Unadoptable) -> bool
-impl core::fmt::Debug for skene_web::platform::web::Unadoptable
-pub fn skene_web::platform::web::Unadoptable::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_web::platform::web::Unadoptable
-pub fn skene_web::platform::web::Unadoptable::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_web::platform::web::Unadoptable
-impl core::marker::StructuralPartialEq for skene_web::platform::web::Unadoptable
 pub enum skene_web::platform::web::WebTokenValue
 pub skene_web::platform::web::WebTokenValue::Color(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, f32>)
 pub skene_web::platform::web::WebTokenValue::Dimension(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::dimension::Dimension<f32>, f32>)
@@ -226,36 +214,29 @@ pub fn skene_foundation::spine::resolve::TokenValue<f32>::from(skene_web::platfo
 impl core::fmt::Debug for skene_web::platform::web::WebTokenValue
 pub fn skene_web::platform::web::WebTokenValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_web::platform::web::WebTokenValue
-pub struct skene_web::platform::web::Declarations(_)
-impl skene_web::platform::web::Declarations
-pub fn skene_web::platform::web::Declarations::is_empty(&self) -> bool
-pub fn skene_web::platform::web::Declarations::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
-pub fn skene_web::platform::web::Declarations::new() -> Self
-pub fn skene_web::platform::web::Declarations::remove(self, &'static str) -> Self
-pub fn skene_web::platform::web::Declarations::render_areas(&skene_foundation::spine::values::grid::GridAreas) -> alloc::string::String
-pub const fn skene_web::platform::web::Declarations::render_arrangement(skene_foundation::spine::values::flex::Arrangement) -> &'static str
-pub fn skene_web::platform::web::Declarations::render_color(skene_foundation::spine::values::color::Color) -> alloc::string::String
-pub const fn skene_web::platform::web::Declarations::render_cursor(skene_foundation::spine::values::mouse_cursor::MouseCursor) -> &'static str
-pub fn skene_web::platform::web::Declarations::render_dimension(skene_foundation::spine::values::dimension::Dimension<f32>) -> alloc::string::String
-pub fn skene_web::platform::web::Declarations::render_dimension_inset(skene_foundation::spine::values::inset::Inset<skene_foundation::spine::values::dimension::Dimension<f32>>) -> [alloc::string::String; 2]
-pub fn skene_web::platform::web::Declarations::render_grid_line(skene_foundation::spine::values::grid::Line<skene_foundation::spine::values::grid::GridPlacement>) -> alloc::string::String
-pub const fn skene_web::platform::web::Declarations::render_item_alignment(skene_foundation::spine::values::flex::ItemAlignment) -> &'static str
-pub fn skene_web::platform::web::Declarations::render_template(&skene_foundation::spine::values::grid::GridTemplate<f32>) -> alloc::string::String
-pub fn skene_web::platform::web::Declarations::render_track(skene_foundation::spine::values::grid::GridTrack<f32>) -> alloc::string::String
-pub fn skene_web::platform::web::Declarations::render_tracks(&[skene_foundation::spine::values::grid::GridTrack<f32>]) -> alloc::string::String
-pub fn skene_web::platform::web::Declarations::set(self, &'static str, impl core::convert::Into<alloc::borrow::Cow<'static, str>>) -> Self
-impl core::clone::Clone for skene_web::platform::web::Declarations
-pub fn skene_web::platform::web::Declarations::clone(&self) -> skene_web::platform::web::Declarations
-impl core::cmp::Eq for skene_web::platform::web::Declarations
-impl core::cmp::PartialEq for skene_web::platform::web::Declarations
-pub fn skene_web::platform::web::Declarations::eq(&self, &skene_web::platform::web::Declarations) -> bool
-impl core::default::Default for skene_web::platform::web::Declarations
-pub fn skene_web::platform::web::Declarations::default() -> skene_web::platform::web::Declarations
-impl core::fmt::Debug for skene_web::platform::web::Declarations
-pub fn skene_web::platform::web::Declarations::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_web::platform::web::Declarations
-pub fn skene_web::platform::web::Declarations::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::StructuralPartialEq for skene_web::platform::web::Declarations
+pub struct skene_web::platform::web::NativeMarkup
+impl skene_web::platform::web::NativeMarkup
+pub fn skene_web::platform::web::NativeMarkup::attributes(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
+pub const fn skene_web::platform::web::NativeMarkup::tag(&self) -> &'static str
+impl core::clone::Clone for skene_web::platform::web::NativeMarkup
+pub fn skene_web::platform::web::NativeMarkup::clone(&self) -> skene_web::platform::web::NativeMarkup
+impl core::cmp::Eq for skene_web::platform::web::NativeMarkup
+impl core::cmp::PartialEq for skene_web::platform::web::NativeMarkup
+pub fn skene_web::platform::web::NativeMarkup::eq(&self, &skene_web::platform::web::NativeMarkup) -> bool
+impl core::fmt::Debug for skene_web::platform::web::NativeMarkup
+pub fn skene_web::platform::web::NativeMarkup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::platform::web::NativeMarkup
+pub fn skene_web::platform::web::NativeMarkup::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_web::platform::web::NativeMarkup
+pub struct skene_web::platform::web::NativeView
+impl skene_web::platform::web::NativeView
+pub fn skene_web::platform::web::NativeView::add_attribute(self, &'static str, impl core::convert::Into<alloc::borrow::Cow<'static, str>>) -> Self
+pub const fn skene_web::platform::web::NativeView::new(&'static str) -> Self
+impl core::fmt::Debug for skene_web::platform::web::NativeView
+pub fn skene_web::platform::web::NativeView::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::spine::view::AnyKind for skene_web::platform::web::NativeView
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::platform::web::NativeView
+pub fn skene_web::platform::web::NativeView::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_web::platform::web::RenderHints
 pub skene_web::platform::web::RenderHints::device_pixel_ratio: f32
 pub skene_web::platform::web::RenderHints::hover: bool
@@ -326,13 +307,13 @@ impl skene_foundation::pinned::PinnedBase<skene_web::platform::web::Web> for ske
 impl skene_foundation::span::RichTextBase<skene_web::platform::web::Web> for skene_web::RichText
 impl skene_foundation::span::SpanBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::spine::realization::Realization for skene_web::platform::web::Web
-pub type skene_web::platform::web::Web::Native = skene_web::platform::web::Unadoptable
+pub type skene_web::platform::web::Web::Native = skene_web::platform::web::NativeMarkup
 pub type skene_web::platform::web::Web::Scalar = f32
 pub type skene_web::platform::web::Web::StyleExt = skene_foundation::web::ext::WebStyle
 pub type skene_web::platform::web::Web::TokenValue = skene_web::platform::web::WebTokenValue
 pub const skene_web::platform::web::Web::FONT_SIZE: f32
 pub const skene_web::platform::web::Web::KEEP: skene_foundation::spine::record::Keep
-pub fn skene_web::platform::web::Web::adopt(skene_foundation::spine::node::NodeId, skene_web::platform::web::Unadoptable, &skene_foundation::spine::props::NodeSpec) -> bool
+pub fn skene_web::platform::web::Web::adopt(skene_foundation::spine::node::NodeId, skene_web::platform::web::NativeMarkup, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_web::platform::web::Web::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::apply_style(skene_foundation::spine::node::NodeId, skene_foundation::spine::record::CompiledStyle<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
@@ -414,6 +395,8 @@ impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for sken
 pub fn skene_web::Tooltip::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Visibility
 pub fn skene_web::Visibility::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::platform::web::NativeView
+pub fn skene_web::platform::web::NativeView::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::stack::StackBase<skene_web::platform::web::Web> for skene_web::Stack
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
@@ -442,12 +425,6 @@ pub fn skene_web::platform::web::Web::register_boundary(skene_foundation::spine:
 pub fn skene_web::platform::web::Web::register_source(skene_foundation::web::hydration::HydrationSource)
 pub fn skene_web::platform::web::Web::register_tagged_source(&str, skene_foundation::web::hydration::HydrationSource)
 pub fn skene_web::platform::web::Web::within_lazy<R>(&Self::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
-impl skene_web::platform::web::WebMarkup for skene_web::platform::web::Web
-pub fn skene_web::platform::web::Web::create_element(skene_foundation::spine::node::NodeId, &'static str)
-pub fn skene_web::platform::web::Web::remove_attribute(skene_foundation::spine::node::NodeId, &str)
-pub fn skene_web::platform::web::Web::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
-pub fn skene_web::platform::web::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::web::Declarations)
-pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::NodeId, &str)
 impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::control::ControlCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
@@ -480,18 +457,6 @@ impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::De
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
 pub const skene_web::platform::web::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::web::SCHEME_ATTRIBUTE: &str
-pub trait skene_web::platform::web::WebMarkup: skene_foundation::spine::realization::Realization
-pub fn skene_web::platform::web::WebMarkup::create_element(skene_foundation::spine::node::NodeId, &'static str)
-pub fn skene_web::platform::web::WebMarkup::remove_attribute(skene_foundation::spine::node::NodeId, &str)
-pub fn skene_web::platform::web::WebMarkup::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
-pub fn skene_web::platform::web::WebMarkup::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::web::Declarations)
-pub fn skene_web::platform::web::WebMarkup::set_text(skene_foundation::spine::node::NodeId, &str)
-impl skene_web::platform::web::WebMarkup for skene_web::platform::web::Web
-pub fn skene_web::platform::web::Web::create_element(skene_foundation::spine::node::NodeId, &'static str)
-pub fn skene_web::platform::web::Web::remove_attribute(skene_foundation::spine::node::NodeId, &str)
-pub fn skene_web::platform::web::Web::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
-pub fn skene_web::platform::web::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::web::Declarations)
-pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::NodeId, &str)
 pub fn skene_web::platform::web::add_head_element(&str, &[(&str, &str)]) -> skene_foundation::web::head::HeadId
 pub fn skene_web::platform::web::current_path() -> alloc::string::String
 pub fn skene_web::platform::web::document_closing(&str) -> alloc::string::String

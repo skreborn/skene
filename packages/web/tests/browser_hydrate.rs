@@ -449,6 +449,67 @@ fn a_client_only_view_builds_after_hydrating_without_shifting_markers() {
   web::uninstall();
 }
 
+/// A native view adopts the placeholder the server rendered for it in place, its
+/// element handed over as served with its own classes, and the nodes around it hydrate
+/// with no mismatch.
+#[wasm_bindgen_test]
+fn a_native_view_adopts_its_served_placeholder_in_place() {
+  let root = server_root(
+    "<div data-h=\"1\"><canvas data-h=\"2\" class=\"chart\" width=\"20\"></canvas>\
+     <span data-h=\"3\">after</span></div>",
+  );
+  let column = only_child(&root);
+  let served = column
+    .first_element_child()
+    .expect("the served placeholder");
+  let after = column.last_element_child().expect("the served text");
+  let handed = Rc::new(RefCell::new(None));
+
+  hydrate(root.clone(), "", {
+    let handed = Rc::clone(&handed);
+
+    move || {
+      Column::new().set_children((
+        web::NativeView::new("canvas")
+          .add_attribute("class", "chart")
+          .add_attribute("width", "20")
+          .handle_adopt(move |_, element| *handed.borrow_mut() = Some(element.clone())),
+        Text::new("after"),
+      ))
+    }
+  });
+
+  let hydrated = only_child(&root);
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert!(hydrated == column, "the column was adopted");
+  assert_eq!(
+    element_count(&hydrated),
+    2,
+    "nothing was rebuilt beside them"
+  );
+  assert!(
+    hydrated.first_element_child() == Some(served.clone()),
+    "the placeholder was adopted in place"
+  );
+  assert!(
+    handed.borrow().as_ref() == Some(&served),
+    "and handed over as the element"
+  );
+  assert!(!served.has_attribute("data-h"), "its marker is spent");
+  assert_eq!(
+    served.get_attribute("class").as_deref(),
+    Some("chart"),
+    "and it keeps its own classes"
+  );
+  assert!(
+    hydrated.last_element_child() == Some(after),
+    "the text after it was adopted"
+  );
+
+  web::uninstall();
+}
+
 /// A size the hydrated pickers choose.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Size {

@@ -116,11 +116,11 @@ not disabled or an activatable row, attached under the window's root outside eve
 closed overlay and every subtree the platform reports hidden, and that the topmost open
 modal does not exclude, as the tab order reaches its stops; a shortcut holding no
 modifier but `Shift` does not act while focus is in a text entry, whose key it is, none
-acts within a composition, and a view-scoped binding (a `Keymap`'s, a `MenuEntry`'s),
-which a handler runs as the key climbs, prevents the key inside its view first. A row is a
-box acting on a click of its own (`BoxFacts::acting`: it handles one and is no link),
-which the scene records as it creates the node, and a tab stop unless its focus order
-says otherwise. It answers which popups focus leaves as it moves to another node
+acts within a composition, and a view-scoped binding (a `Keymap`'s, a
+`MenuEntry`'s), which a handler runs as the key climbs, prevents the key inside its
+view first. A row is a box acting on a click of its own (`BoxFacts::acting`: it
+handles one and is no link), which the scene records as it creates the node, and a tab
+stop unless its focus order says otherwise. It answers which popups focus leaves as it moves to another node
 (`Scene::popups_left_by`, dismissed by `notify_focus_moved` on every platform), and where
 a modal takes focus as it opens (`Scene::modal_focus`: its first tab stop, else itself,
 as a dialog's focusing steps choose). The tab order is the scene's child order alone
@@ -794,9 +794,11 @@ re-export.
   on it; the browser leaf's first mount focuses it once its turn ends, and a hydration
   keeps the focus the browser gave the served element and moves none. A shortcut is
   served as `aria-keyshortcuts` on both leaves; the browser leaf hears a key pressed
-  outside the root, as on the `<body>` while nothing holds focus, through one `keydown`
-  listener on the document, which dispatches it at the root so the window's shortcuts
-  reach it, and a key a shortcut takes has its browser default prevented. The gallery runs under
+  while nothing holds focus, on the `<body>`, through one `keydown` listener on the
+  document, which dispatches it at the root so the window's shortcuts reach it, a key
+  pressed on the page's own element outside the root left the page's, and a key a
+  shortcut takes has its browser default prevented. A subtree the web passes over is
+  one whose style lays it out as none or makes it invisible. The gallery runs under
   axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
   gallery's overlays open: a tooltip, the picker's popup and a context menu, once under
@@ -1758,10 +1760,10 @@ paints in the typography's focused-link ink and surface, reverse video where tho
 transparent, as the default leaves them. Focus shows as `:focus-visible` does: after a
 key, or in a text entry, and not since a pointer press. A window opens with nothing
 focused, and the control set to autofocus that comes first in the scene's child order
-takes focus as the first mount ends, without showing it. A key pressed while nothing is
-focused is dispatched at the root, so a control's shortcut acts from anywhere, and the access tree
-reports it as the AccessKit node's keyboard shortcut. A key's default runs after the handlers' writes
-have taken effect, as a browser's does after its microtask checkpoint. A key release
+takes focus as the first mount ends, without showing it. A key pressed while nothing
+is focused is dispatched at the root, so a control's shortcut acts from anywhere, and
+the access tree reports the shortcut as the AccessKit node's keyboard shortcut. A key's
+default runs after the handlers' writes have taken effect, as a browser's does after its microtask checkpoint. A key release
 dispatches as `KeyUp` (`handle_key_up` on a box and a control) with no default but the
 scene's (`Scene::key_up_default`, a row's `Space`), a held
 key repeats its `KeyDown` with `repeat` set, and a modifier pressed alone arrives under

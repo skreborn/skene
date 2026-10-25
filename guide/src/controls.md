@@ -117,8 +117,8 @@ fn search() -> impl View {
 `set_shortcut` gives a control the key that activates it from anywhere in the window, as
 a click does, and the platform reports it to assistive technology (`aria-keyshortcuts`
 on the web). It acts while the control is enabled and shown and no open modal it lies
-outside holds the window; where several controls take one key, the first in the order
-the views are built in acts. A key without `Ctrl`, `Alt` or `Meta` stays a text entry's
+outside holds the window; where several controls take one key, the first of them in the
+window, in the order of the views' children, acts. A key without `Ctrl`, `Alt` or `Meta` stays a text entry's
 own while one holds focus, so a shortcut on `N` types an `n` there, and a `Keymap`
 binding the same key inside its view acts first there. An activatable row takes a
 shortcut the same way:

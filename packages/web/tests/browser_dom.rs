@@ -1187,7 +1187,8 @@ fn control_key_at(target: &Element, key: &str) -> bool {
 /// A control's shortcut activates it from anywhere in the window, in place of the
 /// browser's default: with nothing focused, the key landing on the body, with focus on
 /// another control and in a text entry, while a key holding no modifier stays the
-/// entry's; the control reports it as `aria-keyshortcuts`.
+/// entry's; a key pressed on the page's own element outside the root is the page's; the
+/// control reports it as `aria-keyshortcuts`.
 #[wasm_bindgen_test]
 fn a_controls_shortcut_activates_it_from_anywhere() {
   let (_guard, root) = fresh_root();
@@ -1250,26 +1251,44 @@ fn a_controls_shortcut_activates_it_from_anywhere() {
     "the entry takes its key"
   );
   assert_eq!(news.get(), 1);
+
+  let page = document().create_element("input").expect("an input");
+  let _ = body.append_child(&page);
+  let _ = html(&page).focus();
+
+  assert!(
+    !control_key_at(&page, "s"),
+    "the page's element keeps its key"
+  );
+  assert!(!key_at(&page, "keydown", "n", false));
+  assert_eq!((saves.get(), news.get()), (3, 1));
+
+  page.remove();
 }
 
-/// A shortcut acts on no disabled control and on none an open modal excludes, the key
-/// then left to the browser, and acts again once the control is enabled and the modal
-/// closed.
+/// A shortcut acts on no disabled control, on none a box's style hides and on none an
+/// open modal excludes, the key then left to the browser, and acts again once the
+/// control is enabled, shown and the modal closed.
 #[wasm_bindgen_test]
 fn a_shortcut_passes_over_a_disabled_control_and_one_a_modal_excludes() {
   let (_guard, _root) = fresh_root();
   let (saves, save) = counter();
   let disabled = Signal::new(false);
+  let hidden = Signal::new(false);
   let open = Signal::new(false);
 
   let _ = mount(move || {
     Column::new()
       .set_children((
-        BasicButton::new(Activate::new())
-          .set_label("Save")
-          .derive_disabled(move || disabled.get())
-          .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
-          .handle_activate(save)
+        Container::new()
+          .derive_hidden(move || hidden.get())
+          .set_child(
+            BasicButton::new(Activate::new())
+              .set_label("Save")
+              .derive_disabled(move || disabled.get())
+              .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+              .handle_activate(save),
+          )
           .into_any(),
         Overlay::modal()
           .bind_open(open)
@@ -1291,6 +1310,16 @@ fn a_shortcut_passes_over_a_disabled_control_and_one_a_modal_excludes() {
   assert_eq!(saves.get(), 0);
 
   disabled.set(false);
+  hidden.set(true);
+  web::end_turn();
+
+  assert!(
+    !control_key_at(&body, "s"),
+    "hidden, the key is the browser's"
+  );
+  assert_eq!(saves.get(), 0);
+
+  hidden.set(false);
   open.set(true);
   web::end_turn();
 

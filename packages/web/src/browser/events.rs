@@ -8,8 +8,8 @@
 //! flip while its click is dispatched observed: the observers up the path run once per
 //! press and the behavior, whose flip the platform performed, is skipped. The only
 //! per-node listener is a `<dialog>`'s `cancel`, and the only one beyond the root the
-//! document's `keydown`, which dispatches a key pressed outside the root, as on the
-//! `<body>` while nothing holds focus, at the root, so the window's shortcuts hear it.
+//! document's `keydown`, which dispatches a key pressed while nothing holds focus, on
+//! the `<body>`, at the root, so the window's shortcuts hear it.
 
 use std::{cell::Cell, rc::Rc, str::FromStr, time::Duration};
 
@@ -474,10 +474,26 @@ fn on_key_down(event: &web_sys::Event) {
   key_down_at(event, node_at(event.target()));
 }
 
-/// A key pressed outside every element the scene knows, as on the `<body>` while
-/// nothing holds focus: dispatched at the root, so the window's shortcuts reach it.
+/// A key pressed while nothing holds focus, its target the `<body>` or the document's
+/// element: dispatched at the root, so the window's shortcuts reach it. A key pressed on
+/// any other element outside the root is the page's own.
 fn on_document_key_down(event: &web_sys::Event) {
-  if node_at(event.target()).is_some() {
+  let Some(document) = web_sys::window().and_then(|window| window.document())
+  else {
+    return;
+  };
+  let Some(target) = event.target()
+  else {
+    return;
+  };
+  let is_target = |value: &JsValue| value == AsRef::<JsValue>::as_ref(&target);
+  let unfocused = document.body().is_some_and(|body| is_target(&body))
+    || document
+      .document_element()
+      .is_some_and(|element| is_target(&element))
+    || is_target(&document);
+
+  if !unfocused || node_at(Some(target)).is_some() {
     return;
   }
 
@@ -507,7 +523,7 @@ fn key_down_at(event: &web_sys::Event, at: Option<NodeId>) {
 
   let root = with_dom(|dom| dom.root_node);
 
-  match Scene::<Web>::with(|scene| scene.key_default(root, at, &key, is_undisplayed)) {
+  match Scene::<Web>::with(|scene| scene.key_default(root, at, &key, is_hidden_by_style)) {
     Some(KeyDefault::Activate(row)) => {
       event.prevent_default();
       let _ = dispatch_activation::<Web>(row, key.modifiers);
@@ -541,18 +557,21 @@ fn key_down_at(event: &web_sys::Event, at: Option<NodeId>) {
   }
 }
 
-/// Whether the element of `node` is laid out as none by its style; `false` for a node
-/// with no element of its own.
-fn is_undisplayed(node: NodeId) -> bool {
+/// Whether the element of `node` is hidden by its style, laid out as none or invisible
+/// (a box's `hidden`); `false` for a node with no element of its own.
+fn is_hidden_by_style(node: NodeId) -> bool {
   let Some(element) = with_dom(|dom| dom.node(node).and_then(Node::dom_element).cloned())
   else {
     return false;
   };
+  let Some(style) =
+    web_sys::window().and_then(|window| window.get_computed_style(&element).ok().flatten())
+  else {
+    return false;
+  };
+  let value = |property: &str| style.get_property_value(property).unwrap_or_default();
 
-  web_sys::window()
-    .and_then(|window| window.get_computed_style(&element).ok().flatten())
-    .and_then(|style| style.get_property_value("display").ok())
-    .is_some_and(|display| display == "none")
+  value("display") == "none" || matches!(value("visibility").as_str(), "hidden" | "collapse")
 }
 
 /// A request for the context menu from the keyboard where `element` holds focus: no

@@ -4,6 +4,8 @@
 //! Run on the server leaf: `cargo test-server --test server_platform`.
 #![cfg(all(skene_platform = "web", skene_server))]
 
+use std::{cell::Cell, rc::Rc, time::Duration};
+
 use skene_foundation::{
   AnyKind,
   BasicCheckbox,
@@ -49,6 +51,7 @@ use skene_reactive::{Get, Set, signal};
 use skene_web::{
   Platform,
   platform::web::{Web, WebMarkup, WebTokenValue, render_to_string},
+  schedule,
 };
 
 type Box_ = Container<Web>;
@@ -576,4 +579,22 @@ fn the_server_leaf_is_the_web_platform() {
   assert_eq!(Platform::CURRENT, Platform::Web);
   assert_eq!((Platform::IS_SERVER, Platform::IS_APPLE), (true, false));
   assert_eq!(Platform::CURRENT.name(), "web");
+}
+
+/// A server render has no clock: an action scheduled while it builds never runs.
+#[test]
+fn a_server_render_never_runs_a_scheduled_action() {
+  let ran = Rc::new(Cell::new(false));
+  let rendered = render_to_string({
+    let ran = Rc::clone(&ran);
+
+    move || {
+      let _ = schedule(Duration::ZERO, move || ran.set(true));
+
+      Box_::new()
+    }
+  });
+
+  assert!(rendered.body().contains("skene-"), "{}", rendered.body());
+  assert!(!ran.get());
 }

@@ -4,8 +4,8 @@
 //! low-level view, a `View<Active>` like any other, paints through [`CellPainter`] with
 //! [`Cells`], the handle addressing its box's cells from their own origin, and the
 //! module exists in the terminal's build alone, so cell-reaching code compiles for the
-//! terminal alone. The terminal has no toolkit's view to adopt, so its
-//! native view is [`Unadoptable`] and the native door cannot be reached there.
+//! terminal alone. The terminal has no toolkit's view to adopt, so its native view is
+//! [`Unadoptable`] and the native door cannot be reached there.
 
 pub use crate::cells::{CellPainter, Cells};
 

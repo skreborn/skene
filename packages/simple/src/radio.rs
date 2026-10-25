@@ -63,7 +63,7 @@ impl<P: Realization, T: Choice> SimpleRadioGroup<P, T> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      behavior: RadioGroup::new(),
+      behavior: RadioGroup::typed::<Option<T>>(),
       label: None,
       child: None,
       value: PhantomData,

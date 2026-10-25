@@ -319,8 +319,9 @@ impl Sink for Page {
         .is_some_and(|hydration| hydration.held.contains(element))
   }
 
-  /// Rebuilds the options where they differ from those shown, then selects the chosen
-  /// one, or none where the chosen key names no option.
+  /// Rebuilds the options where they differ from those shown, an empty hidden option
+  /// first where the chosen key names none of them, then selects the chosen one, or that
+  /// empty one.
   fn set_choices(&mut self, element: &web_sys::Node, choices: &Choices) {
     let Some(select) = element.dyn_ref::<HtmlSelectElement>()
     else {

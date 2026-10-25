@@ -29,6 +29,7 @@ impl<T: Clone + Eq + Hash + 'static> Choice for T {}
 /// It compares equal to another holding an equal value of the same type, and hashes as
 /// the value it holds does. Erasing an `AnyChoice` keeps it as it is.
 #[derive(Clone)]
+#[must_use]
 pub struct AnyChoice(Rc<dyn ErasedChoice>);
 
 impl AnyChoice {
@@ -137,6 +138,7 @@ impl<T: Choice> Chosen for Option<T> {
 /// ([`AnyChosen::unread`]) has chosen nothing and chooses by its type's rules still; an
 /// untyped one ([`AnyChosen::untyped`]) chooses nothing.
 #[derive(Clone)]
+#[must_use]
 pub struct AnyChosen {
   rules: &'static dyn ChosenRules,
   chosen: Option<Rc<dyn Any>>,
@@ -152,7 +154,6 @@ impl AnyChosen {
   }
 
   /// Nothing read: nothing chosen, each choice made by the rules of `C`.
-  #[must_use]
   pub const fn unread<C: Chosen>() -> Self {
     Self {
       rules: const { &Rules::<C>(PhantomData) },
@@ -162,7 +163,6 @@ impl AnyChosen {
 
   /// Nothing chosen and no type to choose by: a choice chooses nothing.
   #[inline(always)]
-  #[must_use]
   pub const fn untyped() -> Self {
     Self {
       rules: &Untyped,
@@ -187,7 +187,6 @@ impl AnyChosen {
 
   /// What is chosen once the reader chooses `value` from this choice, by its type's
   /// rules; nothing where `value` is not of its options' type.
-  #[must_use]
   pub fn choosing(&self, value: &AnyChoice) -> Self {
     Self {
       rules: self.rules,
@@ -317,6 +316,16 @@ impl ControlledChoice {
     }
   }
 
+  /// A choice with nothing derived and no handler, choosing by the rules of `C` until
+  /// its user gives another type.
+  #[inline(always)]
+  pub const fn typed<C: Chosen>() -> Self {
+    Self {
+      chosen: Controlled::new(),
+      unread: AnyChosen::unread::<C>(),
+    }
+  }
+
   /// Fixes the choice at `chosen`.
   pub fn set<C: Chosen>(&mut self, chosen: C) {
     self.unread = AnyChosen::unread::<C>();
@@ -346,7 +355,6 @@ impl ControlledChoice {
   }
 
   /// The choice as it reads now, tracking what it reads.
-  #[must_use]
   pub fn read(&self) -> AnyChosen {
     self.chosen.read().unwrap_or_else(|| self.unread.clone())
   }

@@ -418,6 +418,38 @@ fn a_picker_choosing_none_of_its_options_selects_an_empty_one() {
   );
 }
 
+/// A picker's option tagged with a value of another type than the picker's is a debug
+/// assertion, the picker's type known from its construction alone.
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(
+  expected = "a member is tagged with a value of the type its collection's options carry"
+)]
+fn a_pickers_option_tagged_with_another_type_is_refused() {
+  use skene_web::BasicPicker;
+
+  let _ = render_to_string(|| {
+    BasicPicker::<Size>::new()
+      .set_options([BasicListboxOption::new(ListboxOption::new("small")).set_label("Small")])
+      .set_face(|_| Text::new("face"))
+  });
+}
+
+/// A radio tagged with a value of another type than its group's is a debug assertion,
+/// the group's type known from its construction alone.
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(
+  expected = "a member is tagged with a value of the type its collection's options carry"
+)]
+fn a_radio_tagged_with_another_type_is_refused() {
+  use skene_web::{BasicRadio, BasicRadioGroup, Radio};
+
+  let _ = render_to_string(|| {
+    BasicRadioGroup::<Size>::new().set_child(BasicRadio::new(Radio::new(1_u8)).set_label("One"))
+  });
+}
+
 /// A picker's scriptless `<select>` marks the options that cannot be chosen.
 #[test]
 fn a_pickers_select_marks_its_disabled_options() {

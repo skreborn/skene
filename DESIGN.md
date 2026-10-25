@@ -549,7 +549,9 @@ re-export.
   group or a picker holds a `T`, one starting with nothing chosen an `Option`, its
   members tagged `Some(..)`; a listbox holds its `Chosen`, `Option<T>` alone until a
   multi-select listbox lands. The option views stay untyped, and a member tagged with a
-  value of another type than its collection's options carry is a debug assertion. Each
+  value of another type than its collection's options carry is a debug assertion, the
+  type known from a typed view's construction (`Collection::typed`,
+  `ControlledChoice::typed`) or else from the first typed setter. Each
   member goes by a key in its `Roster`, its ordinal there (the order it joined, which
   the server leaf and the browser build alike and which never changes while it stays),
   so the scriptless form names an option by it and maps a key it reports back to the
@@ -664,18 +666,18 @@ re-export.
   select's `input` its `Range` or `Choices`. A click on a native toggle that something
   cancels has its flip restored by the browser once the dispatch ends, over whatever
   its handlers wrote, so the toggles it touched are given the scene's checked state
-  again after it. The picker alone is drawn (no engine but Chromium
-  restyles an open `<select>` yet), so it is an `Enhance` of its own: its scriptless
-  form is a `NativePicker` control, a `<select>` on the web, listing the options the
-  option views name, each `<option value>` its key, its caption a `<label for>` beside
-  it and the chosen option selected, or an empty hidden option first and selected where
-  nothing chosen is among the options, so the select never shows its first option as a
-  choice the truth did not make; the options and the chosen key are derived as one
-  `Choices` content its controller writes whenever either changes; the option views build once, under the
-  group both forms answer through, and attach nowhere until the drawn form lists them,
-  and the caption builds once and each form mounts it with its name and the disabled
-  setting, so a swap rebuilds nothing but the face; a choice the reader made in the
-  `<select>` before the bundle arrived reaches the signal as any adopted live value
+  again after it. The picker alone is drawn (no engine but Chromium restyles an open
+  `<select>` yet), so it is an `Enhance` of its own: its scriptless form is a
+  `NativePicker` control, a `<select>` on the web, listing the options the option views
+  name, each `<option value>` its key, its caption a `<label for>` beside it and the
+  chosen option selected, or an empty hidden option first and selected where nothing
+  chosen is among the options, so the select never shows its first option as a choice
+  the truth did not make; the options and the chosen key are derived as one `Choices`
+  content its controller writes whenever either changes; the option views build once,
+  under the group both forms answer through, and attach nowhere until the drawn form
+  lists them, and the caption builds once and each form mounts it with its name and the
+  disabled setting, so a swap rebuilds nothing but the face; a choice the reader made in
+  the `<select>` before the bundle arrived reaches the signal as any adopted live value
   does, and the drawn face that takes the select's place shows it.
 - **Accessibility is reported, never spelled.** A behavior reports what it is
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's

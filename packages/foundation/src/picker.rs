@@ -140,7 +140,10 @@ impl<P: Realization, T: Choice> BasicPicker<P, T> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      core: BasicPickerCore::new(),
+      core: BasicPickerCore {
+        chosen: ControlledChoice::typed::<Option<T>>(),
+        ..BasicPickerCore::new()
+      },
       value: PhantomData,
     }
   }

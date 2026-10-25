@@ -147,7 +147,7 @@ impl<T: Choice> BasicRadioGroup<T> {
   #[inline(always)]
   pub fn new() -> Self {
     Self(
-      skene_foundation::Control::new(RadioGroup::new()),
+      skene_foundation::Control::new(RadioGroup::typed::<Option<T>>()),
       PhantomData,
     )
   }
@@ -205,7 +205,10 @@ impl<C: Chosen> BasicListbox<C> {
   /// A listbox with nothing chosen and no options.
   #[inline(always)]
   pub fn new() -> Self {
-    Self(skene_foundation::Control::new(Listbox::new()), PhantomData)
+    Self(
+      skene_foundation::Control::new(Listbox::typed::<C>()),
+      PhantomData,
+    )
   }
 }
 

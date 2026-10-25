@@ -9,6 +9,7 @@ use skene_foundation::{
   AnyView,
   Arrangement,
   BasicListboxOption,
+  BasicPicker,
   BasicPickerCore,
   Choice,
   Color,
@@ -34,6 +35,7 @@ use skene_foundation::{
   Spacing,
   State,
   Text,
+  Thin,
   View,
   When,
   Wraps,
@@ -83,7 +85,7 @@ impl<P: Realization, T: Choice> SimplePicker<P, T> {
     Self {
       core: Core {
         options: Vec::new(),
-        picker: BasicPickerCore::new(),
+        picker: BasicPicker::<P, T>::new().into_core(),
       },
       value: PhantomData,
     }

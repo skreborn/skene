@@ -5095,6 +5095,7 @@ pub const fn skene_foundation::Collection<C>::roster(&self) -> &skene_foundation
 pub fn skene_foundation::Collection<C>::set_chosen<K: skene_foundation::Chosen>(self, K) -> Self
 pub const fn skene_foundation::Collection<C>::set_commit_on_tab(self, bool) -> Self
 pub fn skene_foundation::Collection<C>::set_roster(self, skene_foundation::Roster) -> Self
+pub fn skene_foundation::Collection<C>::typed<K: skene_foundation::Chosen>() -> Self
 impl<C: skene_foundation::CollectionPolicy> core::default::Default for skene_foundation::Collection<C>
 pub fn skene_foundation::Collection<C>::default() -> Self
 impl<C: skene_foundation::CollectionPolicy> core::fmt::Debug for skene_foundation::Collection<C>
@@ -5658,6 +5659,7 @@ pub fn skene_foundation::ControlledChoice::handle<C: skene_foundation::Chosen>(&
 pub const fn skene_foundation::ControlledChoice::new() -> Self
 pub fn skene_foundation::ControlledChoice::read(&self) -> skene_foundation::AnyChosen
 pub fn skene_foundation::ControlledChoice::set<C: skene_foundation::Chosen>(&mut self, C)
+pub const fn skene_foundation::ControlledChoice::typed<C: skene_foundation::Chosen>() -> Self
 impl core::clone::Clone for skene_foundation::ControlledChoice
 pub fn skene_foundation::ControlledChoice::clone(&self) -> skene_foundation::ControlledChoice
 impl core::default::Default for skene_foundation::ControlledChoice

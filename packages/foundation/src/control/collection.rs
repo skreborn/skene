@@ -204,7 +204,6 @@ impl<C: CollectionPolicy> CollectionContext<C> {
 
   /// What is chosen, tracked.
   #[inline(always)]
-  #[must_use]
   pub fn chosen(&self) -> AnyChosen {
     (self.chosen)()
   }
@@ -325,6 +324,17 @@ impl<C: CollectionPolicy> Collection<C> {
       roster: Roster::new(),
       commit_on_tab: false,
       policy: PhantomData,
+    }
+  }
+
+  /// A collection with nothing chosen and no handler whose members are tagged with the
+  /// values a `K` chooses among, so a member tagged otherwise is a debug assertion
+  /// before its user gives a type; its roster owned by the current owner.
+  #[inline(always)]
+  pub fn typed<K: Chosen>() -> Self {
+    Self {
+      chosen: ControlledChoice::typed::<K>(),
+      ..Self::new()
     }
   }
 

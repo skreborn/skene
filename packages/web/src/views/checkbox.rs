@@ -10,7 +10,6 @@ use skene_foundation::{
   DecorationWithCornerRadius,
   Dimension,
   HasChild,
-  HasControl,
   Inset,
   MotionBase,
   MouseCursor,
@@ -21,11 +20,11 @@ use skene_foundation::{
   SystemColors,
   Text,
   Toggle,
+  ToggleBase,
   View,
   When,
   Wraps,
 };
-use skene_reactive::Signal;
 
 use crate::Active;
 
@@ -69,26 +68,6 @@ impl Checkbox {
   pub fn new() -> Self {
     Self(skene_foundation::Control::new(Toggle::new()))
   }
-
-  /// Sets the checked state.
-  pub fn set_checked(self, checked: bool) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.set_checked(checked)))
-  }
-
-  /// Derives the checked state from the signals `checked` reads.
-  pub fn derive_checked(self, checked: impl Fn() -> bool + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.derive_checked(checked)))
-  }
-
-  /// Runs `action` with the state a flip asks for.
-  pub fn handle_toggle(self, action: impl Fn(bool) + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.handle_toggle(action)))
-  }
-
-  /// Binds the checked state to `signal` in both directions.
-  pub fn bind_checked(self, signal: Signal<bool>) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.bind_checked(signal)))
-  }
 }
 
 impl Checkbox {
@@ -120,6 +99,8 @@ impl Checkbox {
 }
 
 impl ControlBase<Active, Toggle> for Checkbox {}
+
+impl ToggleBase<Active> for Checkbox {}
 
 impl DecorationBase<Active> for Checkbox {}
 

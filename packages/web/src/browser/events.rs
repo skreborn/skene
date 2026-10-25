@@ -522,8 +522,9 @@ fn key_down_at(event: &web_sys::Event, at: Option<NodeId>) {
   }
 
   let root = with_dom(|dom| dom.root_node);
+  let typing = types_into(event.target());
 
-  match Scene::<Web>::with(|scene| scene.key_default(root, at, &key, is_hidden_by_style)) {
+  match Scene::<Web>::with(|scene| scene.key_default(root, at, &key, typing, is_hidden_by_style)) {
     Some(KeyDefault::Activate(row)) => {
       event.prevent_default();
       let _ = dispatch_activation::<Web>(row, key.modifiers);
@@ -533,6 +534,10 @@ fn key_down_at(event: &web_sys::Event, at: Option<NodeId>) {
     Some(KeyDefault::Shortcut(node)) => {
       event.prevent_default();
       let _ = dispatch_activation::<Web>(node, key.modifiers);
+    }
+    Some(KeyDefault::FocusShortcut(node)) => {
+      event.prevent_default();
+      Web::focus(node);
     }
     // A modal the scene dismisses on `Escape` is the dialog's own to cancel.
     Some(KeyDefault::Dismiss(overlay)) if !Scene::<Web>::read(|scene| scene.is_modal(overlay)) => {
@@ -557,9 +562,40 @@ fn key_down_at(event: &web_sys::Event, at: Option<NodeId>) {
   }
 }
 
+/// Whether a key pressed at `target` types into it: an `<input>` that takes text, a
+/// `<textarea>`, a `<select>`, whose typing chooses an option, or an editable element.
+fn types_into(target: Option<EventTarget>) -> bool {
+  if let Some(input) = target
+    .as_ref()
+    .and_then(|target| target.dyn_ref::<HtmlInputElement>())
+  {
+    return !matches!(
+      input.type_().as_str(),
+      "button"
+        | "checkbox"
+        | "color"
+        | "file"
+        | "hidden"
+        | "image"
+        | "radio"
+        | "range"
+        | "reset"
+        | "submit"
+    );
+  }
+
+  target.is_some_and(|target| {
+    target.is_instance_of::<HtmlTextAreaElement>()
+      || target.is_instance_of::<HtmlSelectElement>()
+      || target
+        .dyn_ref::<web_sys::HtmlElement>()
+        .is_some_and(web_sys::HtmlElement::is_content_editable)
+  })
+}
+
 /// Whether the element of `node` is hidden by its style, laid out as none or invisible
 /// (a box's `hidden`); `false` for a node with no element of its own.
-fn is_hidden_by_style(node: NodeId) -> bool {
+pub(super) fn is_hidden_by_style(node: NodeId) -> bool {
   let Some(element) = with_dom(|dom| dom.node(node).and_then(Node::dom_element).cloned())
   else {
     return false;

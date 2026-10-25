@@ -95,6 +95,7 @@ pub use skene_terminal::Scene
 pub use skene_terminal::ScrollEvent
 pub use skene_terminal::ScrollbarGlyphs
 pub use skene_terminal::Shortcut
+pub use skene_terminal::SliderBase
 pub use skene_terminal::SpanBase
 pub use skene_terminal::StackBase
 pub use skene_terminal::State
@@ -115,6 +116,7 @@ pub use skene_terminal::TextEntryBase
 pub use skene_terminal::TextSelection
 pub use skene_terminal::ThemeBase
 pub use skene_terminal::Timer
+pub use skene_terminal::ToggleBase
 pub use skene_terminal::TokenName
 pub use skene_terminal::TokenRef
 pub use skene_terminal::TokenScope
@@ -243,10 +245,13 @@ pub fn skene_terminal::TextEditor::map_control(self, impl core::ops::function::F
 impl skene_foundation::control::HasControl<skene_terminal::platform::terminal::Terminal, skene_foundation::control::text_entry::TextEntry> for skene_terminal::TextField
 pub fn skene_terminal::TextField::control(&self) -> &skene_foundation::control::Control<skene_terminal::Active, skene_foundation::control::text_entry::TextEntry>
 pub fn skene_terminal::TextField::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_terminal::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_terminal::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::SliderBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Slider
 impl skene_foundation::control::TextEntryBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::TextEditor
 pub fn skene_terminal::TextEditor::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<i32>
 impl skene_foundation::control::TextEntryBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::TextField
 pub fn skene_terminal::TextField::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<i32>
+impl skene_foundation::control::ToggleBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Checkbox
+impl skene_foundation::control::ToggleBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Toggle
 impl skene_foundation::enhance::EnhanceBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Enhance
 impl skene_foundation::error_boundary::ErrorBoundaryBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::ErrorBoundary
 impl skene_foundation::flex::ColumnBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Column
@@ -579,6 +584,7 @@ pub use skene_terminal::prelude::ScrollbarGlyphs
 pub use skene_terminal::prelude::Set
 pub use skene_terminal::prelude::Shortcut
 pub use skene_terminal::prelude::Signal
+pub use skene_terminal::prelude::SliderBase
 pub use skene_terminal::prelude::Snapshot
 pub use skene_terminal::prelude::Snapshot
 pub use skene_terminal::prelude::SpanBase
@@ -595,6 +601,7 @@ pub use skene_terminal::prelude::TextDecorationStyle
 pub use skene_terminal::prelude::TextEntryBase
 pub use skene_terminal::prelude::TextSelection
 pub use skene_terminal::prelude::ThemeBase
+pub use skene_terminal::prelude::ToggleBase
 pub use skene_terminal::prelude::TokenRef
 pub use skene_terminal::prelude::TokenSet
 pub use skene_terminal::prelude::TooltipBase
@@ -786,19 +793,15 @@ pub fn skene_terminal::Button::map_layout_box(self, impl core::ops::function::Fn
 impl skene_foundation::surface::MotionBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Button
 pub struct skene_terminal::prelude::Checkbox(_)
 impl skene_terminal::Checkbox
-pub fn skene_terminal::Checkbox::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_terminal::Checkbox::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Checkbox::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Checkbox::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_terminal::Checkbox::new() -> Self
 pub fn skene_terminal::Checkbox::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Checkbox::set_checked(self, bool) -> Self
 pub fn skene_terminal::Checkbox::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Checkbox::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Checkbox::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
@@ -810,6 +813,7 @@ pub fn skene_terminal::Checkbox::default() -> Self
 impl core::fmt::Debug for skene_terminal::Checkbox
 pub fn skene_terminal::Checkbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::toggle::Toggle> for skene_terminal::Checkbox
+impl skene_foundation::control::ToggleBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Checkbox
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Checkbox
 impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Checkbox
 pub fn skene_terminal::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
@@ -1375,33 +1379,27 @@ pub fn skene_terminal::Row::wrap(Self::Inner) -> Self
 pub struct skene_terminal::prelude::Slider(_)
 impl skene_terminal::Slider
 pub const skene_terminal::Slider::THUMB: i32
-pub fn skene_terminal::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
 pub fn skene_terminal::Slider::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
 pub fn skene_terminal::Slider::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
-pub fn skene_terminal::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_terminal::Slider::new() -> Self
 pub fn skene_terminal::Slider::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Slider::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
 pub fn skene_terminal::Slider::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_shadow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::spine::expr::Length>) -> Self
-pub fn skene_terminal::Slider::set_value(self, f32) -> Self
 impl core::default::Default for skene_terminal::Slider
 pub fn skene_terminal::Slider::default() -> Self
 impl core::fmt::Debug for skene_terminal::Slider
 pub fn skene_terminal::Slider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::slider::Slider> for skene_terminal::Slider
+impl skene_foundation::control::SliderBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Slider
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Slider
 impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Slider
 pub fn skene_terminal::Slider::build(self) -> skene_foundation::spine::node::NodeId
@@ -1572,19 +1570,15 @@ pub fn skene_terminal::Theme<S>::wrap(Self::Inner) -> Self
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::theme::ThemeBase<skene_terminal::platform::terminal::Terminal, S> for skene_terminal::Theme<S>
 pub struct skene_terminal::prelude::Toggle(_)
 impl skene_terminal::Toggle
-pub fn skene_terminal::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_terminal::Toggle::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_terminal::Toggle::new() -> Self
 pub fn skene_terminal::Toggle::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Toggle::set_checked(self, bool) -> Self
 pub fn skene_terminal::Toggle::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Toggle::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Toggle::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
@@ -1596,6 +1590,7 @@ pub fn skene_terminal::Toggle::default() -> Self
 impl core::fmt::Debug for skene_terminal::Toggle
 pub fn skene_terminal::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::toggle::Toggle> for skene_terminal::Toggle
+impl skene_foundation::control::ToggleBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Toggle
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Toggle
 impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Toggle
 pub fn skene_terminal::Toggle::build(self) -> skene_foundation::spine::node::NodeId
@@ -1971,19 +1966,15 @@ impl core::marker::Copy for skene_terminal::CellDecoration
 impl core::marker::StructuralPartialEq for skene_terminal::CellDecoration
 pub struct skene_terminal::Checkbox(_)
 impl skene_terminal::Checkbox
-pub fn skene_terminal::Checkbox::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_terminal::Checkbox::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Checkbox::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Checkbox::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Checkbox::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_terminal::Checkbox::new() -> Self
 pub fn skene_terminal::Checkbox::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Checkbox::set_checked(self, bool) -> Self
 pub fn skene_terminal::Checkbox::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Checkbox::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Checkbox::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
@@ -1995,6 +1986,7 @@ pub fn skene_terminal::Checkbox::default() -> Self
 impl core::fmt::Debug for skene_terminal::Checkbox
 pub fn skene_terminal::Checkbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::toggle::Toggle> for skene_terminal::Checkbox
+impl skene_foundation::control::ToggleBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Checkbox
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Checkbox
 impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Checkbox
 pub fn skene_terminal::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
@@ -2578,33 +2570,27 @@ pub fn skene_terminal::Row::wrap(Self::Inner) -> Self
 pub struct skene_terminal::Slider(_)
 impl skene_terminal::Slider
 pub const skene_terminal::Slider::THUMB: i32
-pub fn skene_terminal::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
 pub fn skene_terminal::Slider::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
 pub fn skene_terminal::Slider::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Slider::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
-pub fn skene_terminal::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_terminal::Slider::new() -> Self
 pub fn skene_terminal::Slider::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Slider::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
 pub fn skene_terminal::Slider::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_shadow(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Slider::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::spine::expr::Length>) -> Self
-pub fn skene_terminal::Slider::set_value(self, f32) -> Self
 impl core::default::Default for skene_terminal::Slider
 pub fn skene_terminal::Slider::default() -> Self
 impl core::fmt::Debug for skene_terminal::Slider
 pub fn skene_terminal::Slider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::slider::Slider> for skene_terminal::Slider
+impl skene_foundation::control::SliderBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Slider
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Slider
 impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Slider
 pub fn skene_terminal::Slider::build(self) -> skene_foundation::spine::node::NodeId
@@ -2775,19 +2761,15 @@ pub fn skene_terminal::Theme<S>::wrap(Self::Inner) -> Self
 impl<S: skene_foundation::spine::token::TokenSet<skene_terminal::TokenValue>> skene_foundation::theme::ThemeBase<skene_terminal::platform::terminal::Terminal, S> for skene_terminal::Theme<S>
 pub struct skene_terminal::Toggle(_)
 impl skene_terminal::Toggle
-pub fn skene_terminal::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_terminal::Toggle::derive_border_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::BorderGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_scrollbar_glyphs<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::terminal::ext::ScrollbarGlyphs>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_scrollbar_thumb<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_scrollbar_track<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_shadow<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_shadow_offset<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_terminal::Toggle::derive_shadow_softening<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_terminal::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_terminal::Toggle::new() -> Self
 pub fn skene_terminal::Toggle::set_border_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::BorderGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_terminal::Toggle::set_checked(self, bool) -> Self
 pub fn skene_terminal::Toggle::set_scrollbar_glyphs(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::terminal::ext::ScrollbarGlyphs, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Toggle::set_scrollbar_thumb(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub fn skene_terminal::Toggle::set_scrollbar_track(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::color::Color, skene_foundation::spine::condition::Condition<<skene_terminal::Active as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
@@ -2799,6 +2781,7 @@ pub fn skene_terminal::Toggle::default() -> Self
 impl core::fmt::Debug for skene_terminal::Toggle
 pub fn skene_terminal::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_terminal::platform::terminal::Terminal, skene_foundation::control::toggle::Toggle> for skene_terminal::Toggle
+impl skene_foundation::control::ToggleBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Toggle
 impl skene_foundation::spine::view::AnyKind for skene_terminal::Toggle
 impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_terminal::Toggle
 pub fn skene_terminal::Toggle::build(self) -> skene_foundation::spine::node::NodeId

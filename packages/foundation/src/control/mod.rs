@@ -1531,6 +1531,88 @@ pub trait BasicListboxBase<P: Realization, C: Chosen>: HasControl<P, Listbox> {
   }
 }
 
+/// What a facade's checkbox and switch carry beyond every control's members: whether
+/// they are checked, a switch being on while checked, controlled.
+///
+/// The view is a [`Control`] over a [`Toggle`].
+pub trait ToggleBase<P: Realization>: HasControl<P, Toggle> {
+  /// Sets whether the control is checked.
+  #[must_use]
+  fn set_checked(self, checked: bool) -> Self {
+    self.map_control(|control| control.map_behavior(|toggle| toggle.set_checked(checked)))
+  }
+
+  /// Derives whether the control is checked from the signals `checked` reads.
+  #[must_use]
+  fn derive_checked(self, checked: impl Fn() -> bool + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|toggle| toggle.derive_checked(checked)))
+  }
+
+  /// Runs `action` with the state a flip asks for.
+  #[must_use]
+  fn handle_toggle(self, action: impl Fn(bool) + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|toggle| toggle.handle_toggle(action)))
+  }
+
+  /// Binds whether the control is checked to `signal` in both directions.
+  #[must_use]
+  fn bind_checked(self, signal: Signal<bool>) -> Self {
+    self.map_control(|control| control.map_behavior(|toggle| toggle.bind_checked(signal)))
+  }
+}
+
+/// What a facade's slider carries beyond every control's members: its range and its
+/// value, controlled, and the width of the thumb the pointer is measured against.
+///
+/// The view is a [`Control`] over a [`Slider`].
+pub trait SliderBase<P: Realization>: HasControl<P, Slider> {
+  /// Sets the range: its bounds and the step values snap to.
+  #[must_use]
+  fn set_range(self, range: SliderRange) -> Self {
+    self.map_control(|control| control.map_behavior(|slider| slider.set_range(range)))
+  }
+
+  /// Derives the range from the signals `range` reads.
+  #[must_use]
+  fn derive_range(self, range: impl Fn() -> SliderRange + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|slider| slider.derive_range(range)))
+  }
+
+  /// Sets the value.
+  #[must_use]
+  fn set_value(self, value: f32) -> Self {
+    self.map_control(|control| control.map_behavior(|slider| slider.set_value(value)))
+  }
+
+  /// Derives the value from the signals `value` reads.
+  #[must_use]
+  fn derive_value(self, value: impl Fn() -> f32 + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|slider| slider.derive_value(value)))
+  }
+
+  /// Runs `action` with the value a move asks for.
+  #[must_use]
+  fn handle_change(self, action: impl Fn(f32) + 'static) -> Self {
+    self.map_control(|control| control.map_behavior(|slider| slider.handle_change(action)))
+  }
+
+  /// Binds the value to `signal` in both directions.
+  #[must_use]
+  fn bind_value(self, signal: Signal<f32>) -> Self {
+    self.map_control(|control| control.map_behavior(|slider| slider.bind_value(signal)))
+  }
+
+  /// Sets the width of the thumb the pointer is measured against: its center travels
+  /// from half of it past the track's start to half of it short of its end; the default
+  /// thumb's unless told otherwise.
+  #[must_use]
+  fn set_thumb_extent(self, extent: impl Into<crate::Length>) -> Self {
+    let extent = extent.into();
+
+    self.map_control(|control| control.map_behavior(|slider| slider.set_thumb_extent(extent)))
+  }
+}
+
 /// What a facade's text field and text editor carry beyond every control's members:
 /// the text and the selection, both controlled, the hint, the keyboard and the colors
 /// the value is selected in.

@@ -388,6 +388,37 @@ fn a_radio_groups_radios_share_one_name() {
   }
 }
 
+/// A radio group set to autofocus serves `autofocus` on the input of the radio holding
+/// its stop, the chosen one, so the page opens focused there without script.
+#[test]
+fn a_radio_group_set_to_autofocus_serves_it_on_its_chosen_radio() {
+  use skene_web::{BasicRadio, BasicRadioGroup, BasicRadioGroupBase, behavior::Radio};
+
+  let page =
+    render_to_string(|| {
+      BasicRadioGroup::new()
+        .set_chosen(Size::Medium)
+        .set_autofocus(true)
+        .set_child(Column::new().set_children(
+          [Size::Small, Size::Medium].map(|value| BasicRadio::new(Radio::new(value))),
+        ))
+    });
+  let body = page.body();
+  let radios: Vec<&str> = body
+    .split("<input")
+    .skip(1)
+    .map(|radio| &radio[..radio.find('>').expect("the tag's end")])
+    .collect();
+
+  assert_eq!(radios.len(), 2, "{body}");
+  assert!(!radios[0].contains(" autofocus"), "{body}");
+  assert!(
+    radios[1].contains(" autofocus"),
+    "the chosen radio takes it: {body}"
+  );
+  assert_eq!(body.matches("autofocus").count(), 1, "{body}");
+}
+
 /// A picker's scriptless form is a `<select>` listing its options by their keys, the
 /// order they joined it, and their names, with the chosen one selected, and no drawn
 /// face.

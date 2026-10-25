@@ -15,11 +15,9 @@ use skene_foundation::{
   Flexibility,
   HasChild,
   HasChildren,
-  HasControl,
   Inset,
   IntoChildOf,
   ItemAlignment,
-  Length,
   MotionBase,
   MouseCursor,
   NodeHandle,
@@ -27,7 +25,7 @@ use skene_foundation::{
   Overflow,
   Part,
   Scene,
-  SliderRange,
+  SliderBase,
   StackBase,
   State,
   SystemColors,
@@ -35,7 +33,7 @@ use skene_foundation::{
   When,
   Wraps,
 };
-use skene_reactive::{Signal, untrack};
+use skene_reactive::untrack;
 
 use crate::Active;
 
@@ -49,15 +47,15 @@ type Colors = SystemColors<f32>;
 /// ends, and a press or a drag along its track jumps to where the pointer lands. The
 /// page's own range input keeps it scriptless, covering it unseen.
 ///
-/// Controlled: its value is what [`derive_value`](Self::derive_value) reads, and a move
-/// only calls [`handle_change`](Self::handle_change) with the value it asks for;
-/// [`bind_value`](Self::bind_value) wires both to one signal.
+/// Controlled: its value is what [`derive_value`](SliderBase::derive_value) reads, and a move
+/// only calls [`handle_change`](SliderBase::handle_change) with the value it asks for;
+/// [`bind_value`](SliderBase::bind_value) wires both to one signal.
 ///
 /// Its track is its [`Part::Track`], holding its fill, the [`Part::Fill`], and its thumb,
 /// the [`Part::Thumb`], its caption trailing it ([`set_label`](ControlBase::set_label)).
 /// Its defaults: 160 pixels wide, the track taking what its caption leaves. Its default
 /// track, which [`set_part(Part::Track, ..)`](ControlBase::set_part) replaces with its
-/// fill and its thumb (the replacement's thumb [as wide](Self::set_thumb_extent) as the
+/// fill and its thumb (the replacement's thumb [as wide](SliderBase::set_thumb_extent) as the
 /// pointer is to measure it): a rail 4 pixels tall in [`SystemColors::TRACK`], rounded,
 /// clipping its fill, in [`SystemColors::ACCENT`], to the thumb's leading edge; its thumb
 /// a disc of 18 in [`SystemColors::KNOB`] in a border of 2 in the accent,
@@ -95,45 +93,6 @@ impl Slider {
     Self(skene_foundation::Control::new(
       skene_foundation::Slider::new().set_thumb_extent(Self::THUMB),
     ))
-  }
-
-  /// Sets the range: its bounds and the step values snap to.
-  pub fn set_range(self, range: SliderRange) -> Self {
-    self.map_control(|control| control.map_behavior(|slider| slider.set_range(range)))
-  }
-
-  /// Derives the range from the signals `range` reads.
-  pub fn derive_range(self, range: impl Fn() -> SliderRange + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|slider| slider.derive_range(range)))
-  }
-
-  /// Sets the value.
-  pub fn set_value(self, value: f32) -> Self {
-    self.map_control(|control| control.map_behavior(|slider| slider.set_value(value)))
-  }
-
-  /// Derives the value from the signals `value` reads.
-  pub fn derive_value(self, value: impl Fn() -> f32 + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|slider| slider.derive_value(value)))
-  }
-
-  /// Runs `action` with the value a move asks for.
-  pub fn handle_change(self, action: impl Fn(f32) + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|slider| slider.handle_change(action)))
-  }
-
-  /// Binds the value to `signal` in both directions.
-  pub fn bind_value(self, signal: Signal<f32>) -> Self {
-    self.map_control(|control| control.map_behavior(|slider| slider.bind_value(signal)))
-  }
-
-  /// Sets the width of the thumb the pointer is measured against, in logical pixels:
-  /// its center travels from half of it past the track's start to half of it short of
-  /// its end; the default thumb's unless told otherwise.
-  pub fn set_thumb_extent(self, extent: impl Into<Length>) -> Self {
-    let extent = extent.into();
-
-    self.map_control(|control| control.map_behavior(|slider| slider.set_thumb_extent(extent)))
   }
 }
 
@@ -207,6 +166,8 @@ impl Slider {
 }
 
 impl ControlBase<Active, skene_foundation::Slider> for Slider {}
+
+impl SliderBase<Active> for Slider {}
 
 impl DecorationBase<Active> for Slider {}
 

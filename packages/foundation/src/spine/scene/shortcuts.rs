@@ -4,7 +4,7 @@
 use smallvec::SmallVec;
 
 use super::{NodeKind, Scene};
-use crate::spine::{KeyEvent, NodeId, Realization, Shortcut};
+use crate::spine::{KeyDefault, KeyEvent, NodeId, Realization, Shortcut};
 
 impl<P: Realization> Scene<P> {
   /// Records `shortcut` as the key that activates `node`, a control or an activatable
@@ -23,23 +23,26 @@ impl<P: Realization> Scene<P> {
   }
 
   /// The node `event`, pressed at `at`, activates as its shortcut under `root`: the first
-  /// in document order whose shortcut it presses that is a control not disabled or an
-  /// activatable row, under `root` outside every closed overlay and every subtree
-  /// `hidden` answers for, and that the topmost open modal does not exclude, as the tab
-  /// order reaches its stops; `None` within a composition, and for a shortcut holding no
-  /// modifier but `Shift` while `at` is inside a text entry, whose key it is.
+  /// in document order whose shortcut it presses that is a control not disabled, taking
+  /// focus itself or through a node beneath it, or an activatable row, under `root`
+  /// outside every closed overlay and every subtree `hidden` answers for, and that the
+  /// topmost open modal does not exclude, as the tab order reaches its stops; `None`
+  /// within a composition, and for a shortcut holding no modifier but `Shift` while `at`
+  /// is inside a text entry, or `typing` says the key types into the platform's target,
+  /// whose key it is.
   pub(in crate::spine) fn shortcut_target(
     &self,
     root: NodeId,
     at: Option<NodeId>,
     event: &KeyEvent,
+    typing: bool,
     hidden: impl Fn(NodeId) -> bool,
   ) -> Option<NodeId> {
     if event.composing || self.shortcuts.is_empty() {
       return None;
     }
 
-    let typing = at.is_some_and(|at| self.is_in_entry(at));
+    let typing = typing || at.is_some_and(|at| self.is_in_entry(at));
     let overlays = self.overlay_stack(&self.open_overlays);
     let reached: SmallVec<[NodeId; 4]> = self
       .shortcuts
@@ -66,10 +69,31 @@ impl<P: Realization> Scene<P> {
     }
   }
 
-  /// Whether `node` acts on its shortcut: a control not disabled, or an activatable row.
+  /// What the shortcut of `node`, a node it activates, does: a control with no place in
+  /// focus traversal of its own, a collection, focuses the node that takes focus for it,
+  /// and every other node is activated.
+  pub(in crate::spine) fn shortcut_default(&self, node: NodeId) -> KeyDefault {
+    let control = self
+      .record(node)
+      .is_some_and(|record| record.kind == NodeKind::Control && record.focus_order.is_none());
+
+    if control {
+      KeyDefault::FocusShortcut(self.focus_taker(node))
+    }
+    else {
+      KeyDefault::Shortcut(node)
+    }
+  }
+
+  /// Whether `node` acts on its shortcut: a control not disabled that takes focus, or
+  /// has a node beneath it take focus for it, as a collection's members do, or an
+  /// activatable row.
   fn acts_on_shortcut(&self, node: NodeId) -> bool {
     self.record(node).is_some_and(|record| match record.kind {
-      NodeKind::Control => record.control.is_some_and(|state| !state.disabled),
+      NodeKind::Control => {
+        record.control.is_some_and(|state| !state.disabled)
+          && (record.focus_order.is_some() || self.focus_taker(node) != node)
+      }
       _ => record.is_acting(),
     })
   }

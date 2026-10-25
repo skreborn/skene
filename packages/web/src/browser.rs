@@ -50,7 +50,7 @@ pub use self::{
   view_transition::{commit_navigation, enable_view_transitions, view_transitions_enabled},
 };
 use self::{
-  events::{Entry, Events, Listener, report_shown},
+  events::{Entry, Events, Listener, is_hidden_by_style, report_shown},
   keep::{Kept, Mover, Saved},
   page::{Hydration, Page},
   sheet::Sheet,
@@ -542,7 +542,8 @@ pub fn install(root: Element) {
 /// Builds `view` under the installed root as one turn, returning its node.
 ///
 /// The first mount opens the window: once its turn ends, the control set to autofocus
-/// that comes first in the scene's child order is marked `autofocus` and takes focus,
+/// that comes first in the scene's child order, a subtree its style hides passed over,
+/// is marked `autofocus` and takes focus,
 /// or, while a hydration adopts the server's markup, keeps the focus the browser gave
 /// the served element and moves none; nothing is focused where no control asked.
 ///
@@ -565,7 +566,8 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 
   let (root, hydrating) = with_dom(|dom| (dom.root_node, dom.realizer.sink.hydration.is_some()));
 
-  if let Some(opening) = Scene::<Web>::with(|scene| scene.take_autofocus(root, |_| false)) {
+  if let Some(opening) = Scene::<Web>::with(|scene| scene.take_autofocus(root, is_hidden_by_style))
+  {
     with_dom(|dom| dom.realizer.mark_autofocus(opening));
 
     if !hydrating {

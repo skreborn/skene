@@ -8,8 +8,9 @@ use std::{
 
 use skene_terminal::{
   self as terminal,
+  BasicListbox,
   MenuEntry,
-  behavior::{Activate, TextEntry},
+  behavior::{Activate, Radio, TextEntry},
   prelude::*,
   testing,
 };
@@ -172,6 +173,61 @@ fn a_shortcut_without_a_modifier_leaves_an_entry_its_key() {
 
     assert_eq!(news.get(), 1, "the entry takes its key");
     assert_eq!(value.get(), "n");
+  });
+}
+
+/// A collection's shortcut focuses the member holding its stop, choosing nothing, and
+/// one whose members hold no stop is passed over, the next control the key is the
+/// shortcut of acting.
+#[test]
+fn a_collections_shortcut_focuses_its_stop() {
+  with_platform(|| {
+    let (saves, save) = counter();
+    let (chooses, choose) = counter();
+    let chosen = Signal::new(Some("b"));
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicRadioGroup::new()
+            .set_label("Size")
+            .bind_chosen(chosen)
+            .handle_choose(move |_| choose())
+            .set_shortcut(Shortcut::new(Modifiers::CTRL, "g"))
+            .set_child(Column::new().set_children((
+              BasicRadio::new(Radio::new(Some("a"))).set_label("a"),
+              BasicRadio::new(Radio::new(Some("b"))).set_label("b"),
+            )))
+            .into_any(),
+          BasicListbox::<Option<&str>>::new()
+            .set_accessible_name("Empty")
+            .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+            .into_any(),
+          button("Save", save)
+            .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 8);
+
+    testing::trigger_key("Ctrl+g");
+
+    assert_eq!(
+      testing::focused_node(),
+      testing::find_by_role(Role::RadioButton, "b"),
+      "the chosen radio takes focus"
+    );
+    assert_eq!(
+      (chooses.get(), chosen.get()),
+      (0, Some("b")),
+      "nothing is chosen"
+    );
+
+    testing::trigger_key("Ctrl+s");
+
+    assert_eq!(saves.get(), 1, "the listbox holding no stop is passed over");
   });
 }
 

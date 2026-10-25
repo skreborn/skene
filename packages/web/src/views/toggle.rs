@@ -11,7 +11,6 @@ use skene_foundation::{
   DecorationWithCornerRadius,
   Dimension,
   HasChild,
-  HasControl,
   Inset,
   ItemAlignment,
   MotionBase,
@@ -22,11 +21,12 @@ use skene_foundation::{
   Scene,
   State,
   SystemColors,
+  ToggleBase,
   View,
   When,
   Wraps,
 };
-use skene_reactive::{Signal, untrack};
+use skene_reactive::untrack;
 
 use crate::Active;
 
@@ -74,26 +74,6 @@ impl Toggle {
       skene_foundation::Toggle::switch(),
     ))
   }
-
-  /// Sets whether the switch is on.
-  pub fn set_checked(self, checked: bool) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.set_checked(checked)))
-  }
-
-  /// Derives whether the switch is on from the signals `checked` reads.
-  pub fn derive_checked(self, checked: impl Fn() -> bool + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.derive_checked(checked)))
-  }
-
-  /// Runs `action` with the state a flip asks for.
-  pub fn handle_toggle(self, action: impl Fn(bool) + 'static) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.handle_toggle(action)))
-  }
-
-  /// Binds whether the switch is on to `signal` in both directions.
-  pub fn bind_checked(self, signal: Signal<bool>) -> Self {
-    self.map_control(|control| control.map_behavior(|toggle| toggle.bind_checked(signal)))
-  }
 }
 
 impl Toggle {
@@ -135,6 +115,8 @@ impl Toggle {
 }
 
 impl ControlBase<Active, skene_foundation::Toggle> for Toggle {}
+
+impl ToggleBase<Active> for Toggle {}
 
 impl DecorationBase<Active> for Toggle {}
 

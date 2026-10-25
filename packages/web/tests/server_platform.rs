@@ -38,6 +38,7 @@ use skene_foundation::{
   TextEntry,
   Theme,
   Toggle,
+  ToggleBase,
   Token,
   TokenName,
   TokenRef,

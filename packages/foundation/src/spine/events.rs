@@ -348,6 +348,11 @@ pub enum KeyDefault {
   /// from anywhere in the window: the platform keeps the key from its own default and
   /// dispatches a click at the node.
   Shortcut(crate::spine::NodeId),
+  /// The key is the shortcut of a control with no place in focus traversal of its own,
+  /// a collection whose members are its stops, which it focuses from anywhere in the
+  /// window: the platform keeps the key from its own default and moves focus to the
+  /// node, the member holding the control's stop, as a key moves it.
+  FocusShortcut(crate::spine::NodeId),
 }
 
 impl KeyEvent {

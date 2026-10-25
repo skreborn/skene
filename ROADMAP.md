@@ -605,10 +605,15 @@ in a code comment.
     `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
-30. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+30. **The server's opening focus passes over a box it knows is hidden.** The
+    browser leaf passes over a control set to autofocus inside a box its computed style
+    hides, as the terminal does; the server computes no style and marks the first that
+    asks. A box whose `hidden` is fixed, or derived and so known as the render settles,
+    can be passed over there too, only a `hidden` under a condition left to the engine.
+31. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-31. **Server rendering beyond the native binary.** The native server binary stays the
+32. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
@@ -626,7 +631,7 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-32. **Confirm docs.rs documents every platform's build.** `skene-web` and
+33. **Confirm docs.rs documents every platform's build.** `skene-web` and
     `skene-simple-web` name each target's leaf, and `skene-terminal` and
     `skene-simple-terminal` the terminal, through `cargo-args` setting
     `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over

@@ -15,6 +15,13 @@ supersedes.
   border ring against reversed cells), so the code would only look alike, and each
   facade writes its built-ins in parallel files over the foundation's `Control::over`.
   Revisit when two facades' trees for a control coincide.
+- **A collection's shortcut passed over as acting on no click** (2026-10-25), a
+  `Behavior` hook saying whether a control acts on a click and the scene leaving such a
+  control's shortcut unreported: a radio group's, a listbox's or a menu's shortcut moves
+  focus to the member holding its stop (`KeyDefault::FocusShortcut`), as an access key
+  on a control that cannot be activated focuses it and as `aria-keyshortcuts` allows,
+  and one whose members hold no stop is passed over. Revisit when a collection must
+  act on its shortcut beyond taking focus, such as choosing its next member.
 - **A picker's and a listbox's options from `(value, caption)` pairs** (2026-10-25),
   as `SimplePicker::set_options` and the spike's `Picker::add_option` take them: the
   styled `Picker<T>` and `Listbox<C>` take `ListboxOption` views (`set_options`,

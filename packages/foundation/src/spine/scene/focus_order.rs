@@ -68,11 +68,13 @@ impl<P: Realization> Scene<P> {
   }
 
   /// Settles the focus the window under `root` opens with, once, as the mount that
-  /// opens it ends: the first node in document order that asked for it and has a place
-  /// in focus traversal, closed overlays, the subtrees `hidden` answers for and the
-  /// nodes an open modal blocks passed over; `None` where none did, and every later
-  /// call. Focus moved there does not show, as Chromium's autofocus does not, until a
-  /// key shows it.
+  /// opens it ends: the first node in document order that takes focus for a node that
+  /// asked for it, closed overlays, the subtrees `hidden` answers for and the nodes an
+  /// open modal blocks passed over; `None` where none did, and every later call. A node
+  /// with a place in focus traversal takes focus for itself, and one without, such as a
+  /// collection whose members are its stops, has the first tab stop beneath it take it,
+  /// else the first node beneath it with a place in focus traversal. Focus moved there
+  /// does not show, as Chromium's autofocus does not, until a key shows it.
   pub fn take_autofocus(
     &mut self,
     root: NodeId,
@@ -86,6 +88,11 @@ impl<P: Realization> Scene<P> {
     if asked.is_empty() {
       return None;
     }
+
+    let asked: Vec<NodeId> = asked
+      .into_iter()
+      .map(|node| self.focus_taker(node))
+      .collect();
 
     let mut candidates = Vec::new();
     let mut stack = vec![root];
@@ -154,6 +161,34 @@ impl<P: Realization> Scene<P> {
   /// document order, a segment's content counting as beneath its start; `node` where
   /// none has.
   pub fn focus_holder_within(&self, node: NodeId) -> NodeId {
+    self
+      .first_within(node, |order| order.is_some())
+      .unwrap_or(node)
+  }
+
+  /// The node that takes the focus `node` is given, as its window opens or by its
+  /// shortcut: `node` itself where it has a place in focus traversal, else the first tab
+  /// stop beneath it in document order, a collection's member that holds its stop, else
+  /// [`focus_holder_within`](Self::focus_holder_within) it.
+  pub(in crate::spine) fn focus_taker(&self, node: NodeId) -> NodeId {
+    if self.focus_order(node).is_some() {
+      return node;
+    }
+
+    self
+      .first_within(node, |order| {
+        order.is_some_and(|order| order != FocusOrder::Skip)
+      })
+      .unwrap_or_else(|| self.focus_holder_within(node))
+  }
+
+  /// The first node of the subtree `node` roots, in document order, whose place in focus
+  /// traversal `matches` accepts, a segment's content counting as beneath its start.
+  fn first_within(
+    &self,
+    node: NodeId,
+    matches: impl Fn(Option<FocusOrder>) -> bool,
+  ) -> Option<NodeId> {
     let mut stack = vec![node];
 
     while let Some(current) = stack.pop() {
@@ -162,8 +197,8 @@ impl<P: Realization> Scene<P> {
         continue;
       };
 
-      if record.focus_order.is_some() {
-        return current;
+      if matches(record.focus_order) {
+        return Some(current);
       }
 
       if record.is_segment_start() {
@@ -174,7 +209,7 @@ impl<P: Realization> Scene<P> {
       }
     }
 
-    node
+    None
   }
 
   /// The tab stops under `root` in traversal order, with `overlays` the open overlays

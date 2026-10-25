@@ -3648,6 +3648,7 @@ pub skene_foundation::KeyDefault::Activate(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::Arm(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::ContextMenu
 pub skene_foundation::KeyDefault::Dismiss(skene_foundation::NodeId)
+pub skene_foundation::KeyDefault::FocusShortcut(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::Shortcut(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::Traverse
 pub skene_foundation::KeyDefault::Traverse::back: bool
@@ -7846,7 +7847,7 @@ pub const fn skene_foundation::Scene<P>::interaction_generation(&self) -> u64
 pub fn skene_foundation::Scene<P>::is_acting(&self, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::Scene<P>::is_hovered(&self, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::Scene<P>::is_pressed(&self, skene_foundation::NodeId) -> bool
-pub fn skene_foundation::Scene<P>::key_default(&mut self, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>, &skene_foundation::KeyEvent, impl core::ops::function::Fn(skene_foundation::NodeId) -> bool) -> core::option::Option<skene_foundation::KeyDefault>
+pub fn skene_foundation::Scene<P>::key_default(&mut self, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>, &skene_foundation::KeyEvent, bool, impl core::ops::function::Fn(skene_foundation::NodeId) -> bool) -> core::option::Option<skene_foundation::KeyDefault>
 pub fn skene_foundation::Scene<P>::key_up_default(&mut self, core::option::Option<skene_foundation::NodeId>, &skene_foundation::KeyEvent) -> core::option::Option<skene_foundation::KeyDefault>
 pub fn skene_foundation::Scene<P>::move_focus(&mut self, core::option::Option<skene_foundation::NodeId>) -> (smallvec::SmallVec<[skene_foundation::NodeId; 16]>, smallvec::SmallVec<[skene_foundation::NodeId; 16]>)
 pub fn skene_foundation::Scene<P>::move_pointer(&mut self, core::option::Option<skene_foundation::NodeId>) -> (smallvec::SmallVec<[skene_foundation::NodeId; 16]>, smallvec::SmallVec<[skene_foundation::NodeId; 16]>)
@@ -10543,6 +10544,14 @@ impl<C: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> 
 pub type skene_foundation::Declared<C>::Of<T: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> = core::option::Option<skene_foundation::Conditional<skene_foundation::Leaf<T>, C>>
 impl<C: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> skene_foundation::Shape for skene_foundation::Static<C>
 pub type skene_foundation::Static<C>::Of<T: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> = core::option::Option<skene_foundation::Conditional<skene_foundation::KeptLeaf<T>, C>>
+pub trait skene_foundation::SliderBase<P: skene_foundation::Realization>: skene_foundation::HasControl<P, skene_foundation::Slider>
+pub fn skene_foundation::SliderBase::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
+pub fn skene_foundation::SliderBase::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::SliderRange + 'static) -> Self
+pub fn skene_foundation::SliderBase::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
+pub fn skene_foundation::SliderBase::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
+pub fn skene_foundation::SliderBase::set_range(self, skene_foundation::SliderRange) -> Self
+pub fn skene_foundation::SliderBase::set_thumb_extent(self, impl core::convert::Into<skene_foundation::Length>) -> Self
+pub fn skene_foundation::SliderBase::set_value(self, f32) -> Self
 pub trait skene_foundation::SpanBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::Span<P>>
 pub fn skene_foundation::SpanBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_foundation::SpanBase::group(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
@@ -10652,6 +10661,11 @@ pub fn skene_foundation::Theme<P, S>::into_core(self) -> skene_foundation::Theme
 impl<P: skene_foundation::Realization, T: skene_foundation::Choice> skene_foundation::Thin<P> for skene_foundation::BasicPicker<P, T>
 pub type skene_foundation::BasicPicker<P, T>::Core = skene_foundation::BasicPickerCore<P>
 pub fn skene_foundation::BasicPicker<P, T>::into_core(self) -> skene_foundation::BasicPickerCore<P>
+pub trait skene_foundation::ToggleBase<P: skene_foundation::Realization>: skene_foundation::HasControl<P, skene_foundation::Toggle>
+pub fn skene_foundation::ToggleBase::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
+pub fn skene_foundation::ToggleBase::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_foundation::ToggleBase::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
+pub fn skene_foundation::ToggleBase::set_checked(self, bool) -> Self
 pub trait skene_foundation::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_foundation::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 impl<N: skene_foundation::Scalar, V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, N>>> skene_foundation::TokenSet<V> for skene_foundation::SystemColors<N>

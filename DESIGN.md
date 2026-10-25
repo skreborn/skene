@@ -129,9 +129,11 @@ as a dialog's focusing steps choose). The tab order is the scene's child order a
 (`Scene::tab_order`; a `FocusOrder` is `Auto` or `Skip`, never a position), and a window
 opens with nothing focused but a control set to autofocus: the scene notes each request
 (`Scene::note_autofocus`) and settles the opening focus once, as the mount that opens the
-window ends (`Scene::take_autofocus`: the first requesting node in document order that
-has a place in focus traversal and no open modal blocks, so a disabled one is passed
-over, its focus not showing), every later request ignored. The scene holds the interaction every platform reports: the
+window ends (`Scene::take_autofocus`: the first node in document order that takes focus
+for a request, no subtree the platform's style hides holding it and no open modal
+blocking it, so a disabled one is passed over, its focus not showing; a node with no
+place in focus traversal of its own, a collection, has the member holding its stop
+take it), every later request ignored. The scene holds the interaction every platform reports: the
 focused node with whether focus shows (a key but a modifier alone sets it, a pointer
 press clears it, a text entry's shows however reached), the pressed node and the hovered
 one, dropping each with its node, and resolves every node's interaction from them
@@ -814,8 +816,10 @@ re-export.
   positive index. The control set to autofocus that opens the page focused carries the
   `autofocus` attribute on the element carrying its focus, its input for a native
   control and its box otherwise, on both leaves, so the scriptless page opens focused
-  on it; the browser leaf's first mount focuses it once its turn ends, and a hydration
-  keeps the focus the browser gave the served element and moves none. A shortcut is
+  on it; the browser leaf's first mount focuses it once its turn ends, passing over a
+  subtree the computed style hides, and a hydration keeps the focus the browser gave
+  the served element and moves none. The server computes no style, so it marks the
+  first that asks even where its box's style hides it. A shortcut is
   served as `aria-keyshortcuts` on both leaves; the browser leaf hears a key pressed
   while nothing holds focus, on the `<body>`, through one `keydown` listener on the
   document, which dispatches it at the root so the window's shortcuts reach it, a key
@@ -902,10 +906,16 @@ re-export.
   activates it from anywhere in the window, a fixed `Shortcut` read once at build, which
   the scene's key default resolves after every handler has had the key
   (`KeyDefault::Shortcut`) and dispatches as a click at the node, focus left where it
-  is; a box handling no click ignores its shortcut. The node reports it
+  is; a collection, which takes no focus of its own, has its shortcut move focus to the
+  member holding its stop (`KeyDefault::FocusShortcut`), as `aria-keyshortcuts` allows,
+  one whose members hold no stop passing it over, and a box handling no click ignores
+  its shortcut. The node reports it
   (`AccessProp::Shortcut`, in the W3C form `Shortcut::reported` writes, `Control+S`).
   A key holding no modifier but `Shift` is a text entry's own while one holds focus, a
-  character it types or a key it edits by, so such a shortcut waits there; a view-scoped
+  character it types or a key it edits by, so such a shortcut waits there, and the
+  platform's own editable element the scene keeps no entry for, a native view's input,
+  a `<select>` or editable content on the web, keeps it the same way (`key_default`'s
+  `typing`); a view-scoped
   binding of the same key, a `Keymap`'s or a menu entry's, acts first inside its
   view.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
@@ -946,7 +956,10 @@ re-export.
   `MUTED_INK` disabled), and its border a ring in the
   accent (`INK` where prominent) while focus shows; in cells it is padded a cell at
   either side, and focus shows as accent cells under `ON_ACCENT`, reversed where
-  prominent. The checkbox's default `Part::Mark` is an 18-pixel box in `FIELD` and
+  prominent. `Checkbox` and `Toggle` carry `ToggleBase` (the checked state, controlled,
+  through `HasControl`) and `Slider` carries `SliderBase` (its range, its value,
+  controlled, and its thumb extent), as `TextField` and `TextEditor` carry
+  `TextEntryBase`. The checkbox's default `Part::Mark` is an 18-pixel box in `FIELD` and
   `BORDER` turning to the accent with a check in `ON_ACCENT` while checked, and the
   glyphs `[ ]` and `[x]` in cells, `set_part(Part::Mark, ..)` replacing either. The
   switch's default `Part::Track` holds its `Part::Thumb`: a 40 by 24 pill in `TRACK`,

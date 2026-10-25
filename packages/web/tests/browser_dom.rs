@@ -18,6 +18,7 @@ use skene_foundation::{
   Availability,
   Axes,
   Axis,
+  BasicListboxBase,
   BasicPickerBase,
   ClipboardAction,
   ColumnBase,
@@ -64,6 +65,7 @@ use skene_foundation::{
   SuspenseBase,
   TextBase,
   ThemeBase,
+  ToggleBase,
   TooltipBase,
   VisibilityBase,
   WheelEvent,
@@ -76,6 +78,8 @@ use skene_web::{
   AsyncViewBase,
   BasicButton,
   BasicCheckbox,
+  BasicListbox,
+  BasicListboxOption,
   BasicRadio,
   BasicRadioGroup,
   BasicRadioGroupBase,
@@ -132,7 +136,7 @@ use skene_web::{
   View,
   Visibility,
   When,
-  behavior::{Activate, Radio, Slider, SliderRange, TextEntry, Toggle},
+  behavior::{Activate, ListboxOption, Radio, Slider, SliderRange, TextEntry, Toggle},
   derived,
   empty,
   head,
@@ -1169,6 +1173,124 @@ fn an_autofocus_control_is_focused_after_the_mount() {
   );
 }
 
+/// A control set to autofocus inside a box its style hides is passed over as the page
+/// opens, the next that asks taking focus and carrying `autofocus`.
+#[wasm_bindgen_test]
+fn an_autofocus_control_a_style_hides_is_passed_over() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_hidden(true)
+          .set_child(
+            BasicButton::new(Activate::new())
+              .set_label("hidden")
+              .set_autofocus(true),
+          )
+          .into_any(),
+        BasicButton::new(Activate::new())
+          .set_label("shown")
+          .set_autofocus(true)
+          .into_any(),
+      ))
+      .build()
+  });
+
+  let buttons = root.query_selector_all("button").expect("query");
+  let button = |index| {
+    buttons
+      .item(index)
+      .and_then(|node| node.dyn_into::<Element>().ok())
+      .expect("a button")
+  };
+
+  assert_eq!(
+    document().active_element(),
+    Some(button(1)),
+    "the shown one takes focus"
+  );
+  assert!(!button(0).has_attribute("autofocus"));
+  assert!(button(1).has_attribute("autofocus"));
+}
+
+/// A radio group set to autofocus opens the page focused on the radio holding its stop,
+/// the chosen one, which carries `autofocus`.
+#[wasm_bindgen_test]
+fn a_radio_group_set_to_autofocus_focuses_its_chosen_radio() {
+  let (_guard, root) = fresh_root();
+  let chosen = Signal::new(Some("b"));
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new())
+          .set_label("before")
+          .into_any(),
+        BasicRadioGroup::new()
+          .set_label("Size")
+          .bind_chosen(chosen)
+          .set_autofocus(true)
+          .set_child(Column::new().set_children((
+            BasicRadio::new(Radio::new(Some("a"))).set_label("a"),
+            BasicRadio::new(Radio::new(Some("b"))).set_label("b"),
+          )))
+          .into_any(),
+      ))
+      .build()
+  });
+
+  let radios = root.query_selector_all("input[type=radio]").expect("query");
+  let radio = |index| {
+    radios
+      .item(index)
+      .and_then(|node| node.dyn_into::<Element>().ok())
+      .expect("a radio")
+  };
+
+  assert_eq!(document().active_element(), Some(radio(1)), "b takes focus");
+  assert!(radio(1).has_attribute("autofocus"));
+}
+
+/// A listbox set to autofocus opens the page focused on the option holding its stop,
+/// the first where nothing is chosen.
+#[wasm_bindgen_test]
+fn a_listbox_set_to_autofocus_focuses_its_stop() {
+  let (_guard, root) = fresh_root();
+  let chosen: Signal<Option<&str>> = Signal::new(None);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new())
+          .set_label("before")
+          .into_any(),
+        BasicListbox::new()
+          .set_accessible_name("Fruit")
+          .bind_chosen(chosen)
+          .set_autofocus(true)
+          .set_child(Column::new().set_children((
+            BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),
+            BasicListboxOption::new(ListboxOption::new("c")).set_label("c"),
+          )))
+          .into_any(),
+      ))
+      .build()
+  });
+
+  let first = root
+    .query_selector("[role=option]")
+    .expect("query")
+    .expect("an option");
+
+  assert_eq!(
+    document().active_element(),
+    Some(first),
+    "the first option takes focus"
+  );
+}
+
 /// Dispatches a press of `key` with `Ctrl` held at `target`, and returns whether the
 /// platform's default was prevented.
 fn control_key_at(target: &Element, key: &str) -> bool {
@@ -1266,6 +1388,123 @@ fn a_controls_shortcut_activates_it_from_anywhere() {
   assert_eq!((saves.get(), news.get()), (3, 1));
 
   page.remove();
+}
+
+/// A collection's shortcut focuses the member holding its stop, choosing nothing, in
+/// place of the browser's default; one whose members hold no stop is passed over, the
+/// next control the key is the shortcut of acting.
+#[wasm_bindgen_test]
+fn a_collections_shortcut_focuses_its_stop() {
+  let (_guard, root) = fresh_root();
+  let (saves, save) = counter();
+  let (chooses, choose) = counter();
+  let chosen = Signal::new(Some("b"));
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        BasicRadioGroup::new()
+          .set_label("Size")
+          .bind_chosen(chosen)
+          .handle_choose(move |_| choose())
+          .set_shortcut(Shortcut::new(Modifiers::CTRL, "g"))
+          .set_child(Column::new().set_children((
+            BasicRadio::new(Radio::new(Some("a"))).set_label("a"),
+            BasicRadio::new(Radio::new(Some("b"))).set_label("b"),
+          )))
+          .into_any(),
+        BasicListbox::<Option<&str>>::new()
+          .set_accessible_name("Empty")
+          .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+          .into_any(),
+        BasicButton::new(Activate::new())
+          .set_label("Save")
+          .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+          .handle_activate(save)
+          .into_any(),
+      ))
+      .build()
+  });
+
+  let body: Element = document().body().expect("a body").into();
+  let radio = root
+    .query_selector_all("input[type=radio]")
+    .expect("query")
+    .item(1)
+    .and_then(|node| node.dyn_into::<Element>().ok())
+    .expect("radio b");
+
+  assert!(control_key_at(&body, "g"), "the browser's default is kept");
+  assert_eq!(
+    document().active_element(),
+    Some(radio),
+    "the chosen radio takes focus"
+  );
+  assert_eq!(
+    (chooses.get(), chosen.get()),
+    (0, Some("b")),
+    "nothing is chosen"
+  );
+  assert!(control_key_at(&body, "s"));
+  assert_eq!(saves.get(), 1, "the listbox holding no stop is passed over");
+}
+
+/// A shortcut holding no modifier leaves its key to an editable element the scene keeps
+/// no entry for, a native view's `<input>`, as it does to a text entry's.
+#[wasm_bindgen_test]
+fn an_unmodified_shortcut_leaves_its_key_to_a_native_input() {
+  let (_guard, root) = fresh_root();
+  let (news, new) = counter();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new())
+          .set_label("New")
+          .set_shortcut(Shortcut::new(Modifiers::NONE, "n"))
+          .handle_activate(new)
+          .into_any(),
+        web::NativeView::new("input")
+          .add_attribute("aria-label", "Name")
+          .into_any(),
+        web::NativeView::new("div")
+          .add_attribute("contenteditable", "true")
+          .add_attribute("aria-label", "Notes")
+          .into_any(),
+      ))
+      .build()
+  });
+
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("the native input");
+  let editable = root
+    .query_selector("[contenteditable]")
+    .expect("query")
+    .expect("the editable element");
+
+  let _ = html(&input).focus();
+
+  assert!(
+    !key_at(&input, "keydown", "n", false),
+    "the input takes its key"
+  );
+
+  let _ = html(&editable).focus();
+
+  assert!(
+    !key_at(&editable, "keydown", "n", false),
+    "so does an editable element"
+  );
+  assert_eq!(news.get(), 0);
+
+  let body: Element = document().body().expect("a body").into();
+
+  let _ = html(&editable).blur();
+
+  assert!(key_at(&body, "keydown", "n", false));
+  assert_eq!(news.get(), 1, "elsewhere the key is the shortcut");
 }
 
 /// A shortcut acts on no disabled control, on none a box's style hides and on none an

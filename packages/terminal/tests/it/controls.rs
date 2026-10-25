@@ -161,6 +161,72 @@ fn an_autofocus_control_takes_focus_as_its_window_opens() {
   });
 }
 
+/// A radio group set to autofocus opens its window focused on the radio holding its
+/// stop, the chosen one.
+#[test]
+fn a_radio_group_set_to_autofocus_focuses_its_chosen_radio() {
+  with_platform(|| {
+    let chosen = Signal::new(Some("b"));
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new()).set_label("before"),
+          BasicRadioGroup::new()
+            .set_label("Size")
+            .bind_chosen(chosen)
+            .set_autofocus(true)
+            .set_child(Column::new().set_children((
+              BasicRadio::new(Radio::new(Some("a"))).set_label("a"),
+              BasicRadio::new(Radio::new(Some("b"))).set_label("b"),
+            ))),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 6);
+
+    assert_eq!(
+      testing::focused_node(),
+      testing::find_by_role(Role::RadioButton, "b"),
+      "the chosen radio takes focus"
+    );
+  });
+}
+
+/// A listbox set to autofocus opens its window focused on the option holding its stop,
+/// the first where nothing is chosen.
+#[test]
+fn a_listbox_set_to_autofocus_focuses_its_stop() {
+  with_platform(|| {
+    let chosen: Signal<Option<&str>> = Signal::new(None);
+
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          BasicButton::new(Activate::new()).set_label("before"),
+          BasicListbox::new()
+            .set_accessible_name("Fruit")
+            .bind_chosen(chosen)
+            .set_autofocus(true)
+            .set_child(Column::new().set_children((
+              BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),
+              BasicListboxOption::new(ListboxOption::new("c")).set_label("c"),
+            ))),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(20, 6);
+
+    assert_eq!(
+      testing::focused_node(),
+      testing::find_by_role(Role::ListBoxOption, "a"),
+      "the first option takes focus"
+    );
+  });
+}
+
 /// A mouse click hits the topmost control at the cell, runs its click handlers, and
 /// focuses it, so `Enter` and `Space` click it again.
 #[test]

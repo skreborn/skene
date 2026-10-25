@@ -93,6 +93,7 @@ pub use skene_web::RunWithTypeMetrics
 pub use skene_web::Scene
 pub use skene_web::ScrollEvent
 pub use skene_web::Shortcut
+pub use skene_web::SliderBase
 pub use skene_web::SpanBase
 pub use skene_web::StackBase
 pub use skene_web::State
@@ -108,6 +109,7 @@ pub use skene_web::TextEntryBase
 pub use skene_web::TextSelection
 pub use skene_web::ThemeBase
 pub use skene_web::Timer
+pub use skene_web::ToggleBase
 pub use skene_web::TokenName
 pub use skene_web::TokenRef
 pub use skene_web::TokenScope
@@ -303,10 +305,13 @@ pub fn skene_web::TextEditor::map_control(self, impl core::ops::function::FnOnce
 impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::text_entry::TextEntry> for skene_web::TextField
 pub fn skene_web::TextField::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>
 pub fn skene_web::TextField::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::text_entry::TextEntry>) -> Self
+impl skene_foundation::control::SliderBase<skene_web::platform::web::Web> for skene_web::Slider
 impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextEditor
 pub fn skene_web::TextEditor::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
 impl skene_foundation::control::TextEntryBase<skene_web::platform::web::Web> for skene_web::TextField
 pub fn skene_web::TextField::selection_colors_mut(&mut self) -> &mut skene_foundation::run::SelectionColors<f32>
+impl skene_foundation::control::ToggleBase<skene_web::platform::web::Web> for skene_web::Checkbox
+impl skene_foundation::control::ToggleBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::enhance::EnhanceBase<skene_web::platform::web::Web> for skene_web::Enhance
 impl skene_foundation::error_boundary::ErrorBoundaryBase<skene_web::platform::web::Web> for skene_web::ErrorBoundary
 impl skene_foundation::flex::ColumnBase<skene_web::platform::web::Web> for skene_web::Column
@@ -688,6 +693,7 @@ pub use skene_web::prelude::RunWithTypeMetrics
 pub use skene_web::prelude::Set
 pub use skene_web::prelude::Shortcut
 pub use skene_web::prelude::Signal
+pub use skene_web::prelude::SliderBase
 pub use skene_web::prelude::Snapshot
 pub use skene_web::prelude::Snapshot
 pub use skene_web::prelude::SpanBase
@@ -704,6 +710,7 @@ pub use skene_web::prelude::TextDecorationStyle
 pub use skene_web::prelude::TextEntryBase
 pub use skene_web::prelude::TextSelection
 pub use skene_web::prelude::ThemeBase
+pub use skene_web::prelude::ToggleBase
 pub use skene_web::prelude::TokenRef
 pub use skene_web::prelude::TokenSet
 pub use skene_web::prelude::TooltipBase
@@ -840,16 +847,13 @@ pub fn skene_web::Button::map_layout_box(self, impl core::ops::function::FnOnce(
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Button
 pub struct skene_web::prelude::Checkbox(_)
 impl skene_web::Checkbox
-pub fn skene_web::Checkbox::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
-pub fn skene_web::Checkbox::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_web::Checkbox::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_web::Checkbox::new() -> Self
-pub fn skene_web::Checkbox::set_checked(self, bool) -> Self
 impl core::default::Default for skene_web::Checkbox
 pub fn skene_web::Checkbox::default() -> Self
 impl core::fmt::Debug for skene_web::Checkbox
 pub fn skene_web::Checkbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
+impl skene_foundation::control::ToggleBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::spine::view::AnyKind for skene_web::Checkbox
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Checkbox
 pub fn skene_web::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
@@ -1274,19 +1278,13 @@ pub fn skene_web::Row::wrap(Self::Inner) -> Self
 pub struct skene_web::prelude::Slider(_)
 impl skene_web::Slider
 pub const skene_web::Slider::THUMB: f32
-pub fn skene_web::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
-pub fn skene_web::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
-pub fn skene_web::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
-pub fn skene_web::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_web::Slider::new() -> Self
-pub fn skene_web::Slider::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
-pub fn skene_web::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::spine::expr::Length>) -> Self
-pub fn skene_web::Slider::set_value(self, f32) -> Self
 impl core::default::Default for skene_web::Slider
 pub fn skene_web::Slider::default() -> Self
 impl core::fmt::Debug for skene_web::Slider
 pub fn skene_web::Slider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::slider::Slider> for skene_web::Slider
+impl skene_foundation::control::SliderBase<skene_web::platform::web::Web> for skene_web::Slider
 impl skene_foundation::spine::view::AnyKind for skene_web::Slider
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Slider
 pub fn skene_web::Slider::build(self) -> skene_foundation::spine::node::NodeId
@@ -1425,16 +1423,13 @@ pub fn skene_web::Theme<S>::wrap(Self::Inner) -> Self
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
 pub struct skene_web::prelude::Toggle(_)
 impl skene_web::Toggle
-pub fn skene_web::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
-pub fn skene_web::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_web::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_web::Toggle::new() -> Self
-pub fn skene_web::Toggle::set_checked(self, bool) -> Self
 impl core::default::Default for skene_web::Toggle
 pub fn skene_web::Toggle::default() -> Self
 impl core::fmt::Debug for skene_web::Toggle
 pub fn skene_web::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
+impl skene_foundation::control::ToggleBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::spine::view::AnyKind for skene_web::Toggle
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Toggle
 pub fn skene_web::Toggle::build(self) -> skene_foundation::spine::node::NodeId
@@ -1685,16 +1680,13 @@ pub fn skene_web::Button::map_layout_box(self, impl core::ops::function::FnOnce(
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Button
 pub struct skene_web::Checkbox(_)
 impl skene_web::Checkbox
-pub fn skene_web::Checkbox::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
-pub fn skene_web::Checkbox::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_web::Checkbox::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_web::Checkbox::new() -> Self
-pub fn skene_web::Checkbox::set_checked(self, bool) -> Self
 impl core::default::Default for skene_web::Checkbox
 pub fn skene_web::Checkbox::default() -> Self
 impl core::fmt::Debug for skene_web::Checkbox
 pub fn skene_web::Checkbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
+impl skene_foundation::control::ToggleBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::spine::view::AnyKind for skene_web::Checkbox
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Checkbox
 pub fn skene_web::Checkbox::build(self) -> skene_foundation::spine::node::NodeId
@@ -2132,19 +2124,13 @@ pub fn skene_web::Row::wrap(Self::Inner) -> Self
 pub struct skene_web::Slider(_)
 impl skene_web::Slider
 pub const skene_web::Slider::THUMB: f32
-pub fn skene_web::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
-pub fn skene_web::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
-pub fn skene_web::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
-pub fn skene_web::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_web::Slider::new() -> Self
-pub fn skene_web::Slider::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
-pub fn skene_web::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::spine::expr::Length>) -> Self
-pub fn skene_web::Slider::set_value(self, f32) -> Self
 impl core::default::Default for skene_web::Slider
 pub fn skene_web::Slider::default() -> Self
 impl core::fmt::Debug for skene_web::Slider
 pub fn skene_web::Slider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::slider::Slider> for skene_web::Slider
+impl skene_foundation::control::SliderBase<skene_web::platform::web::Web> for skene_web::Slider
 impl skene_foundation::spine::view::AnyKind for skene_web::Slider
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Slider
 pub fn skene_web::Slider::build(self) -> skene_foundation::spine::node::NodeId
@@ -2283,16 +2269,13 @@ pub fn skene_web::Theme<S>::wrap(Self::Inner) -> Self
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
 pub struct skene_web::Toggle(_)
 impl skene_web::Toggle
-pub fn skene_web::Toggle::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
-pub fn skene_web::Toggle::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_web::Toggle::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_web::Toggle::new() -> Self
-pub fn skene_web::Toggle::set_checked(self, bool) -> Self
 impl core::default::Default for skene_web::Toggle
 pub fn skene_web::Toggle::default() -> Self
 impl core::fmt::Debug for skene_web::Toggle
 pub fn skene_web::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
+impl skene_foundation::control::ToggleBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::spine::view::AnyKind for skene_web::Toggle
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Toggle
 pub fn skene_web::Toggle::build(self) -> skene_foundation::spine::node::NodeId

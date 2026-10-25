@@ -200,7 +200,8 @@ activates the row.
 reader reads them; `set_focus_order(FocusOrder::Skip)` keeps a control out of that
 order, still focusable by a click. A window opens with nothing focused. A control set to
 autofocus takes focus as its window opens, the first of them in that order where several
-ask, and a server-rendered page carries it as the `autofocus` attribute, so the page
+ask, one inside a hidden box passed over; a radio group or a listbox set to autofocus
+focuses its chosen member, or its first. A server-rendered page carries it as the `autofocus` attribute, so the page
 opens focused on it before its script arrives:
 
 ```rust
@@ -222,8 +223,9 @@ on the web). It acts while the control is enabled and shown and no open modal it
 outside holds the window; where several controls take one key, the first of them in the
 window, in the order of the views' children, acts. A key without `Ctrl`, `Alt` or `Meta`
 stays a text entry's own while one holds focus, so a shortcut on `N` types an `n` there,
-and a `Keymap` binding the same key inside its view acts first there. An activatable row
-takes a shortcut the same way:
+and a `Keymap` binding the same key inside its view acts first there. A radio group's or
+a listbox's shortcut moves focus to its chosen member, or its first, rather than
+activating it. An activatable row takes a shortcut the same way as a control:
 
 ```rust
 use skene_web::prelude::*;

@@ -281,6 +281,9 @@ where
 
 /// Marks the control set to autofocus that comes first in the scene's child order under
 /// `root` as the one the page opens focused, settling the page's opening focus.
+///
+/// The server computes no style, so a control its box's style hides is not passed over
+/// as it is where the page is live: the served attribute marks the first that asks.
 fn mark_autofocus(root: NodeId) {
   if let Some(opening) = Scene::<Web>::with(|scene| scene.take_autofocus(root, |_| false)) {
     with_realizer(|realizer| realizer.mark_autofocus(opening));

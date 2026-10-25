@@ -59,6 +59,7 @@ use skene_foundation::{
   RunBase,
   RunWithTypeMetrics,
   Size,
+  SliderBase,
   Spacing,
   SpanBase,
   StackBase,
@@ -66,6 +67,7 @@ use skene_foundation::{
   TextBase,
   TextEntryBase,
   ThemeBase,
+  ToggleBase,
   TooltipBase,
   Transition,
   Value,
@@ -3012,6 +3014,159 @@ fn a_buttons_prominence_changes_its_fill_in_place() {
     background(&button),
     system(&root, "background-color", SystemColors::CONTROL)
   );
+}
+
+/// Focuses `element` as a key would, so `:focus-visible` holds.
+fn focus_visibly(element: &Element) {
+  let options = js_sys::Object::new();
+  let _ = js_sys::Reflect::set(&options, &"focusVisible".into(), &true.into());
+  let focus: js_sys::Function = js_sys::Reflect::get(element, &"focus".into())
+    .expect("its focus")
+    .unchecked_into();
+  let _ = focus.call1(element, &options);
+
+  assert!(
+    element.matches(":focus-visible").unwrap_or(false),
+    "focus shows"
+  );
+}
+
+/// The built-in button keeps the control's fill while disabled, prominent or not, its
+/// label muted, and draws its ring while focus shows in the accent, or the ink where it
+/// is prominent.
+#[wasm_bindgen_test]
+fn a_buttons_disabled_and_focused_looks_are_its_defaults() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(move || {
+    Row::new()
+      .set_children((
+        skene_web::Button::new("Plain"),
+        skene_web::Button::new("Go").set_prominent(true),
+        skene_web::Button::new("Off")
+          .set_prominent(true)
+          .set_disabled(true),
+      ))
+      .build()
+  });
+
+  let buttons = select(&root, "button");
+  let [plain, prominent, off] = buttons.as_slice()
+  else {
+    panic!("three buttons: {}", root.inner_html());
+  };
+  let label = |button: &Element| {
+    button
+      .query_selector("span")
+      .ok()
+      .flatten()
+      .expect("a label")
+  };
+
+  assert_eq!(
+    background(off),
+    system(&root, "background-color", SystemColors::CONTROL),
+    "disabled, the control's fill though prominent"
+  );
+  assert_eq!(
+    computed(&label(off), "color"),
+    system(&root, "color", SystemColors::MUTED_INK)
+  );
+
+  focus_visibly(plain);
+
+  assert_eq!(
+    computed(plain, "border-top-color"),
+    system(&root, "color", SystemColors::ACCENT),
+    "the ring in the accent"
+  );
+
+  focus_visibly(prominent);
+
+  assert_eq!(
+    computed(prominent, "border-top-color"),
+    system(&root, "color", SystemColors::INK),
+    "the ring in the ink where prominent"
+  );
+  assert_ne!(
+    computed(plain, "border-top-color"),
+    system(&root, "color", SystemColors::ACCENT),
+    "the ring goes with focus"
+  );
+}
+
+/// The built-in switch draws its default track beside the page's own input, in the
+/// track's color with its thumb at the start, the accent with the thumb shifted 16
+/// pixels toward the end once on, on the same elements; a track its user sets takes the
+/// default's place.
+#[wasm_bindgen_test]
+fn a_switchs_default_track_follows_it_and_a_track_of_its_users_replaces_it() {
+  let (_guard, root) = fresh_root();
+  let on = Signal::new(false);
+  let red = Color::srgb(1., 0., 0.);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_item_alignment(skene_web::prelude::ItemAlignment::Start)
+      .set_children((
+        skene_web::Toggle::new().set_label("Wi-Fi").bind_checked(on),
+        skene_web::Toggle::new().set_label("Mine").set_part(
+          skene_web::Part::Track,
+          Container::new()
+            .set_width(skene_web::Dimension::Length(10.))
+            .set_height(skene_web::Dimension::Length(10.))
+            .set_background(red),
+        ),
+      ))
+      .build()
+  });
+
+  let labels = select(&root, "label");
+  let [wifi, mine] = labels.as_slice()
+  else {
+    panic!("two switches: {}", root.inner_html());
+  };
+  let tracks = |label: &Element| select(label, ":scope > div");
+  let [track] = tracks(wifi).try_into().expect("one track");
+  let [thumb] = select(&track, ":scope > div")
+    .try_into()
+    .expect("its thumb");
+  let left = |element: &Element| element.get_bounding_client_rect().left();
+  let near = |a: f64, b: f64| (a - b).abs() < 0.5;
+
+  assert_eq!(computed(&track, "width"), "40px");
+  assert_eq!(
+    background(&track),
+    system(&root, "background-color", SystemColors::TRACK)
+  );
+  assert_eq!(
+    background(&thumb),
+    system(&root, "background-color", SystemColors::KNOB)
+  );
+  assert!(
+    near(left(&thumb) - left(&track), 4.),
+    "off: the start, inside the border and the padding: {}",
+    left(&thumb) - left(&track)
+  );
+
+  on.set(true);
+  web::end_turn();
+
+  assert!(tracks(wifi).first() == Some(&track), "the same track");
+  assert_eq!(
+    background(&track),
+    system(&root, "background-color", SystemColors::ACCENT)
+  );
+  assert!(
+    near(left(&thumb) - left(&track), 20.),
+    "on: shifted 16 toward the end: {}",
+    left(&thumb) - left(&track)
+  );
+
+  let [own] = tracks(mine).try_into().expect("its user's track alone");
+
+  assert_eq!(computed(&own, "width"), "10px");
+  assert_eq!(background(&own), probe(&root, "background-color", red));
 }
 
 /// The built-in checkbox draws its default mark beside the page's own input, filled

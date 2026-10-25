@@ -1687,7 +1687,7 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
 
   let default = crate::realize::root_node().and_then(|root| {
     Scene::<Terminal>::with(|scene| {
-      scene.key_default(root, at, event, |node| {
+      scene.key_default(root, at, event, false, |node| {
         records(|records| records.is_hidden(node))
       })
     })
@@ -1717,6 +1717,11 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
     Some(KeyDefault::Arm(_)) => return,
     Some(KeyDefault::Shortcut(node)) => {
       let _ = dispatch_activation::<Terminal>(node, event.modifiers);
+
+      return;
+    }
+    Some(KeyDefault::FocusShortcut(node)) => {
+      set_focus(Some(node));
 
       return;
     }

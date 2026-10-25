@@ -10,7 +10,7 @@ use std::{
 };
 
 use skene_simple_terminal::prelude::SimplePalette;
-use skene_terminal::{self as terminal, Activate, HasChild, prelude::*, testing};
+use skene_terminal::{self as terminal, HasChild, behavior::Activate, prelude::*, testing};
 
 use crate::common::{black, blue, colors_at, red, rgb, with_platform};
 

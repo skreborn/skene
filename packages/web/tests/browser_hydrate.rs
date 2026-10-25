@@ -15,7 +15,6 @@ use std::{
 };
 
 use skene_web::{
-  Activate,
   AsyncView,
   AsyncViewBase,
   BasicButton,
@@ -33,7 +32,6 @@ use skene_web::{
   HasChild,
   HasChildren,
   Label,
-  ListboxOption,
   Painted,
   PaintedBase,
   Resource,
@@ -41,6 +39,7 @@ use skene_web::{
   TextBase,
   Tooltip,
   TooltipBase,
+  behavior::{Activate, ListboxOption},
   platform::web::{self, hydrate},
   reactive::Get,
   testing::{document, only_child, tick},
@@ -919,7 +918,7 @@ async fn a_lazy_segments_resources_adopt_their_own_values() {
 /// the label standing before the input in the markup.
 #[wasm_bindgen_test]
 fn hydrate_adopts_a_captioned_text_field() {
-  use skene_web::{BasicTextField, TextEntry};
+  use skene_web::{BasicTextField, behavior::TextEntry};
 
   let root = server_root(
     "<div data-h=\"1\"><!--s:0--><label for=\"x\" data-h=\"4\"><span data-h=\"3\">Name</span></label><input type=\"text\" id=\"x\" data-skene-control=\"\" data-h=\"2\"><!--e:0--></div>",
@@ -968,8 +967,8 @@ fn hydrate_adopts_a_captioned_text_field() {
 fn a_value_typed_before_the_bundle_reports_as_an_edit() {
   use skene_web::{
     BasicTextField,
-    TextEntry,
     TextSelection,
+    behavior::TextEntry,
     reactive::{Set, Signal},
   };
 
@@ -1046,7 +1045,7 @@ fn a_value_typed_before_the_bundle_reports_as_an_edit() {
 /// the input keeps its type, never written, its value and the reader's caret.
 #[wasm_bindgen_test]
 fn a_secure_field_typed_before_the_bundle_stays_a_password_input() {
-  use skene_web::{BasicTextField, TextEntry, TextSelection, reactive::Signal};
+  use skene_web::{BasicTextField, TextSelection, behavior::TextEntry, reactive::Signal};
 
   let field = |value: Signal<String>, selection: Signal<TextSelection>| {
     BasicTextField::new(
@@ -1148,8 +1147,8 @@ fn observe_type(element: &Element) -> web_sys::MutationObserver {
 fn a_value_typed_into_an_editor_before_the_bundle_reports_as_an_edit() {
   use skene_web::{
     BasicTextEditor,
-    TextEntry,
     TextSelection,
+    behavior::TextEntry,
     reactive::{Set, Signal},
   };
 
@@ -1232,7 +1231,13 @@ fn a_value_typed_into_an_editor_before_the_bundle_reports_as_an_edit() {
 /// into the bound value with the server's choice left unchecked.
 #[wasm_bindgen_test]
 fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
-  use skene_web::{BasicRadio, BasicRadioGroup, BasicRadioGroupBase, Radio, reactive::Signal};
+  use skene_web::{
+    BasicRadio,
+    BasicRadioGroup,
+    BasicRadioGroupBase,
+    behavior::Radio,
+    reactive::Signal,
+  };
 
   let group = |chosen: Signal<Size>| {
     BasicRadioGroup::new().bind_chosen(chosen).set_child(
@@ -1303,7 +1308,12 @@ fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
 /// and the truth's new bounds follow onto the adopted range.
 #[wasm_bindgen_test]
 fn a_slider_carries_the_readers_value_past_an_earlier_replay() {
-  use skene_web::{BasicCheckbox, BasicSlider, Slider, SliderRange, Toggle, reactive::Signal};
+  use skene_web::{
+    BasicCheckbox,
+    BasicSlider,
+    behavior::{Slider, SliderRange, Toggle},
+    reactive::Signal,
+  };
 
   // The checkbox widens the slider's range, so its report rewrites the slider's truth.
   let app = |wide: Signal<bool>, value: Signal<f32>| {
@@ -1387,7 +1397,7 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
 /// moved into the client's label rather than removed with the server's.
 #[wasm_bindgen_test]
 fn an_adopted_input_moves_into_a_rebuilt_label() {
-  use skene_web::{BasicCheckbox, Toggle};
+  use skene_web::{BasicCheckbox, behavior::Toggle};
 
   let app = || BasicCheckbox::new(Toggle::new());
   let (markup, _) = served(move || skene_web::View::into_any(app()));

@@ -96,11 +96,13 @@ reader reads them; `set_focus_order(FocusOrder::Skip)` keeps a control out of th
 order, still focusable by a click. A window opens with nothing focused. A control set to
 autofocus takes focus as its window opens, the first of them in that order where several
 ask, and a server-rendered page carries it as the `autofocus` attribute, so the page
-opens focused on it before its script arrives:
+opens focused on it before its script arrives. A `Basic*` control is built over its
+behavior, which the facade's `behavior` module holds (`behavior::TextEntry` beneath a
+text field, `behavior::Activate` beneath a button):
 
 ```rust
 use skene_simple_web::prelude::*;
-use skene_web::{TextEntry, prelude::*};
+use skene_web::{behavior::TextEntry, prelude::*};
 
 fn search() -> impl View {
   Column::new().set_spacing(12).set_children((
@@ -124,7 +126,10 @@ binding the same key inside its view acts first there. An activatable row takes 
 shortcut the same way:
 
 ```rust
-use skene_web::{Activate, TextEntry, prelude::*};
+use skene_web::{
+  behavior::{Activate, TextEntry},
+  prelude::*,
+};
 
 fn editor(save: impl Fn() + 'static) -> impl View {
   Column::new().set_spacing(12).set_children((

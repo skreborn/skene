@@ -3,7 +3,13 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_terminal::{self as terminal, Activate, TextEntry, prelude::*, testing, testing::user};
+use skene_terminal::{
+  self as terminal,
+  behavior::{Activate, TextEntry},
+  prelude::*,
+  testing,
+  testing::user,
+};
 
 use crate::common::{mount_nodes, with_platform};
 

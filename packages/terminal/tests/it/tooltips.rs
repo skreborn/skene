@@ -8,10 +8,10 @@ use std::time::Duration;
 
 use skene_terminal::{
   self as terminal,
-  Activate,
   NodeId,
   TOOLTIP_DELAY,
   TOOLTIP_GRACE,
+  behavior::Activate,
   prelude::*,
   testing,
 };

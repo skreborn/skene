@@ -28,7 +28,6 @@ use skene_foundation::{
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
-  Activate,
   AsyncView,
   AsyncViewBase,
   BasicButton,
@@ -47,20 +46,18 @@ use skene_web::{
   Label,
   LinkAnnotation,
   LinkPolicy,
-  ListboxOption,
   Overlay,
   Painted,
   Resource,
   RichText,
   Row,
-  Slider,
-  SliderRange,
   Span,
   Text,
   Theme,
   Tooltip,
   Typography,
   View,
+  behavior::{Activate, ListboxOption, Slider, SliderRange},
   client_only,
   derived,
   platform::web,
@@ -343,7 +340,7 @@ enum Size {
 /// is checked.
 #[test]
 fn a_radio_groups_radios_share_one_name() {
-  use skene_web::{BasicRadio, BasicRadioGroup, BasicRadioGroupBase, Radio};
+  use skene_web::{BasicRadio, BasicRadioGroup, BasicRadioGroupBase, behavior::Radio};
 
   let group = |values: [Size; 2]| {
     BasicRadioGroup::new()
@@ -463,7 +460,7 @@ fn a_pickers_option_tagged_with_another_type_is_refused() {
   expected = "a member is tagged with a value of the type its collection's options carry"
 )]
 fn a_radio_tagged_with_another_type_is_refused() {
-  use skene_web::{BasicRadio, BasicRadioGroup, Radio};
+  use skene_web::{BasicRadio, BasicRadioGroup, behavior::Radio};
 
   let _ = render_to_string(|| {
     BasicRadioGroup::<Size>::new().set_child(BasicRadio::new(Radio::new(1_u8)).set_label("One"))
@@ -1651,7 +1648,7 @@ fn a_page_with_no_chooseable_scheme_carries_no_script() {
 /// `tabindex="-1"`, as the browser writes it.
 #[test]
 fn a_disabled_checkbox_keeps_its_input_out_of_the_tab_order() {
-  use skene_web::{BasicCheckbox, Toggle};
+  use skene_web::{BasicCheckbox, behavior::Toggle};
 
   let rendered = render_to_string(|| BasicCheckbox::new(Toggle::new()).set_disabled(true));
   let body = rendered.body();
@@ -1737,7 +1734,7 @@ fn a_native_class_value_serializes_escaped_inside_its_attribute() {
 /// without script, and its description gets the id the field names.
 #[test]
 fn control_flags_serialize_natively_and_references_carry_ids() {
-  use skene_web::{BasicTextField, TextEntry};
+  use skene_web::{BasicTextField, behavior::TextEntry};
 
   let rendered = render_to_string(|| {
     let hint = Text::new("Required").build();
@@ -1774,7 +1771,7 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
 /// referenced node carrying the id the list names.
 #[test]
 fn descriptions_fold_into_one_reference_list() {
-  use skene_web::{BasicTextField, TextEntry};
+  use skene_web::{BasicTextField, behavior::TextEntry};
 
   let rendered = render_to_string(|| {
     let hint = Text::new("Required").build();

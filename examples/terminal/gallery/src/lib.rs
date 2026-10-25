@@ -7,7 +7,7 @@
 use std::fmt;
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{Choice, HasChild, Resource, SliderRange, prelude::*};
+use skene_terminal::{Choice, HasChild, Resource, behavior::SliderRange, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the

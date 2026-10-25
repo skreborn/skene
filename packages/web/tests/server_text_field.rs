@@ -25,8 +25,8 @@ use skene_web::{
   SubmitLabel,
   Text,
   TextBase,
-  TextEntry,
   When,
+  behavior::TextEntry,
   render_to_string,
 };
 

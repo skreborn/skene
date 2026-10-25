@@ -1,7 +1,13 @@
 //! Accessible names in the terminal, as a reader finds them: every named node, by the
 //! accessible-name computation's order.
 
-use skene_terminal::{Activate, Label, Painted, TextEntry, Toggle, prelude::*, testing};
+use skene_terminal::{
+  Label,
+  Painted,
+  behavior::{Activate, TextEntry, Toggle},
+  prelude::*,
+  testing,
+};
 
 use crate::common::{mount_nodes, read, with_platform};
 

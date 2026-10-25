@@ -13,12 +13,12 @@ use std::{cell::RefCell, rc::Rc};
 use skene_simple_web::prelude::*;
 use skene_web::{
   Media,
-  SliderRange,
   StaticLeaf,
   Token,
   TokenName,
   TokenRef,
   TokenSet,
+  behavior::SliderRange,
   platform::web::{self, WebTokenValue, mount},
   prelude::*,
   testing::{Installed, computed, dispatch, document, frames_until, fresh_root, only_child},

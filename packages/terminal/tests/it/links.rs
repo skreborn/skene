@@ -5,7 +5,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_terminal::{self as terminal, Activate, prelude::*, testing};
+use skene_terminal::{self as terminal, behavior::Activate, prelude::*, testing};
 
 use crate::common::{colors_at, locate, red, rgb, white, with_platform};
 

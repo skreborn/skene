@@ -7,8 +7,8 @@ use skene_terminal::{
   self as terminal,
   CellDecoration,
   HasChild,
-  TextEntry,
   TextSelection,
+  behavior::TextEntry,
   prelude::*,
   testing,
 };

@@ -9,10 +9,9 @@ use skene_foundation::TYPE_AHEAD_RESET;
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   self as terminal,
-  Activate,
   Label,
-  ListboxOption,
   NodeId,
+  behavior::{Activate, ListboxOption},
   prelude::*,
   testing,
 };

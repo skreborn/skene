@@ -6,9 +6,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_terminal::{
   self as terminal,
-  Activate,
   Scene,
-  TextEntry,
+  behavior::{Activate, TextEntry},
   platform::terminal::Terminal,
   prelude::*,
   testing,

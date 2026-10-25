@@ -1,7 +1,13 @@
 //! The launch configuration: which clipboard operations the app offers, and whether
 //! it takes the mouse.
 
-use skene_terminal::{self as terminal, Activate, Label, TextEntry, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  Label,
+  behavior::{Activate, TextEntry},
+  prelude::*,
+  testing,
+};
 
 use crate::common::{blue, colors_at, red, rgb, white, with_launch};
 

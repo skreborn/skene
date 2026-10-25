@@ -6,7 +6,13 @@ use std::{
   rc::Rc,
 };
 
-use skene_terminal::{self as terminal, Activate, MenuEntry, TextEntry, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  MenuEntry,
+  behavior::{Activate, TextEntry},
+  prelude::*,
+  testing,
+};
 
 use crate::common::with_platform;
 

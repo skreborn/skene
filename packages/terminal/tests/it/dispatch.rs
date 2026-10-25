@@ -28,11 +28,11 @@ use skene_foundation::{
 };
 use skene_terminal::{
   self as terminal,
-  Behavior,
   NativeElement,
   NodeId,
   Role,
   Scene,
+  behavior::Behavior,
   platform::terminal::Terminal,
   prelude::*,
   reactive::{Owner, provide_context, use_context},

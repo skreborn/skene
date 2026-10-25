@@ -18,7 +18,7 @@ use crate::Active;
 /// Without the view [`set_child`](Self::set_child) supplies, it renders nothing.
 ///
 /// ```
-/// use skene_web::{Activate, prelude::*};
+/// use skene_web::{behavior::Activate, prelude::*};
 ///
 /// let save = Tooltip::new("Saves the document")
 ///   .set_child(BasicButton::new(Activate::new()).set_label("Save"));

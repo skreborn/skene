@@ -17,7 +17,7 @@ use skene_terminal::Active;
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;
-/// use skene_terminal::{SliderRange, prelude::*};
+/// use skene_terminal::{behavior::SliderRange, prelude::*};
 ///
 /// let volume = Signal::new(50.);
 /// let slider = SimpleSlider::new()

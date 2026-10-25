@@ -106,7 +106,7 @@ so a list entry may hold a button of its own. It is not a button and carries no 
 the one `set_role` gives it.
 
 ```rust
-use skene_web::{Activate, prelude::*};
+use skene_web::{behavior::Activate, prelude::*};
 
 fn entry(opened: Signal<u32>, starred: Signal<u32>) -> impl View {
   Container::new()

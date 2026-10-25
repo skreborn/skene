@@ -8,7 +8,7 @@ use std::{
 };
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, Activate, PointerButton, prelude::*, testing};
+use skene_terminal::{self as terminal, PointerButton, behavior::Activate, prelude::*, testing};
 
 use crate::common::{colors_at, locate, mount_nodes, read, red, rgb, with_platform};
 

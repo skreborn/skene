@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **Styled built-ins under names other than their behaviors'** (2026-10-25), such as
+  `Switch` for the toggle and `RadioButton` for the radio, so the shipped behaviors
+  could stay at each facade's root beside the views: the drawn views take the
+  platform-native frameworks' names (`Toggle`, `Slider`, `Radio`, `RadioGroup`,
+  `Listbox`), as the Linux spike's facade did, so the behaviors move into each facade's
+  `behavior` module and the root carries the views. Revisit if a facade's root must
+  carry a behavior and a view of one name.
 - **A crate of the terminal's conformance pages** (2026-10-25), beside
   `skene-conformance-web`, so the terminal's pages would stand as the web's do: the
   crate would depend on `skene-terminal` and be its dev-dependency, a cycle in the

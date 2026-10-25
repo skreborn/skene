@@ -71,7 +71,6 @@ use skene_foundation::{
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
-  Activate,
   AnyView,
   AsyncView,
   AsyncViewBase,
@@ -110,13 +109,10 @@ use skene_web::{
   OneOf,
   Overlay,
   Pinned,
-  Radio,
   RichText,
   Role,
   Row,
   Shortcut,
-  Slider,
-  SliderRange,
   Spacing,
   Span,
   Stack,
@@ -125,15 +121,14 @@ use skene_web::{
   Text,
   TextDecoration,
   TextDecorationStyle,
-  TextEntry,
   TextSelection,
   Theme,
-  Toggle,
   Tooltip,
   Typography,
   View,
   Visibility,
   When,
+  behavior::{Activate, Radio, Slider, SliderRange, TextEntry, Toggle},
   derived,
   empty,
   head,
@@ -693,7 +688,10 @@ fn overlays_open_at_build_open_and_a_modal_prevents_cancel() {
 #[wasm_bindgen_test]
 fn escape_dismisses_the_topmost_popup_unless_taken() {
   use skene_foundation::{EventKind, KeyEvent, NativeElement, Prevent, Role};
-  use skene_web::{Behavior, Control, ControlHandle};
+  use skene_web::{
+    Control,
+    behavior::{Behavior, ControlHandle},
+  };
 
   /// Takes `Escape` and nothing else.
   struct Keeper;
@@ -1446,7 +1444,10 @@ fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
 #[wasm_bindgen_test]
 fn a_wheel_reaches_the_node_before_it_scrolls() {
   use skene_foundation::{EventKind, NativeElement, Prevent};
-  use skene_web::{Behavior, Control, ControlHandle};
+  use skene_web::{
+    Control,
+    behavior::{Behavior, ControlHandle},
+  };
 
   /// Takes every turn for itself.
   struct Dial;
@@ -1893,7 +1894,7 @@ fn a_slider_narrowed_below_its_value_shows_it_clamped_in_one_write() {
 #[wasm_bindgen_test]
 fn a_select_shows_its_options_and_choice_as_one() {
   use skene_foundation::{ChoiceOption, Choices, contents};
-  use skene_web::{Active, Control, NativePicker, reactive::Effect};
+  use skene_web::{Active, Control, behavior::NativePicker, reactive::Effect};
 
   let choices = |keys: &[&str], chosen: &str| {
     Choices::new(
@@ -2015,7 +2016,7 @@ fn change_handler_receives_the_committed_value() {
 /// does, in a `<label>` `for` nothing.
 #[wasm_bindgen_test]
 fn a_drawn_face_keeps_its_caption_before_its_box() {
-  use skene_web::{BasicListboxOption, BasicPicker, ListboxOption};
+  use skene_web::{BasicListboxOption, BasicPicker, behavior::ListboxOption};
 
   let (_guard, root) = fresh_root();
   let value = Signal::new("a");
@@ -3972,7 +3973,7 @@ fn a_token_keyframe_animation_applies() {
 #[wasm_bindgen_test]
 fn focus_and_scroll_survive_a_snapshot_roundtrip() {
   use skene_foundation::Overflow;
-  use skene_web::{BasicTextField, NodeId, TextEntry, reactive};
+  use skene_web::{BasicTextField, NodeId, behavior::TextEntry, reactive};
 
   fn build() -> NodeId {
     Column::new()
@@ -4033,7 +4034,7 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
 /// run, the same item's field resumes focused with its selection.
 #[wasm_bindgen_test]
 fn focus_follows_a_keyed_item_across_a_reorder() {
-  use skene_web::{BasicTextField, NodeId, TextEntry, reactive};
+  use skene_web::{BasicTextField, NodeId, behavior::TextEntry, reactive};
 
   fn build(items: Vec<u8>) -> NodeId {
     Column::new()

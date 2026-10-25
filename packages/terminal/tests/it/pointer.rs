@@ -11,7 +11,6 @@ use std::{
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   self as terminal,
-  Activate,
   Handler,
   PointerButton,
   PointerButtons,
@@ -20,7 +19,7 @@ use skene_terminal::{
   PointerType,
   Prevent,
   Scene,
-  TextEntry,
+  behavior::{Activate, TextEntry},
   platform::terminal::Terminal,
   prelude::*,
   testing,

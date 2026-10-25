@@ -8,7 +8,9 @@
 //! and `render_main` on the server leaf, and [`macro@main`] expanding to whichever the
 //! build names. [`Platform`] is the build's platform as a const an app matches on, and
 //! [`platform`] holds each platform's own vocabulary: [`platform::web`] is the web
-//! platform itself, for a view written against the DOM or the server's markup.
+//! platform itself, for a view written against the DOM or the server's markup. The
+//! [`behavior`] module holds what a [`Control`] runs over: the shipped behaviors, the
+//! trait a library's own implements and the handle it acts through.
 //!
 //! A build names the web by `--cfg skene_platform="web"`: the browser leaf on
 //! `wasm32-unknown-unknown`, and the server leaf on any target with `--cfg skene_server`
@@ -76,6 +78,8 @@ compile_error!("skene-web realizes no macos yet: its builds name `skene_platform
 #[cfg(skene_platform = "windows")]
 compile_error!("skene-web realizes no windows yet: its builds name `skene_platform = \"web\"`");
 
+#[cfg(skene_platform = "web")]
+pub mod behavior;
 #[cfg(skene_platform = "web")]
 pub mod head;
 #[cfg(skene_platform = "web")]
@@ -152,7 +156,6 @@ pub use skene_foundation::web::{
   peniko,
 };
 pub use skene_foundation::{
-  Activate,
   AnyChoice,
   AnyChosen,
   AnyKind,
@@ -160,7 +163,6 @@ pub use skene_foundation::{
   BasicListboxBase,
   BasicPickerBase,
   BasicRadioGroupBase,
-  Behavior,
   Bubbling,
   Capitalization,
   Children,
@@ -176,8 +178,6 @@ pub use skene_foundation::{
   ContextMenuBase,
   ContextMenuWithCornerRadius,
   ControlBase,
-  ControlHandle,
-  ControlOps,
   ControlState,
   CornerRadius,
   DecorationBase,
@@ -213,18 +213,11 @@ pub use skene_foundation::{
   Leaf,
   Length,
   LinkBase,
-  Listbox,
-  ListboxContext,
-  ListboxOption,
-  Menu,
-  MenuContext,
   MenuEntry,
-  MenuOption,
   Modifiers,
   MotionBase,
   NamedKey,
   NativeElement,
-  NativePicker,
   NodeId,
   Number,
   OneOfBase,
@@ -239,23 +232,16 @@ pub use skene_foundation::{
   PointerInfo,
   PointerPhase,
   PointerType,
-  Popup,
   Prevent,
   Prevented,
-  Radio,
-  RadioGroup,
-  RadioGroupContext,
   RichTextBase,
   Role,
-  Roster,
   RowBase,
   RunBase,
   RunWithTypeMetrics,
   Scene,
   ScrollEvent,
   Shortcut,
-  Slider,
-  SliderRange,
   SpanBase,
   StackBase,
   State,
@@ -267,11 +253,9 @@ pub use skene_foundation::{
   TextBase,
   TextDecoration,
   TextDecorationStyle,
-  TextEntry,
   TextSelection,
   ThemeBase,
   Timer,
-  Toggle,
   TokenName,
   TokenRef,
   TokenScope,

@@ -7,7 +7,12 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_terminal::{self as terminal, Activate, TextEntry, prelude::*, testing};
+use skene_terminal::{
+  self as terminal,
+  behavior::{Activate, TextEntry},
+  prelude::*,
+  testing,
+};
 
 use crate::{common, common::with_platform};
 

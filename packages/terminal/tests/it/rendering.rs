@@ -6,12 +6,10 @@ use std::{cell::Cell, rc::Rc};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   self as terminal,
-  Activate,
   ContainerName,
   ContainerQuery,
-  Radio,
   Scene,
-  TextEntry,
+  behavior::{Activate, Radio, TextEntry},
   platform::terminal::Terminal,
   prelude::*,
   testing,

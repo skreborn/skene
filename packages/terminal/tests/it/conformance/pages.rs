@@ -5,13 +5,7 @@ use std::fmt::{self, Debug, Formatter};
 
 use skene_conformance::{BREAKPOINT, Probes, RETURN};
 use skene_terminal::{
-  Activate,
-  ListboxOption,
-  Radio,
-  RadioGroup,
-  Slider,
-  TextEntry,
-  Toggle,
+  behavior::{Activate, ListboxOption, Radio, RadioGroup, Slider, TextEntry, Toggle},
   prelude::*,
   schedule,
 };

@@ -1,7 +1,7 @@
 //! Selection in cells: drags anchored in source space, the word and run gestures, the
 //! copy menu, and the selection colors a typography defines.
 
-use skene_terminal::{self as terminal, Activate, Label, prelude::*, testing};
+use skene_terminal::{self as terminal, Label, behavior::Activate, prelude::*, testing};
 
 use crate::common::{green, red, rgb, white, with_platform};
 

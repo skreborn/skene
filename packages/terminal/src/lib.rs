@@ -10,7 +10,9 @@
 //! for an in-process test. [`Platform`] is the build's platform as a const, and
 //! [`platform::terminal`] the terminal's own vocabulary: the escape trait a low-level
 //! view is written against ([`CellPainter`](platform::terminal::CellPainter), painting
-//! through [`Cells`](platform::terminal::Cells)).
+//! through [`Cells`](platform::terminal::Cells)). The [`behavior`] module holds what a
+//! [`Control`] runs over: the shipped behaviors, the trait a library's own implements and
+//! the handle it acts through.
 //!
 //! Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer. Interaction
 //! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors
@@ -72,6 +74,8 @@ compile_error!(
    and `skene run` name it themselves"
 );
 
+#[cfg(skene_platform = "terminal")]
+pub mod behavior;
 #[cfg(skene_platform = "terminal")]
 pub mod media;
 #[cfg(skene_platform = "terminal")]
@@ -149,7 +153,6 @@ pub use skene_foundation::terminal::{
 };
 #[cfg(skene_platform = "terminal")]
 pub use skene_foundation::{
-  Activate,
   AnyChoice,
   AnyChosen,
   AnyKind,
@@ -157,7 +160,6 @@ pub use skene_foundation::{
   BasicListboxBase,
   BasicPickerBase,
   BasicRadioGroupBase,
-  Behavior,
   Bubbling,
   Canvas,
   Capitalization,
@@ -174,8 +176,6 @@ pub use skene_foundation::{
   ContextMenuBase,
   ContextMenuWithCornerRadius,
   ControlBase,
-  ControlHandle,
-  ControlOps,
   ControlState,
   CornerRadius,
   DecorationBase,
@@ -212,18 +212,11 @@ pub use skene_foundation::{
   Leaf,
   Length,
   LinkBase,
-  Listbox,
-  ListboxContext,
-  ListboxOption,
-  Menu,
-  MenuContext,
   MenuEntry,
-  MenuOption,
   Modifiers,
   MotionBase,
   NamedKey,
   NativeElement,
-  NativePicker,
   NodeId,
   Number,
   OneOfBase,
@@ -240,23 +233,16 @@ pub use skene_foundation::{
   PointerInfo,
   PointerPhase,
   PointerType,
-  Popup,
   Prevent,
   Prevented,
-  Radio,
-  RadioGroup,
-  RadioGroupContext,
   RichTextBase,
   Role,
-  Roster,
   RowBase,
   RunBase,
   RunWithTypeMetrics,
   Scene,
   ScrollEvent,
   Shortcut,
-  Slider,
-  SliderRange,
   SpanBase,
   StackBase,
   State,
@@ -268,11 +254,9 @@ pub use skene_foundation::{
   TextBase,
   TextDecoration,
   TextDecorationStyle,
-  TextEntry,
   TextSelection,
   ThemeBase,
   Timer,
-  Toggle,
   TokenName,
   TokenRef,
   TokenScope,

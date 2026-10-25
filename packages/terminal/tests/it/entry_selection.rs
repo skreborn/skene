@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use skene_terminal::{self as terminal, TextEntry, prelude::*, testing};
+use skene_terminal::{self as terminal, behavior::TextEntry, prelude::*, testing};
 
 use crate::common::{rgb, rows, white, with_launch, with_platform};
 

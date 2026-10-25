@@ -5,7 +5,15 @@
 use std::fmt;
 
 use skene_simple_web::prelude::*;
-use skene_web::{Choice, HasChild, Link, Resource, SliderRange, prelude::*, router::Route};
+use skene_web::{
+  Choice,
+  HasChild,
+  Link,
+  Resource,
+  behavior::SliderRange,
+  prelude::*,
+  router::Route,
+};
 
 /// The gallery page: every built-in view and Simple component, under the palette the
 /// reader picks.

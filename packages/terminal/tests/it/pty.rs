@@ -7,9 +7,9 @@
 use std::{num::NonZeroU16, thread, time::Duration};
 
 use skene_terminal::{
-  Activate,
   Launch,
   WindowSize,
+  behavior::Activate,
   prelude::*,
   testing::{Pty, PtyHost},
 };

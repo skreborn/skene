@@ -43,7 +43,7 @@ use crate::Active;
 /// leading or trailing in the row, or beside the box, before it among its siblings.
 ///
 /// ```
-/// use skene_terminal::{Activate, prelude::*};
+/// use skene_terminal::{behavior::Activate, prelude::*};
 ///
 /// let count = Signal::new(0);
 /// let button = BasicButton::new(Activate::new())
@@ -104,7 +104,7 @@ pub type BasicMenuItem = Control<MenuOption>;
 /// is one control whatever its `T`, which it holds erased.
 ///
 /// ```
-/// use skene_terminal::{Radio, prelude::*};
+/// use skene_terminal::{behavior::Radio, prelude::*};
 ///
 /// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 /// enum Size {
@@ -170,7 +170,7 @@ impl<T: Choice> BasicRadioGroup<T> {
 /// one control whatever its `C`, which it holds erased.
 ///
 /// ```
-/// use skene_terminal::{BasicListbox, ListboxOption, prelude::*};
+/// use skene_terminal::{BasicListbox, behavior::ListboxOption, prelude::*};
 ///
 /// let fruit = Signal::new(Some(2));
 /// let listbox = BasicListbox::new()

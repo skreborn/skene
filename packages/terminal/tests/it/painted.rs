@@ -2,7 +2,7 @@
 //! graphics, then renders at its cells times the cell's pixels and is placed over
 //! them, cropped to the cells in view and left out under an open overlay.
 
-use skene_terminal::{self as terminal, Activate, kurbo::Rect, prelude::*, testing};
+use skene_terminal::{self as terminal, behavior::Activate, kurbo::Rect, prelude::*, testing};
 
 use crate::common::with_platform;
 

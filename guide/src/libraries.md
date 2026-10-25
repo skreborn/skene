@@ -88,6 +88,30 @@ impl SimpleCardBase<Active> for SimpleCard {}
 An app depends on the platform crates it shells for, and imports each one's prelude
 beside its facade's.
 
+## A control of its own
+
+A library's control is its facade's `Control` over a behavior. The shipped behaviors,
+and the `Behavior` trait a library's own implements with the `ControlHandle` and
+`ControlOps` it acts through, live in each facade's `behavior` module, so a library
+names them as an app does, and the facade's root keeps its names for the views:
+
+```rust
+use skene_web::{
+  behavior::{Slider, SliderRange},
+  prelude::*,
+};
+
+/// Acme's volume control: a slider from 0 to 11.
+pub fn volume(level: Signal<f32>) -> BasicSlider {
+  BasicSlider::new(
+    Slider::new()
+      .set_range(SliderRange::new(0., 11., 1.))
+      .bind_value(level),
+  )
+  .set_label("Volume")
+}
+```
+
 ## A platform's own property
 
 A property only one platform draws is a prefixed setter beside the shared ones, from

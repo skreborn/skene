@@ -16,7 +16,7 @@ use skene_web::Active;
 ///
 /// ```
 /// use skene_simple_web::prelude::*;
-/// use skene_web::{SliderRange, prelude::*};
+/// use skene_web::{behavior::SliderRange, prelude::*};
 ///
 /// let volume = Signal::new(50.);
 /// let slider = SimpleSlider::new()

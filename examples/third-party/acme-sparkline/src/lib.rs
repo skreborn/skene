@@ -1,32 +1,27 @@
 //! # acme-sparkline
 //!
 //! A third-party low-level view written against the terminal platform's escape trait: a
-//! [`Sparkline`] paints bar glyphs through [`CellPainter`] into an ordinary
-//! [`Container`] that sizes it, so it composes with wrappers, themes and events as a
-//! built-in does, and hands the same box a pixel painter through [`Painting`], so a
-//! terminal that proves a graphics protocol draws the bars at pixel height over the
-//! glyphs while every other terminal keeps the glyphs: the floor always stands and the
-//! upgrade arrives when the platform proves it, with nothing for the view's user to
-//! choose.
+//! [`Sparkline`] is a concrete view of the terminal's [`Active`], as a built-in is,
+//! painting bar glyphs through [`CellPainter`] into an ordinary [`Container`] that sizes
+//! it, so it composes with wrappers, themes and events as a built-in does, and handing
+//! the same box a pixel painter through [`Painting`], so a terminal that proves a
+//! graphics protocol draws the bars at pixel height over the glyphs while every other
+//! terminal keeps the glyphs: the floor always stands and the upgrade arrives when the
+//! platform proves it, with nothing for the view's user to choose.
 //!
 //! Built in the terminal's build alone: every other build compiles the crate empty.
 
 #![cfg(skene_platform = "terminal")]
 
-use std::marker::PhantomData;
-
-use skene_foundation::{
-  AnyKind,
+use skene_foundation::{AnyKind, NodeId, Painting, View, kurbo::Rect};
+use skene_terminal::{
+  Active,
   Color,
   Container,
+  ContainerBase,
   DecorationBase,
-  NodeId,
-  Painting,
-  Realization,
-  View,
-  kurbo::Rect,
+  platform::terminal::CellPainter,
 };
-use skene_terminal::platform::terminal::CellPainter;
 
 /// The bar glyphs, lowest to highest.
 const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
@@ -34,20 +29,18 @@ const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
 /// A row of bars, one cell per value, scaled to the values' range.
 #[derive(Debug)]
 #[must_use]
-pub struct Sparkline<P: Realization> {
+pub struct Sparkline {
   values: Vec<f32>,
   color: Option<Color>,
-  platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization> Sparkline<P> {
+impl Sparkline {
   /// A sparkline of `values`, one cell wide per value.
   #[inline(always)]
   pub fn new(values: impl IntoIterator<Item = f32>) -> Self {
     Self {
       values: values.into_iter().collect(),
       color: None,
-      platform: PhantomData,
     }
   }
 
@@ -61,17 +54,17 @@ impl<P: Realization> Sparkline<P> {
   }
 }
 
-impl<P: Realization> AnyKind for Sparkline<P> {}
+impl AnyKind for Sparkline {}
 
-impl<P: Realization<Scalar = i32> + CellPainter + Painting> View<P> for Sparkline<P> {
+impl View<Active> for Sparkline {
   fn build(self) -> NodeId {
     let width = i32::try_from(self.values.len()).unwrap_or(i32::MAX);
-    let node = Container::<P>::new().set_width(width).set_height(1).build();
+    let node = Container::new().set_width(width).set_height(1).build();
     let levels = levels(&self.values);
     let pixel_levels = levels.clone();
     let color = self.color;
 
-    <P as CellPainter>::paint(
+    <Active as CellPainter>::paint(
       node,
       Box::new(move |cells, _| {
         for (x, level) in levels.iter().enumerate() {
@@ -85,7 +78,7 @@ impl<P: Realization<Scalar = i32> + CellPainter + Painting> View<P> for Sparklin
         }
       }),
     );
-    <P as Painting>::paint(
+    <Active as Painting>::paint(
       node,
       Box::new(move |canvas, size| {
         let count = u32::try_from(pixel_levels.len().max(1)).unwrap_or(u32::MAX);

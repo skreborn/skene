@@ -6,12 +6,11 @@ use std::{
   rc::Rc,
 };
 
-use skene_foundation::{AnyKind, Children, FlexChild, Seal};
+use skene_foundation::{AnyKind, Children, FlexChild, Realization, Seal};
 use skene_terminal::{
   self as terminal,
   Definition,
   Length,
-  Realization,
   TextEntry,
   Token,
   TokenName,

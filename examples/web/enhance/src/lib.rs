@@ -12,7 +12,7 @@
 use std::time::Duration;
 
 use skene_simple_web::prelude::*;
-use skene_web::{Active, HasChild, Realization, kurbo::Rect, prelude::*};
+use skene_web::{HasChild, kurbo::Rect, prelude::*, schedule};
 
 #[main]
 fn app() -> impl View {
@@ -66,13 +66,10 @@ fn clock_card() -> impl View {
 
 /// Advances `seconds` once a second on the platform's clock.
 fn tick(seconds: Signal<u32>) {
-  let _ = Active::schedule(
-    Duration::from_secs(1),
-    Box::new(move || {
-      seconds.update(|count| *count += 1);
-      tick(seconds);
-    }),
-  );
+  let _ = schedule(Duration::from_secs(1), move || {
+    seconds.update(|count| *count += 1);
+    tick(seconds);
+  });
 }
 
 /// A painted stripe, over a description the server carries.

@@ -246,7 +246,6 @@ pub use skene_foundation::{
   Radio,
   RadioGroup,
   RadioGroupContext,
-  Realization,
   RichTextBase,
   Role,
   Roster,
@@ -272,6 +271,7 @@ pub use skene_foundation::{
   TextEntry,
   TextSelection,
   ThemeBase,
+  Timer,
   Toggle,
   TokenName,
   TokenRef,
@@ -400,4 +400,23 @@ impl Platform {
 #[cfg(skene_platform = "terminal")]
 pub fn spawn(future: impl Future<Output = ()> + 'static) -> skene_reactive::TaskHandle {
   skene_reactive::spawn(future)
+}
+
+/// Runs `action` once `delay` has passed on the platform's clock, unless the returned
+/// [`Timer`] is [`cancel`]led first.
+///
+/// The platform's clock as an app reaches it, the one a built-in's delay waits on (a
+/// tooltip's hover delay): the event loop's, the action running on the terminal thread
+/// once a frame reads it due, so it may touch signals and views directly. An in-process
+/// test steps the clock by hand ([`trigger_frame`](testing::trigger_frame)).
+#[cfg(skene_platform = "terminal")]
+pub fn schedule(delay: std::time::Duration, action: impl FnOnce() + 'static) -> Timer {
+  <Active as skene_foundation::Realization>::schedule(delay, Box::new(action))
+}
+
+/// Drops the action `timer` names, if it has not run.
+#[cfg(skene_platform = "terminal")]
+#[inline(always)]
+pub fn cancel(timer: Timer) {
+  <Active as skene_foundation::Realization>::cancel(timer);
 }

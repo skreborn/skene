@@ -1813,17 +1813,24 @@ Two guarantees, both properties of what is public rather than of any one API.
   view, and a crate per platform named.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait and realized through the same scene and node ids as a
-  `Container`, so it composes with wrappers, themes, conditions and events. A view
-  library covers every platform of its medium through a trait of its
-  own that each platform implements (`impl<P: MapHost> View<P> for Map<P>`), so an app
-  names no platform and writes no `cfg`; a blanket impl over one escape trait would allow
-  one per view type and push the cfgs into the app. Selecting the platform is what
-  selecting the facade already does. A platform's escape traits live in its facade's
-  `platform::<p>` module: `skene_web::platform::web::{WebDom, WebMarkup}` and
-  `skene_terminal::platform::terminal::CellPainter`. `acme-map` (a canvas on the browser
-  leaf through `WebDom`, a placeholder through `WebMarkup` before it and on the server)
-  and `acme-sparkline` (bars through `CellPainter`) are the standing proofs. The
-  portable low-level path for pixel media is `Painted`.
+  `Container`, so it composes with wrappers, themes, conditions and events. A view of a
+  platform of its own is concrete, as a built-in is: `acme-sparkline`'s `Sparkline` is a
+  `View<skene_terminal::Active>` with no parameter, building a sized `Container` and
+  handing the platform its cell painter (`<Active as CellPainter>::paint`) and its pixel
+  painter (`<Active as Painting>::paint`) for that one box, so an app writes
+  `Sparkline::new(..)` and names no platform. A view library over several platforms of
+  its medium covers them through a trait of its own that each platform implements
+  (`impl<P: MapHost> View<P> for Map<P>`, the web's two leaves), so an app names no
+  platform and writes no `cfg`; a blanket impl over one escape trait would allow one per
+  view type and push the cfgs into the app. Selecting the platform is what selecting the
+  facade already does. A platform's escape traits live in its facade's `platform::<p>`
+  module: `skene_web::platform::web::{WebDom, WebMarkup}` and
+  `skene_terminal::platform::terminal::CellPainter`, which has no `Realization`
+  supertrait, so a failed bound states its one rule, that cells are painted on the
+  terminal alone. `acme-map` (a canvas on the browser leaf through `WebDom`, a
+  placeholder through `WebMarkup` before it and on the server) and `acme-sparkline`
+  (bars through `CellPainter`, and as pixels where the terminal proves its graphics) are
+  the standing proofs. The portable low-level path for pixel media is `Painted`.
 - **A compositor platform's own view, through the native door, like a built-in
   control.** `LowLevel::adopt` makes the view an ordinary scene node, and where it holds
   a value the library registers a `ControlSink` of its own on the node, keys the value
@@ -1933,8 +1940,10 @@ rustflags and rustdocflags and the server leaf in `x86_64-unknown-linux-gnu`'s, 
 
 A facade is the one place allowed to name its platforms, which is why the shared
 platform-adjacent surface lives there: `launch`, `#[main]` (per-platform entry glue),
-`spawn`, `Deferred`, `client_only`, `media`, and the interactive-only wrappers. App code
-names no platform.
+`spawn`, `schedule` and `cancel`, `Deferred`, `client_only`, `media`, and the
+interactive-only wrappers. App code names no platform, and a facade re-exports no
+`Realization`: a low-level library or a test that implements or calls the seam takes it
+from `skene-foundation`.
 
 ## Async, data, and third parties
 
@@ -1944,10 +1953,11 @@ external crate can provide, and ships it as *public seams* so third-party integr
 sit on exactly the footing first-party ones would:
 
 - `spawn`—resume on the UI thread, scope-bound cancellation.
-- `Realization::schedule`—a one-shot action on the platform's clock, cancelled by the
-  `Timer` it returns: the window's timeout on the web, the loop's wait in the terminal,
-  fired under a test from the hand-stepped clock the test advances, and never on the
-  server.
+- `schedule`—a one-shot action on the platform's clock, a free function of each facade
+  beside `spawn` over the realization's own, cancelled by passing the `Timer` it returns
+  to `cancel`: the window's timeout on the web, the loop's wait in the terminal, fired
+  under a test from the hand-stepped clock the test advances, and never on the server. A
+  `sleep` future is the server leaf's alone (`platform::web::sleep`).
 - `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
   state that keeps the last value; the web facade's newtype adds hydration across the
   SSR boundary (`new` by order, `tagged` by tag, `client` opting out).

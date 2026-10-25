@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use skene_terminal::{Realization, platform::terminal::Terminal, testing};
+use skene_terminal::{self as terminal, testing};
 
 use crate::common::with_platform;
 
@@ -12,17 +12,17 @@ use crate::common::with_platform;
 fn due_actions_run_earliest_first() {
   with_platform(|| {
     let ran = Rc::new(RefCell::new(Vec::new()));
-    let action = |label: &'static str| -> Box<dyn FnOnce()> {
+    let action = |label: &'static str| {
       let ran = Rc::clone(&ran);
 
-      Box::new(move || ran.borrow_mut().push(label))
+      move || ran.borrow_mut().push(label)
     };
-    let _ = Terminal::schedule(Duration::from_secs(2), action("late"));
-    let _ = Terminal::schedule(Duration::from_secs(1), action("early"));
-    let cancelled = Terminal::schedule(Duration::from_secs(1), action("cancelled"));
-    let _ = Terminal::schedule(Duration::from_secs(5), action("later"));
+    let _ = terminal::schedule(Duration::from_secs(2), action("late"));
+    let _ = terminal::schedule(Duration::from_secs(1), action("early"));
+    let cancelled = terminal::schedule(Duration::from_secs(1), action("cancelled"));
+    let _ = terminal::schedule(Duration::from_secs(5), action("later"));
 
-    Terminal::cancel(cancelled);
+    terminal::cancel(cancelled);
     testing::trigger_frame(Duration::from_secs(3));
 
     assert_eq!(*ran.borrow(), ["early", "late"]);

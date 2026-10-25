@@ -99,7 +99,6 @@ pub use skene_terminal::Prevented
 pub use skene_terminal::Radio
 pub use skene_terminal::RadioGroup
 pub use skene_terminal::RadioGroupContext
-pub use skene_terminal::Realization
 pub use skene_terminal::Resource
 pub use skene_terminal::RichTextBase
 pub use skene_terminal::Role
@@ -132,6 +131,7 @@ pub use skene_terminal::TextDecorationStyle
 pub use skene_terminal::TextEntry
 pub use skene_terminal::TextSelection
 pub use skene_terminal::ThemeBase
+pub use skene_terminal::Timer
 pub use skene_terminal::Toggle
 pub use skene_terminal::TokenName
 pub use skene_terminal::TokenRef
@@ -352,7 +352,7 @@ pub fn skene_terminal::BasicRadioGroup<T>::build(self) -> skene_foundation::spin
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicRadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::BasicRadioGroup<T>
-pub trait skene_terminal::platform::terminal::CellPainter: skene_foundation::spine::realization::Realization
+pub trait skene_terminal::platform::terminal::CellPainter
 pub fn skene_terminal::platform::terminal::CellPainter::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 impl skene_terminal::platform::terminal::CellPainter for skene_terminal::platform::terminal::Terminal
 pub fn skene_terminal::platform::terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
@@ -1925,6 +1925,7 @@ pub fn V::build(self) -> skene_foundation::spine::node::NodeId where Self: core:
 pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
 pub fn V::set_key(self, impl core::hash::Hash) -> skene_terminal::Keyed<Self> where Self: core::marker::Sized
 pub fn skene_terminal::adopt_restoration()
+pub fn skene_terminal::cancel(skene_foundation::spine::realization::Timer)
 pub fn skene_terminal::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
 pub fn skene_terminal::derived(impl core::ops::function::Fn() -> skene_foundation::spine::node::NodeId + 'static) -> skene_foundation::spine::node::NodeId
@@ -1935,6 +1936,7 @@ pub fn skene_terminal::install_router<R: skene_foundation::routing::Route>(R) ->
 pub fn skene_terminal::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal>
 pub fn skene_terminal::mount(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId
 pub fn skene_terminal::reconcile<T, I, K>(skene_foundation::spine::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::spine::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
+pub fn skene_terminal::schedule(core::time::Duration, impl core::ops::function::FnOnce() + 'static) -> skene_foundation::spine::realization::Timer
 pub fn skene_terminal::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_terminal::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub fn skene_terminal::uninstall()

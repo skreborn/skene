@@ -12,7 +12,7 @@
 use std::time::Duration;
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{Active, HasChild, Realization, kurbo::Rect, prelude::*};
+use skene_terminal::{HasChild, kurbo::Rect, prelude::*, schedule};
 
 /// The page: a clock over its caption, and a picture over its description.
 #[main]
@@ -73,19 +73,16 @@ fn clock_card() -> impl View {
 
 /// Marks the first tick, then advances `seconds` once a second on the loop's clock.
 fn tick(ticked: Signal<bool>, seconds: Signal<u32>) {
-  let _ = Active::schedule(
-    Duration::from_secs(1),
-    Box::new(move || {
-      if ticked.get_untracked() {
-        seconds.update(|count| *count += 1);
-      }
-      else {
-        ticked.set(true);
-      }
+  let _ = schedule(Duration::from_secs(1), move || {
+    if ticked.get_untracked() {
+      seconds.update(|count| *count += 1);
+    }
+    else {
+      ticked.set(true);
+    }
 
-      tick(ticked, seconds);
-    }),
-  );
+    tick(ticked, seconds);
+  });
 }
 
 /// A picture painted where the terminal draws pixels, over the description standing

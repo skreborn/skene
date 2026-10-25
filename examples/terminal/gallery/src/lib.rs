@@ -7,7 +7,7 @@
 use std::fmt;
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{Active, Choice, HasChild, Resource, SliderRange, prelude::*};
+use skene_terminal::{Choice, HasChild, Resource, SliderRange, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the
@@ -536,7 +536,7 @@ fn third_party() -> impl View {
   section(
     "Third party",
     Row::new().set_spacing(2).set_children((
-      acme_sparkline::Sparkline::<Active>::new([3., 5., 4., 8., 6., 9., 7., 10., 6., 4., 5., 3.])
+      acme_sparkline::Sparkline::new([3., 5., 4., 8., 6., 9., 7., 10., 6., 4., 5., 3.])
         .set_color(Color::srgb(1., 0.62, 0.25)),
       Text::new("a sparkline painted cell by cell").set_color(SimplePalette::MUTED_FOREGROUND),
     )),

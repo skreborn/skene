@@ -52,11 +52,10 @@ in a code comment.
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.
     - No signature above the realizations names one, every `P: Realization` there
-    going: an app reaches the runtime through functions (`schedule`) rather than
-    `Active`, the low-level libraries are concrete views of their facade's realization
-    (`Sparkline` over the terminal's escape trait, `Map` through the web's
-    `NativeView`), the conformance suite's pages are written per facade, and Simple's
-    core and the library scaffold's core leave theirs with the Libraries bullet.
+    going: the web's low-level library is a concrete view of its facade's realization
+    (`Map` through the web's `NativeView`), the conformance suite's pages are written
+    per facade, and Simple's core and the library scaffold's core leave theirs with the
+    Libraries bullet.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.

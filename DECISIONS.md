@@ -8,6 +8,15 @@ supersedes.
 
 ## Decided against
 
+- **A `sleep` future on every facade** (2026-10-25), beside `spawn`, so an async task
+  could wait on the platform's clock: timers are userland, and the framework ships only
+  the seam no crate can provide, a one-shot action on the platform's clock, which each
+  facade exports as `schedule` and `cancel` over the realization's own. A future that
+  waits on it is a few lines of a library's. The exceptions stand where a platform owns
+  the loop a timer runs in: the server leaf's executor keeps its `sleep`
+  (`platform::web::sleep`), bounding a render, and a platform owning its event loop may
+  ship a loop-integrated timer. Revisit with the loop-integrated timer of the event loop
+  item (item 2).
 - **Refusing a derived view in a crate reaching both facades** (2026-10-25), as a
   crate reaching neither is refused: the documents' example crates (`guide`,
   `readme`) depend on both facades, and the guide's libraries chapter derives `View`

@@ -253,8 +253,10 @@ and states what it needs from a medium as a bound on the platform's associated t
 each platform's crate declares a newtype per view over the core's. A low-level view is written
 against a platform's escape trait, in its facade's `platform::<p>` module
 (`skene_web::platform::web::{WebDom, WebMarkup}`,
-`skene_terminal::platform::terminal::CellPainter`), and realized through the same scene
-as a built-in; `Painted` is the portable one for pixels, a
+`skene_terminal::platform::terminal::CellPainter`), takes the `Realization` seam from
+`skene-foundation` where it needs it, since a facade re-exports none, and is realized
+through the same scene as a built-in, a concrete view of its facade's `Active` where it
+serves one platform (`acme_sparkline::Sparkline`); `Painted` is the portable one for pixels, a
 vello scene the platform renders, the web on the CPU or, with `skene-web`'s `gpu`
 feature, on the GPU where the page has WebGPU, and the terminal through the kitty
 graphics protocol where it proves one. `examples/third-party` shows both escape paths: `acme-map` (a canvas

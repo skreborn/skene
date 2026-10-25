@@ -99,7 +99,6 @@ pub use skene_web::Prevented
 pub use skene_web::Radio
 pub use skene_web::RadioGroup
 pub use skene_web::RadioGroupContext
-pub use skene_web::Realization
 pub use skene_web::RichTextBase
 pub use skene_web::Role
 pub use skene_web::Roster
@@ -125,6 +124,7 @@ pub use skene_web::TextDecorationStyle
 pub use skene_web::TextEntry
 pub use skene_web::TextSelection
 pub use skene_web::ThemeBase
+pub use skene_web::Timer
 pub use skene_web::Toggle
 pub use skene_web::TokenName
 pub use skene_web::TokenRef
@@ -1742,6 +1742,7 @@ impl<V: skene_foundation::spine::view::View<skene_web::Active>> skene_web::View 
 pub fn V::build(self) -> skene_foundation::spine::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_web::AnyView where Self: core::marker::Sized
 pub fn V::set_key(self, impl core::hash::Hash) -> skene_web::Keyed<Self> where Self: core::marker::Sized
+pub fn skene_web::cancel(skene_foundation::spine::realization::Timer)
 pub fn skene_web::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_web::client_only(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId + 'static) -> impl skene_web::View
 pub fn skene_web::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
@@ -1751,6 +1752,7 @@ pub fn skene_web::install_router<R: skene_foundation::routing::Route>(R) -> sken
 pub fn skene_web::install_static_router<R: skene_foundation::routing::StaticRoutes>(R) -> skene_foundation::routing::Router<R>
 pub fn skene_web::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_web::View
 pub fn skene_web::reconcile<T, I, K>(skene_foundation::spine::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::spine::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
+pub fn skene_web::schedule(core::time::Duration, impl core::ops::function::FnOnce() + 'static) -> skene_foundation::spine::realization::Timer
 pub fn skene_web::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_web::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub type skene_web::Active = skene_web::platform::web::Web

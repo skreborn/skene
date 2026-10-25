@@ -15,7 +15,6 @@ use skene_terminal::{
   Activate,
   BasicListbox,
   Behavior,
-  Listbox,
   ListboxOption,
   NativeElement,
   NodeId,
@@ -23,7 +22,6 @@ use skene_terminal::{
   Popup,
   Prevent,
   Radio,
-  RadioGroup,
   Slider,
   SliderRange,
   TextEntry,
@@ -206,7 +204,7 @@ fn checkbox_labels_render_and_toggle() {
 #[test]
 fn radio_group_moves_the_check() {
   with_platform(|| {
-    let choice = Signal::new(Some("a".to_owned()));
+    let choice = Signal::new("a");
 
     let _ = terminal::mount(|| {
       SimpleRadioGroup::new()
@@ -236,7 +234,7 @@ fn radio_group_moves_the_check() {
 
     let frame = testing::render_to_text(8, 3);
 
-    assert_eq!(choice.get_untracked().as_deref(), Some("c"));
+    assert_eq!(choice.get_untracked(), "c");
     assert!(
       line(&frame, row_c).contains("(x)"),
       "the check moved: {frame}"
@@ -1289,7 +1287,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
 #[test]
 fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
   with_platform(|| {
-    let chosen: Signal<Option<String>> = Signal::new(None);
+    let chosen: Signal<Option<&str>> = Signal::new(None);
     let items = Signal::new(vec!["a", "b"]);
     let (before, after) = (NodeHandle::new(), NodeHandle::new());
 
@@ -1299,13 +1297,13 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
           BasicButton::new(Activate::new())
             .set_label("before")
             .bind_handle(before),
-          BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen)).set_child(
-            Column::new().derive_children(
+          BasicRadioGroup::new()
+            .bind_chosen(chosen)
+            .set_child(Column::new().derive_children(
               move || items.get(),
               |item| *item,
-              |item| BasicRadio::new(Radio::new(item)).set_label(item),
-            ),
-          ),
+              |item| BasicRadio::new(Radio::new(Some(item))).set_label(item),
+            )),
           BasicButton::new(Activate::new())
             .set_label("after")
             .bind_handle(after),
@@ -1327,19 +1325,19 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
 
     user::click(radio("b"));
 
-    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert_eq!(chosen.get_untracked(), Some("b"));
     assert!(is_checked(radio("b")));
     assert!(!is_checked(radio("a")));
     assert_eq!(stop_after(before), Some(radio("b")));
 
     testing::trigger_key("ArrowRight");
 
-    assert_eq!(chosen.get_untracked().as_deref(), Some("a"));
+    assert_eq!(chosen.get_untracked(), Some("a"));
     assert_eq!(testing::focused_node(), Some(radio("a")));
 
     testing::trigger_key("ArrowUp");
 
-    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert_eq!(chosen.get_untracked(), Some("b"));
     assert_eq!(testing::focused_node(), Some(radio("b")));
 
     chosen.set(None);
@@ -1353,7 +1351,7 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
 
     testing::trigger_key("ArrowLeft");
 
-    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert_eq!(chosen.get_untracked(), Some("b"));
     assert_eq!(testing::focused_node(), Some(radio("b")));
 
     before.focus();
@@ -1374,7 +1372,7 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
 #[test]
 fn a_radio_group_passes_over_its_disabled_members() {
   with_platform(|| {
-    let chosen: Signal<Option<String>> = Signal::new(None);
+    let chosen: Signal<Option<&str>> = Signal::new(None);
     let second_disabled = Signal::new(false);
     let before = NodeHandle::new();
 
@@ -1384,15 +1382,15 @@ fn a_radio_group_passes_over_its_disabled_members() {
           BasicButton::new(Activate::new())
             .set_label("before")
             .bind_handle(before),
-          BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen)).set_child(
+          BasicRadioGroup::new().bind_chosen(chosen).set_child(
             Column::new().set_children((
-              BasicRadio::new(Radio::new("a"))
+              BasicRadio::new(Radio::new(Some("a")))
                 .set_label("a")
                 .set_disabled(true),
-              BasicRadio::new(Radio::new("b"))
+              BasicRadio::new(Radio::new(Some("b")))
                 .set_label("b")
                 .derive_disabled(move || second_disabled.get()),
-              BasicRadio::new(Radio::new("c")).set_label("c"),
+              BasicRadio::new(Radio::new(Some("c"))).set_label("c"),
             )),
           ),
         ))
@@ -1407,11 +1405,11 @@ fn a_radio_group_passes_over_its_disabled_members() {
 
     testing::trigger_key("ArrowDown");
 
-    assert_eq!(chosen.get_untracked().as_deref(), Some("c"));
+    assert_eq!(chosen.get_untracked(), Some("c"));
 
     testing::trigger_key("ArrowDown");
 
-    assert_eq!(chosen.get_untracked().as_deref(), Some("b"));
+    assert_eq!(chosen.get_untracked(), Some("b"));
 
     second_disabled.set(true);
 
@@ -1424,13 +1422,13 @@ fn a_radio_group_passes_over_its_disabled_members() {
 #[test]
 fn a_listbox_skips_disabled_options_and_tab_chooses_nothing() {
   with_platform(|| {
-    let chosen: Signal<Option<String>> = Signal::new(None);
+    let chosen: Signal<Option<&str>> = Signal::new(None);
     let after = NodeHandle::new();
 
     let _ = terminal::mount(move || {
       Column::new()
         .set_children((
-          BasicListbox::new(Listbox::new().bind_chosen(chosen)).set_child(
+          BasicListbox::new().bind_chosen(chosen).set_child(
             Column::new().set_children((
               BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),
               BasicListboxOption::new(ListboxOption::new("b"))

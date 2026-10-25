@@ -3,9 +3,20 @@
 
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, use_context};
+use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, untrack, use_context};
 
-use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster, TypeAhead};
+use super::{
+  AnyChoice,
+  AnyChosen,
+  Behavior,
+  Choice,
+  Chosen,
+  ControlHandle,
+  ControlledChoice,
+  LabelPlacement,
+  Roster,
+  TypeAhead,
+};
 use crate::{
   AccessProp,
   CheckState,
@@ -124,10 +135,10 @@ impl CollectionPolicy for MenuPolicy {
 /// Members may sit at any depth under the collection and still belong to it.
 #[must_use]
 pub struct CollectionContext<C: CollectionPolicy> {
-  chosen: Rc<dyn Fn() -> Option<String>>,
-  choose: Rc<dyn Fn(String)>,
+  chosen: Rc<dyn Fn() -> AnyChosen>,
+  choose: Rc<dyn Fn(AnyChosen)>,
   roster: Roster,
-  tab_stop: Memo<Option<String>>,
+  tab_stop: Memo<Option<AnyChoice>>,
   type_ahead: Rc<TypeAhead>,
   commit_on_tab: bool,
   policy: PhantomData<C>,
@@ -156,15 +167,15 @@ impl<C: CollectionPolicy> std::fmt::Debug for CollectionContext<C> {
 }
 
 impl<C: CollectionPolicy> CollectionContext<C> {
-  /// A group whose members join `roster` under `P`'s scene, answering `chosen` for the
-  /// chosen value and asking `choose` for a choice; provided as context by a control
+  /// A group whose members join `roster` under `P`'s scene, answering `chosen` for what
+  /// is chosen and asking `choose` for a choice; provided as context by a control
   /// holding members, its tab stop a memo owned by the current owner.
   pub fn new<P: Realization>(
-    chosen: impl Fn() -> Option<String> + 'static,
-    choose: impl Fn(String) + 'static,
+    chosen: impl Fn() -> AnyChosen + 'static,
+    choose: impl Fn(AnyChosen) + 'static,
     roster: Roster,
   ) -> Self {
-    let chosen: Rc<dyn Fn() -> Option<String>> = Rc::new(chosen);
+    let chosen: Rc<dyn Fn() -> AnyChosen> = Rc::new(chosen);
     let tab_stop = roster.tab_stop::<P>({
       let chosen = Rc::clone(&chosen);
 
@@ -191,16 +202,28 @@ impl<C: CollectionPolicy> CollectionContext<C> {
     self
   }
 
-  /// The chosen member's value, tracked.
+  /// What is chosen, tracked.
   #[inline(always)]
   #[must_use]
-  pub fn chosen(&self) -> Option<String> {
+  pub fn chosen(&self) -> AnyChosen {
     (self.chosen)()
   }
 
-  /// Asks for `value` to be chosen.
-  pub fn choose(&self, value: impl Into<String>) {
-    (self.choose)(value.into());
+  /// Whether `value` is chosen, tracked.
+  #[must_use]
+  pub fn is_chosen(&self, value: &AnyChoice) -> bool {
+    self.chosen().contains(value)
+  }
+
+  /// Whether `value` is of the type the collection's options carry.
+  #[must_use]
+  pub fn accepts(&self, value: &AnyChoice) -> bool {
+    untrack(|| self.chosen()).accepts(value)
+  }
+
+  /// Asks for what is chosen once the reader chooses `value`.
+  pub fn choose(&self, value: &AnyChoice) {
+    (self.choose)(untrack(|| self.chosen()).choosing(value));
   }
 
   /// The members, in tree order.
@@ -213,15 +236,15 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// Whether `value` is the collection's one tab stop: the chosen member when it is
   /// enabled, else the first enabled one.
   #[must_use]
-  pub fn is_tab_stop(&self, value: &str) -> bool {
-    self.tab_stop.with(|stop| stop.as_deref() == Some(value))
+  pub fn is_tab_stop(&self, value: &AnyChoice) -> bool {
+    self.tab_stop.with(|stop| stop.as_ref() == Some(value))
   }
 
   /// Moves to the enabled member `step` places from the one holding `value`, wrapping
   /// or stopping at the ends as the policy says, `isize::MIN` and `isize::MAX`
   /// reaching the first and the last: focuses it, and chooses it where the policy
   /// says a move does.
-  pub fn step_from<P: Realization>(&self, value: &str, step: isize) {
+  pub fn step_from<P: Realization>(&self, value: &AnyChoice, step: isize) {
     let members = self.roster.enabled::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
@@ -240,7 +263,7 @@ impl<C: CollectionPolicy> CollectionContext<C> {
     };
 
     if C::CHOOSES_ON_MOVE {
-      self.choose(value);
+      self.choose(&value);
     }
 
     P::focus(node);
@@ -249,13 +272,12 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// Feeds a key typed on the member holding `value` into the collection's type-ahead
   /// and focuses the member its buffer picks; `false` for a key that is no character.
   #[must_use]
-  pub fn type_ahead_from<P: Realization>(&self, value: &str, event: &KeyEvent) -> bool {
+  pub fn type_ahead_from<P: Realization>(&self, value: &AnyChoice, event: &KeyEvent) -> bool {
     let Some(buffer) = self.type_ahead.typed::<P>(event)
     else {
       return false;
     };
-
-    if let Some(index) = self.roster.typed::<P>(&buffer, Some(value)) {
+    if let Some(index) = self.roster.typed::<P>(&buffer, |held| held == value) {
       self.roster.focus_at::<P>(index);
     }
 
@@ -266,18 +288,22 @@ impl<C: CollectionPolicy> CollectionContext<C> {
 /// A collection of members under a [`CollectionPolicy`]: a radio group, a listbox or a
 /// menu, its members one tab stop.
 ///
-/// Controlled: the chosen member's value is what [`derive_chosen`](Self::derive_chosen)
-/// reads, and choosing only calls [`handle_choose`](Self::handle_choose) with the value
-/// asked for; [`bind_chosen`](Self::bind_chosen) wires both to one signal. Choosing a
-/// menu's member runs it. A collection whose members stand in a native toggle, a radio
-/// group, writes the chosen value as its [`Chosen`](crate::Content::Chosen) content,
-/// which a [`Controller`] holds: a choice the platform reports on a member asks for it,
-/// and one the truth then refuses is undone by the write of the chosen key. The
-/// collection takes no focus of its own; its members are [`Member`] controls under the
-/// same policy, at any depth inside it, tracked by its [`roster`](Self::roster).
+/// Controlled: what is chosen is what [`derive_chosen`](Self::derive_chosen) reads, and
+/// choosing only calls [`handle_choose`](Self::handle_choose) with what a choice asks
+/// for; [`bind_chosen`](Self::bind_chosen) wires both to one signal. Each takes a
+/// [`Chosen`] of the members' values, an `Option<T>` for one choice, the members being
+/// tagged with `T`s, and holds it erased, so the collection itself is one type whatever
+/// the app's. Choosing a menu's member runs it. A collection whose members stand in a
+/// native toggle, a radio group, writes the key of its chosen member as its
+/// [`Chosen`](crate::Content::Chosen) content, which a [`Controller`] holds: a choice
+/// the platform reports on a member asks for that member's value, a key no member goes
+/// by asks nothing, and a choice the truth then refuses is undone by the write of the
+/// chosen key. The collection takes no focus of its own; its members are [`Member`]
+/// controls under the same policy, at any depth inside it, tracked by its
+/// [`roster`](Self::roster).
 #[must_use]
 pub struct Collection<C: CollectionPolicy> {
-  chosen: Controlled<Option<String>>,
+  chosen: ControlledChoice,
   roster: Roster,
   commit_on_tab: bool,
   policy: PhantomData<C>,
@@ -295,7 +321,7 @@ impl<C: CollectionPolicy> Collection<C> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      chosen: Controlled::new(),
+      chosen: ControlledChoice::new(),
       roster: Roster::new(),
       commit_on_tab: false,
       policy: PhantomData,
@@ -327,34 +353,30 @@ impl<C: CollectionPolicy> Collection<C> {
     &self.roster
   }
 
-  /// Sets the chosen member's value.
-  pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
-    self.chosen.set(Some(chosen.into()));
+  /// Sets what is chosen.
+  pub fn set_chosen<K: Chosen>(mut self, chosen: K) -> Self {
+    self.chosen.set(chosen);
 
     self
   }
 
-  /// Derives the chosen member's value from the signals `chosen` reads.
-  pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
+  /// Derives what is chosen from the signals `chosen` reads.
+  pub fn derive_chosen<K: Chosen>(mut self, chosen: impl Fn() -> K + 'static) -> Self {
     self.chosen.derive(chosen);
 
     self
   }
 
-  /// Runs `action` with the value a choice asks for.
-  pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.chosen.handle(move |value: Option<String>| {
-      if let Some(value) = value {
-        action(value);
-      }
-    });
+  /// Runs `action` with what a choice asks for.
+  pub fn handle_choose<K: Chosen>(mut self, action: impl Fn(K) + 'static) -> Self {
+    self.chosen.handle(action);
 
     self
   }
 
-  /// Binds the chosen value to `signal` in both directions.
+  /// Binds what is chosen to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_chosen(mut self, signal: Signal<Option<String>>) -> Self {
+  pub fn bind_chosen<K: Chosen>(mut self, signal: Signal<K>) -> Self {
     self.chosen.bind(signal);
 
     self
@@ -392,25 +414,22 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
 
     if C::MEMBER_NATIVE.is_some() {
       let (chosen, asks) = (self.chosen.clone(), self.chosen.clone());
+      let (keys, values) = (roster.clone(), roster.clone());
 
       control.register(Controller::new(
         contents::CHOSEN,
-        move || chosen.read().flatten().map(Rc::from),
+        move || keys.key_of(&chosen.read()),
         move |proposed: &Option<Rc<str>>| {
-          if let Some(key) = proposed {
-            asks.ask(Some(key.to_string()));
+          if let Some(value) = proposed.as_deref().and_then(|key| values.value_of(key)) {
+            asks.choose(&value);
           }
         },
       ));
     }
 
     provide_context(
-      CollectionContext::<C>::new::<P>(
-        move || chosen.read().flatten(),
-        move |value| choose.ask(Some(value)),
-        roster,
-      )
-      .set_commit_on_tab(self.commit_on_tab),
+      CollectionContext::<C>::new::<P>(move || chosen.read(), move |next| choose.ask(next), roster)
+        .set_commit_on_tab(self.commit_on_tab),
     );
   }
 
@@ -421,47 +440,48 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
 }
 
 /// One member of a [`Collection`] under the same policy: a radio choice, a listbox
-/// option or a menu item.
+/// option or a menu item, tagged with a value of the app's own type.
 ///
 /// A click or `Space` chooses it, and `Enter` in a list; an arrow moves to an enabled
 /// neighbour, choosing it where the policy says a move does; in a list `Home` and `End`
-/// reach the ends and a typed character the member the type-ahead picks; and it is the
-/// collection's tab stop while it is chosen or, with nothing chosen, while first.
+/// reach the ends and a typed character the member the type-ahead picks by the name its
+/// label supplies; and it is the collection's tab stop while it is chosen or, with
+/// nothing chosen, while first. A member tagged with a value of another type than its
+/// collection's options carry is a debug assertion.
 ///
-/// Its state reads its collection's chosen value, tracked. A member standing in a native
-/// toggle writes its collection and its value as its
-/// [`Membership`](crate::Content::Membership) content, so the platform groups the
-/// collection's members as one and checks the one its chosen key names. Outside a
-/// collection it reports its role, is never chosen and takes focus like any control, a
-/// native one holding its [`Checked`](crate::Content::Checked) content unchecked.
+/// Its state reads its collection's choice, tracked. A member standing in a native
+/// toggle writes its collection and the key it goes by there, its ordinal in the
+/// collection's [`Roster`], as its [`Membership`](crate::Content::Membership) content,
+/// so the platform groups the collection's members as one and checks the one its chosen
+/// key names. Outside a collection it reports its role, is never chosen and takes focus
+/// like any control, a native one holding its [`Checked`](crate::Content::Checked)
+/// content unchecked.
 #[must_use]
 pub struct Member<C: CollectionPolicy> {
-  value: String,
+  value: AnyChoice,
   collection: RefCell<Option<CollectionContext<C>>>,
 }
 
 impl<C: CollectionPolicy> std::fmt::Debug for Member<C> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter
-      .debug_struct("Member")
-      .field("value", &self.value)
-      .finish_non_exhaustive()
+    formatter.debug_struct("Member").finish_non_exhaustive()
   }
 }
 
 impl<C: CollectionPolicy> Member<C> {
-  /// A member carrying `value`, the string the collection reports when it is chosen.
-  pub fn new(value: impl Into<String>) -> Self {
+  /// A member tagged with `value`, what its collection is asked to choose when it is
+  /// chosen.
+  pub fn new(value: impl Choice) -> Self {
     Self {
-      value: value.into(),
+      value: AnyChoice::new(value),
       collection: RefCell::new(None),
     }
   }
 
-  /// The value this member carries.
+  /// The value this member is tagged with.
   #[inline(always)]
   #[must_use]
-  pub fn value(&self) -> &str {
+  pub const fn value(&self) -> &AnyChoice {
     &self.value
   }
 
@@ -475,7 +495,7 @@ impl<C: CollectionPolicy> Member<C> {
   fn is_chosen(&self) -> bool {
     self
       .collection()
-      .is_some_and(|group| group.chosen().as_deref() == Some(self.value.as_str()))
+      .is_some_and(|group| group.is_chosen(&self.value))
   }
 }
 
@@ -510,13 +530,17 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     };
     let node = control.node();
 
-    group.roster.join(
+    debug_assert!(
+      group.accepts(&self.value),
+      "a member is tagged with a value of the type its collection's options carry"
+    );
+
+    let key = group.roster.join(
       node,
       self.value.clone(),
       control.name_read(),
       control.disabled_read(),
     );
-
     let roster = group.roster.clone();
 
     on_cleanup(move || roster.leave(node));
@@ -524,7 +548,7 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     if C::MEMBER_NATIVE.is_some()
       && let Some(root) = group.roster.root()
     {
-      contents::MEMBERSHIP.write::<P>(node, &Membership::new(root, Rc::from(self.value.as_str())));
+      contents::MEMBERSHIP.write::<P>(node, &Membership::new(root, key));
     }
 
     *self.collection.borrow_mut() = Some(group);
@@ -533,7 +557,7 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
 
   fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     if let Some(group) = self.collection() {
-      group.choose(self.value.clone());
+      group.choose(&self.value);
     }
 
     Prevent::Bubbling
@@ -544,19 +568,20 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     else {
       return Prevent::None;
     };
-    let typed = || C::LISTS && group.type_ahead_from::<P>(&self.value, event);
+    let value = &self.value;
+    let typed = || C::LISTS && group.type_ahead_from::<P>(value, event);
 
     match &event.key {
-      Key::Named(NamedKey::ArrowDown) => group.step_from::<P>(&self.value, 1),
-      Key::Named(NamedKey::ArrowUp) => group.step_from::<P>(&self.value, -1),
-      Key::Named(NamedKey::ArrowRight) if C::HORIZONTAL => group.step_from::<P>(&self.value, 1),
-      Key::Named(NamedKey::ArrowLeft) if C::HORIZONTAL => group.step_from::<P>(&self.value, -1),
-      Key::Named(NamedKey::Home) if C::LISTS => group.step_from::<P>(&self.value, isize::MIN),
-      Key::Named(NamedKey::End) if C::LISTS => group.step_from::<P>(&self.value, isize::MAX),
-      Key::Named(NamedKey::Enter) if C::LISTS => group.choose(self.value.clone()),
-      Key::Character(text) if text == " " && !typed() => group.choose(self.value.clone()),
+      Key::Named(NamedKey::ArrowDown) => group.step_from::<P>(value, 1),
+      Key::Named(NamedKey::ArrowUp) => group.step_from::<P>(value, -1),
+      Key::Named(NamedKey::ArrowRight) if C::HORIZONTAL => group.step_from::<P>(value, 1),
+      Key::Named(NamedKey::ArrowLeft) if C::HORIZONTAL => group.step_from::<P>(value, -1),
+      Key::Named(NamedKey::Home) if C::LISTS => group.step_from::<P>(value, isize::MIN),
+      Key::Named(NamedKey::End) if C::LISTS => group.step_from::<P>(value, isize::MAX),
+      Key::Named(NamedKey::Enter) if C::LISTS => group.choose(value),
+      Key::Character(text) if text == " " && !typed() => group.choose(value),
       Key::Named(NamedKey::Tab) if group.commit_on_tab => {
-        group.choose(self.value.clone());
+        group.choose(value);
 
         return Prevent::None;
       }

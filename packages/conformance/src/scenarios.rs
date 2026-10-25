@@ -11,13 +11,13 @@ use skene_foundation::{
   BasicListboxOption,
   BasicPicker,
   BasicRadio,
-  BasicRadioGroup,
   BasicSlider,
   BasicTextField,
   Column,
   Container,
   ContainerBase,
   ContextMenu,
+  Control,
   DecorationBase,
   FlexBase,
   FocusOrder,
@@ -372,21 +372,61 @@ fn read_only_field_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
     .into_any()
 }
 
+/// The size a radio group chooses.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Fit {
+  Small,
+  Medium,
+  Large,
+}
+
+impl Fit {
+  /// The probe's text for the size.
+  const fn probe(self) -> &'static str {
+    match self {
+      Self::Small => "s",
+      Self::Medium => "m",
+      Self::Large => "l",
+    }
+  }
+}
+
+/// A letter a picker chooses.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Letter {
+  Alpha,
+  Bravo,
+  Charlie,
+}
+
+impl Letter {
+  /// The letter's name, which is also the probe's text for it.
+  const fn name(self) -> &'static str {
+    match self {
+      Self::Alpha => "a",
+      Self::Bravo => "b",
+      Self::Charlie => "c",
+    }
+  }
+}
+
 /// A radio group named Size of Small, Medium and Large, its choice bound to `chosen`
 /// (empty while nothing is chosen), above a button named Next.
 fn radio_group_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
-  let chosen: Signal<Option<String>> = Signal::new(None);
+  let chosen: Signal<Option<Fit>> = Signal::new(None);
 
-  probes.publish("chosen", move || chosen.get().unwrap_or_default());
+  probes.publish("chosen", move || {
+    chosen.get().map(Fit::probe).unwrap_or_default().to_owned()
+  });
 
   Column::<P>::new()
     .set_children((
-      BasicRadioGroup::<P>::new(RadioGroup::new().bind_chosen(chosen))
+      Control::<P, _>::new(RadioGroup::new().bind_chosen(chosen))
         .set_accessible_name("Size")
         .set_child(Column::new().set_children((
-          BasicRadio::new(Radio::new("s")).set_label("Small"),
-          BasicRadio::new(Radio::new("m")).set_label("Medium"),
-          BasicRadio::new(Radio::new("l")).set_label("Large"),
+          BasicRadio::new(Radio::new(Fit::Small)).set_label("Small"),
+          BasicRadio::new(Radio::new(Fit::Medium)).set_label("Medium"),
+          BasicRadio::new(Radio::new(Fit::Large)).set_label("Large"),
         ))),
       button::<P>("Next"),
     ))
@@ -407,20 +447,23 @@ fn slider_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
 /// A picker named Letter of a, b and c, its choice bound to `chosen`, above a button
 /// named Elsewhere.
 fn picker_page<P: Realization>(probes: &mut Probes) -> AnyView<P> {
-  let chosen = Signal::new("b".to_owned());
+  let chosen = Signal::new(Letter::Bravo);
 
-  probes.publish("chosen", move || chosen.get());
+  probes.publish("chosen", move || chosen.get().name().to_owned());
 
   Column::<P>::new()
     .set_children((
-      BasicPicker::<P>::new()
+      BasicPicker::<P, _>::new()
         .bind_chosen(chosen)
         .set_label("Letter")
         .set_options(
-          ["a", "b", "c"]
-            .map(|letter| BasicListboxOption::new(ListboxOption::new(letter)).set_label(letter)),
+          [Letter::Alpha, Letter::Bravo, Letter::Charlie].map(|letter| {
+            BasicListboxOption::new(ListboxOption::new(letter)).set_label(letter.name())
+          }),
         )
-        .set_face(|shown| Text::derive(move || shown.get())),
+        .set_face(|shown| {
+          Text::derive(move || shown.get().map(Letter::name).unwrap_or_default().to_owned())
+        }),
       button::<P>("Elsewhere"),
     ))
     .into_any()

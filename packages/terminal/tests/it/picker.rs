@@ -19,14 +19,14 @@ use skene_terminal::{
 
 use crate::common::{colors_at, locate, read, with_platform};
 
-fn picker(unit: Signal<String>) -> SimplePicker {
+fn picker(unit: Signal<&'static str>) -> SimplePicker<&'static str> {
   SimplePicker::new()
     .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
     .bind_chosen(unit)
 }
 
 /// Mounts a picker bound to `unit` at the top of the frame.
-fn mount_picker(unit: Signal<String>) {
+fn mount_picker(unit: Signal<&'static str>) {
   let _ = terminal::mount(|| Column::new().add_child(picker(unit)).build());
 }
 
@@ -47,7 +47,7 @@ fn last_row(frame: &str, needle: &str) -> Option<u16> {
 #[test]
 fn picker_opens_a_popup_and_selects_by_click() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     mount_picker(unit);
 
@@ -102,7 +102,7 @@ fn picker_opens_a_popup_and_selects_by_click() {
 #[test]
 fn picker_popup_navigates_without_committing() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     mount_picker(unit);
     let _ = testing::render_to_text(20, 10);
@@ -131,7 +131,7 @@ fn picker_popup_navigates_without_committing() {
 #[test]
 fn picker_arrows_open_the_list_and_home_and_end_reach_its_ends() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     mount_picker(unit);
     let _ = testing::render_to_text(20, 10);
@@ -162,7 +162,7 @@ fn picker_arrows_open_the_list_and_home_and_end_reach_its_ends() {
 #[test]
 fn picker_popup_anchors_beneath_and_closes_on_blur() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     let _ = terminal::mount(|| {
       Column::new()
@@ -210,7 +210,7 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
 #[test]
 fn picker_tab_commits_closes_and_travels_on() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
     let next = NodeHandle::new();
 
     let _ = terminal::mount(move || {
@@ -261,7 +261,7 @@ fn picker_tab_commits_closes_and_travels_on() {
 #[test]
 fn picker_type_ahead_chooses_closed_and_focuses_open() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     mount_picker(unit);
     let _ = testing::render_to_text(20, 10);
@@ -304,7 +304,7 @@ fn picker_type_ahead_chooses_closed_and_focuses_open() {
 #[test]
 fn a_press_on_an_open_pickers_face_closes_it() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     mount_picker(unit);
     let _ = testing::render_to_text(20, 12);
@@ -341,7 +341,7 @@ fn a_press_on_an_open_pickers_face_closes_it() {
 #[test]
 fn a_pickers_face_keeps_its_ring_while_open() {
   with_platform(|| {
-    let unit = Signal::new("px".to_owned());
+    let unit = Signal::new("px");
 
     mount_picker(unit);
 
@@ -376,7 +376,7 @@ fn a_pickers_face_keeps_its_ring_while_open() {
 #[test]
 fn picker_marks_the_chosen_row_alone() {
   with_platform(|| {
-    let unit = Signal::new("cell".to_owned());
+    let unit = Signal::new("cell");
 
     mount_picker(unit);
 
@@ -393,7 +393,7 @@ fn picker_marks_the_chosen_row_alone() {
 
 /// A picker named "Size" bound to `value`, over the options `a`, `b` and `c`, its face
 /// showing the chosen value.
-fn size_picker(value: Signal<String>) -> BasicPicker {
+fn size_picker(value: Signal<&'static str>) -> BasicPicker<&'static str> {
   BasicPicker::new()
     .bind_chosen(value)
     .set_label("Size")
@@ -401,12 +401,12 @@ fn size_picker(value: Signal<String>) -> BasicPicker {
       ["a", "b", "c"]
         .map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
     )
-    .set_face(|shown| Text::derive(move || shown.get()))
+    .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned()))
 }
 
 /// A picker named "Fruit" bound to `value`, its options named apart from their values
 /// for type-ahead: `Label::set_name` supplies the name the characters match.
-fn fruit_picker(value: Signal<String>) -> BasicPicker {
+fn fruit_picker(value: Signal<&'static str>) -> BasicPicker<&'static str> {
   BasicPicker::new()
     .bind_chosen(value)
     .set_label("Fruit")
@@ -416,12 +416,12 @@ fn fruit_picker(value: Signal<String>) -> BasicPicker {
           .set_label(Label::new(Text::new(name)).set_name(name))
       }),
     )
-    .set_face(|shown| Text::derive(move || shown.get()))
+    .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned()))
 }
 
 /// Mounts `picker` above a button, inside a box whose key handler logs the keys that
 /// climb to it, and returns the log.
-fn mount_logged(picker: BasicPicker) -> Rc<RefCell<Vec<String>>> {
+fn mount_logged(picker: BasicPicker<&'static str>) -> Rc<RefCell<Vec<String>>> {
   let heard = Rc::new(RefCell::new(Vec::new()));
   let log = Rc::clone(&heard);
 
@@ -479,7 +479,7 @@ fn shown() -> String {
 #[test]
 fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   with_platform(|| {
-    let value = Signal::new("b".to_owned());
+    let value = Signal::new("b");
     let _ = mount_logged(size_picker(value));
 
     assert_eq!(read(face("Size")).role(), Role::ComboBox);
@@ -500,7 +500,7 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
     assert_eq!(read(option("a")).is_selected(), Some(false));
     assert_eq!(read(option("b")).is_selected(), Some(true));
 
-    value.set("c".to_owned());
+    value.set("c");
 
     assert_eq!(read(option("b")).is_selected(), Some(false));
     assert_eq!(read(option("c")).is_selected(), Some(true));
@@ -519,7 +519,7 @@ fn a_picker_without_its_face_renders_nothing() {
     let _ = terminal::mount(|| {
       Column::new()
         .add_child(
-          BasicPicker::new()
+          BasicPicker::<&str>::new()
             .set_label("Size")
             .set_options((BasicListboxOption::new(ListboxOption::new("a")).set_label("a"),)),
         )
@@ -545,8 +545,9 @@ fn a_picker_without_its_face_renders_nothing() {
 #[test]
 fn a_picker_given_its_face_takes_its_setters() {
   with_platform(|| {
-    let value = Signal::new("b".to_owned());
-    let picker = BasicPicker::new().set_face(|shown| Text::derive(move || shown.get()));
+    let value = Signal::new("b");
+    let picker = BasicPicker::<&str>::new()
+      .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned()));
     let _ = mount_logged(picker.bind_chosen(value).set_label("Size").set_options(
       ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
     ));
@@ -571,7 +572,7 @@ fn a_picker_given_its_face_takes_its_setters() {
 #[test]
 fn arrows_clamp_over_the_options_and_enter_chooses() {
   with_platform(|| {
-    let value = Signal::new("b".to_owned());
+    let value = Signal::new("b");
     let heard = mount_logged(size_picker(value));
 
     testing::trigger_key("Tab");
@@ -632,7 +633,7 @@ fn the_value_signal_is_the_truth() {
           ["a", "b"]
             .map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
         )
-        .set_face(|shown| Text::derive(move || shown.get())),
+        .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned())),
     );
 
     testing::trigger_key("Tab");
@@ -661,7 +662,7 @@ fn the_value_signal_is_the_truth() {
 #[test]
 fn escape_and_a_dismiss_close_without_changing_the_value() {
   with_platform(|| {
-    let value = Signal::new("b".to_owned());
+    let value = Signal::new("b");
     let heard = mount_logged(size_picker(value));
 
     testing::trigger_key("Tab");
@@ -705,7 +706,7 @@ fn escape_and_a_dismiss_close_without_changing_the_value() {
 #[test]
 fn type_ahead_matches_a_derived_name_as_it_reads_now() {
   with_platform(|| {
-    let value = Signal::new("ba".to_owned());
+    let value = Signal::new("ba");
     let renamed = Signal::new("Apple".to_owned());
     let _ = mount_logged(
       BasicPicker::new()
@@ -718,7 +719,7 @@ fn type_ahead_matches_a_derived_name_as_it_reads_now() {
           BasicListboxOption::new(ListboxOption::new("ba"))
             .set_label(Label::new(Text::new("Banana")).set_name("Banana")),
         ])
-        .set_face(|shown| Text::derive(move || shown.get())),
+        .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned())),
     );
 
     renamed.set("Cherry".to_owned());
@@ -736,7 +737,7 @@ fn type_ahead_matches_a_derived_name_as_it_reads_now() {
 #[test]
 fn typing_over_the_closed_face_chooses_by_name() {
   with_platform(|| {
-    let value = Signal::new("ba".to_owned());
+    let value = Signal::new("ba");
     let _ = mount_logged(fruit_picker(value));
 
     testing::trigger_key("Tab");
@@ -790,7 +791,7 @@ fn typing_over_the_closed_face_chooses_by_name() {
 #[test]
 fn typing_over_the_open_list_moves_focus_by_name() {
   with_platform(|| {
-    let value = Signal::new("ap".to_owned());
+    let value = Signal::new("ap");
     let _ = mount_logged(fruit_picker(value));
 
     testing::trigger_key("Tab");
@@ -846,7 +847,7 @@ fn typing_over_the_open_list_moves_focus_by_name() {
 #[test]
 fn a_picker_places_its_list() {
   with_platform(|| {
-    let value = Signal::new("a".to_owned());
+    let value = Signal::new("a");
 
     let _ = terminal::mount(move || {
       Column::new()

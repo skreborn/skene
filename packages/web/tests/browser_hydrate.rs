@@ -449,21 +449,27 @@ fn a_client_only_view_builds_after_hydrating_without_shifting_markers() {
   web::uninstall();
 }
 
-/// A picker hydrates over the server's `<select>`, carrying the choice the reader
-/// made before the bundle arrived into the signal and onto the drawn face that takes
-/// the select's place.
-#[wasm_bindgen_test]
-fn a_picker_carries_the_readers_choice_from_the_select() {
-  let options = || {
-    ["a", "b"].map(|value| {
-      let name = value.to_uppercase();
+/// A size the hydrated pickers choose.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Size {
+  Small,
+  Large,
+}
 
-      BasicListboxOption::new(ListboxOption::new(value))
-        .set_label(Label::new(Text::new(&name)).set_name(name))
-    })
-  };
-  // The option views build before the select and attach nowhere, so the select's
-  // marker follows the elements they make.
+impl Size {
+  /// The name the size's option goes by.
+  const fn name(self) -> &'static str {
+    match self {
+      Self::Small => "Small",
+      Self::Large => "Large",
+    }
+  }
+}
+
+/// A picker of sizes over a served `<select>` whose options are `options`, its
+/// `selected` one served chosen: the select connected under a fresh root and marked
+/// after the elements the option views make, which build before it and attach nowhere.
+fn served_picker(options: &str) -> (Element, web_sys::HtmlSelectElement) {
   let marker = {
     let scratch = server_root("");
 
@@ -474,7 +480,7 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
       .expect("connect the scratch root");
     web::install(scratch.clone());
 
-    let _ = web::mount(|| skene_web::View::build(Column::new().set_children(options())));
+    let _ = web::mount(|| skene_web::View::build(Column::new().set_children(size_options())));
 
     let count = element_count(&scratch);
 
@@ -483,9 +489,7 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
 
     count + 1
   };
-  let root = server_root(&format!(
-    "<select data-h=\"{marker}\"><option value=\"a\" selected>A</option><option value=\"b\">B</option></select>",
-  ));
+  let root = server_root(&format!("<select data-h=\"{marker}\">{options}</select>"));
   let select: web_sys::HtmlSelectElement = root
     .query_selector("select")
     .expect("query")
@@ -497,35 +501,95 @@ fn a_picker_carries_the_readers_choice_from_the_select() {
     .expect("a body")
     .append_child(&root)
     .expect("connect the root");
-  select.set_value("b");
 
-  let value = skene_web::reactive::Signal::new("a".to_owned());
+  (root, select)
+}
+
+/// The size picker's options, each named by its size's name.
+fn size_options() -> [BasicListboxOption; 2] {
+  [Size::Small, Size::Large].map(|size| {
+    BasicListboxOption::new(ListboxOption::new(size))
+      .set_label(Label::new(Text::new(size.name())).set_name(size.name()))
+  })
+}
+
+/// What the drawn face of the picker under `root` shows.
+fn face_text(root: &Element) -> Option<String> {
+  root
+    .query_selector("[role=combobox] span")
+    .expect("query")
+    .expect("the face's text")
+    .text_content()
+}
+
+/// A picker of the app's own type hydrates over the server's `<select>`, carrying the
+/// option the reader chose there before the bundle arrived, named by its key, into the
+/// typed signal and onto the drawn face that takes the select's place.
+#[wasm_bindgen_test]
+fn a_picker_carries_the_readers_choice_from_the_select() {
+  let (root, select) =
+    served_picker("<option value=\"0\" selected>Small</option><option value=\"1\">Large</option>");
+
+  select.set_value("1");
+
+  let value = skene_web::reactive::Signal::new(Size::Small);
 
   hydrate(root.clone(), "", move || {
     BasicPicker::new()
       .bind_chosen(value)
-      .set_options(options())
-      .set_face(|shown| Text::derive(move || shown.get()))
+      .set_options(size_options())
+      .set_face(|shown| Text::derive(move || shown.get().map_or("", Size::name).to_owned()))
   });
 
   assert_eq!(web::hydration_mismatches(), 0);
-  assert_eq!(value.get(), "b", "the reader's choice reached the signal");
+  assert_eq!(
+    value.get(),
+    Size::Large,
+    "the reader's choice reached the signal"
+  );
   assert!(
     root.query_selector("select").expect("query").is_none(),
     "the select is gone"
   );
+  assert_eq!(face_text(&root).as_deref(), Some("Large"));
 
-  let face = root
-    .query_selector("[role=combobox]")
-    .expect("query")
-    .expect("the drawn face");
+  web::uninstall();
+  root.remove();
+}
 
-  let shown = face
-    .query_selector("span")
-    .expect("query")
-    .expect("the face's text");
+/// A key the reader chose in the server's `<select>` that names no option of the
+/// picker's asks nothing: the truth stands, in the signal and on the drawn face.
+#[wasm_bindgen_test]
+fn a_key_naming_no_option_leaves_the_truth() {
+  let (root, select) = served_picker(
+    "<option value=\"0\" selected>Small</option><option value=\"1\">Large</option><option \
+     value=\"7\">Stale</option>",
+  );
 
-  assert_eq!(shown.text_content().as_deref(), Some("b"));
+  select.set_value("7");
+
+  let value = skene_web::reactive::Signal::new(Size::Small);
+  let asked = Rc::new(Cell::new(0));
+
+  hydrate(root.clone(), "", {
+    let asked = Rc::clone(&asked);
+
+    move || {
+      BasicPicker::new()
+        .derive_chosen(move || value.get())
+        .handle_choose(move |size| {
+          asked.set(asked.get() + 1);
+          skene_web::reactive::Set::set(&value, size);
+        })
+        .set_options(size_options())
+        .set_face(|shown| Text::derive(move || shown.get().map_or("", Size::name).to_owned()))
+    }
+  });
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(asked.get(), 0, "nothing was asked");
+  assert_eq!(value.get(), Size::Small, "the truth stands");
+  assert_eq!(face_text(&root).as_deref(), Some("Small"));
 
   web::uninstall();
   root.remove();
@@ -541,7 +605,7 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
     "<!--s:1--><label data-h=\"6\" for=\"skene-9-0\"><span data-h=\"4\">Size</span></label>",
     "<select data-h=\"5\" aria-label=\"Size\" data-skene-control tabindex=\"-1\" ",
     "data-skene-disabled disabled aria-disabled=\"true\" id=\"skene-9-0\">",
-    "<option value=\"a\">a</option></select><!--e:1-->",
+    "<option value=\"\" hidden selected></option><option value=\"0\">a</option></select><!--e:1-->",
   ));
 
   document()
@@ -556,13 +620,13 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
     .expect("the server's caption");
 
   hydrate(root.clone(), "", || {
-    BasicPicker::new()
+    BasicPicker::<&str>::new()
       .set_label("Size")
       .set_disabled(true)
       .set_options(
         ["a"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
       )
-      .set_face(|shown| Text::derive(move || shown.get()))
+      .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned()))
   });
 
   assert_eq!(web::hydration_mismatches(), 0);
@@ -997,15 +1061,15 @@ fn a_value_typed_into_an_editor_before_the_bundle_reports_as_an_edit() {
 /// into the bound value with the server's choice left unchecked.
 #[wasm_bindgen_test]
 fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
-  use skene_web::{BasicRadio, BasicRadioGroup, Radio, RadioGroup, reactive::Signal};
+  use skene_web::{BasicRadio, BasicRadioGroup, BasicRadioGroupBase, Radio, reactive::Signal};
 
-  let group = |chosen: Signal<Option<String>>| {
-    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen)).set_child(
-      Column::new().set_children(["s", "m"].map(|value| BasicRadio::new(Radio::new(value)))),
+  let group = |chosen: Signal<Size>| {
+    BasicRadioGroup::new().bind_chosen(chosen).set_child(
+      Column::new()
+        .set_children([Size::Small, Size::Large].map(|value| BasicRadio::new(Radio::new(value)))),
     )
   };
-  let (markup, _) =
-    served(move || skene_web::View::into_any(group(Signal::new(Some("s".to_owned())))));
+  let (markup, _) = served(move || skene_web::View::into_any(group(Signal::new(Size::Small))));
   let root = server_root(&markup);
   let radios = || {
     let found = root
@@ -1039,14 +1103,14 @@ fn a_radio_chosen_before_the_bundle_unchecks_the_servers_choice() {
     "the browser unchecked the server's choice"
   );
 
-  let value = Signal::new(Some("s".to_owned()));
+  let value = Signal::new(Size::Small);
 
   hydrate(root.clone(), "", move || group(value));
 
   assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(
-    value.get().as_deref(),
-    Some("m"),
+    value.get(),
+    Size::Large,
     "the reader's choice reached the signal"
   );
   assert!(radios() == served_radios, "the radios were adopted");

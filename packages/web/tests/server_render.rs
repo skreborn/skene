@@ -47,7 +47,6 @@ use skene_web::{
   Label,
   LinkAnnotation,
   LinkPolicy,
-  Listbox,
   ListboxOption,
   Overlay,
   Painted,
@@ -177,9 +176,9 @@ fn names_and_roles_reach_the_markup() {
         .set_role(Role::Navigation)
         .set_label("Chapters")
         .set_child(Text::new("one")),
-      BasicListbox::new(Listbox::new())
+      BasicListbox::<Option<u8>>::new()
         .set_label(Label::new(Text::new("Fruit")))
-        .set_child(BasicListboxOption::new(ListboxOption::new("apple")).set_label("Apple")),
+        .set_child(BasicListboxOption::new(ListboxOption::new(1_u8)).set_label("Apple")),
       Container::new()
         .set_role(Role::Status)
         .set_child(Text::new("saved")),
@@ -310,47 +309,84 @@ fn a_sliders_input_holds_its_range_natively() {
   assert!(!body.contains("aria-valuenow"), "{body}");
 }
 
+/// A size the scriptless choices offer.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Size {
+  Small,
+  Medium,
+  Large,
+}
+
 /// A radio group's scriptless radios share one `name`, so the browser keeps one of them
-/// chosen and submits them as one field; another group's radios share another.
+/// chosen and submits them as one field; another group's radios share another. Each
+/// radio's `value` is its key in its group, the order it joined it, and the truth's radio
+/// is checked.
 #[test]
 fn a_radio_groups_radios_share_one_name() {
-  use skene_web::{BasicRadio, BasicRadioGroup, Radio, RadioGroup};
+  use skene_web::{BasicRadio, BasicRadioGroup, BasicRadioGroupBase, Radio};
 
-  let group = |values: [&'static str; 2]| {
-    BasicRadioGroup::new(RadioGroup::new().set_chosen(values[0]))
+  let group = |values: [Size; 2]| {
+    BasicRadioGroup::new()
+      .set_chosen(values[1])
       .set_child(Column::new().set_children(values.map(|value| BasicRadio::new(Radio::new(value)))))
   };
   let page = render_to_string(move || {
-    Column::new().set_children([group(["s", "m"]), group(["red", "blue"])])
+    Column::new().set_children([
+      group([Size::Small, Size::Medium]),
+      group([Size::Medium, Size::Large]),
+    ])
   });
   let body = page.body();
-  let names: Vec<&str> = body
-    .split(" name=\"")
-    .skip(1)
-    .map(|rest| &rest[..rest.find('"').expect("the attribute's end")])
-    .collect();
+  let attribute = |name: &str| -> Vec<String> {
+    body
+      .split(&format!(" {name}=\""))
+      .skip(1)
+      .map(|rest| rest[..rest.find('"').expect("the attribute's end")].to_owned())
+      .collect()
+  };
+  let names = attribute("name");
 
   assert_eq!(names.len(), 4, "every radio is named: {body}");
   assert_eq!(names[0], names[1], "one group's radios share it: {body}");
   assert_eq!(names[2], names[3], "so do the other's: {body}");
   assert_ne!(names[0], names[2], "two groups' names differ: {body}");
+  assert_eq!(
+    attribute("value"),
+    ["0", "1", "0", "1"],
+    "each radio's value is its key in its group: {body}"
+  );
+
+  let radios: Vec<&str> = body.split("<input").skip(1).collect();
+
+  assert_eq!(radios.len(), 4, "{body}");
+
+  for (index, radio) in radios.iter().enumerate() {
+    let tag = &radio[..radio.find('>').expect("the tag's end")];
+
+    assert_eq!(
+      tag.contains(" checked"),
+      index % 2 == 1,
+      "the truth's radio alone is checked: {body}"
+    );
+  }
 }
 
-/// A picker's scriptless form is a `<select>` listing its options by value and name
-/// with the chosen one selected, and no drawn face.
+/// A picker's scriptless form is a `<select>` listing its options by their keys, the
+/// order they joined it, and their names, with the chosen one selected, and no drawn
+/// face.
 #[test]
 fn a_picker_renders_to_a_select() {
   let page = render_to_string(|| {
     SimplePicker::new()
-      .set_options([("s", "Small"), ("m", "Medium")])
-      .set_chosen("m")
+      .set_options([(Size::Small, "Small"), (Size::Medium, "Medium")])
+      .set_chosen(Size::Medium)
       .set_label("Size")
   });
   let body = page.body();
 
   assert!(body.contains("<select"), "{body}");
   assert!(
-    body.contains("<option value=\"s\">Small</option><option value=\"m\" selected>Medium</option>"),
+    body.contains("<option value=\"0\">Small</option><option value=\"1\" selected>Medium</option>"),
     "{body}"
   );
   assert!(
@@ -360,6 +396,28 @@ fn a_picker_renders_to_a_select() {
   assert!(!body.contains("combobox"), "no drawn face: {body}");
 }
 
+/// A picker whose chosen value is none of its options' renders an empty hidden option
+/// first and selected, so the `<select>` shows nothing chosen rather than its first
+/// option.
+#[test]
+fn a_picker_choosing_none_of_its_options_selects_an_empty_one() {
+  let page = render_to_string(|| {
+    SimplePicker::new()
+      .set_options([(Size::Small, "Small"), (Size::Medium, "Medium")])
+      .set_chosen(Size::Large)
+      .set_label("Size")
+  });
+  let body = page.body();
+
+  assert!(
+    body.contains(
+      "<option value=\"\" hidden selected></option><option value=\"0\">Small</option><option \
+       value=\"1\">Medium</option>"
+    ),
+    "{body}"
+  );
+}
+
 /// A picker's scriptless `<select>` marks the options that cannot be chosen.
 #[test]
 fn a_pickers_select_marks_its_disabled_options() {
@@ -367,21 +425,26 @@ fn a_pickers_select_marks_its_disabled_options() {
 
   let page = render_to_string(|| {
     BasicPicker::new()
-      .set_chosen("s")
-      .set_options([("", "Choose one", true), ("s", "Small", false)].map(
-        |(value, name, disabled)| {
+      .set_chosen(Some(Size::Small))
+      .set_options(
+        [
+          (None, "Choose one", true),
+          (Some(Size::Small), "Small", false),
+        ]
+        .map(|(value, name, disabled)| {
           BasicListboxOption::new(ListboxOption::new(value))
             .set_disabled(disabled)
             .set_label(Label::new(Text::new(name)).set_name(name))
-        },
-      ))
-      .set_face(|shown| Text::derive(move || shown.get()))
+        }),
+      )
+      .set_face(|shown| Text::derive(move || format!("{}", shown.get().flatten().is_some())))
   });
   let body = page.body();
 
   assert!(
     body.contains(
-      "<option value=\"\" disabled>Choose one</option><option value=\"s\" selected>Small</option>"
+      "<option value=\"0\" disabled>Choose one</option><option value=\"1\" \
+       selected>Small</option>"
     ),
     "{body}"
   );
@@ -394,13 +457,11 @@ fn a_disabled_pickers_select_is_named_by_its_caption() {
   use skene_web::{BasicPicker, reactive::Get};
 
   let page = render_to_string(|| {
-    BasicPicker::new()
+    BasicPicker::<Size>::new()
       .set_label("Size")
       .set_disabled(true)
-      .set_options(
-        ["a"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
-      )
-      .set_face(|shown| Text::derive(move || shown.get()))
+      .set_options([BasicListboxOption::new(ListboxOption::new(Size::Small)).set_label("a")])
+      .set_face(|shown| Text::derive(move || format!("{}", shown.get().is_some())))
   });
   let body = page.body();
   let target = body

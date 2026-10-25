@@ -168,7 +168,8 @@ pub(crate) trait Sink {
   fn composing(&self, element: &Self::Element) -> bool;
 
   /// Shows `choices` on the `<select>` `element`: its options, and the chosen one
-  /// selected.
+  /// selected, or, where the chosen key names none of them, an empty hidden option first
+  /// and selected, keyed by the empty string.
   fn set_choices(&mut self, element: &Self::Element, choices: &Choices);
 
   /// Notes what the reader changed on the adopted native `input` of the control `node`
@@ -910,8 +911,9 @@ impl<S: Sink> Realizer<S> {
       .collect()
   }
 
-  /// Gives the radio `node` its group's `name` and checks it where it is the member its
-  /// group has chosen, unless it shows what the reader changed until it is reported.
+  /// Gives the radio `node` its group's `name` and its key there as its `value`, and
+  /// checks it where it is the member its group has chosen, unless it shows what the
+  /// reader changed until it is reported.
   fn write_membership(&mut self, node: NodeId, membership: &Membership) {
     let chosen = match self.records.get_mut(membership.group) {
       Some(Record {
@@ -945,6 +947,7 @@ impl<S: Sink> Realizer<S> {
     self
       .sink
       .set_attribute(&carrier, "name", &element_id(membership.group));
+    self.sink.set_attribute(&carrier, "value", &membership.key);
 
     if !self.sink.composing(&carrier) {
       self

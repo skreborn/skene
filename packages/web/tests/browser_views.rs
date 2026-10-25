@@ -74,6 +74,7 @@ use skene_web::{
   BasicPicker,
   BasicRadio,
   BasicRadioGroup,
+  BasicRadioGroupBase,
   BasicSlider,
   BasicTextEditor,
   BasicTextField,
@@ -98,7 +99,6 @@ use skene_web::{
   NodeId,
   Overlay,
   Radio,
-  RadioGroup,
   RichText,
   Role,
   Row,
@@ -472,15 +472,16 @@ fn keyed_children_keep_their_elements_through_a_removal_and_a_reorder() {
 #[wasm_bindgen_test]
 fn a_radio_groups_tab_stop_follows_the_choice_in_tree_order() {
   let (_guard, root) = fresh_root();
-  let chosen: Signal<Option<String>> = Signal::new(None);
+  let chosen: Signal<Option<&str>> = Signal::new(None);
   let items = Signal::new(vec!["a", "b"]);
 
   let _ = mount(move || {
-    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
+    BasicRadioGroup::new()
+      .bind_chosen(chosen)
       .set_child(Column::new().derive_children(
         move || items.get(),
         |item| *item,
-        |item| BasicRadio::new(Radio::new(item)).set_label(item),
+        |item| BasicRadio::new(Radio::new(Some(item))).set_label(item),
       ))
       .build()
   });
@@ -507,7 +508,7 @@ fn a_radio_groups_tab_stop_follows_the_choice_in_tree_order() {
   inputs()[1].click();
   web::end_turn();
 
-  assert_eq!(chosen.get().as_deref(), Some("b"));
+  assert_eq!(chosen.get(), Some("b"));
   assert_eq!(stops(), [false, true]);
 
   chosen.set(None);
@@ -1464,28 +1465,26 @@ fn a_sliders_native_value_is_answered_and_a_refused_one_undone() {
 #[wasm_bindgen_test]
 fn a_refused_radio_choice_checks_exactly_the_truths_radio() {
   let (_guard, root) = fresh_root();
-  let chosen: Signal<Option<String>> = Signal::new(Some(String::from("mint")));
+  let chosen = Signal::new("mint");
   let asked = Rc::new(RefCell::new(Vec::new()));
 
-  let _ = mount({
-    let asked = Rc::clone(&asked);
+  let _ =
+    mount({
+      let asked = Rc::clone(&asked);
 
-    move || {
-      BasicRadioGroup::new(
-        RadioGroup::new()
+      move || {
+        BasicRadioGroup::new()
           .derive_chosen(move || chosen.get())
           .handle_choose(move |value| {
             asked.borrow_mut().push(value);
-            chosen.set(Some(String::from("plum")));
-          }),
-      )
-      .set_child(
-        Column::new()
-          .set_children(["mint", "fig", "plum"].map(|flavor| BasicRadio::new(Radio::new(flavor)))),
-      )
-      .build()
-    }
-  });
+            chosen.set("plum");
+          })
+          .set_child(Column::new().set_children(
+            ["mint", "fig", "plum"].map(|flavor| BasicRadio::new(Radio::new(flavor))),
+          ))
+          .build()
+      }
+    });
 
   let radios = root
     .query_selector_all("input[type=radio]")
@@ -1517,7 +1516,7 @@ fn a_refused_radio_choice_checks_exactly_the_truths_radio() {
   web::end_turn();
 
   assert_eq!(checked(), [false, false, true]);
-  assert_eq!(chosen.get().as_deref(), Some("plum"));
+  assert_eq!(chosen.get(), "plum");
 }
 
 /// A click on a native toggle that something cancels has its flip restored by the
@@ -1845,7 +1844,7 @@ fn a_control_lays_out_its_row() {
 #[wasm_bindgen_test]
 fn the_face_reports_its_popup_and_the_list_it_controls() {
   let (_guard, root) = fresh_root();
-  let value = Signal::new("a".to_owned());
+  let value = Signal::new("a");
 
   let _ = mount(move || {
     BasicPicker::new()
@@ -1854,7 +1853,7 @@ fn the_face_reports_its_popup_and_the_list_it_controls() {
       .set_options(
         ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
       )
-      .set_face(|shown| Text::derive(move || shown.get()))
+      .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned()))
       .build()
   });
 

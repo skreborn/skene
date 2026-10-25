@@ -80,7 +80,7 @@ use web_sys::{
   InputEvent,
 };
 
-use super::{Node, Realized, end_turn, with_dom};
+use super::{Node, Realized, end_turn, page::is_placeholder, with_dom};
 use crate::{
   condition::{DRAG_MARKER, DRAGGED_ATTRIBUTE, DRAGS_ATTRIBUTE, TARGETED_ATTRIBUTE},
   platform::web::Web,
@@ -1031,14 +1031,23 @@ fn shown_range(input: &HtmlInputElement) -> Range {
   )
 }
 
-/// The options a `<select>` shows, with the one chosen; none where nothing is selected.
+/// The options a `<select>` shows, with the one chosen; none where nothing is selected
+/// or the empty hidden option is, which is no option of the choice.
 fn shown_choices(select: &HtmlSelectElement) -> Choices {
   let shown = select.options();
-  let options: Vec<ChoiceOption> = (0..shown.length())
+  let elements: Vec<HtmlOptionElement> = (0..shown.length())
     .filter_map(|index| shown.item(index)?.dyn_into::<HtmlOptionElement>().ok())
+    .collect();
+  let options: Vec<ChoiceOption> = elements
+    .iter()
+    .filter(|option| !is_placeholder(option))
     .map(|option| ChoiceOption::new(option.value(), option.text()).set_disabled(option.disabled()))
     .collect();
-  let chosen = (select.selected_index() >= 0).then(|| Rc::from(select.value()));
+  let chosen = usize::try_from(select.selected_index())
+    .ok()
+    .and_then(|index| elements.get(index))
+    .filter(|option| !is_placeholder(option))
+    .map(|option| Rc::from(option.value()));
 
   Choices::new(Rc::from(options), chosen)
 }

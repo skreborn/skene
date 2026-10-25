@@ -1,40 +1,48 @@
 //! A ready-made radio group and its members, in the Simple design language.
 
-use skene_foundation::{View, Wraps};
+use skene_foundation::{Choice, View, Wraps};
 use skene_simple::{SimpleRadioBase, SimpleRadioGroupBase};
 use skene_web::Active;
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
 /// arrow keys move between them, and exactly one is chosen.
 ///
-/// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
-/// or interleaved with anything. The chosen value flows both ways. Without the view
-/// [`set_child`](Self::set_child) supplies, it builds an empty group.
+/// Members are [`SimpleRadio`]s at any depth inside the child, tagged with values of the
+/// app's own type `T`, so one may be wrapped or interleaved with anything. The chosen
+/// value flows both ways; a group that starts with nothing chosen holds an `Option`, its
+/// members tagged `Some(..)`. Without the view
+/// [`set_child`](SimpleRadioGroupBase::set_child) supplies, it builds an empty group.
 ///
 /// ```
 /// use skene_simple_web::prelude::*;
 /// use skene_web::prelude::*;
 ///
-/// let size = Signal::new(Some(String::from("m")));
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// enum Size {
+///   Small,
+///   Medium,
+/// }
+///
+/// let size = Signal::new(Size::Medium);
 /// let sizes = SimpleRadioGroup::new().bind_chosen(size).set_child(
 ///   Column::new().set_spacing(12).set_children((
-///     SimpleRadio::new("s").set_label("Small"),
-///     SimpleRadio::new("m").set_label("Medium"),
+///     SimpleRadio::new(Size::Small).set_label("Small"),
+///     SimpleRadio::new(Size::Medium).set_label("Medium"),
 ///   )),
 /// );
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimpleRadioGroup(skene_simple::SimpleRadioGroup<Active>);
+pub struct SimpleRadioGroup<T: Choice>(skene_simple::SimpleRadioGroup<Active, T>);
 
-impl Default for SimpleRadioGroup {
+impl<T: Choice> Default for SimpleRadioGroup<T> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl SimpleRadioGroupBase<Active> for SimpleRadioGroup {}
+impl<T: Choice> SimpleRadioGroupBase<Active, T> for SimpleRadioGroup<T> {}
 
 /// A ready-made radio button: a ring on the card surface whose dot appears while
 /// chosen and which rings while focused, beside its caption.
@@ -48,7 +56,7 @@ impl SimpleRadioGroupBase<Active> for SimpleRadioGroup {}
 /// use skene_simple_web::prelude::*;
 /// use skene_web::prelude::*;
 ///
-/// let small = SimpleRadio::new("s").set_label("Small");
+/// let small = SimpleRadio::new(1).set_label("Small");
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]

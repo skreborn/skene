@@ -1017,11 +1017,11 @@ fn every_rule_has_a_class_specificity() {
         .bind_checked(Signal::new(false))
         .set_label("checked"),
       SimpleRadioGroup::new()
-        .bind_chosen(Signal::new(None))
+        .bind_chosen(Signal::new(None::<i32>))
         .set_label("group")
         .set_child(Row::new().set_children((
-          SimpleRadio::new("one").set_label("one"),
-          SimpleRadio::new("two").set_label("two"),
+          SimpleRadio::new(Some(1)).set_label("one"),
+          SimpleRadio::new(Some(2)).set_label("two"),
         ))),
       SimpleSlider::new()
         .set_label("slider")
@@ -1029,8 +1029,8 @@ fn every_rule_has_a_class_specificity() {
       SimpleTextField::new().bind_value(Signal::new(String::new())),
       SimplePicker::new()
         .set_label("picker")
-        .set_options([("a", "A"), ("b", "B")])
-        .bind_chosen(Signal::new("a".to_owned())),
+        .set_options([('a', "A"), ('b', "B")])
+        .bind_chosen(Signal::new('a')),
       SimpleTooltip::new("described").set_child(SimpleButton::new("Described")),
     ))
   });

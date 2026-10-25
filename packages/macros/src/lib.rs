@@ -337,6 +337,9 @@ pub fn derive_snapshot(input: TokenStream) -> TokenStream {
 /// field, the struct holding that field as its whole content: a facade's view over the
 /// foundation's.
 ///
+/// `PhantomData` markers may follow the field, for a view over the app's types holding
+/// a core that is not.
+///
 /// The generated code names `Wraps` through the deriving crate's direct dependency on
 /// `skene-foundation`, or through the re-export of the facade (`skene-web`,
 /// `skene-terminal`) it depends on.
@@ -350,7 +353,8 @@ pub fn derive_wraps(input: TokenStream) -> TokenStream {
 }
 
 /// Derives [`View`](../skene_foundation/trait.View.html) and
-/// [`AnyKind`](../skene_foundation/trait.AnyKind.html) for a tuple struct of one field.
+/// [`AnyKind`](../skene_foundation/trait.AnyKind.html) for a tuple struct of one field,
+/// beside any `PhantomData` markers.
 ///
 /// The struct builds as the view it holds, on every platform that one is a view on.
 /// The generated code names the foundation through the deriving crate's direct

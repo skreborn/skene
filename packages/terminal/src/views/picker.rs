@@ -1,6 +1,6 @@
 //! A picker: a popup face, an overlay and a listbox.
 
-use skene_foundation::{BasicPickerBase, DecorationBase, View, Wraps};
+use skene_foundation::{BasicPickerBase, Choice, DecorationBase, View, Wraps};
 
 use crate::Active;
 
@@ -16,42 +16,50 @@ use crate::Active;
 /// whose name the characters begin, a character repeated cycling through the options
 /// starting with it; typing over the open list moves focus the same way.
 ///
-/// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads, and
-/// a choice only calls [`handle_choose`](Self::handle_choose) with the value asked for;
-/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. The face comes from
-/// [`set_face`](Self::set_face), and a picker without one renders nothing; the options
-/// come from [`set_options`](Self::set_options) and
-/// [`derive_options`](Self::derive_options), each a
-/// [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
+/// Controlled: the chosen value, a value of the app's own type `T`, is what
+/// [`derive_chosen`](BasicPickerBase::derive_chosen) reads, and a choice only calls
+/// [`handle_choose`](BasicPickerBase::handle_choose) with the value asked for;
+/// [`bind_chosen`](BasicPickerBase::bind_chosen) wires both to one signal. The face comes
+/// from [`set_face`](BasicPickerBase::set_face), and a picker without one renders nothing;
+/// the options come from [`set_options`](BasicPickerBase::set_options) and
+/// [`derive_options`](BasicPickerBase::derive_options), each a
+/// [`BasicListboxOption`](crate::BasicListboxOption) at any depth tagged with a `T`. Every
+/// picker builds one core whatever its `T`, which it holds erased.
 ///
 /// ```
 /// use skene_terminal::{ListboxOption, prelude::*};
 ///
-/// let size = Signal::new(String::from("m"));
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// enum Size {
+///   Small,
+///   Medium,
+/// }
+///
+/// let size = Signal::new(Size::Medium);
 /// let picker = BasicPicker::new()
 ///   .set_label("Size")
 ///   .bind_chosen(size)
 ///   .set_options((
-///     BasicListboxOption::new(ListboxOption::new("s")).set_label("Small"),
-///     BasicListboxOption::new(ListboxOption::new("m")).set_label("Medium"),
+///     BasicListboxOption::new(ListboxOption::new(Size::Small)).set_label("Small"),
+///     BasicListboxOption::new(ListboxOption::new(Size::Medium)).set_label("Medium"),
 ///   ));
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct BasicPicker(skene_foundation::BasicPicker<Active>);
+pub struct BasicPicker<T: Choice>(skene_foundation::BasicPicker<Active, T>);
 
-impl Default for BasicPicker {
+impl<T: Choice> Default for BasicPicker<T> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl BasicPickerBase<Active> for BasicPicker {}
+impl<T: Choice> BasicPickerBase<Active, T> for BasicPicker<T> {}
 
-impl DecorationBase<Active> for BasicPicker {}
+impl<T: Choice> DecorationBase<Active> for BasicPicker<T> {}
 
-impl BasicPicker {
+impl<T: Choice> BasicPicker<T> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {

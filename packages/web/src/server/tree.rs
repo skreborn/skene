@@ -247,12 +247,17 @@ impl Element {
     out.push('"');
   }
 
-  /// Writes a `<select>`'s options, the chosen one and the disabled ones marked.
+  /// Writes a `<select>`'s options, the chosen one and the disabled ones marked, after an
+  /// empty hidden option selected in their place where the chosen key names none.
   fn emit_options(&self, out: &mut String) {
     let Some(choices) = &self.choices
     else {
       return;
     };
+
+    if choices.chosen_option().is_none() {
+      out.push_str("<option value=\"\" hidden selected></option>");
+    }
 
     for option in choices.options.iter() {
       out.push_str("<option value=\"");

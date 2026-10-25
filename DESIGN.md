@@ -440,12 +440,14 @@ between the members and what a move and a choice do, and `RadioGroup` (with
 `Radio`), `Listbox` (with `ListboxOption`) and `Menu` (with `MenuOption`) are
 collections under the radio, listbox and menu policies, whose members are one tab stop
 and whose moves pass over the disabled members in one place; `BasicButton`,
-`BasicCheckbox`, `BasicSlider`, `BasicRadioGroup`,
-`BasicRadio`, `BasicListbox`, `BasicListboxOption`, `BasicTextField` and `BasicTextEditor` are aliases over
-them, and `BasicPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. Both
-have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset by
-a `Realization::schedule` timer, and `Roster::typed` matches them against the members'
-names (`Label::set_name`, the value standing in), one character cycling through the
+`BasicCheckbox`, `BasicSlider`, `BasicRadio`, `BasicListboxOption`, `BasicTextField` and
+`BasicTextEditor` are aliases over them, `BasicRadioGroup<T>` and `BasicListbox<C>` are
+a facade's views of a control over a `RadioGroup` or a `Listbox`, typed by what it
+chooses, and `BasicPicker<T>` composes a `Popup` face with a `Listbox` in an `Overlay`.
+Both have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset
+by a `Realization::schedule` timer, and `Roster::typed` matches them against the names
+the members' labels supply as they read now (`Label::set_name`, `Label::derive_name`),
+a member with none passed over, one character cycling through the
 names starting with it and more matching a prefix; the listbox moves focus to the
 match, and the closed face chooses it outright through `Popup::set_key_fallback`, the
 behavior's hook for the keys it does not act on itself. A control's drawn body
@@ -528,6 +530,31 @@ re-export.
 - **A control decides its verdict.** The behavior runs first and its verdict is the
   whole verdict; a user's handler observes. A button's click never reaches the row it
   sits in, on any facade.
+- **A choice's value is the app's own type.** A radio group, a listbox, a menu and a
+  picker choose among values of any type that is a `Choice` (`Clone`, `Eq` and `Hash`,
+  as SwiftUI's tag is `Hashable`), each member tagged with one (`Member::new(tag)`:
+  `Radio`, `ListboxOption`, `MenuOption`). The cores hold them erased: a member its
+  `AnyChoice`, which compares and hashes as its value, and a collection, the picker's
+  core and the context they share what is chosen as an `AnyChosen`, a `Chosen` erased
+  with the rules it chooses by (`Option<T>` for one choice, its `contains` and
+  `choosing`), in a `ControlledChoice` its typed setters fill. So `Collection`,
+  `NativePicker`, `Roster` and `BasicPickerCore` are each one type whatever the app's,
+  and the typed views are thin over them: `BasicPicker<P, T>` holds a `BasicPickerCore`
+  and builds it (`Thin`, a view over the app's types whose core is not), its face given
+  a `Memo<Option<T>>`; a facade's `BasicRadioGroup<T>` and `BasicListbox<C: Chosen>`
+  hold the control over the collection beside a `PhantomData` marker, the derives
+  taking such markers beside the one field, and take their typed `set_chosen`,
+  `derive_chosen`, `handle_choose` and `bind_chosen` from `BasicRadioGroupBase` and
+  `BasicListboxBase`, which erase into the collection's own `K: Chosen` setters. A radio
+  group or a picker holds a `T`, one starting with nothing chosen an `Option`, its
+  members tagged `Some(..)`; a listbox holds its `Chosen`, `Option<T>` alone until a
+  multi-select listbox lands. The option views stay untyped, and a member tagged with a
+  value of another type than its collection's options carry is a debug assertion. Each
+  member goes by a key in its `Roster`, its ordinal there (the order it joined, which
+  the server leaf and the browser build alike and which never changes while it stays),
+  so the scriptless form names an option by it and maps a key it reports back to the
+  member's value (`Roster::key_of`, `Roster::value_of`); a key no member goes by asks
+  nothing, and the controller's write of the truth repairs it.
 - **A control is controlled.** It reports; the bound signal is the truth. Two-way
   binding is a derived read plus a handler write, on every facade, held once in a
   `Controlled<T>` that every shipped behavior, and a third party's, keeps its value in:
@@ -624,10 +651,11 @@ re-export.
   the parts that draw it, which take the press it lets through, as a run inside any
   control leaves a press to the box it falls in. So keyboard, form participation and
   accessibility are the browser's before and after hydration and nothing is swapped. A
-  radio group's radios share the group's element id as their `name`, which each radio
-  takes from its `Membership` content (its group's node and its key there), so before
-  the bundle the browser keeps one of them chosen and submits them as one field, and a
-  choice made there reaches the signal as any adopted control's does. The group writes
+  radio group's radios share the group's element id as their `name` and carry their key
+  there as their `value`, which each radio takes from its `Membership` content (its
+  group's node and its key), so before the bundle the browser keeps one of them chosen
+  and submits them as one field, and a choice made there reaches the typed signal as any
+  adopted control's does, its key mapped back to the radio's value. The group writes
   its chosen key as its `Chosen` content, which checks the member whose key it is and
   unchecks the rest; a radio's `change` is reported at its group's node as a choice of
   its key, applied, and a choice the truth refuses is repaired by one write of the
@@ -639,9 +667,11 @@ re-export.
   again after it. The picker alone is drawn (no engine but Chromium
   restyles an open `<select>` yet), so it is an `Enhance` of its own: its scriptless
   form is a `NativePicker` control, a `<select>` on the web, listing the options the
-  option views name, its caption a `<label for>` beside it and the chosen value
-  selected, the options and the chosen key derived as one `Choices` content its
-  controller writes whenever either changes; the option views build once, under the
+  option views name, each `<option value>` its key, its caption a `<label for>` beside
+  it and the chosen option selected, or an empty hidden option first and selected where
+  nothing chosen is among the options, so the select never shows its first option as a
+  choice the truth did not make; the options and the chosen key are derived as one
+  `Choices` content its controller writes whenever either changes; the option views build once, under the
   group both forms answer through, and attach nowhere until the drawn form lists them,
   and the caption builds once and each form mounts it with its name and the disabled
   setting, so a swap rebuilds nothing but the face; a choice the reader made in the
@@ -729,7 +759,8 @@ re-export.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot
-  reach it. A radio group wraps, a listbox clamps, because the platforms' do.
+  reach it; the key a member goes by is its ordinal, not its place, so a member moved
+  keeps its key. A radio group wraps, a listbox clamps, because the platforms' do.
 - **The terminal's controls are composed trees**—a `Container`, a `Text` mark from a
   glyph token—painted by the same painters as everything else, so they carry roles,
   accessibility properties and focus order, and the keyboard tables live in the
@@ -1357,6 +1388,17 @@ and attributes and the server's markup is the browser's; the browser leaf takes 
 `<input>` of every type they give a field (`text`, `password`, `tel`, `url`, `search`)
 as a text entry, and its `clipboard_availability` disables copying and cutting in a
 password input, whose selection its clipboard never reads.
+
+A choice's scriptless form is keyed alike on both leaves: a radio's `name` is its
+group's element id and its `value` its key in its group, and a `<select>`'s
+`<option value>` is each option's key, both the member's ordinal in its `Roster`, which
+the two leaves build in the same order. The server marks the truth's option `selected`,
+or renders `<option value="" hidden selected>` first where nothing chosen is among the
+options, and the browser's `set_choices` shows the same options, rebuilding them only
+where they differ; a `<select>`'s report leaves that empty option out, so choosing it
+chooses nothing. At hydration a key the reader chose is reported applied and mapped back
+to its member's value; one naming no member asks nothing, and the controller's write
+repairs it to the truth.
 
 The crate's `platform` module holds each pixel platform's own vocabulary, a module per
 platform: `platform::web` is the web platform itself (`Web`, the `WebMarkup` and

@@ -1,6 +1,6 @@
 //! The rules the types enforce, each a program that must not compile, with the
 //! diagnostic it raises beside it: layout's typed children, lengths as plain numbers,
-//! the expression kinds, the derives and the entry.
+//! the expression kinds, a choice's value, the derives and the entry.
 //!
 //! `TRYBUILD=overwrite` rewrites the diagnostics once a change to one is meant.
 

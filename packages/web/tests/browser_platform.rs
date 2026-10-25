@@ -935,7 +935,7 @@ fn press(element: &Element, key: &str) {
 )]
 fn a_picker_opens_and_chooses_with_the_keyboard() {
   let (_guard, root) = fresh_root();
-  let value = Signal::new("md".to_owned());
+  let value = Signal::new("md");
 
   let _ = web::mount(move || {
     SimplePicker::new()

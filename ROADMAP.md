@@ -36,11 +36,7 @@ in a code comment.
     joins them. A clickable `Container` is an activatable row (focusable, `Enter` and
     `Space` activating it, holding controls that own their presses), focus order follows
     the scene's child order, and a window opens with nothing focused but a control set
-    to `set_autofocus`. A choice's value is the app's own type, each option carrying one
-    (`Picker<T>`), where today's collections hold strings, and the web's scriptless form
-    names each option by a key of its own, the server leaf's and the browser's alike
-    even for a value holding a slice of `usize` or `isize`, which `wide_of` hashes at
-    the target's width. `TextEntry::on_key` takes the core's `Binding` table once every
+    to `set_autofocus`. `TextEntry::on_key` takes the core's `Binding` table once every
     field is drawn, the terminal's key default consulting it until then, and the engine
     and editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
@@ -101,6 +97,11 @@ in a code comment.
     `Listbox<C>` over one windowing engine, with how iOS, Android, macOS, the web and the
     terminal realize it) and realized on Linux; overlays (popovers, dialogs, menus) are
     not designed beyond the prototype's popup subset.
+    - Lists: a listbox choosing several, `Chosen` for `HashSet<T>` and `BTreeSet<T>`
+    beside today's `Option<T>`, the multi-select `Listbox<C>`: a behavior of its own
+    over the collection's erased choice (`AnyChosen` keeps its type's rules), with the
+    ranges and the select-all a reader expects and a scriptless form of its own (a
+    `<select multiple>`, or a group of checkboxes).
     - One candidate the design weighs: menus and text tooltips as data, a list of
     `MenuEntry`s that `NSMenu`, `UIMenu` and `PopupMenu` would realize where the
     platform composites views, since a drawn Paste triggers iOS's paste prompt and

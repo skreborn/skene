@@ -8,6 +8,28 @@ supersedes.
 
 ## Decided against
 
+- **Naming a scriptless option by `Key::of(tag)`** (2026-10-25), a `<select>`'s
+  `<option value>` and a radio's `value` the hash of the option's value as 32 hex
+  digits, as the roadmap first had it: the server leaf and the browser must name an
+  option alike, and the standard library hashes a slice of `usize` or `isize` as raw
+  memory, bypassing the hasher's integer methods, so no hasher makes `Key::of` of such a
+  value agree between the host and wasm32. An option is named by its key in its
+  group's `Roster` instead, which both leaves build alike. Revisit when a hash of any
+  `Hash` value stable across targets is taken, or `Choice` asks for `Snapshot`, whose
+  encoding is.
+- **Naming a scriptless option by its place among its group's options** (2026-10-25),
+  the option's position in the roster's scene order, which both leaves build alike as
+  well: a position renumbers the options after it as one is added, moved or removed, so
+  every membership would be rewritten on each change, and a member's place is not
+  known until the scene attaches it, after it joins. A member's key is its ordinal in
+  its roster, the order it joined, which both leaves build alike too and which never
+  changes while it stays. Revisit when the scene reports a member's place as it
+  attaches it, or a platform needs its options keyed by place.
+- **A picker's face given a `Memo<T>`** (2026-10-25), the face drawing the chosen value
+  itself: a picker deriving nothing has chosen nothing, and a `Choice` has no value to
+  stand for none, so the face is given a `Memo<Option<T>>`. Revisit when a picker
+  derives its choice from its construction, as SwiftUI's takes its binding.
+
 - **A secure editor** (2026-10-24), `set_secure` masking a multi-line entry as it masks
   a field: no platform's secure entry is more than one line, Chromium's password field
   and Apple's and Android's secure text fields among them, and the web's `<textarea>` has

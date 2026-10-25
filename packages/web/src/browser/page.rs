@@ -2,7 +2,7 @@
 //! server's markup, and what the reader changed before the client arrived.
 
 use rustc_hash::FxHashMap;
-use skene_foundation::{ChoiceOption, Choices, Edit, NodeId, TextSelection};
+use skene_foundation::{Choices, Edit, NodeId, TextSelection};
 use wasm_bindgen::JsCast;
 use web_sys::{
   Document,
@@ -326,9 +326,18 @@ impl Sink for Page {
     else {
       return;
     };
+    let chosen = choices.chosen_option();
 
-    if !shows_options(select, &choices.options) {
+    if !shows_options(select, choices) {
       select.set_inner_html("");
+
+      if chosen.is_none() {
+        let element = self.document.create_element("option").expect("an option");
+
+        let _ = element.set_attribute("value", "");
+        let _ = element.set_attribute("hidden", "");
+        let _ = select.append_child(&element);
+      }
 
       for option in choices.options.iter() {
         let element = self.document.create_element("option").expect("an option");
@@ -345,10 +354,7 @@ impl Sink for Page {
       }
     }
 
-    match choices.chosen_option() {
-      Some(option) => select.set_value(&option.key),
-      None => select.set_selected_index(-1),
-    }
+    select.set_value(chosen.map_or("", |option| &option.key));
   }
 
   /// Notes a change against what the server serialized, for the control to report once
@@ -407,23 +413,38 @@ impl Sink for Page {
   }
 }
 
-/// Whether `select` shows `options` already: the same keys, names and disabled ones, in
+/// Whether `select` shows `choices`' options already: the empty hidden option first where
+/// the chosen key names none of them, then the same keys, names and disabled ones, in
 /// order.
-fn shows_options(select: &HtmlSelectElement, options: &[ChoiceOption]) -> bool {
+fn shows_options(select: &HtmlSelectElement, choices: &Choices) -> bool {
   let shown = select.options();
+  let placeholder = choices.chosen_option().is_none();
+  let first = u32::from(placeholder);
+  let option = |index: u32| {
+    shown
+      .item(index)
+      .and_then(|element| element.dyn_into::<HtmlOptionElement>().ok())
+  };
 
-  shown.length() as usize == options.len()
-    && options.iter().enumerate().all(|(index, option)| {
+  shown.length() as usize == choices.options.len() + usize::from(placeholder)
+    && (!placeholder || option(0).is_some_and(|element| is_placeholder(&element)))
+    && choices.options.iter().enumerate().all(|(index, choice)| {
       u32::try_from(index)
         .ok()
-        .and_then(|index| shown.item(index))
-        .and_then(|element| element.dyn_into::<HtmlOptionElement>().ok())
+        .and_then(|index| option(first + index))
         .is_some_and(|element| {
-          element.value() == *option.key
-            && element.text() == *option.name
-            && element.disabled() == option.disabled
+          element.value() == *choice.key
+            && element.text() == *choice.name
+            && element.disabled() == choice.disabled
+            && !is_placeholder(&element)
         })
     })
+}
+
+/// Whether `option` is the empty hidden option a `<select>` shows selected where its
+/// chosen key names none of its options.
+pub(super) fn is_placeholder(option: &HtmlOptionElement) -> bool {
+  option.value().is_empty() && option.hidden()
 }
 
 /// Replaces `previous` with `class` in `element`'s class list.

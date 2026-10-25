@@ -1,6 +1,7 @@
 //! The one control builder, the behavior it is given, and the behaviors that ship.
 
 mod activate;
+mod choice;
 mod collection;
 mod controlled;
 mod native_picker;
@@ -13,10 +14,11 @@ mod type_ahead;
 
 use std::{marker::PhantomData, rc::Rc};
 
-use skene_reactive::{Effect, Owner, Trigger, untrack};
+use skene_reactive::{Effect, Get, Owner, Set, Signal, Trigger, untrack};
 
 pub use self::{
   activate::Activate,
+  choice::{AnyChoice, AnyChosen, Choice, Chosen, ControlledChoice},
   collection::{
     Collection,
     CollectionContext,
@@ -764,6 +766,14 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
   pub const fn behavior(&self) -> &B {
     &self.behavior
   }
+
+  /// This control, its behavior replaced by what `map` makes of it.
+  #[inline(always)]
+  pub fn map_behavior(mut self, map: impl FnOnce(B) -> B) -> Self {
+    self.behavior = map(self.behavior);
+
+    self
+  }
 }
 
 impl<P: Realization, B: Behavior<P>> AnyKind for Control<P, B> {}
@@ -1208,8 +1218,6 @@ pub type BasicButton<P> = Control<P, Activate>;
 pub type BasicCheckbox<P> = Control<P, Toggle>;
 /// A slider: [`Control`] over [`Slider`].
 pub type BasicSlider<P> = Control<P, Slider>;
-/// A radio group: [`Control`] over [`RadioGroup`].
-pub type BasicRadioGroup<P> = Control<P, RadioGroup>;
 /// One radio choice: [`Control`] over [`Radio`].
 pub type BasicRadio<P> = Control<P, Radio>;
 /// A single-line text field: [`Control`] over [`TextEntry`].
@@ -1217,14 +1225,110 @@ pub type BasicTextField<P> = Control<P, TextEntry>;
 /// A multi-line text editor: [`Control`] over [`TextEntry`] with
 /// [`set_lines`](TextEntry::set_lines) above one.
 pub type BasicTextEditor<P> = Control<P, TextEntry>;
-/// A listbox: [`Control`] over [`Listbox`].
-pub type BasicListbox<P> = Control<P, Listbox>;
 /// One option within a listbox: [`Control`] over [`ListboxOption`].
 pub type BasicListboxOption<P> = Control<P, ListboxOption>;
 /// A menu: [`Control`] over [`Menu`].
 pub type BasicMenu<P> = Control<P, Menu>;
 /// One item within a menu: [`Control`] over [`MenuOption`].
 pub type BasicMenuItem<P> = Control<P, MenuOption>;
+
+/// What a facade's radio group carries beyond every control's members: what it has
+/// chosen, a value of the app's own type `T`, its radios tagged with `T`s.
+///
+/// The group is a [`Control`] over a [`RadioGroup`], which holds the choice erased, so
+/// every group is one type whatever its `T`. A group that starts with nothing chosen
+/// holds an `Option`, its radios tagged `Some(..)`.
+pub trait BasicRadioGroupBase<P: Realization, T: Choice>:
+  Wraps<Inner = Control<P, RadioGroup>>
+{
+  /// Sets the chosen radio's value.
+  #[must_use]
+  fn set_chosen(self, chosen: T) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .map_behavior(|group| group.set_chosen(Some(chosen))),
+    )
+  }
+
+  /// Derives the chosen radio's value from the signals `chosen` reads.
+  #[must_use]
+  fn derive_chosen(self, chosen: impl Fn() -> T + 'static) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .map_behavior(|group| group.derive_chosen(move || Some(chosen()))),
+    )
+  }
+
+  /// Runs `action` with the value a choice asks for.
+  #[must_use]
+  fn handle_choose(self, action: impl Fn(T) + 'static) -> Self {
+    Self::wrap(self.into_inner().map_behavior(|group| {
+      group.handle_choose(move |chosen: Option<T>| {
+        if let Some(chosen) = chosen {
+          action(chosen);
+        }
+      })
+    }))
+  }
+
+  /// Binds the chosen value to `signal` in both directions.
+  #[must_use]
+  fn bind_chosen(self, signal: Signal<T>) -> Self {
+    self
+      .derive_chosen(move || signal.get())
+      .handle_choose(move |chosen| signal.set(chosen))
+  }
+}
+
+/// What a facade's listbox carries beyond every control's members: what it has chosen,
+/// a [`Chosen`] of the app's own type, `Option<T>` for one choice, its options tagged
+/// with `T`s.
+///
+/// The listbox is a [`Control`] over a [`Listbox`], which holds the choice erased, so
+/// every listbox is one type whatever its `C`.
+pub trait BasicListboxBase<P: Realization, C: Chosen>: Wraps<Inner = Control<P, Listbox>> {
+  /// Sets what is chosen.
+  #[must_use]
+  fn set_chosen(self, chosen: C) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .map_behavior(|listbox| listbox.set_chosen(chosen)),
+    )
+  }
+
+  /// Derives what is chosen from the signals `chosen` reads.
+  #[must_use]
+  fn derive_chosen(self, chosen: impl Fn() -> C + 'static) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .map_behavior(|listbox| listbox.derive_chosen(chosen)),
+    )
+  }
+
+  /// Runs `action` with what a choice asks for.
+  #[must_use]
+  fn handle_choose(self, action: impl Fn(C) + 'static) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .map_behavior(|listbox| listbox.handle_choose(action)),
+    )
+  }
+
+  /// Binds what is chosen to `signal` in both directions.
+  #[must_use]
+  fn bind_chosen(self, signal: Signal<C>) -> Self {
+    Self::wrap(
+      self
+        .into_inner()
+        .map_behavior(|listbox| listbox.bind_chosen(signal)),
+    )
+  }
+}
 
 impl<P: Realization, B: Behavior<P>> HasBoxStyle<P> for Control<P, B> {
   #[inline(always)]

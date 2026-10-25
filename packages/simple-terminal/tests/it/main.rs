@@ -163,7 +163,7 @@ fn locate_last(frame: &str, needle: &str) -> (u16, u16) {
 fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   with_platform(|| {
     let palette = SimplePalette::default();
-    let value = Signal::new("md".to_owned());
+    let value = Signal::new("md");
 
     mount_themed(move || {
       Column::new().set_children((SimplePicker::new()

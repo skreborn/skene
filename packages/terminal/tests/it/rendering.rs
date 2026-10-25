@@ -10,7 +10,6 @@ use skene_terminal::{
   ContainerName,
   ContainerQuery,
   Radio,
-  RadioGroup,
   Scene,
   TextEntry,
   platform::terminal::Terminal,
@@ -206,7 +205,7 @@ fn tab_reaches_the_controls_in_document_order() {
             .bind_handle(first)
             .set_label("first")
             .into_any(),
-          BasicRadioGroup::new(RadioGroup::new())
+          BasicRadioGroup::<&str>::new()
             .set_child(
               Row::new().set_spacing(1).set_children((
                 BasicRadio::new(Radio::new("mint"))

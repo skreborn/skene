@@ -7,10 +7,11 @@ use skene_foundation::{
   AnyKind,
   AnyView,
   BasicRadio,
-  BasicRadioGroup,
+  Choice,
   Color,
   Container,
   ContainerBase,
+  Control,
   CornerRadius,
   DecorationBase,
   DecorationWithCornerRadius,
@@ -31,7 +32,7 @@ use skene_foundation::{
   When,
   Wraps,
 };
-use skene_reactive::{Get, Memo, Signal, use_context};
+use skene_reactive::{Get, Memo, Set, Signal, use_context};
 
 use super::{
   SimpleGlyphs,
@@ -42,20 +43,22 @@ use super::{
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
 /// arrow keys move between them, and exactly one is chosen.
 ///
-/// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
-/// or interleaved with anything. The chosen value flows both ways. Without the view
-/// [`set_child`](Self::set_child) supplies, it builds an empty group.
+/// Members are [`SimpleRadio`]s at any depth inside the child, tagged with values of the
+/// app's own type `T`, so one may be wrapped or interleaved with anything. The chosen
+/// value flows both ways; a group that starts with nothing chosen holds an `Option`, its
+/// members tagged `Some(..)`. Without the view [`set_child`](Self::set_child) supplies,
+/// it builds an empty group.
 #[doc(hidden)]
 #[derive(Debug)]
 #[must_use]
-pub struct SimpleRadioGroup<P: Realization> {
+pub struct SimpleRadioGroup<P: Realization, T: Choice> {
   behavior: RadioGroup,
   label: Option<String>,
   child: Option<AnyView<P>>,
-  platform: PhantomData<fn() -> P>,
+  value: PhantomData<fn(T) -> T>,
 }
 
-impl<P: Realization> SimpleRadioGroup<P> {
+impl<P: Realization, T: Choice> SimpleRadioGroup<P, T> {
   /// A group with nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -63,46 +66,50 @@ impl<P: Realization> SimpleRadioGroup<P> {
       behavior: RadioGroup::new(),
       label: None,
       child: None,
-      platform: PhantomData,
+      value: PhantomData,
     }
   }
 }
 
-impl<P: Realization> Default for SimpleRadioGroup<P> {
+impl<P: Realization, T: Choice> Default for SimpleRadioGroup<P, T> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Realization> SimpleRadioGroup<P> {
+impl<P: Realization, T: Choice> SimpleRadioGroup<P, T> {
   /// Sets the chosen member's value.
-  pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
-    self.behavior = self.behavior.set_chosen(chosen);
+  pub fn set_chosen(mut self, chosen: T) -> Self {
+    self.behavior = self.behavior.set_chosen(Some(chosen));
 
     self
   }
 
   /// Derives the chosen member's value from the signals `chosen` reads.
-  pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
-    self.behavior = self.behavior.derive_chosen(chosen);
+  pub fn derive_chosen(mut self, chosen: impl Fn() -> T + 'static) -> Self {
+    self.behavior = self.behavior.derive_chosen(move || Some(chosen()));
 
     self
   }
 
   /// Runs `action` with the value a choice asks for.
-  pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.behavior = self.behavior.handle_choose(action);
+  pub fn handle_choose(mut self, action: impl Fn(T) + 'static) -> Self {
+    self.behavior = self.behavior.handle_choose(move |chosen: Option<T>| {
+      if let Some(chosen) = chosen {
+        action(chosen);
+      }
+    });
 
     self
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_chosen(mut self, signal: Signal<Option<String>>) -> Self {
-    self.behavior = self.behavior.bind_chosen(signal);
-
+  pub fn bind_chosen(self, signal: Signal<T>) -> Self {
     self
+      .derive_chosen(move || signal.get())
+      .handle_choose(move |chosen| signal.set(chosen))
   }
 
   /// Sets the group's accessible name.
@@ -120,11 +127,11 @@ impl<P: Realization> SimpleRadioGroup<P> {
   }
 }
 
-impl<P: Realization> AnyKind for SimpleRadioGroup<P> {}
+impl<P: Realization, T: Choice> AnyKind for SimpleRadioGroup<P, T> {}
 
-impl<P: Realization> View<P> for SimpleRadioGroup<P> {
+impl<P: Realization, T: Choice> View<P> for SimpleRadioGroup<P, T> {
   fn build(self) -> NodeId {
-    let mut group = BasicRadioGroup::new(self.behavior);
+    let mut group = Control::<P, _>::new(self.behavior);
 
     if let Some(label) = self.label {
       group = group.set_label(label);
@@ -155,8 +162,9 @@ pub struct SimpleRadio<P: Realization> {
 }
 
 impl<P: Realization> SimpleRadio<P> {
-  /// The member standing for `value`, the string the group reports when it is chosen.
-  pub fn new(value: impl Into<String>) -> Self {
+  /// The member tagged with `value`, what its group is asked to choose when it is
+  /// chosen.
+  pub fn new(value: impl Choice) -> Self {
     Self {
       member: Radio::new(value),
       label: None,
@@ -187,12 +195,10 @@ where
       SimpleMarks::Glyph => {
         let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let group = use_context::<RadioGroupContext>();
-        let value = self.member.value().to_owned();
+        let value = self.member.value().clone();
 
         Text::<P>::derive(move || {
-          let checked = group
-            .as_ref()
-            .is_some_and(|group| group.chosen().as_deref() == Some(value.as_str()));
+          let checked = group.as_ref().is_some_and(|group| group.is_chosen(&value));
 
           glyphs
             .map_or_else(SimpleGlyphs::default, |glyphs| glyphs.get())
@@ -248,8 +254,10 @@ where
     .set_child(dot)
 }
 
-/// What a platform's `SimpleRadioGroup` carries.
-pub trait SimpleRadioGroupBase<P: Realization>: Wraps<Inner = SimpleRadioGroup<P>> {
+/// What a platform's `SimpleRadioGroup` of `T`s carries.
+pub trait SimpleRadioGroupBase<P: Realization, T: Choice>:
+  Wraps<Inner = SimpleRadioGroup<P, T>>
+{
   /// A group with nothing chosen.
   #[must_use]
   fn new() -> Self {
@@ -258,25 +266,25 @@ pub trait SimpleRadioGroupBase<P: Realization>: Wraps<Inner = SimpleRadioGroup<P
 
   /// Sets the chosen member's value.
   #[must_use]
-  fn set_chosen(self, chosen: impl Into<String>) -> Self {
+  fn set_chosen(self, chosen: T) -> Self {
     Self::wrap(self.into_inner().set_chosen(chosen))
   }
 
   /// Derives the chosen member's value from the signals `chosen` reads.
   #[must_use]
-  fn derive_chosen(self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
+  fn derive_chosen(self, chosen: impl Fn() -> T + 'static) -> Self {
     Self::wrap(self.into_inner().derive_chosen(chosen))
   }
 
   /// Runs `action` with the value a choice asks for.
   #[must_use]
-  fn handle_choose(self, action: impl Fn(String) + 'static) -> Self {
+  fn handle_choose(self, action: impl Fn(T) + 'static) -> Self {
     Self::wrap(self.into_inner().handle_choose(action))
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[must_use]
-  fn bind_chosen(self, signal: Signal<Option<String>>) -> Self {
+  fn bind_chosen(self, signal: Signal<T>) -> Self {
     Self::wrap(self.into_inner().bind_chosen(signal))
   }
 
@@ -295,9 +303,10 @@ pub trait SimpleRadioGroupBase<P: Realization>: Wraps<Inner = SimpleRadioGroup<P
 
 /// What a platform's `SimpleRadio` carries.
 pub trait SimpleRadioBase<P: Realization>: Wraps<Inner = SimpleRadio<P>> {
-  /// The member standing for `value`, the string the group reports when it is chosen.
+  /// The member tagged with `value`, what its group is asked to choose when it is
+  /// chosen.
   #[must_use]
-  fn new(value: impl Into<String>) -> Self {
+  fn new(value: impl Choice) -> Self {
     Self::wrap(SimpleRadio::new(value))
   }
 

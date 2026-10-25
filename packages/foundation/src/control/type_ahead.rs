@@ -71,9 +71,10 @@ impl TypeAhead {
   /// The index of the member `buffer` picks among `names`, given the member `current`
   /// holds focus or is chosen: for one character, repeated or not, the next name
   /// starting with it after `current`; for more, the first name starting with the
-  /// whole buffer from `current` on. Both wrap, and neither minds case.
+  /// whole buffer from `current` on. Both wrap, neither minds case, and a member with
+  /// no name is passed over.
   #[must_use]
-  pub fn matching(buffer: &str, names: &[String], current: Option<usize>) -> Option<usize> {
+  pub fn matching(buffer: &str, names: &[Option<String>], current: Option<usize>) -> Option<usize> {
     if names.is_empty() {
       return None;
     }
@@ -91,7 +92,11 @@ impl TypeAhead {
 
     (0..names.len())
       .map(|offset| (from + offset) % names.len())
-      .find(|index| names[*index].to_lowercase().starts_with(&needle))
+      .find(|index| {
+        names[*index]
+          .as_ref()
+          .is_some_and(|name| name.to_lowercase().starts_with(&needle))
+      })
   }
 }
 
@@ -99,9 +104,9 @@ impl TypeAhead {
 mod tests {
   use super::TypeAhead;
 
-  fn names() -> Vec<String> {
+  fn names() -> Vec<Option<String>> {
     ["Apple", "Avocado", "Banana", "blueberry"]
-      .map(str::to_owned)
+      .map(|name| Some(name.to_owned()))
       .to_vec()
   }
 
@@ -120,5 +125,15 @@ mod tests {
     assert_eq!(TypeAhead::matching("av", &names, Some(0)), Some(1));
     assert_eq!(TypeAhead::matching("z", &names, Some(0)), None);
     assert_eq!(TypeAhead::matching("a", &[], None), None);
+  }
+
+  /// A member with no name is passed over, never matched.
+  #[test]
+  fn an_unnamed_member_is_passed_over() {
+    let names = [None, Some("Apple".to_owned()), None];
+
+    assert_eq!(TypeAhead::matching("a", &names, None), Some(1));
+    assert_eq!(TypeAhead::matching("a", &names, Some(1)), Some(1));
+    assert_eq!(TypeAhead::matching("b", &names, None), None);
   }
 }

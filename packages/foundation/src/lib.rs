@@ -51,7 +51,9 @@
 //! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
 //! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Slider`],
 //! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
-//! [`TextEntry`] ship, and the `Basic*` aliases name the control over each. [`Overlay`]
+//! [`TextEntry`] ship, and the `Basic*` aliases name the control over each; a choice's
+//! value is the app's own type, a [`Choice`], which the cores hold erased ([`AnyChoice`],
+//! [`AnyChosen`]) and the typed views are [`Thin`] over. [`Overlay`]
 //! is content above the app, opened and closed by the app and placed against the view
 //! a [`NodeHandle`] is bound to, which focus also moves to and whose measured size it
 //! reports; [`BasicPicker`] composes a popup face, an overlay and a listbox. [`LazyColumn`] and
@@ -97,6 +99,7 @@ mod suspense;
 pub mod terminal;
 pub mod text;
 mod theme;
+mod thin;
 mod tooltip;
 mod type_metrics;
 mod visibility;
@@ -120,18 +123,22 @@ pub use crate::{
   },
   control::{
     Activate,
+    AnyChoice,
+    AnyChosen,
     BasicButton,
     BasicCheckbox,
-    BasicListbox,
+    BasicListboxBase,
     BasicListboxOption,
     BasicMenu,
     BasicMenuItem,
     BasicRadio,
-    BasicRadioGroup,
+    BasicRadioGroupBase,
     BasicSlider,
     BasicTextEditor,
     BasicTextField,
     Behavior,
+    Choice,
+    Chosen,
     Collection,
     CollectionContext,
     CollectionPolicy,
@@ -139,6 +146,7 @@ pub use crate::{
     ControlBase,
     ControlHandle,
     Controlled,
+    ControlledChoice,
     Label,
     LabelPlacement,
     Listbox,
@@ -191,7 +199,7 @@ pub use crate::{
   overlay::{Overlay, OverlayBase},
   painted::{Painted, PaintedBase},
   painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
-  picker::{BasicPicker, BasicPickerBase},
+  picker::{BasicPicker, BasicPickerBase, BasicPickerCore},
   pinned::{Pinned, PinnedBase},
   realize::{ChildBuilder, LowLevel},
   run::Run,
@@ -210,6 +218,7 @@ pub use crate::{
   suspense::{Suspense, SuspenseBase},
   text::{Text, TextBase},
   theme::{Theme, ThemeBase, ThemedIn},
+  thin::Thin,
   tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip, TooltipBase},
   type_metrics::TypeMetrics,
   visibility::{Visibility, VisibilityBase},

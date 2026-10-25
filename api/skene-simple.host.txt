@@ -247,26 +247,26 @@ pub fn skene_simple::SimpleContextMenuBase::new() -> Self
 pub fn skene_simple::SimpleContextMenuBase::serve(self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId where <P as skene_foundation::spine::realization::Realization>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::realization::Realization>::StyleExt: skene_foundation::corner_radius::CornerRadius
 pub fn skene_simple::SimpleContextMenuBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
 pub fn skene_simple::SimpleContextMenuBase::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::context_menu::MenuEntry>) -> Self
-pub trait skene_simple::SimplePickerBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimplePicker<P>>
-pub fn skene_simple::SimplePickerBase::bind_chosen(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
-pub fn skene_simple::SimplePickerBase::derive_chosen(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub trait skene_simple::SimplePickerBase<P: skene_foundation::spine::realization::Realization, T: skene_foundation::control::choice::Choice>: skene_foundation::spine::wraps::Wraps<Inner = SimplePicker<P, T>>
+pub fn skene_simple::SimplePickerBase::bind_chosen(self, skene_reactive::signal::Signal<T>) -> Self
+pub fn skene_simple::SimplePickerBase::derive_chosen(self, impl core::ops::function::Fn() -> T + 'static) -> Self
 pub fn skene_simple::SimplePickerBase::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_simple::SimplePickerBase::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub fn skene_simple::SimplePickerBase::handle_choose(self, impl core::ops::function::Fn(T) + 'static) -> Self
 pub fn skene_simple::SimplePickerBase::new() -> Self
-pub fn skene_simple::SimplePickerBase::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple::SimplePickerBase::set_chosen(self, T) -> Self
 pub fn skene_simple::SimplePickerBase::set_disabled(self, bool) -> Self
 pub fn skene_simple::SimplePickerBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimplePickerBase::set_options<V: core::convert::Into<alloc::string::String>, L: core::convert::Into<alloc::string::String>>(self, impl core::iter::traits::collect::IntoIterator<Item = (V, L)>) -> Self
+pub fn skene_simple::SimplePickerBase::set_options<L: core::convert::Into<alloc::string::String>>(self, impl core::iter::traits::collect::IntoIterator<Item = (T, L)>) -> Self
 pub trait skene_simple::SimpleRadioBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleRadio<P>>
-pub fn skene_simple::SimpleRadioBase::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple::SimpleRadioBase::new(impl skene_foundation::control::choice::Choice) -> Self
 pub fn skene_simple::SimpleRadioBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub trait skene_simple::SimpleRadioGroupBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleRadioGroup<P>>
-pub fn skene_simple::SimpleRadioGroupBase::bind_chosen(self, skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::derive_chosen(self, impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::handle_choose(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
+pub trait skene_simple::SimpleRadioGroupBase<P: skene_foundation::spine::realization::Realization, T: skene_foundation::control::choice::Choice>: skene_foundation::spine::wraps::Wraps<Inner = SimpleRadioGroup<P, T>>
+pub fn skene_simple::SimpleRadioGroupBase::bind_chosen(self, skene_reactive::signal::Signal<T>) -> Self
+pub fn skene_simple::SimpleRadioGroupBase::derive_chosen(self, impl core::ops::function::Fn() -> T + 'static) -> Self
+pub fn skene_simple::SimpleRadioGroupBase::handle_choose(self, impl core::ops::function::Fn(T) + 'static) -> Self
 pub fn skene_simple::SimpleRadioGroupBase::new() -> Self
 pub fn skene_simple::SimpleRadioGroupBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::set_chosen(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple::SimpleRadioGroupBase::set_chosen(self, T) -> Self
 pub fn skene_simple::SimpleRadioGroupBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleSliderBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleSlider<P>>
 pub fn skene_simple::SimpleSliderBase::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self

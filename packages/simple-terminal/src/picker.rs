@@ -1,6 +1,6 @@
 //! A ready-made dropdown choice in the Simple design language.
 
-use skene_foundation::{View, Wraps};
+use skene_foundation::{Choice, View, Wraps};
 use skene_simple::SimplePickerBase;
 use skene_terminal::Active;
 
@@ -20,14 +20,32 @@ use skene_terminal::Active;
 /// use skene_simple_terminal::prelude::*;
 /// use skene_terminal::prelude::*;
 ///
-/// let size = Signal::new(String::from("m"));
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// enum Size {
+///   Small,
+///   Medium,
+///   Large,
+/// }
+///
+/// let size = Signal::new(Size::Medium);
 /// let picker = SimplePicker::new()
 ///   .set_label("Size")
-///   .set_options([("s", "Small"), ("m", "Medium"), ("l", "Large")])
+///   .set_options([
+///     (Size::Small, "Small"),
+///     (Size::Medium, "Medium"),
+///     (Size::Large, "Large"),
+///   ])
 ///   .bind_chosen(size);
 /// ```
-#[derive(Debug, Default, View, Wraps)]
+#[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct SimplePicker(skene_simple::SimplePicker<Active>);
+pub struct SimplePicker<T: Choice>(skene_simple::SimplePicker<Active, T>);
 
-impl SimplePickerBase<Active> for SimplePicker {}
+impl<T: Choice> Default for SimplePicker<T> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<T: Choice> SimplePickerBase<Active, T> for SimplePicker<T> {}

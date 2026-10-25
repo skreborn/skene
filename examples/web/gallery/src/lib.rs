@@ -5,7 +5,7 @@
 use std::fmt;
 
 use skene_simple_web::prelude::*;
-use skene_web::{Active, HasChild, Link, Resource, SliderRange, prelude::*, router::Route};
+use skene_web::{Active, Choice, HasChild, Link, Resource, SliderRange, prelude::*, router::Route};
 
 /// The gallery page: every built-in view and Simple component, under the palette the
 /// reader picks.
@@ -16,66 +16,74 @@ pub fn app() -> impl View {
   // redefines its tokens in place and rebuilds nothing, so every counter below keeps its
   // value across a switch. Each palette follows the OS scheme per token, and carries
   // the ambient ink and selection colors, so nothing here names a color a palette holds.
-  let palette = Signal::tagged("palette", Some("neutral".to_owned()));
+  let palette = Signal::tagged("palette", PaletteName::Neutral);
 
-  Theme::derive(move || palette.with(|name| named_palette(name.as_deref()))).set_child_builder(
-    move || {
-      Container::new()
-        .set_role(Role::Main)
-        .set_background(SimplePalette::BACKGROUND)
-        .set_child(
-          Column::new()
-            .set_item_alignment(ItemAlignment::Center)
-            .set_padding(Inset::symmetric(24, 48))
-            .add_child(
-              Container::new().set_max_width(560).set_child(
+  Theme::derive(move || named_palette(palette.get())).set_child_builder(move || {
+    Container::new()
+      .set_role(Role::Main)
+      .set_background(SimplePalette::BACKGROUND)
+      .set_child(
+        Column::new()
+          .set_item_alignment(ItemAlignment::Center)
+          .set_padding(Inset::symmetric(24, 48))
+          .add_child(
+            Container::new().set_max_width(560).set_child(
+              Column::new().set_spacing(24).set_children((
+                Text::new("GALLERY")
+                  .set_font_size(13.)
+                  .set_font_weight(500.)
+                  .set_color(SimplePalette::MUTED_FOREGROUND),
+                palettes(palette),
+                typography(),
+                buttons(),
+                tooltips(),
+                toggles(),
+                inputs(),
+                layouts(),
+                list(),
+                lazy_row(),
                 Column::new().set_spacing(24).set_children((
-                  Text::new("GALLERY")
-                    .set_font_size(13.)
-                    .set_font_weight(500.)
-                    .set_color(SimplePalette::MUTED_FOREGROUND),
-                  palettes(palette),
-                  typography(),
-                  buttons(),
-                  tooltips(),
-                  toggles(),
-                  inputs(),
-                  layouts(),
-                  list(),
-                  lazy_row(),
-                  Column::new().set_spacing(24).set_children((
-                    context_menu(),
-                    link(),
-                    visibility_and_one_of(),
-                    boundaries(),
-                    painted(),
-                    third_party(),
-                  )),
+                  context_menu(),
+                  link(),
+                  visibility_and_one_of(),
+                  boundaries(),
+                  painted(),
+                  third_party(),
                 )),
-              ),
+              )),
             ),
-        )
-    },
-  )
+          ),
+      )
+  })
+}
+
+/// The palettes the reader switches between. It derives `Snapshot`, since the signal
+/// holding the choice is tagged and carried across a reload.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Snapshot)]
+enum PaletteName {
+  #[snapshot(default)]
+  Neutral,
+  Indigo,
+  Rose,
 }
 
 /// The palette `name` selects, each from the public constructors: the neutral default,
 /// or the default with a brand accent laid over its ring, its link and its primary look.
-fn named_palette(name: Option<&str>) -> SimplePalette {
+fn named_palette(name: PaletteName) -> SimplePalette {
   let (brand, brand_dark, hover, hover_dark) = match name {
-    Some("indigo") => (
+    PaletteName::Indigo => (
       Color::srgb(0.29, 0.33, 0.86),
       Color::srgb(0.51, 0.55, 0.97),
       Color::srgb(0.24, 0.27, 0.75),
       Color::srgb(0.62, 0.65, 0.99),
     ),
-    Some("rose") => (
+    PaletteName::Rose => (
       Color::srgb(0.80, 0.16, 0.40),
       Color::srgb(0.96, 0.45, 0.65),
       Color::srgb(0.68, 0.12, 0.33),
       Color::srgb(0.98, 0.58, 0.74),
     ),
-    _ => return SimplePalette::default(),
+    PaletteName::Neutral => return SimplePalette::default(),
   };
   let pair = |light: Color, dark: Color| Definition::from(light).when(Media::Dark, dark);
 
@@ -92,7 +100,7 @@ fn named_palette(name: Option<&str>) -> SimplePalette {
     )
 }
 
-fn palettes(palette: Signal<Option<String>>) -> impl View {
+fn palettes(palette: Signal<PaletteName>) -> impl View {
   section(
     "Palette",
     Column::new().set_spacing(12).set_children((
@@ -100,9 +108,9 @@ fn palettes(palette: Signal<Option<String>>) -> impl View {
         .bind_chosen(palette)
         .set_label("Palette")
         .set_child(Row::new().set_spacing(16).set_children((
-          radio_choice("neutral"),
-          radio_choice("indigo"),
-          radio_choice("rose"),
+          radio_choice(PaletteName::Neutral, "neutral"),
+          radio_choice(PaletteName::Indigo, "indigo"),
+          radio_choice(PaletteName::Rose, "rose"),
         ))),
       Text::new(
         "The theme redefines its tokens in place: switch, and the click count below keeps \
@@ -201,7 +209,7 @@ fn tooltips() -> impl View {
 
 fn toggles() -> impl View {
   let agreed = Signal::tagged("agreed", true);
-  let flavor = Signal::tagged("flavor", Some("mint".to_owned()));
+  let flavor = Signal::tagged("flavor", Flavor::Mint);
 
   section(
     "Checkbox & Radio",
@@ -228,23 +236,43 @@ fn toggles() -> impl View {
         .bind_chosen(flavor)
         .set_label("Flavor")
         .set_child(Row::new().set_spacing(16).set_children((
-          radio_choice("mint"),
-          radio_choice("vanilla"),
-          radio_choice("plum"),
+          radio_choice(Flavor::Mint, "mint"),
+          radio_choice(Flavor::Vanilla, "vanilla"),
+          radio_choice(Flavor::Plum, "plum"),
         ))),
     )),
   )
 }
 
-fn radio_choice(value: &'static str) -> impl View {
-  SimpleRadio::new(value).set_label(value)
+/// A flavor the radio group chooses.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Snapshot)]
+enum Flavor {
+  #[snapshot(default)]
+  Mint,
+  Vanilla,
+  Plum,
+}
+
+/// A season the picker chooses.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Snapshot)]
+enum Season {
+  Spring,
+  #[snapshot(default)]
+  Summer,
+  Autumn,
+  Winter,
+}
+
+/// One radio of a group, tagged with `value` and captioned `label`.
+fn radio_choice(value: impl Choice, label: &'static str) -> impl View {
+  SimpleRadio::new(value).set_label(label)
 }
 
 fn inputs() -> impl View {
   let name = Signal::tagged("name", String::new());
   let bio = Signal::tagged("bio", String::new());
   let volume = Signal::tagged("volume", 40.0f32);
-  let season = Signal::tagged("season", "summer".to_owned());
+  let season = Signal::tagged("season", Season::Summer);
 
   section(
     "TextField, TextEditor, Slider & Picker",
@@ -271,10 +299,10 @@ fn inputs() -> impl View {
       SimplePicker::new()
         .set_label("Season")
         .set_options([
-          ("spring", "Spring"),
-          ("summer", "Summer"),
-          ("autumn", "Autumn"),
-          ("winter", "Winter"),
+          (Season::Spring, "Spring"),
+          (Season::Summer, "Summer"),
+          (Season::Autumn, "Autumn"),
+          (Season::Winter, "Winter"),
         ])
         .bind_chosen(season),
     )),

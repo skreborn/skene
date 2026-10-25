@@ -76,6 +76,7 @@ use skene_web::{
   BasicCheckbox,
   BasicRadio,
   BasicRadioGroup,
+  BasicRadioGroupBase,
   BasicSlider,
   BasicTextEditor,
   BasicTextField,
@@ -106,7 +107,6 @@ use skene_web::{
   Overlay,
   Pinned,
   Radio,
-  RadioGroup,
   RichText,
   Role,
   Row,
@@ -1433,7 +1433,7 @@ fn a_slider_narrowed_below_its_value_shows_it_clamped_in_one_write() {
 
 /// A `<select>` whose options and chosen value change together shows the chosen option
 /// among the new ones after the one write, rebuilding its options only where they differ,
-/// and selects nothing where the chosen key names no option.
+/// and shows an empty hidden option first and selected where the chosen key names none.
 #[wasm_bindgen_test]
 fn a_select_shows_its_options_and_choice_as_one() {
   use skene_foundation::{ChoiceOption, Choices, contents};
@@ -1505,11 +1505,26 @@ fn a_select_shows_its_options_and_choice_as_one() {
   shown.set(choices(&["l", "xl"], "m"));
   web::end_turn();
 
+  assert_eq!(names(&select), ["", "L", "XL"]);
   assert_eq!(
     select.selected_index(),
-    -1,
-    "a key naming no option selects none"
+    0,
+    "a key naming no option selects the empty one before them"
   );
+  assert!(
+    select
+      .options()
+      .item(0)
+      .and_then(|option| option.dyn_into::<web_sys::HtmlElement>().ok())
+      .is_some_and(|option| option.hidden()),
+    "which is hidden"
+  );
+
+  shown.set(choices(&["l", "xl"], "xl"));
+  web::end_turn();
+
+  assert_eq!(names(&select), ["L", "XL"], "and goes once one is chosen");
+  assert_eq!(select.value(), "xl");
 }
 
 /// A change handler receives the value, in real time, when an input event fires on
@@ -1547,7 +1562,7 @@ fn a_drawn_face_keeps_its_caption_before_its_box() {
   use skene_web::{BasicListboxOption, BasicPicker, ListboxOption};
 
   let (_guard, root) = fresh_root();
-  let value = Signal::new("a".to_owned());
+  let value = Signal::new("a");
 
   let _ = mount(move || {
     BasicPicker::new()
@@ -1556,7 +1571,7 @@ fn a_drawn_face_keeps_its_caption_before_its_box() {
       .set_options(
         ["a", "b"].map(|value| BasicListboxOption::new(ListboxOption::new(value)).set_label(value)),
       )
-      .set_face(|shown| Text::derive(move || shown.get()))
+      .set_face(|shown| Text::derive(move || shown.get().unwrap_or_default().to_owned()))
       .build()
   });
 
@@ -3199,10 +3214,11 @@ fn a_checkbox_is_a_label_over_a_native_input() {
 fn a_radio_group_traverses_in_document_order() {
   let (_guard, root) = fresh_root();
   let flavors = Signal::new(vec![String::from("mint"), String::from("fig")]);
-  let chosen: Signal<Option<String>> = Signal::new(Some(String::from("mint")));
+  let chosen = Signal::new(String::from("mint"));
 
   let _ = mount(move || {
-    BasicRadioGroup::new(RadioGroup::new().bind_chosen(chosen))
+    BasicRadioGroup::new()
+      .bind_chosen(chosen)
       .set_child(Column::new().derive_children(
         move || flavors.get(),
         |flavor: &String| flavor.clone(),
@@ -3235,9 +3251,9 @@ fn a_radio_group_traverses_in_document_order() {
 
   press(&rows()[0], "ArrowDown");
 
-  assert_eq!(chosen.get().as_deref(), Some("fig"));
+  assert_eq!(chosen.get(), "fig");
 
-  chosen.set(Some(String::from("mint")));
+  chosen.set(String::from("mint"));
   flavors.set(vec![
     String::from("mint"),
     String::from("plum"),
@@ -3256,8 +3272,8 @@ fn a_radio_group_traverses_in_document_order() {
   press(&rows()[0], "ArrowDown");
 
   assert_eq!(
-    chosen.get().as_deref(),
-    Some("plum"),
+    chosen.get(),
+    "plum",
     "traversal follows the document, not the order members joined",
   );
 }
@@ -3273,16 +3289,14 @@ fn a_refused_radio_choice_keeps_the_chosen_one_checked() {
     let asked = Rc::clone(&asked);
 
     move || {
-      BasicRadioGroup::new(
-        RadioGroup::new()
-          .derive_chosen(|| Some(String::from("mint")))
-          .handle_choose(move |value| asked.borrow_mut().push(value)),
-      )
-      .set_child(
-        Column::new()
-          .set_children(["mint", "fig"].map(|flavor| BasicRadio::new(Radio::new(flavor)))),
-      )
-      .build()
+      BasicRadioGroup::new()
+        .derive_chosen(|| "mint")
+        .handle_choose(move |value| asked.borrow_mut().push(value))
+        .set_child(
+          Column::new()
+            .set_children(["mint", "fig"].map(|flavor| BasicRadio::new(Radio::new(flavor)))),
+        )
+        .build()
     }
   });
 

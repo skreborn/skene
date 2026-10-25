@@ -1,8 +1,14 @@
 //! The one control builder, over a behavior.
 
+use std::marker::PhantomData;
+
 use skene_foundation::{
   Activate,
+  BasicListboxBase,
+  BasicRadioGroupBase,
   Behavior,
+  Choice,
+  Chosen,
   ControlBase,
   DecorationBase,
   Listbox,
@@ -66,19 +72,130 @@ pub type BasicButton = Control<Activate>;
 pub type BasicCheckbox = Control<Toggle>;
 /// A slider: a control over [`Slider`].
 pub type BasicSlider = Control<Slider>;
-/// A radio group: a control over [`RadioGroup`].
-pub type BasicRadioGroup = Control<RadioGroup>;
 /// A radio inside a group: a control over [`Radio`].
 pub type BasicRadio = Control<Radio>;
 /// A single-line text entry: a control over [`TextEntry`].
 pub type BasicTextField = Control<TextEntry>;
 /// A multi-line text entry: a control over [`TextEntry`].
 pub type BasicTextEditor = Control<TextEntry>;
-/// A listbox: a control over [`Listbox`].
-pub type BasicListbox = Control<Listbox>;
 /// An option inside a listbox or a picker: a control over [`ListboxOption`].
 pub type BasicListboxOption = Control<ListboxOption>;
 /// A menu: a control over [`Menu`].
 pub type BasicMenu = Control<Menu>;
 /// An item inside a menu: a control over [`MenuOption`].
 pub type BasicMenuItem = Control<MenuOption>;
+
+/// A radio group: a control over a [`RadioGroup`] whose radios are tagged with values of
+/// the app's own type `T`, one of them chosen.
+///
+/// Its radios are [`BasicRadio`]s at any depth inside it, one tab stop; the arrows move to
+/// the next or the previous enabled radio, wrapping, and choose it; `Space` and a click
+/// choose. Controlled: the chosen radio is the one tagged with what
+/// [`derive_chosen`](BasicRadioGroupBase::derive_chosen) reads, and a choice only calls
+/// [`handle_choose`](BasicRadioGroupBase::handle_choose) with the value asked for;
+/// [`bind_chosen`](BasicRadioGroupBase::bind_chosen) wires both to one signal. A group that
+/// starts with nothing chosen holds an `Option`, its radios tagged `Some(..)`. Every group
+/// is one control whatever its `T`, which it holds erased.
+///
+/// ```
+/// use skene_web::{Radio, prelude::*};
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// enum Size {
+///   Small,
+///   Medium,
+/// }
+///
+/// let size = Signal::new(Size::Medium);
+/// let group = BasicRadioGroup::new()
+///   .set_label("Size")
+///   .bind_chosen(size)
+///   .set_child(Column::new().set_children((
+///     BasicRadio::new(Radio::new(Size::Small)).set_label("Small"),
+///     BasicRadio::new(Radio::new(Size::Medium)).set_label("Medium"),
+///   )));
+/// ```
+#[derive(Debug, View, Wraps)]
+#[must_use]
+pub struct BasicRadioGroup<T: Choice>(
+  skene_foundation::Control<Active, RadioGroup>,
+  PhantomData<fn(T) -> T>,
+);
+
+impl<T: Choice> Default for BasicRadioGroup<T> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<T: Choice> ControlBase<Active, RadioGroup> for BasicRadioGroup<T> {}
+
+impl<T: Choice> DecorationBase<Active> for BasicRadioGroup<T> {}
+
+impl<T: Choice> MotionBase<Active> for BasicRadioGroup<T> {}
+
+impl<T: Choice> BasicRadioGroupBase<Active, T> for BasicRadioGroup<T> {}
+
+impl<T: Choice> BasicRadioGroup<T> {
+  /// A radio group with nothing chosen and no radios.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self(
+      skene_foundation::Control::new(RadioGroup::new()),
+      PhantomData,
+    )
+  }
+}
+
+/// A listbox: a control over a [`Listbox`] whose options are tagged with values of the
+/// app's own type, what it has chosen a [`Chosen`] of them, `Option<T>` for one choice.
+///
+/// Its options are [`BasicListboxOption`]s at any depth inside it, one tab stop; the
+/// vertical arrows, `Home`, `End` and typing move focus, and `Enter`, `Space` or a click
+/// choose. Controlled: what is chosen is what
+/// [`derive_chosen`](BasicListboxBase::derive_chosen) reads, and a choice only calls
+/// [`handle_choose`](BasicListboxBase::handle_choose) with what it asks for;
+/// [`bind_chosen`](BasicListboxBase::bind_chosen) wires both to one signal. Every listbox is
+/// one control whatever its `C`, which it holds erased.
+///
+/// ```
+/// use skene_web::{BasicListbox, ListboxOption, prelude::*};
+///
+/// let fruit = Signal::new(Some(2));
+/// let listbox = BasicListbox::new()
+///   .bind_chosen(fruit)
+///   .set_child(Column::new().set_children((
+///     BasicListboxOption::new(ListboxOption::new(1)).set_label("Apple"),
+///     BasicListboxOption::new(ListboxOption::new(2)).set_label("Banana"),
+///   )));
+/// ```
+#[derive(Debug, View, Wraps)]
+#[must_use]
+pub struct BasicListbox<C: Chosen>(
+  skene_foundation::Control<Active, Listbox>,
+  PhantomData<fn(C) -> C>,
+);
+
+impl<C: Chosen> Default for BasicListbox<C> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<C: Chosen> ControlBase<Active, Listbox> for BasicListbox<C> {}
+
+impl<C: Chosen> DecorationBase<Active> for BasicListbox<C> {}
+
+impl<C: Chosen> MotionBase<Active> for BasicListbox<C> {}
+
+impl<C: Chosen> BasicListboxBase<Active, C> for BasicListbox<C> {}
+
+impl<C: Chosen> BasicListbox<C> {
+  /// A listbox with nothing chosen and no options.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self(skene_foundation::Control::new(Listbox::new()), PhantomData)
+  }
+}

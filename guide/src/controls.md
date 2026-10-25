@@ -99,34 +99,62 @@ A disabled control takes no focus.
 
 ## Groups
 
-A radio group holds its radios as children and binds the chosen one:
+A radio group holds its radios as children and binds the chosen one. What it chooses is
+a value of the app's own type, any type that is `Clone`, `Eq` and `Hash`, each radio
+tagged with one:
 
 ```rust
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
-fn sizes(size: Signal<Option<String>>) -> impl View {
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Size {
+  Small,
+  Medium,
+  Large,
+}
+
+fn sizes(size: Signal<Size>) -> impl View {
   SimpleRadioGroup::new().set_label("Size").bind_chosen(size).set_child(
     Row::new().set_spacing(16).set_children((
-      SimpleRadio::new("s").set_label("Small"),
-      SimpleRadio::new("m").set_label("Medium"),
-      SimpleRadio::new("l").set_label("Large"),
+      SimpleRadio::new(Size::Small).set_label("Small"),
+      SimpleRadio::new(Size::Medium).set_label("Medium"),
+      SimpleRadio::new(Size::Large).set_label("Large"),
     )),
   )
 }
 ```
 
+A group that starts with nothing chosen binds an `Option<Size>`, its radios tagged
+`Some(Size::Small)` and so on. A listbox binds an `Option` the same way.
+
 A picker offers the same choice in a popup, and on the web renders as a `<select>`
-until the page hydrates:
+until the page hydrates; typing over it picks the option whose name the characters
+begin, the name its label supplies:
 
 ```rust
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
-fn size(size: Signal<String>) -> impl View {
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Size {
+  Small,
+  Medium,
+  Large,
+}
+
+fn size(size: Signal<Size>) -> impl View {
   SimplePicker::new()
     .set_label("Size")
-    .set_options([("s", "Small"), ("m", "Medium"), ("l", "Large")])
+    .set_options([
+      (Size::Small, "Small"),
+      (Size::Medium, "Medium"),
+      (Size::Large, "Large"),
+    ])
     .bind_chosen(size)
 }
 ```
+
+The page the server renders names each option by a key both the server and the browser
+give it alike, so a choice the reader makes before the script arrives reaches the
+`Signal<Size>` once it does.

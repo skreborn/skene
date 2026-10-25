@@ -1,6 +1,6 @@
 //! The derives of a facade's view over the foundation's: `Wraps`, a tuple struct of one
-//! field holding that field as its whole content, and `View`, that struct building as
-//! the view it holds.
+//! field, beside any `PhantomData` markers, holding that field as its whole content, and
+//! `View`, that struct building as the view it holds.
 
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::TokenStream;
@@ -38,9 +38,11 @@ fn wraps() -> TokenStream {
   quote!(::skene_foundation::Wraps)
 }
 
-/// The one field of the tuple struct `input` describes.
-fn field(input: &DeriveInput, derive: &str) -> syn::Result<Type> {
-  let message = format!("`{derive}` derives for a tuple struct of one field");
+/// The first field of the tuple struct `input` describes, with how many `PhantomData`
+/// markers follow it, the only other fields it may have.
+fn field(input: &DeriveInput, derive: &str) -> syn::Result<(Type, usize)> {
+  let message =
+    format!("`{derive}` derives for a tuple struct of one field, beside any `PhantomData` markers");
   let Data::Struct(data) = &input.data
   else {
     return Err(syn::Error::new_spanned(input, message));
@@ -50,19 +52,41 @@ fn field(input: &DeriveInput, derive: &str) -> syn::Result<Type> {
     return Err(syn::Error::new_spanned(&data.fields, message));
   };
 
-  if fields.unnamed.len() != 1 {
+  let mut types = fields.unnamed.iter().map(|field| &field.ty);
+  let Some(inner) = types.next()
+  else {
     return Err(syn::Error::new_spanned(fields, message));
+  };
+  let mut markers = 0;
+
+  for marker in types {
+    let Type::Path(path) = marker
+    else {
+      return Err(syn::Error::new_spanned(marker, message));
+    };
+
+    if path
+      .path
+      .segments
+      .last()
+      .is_none_or(|segment| segment.ident != "PhantomData")
+    {
+      return Err(syn::Error::new_spanned(marker, message));
+    }
+
+    markers += 1;
   }
 
-  Ok(fields.unnamed[0].ty.clone())
+  Ok((inner.clone(), markers))
 }
 
 /// Expands `#[derive(Wraps)]` on `input`.
 pub(crate) fn derive_wraps(input: &DeriveInput) -> syn::Result<TokenStream> {
-  let inner = field(input, "Wraps")?;
+  let (inner, markers) = field(input, "Wraps")?;
   let name = &input.ident;
   let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
   let wraps = wraps();
+  let markers = (0..markers).map(|_| quote!(::core::marker::PhantomData));
 
   Ok(quote! {
     impl #impl_generics #wraps for #name #type_generics #where_clause {
@@ -70,7 +94,7 @@ pub(crate) fn derive_wraps(input: &DeriveInput) -> syn::Result<TokenStream> {
 
       #[inline(always)]
       fn wrap(inner: Self::Inner) -> Self {
-        Self(inner)
+        Self(inner #(, #markers)*)
       }
 
       #[inline(always)]
@@ -93,7 +117,7 @@ pub(crate) fn derive_wraps(input: &DeriveInput) -> syn::Result<TokenStream> {
 
 /// Expands `#[derive(View)]` on `input`.
 pub(crate) fn derive_view(input: &DeriveInput) -> syn::Result<TokenStream> {
-  let inner = field(input, "View")?;
+  let (inner, _) = field(input, "View")?;
   let name = &input.ident;
   let foundation = foundation().unwrap_or_else(|| quote!(::skene_foundation));
   let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();

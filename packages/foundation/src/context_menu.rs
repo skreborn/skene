@@ -473,7 +473,7 @@ impl<P: Realization> ContextMenu<P> {
         continue;
       }
 
-      let value = runs.len().to_string();
+      let index = runs.len();
       let verdicts = item.verdicts::<P>(generation);
       let Verdicts {
         run,
@@ -485,7 +485,7 @@ impl<P: Realization> ContextMenu<P> {
         bindings.push((shortcut, runs.len()));
       }
 
-      rows.push(dress.row(item.label, item.shortcut, value, &verdicts));
+      rows.push(dress.row(item.label, item.shortcut, index, &verdicts));
       runs.push(Rc::clone(run));
       usable.push({
         let (shown, disabled) = (Rc::clone(shown), Rc::clone(disabled));
@@ -497,14 +497,10 @@ impl<P: Realization> ContextMenu<P> {
     let menu = Menu::new().handle_choose({
       let runs = runs.clone();
 
-      move |value| {
+      move |index: Option<usize>| {
         open.set(false);
 
-        if let Some(run) = value
-          .parse::<usize>()
-          .ok()
-          .and_then(|index| runs.get(index))
-        {
+        if let Some(run) = index.and_then(|index| runs.get(index)) {
           run();
         }
       }
@@ -679,13 +675,13 @@ impl<P: Realization> RowDress<P> {
     rule.into_any()
   }
 
-  /// One item's row: a [`MenuOption`] carrying `value`, captioned by `label` with
+  /// One item's row: a [`MenuOption`] tagged with `index`, captioned by `label` with
   /// `shortcut` beside it, listed and disabled as `verdicts` say.
   fn row(
     &self,
     label: Source<String>,
     shortcut: Option<Shortcut>,
-    value: String,
+    index: usize,
     verdicts: &Verdicts,
   ) -> AnyView<P> {
     let name = label.clone();
@@ -696,7 +692,7 @@ impl<P: Realization> RowDress<P> {
       }),
       None => self.default_row(label, shortcut),
     };
-    let mut control = Control::<P, _>::new(MenuOption::new(value))
+    let mut control = Control::<P, _>::new(MenuOption::new(index))
       .derive_disabled({
         let disabled = Rc::clone(&verdicts.disabled);
 

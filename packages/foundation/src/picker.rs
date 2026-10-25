@@ -5,12 +5,16 @@ use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 use skene_reactive::{Effect, Get, Memo, Set, Signal, on_cleanup, provide_context, untrack};
 
 use crate::{
+  AnyChosen,
   AnyKind,
   AnyView,
   Axis,
   Behavior,
+  Choice,
   Choices,
+  Chosen,
   Control,
+  ControlledChoice,
   DeclaredBoxStyle,
   DecorationBase,
   Enhance,
@@ -34,6 +38,7 @@ use crate::{
   Realization,
   Roster,
   Scene,
+  Thin,
   TypeAhead,
   View,
   Wraps,
@@ -41,7 +46,24 @@ use crate::{
   realize::Source,
 };
 
-struct Face<P: Realization>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
+struct Face<P: Realization>(Box<dyn FnOnce(Memo<AnyChosen>) -> AnyView<P>>);
+
+/// A choice among fixed options, drawn by the views it holds, with its type erased:
+/// what every [`BasicPicker`] builds, the typed picker thin over it.
+///
+/// It is the [`BasicPicker`] it describes, holding what is chosen as an
+/// [`AnyChosen`]: [`set_chosen`](Self::set_chosen) and its kin take a [`Chosen`] of the
+/// options' values, an `Option<T>`, and its face is given what is chosen erased.
+#[must_use]
+pub struct BasicPickerCore<P: Realization> {
+  face_style: Box<DeclaredBoxStyle<P>>,
+  label: Option<Label<P>>,
+  disabled: Option<Source<bool>>,
+  placement: Placement,
+  list: LayoutBox<P, PlainChild>,
+  chosen: ControlledChoice,
+  face: Option<Face<P>>,
+}
 
 /// A choice among fixed options, drawn by the views it holds: the face draws the
 /// control closed, the options draw the list it opens.
@@ -55,26 +77,31 @@ struct Face<P: Realization>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
 /// whose name the characters begin, a character repeated cycling through the options
 /// starting with it; typing over the open list moves focus the same way.
 ///
-/// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads, and
-/// a choice only calls [`handle_choose`](Self::handle_choose) with the value asked for;
-/// [`bind_chosen`](Self::bind_chosen) wires both to one signal. The face comes from
-/// [`set_face`](Self::set_face), and a picker without one renders nothing; the options
-/// come from [`set_options`](Self::set_options) and
-/// [`derive_options`](Self::derive_options), each a
-/// [`BasicListboxOption`](crate::BasicListboxOption) at any depth.
+/// Controlled: the chosen value, a value of the app's own type `T`, is what
+/// [`derive_chosen`](BasicPickerBase::derive_chosen) reads, and a choice only calls
+/// [`handle_choose`](BasicPickerBase::handle_choose) with the value asked for;
+/// [`bind_chosen`](BasicPickerBase::bind_chosen) wires both to one signal. The face
+/// comes from [`set_face`](BasicPickerBase::set_face), and a picker without one renders
+/// nothing; the options come from [`set_options`](BasicPickerBase::set_options) and
+/// [`derive_options`](BasicPickerBase::derive_options), each a
+/// [`BasicListboxOption`](crate::BasicListboxOption) at any depth tagged with a `T`.
+/// The picker is thin over a [`BasicPickerCore`], which holds its values with their
+/// type erased.
 #[must_use]
-pub struct BasicPicker<P: Realization> {
-  face_style: Box<DeclaredBoxStyle<P>>,
-  label: Option<Label<P>>,
-  disabled: Option<Source<bool>>,
-  placement: Placement,
-  list: LayoutBox<P, PlainChild>,
-  value: Option<Source<String>>,
-  on_change: Option<Rc<dyn Fn(String)>>,
-  face: Option<Face<P>>,
+pub struct BasicPicker<P: Realization, T: Choice> {
+  core: BasicPickerCore<P>,
+  value: PhantomData<fn(T) -> T>,
 }
 
-impl<P: Realization> std::fmt::Debug for BasicPicker<P> {
+impl<P: Realization> std::fmt::Debug for BasicPickerCore<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("BasicPickerCore")
+      .finish_non_exhaustive()
+  }
+}
+
+impl<P: Realization, T: Choice> std::fmt::Debug for BasicPicker<P, T> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("BasicPicker")
@@ -82,7 +109,7 @@ impl<P: Realization> std::fmt::Debug for BasicPicker<P> {
   }
 }
 
-impl<P: Realization> BasicPicker<P> {
+impl<P: Realization> BasicPickerCore<P> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -95,21 +122,38 @@ impl<P: Realization> BasicPicker<P> {
         axis: Axis::Vertical,
         reversed: false,
       }),
-      value: None,
-      on_change: None,
+      chosen: ControlledChoice::new(),
       face: None,
     }
   }
 }
 
-impl<P: Realization> Default for BasicPicker<P> {
+impl<P: Realization> Default for BasicPickerCore<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<P: Realization> BasicPicker<P> {
+impl<P: Realization, T: Choice> BasicPicker<P, T> {
+  /// A picker with no options and nothing chosen.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self {
+      core: BasicPickerCore::new(),
+      value: PhantomData,
+    }
+  }
+}
+
+impl<P: Realization, T: Choice> Default for BasicPicker<P, T> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<P: Realization> BasicPickerCore<P> {
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[inline(always)]
   pub const fn set_placement(mut self, placement: Placement) -> Self {
@@ -144,33 +188,33 @@ impl<P: Realization> BasicPicker<P> {
     self
   }
 
-  /// Sets the chosen value.
-  pub fn set_chosen(mut self, value: impl Into<String>) -> Self {
-    self.value = Some(Source::Fixed(value.into()));
+  /// Sets what is chosen.
+  pub fn set_chosen<K: Chosen>(mut self, chosen: K) -> Self {
+    self.chosen.set(chosen);
 
     self
   }
 
-  /// Derives the chosen value from the signals `value` reads.
-  pub fn derive_chosen(mut self, value: impl Fn() -> String + 'static) -> Self {
-    self.value = Some(Source::derive(value));
+  /// Derives what is chosen from the signals `chosen` reads.
+  pub fn derive_chosen<K: Chosen>(mut self, chosen: impl Fn() -> K + 'static) -> Self {
+    self.chosen.derive(chosen);
 
     self
   }
 
-  /// Runs `action` with the value a choice asks for.
-  pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.on_change = Some(Rc::new(action));
+  /// Runs `action` with what a choice asks for.
+  pub fn handle_choose<K: Chosen>(mut self, action: impl Fn(K) + 'static) -> Self {
+    self.chosen.handle(action);
 
     self
   }
 
-  /// Binds the chosen value to `signal` in both directions.
+  /// Binds what is chosen to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_chosen(self, signal: Signal<String>) -> Self {
+  pub fn bind_chosen<K: Chosen>(mut self, signal: Signal<K>) -> Self {
+    self.chosen.bind(signal);
+
     self
-      .derive_chosen(move || signal.get())
-      .handle_choose(move |value| signal.set(value))
   }
 
   /// Sets the face's caption, which is also the accessible name.
@@ -195,29 +239,153 @@ impl<P: Realization> BasicPicker<P> {
     self
   }
 
-  /// Sets the view drawing the control closed, built from the chosen value.
-  pub fn set_face<V: View<P>>(mut self, face: impl FnOnce(Memo<String>) -> V + 'static) -> Self {
-    self.face = Some(Face(Box::new(move |value| face(value).into_any())));
+  /// Sets the view drawing the control closed, built from what is chosen.
+  pub fn set_face<V: View<P>>(mut self, face: impl FnOnce(Memo<AnyChosen>) -> V + 'static) -> Self {
+    self.face = Some(Face(Box::new(move |chosen| face(chosen).into_any())));
 
     self
   }
 }
 
-impl<P: Realization> HasBoxStyle<P> for BasicPicker<P> {
+impl<P: Realization> HasBoxStyle<P> for BasicPickerCore<P> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.face_style
   }
 }
 
-impl<P: Realization> DecorationBase<P> for BasicPicker<P> {}
+impl<P: Realization> DecorationBase<P> for BasicPickerCore<P> {}
 
-impl<P: Realization> AnyKind for BasicPicker<P> {}
+impl<P: Realization> AnyKind for BasicPickerCore<P> {}
 
-/// What a facade's [`BasicPicker`] carries beyond the face's decoration.
+impl<P: Realization, T: Choice> BasicPicker<P, T> {
+  /// This picker, its core replaced by what `map` makes of it.
+  #[inline(always)]
+  fn map_core(mut self, map: impl FnOnce(BasicPickerCore<P>) -> BasicPickerCore<P>) -> Self {
+    self.core = map(self.core);
+
+    self
+  }
+}
+
+impl<P: Realization, T: Choice> HasBoxStyle<P> for BasicPicker<P, T> {
+  #[inline(always)]
+  fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
+    self.core.box_style_mut()
+  }
+}
+
+impl<P: Realization, T: Choice> DecorationBase<P> for BasicPicker<P, T> {}
+
+impl<P: Realization, T: Choice> AnyKind for BasicPicker<P, T> {}
+
+impl<P: Realization, T: Choice> Thin<P> for BasicPicker<P, T> {
+  type Core = BasicPickerCore<P>;
+
+  #[inline(always)]
+  fn into_core(self) -> BasicPickerCore<P> {
+    self.core
+  }
+}
+
+impl<P: Realization, T: Choice> View<P> for BasicPicker<P, T> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    self.into_core().build()
+  }
+}
+
+impl<P: Realization, T: Choice> BasicPicker<P, T> {
+  /// Sets where the list opens against the face; below it unless told otherwise.
+  pub fn set_placement(self, placement: Placement) -> Self {
+    self.map_core(|core| core.set_placement(placement))
+  }
+
+  /// Sets the views drawing the list, each
+  /// [`BasicListboxOption`](crate::BasicListboxOption) among them an option tagged with
+  /// a `T`; anything else draws and nothing more.
+  pub fn set_options(self, options: impl IntoChildren<P>) -> Self {
+    self.map_core(|core| core.set_options(options))
+  }
+
+  /// Derives the list from a keyed collection: `items` yields the items, `key` gives
+  /// each a stable identity, and `view` draws one.
+  pub fn derive_options<I, A, K, V>(
+    self,
+    items: impl Fn() -> A + 'static,
+    key: impl Fn(&I) -> K + 'static,
+    view: impl Fn(I) -> V + 'static,
+  ) -> Self
+  where
+    A: IntoIterator<Item = I>,
+    K: Eq + std::hash::Hash + 'static,
+    V: IntoChildOf<P, PlainChild>,
+  {
+    self.map_core(|core| core.derive_options(items, key, view))
+  }
+
+  /// Sets the chosen value.
+  pub fn set_chosen(self, value: T) -> Self {
+    self.map_core(|core| core.set_chosen(Some(value)))
+  }
+
+  /// Derives the chosen value from the signals `value` reads.
+  pub fn derive_chosen(self, value: impl Fn() -> T + 'static) -> Self {
+    self.map_core(|core| core.derive_chosen(move || Some(value())))
+  }
+
+  /// Runs `action` with the value a choice asks for.
+  pub fn handle_choose(self, action: impl Fn(T) + 'static) -> Self {
+    self.map_core(|core| {
+      core.handle_choose(move |chosen: Option<T>| {
+        if let Some(chosen) = chosen {
+          action(chosen);
+        }
+      })
+    })
+  }
+
+  /// Binds the chosen value to `signal` in both directions.
+  #[inline(always)]
+  pub fn bind_chosen(self, signal: Signal<T>) -> Self {
+    self
+      .derive_chosen(move || signal.get())
+      .handle_choose(move |value| signal.set(value))
+  }
+
+  /// Sets the face's caption, which is also the accessible name.
+  pub fn set_label(self, label: impl Into<Label<P>>) -> Self {
+    self.map_core(|core| core.set_label(label))
+  }
+
+  /// Sets whether the picker is present but not operable.
+  #[inline(always)]
+  pub fn set_disabled(self, disabled: bool) -> Self {
+    self.map_core(|core| core.set_disabled(disabled))
+  }
+
+  /// Derives whether the picker is disabled from the signals `disabled` reads.
+  pub fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self {
+    self.map_core(|core| core.derive_disabled(disabled))
+  }
+
+  /// Sets the view drawing the control closed, built from the chosen value; `None` with
+  /// nothing chosen.
+  pub fn set_face<V: View<P>>(self, face: impl FnOnce(Memo<Option<T>>) -> V + 'static) -> Self {
+    self.map_core(|core| {
+      core.set_face(move |chosen: Memo<AnyChosen>| {
+        face(Memo::new(move |_| {
+          chosen.get().downcast_ref::<Option<T>>().cloned().flatten()
+        }))
+      })
+    })
+  }
+}
+
+/// What a facade's [`BasicPicker`] of `T`s carries beyond the face's decoration.
 ///
 /// Its list, its value, its caption and its face.
-pub trait BasicPickerBase<P: Realization>: Wraps<Inner = BasicPicker<P>> {
+pub trait BasicPickerBase<P: Realization, T: Choice>: Wraps<Inner = BasicPicker<P, T>> {
   /// Sets where the list opens against the face; below it unless told otherwise.
   #[must_use]
   fn set_placement(self, placement: Placement) -> Self {
@@ -225,8 +393,8 @@ pub trait BasicPickerBase<P: Realization>: Wraps<Inner = BasicPicker<P>> {
   }
 
   /// Sets the views drawing the list, each
-  /// [`BasicListboxOption`](crate::BasicListboxOption) among them an option; anything else
-  /// draws and nothing more.
+  /// [`BasicListboxOption`](crate::BasicListboxOption) among them an option tagged with
+  /// a `T`; anything else draws and nothing more.
   #[must_use]
   fn set_options(self, options: impl IntoChildren<P>) -> Self {
     Self::wrap(self.into_inner().set_options(options))
@@ -234,25 +402,25 @@ pub trait BasicPickerBase<P: Realization>: Wraps<Inner = BasicPicker<P>> {
 
   /// Sets the chosen value.
   #[must_use]
-  fn set_chosen(self, value: impl Into<String>) -> Self {
+  fn set_chosen(self, value: T) -> Self {
     Self::wrap(self.into_inner().set_chosen(value))
   }
 
   /// Derives the chosen value from the signals `value` reads.
   #[must_use]
-  fn derive_chosen(self, value: impl Fn() -> String + 'static) -> Self {
+  fn derive_chosen(self, value: impl Fn() -> T + 'static) -> Self {
     Self::wrap(self.into_inner().derive_chosen(value))
   }
 
   /// Runs `action` with the value a choice asks for.
   #[must_use]
-  fn handle_choose(self, action: impl Fn(String) + 'static) -> Self {
+  fn handle_choose(self, action: impl Fn(T) + 'static) -> Self {
     Self::wrap(self.into_inner().handle_choose(action))
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[must_use]
-  fn bind_chosen(self, signal: skene_reactive::Signal<String>) -> Self {
+  fn bind_chosen(self, signal: Signal<T>) -> Self {
     Self::wrap(self.into_inner().bind_chosen(signal))
   }
 
@@ -277,23 +445,24 @@ pub trait BasicPickerBase<P: Realization>: Wraps<Inner = BasicPicker<P>> {
   /// Derives the list from a keyed collection: `items` yields the items, `key` gives
   /// each a stable identity, and `view` draws one.
   #[must_use]
-  fn derive_options<T, I, K, V>(
+  fn derive_options<I, A, K, V>(
     self,
-    items: impl Fn() -> I + 'static,
-    key: impl Fn(&T) -> K + 'static,
-    view: impl Fn(T) -> V + 'static,
+    items: impl Fn() -> A + 'static,
+    key: impl Fn(&I) -> K + 'static,
+    view: impl Fn(I) -> V + 'static,
   ) -> Self
   where
-    I: IntoIterator<Item = T>,
+    A: IntoIterator<Item = I>,
     K: Eq + std::hash::Hash + 'static,
     V: IntoChildOf<P, PlainChild>,
   {
     Self::wrap(self.into_inner().derive_options(items, key, view))
   }
 
-  /// Sets the view drawing the control closed, built from the chosen value.
+  /// Sets the view drawing the control closed, built from the chosen value; `None` with
+  /// nothing chosen.
   #[must_use]
-  fn set_face<V: View<P>>(self, face: impl FnOnce(Memo<String>) -> V + 'static) -> Self {
+  fn set_face<V: View<P>>(self, face: impl FnOnce(Memo<Option<T>>) -> V + 'static) -> Self {
     Self::wrap(self.into_inner().set_face(face))
   }
 }
@@ -304,7 +473,7 @@ struct Parts<P: Realization> {
   face_style: Box<DeclaredBoxStyle<P>>,
   settings: ControlSettings,
   placement: Placement,
-  face: Box<dyn FnOnce(Memo<String>) -> AnyView<P>>,
+  face: Box<dyn FnOnce(Memo<AnyChosen>) -> AnyView<P>>,
 }
 
 /// What each of the picker's forms gives its control: the caption's node with the name
@@ -336,19 +505,19 @@ impl ControlSettings {
 }
 
 /// The handler a choice runs, replaced by the form in force.
-type Chooser = Rc<RefCell<Rc<dyn Fn(String)>>>;
+type Chooser = Rc<RefCell<Rc<dyn Fn(AnyChosen)>>>;
 
-/// What both forms share: the chosen value, the handler the form in force answers a
+/// What both forms share: what is chosen, the handler the form in force answers a
 /// choice with, the roster the options joined, and the option views, built once.
 struct Shared<P: Realization> {
-  chosen: Rc<dyn Fn() -> Option<String>>,
+  chosen: Rc<dyn Fn() -> AnyChosen>,
   choose: Chooser,
   roster: Roster,
   options: NodeId,
   platform: PhantomData<fn() -> P>,
 }
 
-impl<P: Realization> View<P> for BasicPicker<P> {
+impl<P: Realization> View<P> for BasicPickerCore<P> {
   fn build(self) -> NodeId {
     let Self {
       face_style,
@@ -356,19 +525,19 @@ impl<P: Realization> View<P> for BasicPicker<P> {
       disabled,
       placement,
       list,
-      value,
-      on_change,
+      chosen: controlled,
       face,
     } = self;
     let Some(Face(face)) = face
     else {
       return empty::<P>().build();
     };
-    let chosen: Rc<dyn Fn() -> Option<String>> = match value {
-      None => Rc::new(|| None),
-      Some(Source::Fixed(value)) => Rc::new(move || Some(value.clone())),
-      Some(Source::Derived(compute)) => Rc::new(move || Some(compute())),
+    let chosen: Rc<dyn Fn() -> AnyChosen> = {
+      let controlled = controlled.clone();
+
+      Rc::new(move || controlled.read())
     };
+    let on_change: Rc<dyn Fn(AnyChosen)> = Rc::new(move |next| controlled.ask(next));
     let roster = Roster::new();
     let choose: Chooser = Rc::new(RefCell::new(Rc::new(|_| {})));
 
@@ -384,10 +553,10 @@ impl<P: Realization> View<P> for BasicPicker<P> {
         {
           let choose = Rc::clone(&choose);
 
-          move |value| {
+          move |next| {
             let choose = Rc::clone(&choose.borrow());
 
-            choose(value);
+            choose(next);
           }
         },
         roster.clone(),
@@ -433,7 +602,7 @@ impl<P: Realization> View<P> for BasicPicker<P> {
       .set_fallback_builder({
         let parts = Rc::clone(&parts);
         let shared = Rc::clone(&shared);
-        let on_change = on_change.clone();
+        let on_change = Rc::clone(&on_change);
 
         move || {
           AnyView::<P>::new(move || build_native::<P>(&mut parts.borrow_mut(), &shared, on_change))
@@ -455,32 +624,32 @@ impl<P: Realization> View<P> for BasicPicker<P> {
 
 /// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
 /// and disabled setting, its choices the options read from the option views, which
-/// attach nowhere, with the chosen value; the parts stay for the drawn form.
+/// attach nowhere, each named by the key its option goes by in the roster, with the
+/// chosen option's key, none where nothing chosen is among them; the parts stay for the
+/// drawn form.
 fn build_native<P: Realization>(
   parts: &mut Option<Parts<P>>,
   shared: &Rc<Shared<P>>,
-  on_change: Option<Rc<dyn Fn(String)>>,
+  on_change: Rc<dyn Fn(AnyChosen)>,
 ) -> NodeId {
   let parts = parts.as_mut().expect("the native form builds first");
-  let choose = move |value: String| {
-    if let Some(action) = &on_change {
-      action(value);
-    }
-  };
 
-  *shared.choose.borrow_mut() = Rc::new(choose.clone());
+  *shared.choose.borrow_mut() = Rc::clone(&on_change);
   shared.roster.root_at(shared.options);
 
-  let chosen = Rc::clone(&shared.chosen);
-  let roster = shared.roster.clone();
+  let (chosen, roster) = (Rc::clone(&shared.chosen), shared.roster.clone());
+  let choices = {
+    let (chosen, roster) = (Rc::clone(&chosen), roster.clone());
+
+    move || Choices::new(Rc::from(roster.options::<P>()), roster.key_of(&chosen()))
+  };
   let picker = NativePicker::new()
-    .derive_choices(move || {
-      Choices::new(
-        Rc::from(roster.options::<P>()),
-        Some(Rc::from(chosen().unwrap_or_default())),
-      )
-    })
-    .handle_choose(choose);
+    .derive_choices(choices)
+    .handle_choose(move |key| {
+      if let Some(value) = roster.value_of(&key) {
+        on_change(untrack(|| chosen()).choosing(&value));
+      }
+    });
   let mut control = Control::<P, _>::new(picker);
 
   *control.box_style_mut() = (*parts.face_style).clone();
@@ -492,7 +661,7 @@ fn build_native<P: Realization>(
 fn build_drawn<P: Realization>(
   parts: Parts<P>,
   shared: &Rc<Shared<P>>,
-  on_change: Option<Rc<dyn Fn(String)>>,
+  on_change: Rc<dyn Fn(AnyChosen)>,
 ) -> NodeId {
   let Parts {
     face_style,
@@ -504,19 +673,16 @@ fn build_drawn<P: Realization>(
   let shown = {
     let chosen = Rc::clone(&chosen);
 
-    Memo::new(move |_| chosen().unwrap_or_default())
+    Memo::new(move |_| chosen())
   };
   let open = Signal::new(false);
   let face_handle = NodeHandle::<P>::new();
   let listbox = Listbox::new().set_roster(shared.roster.clone());
   let choose = {
-    let on_change = on_change.clone();
+    let on_change = Rc::clone(&on_change);
 
-    move |value: String| {
-      if let Some(action) = &on_change {
-        action(value);
-      }
-
+    move |next: AnyChosen| {
+      on_change(next);
       open.set(false);
       face_handle.focus();
     }
@@ -563,7 +729,7 @@ fn build_drawn<P: Realization>(
   Scene::<P>::with(|scene| scene.attach(node, overlay, None));
   Effect::render(move |_: Option<()>| {
     if open.get() {
-      untrack(|| roster.focus_value::<P>(chosen().as_deref()));
+      untrack(|| roster.focus_chosen::<P>(&chosen()));
     }
   });
 
@@ -574,8 +740,8 @@ fn build_drawn<P: Realization>(
 /// name from the one `chosen` reads, and `on_change` is asked for the pick.
 fn choose_typed<P: Realization>(
   roster: Roster,
-  chosen: Rc<dyn Fn() -> Option<String>>,
-  on_change: Option<Rc<dyn Fn(String)>>,
+  chosen: Rc<dyn Fn() -> AnyChosen>,
+  on_change: Rc<dyn Fn(AnyChosen)>,
 ) -> impl Fn(&KeyEvent) -> bool {
   let type_ahead = Rc::new(TypeAhead::new());
 
@@ -584,12 +750,12 @@ fn choose_typed<P: Realization>(
     else {
       return false;
     };
+    let current = chosen();
 
-    if let Some(index) = roster.typed::<P>(&buffer, chosen().as_deref())
+    if let Some(index) = roster.typed::<P>(&buffer, |value| current.contains(value))
       && let Some((_, value)) = roster.enabled::<P>().get(index)
-      && let Some(action) = &on_change
     {
-      action(value.clone());
+      on_change(current.choosing(value));
     }
 
     true

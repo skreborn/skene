@@ -87,7 +87,7 @@ proptest! {
       let shown = Signal::new(true);
       let rows = Signal::new(vec![0_u32, 1, 2]);
       let painted = Signal::new(false);
-      let season = Signal::new("spring".to_owned());
+      let season = Signal::new("spring");
       let warmed = Signal::new(false);
 
       let _ = terminal::mount(move || {

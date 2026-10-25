@@ -328,13 +328,13 @@ fn a_checkbox_mark_follows_the_checked_state() {
 fn a_radio_ring_follows_the_groups_choice() {
   let _scheme = Scheme::choose(ColorScheme::Light);
   let palette = SimplePalette::default();
-  let chosen: Signal<Option<String>> = Signal::new(None);
+  let chosen: Signal<Option<char>> = Signal::new(None);
   let (_guard, group) = themed(move || {
     SimpleRadioGroup::new()
       .bind_chosen(chosen)
       .set_child(Column::new().set_children((
-        SimpleRadio::new("a").set_label("A"),
-        SimpleRadio::new("b").set_label("B"),
+        SimpleRadio::new(Some('a')).set_label("A"),
+        SimpleRadio::new(Some('b')).set_label("B"),
       )))
   });
   let members = elements(&only_child(&group));
@@ -349,7 +349,7 @@ fn a_radio_ring_follows_the_groups_choice() {
   field(1).click();
   web::end_turn();
 
-  assert_eq!(chosen.get().as_deref(), Some("b"));
+  assert_eq!(chosen.get(), Some('b'));
   assert_eq!(
     background(&dot(1)),
     probe("background-color", light(&palette.primary.surface))
@@ -364,7 +364,7 @@ fn a_radio_group_without_its_child_builds_an_empty_group() {
   let (_guard, group) = themed(|| {
     SimpleRadioGroup::new()
       .set_label("Size")
-      .bind_chosen(Signal::new(None))
+      .bind_chosen(Signal::new(None::<char>))
   });
   let content = elements(&group);
 
@@ -667,7 +667,7 @@ async fn a_third_party_palette_works_under_theme_like_the_simple_one() {
 fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   let _scheme = Scheme::choose(ColorScheme::Light);
   let palette = SimplePalette::default();
-  let value = Signal::new("md".to_owned());
+  let value = Signal::new("md");
   let (_guard, picker) = themed(move || {
     SimplePicker::new()
       .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])

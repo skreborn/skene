@@ -1,14 +1,20 @@
 pub mod skene_web
 pub use skene_web::Activate
+pub use skene_web::AnyChoice
+pub use skene_web::AnyChosen
 pub use skene_web::AnyKind
 pub use skene_web::AsyncViewBase
 pub use skene_web::Autofill
+pub use skene_web::BasicListboxBase
 pub use skene_web::BasicPickerBase
+pub use skene_web::BasicRadioGroupBase
 pub use skene_web::Behavior
 pub use skene_web::Bubbling
 pub use skene_web::Canvas
 pub use skene_web::Capitalization
 pub use skene_web::Children
+pub use skene_web::Choice
+pub use skene_web::Chosen
 pub use skene_web::ClickEvent
 pub use skene_web::Code
 pub use skene_web::Color
@@ -302,7 +308,6 @@ impl skene_foundation::painted::PaintedBase<skene_web::platform::web::Web> for s
 impl skene_foundation::painting::Painting for skene_web::platform::web::Web
 pub fn skene_web::platform::web::Web::available() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_web::platform::web::Web::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<skene_foundation::painting::Painter>)
-impl skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web> for skene_web::BasicPicker
 impl skene_foundation::pinned::PinnedBase<skene_web::platform::web::Web> for skene_web::Pinned
 impl skene_foundation::span::RichTextBase<skene_web::platform::web::Web> for skene_web::RichText
 impl skene_foundation::span::SpanBase<skene_web::platform::web::Web> for skene_web::Span
@@ -352,7 +357,6 @@ pub fn skene_web::GridCell::into_child(self) -> skene_foundation::spine::view::A
 impl skene_foundation::spine::view::IntoChildOf<skene_web::platform::web::Web, skene_foundation::spine::view::StackChild> for skene_web::Pinned
 pub fn skene_web::Pinned::into_child(self) -> skene_foundation::spine::view::AnyView<skene_web::Active>
 impl skene_foundation::stack::StackBase<skene_web::platform::web::Web> for skene_web::Stack
-impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Overlay
@@ -389,9 +393,19 @@ pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::No
 impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
 impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
 impl<K: core::cmp::PartialEq + 'static> skene_foundation::one_of::OneOfBase<skene_web::platform::web::Web, K> for skene_web::OneOf<K>
 impl<R: skene_foundation::routing::Route> skene_foundation::link::LinkBase<skene_web::platform::web::Web, R> for skene_web::Link<R>
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
 pub const skene_web::platform::web::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::web::SCHEME_ATTRIBUTE: &str
 pub trait skene_web::platform::web::WebMarkup: skene_foundation::spine::realization::Realization
@@ -441,7 +455,9 @@ pub use skene_web::prelude::AsyncViewBase
 pub use skene_web::prelude::Autofill
 pub use skene_web::prelude::Axes
 pub use skene_web::prelude::Axis
+pub use skene_web::prelude::BasicListboxBase
 pub use skene_web::prelude::BasicPickerBase
+pub use skene_web::prelude::BasicRadioGroupBase
 pub use skene_web::prelude::Bubbling
 pub use skene_web::prelude::Capitalization
 pub use skene_web::prelude::Color
@@ -607,24 +623,44 @@ impl core::hash::Hash for skene_web::Platform
 pub fn skene_web::Platform::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_web::Platform
 impl core::marker::StructuralPartialEq for skene_web::Platform
-pub struct skene_web::prelude::BasicPicker(_)
-impl skene_web::BasicPicker
-pub fn skene_web::BasicPicker::new() -> Self
-impl core::default::Default for skene_web::BasicPicker
-pub fn skene_web::BasicPicker::default() -> Self
-impl core::fmt::Debug for skene_web::BasicPicker
-pub fn skene_web::BasicPicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web> for skene_web::BasicPicker
-impl skene_foundation::spine::view::AnyKind for skene_web::BasicPicker
-impl skene_foundation::spine::wraps::Wraps for skene_web::BasicPicker
-pub type skene_web::BasicPicker::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web>
-pub fn skene_web::BasicPicker::inner(&self) -> &Self::Inner
-pub fn skene_web::BasicPicker::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::BasicPicker::into_inner(self) -> Self::Inner
-pub fn skene_web::BasicPicker::wrap(Self::Inner) -> Self
-impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicPicker where skene_foundation::picker::BasicPicker<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_web::BasicPicker::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::prelude::BasicPicker<T: skene_foundation::control::choice::Choice>(_)
+impl<T: skene_foundation::control::choice::Choice> skene_web::BasicPicker<T>
+pub fn skene_web::BasicPicker<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::BasicPicker<T>
+pub fn skene_web::BasicPicker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::BasicPicker<T>
+pub fn skene_web::BasicPicker<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::BasicPicker<T>
+pub type skene_web::BasicPicker<T>::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web, T>
+pub fn skene_web::BasicPicker<T>::inner(&self) -> &Self::Inner
+pub fn skene_web::BasicPicker<T>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::BasicPicker<T>::into_inner(self) -> Self::Inner
+pub fn skene_web::BasicPicker<T>::wrap(Self::Inner) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker<T>
+pub struct skene_web::prelude::BasicRadioGroup<T: skene_foundation::control::choice::Choice>(_, _)
+impl<T: skene_foundation::control::choice::Choice> skene_web::BasicRadioGroup<T>
+pub fn skene_web::BasicRadioGroup<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::BasicRadioGroup<T>
+pub fn skene_web::BasicRadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicRadioGroup<T> where skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_web::BasicRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::BasicRadioGroup<T>
+pub fn skene_web::BasicRadioGroup<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::BasicRadioGroup<T>
+pub type skene_web::BasicRadioGroup<T>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>>
+pub fn skene_web::BasicRadioGroup<T>::inner(&self) -> &Self::Inner
+pub fn skene_web::BasicRadioGroup<T>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::BasicRadioGroup<T>::into_inner(self) -> Self::Inner
+pub fn skene_web::BasicRadioGroup<T>::wrap(Self::Inner) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
 pub struct skene_web::prelude::Column(_)
 impl core::default::Default for skene_web::Column
 pub fn skene_web::Column::default() -> skene_web::Column
@@ -1062,7 +1098,6 @@ pub type skene_web::prelude::BasicListboxOption = skene_web::Control<skene_found
 pub type skene_web::prelude::BasicMenu = skene_web::Control<skene_foundation::control::collection::Menu>
 pub type skene_web::prelude::BasicMenuItem = skene_web::Control<skene_foundation::control::collection::MenuOption>
 pub type skene_web::prelude::BasicRadio = skene_web::Control<skene_foundation::control::collection::Radio>
-pub type skene_web::prelude::BasicRadioGroup = skene_web::Control<skene_foundation::control::collection::RadioGroup>
 pub type skene_web::prelude::BasicSlider = skene_web::Control<skene_foundation::control::slider::Slider>
 pub type skene_web::prelude::BasicTextEditor = skene_web::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_web::prelude::BasicTextField = skene_web::Control<skene_foundation::control::text_entry::TextEntry>
@@ -1134,24 +1169,64 @@ pub fn skene_web::AsyncView::wrap(Self::Inner) -> Self
 impl skene_foundation::web::async_view::AsyncViewBase<skene_web::platform::web::Web> for skene_web::AsyncView
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::AsyncView where skene_foundation::web::async_view::AsyncView<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::AsyncView::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::BasicPicker(_)
-impl skene_web::BasicPicker
-pub fn skene_web::BasicPicker::new() -> Self
-impl core::default::Default for skene_web::BasicPicker
-pub fn skene_web::BasicPicker::default() -> Self
-impl core::fmt::Debug for skene_web::BasicPicker
-pub fn skene_web::BasicPicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web> for skene_web::BasicPicker
-impl skene_foundation::spine::view::AnyKind for skene_web::BasicPicker
-impl skene_foundation::spine::wraps::Wraps for skene_web::BasicPicker
-pub type skene_web::BasicPicker::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web>
-pub fn skene_web::BasicPicker::inner(&self) -> &Self::Inner
-pub fn skene_web::BasicPicker::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_web::BasicPicker::into_inner(self) -> Self::Inner
-pub fn skene_web::BasicPicker::wrap(Self::Inner) -> Self
-impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicPicker where skene_foundation::picker::BasicPicker<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_web::BasicPicker::build(self) -> skene_foundation::spine::node::NodeId
+pub struct skene_web::BasicListbox<C: skene_foundation::control::choice::Chosen>(_, _)
+impl<C: skene_foundation::control::choice::Chosen> skene_web::BasicListbox<C>
+pub fn skene_web::BasicListbox<C>::new() -> Self
+impl<C: core::fmt::Debug + skene_foundation::control::choice::Chosen> core::fmt::Debug for skene_web::BasicListbox<C>
+pub fn skene_web::BasicListbox<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<C: skene_foundation::control::choice::Chosen, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicListbox<C> where skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::Listbox>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_web::BasicListbox<C>::build(self) -> skene_foundation::spine::node::NodeId
+impl<C: skene_foundation::control::choice::Chosen> core::default::Default for skene_web::BasicListbox<C>
+pub fn skene_web::BasicListbox<C>::default() -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::view::AnyKind for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::spine::wraps::Wraps for skene_web::BasicListbox<C>
+pub type skene_web::BasicListbox<C>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>>
+pub fn skene_web::BasicListbox<C>::inner(&self) -> &Self::Inner
+pub fn skene_web::BasicListbox<C>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::BasicListbox<C>::into_inner(self) -> Self::Inner
+pub fn skene_web::BasicListbox<C>::wrap(Self::Inner) -> Self
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
+impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
+pub struct skene_web::BasicPicker<T: skene_foundation::control::choice::Choice>(_)
+impl<T: skene_foundation::control::choice::Choice> skene_web::BasicPicker<T>
+pub fn skene_web::BasicPicker<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::BasicPicker<T>
+pub fn skene_web::BasicPicker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::BasicPicker<T>
+pub fn skene_web::BasicPicker<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::BasicPicker<T>
+pub type skene_web::BasicPicker<T>::Inner = skene_foundation::picker::BasicPicker<skene_web::platform::web::Web, T>
+pub fn skene_web::BasicPicker<T>::inner(&self) -> &Self::Inner
+pub fn skene_web::BasicPicker<T>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::BasicPicker<T>::into_inner(self) -> Self::Inner
+pub fn skene_web::BasicPicker<T>::wrap(Self::Inner) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker<T>
+pub struct skene_web::BasicRadioGroup<T: skene_foundation::control::choice::Choice>(_, _)
+impl<T: skene_foundation::control::choice::Choice> skene_web::BasicRadioGroup<T>
+pub fn skene_web::BasicRadioGroup<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::BasicRadioGroup<T>
+pub fn skene_web::BasicRadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::BasicRadioGroup<T> where skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>: skene_foundation::spine::view::View<__P>, Self: 'static
+pub fn skene_web::BasicRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::BasicRadioGroup<T>
+pub fn skene_web::BasicRadioGroup<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_web::BasicRadioGroup<T>
+pub type skene_web::BasicRadioGroup<T>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>>
+pub fn skene_web::BasicRadioGroup<T>::inner(&self) -> &Self::Inner
+pub fn skene_web::BasicRadioGroup<T>::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::BasicRadioGroup<T>::into_inner(self) -> Self::Inner
+pub fn skene_web::BasicRadioGroup<T>::wrap(Self::Inner) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
 pub struct skene_web::Column(_)
 impl core::default::Default for skene_web::Column
 pub fn skene_web::Column::default() -> skene_web::Column
@@ -1625,12 +1700,10 @@ pub type skene_web::Active = skene_web::platform::web::Web
 pub type skene_web::AnyView = skene_foundation::spine::view::AnyView<skene_web::Active>
 pub type skene_web::BasicButton = skene_web::Control<skene_foundation::control::activate::Activate>
 pub type skene_web::BasicCheckbox = skene_web::Control<skene_foundation::control::toggle::Toggle>
-pub type skene_web::BasicListbox = skene_web::Control<skene_foundation::control::collection::Listbox>
 pub type skene_web::BasicListboxOption = skene_web::Control<skene_foundation::control::collection::ListboxOption>
 pub type skene_web::BasicMenu = skene_web::Control<skene_foundation::control::collection::Menu>
 pub type skene_web::BasicMenuItem = skene_web::Control<skene_foundation::control::collection::MenuOption>
 pub type skene_web::BasicRadio = skene_web::Control<skene_foundation::control::collection::Radio>
-pub type skene_web::BasicRadioGroup = skene_web::Control<skene_foundation::control::collection::RadioGroup>
 pub type skene_web::BasicSlider = skene_web::Control<skene_foundation::control::slider::Slider>
 pub type skene_web::BasicTextEditor = skene_web::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_web::BasicTextField = skene_web::Control<skene_foundation::control::text_entry::TextEntry>

@@ -4,7 +4,8 @@
 //! its group, a link's destination, an entry's placeholder, whether it is secure and the
 //! keyboard it asks for, an overlay's placement, and a value of a view adopted through
 //! the native door. A content a behavior controls is answered by its [`Controller`], or
-//! an entry's by its [`EditController`], when a reader changes it.
+//! an entry's by its [`EditController`], when a reader changes it, each reaching the
+//! realization through the plain functions of a [`ContentOps`].
 
 use std::{cell::Ref, fmt::Debug, marker::PhantomData, rc::Rc};
 
@@ -31,6 +32,7 @@ use crate::spine::{
   Placement,
   Point,
   Realization,
+  ReportHandler,
   Scene,
 };
 
@@ -310,38 +312,66 @@ impl<T: ContentType> ContentKey<T> {
 
   /// What `node` shows of the content as `P` reads it, or a door's sink; `None` where
   /// neither reads it.
+  #[inline(always)]
   #[must_use]
   pub fn read<P: Realization>(&self, node: NodeId) -> Option<T> {
-    if let Content::Door(_) = self.content {
-      let mut owned = None;
+    self.read_with(ContentOps::of::<P>(), node)
+  }
 
-      if let Some(sink) = Self::sink_of::<P>(node) {
+  /// What `node` shows of the content as the realization `ops` reaches reads it, or a
+  /// door's sink; `None` where neither reads it.
+  #[must_use]
+  pub fn read_with(&self, ops: ContentOps, node: NodeId) -> Option<T> {
+    let mut owned = None;
+
+    if let Content::Door(_) = self.content {
+      if let Some(sink) = (ops.sink)(node) {
         sink.read(self.content, &mut |value| owned = self.own(value));
       }
 
       return owned;
     }
 
-    P::read(node, self.content, |value| self.own(value)).flatten()
+    (ops.read)(node, self.content, &mut |value| owned = self.own(value));
+
+    owned
   }
 
   /// Whether what `node` shows of the content is the reader's until it is reported, as
   /// `P` or a door's sink says; see [`Realization::composing`].
+  #[inline(always)]
   #[must_use]
   pub fn is_composing<P: Realization>(&self, node: NodeId) -> bool {
+    self.is_composing_with(ContentOps::of::<P>(), node)
+  }
+
+  /// Whether what `node` shows of the content is the reader's until it is reported, as
+  /// the realization `ops` reaches or a door's sink says; see
+  /// [`Realization::composing`].
+  #[must_use]
+  pub fn is_composing_with(&self, ops: ContentOps, node: NodeId) -> bool {
     if let Content::Door(_) = self.content {
-      return Self::sink_of::<P>(node).is_some_and(|sink| sink.composing());
+      return (ops.sink)(node).is_some_and(|sink| sink.composing());
     }
 
-    P::composing(node)
+    (ops.composing)(node)
   }
 
   /// Writes `value` as `node`'s content through `P`, or a door's through the sink
   /// registered on the node, which shows it whole; a node of a kind that does not take
   /// the content, or a door's content of a node with no sink, is a debug assertion.
+  #[inline(always)]
   pub fn write<P: Realization>(&self, node: NodeId, value: &T) {
+    self.write_with(ContentOps::of::<P>(), node, value);
+  }
+
+  /// Writes `value` as `node`'s content through the realization `ops` reaches, or a
+  /// door's through the sink registered on the node, which shows it whole; a node of a
+  /// kind that does not take the content, or a door's content of a node with no sink, is
+  /// a debug assertion.
+  pub fn write_with(&self, ops: ContentOps, node: NodeId, value: &T) {
     if let Content::Door(_) = self.content {
-      let sink = Self::sink_of::<P>(node);
+      let sink = (ops.sink)(node);
 
       debug_assert!(sink.is_some(), "a door's content is written through a sink");
 
@@ -352,32 +382,93 @@ impl<T: ContentType> ContentKey<T> {
       return;
     }
 
+    (ops.write)(node, self.erase(value));
+  }
+}
+
+type ReadContent<'a> = dyn FnMut(ContentValue<'_>) + 'a;
+
+/// A realization's half of what a [`ContentKey`] and a controller do, as plain functions.
+///
+/// They are filled once from the build's one realization ([`of`](Self::of)):
+/// monomorphized, never a `dyn` realization, so a caller holding no realization type
+/// reads, writes and controls a node's content through them.
+///
+/// ```
+/// use skene_foundation::{CheckState, ContentOps, NodeId, contents};
+///
+/// fn check(ops: ContentOps, toggle: NodeId) {
+///   contents::CHECKED.write_with(ops, toggle, &CheckState::On);
+/// }
+/// ```
+#[derive(Clone, Copy)]
+#[must_use]
+pub struct ContentOps {
+  /// Runs a reader with what a node shows of a content, where the realization keeps it.
+  pub(in crate::spine) read: fn(NodeId, Content, &mut ReadContent<'_>),
+  /// Shows a value as a node's content, whole.
+  pub(in crate::spine) write: fn(NodeId, ContentValue<'_>),
+  /// Whether what a node shows is the reader's until it is reported.
+  pub(in crate::spine) composing: fn(NodeId) -> bool,
+  /// Installs the answer to a node's reports of a content in the scene.
+  pub(in crate::spine) install: fn(NodeId, Content, Rc<ReportHandler>),
+  /// The sink registered on a node, where the scene is free to read and holds one.
+  pub(in crate::spine) sink: fn(NodeId) -> Option<Rc<dyn ControlSink>>,
+}
+
+impl Debug for ContentOps {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("ContentOps").finish_non_exhaustive()
+  }
+}
+
+impl ContentOps {
+  /// The operations of the realization `R`.
+  #[inline(always)]
+  pub const fn of<R: Realization>() -> Self {
+    Self {
+      read: Self::read_of::<R>,
+      write: Self::write_of::<R>,
+      composing: R::composing,
+      install: report::install::<R>,
+      sink: Self::sink_of::<R>,
+    }
+  }
+
+  /// Runs `read` with what `node` shows of `content` as `R` reads it, where it does.
+  fn read_of<R: Realization>(node: NodeId, content: Content, read: &mut ReadContent<'_>) {
+    R::read(node, content, read);
+  }
+
+  /// Shows `value` as `node`'s content through `R`; a node of a kind that does not take
+  /// the content is a debug assertion.
+  fn write_of<R: Realization>(node: NodeId, value: ContentValue<'_>) {
     #[cfg(debug_assertions)]
-    if let Some(kind) = Self::kind_of::<P>(node) {
+    if let Some(kind) = Self::kind_of::<R>(node) {
       debug_assert!(
-        kind.contents().contains(&self.content),
+        kind.contents().contains(&value.content()),
         "a {kind:?} node takes no {:?} content",
-        self.content
+        value.content()
       );
     }
 
-    P::write(node, self.erase(value));
+    R::write(node, value);
   }
 
-  /// The sink registered on `node`, where `P`'s scene is free to read and holds one.
-  fn sink_of<P: Realization>(node: NodeId) -> Option<Rc<dyn ControlSink>> {
-    P::scene().with(|cell| {
-      let scene: Ref<'_, Scene<P>> = cell.try_borrow().ok()?;
+  /// The sink registered on `node`, where `R`'s scene is free to read and holds one.
+  fn sink_of<R: Realization>(node: NodeId) -> Option<Rc<dyn ControlSink>> {
+    R::scene().with(|cell| {
+      let scene: Ref<'_, Scene<R>> = cell.try_borrow().ok()?;
 
       scene.sink(node)
     })
   }
 
-  /// The kind of `node`, where `P`'s scene is free to read and holds it.
+  /// The kind of `node`, where `R`'s scene is free to read and holds it.
   #[cfg(debug_assertions)]
-  fn kind_of<P: Realization>(node: NodeId) -> Option<NodeKind> {
-    P::scene().with(|cell| {
-      let scene: Ref<'_, Scene<P>> = cell.try_borrow().ok()?;
+  fn kind_of<R: Realization>(node: NodeId) -> Option<NodeKind> {
+    R::scene().with(|cell| {
+      let scene: Ref<'_, Scene<R>> = cell.try_borrow().ok()?;
 
       scene.record(node).map(NodeRecord::kind)
     })

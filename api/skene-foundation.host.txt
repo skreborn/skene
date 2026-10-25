@@ -5424,13 +5424,24 @@ pub const fn skene_foundation::ContentKey<T>::content(&self) -> skene_foundation
 pub const fn skene_foundation::ContentKey<T>::door(&'static str) -> Self
 pub fn skene_foundation::ContentKey<T>::erase<'a>(&self, &'a T) -> skene_foundation::ContentValue<'a>
 pub fn skene_foundation::ContentKey<T>::is_composing<P: skene_foundation::Realization>(&self, skene_foundation::NodeId) -> bool
+pub fn skene_foundation::ContentKey<T>::is_composing_with(&self, skene_foundation::ContentOps, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::ContentKey<T>::own(&self, skene_foundation::ContentValue<'_>) -> core::option::Option<T>
 pub fn skene_foundation::ContentKey<T>::read<P: skene_foundation::Realization>(&self, skene_foundation::NodeId) -> core::option::Option<T>
+pub fn skene_foundation::ContentKey<T>::read_with(&self, skene_foundation::ContentOps, skene_foundation::NodeId) -> core::option::Option<T>
 pub fn skene_foundation::ContentKey<T>::write<P: skene_foundation::Realization>(&self, skene_foundation::NodeId, &T)
+pub fn skene_foundation::ContentKey<T>::write_with(&self, skene_foundation::ContentOps, skene_foundation::NodeId, &T)
 impl<T: skene_foundation::ContentType> core::clone::Clone for skene_foundation::ContentKey<T>
 pub fn skene_foundation::ContentKey<T>::clone(&self) -> Self
 impl<T: skene_foundation::ContentType> core::fmt::Debug for skene_foundation::ContentKey<T>
 pub fn skene_foundation::ContentKey<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_foundation::ContentOps
+impl skene_foundation::ContentOps
+pub const fn skene_foundation::ContentOps::of<R: skene_foundation::Realization>() -> Self
+impl core::clone::Clone for skene_foundation::ContentOps
+pub fn skene_foundation::ContentOps::clone(&self) -> skene_foundation::ContentOps
+impl core::fmt::Debug for skene_foundation::ContentOps
+pub fn skene_foundation::ContentOps::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_foundation::ContentOps
 pub struct skene_foundation::ContextMenu<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::ContextMenu<P>
 pub fn skene_foundation::ContextMenu<P>::add_transition(self, skene_foundation::Transition<<<P as skene_foundation::Realization>::StyleExt as skene_foundation::StyleExtension>::Property>) -> Self
@@ -5679,11 +5690,12 @@ impl<T: skene_foundation::Controllable> skene_foundation::Controller<T>
 pub fn skene_foundation::Controller<T>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::Controller<T>::new(skene_foundation::ContentKey<T>, impl core::ops::function::Fn() -> T + 'static, impl core::ops::function::Fn(&T) + 'static) -> Self
 pub fn skene_foundation::Controller<T>::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::Controller<T>::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 impl<T: skene_foundation::Controllable> core::fmt::Debug for skene_foundation::Controller<T>
 pub fn skene_foundation::Controller<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: skene_foundation::Controllable> skene_foundation::Controls for skene_foundation::Controller<T>
 pub fn skene_foundation::Controller<T>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::Controller<T>::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::Controller<T>::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 pub struct skene_foundation::Declared<C>(_)
 impl<C: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> skene_foundation::Shape for skene_foundation::Declared<C>
 pub type skene_foundation::Declared<C>::Of<T: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static> = core::option::Option<skene_foundation::Conditional<skene_foundation::Leaf<T>, C>>
@@ -5765,11 +5777,12 @@ impl skene_foundation::EditController
 pub fn skene_foundation::EditController::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::EditController::new(impl core::ops::function::Fn() -> skene_foundation::EditTruth + 'static, impl core::ops::function::Fn(&skene_foundation::Asked) + 'static) -> Self
 pub fn skene_foundation::EditController::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::EditController::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 impl core::fmt::Debug for skene_foundation::EditController
 pub fn skene_foundation::EditController::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::Controls for skene_foundation::EditController
 pub fn skene_foundation::EditController::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::EditController::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::EditController::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 pub struct skene_foundation::EditTruth
 pub skene_foundation::EditTruth::selection: core::option::Option<skene_foundation::TextSelection>
 pub skene_foundation::EditTruth::text: core::option::Option<alloc::rc::Rc<str>>
@@ -9116,13 +9129,13 @@ impl skene_foundation::Controllable for skene_foundation::Range
 pub fn skene_foundation::Range::holds(&self, &Self) -> bool
 pub trait skene_foundation::Controls: core::marker::Sized + 'static
 pub fn skene_foundation::Controls::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::Controls::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::Controls::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 impl skene_foundation::Controls for skene_foundation::EditController
 pub fn skene_foundation::EditController::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::EditController::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::EditController::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 impl<T: skene_foundation::Controllable> skene_foundation::Controls for skene_foundation::Controller<T>
 pub fn skene_foundation::Controller<T>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_foundation::Controller<T>::register<P: skene_foundation::Realization>(self, skene_foundation::NodeId)
+pub fn skene_foundation::Controller<T>::register_with(self, skene_foundation::ContentOps, skene_foundation::NodeId)
 pub trait skene_foundation::CornerRadius: skene_foundation::StyleExtension
 pub fn skene_foundation::CornerRadius::set_corner_radius<S: skene_foundation::Shape>(&mut Self::BoxFields, <S as skene_foundation::Shape>::Of)
 impl skene_foundation::CornerRadius for ()

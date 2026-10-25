@@ -33,8 +33,10 @@
 //! crosses as one [`Edit`], its text and its selection together, [`report`]ed to the
 //! [`EditController`] of the content and answered by a [`Verdict`], a range's value with its
 //! bounds as one [`Range`] and a choice's chosen key with its options as one [`Choices`], each
-//! held whole by a [`Controller`] that repairs what the truth refuses by writing it; a drawn
-//! entry reports its text to assistive technology as an [`AccessText`], read from its editor.
+//! held whole by a [`Controller`] that repairs what the truth refuses by writing it, each
+//! controller and key reaching the realization through the plain functions of a [`ContentOps`]
+//! filled once from it; a drawn entry reports its text to assistive technology as an
+//! [`AccessText`], read from its editor.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
 //! splits the style into the static part its record is built from (compiled at

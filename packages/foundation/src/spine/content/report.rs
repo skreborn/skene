@@ -10,7 +10,7 @@ use std::{
 
 use skene_reactive::{Effect, batch, untrack};
 
-use super::{Choices, Content, ContentKey, ContentType, ContentValue, Range, contents};
+use super::{Choices, Content, ContentKey, ContentOps, ContentType, ContentValue, Range, contents};
 use crate::spine::{
   CheckState,
   Edit,
@@ -278,34 +278,41 @@ impl EditController {
     self
   }
 
-  /// Controls the [`Edit`] content of `node` through `P`, as the current owner: the
-  /// truth is written now and whenever it changes, and the node's reports of the content
-  /// are answered by this controller from now on; a second controller of the content is
-  /// a debug assertion.
+  /// Controls the [`Edit`] content of `node` through `P`, as the current owner; see
+  /// [`register_with`](Self::register_with).
+  #[inline(always)]
   pub fn register<P: Realization>(self, node: NodeId) {
+    self.register_with(ContentOps::of::<P>(), node);
+  }
+
+  /// Controls the [`Edit`] content of `node` through the realization `ops` reaches, as
+  /// the current owner: the truth is written now and whenever it changes, and the node's
+  /// reports of the content are answered by this controller from now on; a second
+  /// controller of the content is a debug assertion.
+  pub fn register_with(self, ops: ContentOps, node: NodeId) {
     let controller = Rc::new(self);
     let answering = Rc::clone(&controller);
 
-    *controller.shown.borrow_mut() = contents::EDIT.read::<P>(node);
+    *controller.shown.borrow_mut() = contents::EDIT.read_with(ops, node);
 
-    install::<P>(
+    (ops.install)(
       node,
       Content::Edit,
-      Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
+      Rc::new(move |proposed, applied| answering.answer(ops, node, proposed, applied)),
     );
 
-    Effect::render(move |_: Option<()>| controller.write::<P>(node));
+    Effect::render(move |_: Option<()>| controller.write(ops, node));
   }
 
   /// Writes the truth to `node` unless it is shown already or held back while the
   /// reader's text is composing; a selection the truth leaves free is noted as the one
   /// shown before the write.
-  fn write<P: Realization>(&self, node: NodeId) {
+  fn write(&self, ops: ContentOps, node: NodeId) {
     let truth = (self.truth)();
 
     untrack(|| {
       let shown = self.shown.borrow().clone();
-      let Some(edit) = truth.written(shown.as_ref(), P::composing(node))
+      let Some(edit) = truth.written(shown.as_ref(), (ops.composing)(node))
       else {
         return;
       };
@@ -318,15 +325,16 @@ impl EditController {
       });
 
       self.writing.set(true);
-      contents::EDIT.write::<P>(node, &edit);
+      contents::EDIT.write_with(ops, node, &edit);
       self.writing.set(false);
     });
   }
 
   /// The verdict on the reader's change `proposed` of `node`, which its toolkit shows
   /// already where `applied`.
-  fn answer<P: Realization>(
+  fn answer(
     &self,
+    ops: ContentOps,
     node: NodeId,
     proposed: ContentValue<'_>,
     applied: bool,
@@ -344,7 +352,7 @@ impl EditController {
         proposed,
         self.disabled.as_ref().is_some_and(|disabled| disabled()),
         self.writing.get(),
-        P::composing(node),
+        (ops.composing)(node),
         |asked| (self.ask)(asked),
       )
     });
@@ -372,9 +380,13 @@ impl EditController {
   }
 }
 
-/// Installs `answer` as the answer to `node`'s reports of `content`, as the current
-/// owner; a second controller of the content is a debug assertion.
-fn install<P: Realization>(node: NodeId, content: Content, answer: Rc<ReportHandler>) {
+/// Installs `answer` as the answer to `node`'s reports of `content` in `P`'s scene, as
+/// the current owner; a second controller of the content is a debug assertion.
+pub(in crate::spine) fn install<P: Realization>(
+  node: NodeId,
+  content: Content,
+  answer: Rc<ReportHandler>,
+) {
   Scene::<P>::with(|scene| {
     debug_assert!(
       scene
@@ -439,12 +451,12 @@ impl Controllable for Option<Rc<str>> {
 ///
 /// [`register`](Self::register) writes the truth as the node's content whenever what it
 /// reads changes, skipping a write of what the node shows already, which it reads once
-/// through [`Realization::read`] and then keeps from what it writes and what is
-/// reported, and holding one back while the reader's change is
-/// [composing](Realization::composing); a door's content is written, read and composed
-/// through the [`ControlSink`](crate::ControlSink) registered on its node instead
-/// ([`ContentKey::door`]). It answers every reader's change
-/// [`report`]ed at the node: one the truth holds ([`Controllable::holds`]) asks
+/// through [`Realization::read`], reached through the [`ContentOps`] it is registered
+/// with, and then keeps from what it writes and what is reported, and holding one back
+/// while the reader's change is [composing](Realization::composing); a door's content
+/// is written, read and composed through the [`ControlSink`](crate::ControlSink)
+/// registered on its node instead ([`ContentKey::door`]). It answers every reader's
+/// change [`report`]ed at the node: one the truth holds ([`Controllable::holds`]) asks
 /// nothing and stands, and so does one made while it writes; any other asks the app,
 /// and stands where the truth then holds it, else is refused and repaired by the write
 /// of the truth ([`Verdict::Refuse`]). A disabled control asks nothing and is answered
@@ -494,42 +506,49 @@ impl<T: Controllable> Controller<T> {
     self
   }
 
-  /// Controls the content of `node` through `P`, as the current owner: the truth is
-  /// written now and whenever it changes, and the node's reports of the content are
-  /// answered by this controller from now on; a second controller of the content is a
-  /// debug assertion.
+  /// Controls the content of `node` through `P`, as the current owner; see
+  /// [`register_with`](Self::register_with).
+  #[inline(always)]
   pub fn register<P: Realization>(self, node: NodeId) {
+    self.register_with(ContentOps::of::<P>(), node);
+  }
+
+  /// Controls the content of `node` through the realization `ops` reaches, as the
+  /// current owner: the truth is written now and whenever it changes, and the node's
+  /// reports of the content are answered by this controller from now on; a second
+  /// controller of the content is a debug assertion.
+  pub fn register_with(self, ops: ContentOps, node: NodeId) {
     let controller = Rc::new(self);
     let answering = Rc::clone(&controller);
 
-    *controller.shown.borrow_mut() = controller.key.read::<P>(node);
+    *controller.shown.borrow_mut() = controller.key.read_with(ops, node);
 
-    install::<P>(
+    (ops.install)(
       node,
       controller.key.content(),
-      Rc::new(move |proposed, applied| answering.answer::<P>(node, proposed, applied)),
+      Rc::new(move |proposed, applied| answering.answer(ops, node, proposed, applied)),
     );
 
-    Effect::render(move |_: Option<()>| controller.write::<P>(node));
+    Effect::render(move |_: Option<()>| controller.write(ops, node));
   }
 
   /// Writes the truth to `node` unless it is shown already or held back while the
   /// reader's change is composing.
-  fn write<P: Realization>(&self, node: NodeId) {
+  fn write(&self, ops: ContentOps, node: NodeId) {
     let truth = (self.truth)();
 
     untrack(|| {
       let Some(truth) = Self::written(
         truth,
         self.shown.borrow().as_ref(),
-        self.key.is_composing::<P>(node),
+        self.key.is_composing_with(ops, node),
       )
       else {
         return;
       };
 
       self.writing.set(true);
-      self.key.write::<P>(node, &truth);
+      self.key.write_with(ops, node, &truth);
       self.writing.set(false);
       *self.shown.borrow_mut() = Some(truth);
     });
@@ -537,8 +556,9 @@ impl<T: Controllable> Controller<T> {
 
   /// The verdict on the reader's change `proposed` of `node`, which its toolkit shows
   /// already where `applied`; a refused change is repaired by the write of the truth.
-  fn answer<P: Realization>(
+  fn answer(
     &self,
+    ops: ContentOps,
     node: NodeId,
     proposed: ContentValue<'_>,
     applied: bool,
@@ -561,7 +581,7 @@ impl<T: Controllable> Controller<T> {
     *self.shown.borrow_mut() = Self::shown_after(shown, &proposed, applied, &verdict);
 
     if verdict == Verdict::Refuse {
-      untrack(|| self.write::<P>(node));
+      untrack(|| self.write(ops, node));
     }
 
     verdict
@@ -628,8 +648,9 @@ pub trait Controls: Sized + 'static {
   #[must_use]
   fn derive_disabled(self, disabled: impl Fn() -> bool + 'static) -> Self;
 
-  /// Controls the content of `node` through `P`, as the current owner.
-  fn register<P: Realization>(self, node: NodeId);
+  /// Controls the content of `node` through the realization `ops` reaches, as the
+  /// current owner.
+  fn register_with(self, ops: ContentOps, node: NodeId);
 }
 
 impl<T: Controllable> Controls for Controller<T> {
@@ -639,8 +660,8 @@ impl<T: Controllable> Controls for Controller<T> {
   }
 
   #[inline(always)]
-  fn register<P: Realization>(self, node: NodeId) {
-    Self::register::<P>(self, node);
+  fn register_with(self, ops: ContentOps, node: NodeId) {
+    Self::register_with(self, ops, node);
   }
 }
 
@@ -651,8 +672,8 @@ impl Controls for EditController {
   }
 
   #[inline(always)]
-  fn register<P: Realization>(self, node: NodeId) {
-    Self::register::<P>(self, node);
+  fn register_with(self, ops: ContentOps, node: NodeId) {
+    Self::register_with(self, ops, node);
   }
 }
 

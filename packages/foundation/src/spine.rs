@@ -73,6 +73,7 @@ pub use content::{
   Choices,
   Content,
   ContentKey,
+  ContentOps,
   ContentType,
   ContentValue,
   Controllable,

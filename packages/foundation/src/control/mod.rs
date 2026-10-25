@@ -56,6 +56,7 @@ use crate::{
   ClickEvent,
   Condition,
   ContainerName,
+  ContentOps,
   ControlFacts,
   ControlState,
   Controls,
@@ -336,7 +337,7 @@ impl<P: Realization> ControlHandle<P> {
 
     controller
       .derive_disabled(move || disabled())
-      .register::<P>(self.node);
+      .register_with(ContentOps::of::<P>(), self.node);
   }
 
   /// Re-reads what the behavior reports: its state, accessibility and focus order.

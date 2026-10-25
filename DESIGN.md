@@ -102,8 +102,15 @@ press lands outside of, on neither it nor the anchor it opened from, until one i
 inside of, a modal ending the descent and dismissed itself; the web leaves a modal's
 backdrop to its click. It answers what a key its handlers leave to the platform does
 (`Scene::key_default`: `Tab` traverses, `Escape` dismisses the topmost overlay, which
-the web leaves to a modal's own cancel, and the menu key or `Shift-F10` asks for a
-context menu), which popups focus leaves as it moves to another node
+the web leaves to a modal's own cancel, `Enter` activates the activatable row holding
+focus on every press and `Space` arms it, which keeps the press from scrolling, and the
+menu key or `Shift-F10` asks for a context menu) and what a release does
+(`Scene::key_up_default`: the release of the `Space` that armed a row activates it
+where it kept focus since the press), each activation a click dispatched at the row
+(`dispatch_activation`) its handlers and their verdicts take as a pointer's. A row is a
+box acting on a click of its own (`BoxFacts::acting`: it handles one and is no link),
+which the scene records as it creates the node, and a tab stop unless its focus order
+says otherwise. It answers which popups focus leaves as it moves to another node
 (`Scene::popups_left_by`, dismissed by `notify_focus_moved` on every platform), and where
 a modal takes focus as it opens (`Scene::modal_focus`: its first tab stop, else itself,
 as a dialog's focusing steps choose). The scene holds the interaction every platform reports: the
@@ -449,6 +456,12 @@ and its cost unjustified.
   last is a convention, not a type: the gate's lint reports a property, a handler or
   an `apply` that follows a child setter in a chain, an applied child setter
   (`.apply(child, Container::set_child)`) counting as one.
+- **A box that handles a click is an activatable row**, not a button:
+  `Container::handle_click` makes the box a tab stop unless its focus order says
+  otherwise, `Enter` and `Space` activate it as a click does through the scene's key
+  defaults, and the controls it holds own their presses and their keys, a control's
+  verdict ending the climb and focus on it keeping the row's key default out of reach.
+  It carries no role but the one `set_role` gives it.
 - **Owners** are created per reconciled item, per rebuild, per keyed view and where
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
   into `Owner::replacement()`, the same parent and step, so snapshot identity survives
@@ -753,7 +766,12 @@ re-export.
   decoration. `Role::Status` and `Role::Alert` are the live regions, `Role::Dialog` a
   popup's role, and a tooltip's bubble carries `role="tooltip"` from the platform. A box
   that scrolls takes `tabindex="0"` unless a focus order is set, as Chromium makes a
-  scroller focusable, so the keyboard reaches its content. The gallery runs under
+  scroller focusable, so the keyboard reaches its content, and so does an activatable
+  row on both leaves, with no role but the one it is given: ARIA's `row` needs a grid
+  around it and `button` may hold no interactive content. The browser leaf listens for
+  the keys wherever a box handles a click and maps the scene's key defaults, a row's
+  `Enter` dispatched as its click, its `Space` press kept from scrolling the page and
+  its release dispatched as its click. The gallery runs under
   axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
   gallery's overlays open: a tooltip, the picker's popup and a context menu, once under
@@ -1686,14 +1704,16 @@ the mouse back and asks for them afresh. The terminal's own selection—a drag w
 iTerm2—bypasses the app on every terminal that has it, so a terminal without OSC 52
 still copies; with the mouse off a plain drag does. `Ctrl-Q` is the one unconditional
 key. Focus belongs to controls, which are composed trees with roles
-and focus order, exactly as on the web, and to link runs, which sit in the tab order as
+and focus order, exactly as on the web, to activatable rows, which the scene's key
+defaults activate as the web's do, and to link runs, which sit in the tab order as
 an anchor does: `Enter` is a focused link's click, staged for the system handler unless
 a handler prevented it, a press on its cell focuses it, and while its focus shows it
 paints in the typography's focused-link ink and surface, reverse video where those are
 transparent, as the default leaves them. Focus shows as `:focus-visible` does: after a
 key, or in a text entry, and not since a pointer press. A key's default runs after the handlers' writes
 have taken effect, as a browser's does after its microtask checkpoint. A key release
-dispatches as `KeyUp` (`handle_key_up` on a box and a control) with no default, a held
+dispatches as `KeyUp` (`handle_key_up` on a box and a control) with no default but the
+scene's (`Scene::key_up_default`, a row's `Space`), a held
 key repeats its `KeyDown` with `repeat` set, and a modifier pressed alone arrives under
 its W3C name (`Shift`, `Control`, `Alt`, `Meta`) without showing focus; the terminal
 asks the kitty keyboard protocol for `REPORT_EVENT_TYPES`, `REPORT_ALTERNATE_KEYS` and

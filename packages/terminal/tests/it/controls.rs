@@ -1513,8 +1513,8 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
 }
 
 /// A disabled control reports it, takes no focus and ignores activation, a click on it
-/// climbing no further and a key letting by where it holds focus; enabling it again
-/// restores all three.
+/// climbing no further and a key letting by where it holds focus, the activatable row
+/// around it never activated by either; enabling it again restores all three.
 #[test]
 fn a_disabled_control_reports_it_and_ignores_activation() {
   with_platform(|| {
@@ -1525,6 +1525,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
     let log = Rc::clone(&heard);
     let box_log = Rc::clone(&heard);
     let other = NodeHandle::new();
+    let row = NodeHandle::new();
     let mut nodes = None;
 
     let _ = terminal::mount(|| {
@@ -1541,6 +1542,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
       nodes = Some((node, fixed));
 
       Container::new()
+        .bind_handle(row)
         .handle_click(move || box_log.borrow_mut().push("click".to_owned()))
         .handle_key_down(move |event| log.borrow_mut().push(event.key.to_string()))
         .set_child(
@@ -1560,6 +1562,14 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
 
     assert!(read(node).is_disabled());
     assert!(read(fixed).is_disabled());
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::focused_node(),
+      row.node(),
+      "the row is the first stop"
+    );
 
     testing::trigger_key("Tab");
 

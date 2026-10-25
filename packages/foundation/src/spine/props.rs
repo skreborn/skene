@@ -125,6 +125,14 @@ impl NodeSpec {
     }
   }
 
+  /// Whether the spec creates a box that acts on a click of its own; see
+  /// [`BoxFacts::acting`].
+  #[inline(always)]
+  #[must_use]
+  pub const fn acting(&self) -> bool {
+    matches!(&self.facts, NodeFacts::Box(facts) if facts.acting)
+  }
+
   /// The kind of node the spec creates, as the scene records it.
   pub const fn kind(&self) -> NodeKind {
     match self.facts {
@@ -173,6 +181,9 @@ pub struct BoxFacts {
   /// [`Destination`](super::Content::Destination) content holds when activated; a real
   /// link where the medium has one.
   pub link: bool,
+  /// Whether the box acts on a click of its own: it handles one and is no link, so it
+  /// takes focus and `Enter` and `Space` activate it, an activatable row.
+  pub acting: bool,
 }
 
 /// What a platform creates an overlay from: its box, whether it is modal or a hint, and
@@ -452,6 +463,7 @@ mod tests {
       container: None,
       transition_name: None,
       link: false,
+      acting: false,
     }
   }
 
@@ -515,5 +527,28 @@ mod tests {
 
     assert_eq!(NodeSpec::anchor().kind(), NodeKind::Anchor);
     assert_eq!(NodeSpec::scope().kind(), NodeKind::Scope);
+  }
+
+  /// Only a box acts on a click of its own: a control or an overlay whose box says it
+  /// does is the control's or the overlay's to act on.
+  #[test]
+  fn only_a_box_acts_on_its_click() {
+    let acting = BoxFacts {
+      acting: true,
+      ..boxed()
+    };
+    let spec = |facts| NodeSpec::new(None, None, None, facts);
+
+    assert!(spec(NodeFacts::Box(acting.clone())).acting());
+    assert!(!spec(NodeFacts::Box(boxed())).acting());
+    assert!(
+      !spec(NodeFacts::Overlay(OverlayFacts {
+        boxed: acting,
+        modal: false,
+        hint: false,
+        backdrop: None,
+      }))
+      .acting()
+    );
   }
 }

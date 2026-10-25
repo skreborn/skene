@@ -46,6 +46,7 @@ use skene_foundation::{
   Unit,
   Verdict,
   WheelUnit,
+  dispatch_activation,
   dispatch_click,
   dispatch_click_observed,
   dispatch_context_menu,
@@ -209,7 +210,8 @@ impl Events {
   /// Installs the root listeners serving `kind`, once each.
   pub(super) fn ensure(&mut self, kind: EventKind) {
     let names: &[&'static str] = match kind {
-      EventKind::Click => &["click"],
+      // A box handling a click is an activatable row, which keys activate.
+      EventKind::Click => &["click", "keydown", "keyup"],
       EventKind::DoubleClick => &["dblclick"],
       EventKind::KeyDown => &["keydown"],
       EventKind::KeyUp => &["keyup"],
@@ -460,7 +462,8 @@ fn on_key_down(event: &web_sys::Event) {
   };
 
   let key = key_event(keyboard);
-  let prevented = node_at(event.target())
+  let at = node_at(event.target());
+  let prevented = at
     .map(|node| dispatch_key_down::<Web>(node, &key))
     .unwrap_or_default();
 
@@ -470,7 +473,13 @@ fn on_key_down(event: &web_sys::Event) {
     return;
   }
 
-  match Scene::<Web>::read(|scene| scene.key_default(&key)) {
+  match Scene::<Web>::with(|scene| scene.key_default(at, &key)) {
+    Some(KeyDefault::Activate(row)) => {
+      event.prevent_default();
+      let _ = dispatch_activation::<Web>(row, key.modifiers);
+    }
+    // The press of a `Space` that activates on its release scrolls nothing.
+    Some(KeyDefault::Arm(_)) => event.prevent_default(),
     // A modal the scene dismisses on `Escape` is the dialog's own to cancel.
     Some(KeyDefault::Dismiss(overlay)) if !Scene::<Web>::read(|scene| scene.is_modal(overlay)) => {
       event.prevent_default();
@@ -528,12 +537,20 @@ fn on_key_up(event: &web_sys::Event) {
     event.prevent_default();
   }
 
-  let Some(node) = node_at(event.target())
-  else {
-    return;
-  };
+  let at = node_at(event.target());
+  let prevented = at
+    .map(|node| dispatch_key_up::<Web>(node, &key))
+    .unwrap_or_default();
 
-  apply(dispatch_key_up::<Web>(node, &key), event);
+  apply(prevented, event);
+
+  if !prevented.platform
+    && let Some(KeyDefault::Activate(row)) =
+      Scene::<Web>::with(|scene| scene.key_up_default(at, &key))
+  {
+    event.prevent_default();
+    let _ = dispatch_activation::<Web>(row, key.modifiers);
+  }
 }
 
 /// The portable key event of a DOM keyboard event.

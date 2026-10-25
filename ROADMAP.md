@@ -29,16 +29,13 @@ in a code comment.
     their backing fields cfg-gated; another platform's setter compiles and does nothing.
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
-    on the web over the form element CSS styles; a platform's own controls take Skene's
-    names where the meaning matches, the toolkit's names in their doc line and as doc
-    aliases of the type and its members; a shared option is semantic
+    on the web over the form element CSS styles; a shared option is semantic
     (`Button::set_prominent`) rather than a per-platform preset; a shared `set_shortcut`
-    joins them. A clickable `Container` is an activatable row (focusable, `Enter` and
-    `Space` activating it, holding controls that own their presses), focus order follows
-    the scene's child order, and a window opens with nothing focused but a control set
-    to `set_autofocus`. `TextEntry::on_key` takes the core's `Binding` table once every
-    field is drawn, the terminal's key default consulting it until then, and the engine
-    and editor move from the drawing realization onto the platform's seam.
+    joins them. Focus order follows the scene's child order, and a window opens with
+    nothing focused but a control set to `set_autofocus`. `TextEntry::on_key` takes the
+    core's `Binding` table once every field is drawn, the terminal's key default
+    consulting it until then, and the engine and editor move from the drawing
+    realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
     re-inking its built-in. The core holds colors, named sizes and logic and no view, so

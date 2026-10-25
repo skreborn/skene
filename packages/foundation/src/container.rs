@@ -210,6 +210,12 @@ pub trait ContainerBase<P: Realization>: HasLayoutBox<P, Kind = PlainChild> {
 
   /// Runs `action` on a click; return [`Bubbling::Stop`](Bubbling::Stop) to keep the click
   /// from the ancestors.
+  ///
+  /// A box that handles a click is an activatable row, not a button: a tab stop unless
+  /// its focus order says otherwise, activated by `Enter` on every press and by `Space`
+  /// on its release, as a click activates it, and it may hold controls, which own their
+  /// presses and keys. It carries no role but the one [`set_role`](Self::set_role)
+  /// gives it.
   #[must_use]
   fn handle_click<R: Into<Bubbling>>(self, action: impl Fn() -> R + 'static) -> Self {
     self.map_layout_box(|layout| layout.handle_click(action))

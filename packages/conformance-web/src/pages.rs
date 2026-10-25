@@ -106,6 +106,10 @@ pub fn pages() -> Vec<Page> {
       build: focus_group_page,
     },
     Page {
+      name: "row",
+      build: row_page,
+    },
+    Page {
       name: "text",
       build: text_page,
     },
@@ -418,6 +422,23 @@ fn focus_group_page(probes: &mut Probes) -> AnyView {
         .set_child(Row::new().set_children((button("a"), button("b")))),
       button("c"),
     ))
+    .into_any()
+}
+
+/// An activatable row named Row holding a button named Inside, publishing the row's
+/// activations as `row` and the button's as `inside`.
+fn row_page(probes: &mut Probes) -> AnyView {
+  let row = Signal::new(0u32);
+  let inside = Signal::new(0u32);
+
+  probes.publish("row", move || row.get().to_string());
+  probes.publish("inside", move || inside.get().to_string());
+
+  Container::new()
+    .set_role(Role::Group)
+    .set_label("Row")
+    .handle_click(move || row.update(|count| *count += 1))
+    .set_child(button("Inside").handle_activate(move || inside.update(|count| *count += 1)))
     .into_any()
 }
 

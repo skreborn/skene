@@ -98,6 +98,29 @@ fn panel() -> impl View {
 }
 ```
 
+## An activatable row
+
+A `Container` that handles a click is an activatable row: it is a tab stop, `Enter` and
+`Space` activate it as a click does, and the controls inside it keep their own presses,
+so a list entry may hold a button of its own. It is not a button and carries no role but
+the one `set_role` gives it.
+
+```rust
+use skene_web::{Activate, prelude::*};
+
+fn entry(opened: Signal<u32>, starred: Signal<u32>) -> impl View {
+  Container::new()
+    .set_padding(Inset::symmetric(12, 8))
+    .handle_click(move || opened.update(|count| *count += 1))
+    .set_child(Row::new().set_spacing(8).set_children((
+      Text::new("Inbox"),
+      BasicButton::new(Activate::new())
+        .set_label("Star")
+        .handle_activate(move || starred.update(|count| *count += 1)),
+    )))
+}
+```
+
 ## Conditions
 
 A value varies under a condition through `when`, on the value itself, so no property

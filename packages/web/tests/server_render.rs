@@ -577,6 +577,48 @@ fn a_container_nests_its_child() {
 }
 
 #[test]
+fn a_clickable_container_is_a_tab_stop_with_no_role_of_its_own() {
+  let page = render_to_string(|| {
+    Column::new().set_children((
+      Container::new()
+        .handle_click(|| {})
+        .set_child(Text::new("Row")),
+      Container::new()
+        .set_focus_order(skene_web::FocusOrder::Skip)
+        .handle_click(|| {})
+        .set_child(Text::new("Skipped")),
+      Container::new().set_child(Text::new("Plain")),
+    ))
+  });
+  let body = page.body();
+  let opening = |text: &str| {
+    let end = body
+      .find(&format!(">{text}</span>"))
+      .expect("the row's text");
+    let start = body[..end].rfind("<div").expect("the row's box");
+
+    body[start..body[start..].find('>').unwrap() + start].to_owned()
+  };
+
+  assert!(
+    opening("Row").contains(r#"tabindex="0""#),
+    "an activatable row is a tab stop: {body}"
+  );
+  assert!(
+    !opening("Row").contains("role="),
+    "an activatable row carries no role of its own: {body}"
+  );
+  assert!(
+    opening("Skipped").contains(r#"tabindex="-1""#),
+    "a focus order the row states wins: {body}"
+  );
+  assert!(
+    !opening("Plain").contains("tabindex"),
+    "a box handling no click takes no focus: {body}"
+  );
+}
+
+#[test]
 fn identical_styles_share_one_rule() {
   // Two siblings styled the same must share a class and emit its rule exactly once.
   let page = render_to_string(|| Row::new().set_children([Text::new("a"), Text::new("b")]));

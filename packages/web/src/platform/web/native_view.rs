@@ -139,6 +139,7 @@ impl NativeView {
         container: None,
         transition_name: None,
         link: false,
+        acting: false,
       }),
     )
   }

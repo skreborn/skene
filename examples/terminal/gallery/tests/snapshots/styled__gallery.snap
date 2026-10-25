@@ -148,6 +148,15 @@ expression: styled
 
     ╭───────────────────────────────────────────────────╮
     │                                                   │
+    │  Activatable row                                  │
+    │                                                   │
+    │   Inbox: a click or Enter opens it        Star    │
+    │  opened 0 time(s), starred 0 time(s)              │
+    │                                                   │
+    ╰───────────────────────────────────────────────────╯
+
+    ╭───────────────────────────────────────────────────╮
+    │                                                   │
     │  Context menu                                     │
     │                                                   │
     │   Right-click me, or focus me and press Shift-    │
@@ -185,15 +194,6 @@ expression: styled
     │  ▁▃▂▆▄▇▅█▄▂▃▁  a sparkline painted cell by cell   │
     │                                                   │
     ╰───────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
 
 
 
@@ -369,6 +369,15 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddeeeeeeeeeeeeeeeddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddffffffffffffffffffffffffffffffffddddddddffffddddcaaa
+aaaacddgggggggggggggggggggggggggggggggggggddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeedddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddffffffffffffffffffffffffffffffffffffffffffffddddcaaa
@@ -406,15 +415,6 @@ aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddiiiiiiiiiiiiddggggggggggggggggggggggggggggggggdddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

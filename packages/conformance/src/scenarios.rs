@@ -148,6 +148,12 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       page: "focus-group",
       act: a_box_hears_focus_entering_and_leaving,
     },
+    Scenario {
+      name: "an activatable row takes focus, activates on Enter and Space, and the controls it \
+             holds own their presses",
+      page: "row",
+      act: an_activatable_row_activates,
+    },
   ]
 }
 
@@ -819,5 +825,46 @@ fn a_box_hears_focus_entering_and_leaving<D: Driver>(driver: &mut D) {
     probes(driver),
     ("1".to_owned(), "1".to_owned()),
     "focus leaving the box"
+  );
+}
+
+fn an_activatable_row_activates<D: Driver>(driver: &mut D) {
+  let probes = |driver: &mut D| (driver.probe("row"), driver.probe("inside"));
+  let row = found(driver, Role::Group, "Row");
+  let inside = found(driver, Role::Button, "Inside");
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&row),
+    "the row is a tab stop"
+  );
+
+  driver.press(&key("Enter"));
+  driver.press(&key(" "));
+
+  assert_eq!(
+    probes(driver),
+    ("2".to_owned(), "0".to_owned()),
+    "Enter and Space activate the row"
+  );
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&inside),
+    "the control it holds is the next stop"
+  );
+
+  driver.press(&key("Enter"));
+  driver.press(&key(" "));
+  driver.click(&inside);
+
+  assert_eq!(
+    probes(driver),
+    ("2".to_owned(), "3".to_owned()),
+    "the control's keys and click are its own"
   );
 }

@@ -1,5 +1,6 @@
 //! The interaction the scene holds: the hovered, pressed and focused nodes, the
-//! handlers nodes carry, and what a key does once its handlers leave it.
+//! activatable row a `Space` press armed, the handlers nodes carry, and what a key does
+//! once its handlers leave it.
 
 use smallvec::SmallVec;
 
@@ -18,8 +19,9 @@ use crate::spine::{
 };
 
 /// The interaction the scene holds, as plain state: the hovered, pressed and focused
-/// nodes, whether focus shows, and a generation that moves whenever what a node resolves
-/// its interaction to may have changed.
+/// nodes, whether focus shows, the activatable row a `Space` press armed for its
+/// release, and a generation that moves whenever what a node resolves its interaction
+/// to may have changed.
 ///
 /// What holds along a node's ancestors reads them through an `ancestry`, a node and the
 /// nodes it stands in, itself first, as [`Scene::ancestry`] gives it.
@@ -30,6 +32,7 @@ pub(in crate::spine) struct Held {
   pressed: Option<NodeId>,
   focused: Option<NodeId>,
   focus_visible: bool,
+  armed: Option<NodeId>,
   generation: u64,
 }
 
@@ -41,6 +44,7 @@ impl Held {
       pressed: None,
       focused: None,
       focus_visible: true,
+      armed: None,
       generation: 0,
     }
   }
@@ -92,9 +96,26 @@ impl Held {
     self.replace(|held| &mut held.pressed, node);
   }
 
-  /// Moves focus to `next`, returning the node that held it.
+  /// Moves focus to `next`, returning the node that held it; a row armed elsewhere is
+  /// disarmed.
   pub(in crate::spine) fn focus(&mut self, next: Option<NodeId>) -> Option<NodeId> {
+    if self.armed != next {
+      self.armed = None;
+    }
+
     self.replace(|held| &mut held.focused, next)
+  }
+
+  /// Arms `node` for the release of the `Space` pressed on it.
+  #[inline(always)]
+  pub(in crate::spine) const fn arm(&mut self, node: NodeId) {
+    self.armed = Some(node);
+  }
+
+  /// Takes the row a `Space` press armed, leaving none armed.
+  #[inline(always)]
+  pub(in crate::spine) const fn disarm(&mut self) -> Option<NodeId> {
+    self.armed.take()
   }
 
   /// Records whether focus shows while held.
@@ -105,8 +126,12 @@ impl Held {
     }
   }
 
-  /// Forgets `node`, destroyed: it is no longer hovered, pressed or focused.
+  /// Forgets `node`, destroyed: it is no longer hovered, pressed, focused or armed.
   pub(in crate::spine) fn forget(&mut self, node: NodeId) {
+    if self.armed == Some(node) {
+      self.armed = None;
+    }
+
     for held in [&mut self.hovered, &mut self.pressed, &mut self.focused] {
       if *held == Some(node) {
         *held = None;
@@ -291,10 +316,12 @@ impl<P: Realization> Scene<P> {
     }
   }
 
-  /// What `event` does once its handlers leave it to the platform, as a browser's
-  /// defaults do: `Tab` traverses, `Escape` dismisses the topmost open overlay, and the
+  /// What `event`, pressed at `at`, the node holding focus, does once its handlers
+  /// leave it to the platform, as a browser's defaults do: `Tab` traverses, `Escape`
+  /// dismisses the topmost open overlay, `Enter` activates an activatable row at `at`
+  /// on every press, repeats included, and `Space` arms it for its release, and the
   /// menu key or `Shift-F10` asks for a context menu; `None` for every other key.
-  pub fn key_default(&self, event: &KeyEvent) -> Option<KeyDefault> {
+  pub fn key_default(&mut self, at: Option<NodeId>, event: &KeyEvent) -> Option<KeyDefault> {
     if event.is(NamedKey::Tab) {
       return Some(KeyDefault::Traverse {
         back: event.modifiers.shift,
@@ -305,8 +332,43 @@ impl<P: Realization> Scene<P> {
       return self.open_overlays.last().copied().map(KeyDefault::Dismiss);
     }
 
+    if let Some(row) = at.filter(|node| self.is_acting(*node)) {
+      if event.is(NamedKey::Enter) {
+        return Some(KeyDefault::Activate(row));
+      }
+
+      if event.types(" ") {
+        if !event.repeat {
+          self.held.arm(row);
+        }
+
+        return Some(KeyDefault::Arm(row));
+      }
+    }
+
     (event.is(NamedKey::ContextMenu) || (event.is(NamedKey::F10) && event.modifiers.shift))
       .then_some(KeyDefault::ContextMenu)
+  }
+
+  /// What the release of `event` at `at`, the node holding focus, does once its
+  /// handlers leave it to the platform: the release of a `Space` pressed on the
+  /// activatable row at `at` activates it, once, where it kept focus since the press;
+  /// `None` for every other release.
+  pub fn key_up_default(&mut self, at: Option<NodeId>, event: &KeyEvent) -> Option<KeyDefault> {
+    if !event.types(" ") {
+      return None;
+    }
+
+    let armed = self.held.disarm()?;
+
+    (at == Some(armed) && self.is_acting(armed)).then_some(KeyDefault::Activate(armed))
+  }
+
+  /// Whether `node` is a box acting on a click of its own, an activatable row: it takes
+  /// focus, and `Enter` and `Space` activate it.
+  #[must_use]
+  pub fn is_acting(&self, node: NodeId) -> bool {
+    self.record(node).is_some_and(NodeRecord::is_acting)
   }
 
   /// Adds `handler` to `node`: it runs as the current owner when an event of its kind
@@ -383,5 +445,31 @@ mod tests {
     assert_eq!(held.focused(), None);
     assert_eq!(held.pressed(), None);
     assert_eq!(held.generation(), generation + 3);
+  }
+
+  /// A row armed by a `Space` press is disarmed by its taking, by focus moving to
+  /// another node and by its destruction, and focus staying on it keeps it armed.
+  #[test]
+  fn an_armed_row_stays_armed_only_while_it_holds_focus() {
+    let [row, other] = std::array::from_fn(NodeId::plain);
+    let mut held = Held::new();
+
+    held.focus(Some(row));
+    held.arm(row);
+    held.focus(Some(row));
+
+    assert_eq!(held.disarm(), Some(row));
+    assert_eq!(held.disarm(), None, "a release takes the arming once");
+
+    held.arm(row);
+    held.focus(Some(other));
+
+    assert_eq!(held.disarm(), None, "focus moved away");
+
+    held.focus(Some(row));
+    held.arm(row);
+    held.forget(row);
+
+    assert_eq!(held.disarm(), None, "the row was destroyed");
   }
 }

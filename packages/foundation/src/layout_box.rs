@@ -293,6 +293,10 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
 
   /// Runs `action` on a click; its verdict says whether the click carries on to the
   /// ancestors.
+  ///
+  /// A box that handles a click and is no link is an activatable row: a tab stop
+  /// unless its focus order says otherwise, `Enter` and `Space` activating it as a click
+  /// does while it holds focus, and the controls inside it owning their presses.
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
     self
       .handlers
@@ -501,12 +505,48 @@ impl<P: Realization, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
 impl<P: Realization, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
 impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
+  /// Folds the box's name, its label and the node labelling it, into its accessibility.
+  fn fold_name(&mut self) {
+    let named: Vec<AccessProp> = self
+      .label
+      .take()
+      .map(AccessProp::Name)
+      .into_iter()
+      .chain(
+        self
+          .labelled_by
+          .map(|node| AccessProp::LabelledBy(vec![node])),
+      )
+      .collect();
+
+    if named.is_empty() {
+      return;
+    }
+
+    self.access = Some(match self.access.take() {
+      None => Source::Fixed(named),
+      Some(Source::Fixed(mut access)) => {
+        access.extend(named);
+
+        Source::Fixed(access)
+      }
+      Some(Source::Derived(derive)) => Source::derive(move || {
+        let mut access = derive();
+
+        access.extend(named.iter().cloned());
+
+        access
+      }),
+    });
+  }
+
   /// Realizes the box as the node whose facts `facts` makes of the box's: folds the
   /// pending annotation into the style, splits it, creates the node on the platform
   /// from its [`NodeSpec`], calls `realized` with the node, its spec and its style, then
-  /// applies the style, writes its fixed focus order and accessibility, binds every
-  /// derived slot, a derived focus order and accessibility, and the handlers, mounts the
-  /// children and returns the node.
+  /// applies the style, writes its fixed focus order, a tab stop where it is an
+  /// activatable row, and its accessibility, binds every derived slot, a derived focus
+  /// order and accessibility, and the handlers, mounts the children and returns the
+  /// node.
   ///
   /// A box builds through this with [`NodeFacts::Box`]; a view realized as another kind
   /// makes its facts from the box's.
@@ -519,34 +559,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       annotation.apply_to(&mut self.style);
     }
 
-    let named: Vec<AccessProp> = self
-      .label
-      .map(AccessProp::Name)
-      .into_iter()
-      .chain(
-        self
-          .labelled_by
-          .map(|node| AccessProp::LabelledBy(vec![node])),
-      )
-      .collect();
-
-    if !named.is_empty() {
-      self.access = Some(match self.access {
-        None => Source::Fixed(named),
-        Some(Source::Fixed(mut access)) => {
-          access.extend(named);
-
-          Source::Fixed(access)
-        }
-        Some(Source::Derived(derive)) => Source::derive(move || {
-          let mut access = derive();
-
-          access.extend(named.iter().cloned());
-
-          access
-        }),
-      });
-    }
+    self.fold_name();
 
     let (style, slots) = (*self.style).split();
     let mut record = Record::new();
@@ -565,6 +578,11 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     };
     let access = noted.clone().unwrap_or_default();
     let links = self.destination.is_some();
+    let acting = !links
+      && self
+        .handlers
+        .iter()
+        .any(|handler| matches!(handler, Handler::Click(_)));
     let spec = NodeSpec::new(
       self.role,
       AccessProp::level_of(&access),
@@ -574,8 +592,10 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
         container: self.container,
         transition_name: self.transition_name,
         link: links,
+        acting,
       }),
     );
+    let tab_stop = focus_order.or_else(|| spec.acting().then_some(FocusOrder::Auto));
     let container = self.container;
     let node = Scene::<P>::realize(&spec, None);
 
@@ -587,13 +607,10 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
 
     realized(node, &spec, &style);
     P::apply_style(node, style);
-    P::update_focus_order(node, focus_order);
+    P::update_focus_order(node, tab_stop);
     P::update_access(node, &access);
     Scene::<P>::with(|scene| {
-      scene.note_focus_order(
-        node,
-        focus_order.or_else(|| links.then_some(FocusOrder::Auto)),
-      );
+      scene.note_focus_order(node, tab_stop.or_else(|| links.then_some(FocusOrder::Auto)));
 
       if let Some(name) = container {
         scene.set_container(node, name);

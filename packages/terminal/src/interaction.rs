@@ -25,6 +25,7 @@ use skene_foundation::{
   Scene,
   ScrollEvent,
   WheelUnit,
+  dispatch_activation,
   dispatch_click,
   dispatch_context_menu,
   dispatch_double_click,
@@ -1615,28 +1616,36 @@ pub(crate) fn key(event: &KeyEvent) {
   skene_reactive::Runtime::flush_sync();
 
   if !prevented.platform {
-    key_default(event);
+    key_default(target, event);
   }
 
   crate::field::report_selections();
 }
 
-/// Dispatches a key release to the focused node, or the root; the terminal has no
-/// response of its own to one.
+/// Dispatches a key release to the focused node, or the root, then, unless a handler
+/// prevented it, activates the activatable row whose `Space` it releases.
 pub(crate) fn key_up(event: &KeyEvent) {
   let target = records(|records| {
     let handle = records.focused().unwrap_or(records.root);
 
     records.record(handle).and_then(|record| record.node)
   });
+  let prevented = target.map_or(Prevented::default(), |node| {
+    dispatch_key_up::<Terminal>(node, event)
+  });
 
-  if let Some(node) = target {
-    let _ = dispatch_key_up::<Terminal>(node, event);
+  skene_reactive::Runtime::flush_sync();
+
+  if !prevented.platform
+    && let Some(KeyDefault::Activate(row)) =
+      Scene::<Terminal>::with(|scene| scene.key_up_default(target, event))
+  {
+    let _ = dispatch_activation::<Terminal>(row, event.modifiers);
   }
 }
 
-/// The terminal's own response to a key.
-fn key_default(event: &KeyEvent) {
+/// The terminal's own response to a key pressed at `at`, the node holding focus.
+fn key_default(at: Option<NodeId>, event: &KeyEvent) {
   // The mouse key hands the mouse over and takes it back; any other key, a modifier
   // alone aside, takes it back and goes on to act.
   let (mouse_key, released) = records(|records| {
@@ -1677,7 +1686,7 @@ fn key_default(event: &KeyEvent) {
     return;
   }
 
-  match Scene::<Terminal>::read(|scene| scene.key_default(event)) {
+  match Scene::<Terminal>::with(|scene| scene.key_default(at, event)) {
     Some(KeyDefault::Traverse { back }) => {
       move_focus(if back { -1 } else { 1 });
 
@@ -1693,6 +1702,12 @@ fn key_default(event: &KeyEvent) {
 
       return;
     }
+    Some(KeyDefault::Activate(row)) => {
+      let _ = dispatch_activation::<Terminal>(row, event.modifiers);
+
+      return;
+    }
+    Some(KeyDefault::Arm(_)) => return,
     None => {}
   }
 

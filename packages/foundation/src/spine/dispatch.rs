@@ -18,6 +18,7 @@ use crate::spine::{
   ClickEvent,
   ClickHandler,
   KeyEvent,
+  Modifiers,
   PlainHandler,
   PointerEvent,
   Prevent,
@@ -35,6 +36,19 @@ pub fn dispatch_click<P: Realization>(node: NodeId, event: &ClickEvent) -> Preve
     HandlerSet::select_click,
     |_| (),
     |handler, ()| handler(event),
+  )
+}
+
+/// Dispatches the activation of the activatable row `row` by a key held with
+/// `modifiers`: a click no pointer made, which the row's handlers and their verdicts
+/// take as they take a pointer's.
+pub fn dispatch_activation<P: Realization>(row: NodeId, modifiers: Modifiers) -> Prevented {
+  dispatch_click::<P>(
+    row,
+    &ClickEvent {
+      modifiers,
+      count: 0,
+    },
   )
 }
 

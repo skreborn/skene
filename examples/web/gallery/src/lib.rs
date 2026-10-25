@@ -43,6 +43,7 @@ pub fn app() -> impl View {
                 list(),
                 lazy_row(),
                 Column::new().set_spacing(24).set_children((
+                  rows(),
                   context_menu(),
                   link(),
                   visibility_and_one_of(),
@@ -402,6 +403,49 @@ fn lazy_row() -> impl View {
           },
         ),
     ),
+  )
+}
+
+fn rows() -> impl View {
+  let opened = Signal::tagged("opened", 0u32);
+  let starred = Signal::tagged("starred", 0u32);
+
+  section(
+    "Activatable row",
+    Column::new().set_spacing(8).set_children((
+      // A clickable container is an activatable row: a tab stop that Enter and Space
+      // activate as a click does, while the button inside it owns its own presses.
+      Container::new()
+        .set_padding(Inset::symmetric(12, 8))
+        .set_corner_radius(6)
+        .set_background(
+          SimplePalette::CARD
+            .when(State::Hovered, SimplePalette::SECONDARY_SURFACE)
+            .when(State::Focused, SimplePalette::SECONDARY_SURFACE),
+        )
+        .handle_click(move || opened.update(|value| *value += 1))
+        .set_child(
+          Row::new()
+            .set_spacing(8)
+            .set_arrangement(Arrangement::SpaceBetween)
+            .set_item_alignment(ItemAlignment::Center)
+            .set_children((
+              Text::new("Inbox: a click or Enter opens it"),
+              SimpleButton::new("Star")
+                .set_variant(SimpleVariant::Outline)
+                .handle_activate(move || starred.update(|value| *value += 1)),
+            )),
+        ),
+      Text::derive(move || {
+        format!(
+          "opened {} time(s), starred {} time(s)",
+          opened.get(),
+          starred.get()
+        )
+      })
+      .set_font_size(13.)
+      .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
   )
 }
 

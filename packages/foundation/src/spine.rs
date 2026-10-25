@@ -91,6 +91,7 @@ pub use content::{
 pub use control::{ControlFacts, ControlState, NativeElement, Part};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
+  dispatch_activation,
   dispatch_click,
   dispatch_click_observed,
   dispatch_context_menu,

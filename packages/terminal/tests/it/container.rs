@@ -1,13 +1,16 @@
 //! The container in cells: its handlers hear real input through dispatch, its focus
-//! order and accessibility follow their signals, `Tab` walks the scene's tab stops, and
-//! its border inks through the theme.
+//! order and accessibility follow their signals, `Tab` walks the scene's tab stops, a
+//! clickable one is an activatable row, and its border inks through the theme.
 
-use std::{cell::RefCell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, PointerButton, prelude::*, testing};
+use skene_terminal::{self as terminal, Activate, PointerButton, prelude::*, testing};
 
-use crate::common::{colors_at, mount_nodes, read, red, rgb, with_platform};
+use crate::common::{colors_at, locate, mount_nodes, read, red, rgb, with_platform};
 
 /// Every handler hears its event through dispatch: a press, a key and a release climb
 /// to the outer box until a `Bubbling::Stop`, the pointer entering the inner box enters
@@ -261,6 +264,157 @@ fn tab_traverses_the_scenes_tab_order() {
     testing::trigger_key("Shift+Tab");
 
     assert_eq!(testing::focused_node(), Some(last), "Shift-Tab goes back");
+  });
+}
+
+/// A counter and the action adding one to it.
+fn counter() -> (Rc<Cell<u32>>, impl Fn() + Clone + 'static) {
+  let count = Rc::new(Cell::new(0));
+  let counted = Rc::clone(&count);
+
+  (count, move || counted.set(counted.get() + 1))
+}
+
+/// A clickable container is a tab stop activated by `Enter` on every press, repeats
+/// included, and by `Space` once on its release where it kept focus since the press,
+/// each activation a click its handler hears.
+#[test]
+fn an_activatable_row_is_activated_by_enter_and_space() {
+  with_platform(|| {
+    let (clicks, click) = counter();
+    let [row, other] = mount_nodes(move || {
+      [
+        Container::new()
+          .set_height(1)
+          .handle_click(click)
+          .set_child(Text::new("Row"))
+          .build(),
+        Container::new()
+          .set_height(1)
+          .set_focus_order(FocusOrder::Auto)
+          .build(),
+      ]
+    });
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(testing::focused_node(), Some(row), "the row is a tab stop");
+
+    testing::trigger_key("Enter");
+    testing::trigger_key_event(&KeyEvent {
+      repeat: true,
+      ..KeyEvent::new("Enter")
+    });
+
+    assert_eq!(clicks.get(), 2, "every Enter activates, repeats included");
+
+    testing::trigger_key(" ");
+
+    assert_eq!(clicks.get(), 3, "a Space activates as it is released");
+
+    testing::trigger_key_releases(true);
+    testing::trigger_key(" ");
+    testing::trigger_key_event(&KeyEvent {
+      repeat: true,
+      ..KeyEvent::new(" ")
+    });
+
+    assert_eq!(clicks.get(), 3, "a held Space waits for its release");
+
+    testing::trigger_key_up(" ");
+    testing::trigger_key_up(" ");
+
+    assert_eq!(clicks.get(), 4, "the release activates once");
+
+    testing::trigger_key(" ");
+    testing::trigger_key("Tab");
+    testing::trigger_key_up("Tab");
+
+    assert_eq!(testing::focused_node(), Some(other));
+
+    testing::trigger_key_up(" ");
+
+    assert_eq!(clicks.get(), 4, "focus left before the release");
+  });
+}
+
+/// A control inside an activatable row owns its presses and its keys: its click, its
+/// `Enter` and its `Space` activate it and never the row, while a press on the row's
+/// own text clicks the row.
+#[test]
+fn the_controls_inside_a_row_own_their_presses() {
+  with_platform(|| {
+    let (rows, row_click) = counter();
+    let (buttons, button_click) = counter();
+
+    let _ = terminal::mount(move || {
+      Container::new()
+        .handle_click(row_click)
+        .set_child(
+          Row::new().set_spacing(1).set_children((
+            Text::new("Row"),
+            BasicButton::new(Activate::new())
+              .set_label("Inside")
+              .handle_activate(button_click),
+          )),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(20, 2);
+    let (x, y) = locate(&frame, "Inside");
+
+    testing::trigger_mouse_click(x, y);
+    testing::trigger_key("Enter");
+    testing::trigger_key(" ");
+
+    assert_eq!(buttons.get(), 3, "the button's press and keys are its own");
+    assert_eq!(rows.get(), 0, "none reaches the row");
+
+    let (x, y) = locate(&frame, "Row");
+
+    testing::trigger_mouse_click(x, y);
+    testing::trigger_key("Enter");
+
+    assert_eq!(rows.get(), 2, "the row's own press and key activate it");
+    assert_eq!(buttons.get(), 3);
+  });
+}
+
+/// An activatable row takes its place in the tab order by the scene's child order, the
+/// controls it holds after it.
+#[test]
+fn an_activatable_row_is_a_tab_stop_in_child_order() {
+  with_platform(|| {
+    let inside = NodeHandle::new();
+    let [before, row, after] = mount_nodes(move || {
+      [
+        BasicButton::new(Activate::new())
+          .set_label("Before")
+          .build(),
+        Container::new()
+          .handle_click(|| {})
+          .set_child(
+            BasicButton::new(Activate::new())
+              .set_label("Inside")
+              .bind_handle(inside),
+          )
+          .build(),
+        BasicButton::new(Activate::new()).set_label("After").build(),
+      ]
+    });
+    let mut order = Vec::new();
+
+    for _ in 0..4 {
+      testing::trigger_key("Tab");
+      order.extend(testing::focused_node());
+    }
+
+    assert_eq!(
+      order,
+      [before, row, inside.node().expect("the button built"), after]
+    );
   });
 }
 

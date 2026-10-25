@@ -71,9 +71,11 @@ use skene_foundation::{
 };
 use skene_simple_web::prelude::*;
 use skene_web::{
+  Activate,
   AnyView,
   AsyncView,
   AsyncViewBase,
+  BasicButton,
   BasicCheckbox,
   BasicRadio,
   BasicRadioGroup,
@@ -884,6 +886,188 @@ fn a_derived_wrapper_property_reaches_a_run() {
   web::end_turn();
 
   assert_eq!(computed(&text, "flex-grow"), "5");
+}
+
+/// Dispatches the key `key` as a `kind` event, `keydown` or `keyup`, at `target`,
+/// repeating where `repeat` says, and returns whether the platform's default was
+/// prevented.
+fn key_at(target: &Element, kind: &str, key: &str, repeat: bool) -> bool {
+  let init = web_sys::KeyboardEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_key(key);
+  init.set_repeat(repeat);
+
+  let event =
+    web_sys::KeyboardEvent::new_with_keyboard_event_init_dict(kind, &init).expect("a key");
+  let _ = target.dispatch_event(&event);
+
+  event.default_prevented()
+}
+
+/// A counter and the action adding one to it.
+fn counter() -> (Rc<Cell<u32>>, impl Fn() + Clone + 'static) {
+  let count = Rc::new(Cell::new(0));
+  let counted = Rc::clone(&count);
+
+  (count, move || counted.set(counted.get() + 1))
+}
+
+/// A clickable container is an activatable row: `Enter` activates it on every press,
+/// repeats included, and `Space` once on its release at the row, its press keeping the
+/// page from scrolling; a release elsewhere activates nothing.
+#[wasm_bindgen_test]
+fn an_activatable_row_activates_on_enter_and_space() {
+  let (_guard, root) = fresh_root();
+  let (clicks, click) = counter();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .handle_click(click)
+          .set_child(Text::new("Row")),
+        Container::new()
+          .set_focus_order(skene_web::FocusOrder::Auto)
+          .set_child(Text::new("Elsewhere")),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let row = column.first_element_child().expect("the row");
+  let elsewhere = row.next_element_sibling().expect("the other box");
+
+  let _ = html(&row).focus();
+
+  assert!(key_at(&row, "keydown", "Enter", false), "Enter acts");
+  assert!(key_at(&row, "keydown", "Enter", true));
+  assert_eq!(clicks.get(), 2, "every Enter activates, repeats included");
+
+  assert!(key_at(&row, "keydown", " ", false), "Space scrolls nothing");
+  assert!(key_at(&row, "keydown", " ", true));
+  assert_eq!(clicks.get(), 2, "a held Space waits for its release");
+  assert!(key_at(&row, "keyup", " ", false));
+  assert!(
+    !key_at(&row, "keyup", " ", false),
+    "a release activates once"
+  );
+  assert_eq!(clicks.get(), 3);
+
+  let _ = key_at(&row, "keydown", " ", false);
+  let _ = html(&elsewhere).focus();
+  let _ = key_at(&elsewhere, "keyup", " ", false);
+
+  assert_eq!(clicks.get(), 3, "focus left the row before the release");
+  assert!(
+    !key_at(&elsewhere, "keydown", "Enter", false),
+    "a box handling no click is no row"
+  );
+}
+
+/// A button inside an activatable row owns its press and its keys: none of its click,
+/// its `Enter` or its `Space` reaches the row, while a click on the row's own text
+/// does.
+#[wasm_bindgen_test]
+fn a_button_inside_a_row_owns_its_press_and_its_space() {
+  let (_guard, root) = fresh_root();
+  let (rows, row_click) = counter();
+  let (buttons, button_click) = counter();
+
+  let _ = mount(move || {
+    Container::new()
+      .handle_click(row_click)
+      .set_child(
+        Row::new().set_children((
+          Text::new("Row"),
+          BasicButton::new(Activate::new())
+            .set_label("Inside")
+            .handle_activate(button_click),
+        )),
+      )
+      .build()
+  });
+
+  let row = only_child(&root);
+  let button = row
+    .query_selector("button")
+    .expect("query")
+    .expect("the button");
+
+  let _ = html(&button).focus();
+  html(&button).click();
+  let _ = key_at(&button, "keydown", "Enter", false);
+  let _ = key_at(&button, "keydown", " ", false);
+  let _ = key_at(&button, "keyup", " ", false);
+
+  assert_eq!(buttons.get(), 3, "the button's press and keys are its own");
+  assert_eq!(rows.get(), 0, "none reaches the row");
+
+  html(
+    &row
+      .query_selector("span")
+      .expect("query")
+      .expect("the text"),
+  )
+  .click();
+
+  assert_eq!(
+    rows.get(),
+    1,
+    "a click on the row's own text clicks the row"
+  );
+}
+
+/// An activatable row is a tab stop, `tabindex="0"`, in the scene's child order, the
+/// controls it holds after it; it carries no role of its own and takes the one given.
+#[wasm_bindgen_test]
+fn an_activatable_row_is_a_tab_stop_in_child_order() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new()).set_label("Before"),
+        Container::new()
+          .handle_click(|| {})
+          .set_child(BasicButton::new(Activate::new()).set_label("Inside")),
+        Container::new()
+          .set_role(Role::Group)
+          .set_label("Named")
+          .handle_click(|| {})
+          .set_child(Text::new("Named")),
+        Container::new().set_child(Text::new("Plain")),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let boxes: Vec<Element> = (0..column.child_element_count())
+    .filter_map(|index| column.children().item(index))
+    .collect();
+  let stops = root
+    .query_selector_all("button, [tabindex]")
+    .expect("query");
+  let order: Vec<String> = (0..stops.length())
+    .filter_map(|index| stops.item(index))
+    .filter_map(|node| node.dyn_into::<Element>().ok())
+    .map(|element| {
+      element
+        .get_attribute("aria-label")
+        .unwrap_or_else(|| element.text_content().unwrap_or_default())
+    })
+    .collect();
+
+  assert_eq!(boxes[1].get_attribute("tabindex").as_deref(), Some("0"));
+  assert_eq!(
+    boxes[1].get_attribute("role"),
+    None,
+    "a row has no role of its own"
+  );
+  assert_eq!(boxes[2].get_attribute("role").as_deref(), Some("group"));
+  assert_eq!(boxes[3].get_attribute("tabindex"), None);
+  assert_eq!(order, ["Before", "Inside", "Inside", "Named"]);
 }
 
 #[wasm_bindgen_test]

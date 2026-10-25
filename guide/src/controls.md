@@ -84,7 +84,10 @@ A control consumes the events it acts on: a press on a button is a press on that
 never also on the row it sits in. A handler takes a plain callback, and the control
 decides what the platform and its ancestors are told. A `Container` is a box rather than
 a control, and its handlers choose whether an event travels on, so a group that must
-observe its controls' clicks in one place wraps them in one.
+observe its controls' clicks in one place wraps them in one. A `Container` that handles a
+click is an activatable row: it takes focus and `Enter` and `Space` activate it, while
+the controls inside it own their presses and keys, so a button in a row never also
+activates the row.
 
 ## Labels and accessibility
 

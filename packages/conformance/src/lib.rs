@@ -57,9 +57,11 @@ use skene_foundation::{KeyEvent, NodeId, Role, Scalar, Size, TreeUpdate};
 /// - `nested-boxes`: a group named Outer around a group named Inner, neither focusable;
 /// - `focus-group`: a box around the buttons a and b, publishing focus entering it as `entered` and
 ///   leaving it as `left`, above a button named c;
+/// - `row`: an activatable row, a group named Row, holding a button named Inside, publishing the
+///   row's activations as `row` and the button's as `inside`;
 /// - `text`: text keeping its blanks and newlines, a word too wide for the page broken where the
 ///   page's width ends.
-pub const PAGES: [&str; 18] = [
+pub const PAGES: [&str; 19] = [
   "button",
   "checkbox",
   "buttons",
@@ -77,6 +79,7 @@ pub const PAGES: [&str; 18] = [
   "form",
   "nested-boxes",
   "focus-group",
+  "row",
   "text",
 ];
 

@@ -300,6 +300,12 @@ pub enum KeyDefault {
   Dismiss(crate::spine::NodeId),
   /// The menu key or `Shift-F10` asks for the context menu where focus is.
   ContextMenu,
+  /// `Enter`, or the release of a `Space` pressed on it, activates the activatable row
+  /// holding focus: the platform dispatches a click at it.
+  Activate(crate::spine::NodeId),
+  /// `Space` pressed on the activatable row holding focus arms it for the key's
+  /// release: the platform keeps the press from its own default, a page's scroll.
+  Arm(crate::spine::NodeId),
 }
 
 impl KeyEvent {

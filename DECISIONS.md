@@ -422,6 +422,12 @@ supersedes.
   and `Space`, holding controls that own their presses; focus follows the scene's child
   order, never geometry, which had put a switch before the command to its left. Revisit
   when a platform cannot make a box holding controls focusable and activatable.
+- **A role of its own for the activatable row on the web** (2026-10-25), `row` or
+  `button` on the clickable box: ARIA's `row` belongs inside a grid or a table, which
+  a free-standing box is not, and a `button` may hold no interactive content, which a
+  row holding controls does. The row carries the role its app gives it through
+  `set_role`, and none otherwise. Revisit when ARIA gains a role for an activatable
+  container that may hold controls.
 - **Content-addressed token tags on display-wide colors** (2026-10-14), a toolkit's
   named colors tagged by their definition's content: a palette switch changed every tag
   and so restyled every node naming one. A palette switch touches no node: named

@@ -2510,7 +2510,6 @@ version = "0.1.0"
 dependencies = [
  "accesskit",
  "skene-foundation",
- "skene-reactive",
 ]
 
 [[package]]

@@ -5,11 +5,11 @@
 //! scenario's page on it, acts on it as a user does and checks what the user would find.
 //! Every platform passing the suite behaves alike wherever the suite looks.
 //!
-//! A scenario names the [`Page`] it opens, which a driver builds on its platform, in its
-//! own process or in another. A scenario finds what it acts on as a reader does, by role
-//! and accessible name, and checks the [`Probes`] its page publishes of the signals its
-//! views are bound to, the node holding focus and what a reader finds of a node, never a
-//! platform's records.
+//! A scenario names the page it opens ([`PAGES`]), which each facade writes in its own
+//! vocabulary and a driver builds on its platform, in its own process or in another. A
+//! scenario finds what it acts on as a reader does, by role and accessible name, and
+//! checks the [`Probes`] its page publishes of the signals its views are bound to, the
+//! node holding focus and what a reader finds of a node, never a platform's records.
 
 mod scenarios;
 
@@ -21,7 +21,70 @@ use std::{
 };
 
 use accesskit::Toggled;
-use skene_foundation::{AnyView, KeyEvent, NodeId, Realization, Role, Scalar, Size, TreeUpdate};
+use skene_foundation::{KeyEvent, NodeId, Role, Scalar, Size, TreeUpdate};
+
+/// Every page of the suite by name, in the order the suite first opens them: each page a
+/// scenario opens, and `text`, which no scenario acts on and a platform that draws holds
+/// against its golden.
+///
+/// A facade writes a page of each name, holding what its scenarios find:
+///
+/// - `button`: a button named Save, publishing its activations as `clicks`;
+/// - `checkbox`: a checkbox named Remember me, publishing whether it is `checked`;
+/// - `buttons`: the buttons One, Two and Three in a column;
+/// - `disabled-button`: the buttons One, Two and Three in a column, Two disabled and publishing its
+///   activations as `clicks`;
+/// - `text-field`: a text field named Name, publishing its text as `value` and its selection as
+///   `selection` (`start..end`), above the plain text Plain words;
+/// - `read-only-field`: a read-only text field named Name holding fixed, publishing its text as
+///   `value`;
+/// - `radio-group`: a radio group named Size of Small, Medium and Large, nothing chosen at first,
+///   publishing its choice as `chosen` (`s`, `m`, `l`, empty while nothing is chosen), above a
+///   button named Next;
+/// - `slider`: a slider named Volume from 0 to 100 at 50, publishing its `value`;
+/// - `picker`: a picker named Letter of a, b and c, b chosen and its face showing the choice,
+///   publishing its choice as `chosen`, above a button named Elsewhere;
+/// - `tooltip`: a button named Save, described by the tooltip Saves your work;
+/// - `context-menu`: a focusable group named Note holding the text A note, serving a context menu
+///   of one entry, Rename, publishing whether it ran as `renamed`;
+/// - `viewport`: the text Wide, hidden below the [`BREAKPOINT`] width;
+/// - `visibility`: a button named Dismiss, whose activation hides it for [`RETURN`], above a button
+///   named Elsewhere;
+/// - `modal`: a button named Open, which opens a modal holding a button named Inside, publishing
+///   whether the modal is `open`;
+/// - `form`: a sign-in form, none of it bound: a heading Sign in, a text field named Name holding
+///   ada, a checked checkbox named Remember me and a disabled button named Continue;
+/// - `nested-boxes`: a group named Outer around a group named Inner, neither focusable;
+/// - `focus-group`: a box around the buttons a and b, publishing focus entering it as `entered` and
+///   leaving it as `left`, above a button named c;
+/// - `text`: text keeping its blanks and newlines, a word too wide for the page broken where the
+///   page's width ends.
+pub const PAGES: [&str; 18] = [
+  "button",
+  "checkbox",
+  "buttons",
+  "disabled-button",
+  "text-field",
+  "read-only-field",
+  "radio-group",
+  "slider",
+  "picker",
+  "tooltip",
+  "context-menu",
+  "viewport",
+  "visibility",
+  "modal",
+  "form",
+  "nested-boxes",
+  "focus-group",
+  "text",
+];
+
+/// How long the view the `visibility` page hides stays hidden.
+pub const RETURN: Duration = Duration::from_secs(1);
+
+/// The viewport width at and above which the `viewport` page shows its text.
+pub const BREAKPOINT: i32 = 700;
 
 /// A platform driven as a user drives it, for the suite [`run`] runs.
 pub trait Driver {
@@ -31,7 +94,7 @@ pub trait Driver {
   /// The unit the platform measures lengths in.
   type Scalar: Scalar;
 
-  /// Opens the page of the suite named `page` ([`pages`]) as the whole of a fresh page,
+  /// Opens the page of the suite named `page` ([`PAGES`]) as the whole of a fresh page,
   /// in place of whatever the driver opened before.
   fn open(&mut self, page: &str);
 
@@ -162,41 +225,12 @@ impl Debug for Probes {
   }
 }
 
-/// A page of the suite: the view a scenario opens, built on the platform `P`.
-pub struct Page<P: Realization> {
-  /// The name a scenario opens it by.
-  pub name: &'static str,
-  /// Builds the view, publishing into the probes what a scenario checks of it.
-  pub build: fn(&mut Probes) -> AnyView<P>,
-}
-
-impl<P: Realization> Debug for Page<P> {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter
-      .debug_struct("Page")
-      .field("name", &self.name)
-      .finish_non_exhaustive()
-  }
-}
-
-/// Every page of the suite, on the platform `P`.
-#[must_use]
-pub fn pages<P: Realization>() -> Vec<Page<P>> {
-  scenarios::pages()
-}
-
-/// The page of the suite named `name`, on the platform `P`.
-#[must_use]
-pub fn page<P: Realization>(name: &str) -> Option<Page<P>> {
-  pages().into_iter().find(|page| page.name == name)
-}
-
 /// One behavior of the suite on the driver `D`: what it shows, the page it opens, and
 /// the function acting it out, which panics where the platform behaves otherwise.
 pub struct Scenario<D> {
   /// What the scenario shows, as a sentence.
   pub name: &'static str,
-  /// The name of the page it opens ([`pages`]).
+  /// The name of the page it opens ([`PAGES`]).
   pub page: &'static str,
   /// Acts the scenario out on a driver its page is open on.
   pub act: fn(&mut D),
@@ -272,4 +306,105 @@ fn message(panic: &(dyn Any + Send)) -> String {
     .cloned()
     .or_else(|| panic.downcast_ref::<&str>().map(|text| (*text).to_owned()))
     .unwrap_or_else(|| "a panic without a message".to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+  use std::time::Duration;
+
+  use skene_foundation::{KeyEvent, Role, Size};
+
+  use crate::{Driver, PAGES, Reading, scenarios};
+
+  /// A driver no value is, which names the suite's table and acts nothing out.
+  #[derive(Clone, Copy, Debug, PartialEq)]
+  enum Unbuilt {}
+
+  impl Driver for Unbuilt {
+    type Node = Self;
+    type Scalar = i32;
+
+    fn open(&mut self, _: &str) {
+      match *self {}
+    }
+
+    fn probe(&mut self, _: &str) -> String {
+      match *self {}
+    }
+
+    fn find(&mut self, _: Role, _: &str) -> Option<Self> {
+      match *self {}
+    }
+
+    fn find_text(&mut self, _: &str) -> Option<Self> {
+      match *self {}
+    }
+
+    fn read(&mut self, _: &Self) -> Reading {
+      match *self {}
+    }
+
+    fn hover(&mut self, _: &Self) {
+      match *self {}
+    }
+
+    fn click(&mut self, _: &Self) {
+      match *self {}
+    }
+
+    fn hold(&mut self, _: &Self) {
+      match *self {}
+    }
+
+    fn release(&mut self, _: &Self) {
+      match *self {}
+    }
+
+    fn press(&mut self, _: &KeyEvent) {
+      match *self {}
+    }
+
+    fn type_text(&mut self, _: &Self, _: &str) {
+      match *self {}
+    }
+
+    fn focus(&mut self, _: &Self) {
+      match *self {}
+    }
+
+    fn resize(&mut self, _: Size<i32>) {
+      match *self {}
+    }
+
+    fn advance(&mut self, _: Duration) {
+      match *self {}
+    }
+
+    fn focused(&mut self) -> Option<Self> {
+      match *self {}
+    }
+
+    fn focus_shows(&mut self) -> bool {
+      match *self {}
+    }
+
+    fn is_pressed(&mut self, _: &Self) -> bool {
+      match *self {}
+    }
+  }
+
+  #[test]
+  fn the_pages_are_those_the_scenarios_open_then_the_text() {
+    let mut opened: Vec<&str> = Vec::new();
+
+    for scenario in scenarios::<Unbuilt>() {
+      if !opened.contains(&scenario.page) {
+        opened.push(scenario.page);
+      }
+    }
+
+    opened.push("text");
+
+    assert_eq!(opened, PAGES);
+  }
 }

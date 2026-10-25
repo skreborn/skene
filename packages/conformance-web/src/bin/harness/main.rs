@@ -1,10 +1,11 @@
 //! # The harness
 //!
-//! Runs the conformance suite in a real browser: serves the built app (the crate's
-//! library, built by `skene build web`) from the directory its first argument names,
-//! starts the browser's driver that `GECKODRIVER` or `CHROMEDRIVER` names, and acts out
-//! every scenario through a WebDriver session, each in a fresh window on the page it
-//! names, by a user's trusted input.
+//! Runs the conformance suite in a real browser: checks that the app's pages
+//! ([`pages`](skene_conformance_web::pages)) are the suite's, serves the built app (the
+//! crate's library, built by `skene build web`) from the directory its first argument
+//! names, starts the browser's driver that `GECKODRIVER` or `CHROMEDRIVER` names, and
+//! acts out every scenario through a WebDriver session, each in a fresh window on the
+//! page it names, by a user's trusted input.
 //!
 //! `harness <app> --goldens <directory> --firefox <version>` takes the screenshot
 //! goldens instead: every page as the Firefox of that version draws it in the pinned
@@ -85,6 +86,16 @@ fn run() -> Result<bool, String> {
   };
 
   let arguments = Arguments::parse()?;
+  let pages = skene_conformance_web::pages::pages();
+  let names: Vec<&str> = pages.iter().map(|page| page.name).collect();
+
+  if names != skene_conformance::PAGES {
+    return Err(format!(
+      "the app's pages are {names:?}, and the suite's are {:?}",
+      skene_conformance::PAGES
+    ));
+  }
+
   let site = Site::serve(arguments.site)?;
   let engine = Engine::from_environment()?;
   let purpose = if arguments.goldens.is_some() {
@@ -106,8 +117,6 @@ fn run() -> Result<bool, String> {
       ));
     }
 
-    let pages = skene_conformance::pages::<skene_web::Active>();
-
     println!(
       "\nrunning {} goldens in {} {}",
       pages.len(),
@@ -115,7 +124,7 @@ fn run() -> Result<bool, String> {
       session.version()
     );
 
-    for page in pages {
+    for page in &pages {
       let began = std::time::Instant::now();
       let verdict = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         goldens::check(&mut browser, directory, page.name)

@@ -1,9 +1,4 @@
 pub mod skene_conformance
-pub struct skene_conformance::Page<P: skene_foundation::spine::realization::Realization>
-pub skene_conformance::Page::build: fn(&mut skene_conformance::Probes) -> skene_foundation::spine::view::AnyView<P>
-pub skene_conformance::Page::name: &'static str
-impl<P: skene_foundation::spine::realization::Realization> core::fmt::Debug for skene_conformance::Page<P>
-pub fn skene_conformance::Page<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_conformance::Probes(_)
 impl skene_conformance::Probes
 pub fn skene_conformance::Probes::publish(&mut self, &'static str, impl core::ops::function::Fn() -> alloc::string::String + 'static)
@@ -36,6 +31,9 @@ impl<D: skene_conformance::Driver> skene_conformance::Scenario<D>
 pub fn skene_conformance::Scenario<D>::check(&self, &mut D) -> core::result::Result<(), alloc::string::String>
 impl<D> core::fmt::Debug for skene_conformance::Scenario<D>
 pub fn skene_conformance::Scenario<D>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub const skene_conformance::BREAKPOINT: i32
+pub const skene_conformance::PAGES: [&str; 18]
+pub const skene_conformance::RETURN: core::time::Duration
 pub trait skene_conformance::Driver
 pub type skene_conformance::Driver::Node: core::clone::Clone + core::fmt::Debug + core::cmp::PartialEq
 pub type skene_conformance::Driver::Scalar: skene_foundation::spine::scalar::Scalar
@@ -56,7 +54,5 @@ pub fn skene_conformance::Driver::read(&mut self, &Self::Node) -> skene_conforma
 pub fn skene_conformance::Driver::release(&mut self, &Self::Node)
 pub fn skene_conformance::Driver::resize(&mut self, skene_foundation::spine::values::size::Size<Self::Scalar>)
 pub fn skene_conformance::Driver::type_text(&mut self, &Self::Node, &str)
-pub fn skene_conformance::page<P: skene_foundation::spine::realization::Realization>(&str) -> core::option::Option<skene_conformance::Page<P>>
-pub fn skene_conformance::pages<P: skene_foundation::spine::realization::Realization>() -> alloc::vec::Vec<skene_conformance::Page<P>>
 pub fn skene_conformance::run<D: skene_conformance::Driver>(impl core::ops::function::FnMut() -> D)
 pub fn skene_conformance::scenarios<D: skene_conformance::Driver>() -> alloc::vec::Vec<skene_conformance::Scenario<D>>

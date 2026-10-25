@@ -767,9 +767,16 @@ re-export.
   what a reader finds by role and name and reads of a node—through a `Driver` each
   platform implements over its own seams: open, probe, find by role and name or by
   text, read, hover, click, hold and release, press, type, focus, resize, advance, and
-  whether focus shows and a node holds a press. A page is a view built
-  on the platform, so a driver builds it in its own process or serves it to another:
-  the web's, `skene-conformance-web`, serves every page from one app and acts each
+  whether focus shows and a node holds a press. The suite holds the scenarios, the
+  driver, the probes and the names of its pages (`PAGES`, what each holds stated beside
+  it), and no view: each facade writes the pages in its own vocabulary, as an app on
+  both media writes two UIs, the web's in `skene-conformance-web`'s `pages` and the
+  terminal's in a `pages` module beside its driver in its tests, the two files shaped
+  alike, item for item, and each held to `PAGES` (the web's harness refusing to run
+  otherwise, the terminal by a test of its own), while the suite's own test holds
+  `PAGES` to the pages its scenarios open. A page is a view built on the platform, so a
+  driver builds it in its own process or serves it to another: the web's,
+  `skene-conformance-web`, serves every page from one app and acts each
   scenario out over a WebDriver session in Firefox and Chromium by trusted input, an
   event a page dispatches to itself running no browser default, finding what it acts
   on by the role and the name the browser computes, and holds every page to a

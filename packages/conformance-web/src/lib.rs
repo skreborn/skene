@@ -1,18 +1,20 @@
 //! # The conformance suite's pages, as one web app
 //!
-//! Every page of the suite ([`skene_conformance::pages`]) served from one app: the path
-//! a browser opens names the page, `/button` the page named `button`, and the app builds
-//! it as its whole view, in the pinned font the app serves (`public/fonts`). Once built,
-//! the page is reachable from the harness (`src/bin/harness`) as the global
-//! `skeneConformance`, whose `probe(name)` reads what the page publishes as its probe
-//! `name` ([`probe`]).
+//! Every page of the suite ([`pages`], written in skene-web's vocabulary) served from one
+//! app: the path a browser opens names the page, `/button` the page named `button`, and
+//! the app builds it as its whole view, in the pinned font the app serves
+//! (`public/fonts`). Once built, the page is reachable from the harness
+//! (`src/bin/harness`) as the global `skeneConformance`, whose `probe(name)` reads what
+//! the page publishes as its probe `name` ([`probe`]).
 
 #![cfg(skene_platform = "web")]
+
+pub mod pages;
 
 use std::cell::RefCell;
 
 use skene_conformance::Probes;
-use skene_web::{Active, AnyView, head, main, platform::web::current_path};
+use skene_web::{AnyView, head, main, platform::web::current_path};
 
 thread_local! {
   /// What the page the app built publishes, once it is built.
@@ -29,8 +31,7 @@ thread_local! {
 fn app() -> AnyView {
   let path = current_path();
   let name = path.trim_start_matches('/');
-  let page = skene_conformance::page::<Active>(name)
-    .unwrap_or_else(|| panic!("no page of the suite is named {name:?}"));
+  let page = pages::page(name).unwrap_or_else(|| panic!("no page of the suite is named {name:?}"));
   let mut probes = Probes::default();
 
   head::add_stylesheet("/fonts/pinned.css");

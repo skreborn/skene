@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **A crate of the terminal's conformance pages** (2026-10-25), beside
+  `skene-conformance-web`, so the terminal's pages would stand as the web's do: the
+  crate would depend on `skene-terminal` and be its dev-dependency, a cycle that links
+  two copies of the facade into its tests, so the terminal's pages are a module beside
+  its driver in its own tests, shaped as the web's file. Revisit when the terminal's
+  realization moves into a crate of its own (item 1's split and rename), which the
+  pages can depend on instead.
 - **A `NativeView` built under `Enhance`** (2026-10-25), the server's placeholder its
   fallback and the adopted element its child, built once the page has hydrated: the
   native door takes the next hydration marker as any element does, so a hydrating
@@ -578,6 +585,13 @@ supersedes.
 
 ## Superseded
 
+- **The conformance suite's pages generic over the realization** (2026-10-25):
+  `skene-conformance` built every page itself as a `Page<P>` over the foundation's
+  views, and each platform's driver built them for its own realization, so the one UI
+  the framework shared between the media was its own test pages. The suite now holds
+  the scenarios, the `Driver`, the `Probes` and the names of its pages (`PAGES`) alone,
+  and each facade writes the pages in its own vocabulary, held to those names. Not
+  revisited: a facade shares no UI with the other.
 - **The server leaf's unreachable door** (2026-10-25), its native view an uninhabited
   `Unadoptable`, so a library's native view existed on the browser leaf alone and the
   server rendered nothing for it: the server leaf's native view is the `NativeMarkup` a

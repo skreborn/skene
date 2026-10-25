@@ -135,4 +135,6 @@ An app's shared crate of logic and state names no platform, so its tests are pla
 A behavior every platform must share is a scenario in `skene-conformance`, which runs
 one suite through a driver each platform implements over its own accessibility layer
 and input; a divergence it finds is a bug in the platform, never a special case in the
-suite.
+suite. The suite names the pages its scenarios open and builds none: each facade writes
+them in its own vocabulary, a page of each name the suite lists, as an app on both
+media writes a UI for each.

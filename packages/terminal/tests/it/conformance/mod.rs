@@ -1,8 +1,11 @@
-//! The conformance suite in the terminal.
+//! The conformance suite in the terminal: its driver, and the suite's pages in
+//! skene-terminal's vocabulary ([`pages`]).
+
+mod pages;
 
 use std::time::Duration;
 
-use skene_conformance::{Driver, Probes, Reading};
+use skene_conformance::{Driver, PAGES, Probes, Reading};
 use skene_foundation::{KeyEvent, NodeId, Realization, Role, Scene, Size, View};
 use skene_terminal::{self as terminal, platform::terminal::Terminal, testing};
 
@@ -43,8 +46,7 @@ impl Driver for TerminalDriver {
   type Scalar = i32;
 
   fn open(&mut self, page: &str) {
-    let page =
-      skene_conformance::page::<Terminal>(page).unwrap_or_else(|| panic!("no page named {page:?}"));
+    let page = pages::page(page).unwrap_or_else(|| panic!("no page named {page:?}"));
     let mut probes = Probes::default();
     let _ = terminal::mount(|| (page.build)(&mut probes).build());
 
@@ -144,6 +146,13 @@ impl Driver for TerminalDriver {
   fn is_pressed(&mut self, node: &NodeId) -> bool {
     Scene::<Terminal>::read(|scene| scene.is_pressed(*node))
   }
+}
+
+#[test]
+fn the_pages_are_the_suites() {
+  let names: Vec<&str> = pages::pages().iter().map(|page| page.name).collect();
+
+  assert_eq!(names, PAGES);
 }
 
 #[test]

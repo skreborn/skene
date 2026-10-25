@@ -87,3 +87,44 @@ impl SimpleCardBase<Active> for SimpleCard {}
 
 An app depends on the platform crates it shells for, and imports each one's prelude
 beside its facade's.
+
+## A platform's own property
+
+A property only one platform draws is a prefixed setter beside the shared ones, from
+the same macro line under the platform's `cfg`. The setter compiles in every build, so
+an app calls it without a `cfg` of its own, and does nothing outside its platform's
+build, where its backing field does not exist:
+
+```rust
+use skene_foundation::{Color, Condition, Realization, Value};
+
+/// A gauge's own style.
+pub struct GaugeStyle<N> {
+  needle: Option<Value<Color, Condition<N>>>,
+  #[cfg(skene_platform = "linux")]
+  linux_glow: Option<Value<Color, Condition<N>>>,
+}
+
+/// Acme's gauge, over any platform.
+pub struct Gauge<P: Realization> {
+  style: GaugeStyle<P::Scalar>,
+}
+
+impl<P: Realization> Gauge<P> {
+  const fn style_mut(&mut self) -> &mut GaugeStyle<P::Scalar> {
+    &mut self.style
+  }
+
+  skene_foundation::properties! { style_mut, P;
+    set_needle / derive_needle (color) => needle: Color, "the needle's color";
+    [cfg(skene_platform = "linux")]
+    set_linux_glow / derive_linux_glow (color) => linux_glow: Color,
+      "the glow Linux draws around the needle";
+  }
+}
+```
+
+The prefix names the platform (`set_linux_*`, `set_ios_*`, `set_web_*`), and
+`set_apple_*` with `[cfg(any(skene_platform = "ios", skene_platform = "macos"))]` names
+what iOS and macOS share; there is no mobile or desktop prefix. A shared option that
+every platform realizes in its own idiom is not prefixed: it is an ordinary property.

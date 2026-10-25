@@ -1893,7 +1893,14 @@ Two guarantees, both properties of what is public rather than of any one API.
   built-ins generate their `set_`/`derive_` pairs with (`properties!`,
   `trait_properties!`) and the surfaces they share (`DecorationBase`, `RunBase`) are
   public, so a third-party layout view built on `LayoutBox` spells its surface the way
-  `Row` does. Simple is the standing proof, `skene-simple` its core and
+  `Row` does. A line of either macro may start with `[cfg(<predicate>)]`, a platform's
+  own property of a shared view: its pair is generated in every build with one
+  signature, writing its field where the predicate holds and dropping the value in every
+  other build, so the field need exist only there. `extension_fields!` takes the same
+  `#[cfg(..)]` on a property of a medium's extension, gating its field type and its
+  visit, so with the field and the property's variant gated alike the record entry
+  exists in that build alone. The macros' text names no platform; the predicate is the
+  declaring crate's. Simple is the standing proof, `skene-simple` its core and
   `skene-simple-web` and `skene-simple-terminal` its platforms' crates, and
   `skene new lib` creates the same shape: a core holding a palette, a unit trait and a
   view, and a crate per platform named.
@@ -1982,6 +1989,21 @@ platforms land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a s
 build never emits the browser entry or splits a lazy body, the terminal's `#[main]`
 emits its `main` in the terminal's build alone, and an entry taking arguments,
 parameters or generics is refused.
+
+**A platform's own property of a shared view is a prefixed setter.** Its pair
+(`set_linux_*` with `derive_linux_*`, `set_ios_*`, `set_web_*`, and `set_apple_*` for
+what iOS and macOS share) comes from the same `properties!` or `trait_properties!`
+block on the facade's type as the shared ones, its line prefixed by
+`[cfg(skene_platform = "<p>")]`, or by
+`[cfg(any(skene_platform = "ios", skene_platform = "macos"))]` for Apple's. The setter
+compiles in every build and does nothing in another platform's, its documentation
+naming the build it acts in; its backing field, its property's variant of the
+extension's property enum and the record entry it feeds are gated to the platform, so a
+realization reads the entry only where it exists. No facade ships one yet: the arm's
+proofs are the foundation's unit test of a property under a predicate that holds and of
+one under a predicate that never does, naming a field no build has, and the third-party
+gauge on `properties!`, a doctest every build of the workspace compiles, with Linux's
+setter inert in each.
 
 **An app's configuration names one platform for plain cargo.** `skene new` writes one
 `.cargo/config.toml` at the project's root naming the first platform it is given:

@@ -24,9 +24,6 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - Setters: a platform's prefixed setters (`set_linux_*`, `set_ios_*`, `set_apple_*`)
-    come from the macro the shared properties come from, with their `derive_` twins and
-    their backing fields cfg-gated; another platform's setter compiles and does nothing.
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
     on the web over the form element CSS styles; a shared option is semantic

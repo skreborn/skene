@@ -335,6 +335,24 @@ fn an_activatable_row_is_activated_by_enter_and_space() {
     testing::trigger_key_up(" ");
 
     assert_eq!(clicks.get(), 4, "focus left before the release");
+
+    testing::trigger_key("Shift+Tab");
+    testing::trigger_key_up("Tab");
+    testing::trigger_key(" ");
+    testing::trigger_key("Tab");
+    testing::trigger_key_up("Tab");
+    testing::trigger_key("Shift+Tab");
+    testing::trigger_key_up("Tab");
+
+    assert_eq!(testing::focused_node(), Some(row));
+
+    testing::trigger_key_up(" ");
+
+    assert_eq!(
+      clicks.get(),
+      4,
+      "focus left and came back before the release"
+    );
   });
 }
 

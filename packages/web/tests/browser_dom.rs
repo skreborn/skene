@@ -916,7 +916,8 @@ fn counter() -> (Rc<Cell<u32>>, impl Fn() + Clone + 'static) {
 
 /// A clickable container is an activatable row: `Enter` activates it on every press,
 /// repeats included, and `Space` once on its release at the row, its press keeping the
-/// page from scrolling; a release elsewhere activates nothing.
+/// page from scrolling; a release elsewhere, or after focus left the row and came back,
+/// activates nothing.
 #[wasm_bindgen_test]
 fn an_activatable_row_activates_on_enter_and_space() {
   let (_guard, root) = fresh_root();
@@ -960,6 +961,17 @@ fn an_activatable_row_activates_on_enter_and_space() {
   let _ = key_at(&elsewhere, "keyup", " ", false);
 
   assert_eq!(clicks.get(), 3, "focus left the row before the release");
+
+  let _ = html(&row).focus();
+  let _ = key_at(&row, "keydown", " ", false);
+  let _ = html(&elsewhere).focus();
+  let _ = html(&row).focus();
+
+  assert!(
+    !key_at(&row, "keyup", " ", false),
+    "focus left and came back before the release"
+  );
+  assert_eq!(clicks.get(), 3);
   assert!(
     !key_at(&elsewhere, "keydown", "Enter", false),
     "a box handling no click is no row"

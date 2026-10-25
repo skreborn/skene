@@ -3,6 +3,8 @@
 #![cfg(all(skene_platform = "web", skene_server))]
 
 use skene_web::{
+  Link,
+  LinkBase,
   Text,
   TextBase,
   View,
@@ -82,6 +84,28 @@ fn router_flows_through_context() {
   });
 
   assert!(rendered.body().contains("/about"));
+}
+
+/// A link renders as a real link to its route's path around the view it holds, under a
+/// router and without one alike, so a page without script follows it.
+#[test]
+fn a_link_renders_its_destination() {
+  let link = || Link::new(Page::About).set_child(Text::new("about us"));
+  let routed = render_to_string_at("/", move || {
+    let _ = install_router(Page::Home);
+
+    link()
+  });
+  let unrouted = render_to_string_at("/", link);
+
+  for page in [routed, unrouted] {
+    let body = page.body();
+    let anchor = &body[body.find("<a ").expect("an anchor")..];
+    let anchor = &anchor[..anchor.find("</a>").expect("the anchor's end")];
+
+    assert!(anchor.contains(" href=\"/about\""), "{body}");
+    assert!(anchor.contains(">about us</span>"), "{body}");
+  }
 }
 
 /// An enumerable router records its routes for the build tool; a plain one records

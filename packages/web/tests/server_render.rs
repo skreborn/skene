@@ -140,7 +140,7 @@ fn a_switch_renders_the_case_its_key_names() {
   use skene_foundation::OneOfBase;
   use skene_web::OneOf;
 
-  for (key, shown) in [(2, Some("second")), (3, None)] {
+  for (key, shown) in [(2, true), (3, false)] {
     let page = render_to_string(move || {
       OneOf::new()
         .derive_key(move || key)
@@ -150,7 +150,7 @@ fn a_switch_renders_the_case_its_key_names() {
     let body = page.body();
 
     assert!(!body.contains("first"), "{body}");
-    assert_eq!(body.contains(">second</span>"), shown.is_some(), "{body}");
+    assert_eq!(body.contains(">second</span>"), shown, "{body}");
   }
 }
 

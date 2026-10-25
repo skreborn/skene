@@ -168,10 +168,9 @@ over node ids:
   the clock, route, and reach the clipboard.
 
 A method with a default body is one a platform lacking what it reaches keeps (`native`,
-`listen`, `read` and `composing`, the focus order and accessibility where the scene is read for
-them, `focus_visible`,
-`lay_out`, `hydration`, the window title, routing, static routes, the clipboard): the
-default does nothing, or answers that nothing is there. Every behavior is required,
+`listen`, `read` and `composing`, the focus order and accessibility where the scene is
+read for them, `focus_visible`, `lay_out`, `hydration`, the window title, routing, static
+routes, the clipboard): the default does nothing, or answers that nothing is there. Every behavior is required,
 each platform realizing it in its own form: a navigation commits under a view
 transition in the browser and at once on the server leaf and in the terminal, and a
 pointer event is localized against its node's laid-out box, except on the server leaf,

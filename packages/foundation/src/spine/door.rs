@@ -2,11 +2,11 @@
 //!
 //! A library's door is platform code: it hands the platform's own view
 //! ([`Realization::Native`](super::Realization::Native)) to the scene
-//! ([`Scene::adopt`](super::Scene::adopt)), which has the platform realize it as an
-//! ordinary node ([`Realization::adopt`](super::Realization::adopt)), and, where the
+//! ([`LowLevel::adopt`](crate::LowLevel::adopt)), which has the platform realize it as
+//! an ordinary node ([`Realization::adopt`](super::Realization::adopt)), and, where the
 //! view holds a value, registers a [`ControlSink`] of its own on the node
-//! ([`Scene::set_sink`](super::Scene::set_sink)) and controls the value by a key of its
-//! own ([`ContentKey::door`](super::ContentKey::door)) with a
+//! ([`LowLevel::register_sink`](crate::LowLevel::register_sink)) before it controls the
+//! value by a key of its own ([`ContentKey::door`](super::ContentKey::door)) with a
 //! [`Controller`](super::Controller), so the controlled contract (the echo rule, the
 //! equal-write skip, the refusal's repair and the composition hold) is a built-in's.
 //! The library reports what the reader did through [`report`](super::report), with
@@ -34,6 +34,7 @@ pub trait DoorValue: Debug {
   fn is_equal(&self, other: &dyn DoorValue) -> bool;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: ContentType> DoorValue for T {
   #[inline(always)]
   fn as_any(&self) -> &dyn Any {
@@ -103,6 +104,11 @@ mod tests {
     assert_eq!(
       ContentKey::<CheckState>::door("color").own(key.erase(&color)),
       None
+    );
+    assert_eq!(
+      ContentKey::<Rc<str>>::door("ink").own(key.erase(&color)),
+      None,
+      "a door's key owns its own name's value alone"
     );
 
     let same: Rc<str> = Rc::from("#ff0000");

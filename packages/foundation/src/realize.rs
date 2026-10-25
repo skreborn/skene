@@ -202,7 +202,8 @@ impl<P: Realization> LowLevel<P> {
 
   /// Registers `sink` on `node`, a view adopted through the native door, as what reads
   /// and writes its door's contents ([`ContentKey::door`](crate::ContentKey::door)), so a
-  /// [`Controller`](crate::Controller) of one writes and reads through it.
+  /// [`Controller`](crate::Controller) of one writes and reads through it; it is
+  /// registered before the controller is, which reads what the view shows through it.
   pub fn register_sink(node: NodeId, sink: impl ControlSink + 'static) {
     let sink: Rc<dyn ControlSink> = Rc::new(sink);
 

@@ -465,9 +465,8 @@ local position in `f32`, a length rounded to the realization's unit, and the
 third party's behavior is written exactly as the shipped ones are, naming no
 realization, and each facade re-exports `ControlHandle` and `ControlOps` for it.
 `Toggle`, `Slider`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`)
-ship; a
-collection's `CollectionPolicy` says what it and its members are, which keys move
-between the members and what a move and a choice do, and `RadioGroup` (with
+ship; a collection's `CollectionPolicy` says what it and its members are, which keys
+move between the members and what a move and a choice do, and `RadioGroup` (with
 `Radio`), `Listbox` (with `ListboxOption`) and `Menu` (with `MenuOption`) are
 collections under the radio, listbox and menu policies, whose members are one tab stop
 and whose moves pass over the disabled members in one place; `BasicButton`,
@@ -609,22 +608,22 @@ re-export.
   type registers a controller (`register_with`) and writes a content
   (`ContentKey::write_with`); `register::<P>` and `write::<P>` are the realization's and
   a door library's one-line forms of the same calls, and `ControlHandle::register`
-  passes the `ContentOps` its `ControlOps` carries. The controller keeps what the node shows (read once
-  through `Realization::read`, then what it wrote and what was reported) and decides
-  over it in plain functions the spine unit-tests: a report the truth already holds asks
-  nothing and stands, and so does one made while it writes, its echo, but for a
-  selection the write moved, which it asks for as the reader's move would (the terminal
-  reports the caret its write collapses inside the write); a write of what is shown is
-  skipped; while `Realization::composing` says what the node shows is still the
-  reader's, a write waits and a refused change stands with its repair held back, until
-  the report that ends it is answered with the truth; and a disabled control asks
-  nothing and answers with its truth. A content held whole is the reader's in the parts
-  `Controllable::holds` names (a range's value, not its bounds; a choice's key, not its
-  options): a change the truth then refuses is repaired by the controller writing the
-  truth whole, answered `Verdict::Refuse`, where an edit's verdict is the platform's to
-  apply. Registering a content listens for its reports (`EventKind::Report`), so a
-  platform installs what it needs from the registration alone: the web its `input`,
-  `change`, `compositionend` and `selectionchange`.
+  passes the `ContentOps` its `ControlOps` carries. The controller keeps what the node
+  shows (read once through `Realization::read`, then what it wrote and what was
+  reported) and decides over it in plain functions the spine unit-tests: a report the
+  truth already holds asks nothing and stands, and so does one made while it writes, its
+  echo, but for a selection the write moved, which it asks for as the reader's move
+  would (the terminal reports the caret its write collapses inside the write); a write
+  of what is shown is skipped; while `Realization::composing` says what the node shows
+  is still the reader's, a write waits and a refused change stands with its repair held
+  back, until the report that ends it is answered with the truth; and a disabled control
+  asks nothing and answers with its truth. A content held whole is the reader's in the
+  parts `Controllable::holds` names (a range's value, not its bounds; a choice's key,
+  not its options): a change the truth then refuses is repaired by the controller
+  writing the truth whole, answered `Verdict::Refuse`, where an edit's verdict is the
+  platform's to apply. Registering a content listens for its reports
+  (`EventKind::Report`), so a platform installs what it needs from the registration
+  alone: the web its `input`, `change`, `compositionend` and `selectionchange`.
 - **A drawn entry reports an edit whole and applies its verdict.** A text entry
   reports a reader's edit as one `Edit`, its text and its selection together, with
   whether its toolkit shows it already, and a moved caret as the same change of the

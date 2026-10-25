@@ -43,31 +43,31 @@
 //! [`Keep::Everything`] and handed over by [`Realization::apply_style`]) and the derived
 //! slots render effects write through [`Realization::apply_slot`], creates its node,
 //! registers it in the [`Scene`], binds each slot, registers its handlers, mounts its
-//! children and returns its id. [`LayoutBox`] is that
-//! build for a box; [`Container`], [`Row`], [`Column`], [`Grid`] and [`Stack`] are thin
-//! vocabularies over it, and a third party's layout view is built from it the same way.
-//! [`Flexible`], [`Pinned`] and [`GridCell`] annotate the box built under them. A run
-//! ([`Text`], [`Span`], [`RichText`]) inherits through the [`typography`] tokens.
-//! [`Visibility`], [`OneOf`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
-//! keep the branches they hide. [`Theme`] defines a token set beneath it, and
-//! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
-//! [`Behavior`] saying what the interaction is, acting through a [`ControlHandle`] whose
-//! [`ControlOps`] reach the build's realization as plain functions, so a behavior names
-//! none; [`Activate`], [`Toggle`], [`Slider`],
+//! children and returns its id. [`LayoutBox`] is that build for a box; [`Container`],
+//! [`Row`], [`Column`], [`Grid`] and [`Stack`] are thin vocabularies over it, and a third
+//! party's layout view is built from it the same way. [`Flexible`], [`Pinned`] and
+//! [`GridCell`] annotate the box built under them. A run ([`Text`], [`Span`], [`RichText`])
+//! inherits through the [`typography`] tokens. [`Visibility`], [`OneOf`], [`Suspense`] and
+//! [`ErrorBoundary`] mount between anchors and keep the branches they hide. [`Theme`]
+//! defines a token set beneath it, and [`ThemedIn`] reads the set in force. [`Control`] is
+//! the one control builder, over a [`Behavior`] saying what the interaction is, acting
+//! through a [`ControlHandle`] whose [`ControlOps`] reach the build's realization as plain
+//! functions, so a behavior names none; [`Activate`], [`Toggle`], [`Slider`],
 //! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
 //! [`TextEntry`] ship, and the `Basic*` aliases name the control over each; a choice's
 //! value is the app's own type, a [`Choice`], which the cores hold erased ([`AnyChoice`],
-//! [`AnyChosen`]) and the typed views are [`Thin`] over. [`Overlay`]
-//! is content above the app, opened and closed by the app and placed against the view
-//! a [`NodeHandle`] is bound to, which focus also moves to and whose measured size it
-//! reports; [`BasicPicker`] composes a popup face, an overlay and a listbox. [`LazyColumn`] and
-//! [`LazyRow`] scroll a keyed list building only the slice in view, its items of a fixed or an
-//! estimated and measured [`ItemExtent`]. [`CornerRadius`] is what a decorated box asks of a
-//! medium's style extension to round its corners, and [`TypeMetrics`] what a run asks of it to size
-//! its type; both are silently declined by a medium without them. [`LowLevel`] registers a sink a
-//! low-level view made against a platform's escape trait as a node, so it composes like a built-in,
-//! and adopts a compositor platform's own view through the native door, a value it holds
-//! controlled by a [`Controller`] through the [`ControlSink`] registered on its node.
+//! [`AnyChosen`]) and the typed views are [`Thin`] over. [`Overlay`] is content above the
+//! app, opened and closed by the app and placed against the view a [`NodeHandle`] is bound
+//! to, which focus also moves to and whose measured size it reports; [`BasicPicker`]
+//! composes a popup face, an overlay and a listbox. [`LazyColumn`] and [`LazyRow`] scroll a
+//! keyed list building only the slice in view, its items of a fixed or an estimated and
+//! measured [`ItemExtent`]. [`CornerRadius`] is what a decorated box asks of a medium's
+//! style extension to round its corners, and [`TypeMetrics`] what a run asks of it to size
+//! its type; both are silently declined by a medium without them. [`LowLevel`] registers a
+//! sink a low-level view made against a platform's escape trait as a node, so it composes
+//! like a built-in, and adopts a compositor platform's own view through the native door, a
+//! value it holds controlled by a [`Controller`] through the [`ControlSink`] registered on
+//! its node.
 
 mod apply;
 mod container;

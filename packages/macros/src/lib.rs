@@ -357,12 +357,12 @@ pub fn derive_wraps(input: TokenStream) -> TokenStream {
 /// beside any `PhantomData` markers.
 ///
 /// The struct builds as the view it holds, for the `Active` of the one facade
-/// (`skene-web`, `skene-terminal`) the deriving crate is or depends on, so its build is
-/// compiled once, in the deriving crate, and a crate reaching no facade is refused. A
-/// struct whose field names none of its own generic parameters builds through a
-/// function that is not generic either; one whose field does builds generic in them
-/// alone. A crate reaching both facades, a crate of documents' examples, gets a build
-/// for each under the cfg naming its platform.
+/// (`skene-web`, `skene-terminal`) the deriving crate is or depends on, and a crate
+/// reaching no facade is refused. A struct whose field names none of its own generic
+/// parameters, it having none or holding a core that names none, builds through a
+/// function generic in nothing, compiled once, in the deriving crate; one whose field
+/// names them builds generic in them alone. A crate reaching both facades, a crate of
+/// documents' examples, gets a build for each under the cfg naming its platform.
 ///
 /// The generated code names the foundation through the deriving crate's direct
 /// dependency on `skene-foundation`.

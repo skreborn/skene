@@ -143,10 +143,18 @@ fn names_any(tokens: TokenStream, names: &[Ident]) -> bool {
 
 /// Expands `#[derive(View)]` on `input`.
 pub(crate) fn derive_view(input: &DeriveInput) -> syn::Result<TokenStream> {
+  view(input, facades())
+}
+
+/// Expands `#[derive(View)]` on `input` for `facades`, the path to each one's `Active`
+/// with the platform its build names.
+fn view(
+  input: &DeriveInput,
+  facades: Vec<(TokenStream, &'static str)>,
+) -> syn::Result<TokenStream> {
   let (inner, _) = field(input, "View")?;
   let name = &input.ident;
   let foundation = foundation().unwrap_or_else(|| quote!(::skene_foundation));
-  let facades = facades();
 
   if facades.is_empty() {
     return Err(syn::Error::new_spanned(
@@ -219,4 +227,127 @@ pub(crate) fn derive_view(input: &DeriveInput) -> syn::Result<TokenStream> {
 
     #(#views)*
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use quote::{format_ident, quote};
+  use syn::{DeriveInput, parse_quote};
+
+  use super::view;
+
+  /// The expansion of `#[derive(View)]` on `input` for `facades`, as a string.
+  fn expand(input: &DeriveInput, facades: &[&'static str]) -> String {
+    let facades = facades
+      .iter()
+      .map(|&platform| {
+        let facade = format_ident!("skene_{platform}");
+
+        (quote!(::#facade::Active), platform)
+      })
+      .collect();
+
+    view(input, facades)
+      .expect("the derive expands")
+      .to_string()
+  }
+
+  /// Its expansion with every blank removed, so a test compares the tokens alone.
+  fn compact(expansion: &str) -> String {
+    expansion.split_whitespace().collect()
+  }
+
+  #[test]
+  fn a_crate_reaching_no_facade_is_refused() {
+    let input: DeriveInput = parse_quote!(
+      struct Button(Inner);
+    );
+    let error = view(&input, Vec::new()).expect_err("no facade is reached");
+
+    assert!(
+      error
+        .to_string()
+        .starts_with("a derived view belongs to one facade"),
+      "{error}"
+    );
+  }
+
+  #[test]
+  fn a_view_without_parameters_builds_for_its_facade_alone() {
+    let expansion = compact(&expand(
+      &parse_quote!(
+        struct Button(Inner);
+      ),
+      &["web"],
+    ));
+
+    assert!(
+      expansion.contains("impl::skene_foundation::View<::skene_web::Active>forButton{"),
+      "{expansion}"
+    );
+    assert!(!expansion.contains("inline"), "{expansion}");
+    assert!(!expansion.contains("cfg"), "{expansion}");
+    assert!(!expansion.contains("Realization"), "{expansion}");
+  }
+
+  #[test]
+  fn a_field_naming_no_parameter_builds_through_a_function_that_is_not_generic() {
+    let input = parse_quote!(
+      struct Group<T>(Core, PhantomData<T>);
+    );
+    let expansion = compact(&expand(&input, &["terminal"]));
+
+    assert!(
+      expansion.contains(
+        "impl<T>::skene_foundation::View<::skene_terminal::Active>forGroup<T>whereSelf:'static{"
+      ),
+      "{expansion}"
+    );
+    assert!(
+      expansion.contains("fnbuild(inner:Core)->::skene_foundation::NodeId{"),
+      "{expansion}"
+    );
+    assert!(expansion.contains("build(self.0)"), "{expansion}");
+  }
+
+  #[test]
+  fn a_field_generic_in_its_parameters_builds_generic_in_them_alone() {
+    let input = parse_quote!(
+      struct Theme<S>(Core<S>);
+    );
+    let expansion = compact(&expand(&input, &["web"]));
+
+    assert!(
+      expansion.contains(
+        "impl<S>::skene_foundation::View<::skene_web::Active>forTheme<S>whereCore<S>:::\
+         skene_foundation::View<::skene_web::Active>,Self:'static{"
+      ),
+      "{expansion}"
+    );
+    assert!(!expansion.contains("fnbuild(inner"), "{expansion}");
+  }
+
+  #[test]
+  fn a_crate_reaching_both_facades_builds_for_each_under_its_platform() {
+    let expansion = compact(&expand(
+      &parse_quote!(
+        struct Card(Inner);
+      ),
+      &["web", "terminal"],
+    ));
+
+    assert!(
+      expansion.contains(
+        "#[cfg(skene_platform=\"web\")]impl::skene_foundation::View<::skene_web::Active>"
+      ),
+      "{expansion}"
+    );
+    assert!(
+      expansion.contains(
+        "#[cfg(skene_platform=\"terminal\")]impl::skene_foundation::View<::skene_terminal::\
+         Active>"
+      ),
+      "{expansion}"
+    );
+  }
 }

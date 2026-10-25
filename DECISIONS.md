@@ -8,6 +8,13 @@ supersedes.
 
 ## Decided against
 
+- **Refusing a derived view in a crate reaching both facades** (2026-10-25), as a
+  crate reaching neither is refused: the documents' example crates (`guide`,
+  `readme`) depend on both facades, and the guide's libraries chapter derives `View`
+  in a doctest built for one platform, so such a crate gets a build per facade, each
+  under the `skene_platform` cfg naming its platform, and a crate on one facade gets
+  its one build with no cfg. Revisit when the documents' examples are split into a crate per
+  facade, or a crate on both facades derives a view by mistake.
 - **A facade-concrete `ControlHandle`** (2026-10-25), each facade declaring a handle
   of its own over its `Active`, a behavior written against one facade's handle: a
   behavior is foundation code the facades share, so a handle per facade would fix the

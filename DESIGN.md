@@ -517,11 +517,14 @@ local position in `f32`, a length rounded to the realization's unit, and the
 third party's behavior is written exactly as the shipped ones are, naming no
 realization. Each facade's `behavior` module (`skene_web::behavior`,
 `skene_terminal::behavior`, parallel member for member) re-exports the shipped
-behaviors, `Behavior`, `ControlHandle`, `ControlOps`, `Roster` and the collections'
-contexts (`RadioGroupContext`, `ListboxContext`, `MenuContext`), so a facade's root
-carries the views alone and leaves a behavior's name free for the drawn view of the
-same name; `Control`, the `Basic*` views, `Choice`, `Chosen`, `TextSelection` and
-`Keyboard` with its kin stay at the root, beside the views they are used with. A
+behaviors (`Collection` and `Member` under a `CollectionPolicy` among them, with the
+collections' contexts `CollectionContext`, `RadioGroupContext`, `ListboxContext` and
+`MenuContext`), `Behavior` with what its hooks name beyond the views' vocabulary
+(`EventKind`, `LabelPlacement`, `PopupKind`), `ControlHandle`, `ControlOps`, `Roster`
+and `TypeAhead`, so a library writes a behavior through its facade alone and the root
+leaves a behavior's name free for the drawn view of the same name; `Control`, the
+`Basic*` views, `Choice`, `Chosen`, `TextSelection` and `Keyboard` with its kin stay at
+the root, beside the views they are used with. A
 `Control<P, B>` is `Thin` over a `ControlCore<P>`, the control with its behavior held as
 an `Rc<dyn Behavior>`, and `ControlCore`'s build is the one control build, its
 registration and every acting handler running over the erased behavior, so the build is

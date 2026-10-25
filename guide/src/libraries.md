@@ -91,9 +91,10 @@ beside its facade's.
 ## A control of its own
 
 A library's control is its facade's `Control` over a behavior. The shipped behaviors,
-and the `Behavior` trait a library's own implements with the `ControlHandle` and
-`ControlOps` it acts through, live in each facade's `behavior` module, so a library
-names them as an app does, and the facade's root keeps its names for the views:
+the `Behavior` trait a library's own implements with what its hooks name, and the
+`ControlHandle` and `ControlOps` a behavior acts through live in each facade's
+`behavior` module, so a library names them as an app does, and the facade's root keeps
+its names for the views. A shipped behavior is configured as the app configures it:
 
 ```rust
 use skene_web::{
@@ -109,6 +110,52 @@ pub fn volume(level: Signal<f32>) -> BasicSlider {
       .bind_value(level),
   )
   .set_label("Volume")
+}
+```
+
+A behavior of the library's own states its role, the events it acts on and what it
+reports, and the same `Control` gives it focus, a label, decoration and parts:
+
+```rust
+use skene_web::{
+  Control,
+  Prevent,
+  behavior::{Behavior, ControlHandle, EventKind},
+  prelude::*,
+};
+
+/// Acme's stepper: `ArrowUp` and `ArrowDown` move its count.
+pub struct Stepper {
+  count: Signal<f32>,
+}
+
+impl Behavior for Stepper {
+  fn role(&self) -> Option<Role> {
+    Some(Role::SpinButton)
+  }
+
+  fn listens(&self) -> &'static [EventKind] {
+    &[EventKind::KeyDown]
+  }
+
+  fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
+    match event.key {
+      Key::Named(NamedKey::ArrowUp) => self.count.update(|count| *count += 1.),
+      Key::Named(NamedKey::ArrowDown) => self.count.update(|count| *count -= 1.),
+      _ => return Prevent::None,
+    }
+
+    Prevent::All
+  }
+
+  fn access(&self) -> Vec<AccessProp> {
+    vec![AccessProp::Value(self.count.get())]
+  }
+}
+
+/// A stepper over `count`.
+pub fn stepper(count: Signal<f32>) -> Control<Stepper> {
+  Control::new(Stepper { count }).set_label("Count")
 }
 ```
 

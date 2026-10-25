@@ -136,16 +136,23 @@ pub use skene_terminal::typography
 pub mod skene_terminal::behavior
 pub use skene_terminal::behavior::Activate
 pub use skene_terminal::behavior::Behavior
+pub use skene_terminal::behavior::Collection
+pub use skene_terminal::behavior::CollectionContext
+pub use skene_terminal::behavior::CollectionPolicy
 pub use skene_terminal::behavior::ControlHandle
 pub use skene_terminal::behavior::ControlOps
+pub use skene_terminal::behavior::EventKind
+pub use skene_terminal::behavior::LabelPlacement
 pub use skene_terminal::behavior::Listbox
 pub use skene_terminal::behavior::ListboxContext
 pub use skene_terminal::behavior::ListboxOption
+pub use skene_terminal::behavior::Member
 pub use skene_terminal::behavior::Menu
 pub use skene_terminal::behavior::MenuContext
 pub use skene_terminal::behavior::MenuOption
 pub use skene_terminal::behavior::NativePicker
 pub use skene_terminal::behavior::Popup
+pub use skene_terminal::behavior::PopupKind
 pub use skene_terminal::behavior::Radio
 pub use skene_terminal::behavior::RadioGroup
 pub use skene_terminal::behavior::RadioGroupContext
@@ -154,6 +161,7 @@ pub use skene_terminal::behavior::Slider
 pub use skene_terminal::behavior::SliderRange
 pub use skene_terminal::behavior::TextEntry
 pub use skene_terminal::behavior::Toggle
+pub use skene_terminal::behavior::TypeAhead
 pub mod skene_terminal::media
 pub fn skene_terminal::media::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)

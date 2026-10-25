@@ -8,7 +8,6 @@ use std::{
 };
 
 use accesskit::{HasPopup, Invalid, Orientation, Toggled};
-use skene_foundation::{ControlHandle, EventKind, PopupKind};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   self as terminal,
@@ -21,8 +20,11 @@ use skene_terminal::{
   behavior::{
     Activate,
     Behavior,
+    ControlHandle,
+    EventKind,
     ListboxOption,
     Popup,
+    PopupKind,
     Radio,
     Slider,
     SliderRange,
@@ -1766,7 +1768,8 @@ fn a_controls_observers_hear_the_events_they_observe() {
   });
 }
 
-/// A stepper: a third party's behavior, built through the public trait alone.
+/// A stepper: a third party's behavior, built through the public trait alone and the
+/// facade's `behavior` module.
 struct Stepper {
   count: Signal<i32>,
   order: FocusOrder,

@@ -136,16 +136,23 @@ pub use skene_web::typography
 pub mod skene_web::behavior
 pub use skene_web::behavior::Activate
 pub use skene_web::behavior::Behavior
+pub use skene_web::behavior::Collection
+pub use skene_web::behavior::CollectionContext
+pub use skene_web::behavior::CollectionPolicy
 pub use skene_web::behavior::ControlHandle
 pub use skene_web::behavior::ControlOps
+pub use skene_web::behavior::EventKind
+pub use skene_web::behavior::LabelPlacement
 pub use skene_web::behavior::Listbox
 pub use skene_web::behavior::ListboxContext
 pub use skene_web::behavior::ListboxOption
+pub use skene_web::behavior::Member
 pub use skene_web::behavior::Menu
 pub use skene_web::behavior::MenuContext
 pub use skene_web::behavior::MenuOption
 pub use skene_web::behavior::NativePicker
 pub use skene_web::behavior::Popup
+pub use skene_web::behavior::PopupKind
 pub use skene_web::behavior::Radio
 pub use skene_web::behavior::RadioGroup
 pub use skene_web::behavior::RadioGroupContext
@@ -154,6 +161,7 @@ pub use skene_web::behavior::Slider
 pub use skene_web::behavior::SliderRange
 pub use skene_web::behavior::TextEntry
 pub use skene_web::behavior::Toggle
+pub use skene_web::behavior::TypeAhead
 pub mod skene_web::head
 pub fn skene_web::head::add_link(&str, &str)
 pub fn skene_web::head::add_meta(&str, &str)

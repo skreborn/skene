@@ -114,6 +114,10 @@ pub(super) fn pages() -> Vec<Page> {
       build: autofocus_page,
     },
     Page {
+      name: "shortcut",
+      build: shortcut_page,
+    },
+    Page {
       name: "text",
       build: text_page,
     },
@@ -450,6 +454,36 @@ fn row_page(probes: &mut Probes) -> AnyView {
 fn autofocus_page(_: &mut Probes) -> AnyView {
   Column::new()
     .set_children((button("a"), button("b").set_autofocus(true)))
+    .into_any()
+}
+
+/// A disabled button named Draft and a button named Save, both activated by `Ctrl-S`, a
+/// text field named Note and a button named New activated by `N`, counting their
+/// activations as `drafts`, `saves` and `news`, the field's text bound to `value`.
+fn shortcut_page(probes: &mut Probes) -> AnyView {
+  let save = Shortcut::new(Modifiers::CTRL, "s");
+  let [drafts, saves, news] = [(); 3].map(|()| Signal::new(0u32));
+  let value = Signal::new(String::new());
+
+  probes.publish("drafts", move || drafts.get().to_string());
+  probes.publish("saves", move || saves.get().to_string());
+  probes.publish("news", move || news.get().to_string());
+  probes.publish("value", move || value.get());
+
+  Column::new()
+    .set_children((
+      button("Draft")
+        .set_disabled(true)
+        .set_shortcut(save)
+        .handle_activate(move || drafts.update(|count| *count += 1)),
+      button("Save")
+        .set_shortcut(save)
+        .handle_activate(move || saves.update(|count| *count += 1)),
+      BasicTextField::new(TextEntry::new().bind_value(value)).set_label("Note"),
+      button("New")
+        .set_shortcut(Shortcut::new(Modifiers::NONE, "n"))
+        .handle_activate(move || news.update(|count| *count += 1)),
+    ))
     .into_any()
 }
 

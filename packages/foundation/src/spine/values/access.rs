@@ -1,5 +1,5 @@
 use super::{Axis, CheckState};
-use crate::spine::NodeId;
+use crate::spine::{NodeId, Shortcut};
 
 /// One accessibility property a view reports, for a reactive update.
 ///
@@ -54,6 +54,8 @@ pub enum AccessProp {
   /// The level in a hierarchy: a heading's, `1` the highest, a tree item's or a nested
   /// list item's.
   Level(usize),
+  /// The keyboard shortcut that activates the control from anywhere in the window.
+  Shortcut(Shortcut),
 }
 
 impl AccessProp {

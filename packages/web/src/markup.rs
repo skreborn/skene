@@ -274,6 +274,7 @@ fn access_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
       .to_owned(),
     ),
     AccessProp::Level(level) => ("aria-level", level.to_string()),
+    AccessProp::Shortcut(shortcut) => ("aria-keyshortcuts", shortcut.reported()),
   })
 }
 

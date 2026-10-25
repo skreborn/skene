@@ -44,6 +44,7 @@ use crate::{
   Scene,
   ScrollEvent,
   Seal,
+  Shortcut,
   Spacing,
   StyleExtension,
   Transition,
@@ -77,6 +78,7 @@ pub struct LayoutBox<P: Realization, Kind = PlainChild> {
   dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   transition_name: Option<String>,
   destination: Option<Source<Rc<str>>>,
+  shortcut: Option<Shortcut>,
   drag_axes: Option<DragAxes>,
   handlers: Vec<Handler>,
   handles: Vec<NodeHandle<P>>,
@@ -105,6 +107,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       dynamics: BoxDynamics::default(),
       transition_name: None,
       destination: None,
+      shortcut: None,
       drag_axes: None,
       handlers: Vec::new(),
       handles: Vec::new(),
@@ -307,6 +310,15 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
+  /// Sets the key that activates the box from anywhere in the window, as a click does,
+  /// where the box is an activatable row; a box handling no click ignores it.
+  #[inline(always)]
+  pub const fn set_shortcut(mut self, shortcut: Shortcut) -> Self {
+    self.shortcut = Some(shortcut);
+
+    self
+  }
+
   /// Runs `action` on the second click of a double click, after the click itself; its
   /// verdict says whether the double click carries on to the ancestors.
   pub fn handle_double_click<R: Into<Bubbling>>(
@@ -505,8 +517,9 @@ impl<P: Realization, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
 impl<P: Realization, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
 impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
-  /// Folds the box's name, its label and the node labelling it, into its accessibility.
-  fn fold_name(&mut self) {
+  /// Folds the box's name, its label and the node labelling it, into its accessibility,
+  /// and its shortcut where `acting`, an activatable row's.
+  fn fold_name(&mut self, acting: bool) {
     let named: Vec<AccessProp> = self
       .label
       .take()
@@ -517,6 +530,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
           .labelled_by
           .map(|node| AccessProp::LabelledBy(vec![node])),
       )
+      .chain(self.shortcut.filter(|_| acting).map(AccessProp::Shortcut))
       .collect();
 
     if named.is_empty() {
@@ -544,9 +558,9 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// pending annotation into the style, splits it, creates the node on the platform
   /// from its [`NodeSpec`], calls `realized` with the node, its spec and its style, then
   /// applies the style, writes its fixed focus order, a tab stop where it is an
-  /// activatable row, and its accessibility, binds every derived slot, a derived focus
-  /// order and accessibility, and the handlers, mounts the children and returns the
-  /// node.
+  /// activatable row, and its accessibility, records its shortcut where it is one,
+  /// binds every derived slot, a derived focus order and accessibility, and the
+  /// handlers, mounts the children and returns the node.
   ///
   /// A box builds through this with [`NodeFacts::Box`]; a view realized as another kind
   /// makes its facts from the box's.
@@ -559,7 +573,22 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       annotation.apply_to(&mut self.style);
     }
 
-    self.fold_name();
+    let links = self.destination.is_some();
+    let acting = !links
+      && self
+        .handlers
+        .iter()
+        .any(|handler| matches!(handler, Handler::Click(_)));
+    let facts = facts(BoxFacts {
+      layout: self.layout,
+      container: self.container,
+      transition_name: self.transition_name.take(),
+      link: links,
+      acting,
+    });
+    let acting = matches!(&facts, NodeFacts::Box(facts) if facts.acting);
+
+    self.fold_name(acting);
 
     let (style, slots) = (*self.style).split();
     let mut record = Record::new();
@@ -577,25 +606,14 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       Some(Source::Derived(_)) | None => None,
     };
     let access = noted.clone().unwrap_or_default();
-    let links = self.destination.is_some();
-    let acting = !links
-      && self
-        .handlers
-        .iter()
-        .any(|handler| matches!(handler, Handler::Click(_)));
     let spec = NodeSpec::new(
       self.role,
       AccessProp::level_of(&access),
       self.drag_axes,
-      facts(BoxFacts {
-        layout: self.layout,
-        container: self.container,
-        transition_name: self.transition_name,
-        link: links,
-        acting,
-      }),
+      facts,
     );
     let tab_stop = focus_order.or_else(|| spec.acting().then_some(FocusOrder::Auto));
+    let shortcut = self.shortcut.filter(|_| acting);
     let container = self.container;
     let node = Scene::<P>::realize(&spec, None);
 
@@ -618,6 +636,10 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
 
       if let Some(access) = noted {
         scene.note_access(node, access);
+      }
+
+      if let Some(shortcut) = shortcut {
+        scene.note_shortcut(node, shortcut);
       }
     });
 

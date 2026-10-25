@@ -88,6 +88,7 @@ use crate::{
   Role,
   Scene,
   ScrollEvent,
+  Shortcut,
   Spacing,
   StaticLeaf,
   Text,
@@ -461,6 +462,7 @@ struct Members<P: Realization> {
   labelled_by: Option<NodeId>,
   focus_order: Option<Source<FocusOrder>>,
   autofocus: bool,
+  shortcut: Option<Shortcut>,
   parts: Vec<(Part, AnyView<P>)>,
   observers: Vec<Handler>,
   child: Option<AnyView<P>>,
@@ -498,6 +500,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
         accessible_name: None,
         focus_order: None,
         autofocus: false,
+        shortcut: None,
         parts: Vec::new(),
         observers: Vec::new(),
         child: None,
@@ -673,6 +676,22 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   #[inline(always)]
   pub const fn set_autofocus(mut self, autofocus: bool) -> Self {
     self.members.autofocus = autofocus;
+
+    self
+  }
+
+  /// Sets the key that activates the control from anywhere in the window, as a click
+  /// does, and that the platform reports beside its name.
+  ///
+  /// It acts while the control is enabled and shown and no open modal it lies outside
+  /// excludes it; of several controls and rows taking one key, the first in the scene's
+  /// child order acts. A key holding no modifier but `Shift` does not act while focus is
+  /// in a text entry, whose key it is, and a view-scoped binding (a
+  /// [`Keymap`](crate::Keymap)'s, a menu entry's) of the same key acts first inside its
+  /// view.
+  #[inline(always)]
+  pub const fn set_shortcut(mut self, shortcut: Shortcut) -> Self {
+    self.members.shortcut = Some(shortcut);
 
     self
   }
@@ -900,6 +919,7 @@ impl<P: Realization> View<P> for ControlCore<P> {
           accessible_name,
           focus_order,
           autofocus,
+          shortcut,
           parts,
           observers,
           child,
@@ -941,7 +961,7 @@ impl<P: Realization> View<P> for ControlCore<P> {
         |_, _, _| {},
       );
 
-      note_facts::<P>(node, native, placement, autofocus);
+      note_facts::<P>(node, native, placement, autofocus, shortcut);
       // A caption whose text is the platform's to read names the control by reference;
       // it is built after the control, so the markup keeps the control first.
       let (label, labelled_by) = match label {
@@ -972,6 +992,7 @@ impl<P: Realization> View<P> for ControlCore<P> {
           Some(Source::Derived(name)) => Some(name),
           Some(Source::Fixed(_)) | None => None,
         }),
+        shortcut,
       };
 
       bind_reports::<P>(&handle, &behavior, &flags, focus_order);
@@ -992,13 +1013,15 @@ impl<P: Realization> View<P> for ControlCore<P> {
 }
 
 /// Records in the scene what the control `node` is beside its node: a text entry where
-/// `native` is one, a caption kept beside it where `placement` places it there, and a
-/// request for focus as the window opens where it makes one.
+/// `native` is one, a caption kept beside it where `placement` places it there, a
+/// request for focus as the window opens where it makes one, and its shortcut where it
+/// has one.
 fn note_facts<P: Realization>(
   node: NodeId,
   native: Option<NativeElement>,
   placement: LabelPlacement,
   autofocus: bool,
+  shortcut: Option<Shortcut>,
 ) {
   Scene::<P>::with(|scene| {
     if native.is_some_and(NativeElement::is_text_entry) {
@@ -1011,6 +1034,10 @@ fn note_facts<P: Realization>(
 
     if autofocus {
       scene.note_autofocus(node);
+    }
+
+    if let Some(shortcut) = shortcut {
+      scene.note_shortcut(node, shortcut);
     }
   });
 }
@@ -1078,6 +1105,8 @@ struct Flags {
   /// The name the control reports, read where it is reported: the one set over its
   /// caption's, else its caption's where that is derived.
   accessible_name: Option<Rc<dyn Fn() -> String>>,
+  /// The key that activates the control from anywhere in the window.
+  shortcut: Option<Shortcut>,
 }
 
 /// Binds the render effects writing the control's state, accessibility and focus
@@ -1142,6 +1171,10 @@ fn bind_reports<P: Realization>(
 
       if let Some(name) = &flags.accessible_name {
         access.push(AccessProp::Name(name()));
+      }
+
+      if let Some(shortcut) = flags.shortcut {
+        access.push(AccessProp::Shortcut(shortcut));
       }
 
       report_access::<P>(node, access);
@@ -1684,6 +1717,20 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   #[must_use]
   fn set_autofocus(self, autofocus: bool) -> Self {
     Self::wrap(self.into_inner().set_autofocus(autofocus))
+  }
+
+  /// Sets the key that activates the control from anywhere in the window, as a click
+  /// does, and that the platform reports beside its name.
+  ///
+  /// It acts while the control is enabled and shown and no open modal it lies outside
+  /// excludes it; of several controls and rows taking one key, the first in the
+  /// scene's child order acts. A key holding no modifier but `Shift` does not act
+  /// while focus is in a text entry, whose key it is, and a view-scoped binding (a
+  /// [`Keymap`](crate::Keymap)'s, a menu entry's) of the same key acts first inside
+  /// its view.
+  #[must_use]
+  fn set_shortcut(self, shortcut: Shortcut) -> Self {
+    Self::wrap(self.into_inner().set_shortcut(shortcut))
   }
 
   /// Adds `view` as the part `part` of the control, a styling target its

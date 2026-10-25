@@ -267,7 +267,7 @@ impl<P: Realization> Scene<P> {
   }
 
   /// Every node under `root` with its position in document order.
-  fn document_positions(&self, root: NodeId) -> FxHashMap<NodeId, usize> {
+  pub(in crate::spine) fn document_positions(&self, root: NodeId) -> FxHashMap<NodeId, usize> {
     let mut positions = FxHashMap::default();
     let mut stack = vec![root];
 

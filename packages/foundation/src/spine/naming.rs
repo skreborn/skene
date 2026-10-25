@@ -648,6 +648,7 @@ impl AccessProp {
         Axis::Vertical => Orientation::Vertical,
       }),
       Self::Level(level) => node.set_level(*level),
+      Self::Shortcut(shortcut) => node.set_keyboard_shortcut(shortcut.reported()),
       Self::Disabled(false)
       | Self::Required(false)
       | Self::Invalid(false)
@@ -740,6 +741,10 @@ fn outline_states(tree: &TreeUpdate, id: accesskit::NodeId, node: &accesskit::No
 
   if let Some(level) = node.level() {
     states.push(format!("level {level}"));
+  }
+
+  if let Some(shortcut) = node.keyboard_shortcut() {
+    states.push(format!("shortcut {shortcut}"));
   }
 
   states

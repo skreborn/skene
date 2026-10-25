@@ -29,6 +29,7 @@ use crate::{
   Role,
   ScrollEvent,
   Seal,
+  Shortcut,
   StaticLeaf,
   Value,
   View,
@@ -219,6 +220,22 @@ pub trait ContainerBase<P: Realization>: HasLayoutBox<P, Kind = PlainChild> {
   #[must_use]
   fn handle_click<R: Into<Bubbling>>(self, action: impl Fn() -> R + 'static) -> Self {
     self.map_layout_box(|layout| layout.handle_click(action))
+  }
+
+  /// Sets the key that activates the box from anywhere in the window, as a click does,
+  /// and that the platform reports beside its name.
+  ///
+  /// It acts only where the box is an activatable row, one that
+  /// [`handle_click`](Self::handle_click) gives a click of its own: a box handling no
+  /// click ignores it. It acts while the row is shown and no open modal it lies outside
+  /// excludes it; of several rows and controls taking one key, the first in the scene's
+  /// child order acts. A key holding no modifier but `Shift` does not act while focus is
+  /// in a text entry, whose key it is, and a view-scoped binding (a
+  /// [`Keymap`](crate::Keymap)'s, a menu entry's) of the same key acts first inside its
+  /// view.
+  #[must_use]
+  fn set_shortcut(self, shortcut: Shortcut) -> Self {
+    self.map_layout_box(|layout| layout.set_shortcut(shortcut))
   }
 
   /// Runs `action` on the second click of a double click, after the click itself;

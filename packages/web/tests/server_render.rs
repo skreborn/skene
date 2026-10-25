@@ -618,6 +618,47 @@ fn a_clickable_container_is_a_tab_stop_with_no_role_of_its_own() {
   );
 }
 
+/// A control's shortcut and an activatable row's are served as `aria-keyshortcuts` in
+/// the W3C form, and a box handling no click serves none.
+#[test]
+fn a_shortcut_is_served_as_aria_keyshortcuts() {
+  let page = render_to_string(|| {
+    Column::new().set_children((
+      BasicButton::new(Activate::new())
+        .set_label("Save")
+        .set_shortcut(skene_web::Shortcut::new(skene_web::Modifiers::CTRL, "s"))
+        .into_any(),
+      Container::new()
+        .set_shortcut(skene_web::Shortcut::new(
+          skene_web::Modifiers::CTRL.with(skene_web::Modifiers::SHIFT),
+          "r",
+        ))
+        .handle_click(|| {})
+        .set_child(Text::new("Row"))
+        .into_any(),
+      Container::new()
+        .set_shortcut(skene_web::Shortcut::new(skene_web::Modifiers::NONE, "F2"))
+        .set_child(Text::new("Plain"))
+        .into_any(),
+    ))
+  });
+  let body = page.body();
+
+  assert!(
+    body.contains(r#"aria-keyshortcuts="Control+S""#),
+    "the control's: {body}"
+  );
+  assert!(
+    body.contains(r#"aria-keyshortcuts="Control+Shift+R""#),
+    "the row's: {body}"
+  );
+  assert_eq!(
+    body.matches("aria-keyshortcuts").count(),
+    2,
+    "a plain box serves none: {body}"
+  );
+}
+
 #[test]
 fn identical_styles_share_one_rule() {
   // Two siblings styled the same must share a class and emit its rule exactly once.

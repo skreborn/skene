@@ -1,6 +1,6 @@
 //! The suite's scenarios, each generic over the driver acting it out.
 
-use skene_foundation::{IntoScalar, Key, KeyEvent, Role, Size, TOOLTIP_DELAY};
+use skene_foundation::{IntoScalar, Key, KeyEvent, Modifiers, Role, Size, TOOLTIP_DELAY};
 
 use crate::{BREAKPOINT, Driver, RETURN, Scenario};
 
@@ -163,6 +163,12 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       name: "a control set to autofocus takes focus as its page opens",
       page: "autofocus",
       act: an_autofocus_control_takes_focus,
+    },
+    Scenario {
+      name: "a control's shortcut activates it from anywhere in the window, and not while it is \
+             disabled",
+      page: "shortcut",
+      act: a_shortcut_activates_its_control,
     },
   ]
 }
@@ -910,4 +916,46 @@ fn an_autofocus_control_takes_focus<D: Driver>(driver: &mut D) {
     Some(&a),
     "Shift-Tab goes back from it"
   );
+}
+
+fn a_shortcut_activates_its_control<D: Driver>(driver: &mut D) {
+  let counts = |driver: &mut D| {
+    (
+      driver.probe("drafts"),
+      driver.probe("saves"),
+      driver.probe("news"),
+    )
+  };
+  let control_s = KeyEvent {
+    modifiers: Modifiers::CTRL,
+    ..key("s")
+  };
+  let note = found(driver, Role::TextInput, "Note");
+
+  driver.press(&control_s);
+  driver.press(&typed("n"));
+
+  assert_eq!(
+    counts(driver),
+    ("0".to_owned(), "1".to_owned(), "1".to_owned()),
+    "with nothing focused, each shortcut activates its enabled control"
+  );
+  assert_eq!(driver.focused(), None, "and focus does not move");
+
+  driver.type_text(&note, "n");
+
+  assert_eq!(
+    driver.probe("value"),
+    "n",
+    "a key with no modifier is the entry's"
+  );
+
+  driver.press(&control_s);
+
+  assert_eq!(
+    counts(driver),
+    ("0".to_owned(), "2".to_owned(), "1".to_owned()),
+    "with focus in the entry, a modified shortcut still acts"
+  );
+  assert_eq!(driver.probe("value"), "n", "and types nothing");
 }

@@ -30,8 +30,7 @@ in a code comment.
     - Controls: the built-ins are drawn on every platform, a behavior over a composed
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
     on the web over the form element CSS styles; a shared option is semantic
-    (`Button::set_prominent`) rather than a per-platform preset; a shared `set_shortcut`
-    joins them. `TextEntry::on_key` takes the core's `Binding` table once every field
+    (`Button::set_prominent`) rather than a per-platform preset. `TextEntry::on_key` takes the core's `Binding` table once every field
     is drawn, the terminal's key default consulting it until then, and the engine and
     editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,

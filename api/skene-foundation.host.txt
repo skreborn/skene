@@ -2864,6 +2864,7 @@ pub skene_foundation::AccessProp::Orientation(skene_foundation::Axis)
 pub skene_foundation::AccessProp::ReadOnly(bool)
 pub skene_foundation::AccessProp::Required(bool)
 pub skene_foundation::AccessProp::Selected(bool)
+pub skene_foundation::AccessProp::Shortcut(skene_foundation::Shortcut)
 pub skene_foundation::AccessProp::Value(f32)
 pub skene_foundation::AccessProp::ValueMax(f32)
 pub skene_foundation::AccessProp::ValueMin(f32)
@@ -3608,6 +3609,7 @@ pub skene_foundation::KeyDefault::Activate(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::Arm(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::ContextMenu
 pub skene_foundation::KeyDefault::Dismiss(skene_foundation::NodeId)
+pub skene_foundation::KeyDefault::Shortcut(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::Traverse
 pub skene_foundation::KeyDefault::Traverse::back: bool
 impl core::clone::Clone for skene_foundation::KeyDefault
@@ -5339,6 +5341,7 @@ pub fn skene_foundation::Container<P>::set_focus_order(self, skene_foundation::F
 pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
+pub fn skene_foundation::Container<P>::set_shortcut(self, skene_foundation::Shortcut) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::DecorationBase<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_foundation::Container<P>::derive_background<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -5556,6 +5559,7 @@ pub const fn skene_foundation::Control<P, B>::set_labelled_by(self, skene_founda
 pub fn skene_foundation::Control<P, B>::set_part(self, skene_foundation::Part, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::Control<P, B>::set_read_only(self, bool) -> Self
 pub fn skene_foundation::Control<P, B>::set_required(self, bool) -> Self
+pub const fn skene_foundation::Control<P, B>::set_shortcut(self, skene_foundation::Shortcut) -> Self
 pub fn skene_foundation::Control<P, B>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 impl<P: skene_foundation::Realization, B: skene_foundation::Behavior> skene_foundation::Control<P, B>
 pub fn skene_foundation::Control<P, B>::new(B) -> Self
@@ -6556,6 +6560,7 @@ pub fn skene_foundation::LayoutBox<P, Kind>::set_line_arrangement(self, impl cor
 pub fn skene_foundation::LayoutBox<P, Kind>::set_padding(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Inset<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub const fn skene_foundation::LayoutBox<P, Kind>::set_role(self, accesskit::Role) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_rows(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::GridTemplate<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub const fn skene_foundation::LayoutBox<P, Kind>::set_shortcut(self, skene_foundation::Shortcut) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::LayoutBox<P, Kind>::set_wrap(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Wrap, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
@@ -7791,7 +7796,7 @@ pub const fn skene_foundation::Scene<P>::interaction_generation(&self) -> u64
 pub fn skene_foundation::Scene<P>::is_acting(&self, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::Scene<P>::is_hovered(&self, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::Scene<P>::is_pressed(&self, skene_foundation::NodeId) -> bool
-pub fn skene_foundation::Scene<P>::key_default(&mut self, core::option::Option<skene_foundation::NodeId>, &skene_foundation::KeyEvent) -> core::option::Option<skene_foundation::KeyDefault>
+pub fn skene_foundation::Scene<P>::key_default(&mut self, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>, &skene_foundation::KeyEvent, impl core::ops::function::Fn(skene_foundation::NodeId) -> bool) -> core::option::Option<skene_foundation::KeyDefault>
 pub fn skene_foundation::Scene<P>::key_up_default(&mut self, core::option::Option<skene_foundation::NodeId>, &skene_foundation::KeyEvent) -> core::option::Option<skene_foundation::KeyDefault>
 pub fn skene_foundation::Scene<P>::move_focus(&mut self, core::option::Option<skene_foundation::NodeId>) -> (smallvec::SmallVec<[skene_foundation::NodeId; 16]>, smallvec::SmallVec<[skene_foundation::NodeId; 16]>)
 pub fn skene_foundation::Scene<P>::move_pointer(&mut self, core::option::Option<skene_foundation::NodeId>) -> (smallvec::SmallVec<[skene_foundation::NodeId; 16]>, smallvec::SmallVec<[skene_foundation::NodeId; 16]>)
@@ -7799,6 +7804,9 @@ pub fn skene_foundation::Scene<P>::note_entry(&mut self, skene_foundation::NodeI
 pub const fn skene_foundation::Scene<P>::pressed(&self) -> core::option::Option<skene_foundation::NodeId>
 pub const fn skene_foundation::Scene<P>::set_focus_visible(&mut self, bool)
 pub fn skene_foundation::Scene<P>::set_pressed(&mut self, core::option::Option<skene_foundation::NodeId>)
+impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
+pub fn skene_foundation::Scene<P>::note_shortcut(&mut self, skene_foundation::NodeId, skene_foundation::Shortcut)
+pub fn skene_foundation::Scene<P>::shortcut(&self, skene_foundation::NodeId) -> core::option::Option<skene_foundation::Shortcut>
 impl<P: skene_foundation::Realization> core::default::Default for skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::default() -> Self
 impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Scene<P>
@@ -7831,9 +7839,11 @@ impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::Se
 pub fn skene_foundation::Segment<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::Shortcut
 impl skene_foundation::Shortcut
+pub const fn skene_foundation::Shortcut::is_unmodified(&self) -> bool
 pub const fn skene_foundation::Shortcut::key(&self) -> &'static str
 pub const fn skene_foundation::Shortcut::modifiers(&self) -> skene_foundation::Modifiers
 pub const fn skene_foundation::Shortcut::new(skene_foundation::Modifiers, &'static str) -> Self
+pub fn skene_foundation::Shortcut::reported(&self) -> alloc::string::String
 impl core::clone::Clone for skene_foundation::Shortcut
 pub fn skene_foundation::Shortcut::clone(&self) -> skene_foundation::Shortcut
 impl core::cmp::Eq for skene_foundation::Shortcut
@@ -9081,6 +9091,7 @@ pub fn skene_foundation::ContainerBase::set_focus_order(self, skene_foundation::
 pub fn skene_foundation::ContainerBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::ContainerBase::set_labelled_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::ContainerBase::set_role(self, accesskit::Role) -> Self
+pub fn skene_foundation::ContainerBase::set_shortcut(self, skene_foundation::Shortcut) -> Self
 impl<P: skene_foundation::Realization> skene_foundation::ContainerBase<P> for skene_foundation::Container<P>
 pub fn skene_foundation::Container<P>::bind_handle(self, skene_foundation::NodeHandle<P>) -> Self
 pub fn skene_foundation::Container<P>::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_foundation::AccessProp> + 'static) -> Self
@@ -9111,6 +9122,7 @@ pub fn skene_foundation::Container<P>::set_focus_order(self, skene_foundation::F
 pub fn skene_foundation::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Container<P>::set_labelled_by(self, skene_foundation::NodeId) -> Self
 pub fn skene_foundation::Container<P>::set_role(self, accesskit::Role) -> Self
+pub fn skene_foundation::Container<P>::set_shortcut(self, skene_foundation::Shortcut) -> Self
 pub trait skene_foundation::ContentType: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static
 impl skene_foundation::ContentType for alloc::rc::Rc<str>
 impl skene_foundation::ContentType for bool
@@ -9188,6 +9200,7 @@ pub fn skene_foundation::ControlBase::set_labelled_by(self, skene_foundation::No
 pub fn skene_foundation::ControlBase::set_part(self, skene_foundation::Part, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::ControlBase::set_read_only(self, bool) -> Self
 pub fn skene_foundation::ControlBase::set_required(self, bool) -> Self
+pub fn skene_foundation::ControlBase::set_shortcut(self, skene_foundation::Shortcut) -> Self
 pub fn skene_foundation::ControlBase::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
 pub trait skene_foundation::ControlSink
 pub fn skene_foundation::ControlSink::composing(&self) -> bool

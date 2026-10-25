@@ -237,6 +237,44 @@ impl Shortcut {
   pub const fn key(&self) -> &'static str {
     self.key
   }
+
+  /// The shortcut as an accessibility layer reports it, in the W3C form: the W3C names
+  /// of its modifiers, then its key, a letter capital, `" "` as `Space` and `"+"` as
+  /// `Plus`, joined by `+` (`Control+Shift+S`, `F2`).
+  #[must_use]
+  pub fn reported(&self) -> String {
+    let held = [
+      (self.modifiers.ctrl, "Control"),
+      (self.modifiers.alt, "Alt"),
+      (self.modifiers.shift, "Shift"),
+      (self.modifiers.meta, "Meta"),
+    ];
+    let mut reported = String::new();
+
+    for (_, name) in held.into_iter().filter(|(held, _)| *held) {
+      reported.push_str(name);
+      reported.push('+');
+    }
+
+    let mut characters = self.key.chars();
+
+    match (characters.next(), characters.next()) {
+      (Some(' '), None) => reported.push_str("Space"),
+      (Some('+'), None) => reported.push_str("Plus"),
+      (Some(character), None) => reported.extend(character.to_uppercase()),
+      _ => reported.push_str(self.key),
+    }
+
+    reported
+  }
+
+  /// Whether the shortcut holds no modifier but `Shift`, so its key is one a text
+  /// entry takes as its own: a character it types or a key it edits by.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_unmodified(&self) -> bool {
+    !(self.modifiers.ctrl || self.modifiers.alt || self.modifiers.meta)
+  }
 }
 
 impl std::fmt::Display for Shortcut {
@@ -306,6 +344,10 @@ pub enum KeyDefault {
   /// `Space` pressed on the activatable row holding focus arms it for the key's
   /// release: the platform keeps the press from its own default, a page's scroll.
   Arm(crate::spine::NodeId),
+  /// The key is the shortcut of a control or an activatable row, which it activates
+  /// from anywhere in the window: the platform keeps the key from its own default and
+  /// dispatches a click at the node.
+  Shortcut(crate::spine::NodeId),
 }
 
 impl KeyEvent {
@@ -670,5 +712,31 @@ mod tests {
     assert!(!press("m", Modifiers::ALT.with(Modifiers::SHIFT), false).matches(&alt_m));
     assert!(!press("m", Modifiers::NONE, false).matches(&alt_m));
     assert!(!press("n", Modifiers::ALT, false).matches(&alt_m));
+  }
+
+  /// A shortcut reports its modifiers by their W3C names in a fixed order, then its key,
+  /// a letter capital and the space and plus keys by name, and holds a key a text entry
+  /// takes as its own while no modifier but `Shift` is held.
+  #[test]
+  fn a_shortcut_reports_in_the_w3c_form() {
+    let reported =
+      |modifiers: Modifiers, key: &'static str| Shortcut::new(modifiers, key).reported();
+
+    assert_eq!(reported(Modifiers::CTRL, "s"), "Control+S");
+    assert_eq!(
+      reported(Modifiers::SHIFT.with(Modifiers::CTRL), "s"),
+      "Control+Shift+S"
+    );
+    assert_eq!(
+      reported(Modifiers::ALT.with(Modifiers::META), "1"),
+      "Alt+Meta+1"
+    );
+    assert_eq!(reported(Modifiers::NONE, "F2"), "F2");
+    assert_eq!(reported(Modifiers::CTRL, " "), "Control+Space");
+    assert_eq!(reported(Modifiers::CTRL, "+"), "Control+Plus");
+    assert!(Shortcut::new(Modifiers::SHIFT, "n").is_unmodified());
+    assert!(Shortcut::new(Modifiers::NONE, "F2").is_unmodified());
+    assert!(!Shortcut::new(Modifiers::CTRL, "s").is_unmodified());
+    assert!(!Shortcut::new(Modifiers::ALT, "s").is_unmodified());
   }
 }

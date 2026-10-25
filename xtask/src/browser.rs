@@ -30,7 +30,7 @@ const RUNS: &[Run] = &[
     package: "skene-web",
     arguments: &["--features", "gpu"],
     binaries: &[
-      ("browser_dom", 101),
+      ("browser_dom", 103),
       ("browser_gpu_loss", 1),
       ("browser_hydrate", 29),
       ("browser_painted", 4),
@@ -82,8 +82,8 @@ struct Suite {
 const SUITE: Suite = Suite {
   package: "skene-conformance-web",
   harness: "harness",
-  scenarios: 31,
-  pages: 20,
+  scenarios: 32,
+  pages: 21,
 };
 
 /// A browser release the tier fetches once into `target/browsers`, checked against its

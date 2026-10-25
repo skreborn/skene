@@ -7,6 +7,7 @@ mod focus_order;
 mod interaction;
 mod overlays;
 mod placement;
+mod shortcuts;
 mod structure;
 mod tokens;
 
@@ -40,6 +41,7 @@ use crate::spine::{
   NodeSpec,
   Part,
   Realization,
+  Shortcut,
   handler::HandlerSet,
   node_map::NodeSlots,
 };
@@ -255,6 +257,7 @@ pub struct Scene<P: Realization> {
   held: Held,
   kept_focus: FxHashMap<NodeId, NodeId>,
   autofocus: Autofocus,
+  shortcuts: FxHashMap<NodeId, Shortcut>,
   drag: Option<DragRecord>,
   resolved_tokens: ResolvedTokens<P::Scalar>,
 }
@@ -286,6 +289,7 @@ impl<P: Realization> Scene<P> {
       held: Held::new(),
       kept_focus: FxHashMap::default(),
       autofocus: Autofocus::Asked(Vec::new()),
+      shortcuts: FxHashMap::default(),
       drag: None,
       resolved_tokens: ResolvedTokens::default(),
     }

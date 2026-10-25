@@ -60,9 +60,12 @@ use skene_foundation::{KeyEvent, NodeId, Role, Scalar, Size, TreeUpdate};
 /// - `row`: an activatable row, a group named Row, holding a button named Inside, publishing the
 ///   row's activations as `row` and the button's as `inside`;
 /// - `autofocus`: the buttons a and b in a column, b set to autofocus;
+/// - `shortcut`: a disabled button named Draft and a button named Save, both activated by `Ctrl-S`,
+///   a text field named Note and a button named New activated by `N`, publishing their activations
+///   as `drafts`, `saves` and `news` and the field's text as `value`;
 /// - `text`: text keeping its blanks and newlines, a word too wide for the page broken where the
 ///   page's width ends.
-pub const PAGES: [&str; 20] = [
+pub const PAGES: [&str; 21] = [
   "button",
   "checkbox",
   "buttons",
@@ -82,6 +85,7 @@ pub const PAGES: [&str; 20] = [
   "focus-group",
   "row",
   "autofocus",
+  "shortcut",
   "text",
 ];
 

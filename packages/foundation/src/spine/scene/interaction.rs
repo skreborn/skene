@@ -317,11 +317,29 @@ impl<P: Realization> Scene<P> {
   }
 
   /// What `event`, pressed at `at`, the node holding focus, does once its handlers
-  /// leave it to the platform, as a browser's defaults do: `Tab` traverses, `Escape`
-  /// dismisses the topmost open overlay, `Enter` activates an activatable row at `at`
-  /// on every press, repeats included, and `Space` arms it for its release, and the
-  /// menu key or `Shift-F10` asks for a context menu; `None` for every other key.
-  pub fn key_default(&mut self, at: Option<NodeId>, event: &KeyEvent) -> Option<KeyDefault> {
+  /// leave it to the platform in the window under `root`, as a browser's defaults do:
+  /// the shortcut of a control or an activatable row activates it, the first in document
+  /// order of those it reaches, before any other default
+  /// ([`shortcut`](Self::shortcut)), the subtrees `hidden` answers for passed over;
+  /// `Tab` traverses, `Escape` dismisses the topmost open overlay, `Enter` activates an
+  /// activatable row at `at` on every press, repeats included, and `Space` arms it for
+  /// its release, and the menu key or `Shift-F10` asks for a context menu; `None` for
+  /// every other key.
+  ///
+  /// A shortcut holding no modifier but `Shift` does not act while `at` is inside a
+  /// text entry, whose key it is, nor does any within a composition; a binding scoped
+  /// to a view, which a handler inside it runs, prevents the key there first.
+  pub fn key_default(
+    &mut self,
+    root: NodeId,
+    at: Option<NodeId>,
+    event: &KeyEvent,
+    hidden: impl Fn(NodeId) -> bool,
+  ) -> Option<KeyDefault> {
+    if let Some(node) = self.shortcut_target(root, at, event, hidden) {
+      return Some(KeyDefault::Shortcut(node));
+    }
+
     if event.is(NamedKey::Tab) {
       return Some(KeyDefault::Traverse {
         back: event.modifiers.shift,

@@ -1167,6 +1167,143 @@ fn an_autofocus_control_is_focused_after_the_mount() {
   );
 }
 
+/// Dispatches a press of `key` with `Ctrl` held at `target`, and returns whether the
+/// platform's default was prevented.
+fn control_key_at(target: &Element, key: &str) -> bool {
+  let init = web_sys::KeyboardEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_key(key);
+  init.set_ctrl_key(true);
+
+  let event =
+    web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+  let _ = target.dispatch_event(&event);
+
+  event.default_prevented()
+}
+
+/// A control's shortcut activates it from anywhere in the window, in place of the
+/// browser's default: with nothing focused, the key landing on the body, with focus on
+/// another control and in a text entry, while a key holding no modifier stays the
+/// entry's; the control reports it as `aria-keyshortcuts`.
+#[wasm_bindgen_test]
+fn a_controls_shortcut_activates_it_from_anywhere() {
+  let (_guard, root) = fresh_root();
+  let (saves, save) = counter();
+  let (news, new) = counter();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new())
+          .set_label("Save")
+          .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+          .handle_activate(save),
+        BasicButton::new(Activate::new())
+          .set_label("New")
+          .set_shortcut(Shortcut::new(Modifiers::NONE, "n"))
+          .handle_activate(new),
+        BasicTextField::new(TextEntry::new()).set_label("Note"),
+      ))
+      .build()
+  });
+
+  let body: Element = document().body().expect("a body").into();
+  let buttons = root.query_selector_all("button").expect("query");
+  let button = |index| {
+    buttons
+      .item(index)
+      .and_then(|node| node.dyn_into::<Element>().ok())
+      .expect("a button")
+  };
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("the field");
+
+  assert_eq!(
+    button(0).get_attribute("aria-keyshortcuts").as_deref(),
+    Some("Control+S")
+  );
+  assert_eq!(
+    button(1).get_attribute("aria-keyshortcuts").as_deref(),
+    Some("N")
+  );
+  assert!(control_key_at(&body, "s"), "the browser's default is kept");
+  assert_eq!(saves.get(), 1, "with nothing focused");
+  assert!(key_at(&body, "keydown", "n", false));
+  assert_eq!(news.get(), 1);
+
+  let _ = html(&button(1)).focus();
+
+  assert!(control_key_at(&button(1), "s"));
+  assert_eq!(saves.get(), 2, "with focus on another control");
+
+  let _ = html(&input).focus();
+
+  assert!(control_key_at(&input, "s"));
+  assert_eq!(saves.get(), 3, "with focus in a text entry");
+  assert!(
+    !key_at(&input, "keydown", "n", false),
+    "the entry takes its key"
+  );
+  assert_eq!(news.get(), 1);
+}
+
+/// A shortcut acts on no disabled control and on none an open modal excludes, the key
+/// then left to the browser, and acts again once the control is enabled and the modal
+/// closed.
+#[wasm_bindgen_test]
+fn a_shortcut_passes_over_a_disabled_control_and_one_a_modal_excludes() {
+  let (_guard, _root) = fresh_root();
+  let (saves, save) = counter();
+  let disabled = Signal::new(false);
+  let open = Signal::new(false);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new())
+          .set_label("Save")
+          .derive_disabled(move || disabled.get())
+          .set_shortcut(Shortcut::new(Modifiers::CTRL, "s"))
+          .handle_activate(save)
+          .into_any(),
+        Overlay::modal()
+          .bind_open(open)
+          .set_child(BasicButton::new(Activate::new()).set_label("Inside"))
+          .into_any(),
+      ))
+      .build()
+  });
+
+  let body: Element = document().body().expect("a body").into();
+
+  disabled.set(true);
+  web::end_turn();
+
+  assert!(
+    !control_key_at(&body, "s"),
+    "disabled, the key is the browser's"
+  );
+  assert_eq!(saves.get(), 0);
+
+  disabled.set(false);
+  open.set(true);
+  web::end_turn();
+
+  assert!(!control_key_at(&body, "s"), "the open modal excludes it");
+  assert_eq!(saves.get(), 0);
+
+  open.set(false);
+  web::end_turn();
+
+  assert!(control_key_at(&body, "s"));
+  assert_eq!(saves.get(), 1);
+}
+
 #[wasm_bindgen_test]
 fn click_handler_runs_on_a_real_click() {
   let (_guard, root) = fresh_root();

@@ -39,12 +39,14 @@ pub fn dispatch_click<P: Realization>(node: NodeId, event: &ClickEvent) -> Preve
   )
 }
 
-/// Dispatches the activation of the activatable row `row` by a key held with
-/// `modifiers`: a click no pointer made, which the row's handlers and their verdicts
-/// take as they take a pointer's.
-pub fn dispatch_activation<P: Realization>(row: NodeId, modifiers: Modifiers) -> Prevented {
+/// Dispatches the activation of `node` by a key held with `modifiers`.
+///
+/// The node is an activatable row or a control its shortcut reaches, and the activation
+/// a click no pointer made, which its handlers and their verdicts take as they take a
+/// pointer's.
+pub fn dispatch_activation<P: Realization>(node: NodeId, modifiers: Modifiers) -> Prevented {
   dispatch_click::<P>(
-    row,
+    node,
     &ClickEvent {
       modifiers,
       count: 0,

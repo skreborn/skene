@@ -101,13 +101,23 @@ does. The scene answers which overlays a press dismisses
 press lands outside of, on neither it nor the anchor it opened from, until one it lands
 inside of, a modal ending the descent and dismissed itself; the web leaves a modal's
 backdrop to its click. It answers what a key its handlers leave to the platform does
-(`Scene::key_default`: `Tab` traverses, `Escape` dismisses the topmost overlay, which
+(`Scene::key_default`: the shortcut of a control or an activatable row activates it
+before any other default, `Tab` traverses, `Escape` dismisses the topmost overlay, which
 the web leaves to a modal's own cancel, `Enter` activates the activatable row holding
 focus on every press and `Space` arms it, which keeps the press from scrolling, and the
 menu key or `Shift-F10` asks for a context menu) and what a release does
 (`Scene::key_up_default`: the release of the `Space` that armed a row activates it
-where it kept focus since the press), each activation a click dispatched at the row
-(`dispatch_activation`) its handlers and their verdicts take as a pointer's. A row is a
+where it kept focus since the press), each activation a click dispatched at the row or
+control (`dispatch_activation`) its handlers and their verdicts take as a pointer's.
+The scene keeps the window's shortcuts, a registry from node to `Shortcut` a control or
+a row notes as it is built (`Scene::note_shortcut`) and a destroyed node leaves: a key
+pressing one activates the first node in document order holding it that is a control
+not disabled or an activatable row, attached under the window's root outside every
+closed overlay and every subtree the platform reports hidden, and that the topmost open
+modal does not exclude, as the tab order reaches its stops; a shortcut holding no
+modifier but `Shift` does not act while focus is in a text entry, whose key it is, none
+acts within a composition, and a view-scoped binding (a `Keymap`'s, a `MenuEntry`'s),
+which a handler runs as the key climbs, prevents the key inside its view first. A row is a
 box acting on a click of its own (`BoxFacts::acting`: it handles one and is no link),
 which the scene records as it creates the node, and a tab stop unless its focus order
 says otherwise. It answers which popups focus leaves as it moves to another node
@@ -782,7 +792,11 @@ re-export.
   `autofocus` attribute on the element carrying its focus, its input for a native
   control and its box otherwise, on both leaves, so the scriptless page opens focused
   on it; the browser leaf's first mount focuses it once its turn ends, and a hydration
-  keeps the focus the browser gave the served element and moves none. The gallery runs under
+  keeps the focus the browser gave the served element and moves none. A shortcut is
+  served as `aria-keyshortcuts` on both leaves; the browser leaf hears a key pressed
+  outside the root, as on the `<body>` while nothing holds focus, through one `keydown`
+  listener on the document, which dispatches it at the root so the window's shortcuts
+  reach it, and a key a shortcut takes has its browser default prevented. The gallery runs under
   axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
   gallery's overlays open: a tooltip, the picker's popup and a context menu, once under
@@ -858,6 +872,17 @@ re-export.
   not showing it until a key does, as Chromium's autofocus shows none (Firefox's shows
   it, and the web leaves that to the engine), and a window where none asks opens with
   nothing focused, as a Chromium page does.
+- **A shortcut is window-scoped.** `ControlBase::set_shortcut` and
+  `ContainerBase::set_shortcut` give a control or an activatable row the key that
+  activates it from anywhere in the window, a fixed `Shortcut` read once at build, which
+  the scene's key default resolves after every handler has had the key
+  (`KeyDefault::Shortcut`) and dispatches as a click at the node, focus left where it
+  is; a box handling no click ignores its shortcut. The node reports it
+  (`AccessProp::Shortcut`, in the W3C form `Shortcut::reported` writes, `Control+S`).
+  A key holding no modifier but `Shift` is a text entry's own while one holds focus, a
+  character it types or a key it edits by, so such a shortcut waits there; a view-scoped
+  binding of the same key, a `Keymap`'s or a menu entry's, acts first inside its
+  view.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot
@@ -1733,7 +1758,9 @@ paints in the typography's focused-link ink and surface, reverse video where tho
 transparent, as the default leaves them. Focus shows as `:focus-visible` does: after a
 key, or in a text entry, and not since a pointer press. A window opens with nothing
 focused, and the control set to autofocus that comes first in the scene's child order
-takes focus as the first mount ends, without showing it. A key's default runs after the handlers' writes
+takes focus as the first mount ends, without showing it. A key pressed while nothing is
+focused is dispatched at the root, so a control's shortcut acts from anywhere, and the access tree
+reports it as the AccessKit node's keyboard shortcut. A key's default runs after the handlers' writes
 have taken effect, as a browser's does after its microtask checkpoint. A key release
 dispatches as `KeyUp` (`handle_key_up` on a box and a control) with no default but the
 scene's (`Scene::key_up_default`, a row's `Space`), a held

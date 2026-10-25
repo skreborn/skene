@@ -7,7 +7,9 @@
 //! against the scene's ancestry, and a native toggle's `change` reports the platform's
 //! flip while its click is dispatched observed: the observers up the path run once per
 //! press and the behavior, whose flip the platform performed, is skipped. The only
-//! per-node listener is a `<dialog>`'s `cancel`.
+//! per-node listener is a `<dialog>`'s `cancel`, and the only one beyond the root the
+//! document's `keydown`, which dispatches a key pressed outside the root, as on the
+//! `<body>` while nothing holds focus, at the root, so the window's shortcuts hear it.
 
 use std::{cell::Cell, rc::Rc, str::FromStr, time::Duration};
 
@@ -81,7 +83,7 @@ use web_sys::{
   InputEvent,
 };
 
-use super::{Node, Realized, end_turn, page::is_placeholder, with_dom};
+use super::{Node, Realized, end_turn, page::is_placeholder, try_with_dom, with_dom};
 use crate::{
   condition::{DRAG_MARKER, DRAGGED_ATTRIBUTE, DRAGS_ATTRIBUTE, TARGETED_ATTRIBUTE},
   platform::web::Web,
@@ -97,6 +99,10 @@ thread_local! {
   /// raises the browser's own menu on some systems.
   static SERVED_MENU_KEY: Cell<Option<Code>> = const { Cell::new(None) };
 }
+
+/// The key the document's `keydown` listener is held under among the root's, by event
+/// name.
+const DOCUMENT_KEYS: &str = "document keydown";
 
 /// A live DOM listener, removed from its target when dropped.
 pub(super) struct Listener {
@@ -180,12 +186,12 @@ impl Drop for Listener {
   }
 }
 
-/// The root's delegated listeners, the popups currently open, each with the anchor
-/// it was opened against, and the text entry focus last left.
+/// The root's delegated listeners, the document's key listener, the popups currently
+/// open, each with the anchor it was opened against, and the text entry focus last left.
 pub(super) struct Events {
   /// The element the listeners are delegated to.
   root: Element,
-  /// The delegated listeners, by event name.
+  /// The delegated listeners, by event name, and the document's key listener.
   listeners: FxHashMap<&'static str, Listener>,
   /// The `<input>` or `<textarea>` focus last left, which a clipboard action from an
   /// open popup acts on in place of the popup's own focus.
@@ -198,9 +204,18 @@ pub(super) struct Events {
 
 impl Events {
   pub(super) fn new(root: Element) -> Self {
+    let mut listeners = FxHashMap::default();
+
+    if let Some(document) = web_sys::window().and_then(|window| window.document()) {
+      listeners.insert(
+        DOCUMENT_KEYS,
+        Listener::new(document.into(), "keydown", false, on_document_key_down),
+      );
+    }
+
     Self {
       root,
-      listeners: FxHashMap::default(),
+      listeners,
       last_entry: None,
       dragged: None,
       targeted: None,
@@ -456,13 +471,30 @@ fn mouse_modifiers(mouse: &web_sys::MouseEvent) -> Modifiers {
 }
 
 fn on_key_down(event: &web_sys::Event) {
+  key_down_at(event, node_at(event.target()));
+}
+
+/// A key pressed outside every element the scene knows, as on the `<body>` while
+/// nothing holds focus: dispatched at the root, so the window's shortcuts reach it.
+fn on_document_key_down(event: &web_sys::Event) {
+  if node_at(event.target()).is_some() {
+    return;
+  }
+
+  if let Some(root) = try_with_dom(|dom| dom.root_node) {
+    key_down_at(event, Some(root));
+  }
+}
+
+/// Dispatches the key `event` presses at `at`, then, unless a handler prevented it,
+/// runs the default the scene gives it.
+fn key_down_at(event: &web_sys::Event, at: Option<NodeId>) {
   let Some(keyboard) = event.dyn_ref::<web_sys::KeyboardEvent>()
   else {
     return;
   };
 
   let key = key_event(keyboard);
-  let at = node_at(event.target());
   let prevented = at
     .map(|node| dispatch_key_down::<Web>(node, &key))
     .unwrap_or_default();
@@ -473,13 +505,19 @@ fn on_key_down(event: &web_sys::Event) {
     return;
   }
 
-  match Scene::<Web>::with(|scene| scene.key_default(at, &key)) {
+  let root = with_dom(|dom| dom.root_node);
+
+  match Scene::<Web>::with(|scene| scene.key_default(root, at, &key, is_undisplayed)) {
     Some(KeyDefault::Activate(row)) => {
       event.prevent_default();
       let _ = dispatch_activation::<Web>(row, key.modifiers);
     }
     // The press of a `Space` that activates on its release scrolls nothing.
     Some(KeyDefault::Arm(_)) => event.prevent_default(),
+    Some(KeyDefault::Shortcut(node)) => {
+      event.prevent_default();
+      let _ = dispatch_activation::<Web>(node, key.modifiers);
+    }
     // A modal the scene dismisses on `Escape` is the dialog's own to cancel.
     Some(KeyDefault::Dismiss(overlay)) if !Scene::<Web>::read(|scene| scene.is_modal(overlay)) => {
       event.prevent_default();
@@ -501,6 +539,20 @@ fn on_key_down(event: &web_sys::Event) {
     }
     _ => {}
   }
+}
+
+/// Whether the element of `node` is laid out as none by its style; `false` for a node
+/// with no element of its own.
+fn is_undisplayed(node: NodeId) -> bool {
+  let Some(element) = with_dom(|dom| dom.node(node).and_then(Node::dom_element).cloned())
+  else {
+    return false;
+  };
+
+  web_sys::window()
+    .and_then(|window| window.get_computed_style(&element).ok().flatten())
+    .and_then(|style| style.get_property_value("display").ok())
+    .is_some_and(|display| display == "none")
 }
 
 /// A request for the context menu from the keyboard where `element` holds focus: no

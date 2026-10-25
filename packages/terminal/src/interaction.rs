@@ -1685,7 +1685,15 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
     return;
   }
 
-  match Scene::<Terminal>::with(|scene| scene.key_default(at, event)) {
+  let default = crate::realize::root_node().and_then(|root| {
+    Scene::<Terminal>::with(|scene| {
+      scene.key_default(root, at, event, |node| {
+        records(|records| records.is_hidden(node))
+      })
+    })
+  });
+
+  match default {
     Some(KeyDefault::Traverse { back }) => {
       move_focus(if back { -1 } else { 1 });
 
@@ -1707,6 +1715,11 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
       return;
     }
     Some(KeyDefault::Arm(_)) => return,
+    Some(KeyDefault::Shortcut(node)) => {
+      let _ = dispatch_activation::<Terminal>(node, event.modifiers);
+
+      return;
+    }
     None => {}
   }
 

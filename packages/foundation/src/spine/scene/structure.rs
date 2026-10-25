@@ -220,6 +220,7 @@ impl<P: Realization> Scene<P> {
       self.held.forget(node);
 
       self.kept_focus.remove(&node);
+      self.shortcuts.remove(&node);
 
       if self.drag.as_ref().is_some_and(|drag| drag.source == node) {
         self.drag = None;

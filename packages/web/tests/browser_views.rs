@@ -1938,7 +1938,7 @@ fn a_number_keyboard_keeps_a_text_input_reporting_its_selection() {
 /// A text entry keeping its label inside its box.
 struct InlineEntry;
 
-impl Behavior<Web> for InlineEntry {
+impl Behavior for InlineEntry {
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::TextField)
   }

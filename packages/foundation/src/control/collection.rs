@@ -12,6 +12,7 @@ use super::{
   Choice,
   Chosen,
   ControlHandle,
+  ControlOps,
   ControlledChoice,
   LabelPlacement,
   Roster,
@@ -30,7 +31,6 @@ use crate::{
   NamedKey,
   NativeElement,
   Prevent,
-  Realization,
   Role,
   contents,
 };
@@ -141,6 +141,7 @@ pub struct CollectionContext<C: CollectionPolicy> {
   tab_stop: Memo<Option<AnyChoice>>,
   type_ahead: Rc<TypeAhead>,
   commit_on_tab: bool,
+  ops: ControlOps,
   policy: PhantomData<C>,
 }
 
@@ -153,6 +154,7 @@ impl<C: CollectionPolicy> Clone for CollectionContext<C> {
       tab_stop: self.tab_stop,
       type_ahead: Rc::clone(&self.type_ahead),
       commit_on_tab: self.commit_on_tab,
+      ops: self.ops,
       policy: PhantomData,
     }
   }
@@ -167,16 +169,18 @@ impl<C: CollectionPolicy> std::fmt::Debug for CollectionContext<C> {
 }
 
 impl<C: CollectionPolicy> CollectionContext<C> {
-  /// A group whose members join `roster` under `P`'s scene, answering `chosen` for what
-  /// is chosen and asking `choose` for a choice; provided as context by a control
-  /// holding members, its tab stop a memo owned by the current owner.
-  pub fn new<P: Realization>(
+  /// A group whose members join `roster`, answering `chosen` for what is chosen and
+  /// asking `choose` for a choice, moving focus and resetting its type-ahead through
+  /// the realization `ops` reaches; provided as context by a control holding members,
+  /// its tab stop a memo owned by the current owner.
+  pub fn new(
+    ops: ControlOps,
     chosen: impl Fn() -> AnyChosen + 'static,
     choose: impl Fn(AnyChosen) + 'static,
     roster: Roster,
   ) -> Self {
     let chosen: Rc<dyn Fn() -> AnyChosen> = Rc::new(chosen);
-    let tab_stop = roster.tab_stop::<P>({
+    let tab_stop = roster.tab_stop({
       let chosen = Rc::clone(&chosen);
 
       move || chosen()
@@ -187,8 +191,9 @@ impl<C: CollectionPolicy> CollectionContext<C> {
       choose: Rc::new(choose),
       roster,
       tab_stop,
-      type_ahead: Rc::new(TypeAhead::new()),
+      type_ahead: Rc::new(TypeAhead::new(ops)),
       commit_on_tab: false,
+      ops,
       policy: PhantomData,
     }
   }
@@ -243,8 +248,8 @@ impl<C: CollectionPolicy> CollectionContext<C> {
   /// or stopping at the ends as the policy says, `isize::MIN` and `isize::MAX`
   /// reaching the first and the last: focuses it, and chooses it where the policy
   /// says a move does.
-  pub fn step_from<P: Realization>(&self, value: &AnyChoice, step: isize) {
-    let members = self.roster.enabled::<P>();
+  pub fn step_from(&self, value: &AnyChoice, step: isize) {
+    let members = self.roster.enabled();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
       return;
@@ -265,19 +270,19 @@ impl<C: CollectionPolicy> CollectionContext<C> {
       self.choose(&value);
     }
 
-    P::focus(node);
+    self.ops.focus(node);
   }
 
   /// Feeds a key typed on the member holding `value` into the collection's type-ahead
   /// and focuses the member its buffer picks; `false` for a key that is no character.
   #[must_use]
-  pub fn type_ahead_from<P: Realization>(&self, value: &AnyChoice, event: &KeyEvent) -> bool {
-    let Some(buffer) = self.type_ahead.typed::<P>(event)
+  pub fn type_ahead_from(&self, value: &AnyChoice, event: &KeyEvent) -> bool {
+    let Some(buffer) = self.type_ahead.typed(event)
     else {
       return false;
     };
-    if let Some(index) = self.roster.typed::<P>(&buffer, |held| held == value) {
-      self.roster.focus_at::<P>(index);
+    if let Some(index) = self.roster.typed(&buffer, |held| held == value) {
+      self.roster.focus_at(index);
     }
 
     true
@@ -400,7 +405,7 @@ impl<C: CollectionPolicy> Default for Collection<C> {
   }
 }
 
-impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
+impl<C: CollectionPolicy> Behavior for Collection<C> {
   #[inline(always)]
   fn role(&self) -> Option<Role> {
     Some(C::ROLE)
@@ -416,11 +421,11 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
     LabelPlacement::Leading
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn attach(&self, control: &ControlHandle) {
     let (chosen, choose) = (self.chosen.clone(), self.chosen.clone());
     let roster = self.roster.clone();
 
-    roster.root_at(control.node());
+    roster.root_at(control.node(), control.ops());
 
     if C::MEMBER_NATIVE.is_some() {
       let (chosen, asks) = (self.chosen.clone(), self.chosen.clone());
@@ -438,8 +443,13 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Collection<C> {
     }
 
     provide_context(
-      CollectionContext::<C>::new::<P>(move || chosen.read(), move |next| choose.ask(next), roster)
-        .set_commit_on_tab(self.commit_on_tab),
+      CollectionContext::<C>::new(
+        control.ops(),
+        move || chosen.read(),
+        move |next| choose.ask(next),
+        roster,
+      )
+      .set_commit_on_tab(self.commit_on_tab),
     );
   }
 
@@ -509,7 +519,7 @@ impl<C: CollectionPolicy> Member<C> {
   }
 }
 
-impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
+impl<C: CollectionPolicy> Behavior for Member<C> {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     C::MEMBER_NATIVE
@@ -525,7 +535,7 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     C::MEMBER_EVENTS
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn attach(&self, control: &ControlHandle) {
     let Some(group) = use_context::<CollectionContext<C>>()
     else {
       if C::MEMBER_NATIVE.is_some() {
@@ -558,14 +568,14 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     if C::MEMBER_NATIVE.is_some()
       && let Some(root) = group.roster.root()
     {
-      contents::MEMBERSHIP.write::<P>(node, &Membership::new(root, key));
+      contents::MEMBERSHIP.write_with(control.ops().content(), node, &Membership::new(root, key));
     }
 
     *self.collection.borrow_mut() = Some(group);
     control.refresh();
   }
 
-  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle) -> Prevent {
     if let Some(group) = self.collection() {
       group.choose(&self.value);
     }
@@ -573,21 +583,21 @@ impl<P: Realization, C: CollectionPolicy> Behavior<P> for Member<C> {
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     let Some(group) = self.collection()
     else {
       return Prevent::None;
     };
     let value = &self.value;
-    let typed = || C::LISTS && group.type_ahead_from::<P>(value, event);
+    let typed = || C::LISTS && group.type_ahead_from(value, event);
 
     match &event.key {
-      Key::Named(NamedKey::ArrowDown) => group.step_from::<P>(value, 1),
-      Key::Named(NamedKey::ArrowUp) => group.step_from::<P>(value, -1),
-      Key::Named(NamedKey::ArrowRight) if C::HORIZONTAL => group.step_from::<P>(value, 1),
-      Key::Named(NamedKey::ArrowLeft) if C::HORIZONTAL => group.step_from::<P>(value, -1),
-      Key::Named(NamedKey::Home) if C::LISTS => group.step_from::<P>(value, isize::MIN),
-      Key::Named(NamedKey::End) if C::LISTS => group.step_from::<P>(value, isize::MAX),
+      Key::Named(NamedKey::ArrowDown) => group.step_from(value, 1),
+      Key::Named(NamedKey::ArrowUp) => group.step_from(value, -1),
+      Key::Named(NamedKey::ArrowRight) if C::HORIZONTAL => group.step_from(value, 1),
+      Key::Named(NamedKey::ArrowLeft) if C::HORIZONTAL => group.step_from(value, -1),
+      Key::Named(NamedKey::Home) if C::LISTS => group.step_from(value, isize::MIN),
+      Key::Named(NamedKey::End) if C::LISTS => group.step_from(value, isize::MAX),
       Key::Named(NamedKey::Enter) if C::LISTS => group.choose(value),
       Key::Character(text) if text == " " && !typed() => group.choose(value),
       Key::Named(NamedKey::Tab) if group.commit_on_tab => {

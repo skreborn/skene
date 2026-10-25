@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use super::{Behavior, ControlHandle};
-use crate::{Choices, Controller, EventKind, NativeElement, Realization, Role, contents};
+use crate::{Choices, Controller, EventKind, NativeElement, Role, contents};
 
 /// A picker the platform draws and lists itself: the scriptless form of a
 /// [`BasicPicker`](crate::BasicPicker), realized as the platform's own choice control
@@ -60,7 +60,7 @@ impl Default for NativePicker {
   }
 }
 
-impl<P: Realization> Behavior<P> for NativePicker {
+impl Behavior for NativePicker {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Picker)
@@ -76,7 +76,7 @@ impl<P: Realization> Behavior<P> for NativePicker {
     &[]
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn attach(&self, control: &ControlHandle) {
     let Some(choices) = self.choices.clone()
     else {
       return;

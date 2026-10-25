@@ -8,8 +8,8 @@ use std::{
 use rustc_hash::FxHashMap;
 use skene_reactive::{Memo, Trigger};
 
-use super::{AnyChoice, AnyChosen, TypeAhead};
-use crate::{ChoiceOption, NodeId, Realization, Scene};
+use super::{AnyChoice, AnyChosen, ControlOps, TypeAhead};
+use crate::{ChoiceOption, NodeId};
 
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
 ///
@@ -26,7 +26,7 @@ use crate::{ChoiceOption, NodeId, Realization, Scene};
 pub struct Roster {
   members: Rc<RefCell<FxHashMap<NodeId, Member>>>,
   joins: Rc<Cell<u64>>,
-  root: Rc<Cell<Option<NodeId>>>,
+  root: Rc<Cell<Option<(NodeId, ControlOps)>>>,
   changed: Trigger,
 }
 
@@ -70,10 +70,11 @@ impl Roster {
     }
   }
 
-  /// Sets the node whose subtree holds the members, which orders them; until one is set
-  /// the members come in join order.
-  pub fn root_at(&self, node: NodeId) {
-    self.root.set(Some(node));
+  /// Sets the node whose subtree holds the members, which orders them in the scene of
+  /// the realization `ops` reaches, through which the roster also moves focus; until
+  /// one is set the members come in join order and no member is focused.
+  pub fn root_at(&self, node: NodeId, ops: ControlOps) {
+    self.root.set(Some((node, ops)));
     self.changed.notify();
   }
 
@@ -81,7 +82,14 @@ impl Roster {
   #[inline(always)]
   #[must_use]
   pub fn root(&self) -> Option<NodeId> {
-    self.root.get()
+    self.root.get().map(|(node, _)| node)
+  }
+
+  /// Focuses `node` through the realization the roster's root was set in.
+  fn focus(&self, node: NodeId) {
+    if let Some((_, ops)) = self.root.get() {
+      ops.focus(node);
+    }
   }
 
   /// Adds the member `node` holding `value`, going by the name `name` reads and
@@ -118,55 +126,54 @@ impl Roster {
   }
 
   /// Focuses the enabled member at `index` among the [`enabled`](Self::enabled), if
-  /// there is one.
-  pub fn focus_at<P: Realization>(&self, index: usize) {
-    if let Some((node, _)) = self.enabled::<P>().get(index) {
-      P::focus(*node);
+  /// there is one and the roster has its root.
+  pub fn focus_at(&self, index: usize) {
+    if let Some((node, _)) = self.enabled().get(index) {
+      self.focus(*node);
     }
   }
 
   /// Focuses the first enabled member `chosen` holds, or the first enabled member when
-  /// it holds none.
-  pub fn focus_chosen<P: Realization>(&self, chosen: &AnyChosen) {
-    let members = self.enabled::<P>();
+  /// it holds none, once the roster has its root.
+  pub fn focus_chosen(&self, chosen: &AnyChosen) {
+    let members = self.enabled();
     let index = members
       .iter()
       .position(|(_, held)| chosen.contains(held))
       .unwrap_or(0);
 
     if let Some((node, _)) = members.get(index) {
-      P::focus(*node);
+      self.focus(*node);
     }
   }
 
-  /// The members whose control is enabled, in tree order under `P`'s scene, tracked.
+  /// The members whose control is enabled, in tree order, tracked.
   #[must_use]
-  pub fn enabled<P: Realization>(&self) -> Vec<(NodeId, AnyChoice)> {
+  pub fn enabled(&self) -> Vec<(NodeId, AnyChoice)> {
     self
-      .walk::<P>()
+      .walk()
       .into_iter()
       .filter(|member| !(member.disabled)())
       .map(|member| (member.node, member.value))
       .collect()
   }
 
-  /// The members in tree order under `P`'s scene, tracked.
+  /// The members in tree order, tracked.
   #[must_use]
-  pub fn ordered<P: Realization>(&self) -> Vec<(NodeId, AnyChoice)> {
+  pub fn ordered(&self) -> Vec<(NodeId, AnyChoice)> {
     self
-      .walk::<P>()
+      .walk()
       .into_iter()
       .map(|member| (member.node, member.value))
       .collect()
   }
 
   /// The members as the options of a choice, each keyed by its ordinal and shown by its
-  /// name (empty where its label supplied none), in tree order under `P`'s scene,
-  /// tracked.
+  /// name (empty where its label supplied none), in tree order, tracked.
   #[must_use]
-  pub fn options<P: Realization>(&self) -> Vec<ChoiceOption> {
+  pub fn options(&self) -> Vec<ChoiceOption> {
     self
-      .walk::<P>()
+      .walk()
       .into_iter()
       .map(|member| {
         ChoiceOption::new(member.key(), member.name().unwrap_or_default())
@@ -210,13 +217,9 @@ impl Roster {
   /// value `current` answers for has focus or is chosen; a member whose label supplied
   /// no name is passed over.
   #[must_use]
-  pub fn typed<P: Realization>(
-    &self,
-    buffer: &str,
-    current: impl Fn(&AnyChoice) -> bool,
-  ) -> Option<usize> {
+  pub fn typed(&self, buffer: &str, current: impl Fn(&AnyChoice) -> bool) -> Option<usize> {
     let members: Vec<Member> = self
-      .walk::<P>()
+      .walk()
       .into_iter()
       .filter(|member| !(member.disabled)())
       .collect();
@@ -227,16 +230,13 @@ impl Roster {
   }
 
   /// The group's one tab stop as a memo: the first enabled member whose value `chosen`
-  /// holds, else the first enabled member, in tree order under `P`'s scene; a member
-  /// compares its value against it.
-  pub fn tab_stop<P: Realization>(
-    &self,
-    chosen: impl Fn() -> AnyChosen + 'static,
-  ) -> Memo<Option<AnyChoice>> {
+  /// holds, else the first enabled member, in tree order; a member compares its value
+  /// against it.
+  pub fn tab_stop(&self, chosen: impl Fn() -> AnyChosen + 'static) -> Memo<Option<AnyChoice>> {
     let roster = self.clone();
 
     Memo::new(move |_| {
-      let enabled = roster.enabled::<P>();
+      let enabled = roster.enabled();
       let chosen = chosen();
 
       enabled
@@ -247,11 +247,11 @@ impl Roster {
     })
   }
 
-  fn walk<P: Realization>(&self) -> Vec<Member> {
+  fn walk(&self) -> Vec<Member> {
     self.changed.track();
 
     let members = self.members.borrow();
-    let Some(root) = self.root.get()
+    let Some((root, ops)) = self.root.get()
     else {
       let mut joined: Vec<Member> = members.values().cloned().collect();
 
@@ -260,22 +260,15 @@ impl Roster {
       return joined;
     };
 
-    Scene::<P>::with(|scene| {
-      let mut ordered = Vec::with_capacity(members.len());
-      let mut pending = vec![root];
+    let mut ordered = Vec::with_capacity(members.len());
 
-      while let Some(node) = pending.pop() {
-        if let Some(member) = members.get(&node) {
-          ordered.push(member.clone());
-        }
-
-        let children: Vec<NodeId> = scene.children(node).collect();
-
-        pending.extend(children.into_iter().rev());
+    ops.walk(root, |node| {
+      if let Some(member) = members.get(&node) {
+        ordered.push(member.clone());
       }
+    });
 
-      ordered
-    })
+    ordered
   }
 }
 

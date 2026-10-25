@@ -25,6 +25,8 @@ pub use skene_web::ContainerName
 pub use skene_web::ContextMenuBase
 pub use skene_web::ContextMenuWithCornerRadius
 pub use skene_web::ControlBase
+pub use skene_web::ControlHandle
+pub use skene_web::ControlOps
 pub use skene_web::ControlState
 pub use skene_web::CornerRadius
 pub use skene_web::DecorationBase
@@ -376,9 +378,9 @@ pub fn skene_web::platform::web::Web::remove_attribute(skene_foundation::spine::
 pub fn skene_web::platform::web::Web::set_attribute(skene_foundation::spine::node::NodeId, &str, &str)
 pub fn skene_web::platform::web::Web::set_declarations(skene_foundation::spine::node::NodeId, &skene_web::platform::web::Declarations)
 pub fn skene_web::platform::web::Web::set_text(skene_foundation::spine::node::NodeId, &str)
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::BasicListboxBase<skene_web::platform::web::Web, C> for skene_web::BasicListbox<C>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::ListboxPolicy>> for skene_web::BasicListbox<C>
 impl<C: skene_foundation::control::choice::Chosen> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicListbox<C>
@@ -705,23 +707,23 @@ pub fn skene_web::ContextMenu::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::ContextMenu where skene_foundation::context_menu::ContextMenu<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::ContextMenu::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::prelude::Control<B: skene_foundation::control::Behavior<skene_web::Active>>(_)
-impl<B: core::fmt::Debug + skene_foundation::control::Behavior<skene_web::Active>> core::fmt::Debug for skene_web::Control<B>
+pub struct skene_web::prelude::Control<B: skene_foundation::control::Behavior>(_)
+impl<B: core::fmt::Debug + skene_foundation::control::Behavior> core::fmt::Debug for skene_web::Control<B>
 pub fn skene_web::Control<B>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<B: skene_foundation::control::Behavior<skene_web::Active> + core::default::Default> core::default::Default for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior + core::default::Default> core::default::Default for skene_web::Control<B>
 pub fn skene_web::Control<B>::default() -> Self
-impl<B: skene_foundation::control::Behavior<skene_web::Active>, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl<B: skene_foundation::control::Behavior, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::spine::view::AnyKind for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::spine::wraps::Wraps for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::AnyKind for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::wraps::Wraps for skene_web::Control<B>
 pub type skene_web::Control<B>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, B>
 pub fn skene_web::Control<B>::inner(&self) -> &Self::Inner
 pub fn skene_web::Control<B>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Control<B>::into_inner(self) -> Self::Inner
 pub fn skene_web::Control<B>::wrap(Self::Inner) -> Self
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
 pub struct skene_web::prelude::Enhance(_)
 impl core::fmt::Debug for skene_web::Enhance
 pub fn skene_web::Enhance::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1297,23 +1299,23 @@ pub fn skene_web::ContextMenu::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::ContextMenu where skene_foundation::context_menu::ContextMenu<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::ContextMenu::build(self) -> skene_foundation::spine::node::NodeId
-pub struct skene_web::Control<B: skene_foundation::control::Behavior<skene_web::Active>>(_)
-impl<B: core::fmt::Debug + skene_foundation::control::Behavior<skene_web::Active>> core::fmt::Debug for skene_web::Control<B>
+pub struct skene_web::Control<B: skene_foundation::control::Behavior>(_)
+impl<B: core::fmt::Debug + skene_foundation::control::Behavior> core::fmt::Debug for skene_web::Control<B>
 pub fn skene_web::Control<B>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<B: skene_foundation::control::Behavior<skene_web::Active> + core::default::Default> core::default::Default for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior + core::default::Default> core::default::Default for skene_web::Control<B>
 pub fn skene_web::Control<B>::default() -> Self
-impl<B: skene_foundation::control::Behavior<skene_web::Active>, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<__P>, Self: 'static
+impl<B: skene_foundation::control::Behavior, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_web::Control<B> where skene_foundation::control::Control<skene_web::Active, B>: skene_foundation::spine::view::View<__P>, Self: 'static
 pub fn skene_web::Control<B>::build(self) -> skene_foundation::spine::node::NodeId
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::spine::view::AnyKind for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::spine::wraps::Wraps for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::control::ControlBase<skene_web::platform::web::Web, B> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::view::AnyKind for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::spine::wraps::Wraps for skene_web::Control<B>
 pub type skene_web::Control<B>::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, B>
 pub fn skene_web::Control<B>::inner(&self) -> &Self::Inner
 pub fn skene_web::Control<B>::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Control<B>::into_inner(self) -> Self::Inner
 pub fn skene_web::Control<B>::wrap(Self::Inner) -> Self
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
-impl<B: skene_foundation::control::Behavior<skene_web::Active>> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Control<B>
+impl<B: skene_foundation::control::Behavior> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Control<B>
 pub struct skene_web::Deferred(_)
 impl core::fmt::Debug for skene_web::Deferred
 pub fn skene_web::Deferred::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1708,7 +1710,6 @@ pub type skene_web::BasicTextEditor = skene_web::Control<skene_foundation::contr
 pub type skene_web::BasicTextField = skene_web::Control<skene_foundation::control::text_entry::TextEntry>
 pub type skene_web::Condition = skene_foundation::spine::condition::Condition<f32>
 pub type skene_web::ContainerQuery = skene_foundation::spine::condition::ContainerQuery<f32>
-pub type skene_web::ControlHandle = skene_foundation::control::ControlHandle<skene_web::Active>
 pub type skene_web::Definition<T> = skene_foundation::spine::leaf::Definition<T, f32>
 pub type skene_web::Dimension = skene_foundation::spine::values::dimension::Dimension<f32>
 pub type skene_web::Inset<T> = skene_foundation::spine::values::inset::Inset<T>

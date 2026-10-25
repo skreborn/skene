@@ -454,8 +454,18 @@ interaction *is*—its role, the native element it stands in where a platform ha
 (`NativeElement`: a button, a checkbox, a radio, a range, a text entry or a picker; a
 control with none is drawn by its view and named by its role), its keys, its pointer
 handling, what it reports to assistive technology, where it sits in the tab order, and
-which parts it exposes. `Toggle`,
-`Slider`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`) ship; a
+which parts it exposes. `Behavior` has no type parameter: its hooks take a plain
+`ControlHandle`, the control's node with its name, its disabled read and a
+`ControlOps`, the operations of the build's one realization a behavior reaches (focus,
+a click dispatched through the scene, a part's node, a walk of a subtree in tree order,
+the platform's clock for `schedule` and `cancel`, a size observation and a pointer's
+local position in `f32`, a length rounded to the realization's unit, and the
+`ContentOps` beneath the controllers) as plain functions, filled once per build by
+`ControlOps::of::<P>()` in `Control<P, B>`'s build, never a `dyn` realization; so a
+third party's behavior is written exactly as the shipped ones are, naming no
+realization, and each facade re-exports `ControlHandle` and `ControlOps` for it.
+`Toggle`, `Slider`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`)
+ship; a
 collection's `CollectionPolicy` says what it and its members are, which keys move
 between the members and what a move and a choice do, and `RadioGroup` (with
 `Radio`), `Listbox` (with `ListboxOption`) and `Menu` (with `MenuOption`) are
@@ -466,7 +476,8 @@ and whose moves pass over the disabled members in one place; `BasicButton`,
 a facade's views of a control over a `RadioGroup` or a `Listbox`, typed by what it
 chooses, and `BasicPicker<T>` composes a `Popup` face with a `Listbox` in an `Overlay`.
 Both have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset
-by a `Realization::schedule` timer, and `Roster::typed` matches them against the names
+by a timer on the realization's clock (`ControlOps::schedule`), and `Roster::typed`
+matches them, in the scene order its root's `ControlOps` walks, against the names
 the members' labels supply as they read now (`Label::set_name`, `Label::derive_name`),
 a member with none passed over, one character cycling through the
 names starting with it and more matching a prefix; the listbox moves focus to the
@@ -598,7 +609,7 @@ re-export.
   type registers a controller (`register_with`) and writes a content
   (`ContentKey::write_with`); `register::<P>` and `write::<P>` are the realization's and
   a door library's one-line forms of the same calls, and `ControlHandle::register`
-  passes `ContentOps::of::<P>()`. The controller keeps what the node shows (read once
+  passes the `ContentOps` its `ControlOps` carries. The controller keeps what the node shows (read once
   through `Realization::read`, then what it wrote and what was reported) and decides
   over it in plain functions the spine unit-tests: a report the truth already holds asks
   nothing and stands, and so does one made while it writes, its echo, but for a

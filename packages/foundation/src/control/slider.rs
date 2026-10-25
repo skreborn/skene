@@ -4,7 +4,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_reactive::Signal;
 
-use super::{Behavior, ControlHandle, Controlled, PointerPhase};
+use super::{Behavior, ControlHandle, ControlOps, Controlled, PointerPhase};
 use crate::{
   AccessProp,
   Axis,
@@ -22,10 +22,7 @@ use crate::{
   PointerEvent,
   Prevent,
   Range,
-  Realization,
   Role,
-  Scalar,
-  Scene,
   contents,
   realize::Source,
 };
@@ -175,13 +172,13 @@ impl Slider {
 
   /// Asks for the value whose thumb centers under the pointer along the measured
   /// extent, the pointer measured from the track's start where the control has one.
-  fn slide<P: Realization>(&self, event: &PointerEvent) {
+  fn slide(&self, event: &PointerEvent, ops: ControlOps) {
     let event = self
       .track
       .get()
-      .map_or(*event, |track| P::localize_pointer(track, event));
+      .map_or(*event, |track| ops.localize_pointer(track, event));
     let extent = self.extent.get();
-    let thumb = P::Scalar::from_f32(self.thumb).to_f32().clamp(0., extent);
+    let thumb = ops.round_length(self.thumb).clamp(0., extent);
     let travel = extent - thumb;
 
     if travel > 0. {
@@ -222,7 +219,7 @@ impl Default for Slider {
   }
 }
 
-impl<P: Realization> Behavior<P> for Slider {
+impl Behavior for Slider {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Slider)
@@ -246,7 +243,7 @@ impl<P: Realization> Behavior<P> for Slider {
     Self::EVENTS
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn attach(&self, control: &ControlHandle) {
     let range = self.range.clone();
     let (value, asks) = (self.value.clone(), self.value.clone());
 
@@ -261,26 +258,26 @@ impl<P: Realization> Behavior<P> for Slider {
     ));
   }
 
-  fn mounted(&self, control: &ControlHandle<P>) {
+  fn mounted(&self, control: &ControlHandle) {
     let node = control.node();
-    let track = Scene::<P>::with(|scene| scene.find_part(node, Part::Track));
+    let track = control.find_part(Part::Track);
     let extent = Rc::clone(&self.extent);
     let axis = self.axis;
 
     self.track.set(track);
     // The track where the control has one, the box where it has none.
-    let _observed = P::observe_size(
+    let _observed = control.ops().observe_size(
       track.unwrap_or(node),
       Rc::new(move |size| {
         extent.set(match axis {
-          Axis::Horizontal => size.width.to_f32(),
-          Axis::Vertical => size.height.to_f32(),
+          Axis::Horizontal => size.width,
+          Axis::Vertical => size.height,
         });
       }),
     );
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     let Some(next) = self.key_value(&event.key)
     else {
       return Prevent::None;
@@ -295,7 +292,7 @@ impl<P: Realization> Behavior<P> for Slider {
     &self,
     phase: PointerPhase,
     event: &PointerEvent,
-    _control: &ControlHandle<P>,
+    control: &ControlHandle,
   ) -> Prevent {
     let primary = event
       .button
@@ -308,7 +305,7 @@ impl<P: Realization> Behavior<P> for Slider {
         }
 
         self.pressed.set(true);
-        self.slide::<P>(event);
+        self.slide(event, control.ops());
 
         Prevent::All
       }
@@ -317,7 +314,7 @@ impl<P: Realization> Behavior<P> for Slider {
           return Prevent::None;
         }
 
-        self.slide::<P>(event);
+        self.slide(event, control.ops());
 
         Prevent::Bubbling
       }

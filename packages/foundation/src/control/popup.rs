@@ -16,7 +16,6 @@ use crate::{
   NodeId,
   PopupKind,
   Prevent,
-  Realization,
   Role,
 };
 
@@ -124,7 +123,7 @@ impl Popup {
   }
 }
 
-impl<P: Realization> Behavior<P> for Popup {
+impl Behavior for Popup {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     match self.kind {
@@ -154,13 +153,13 @@ impl<P: Realization> Behavior<P> for Popup {
     &[EventKind::Click, EventKind::KeyDown]
   }
 
-  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle) -> Prevent {
     self.ask(!self.read());
 
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     let typed = || !self.read() && self.on_typed.as_ref().is_some_and(|typed| typed(event));
 
     match &event.key {

@@ -7,31 +7,37 @@ use std::{
   time::Duration,
 };
 
-use crate::{Key, KeyEvent, Realization, Timer};
+use super::ControlOps;
+use crate::{Key, KeyEvent, Timer};
 
 /// How long after the last character a type-ahead buffer is kept.
 pub const TYPE_AHEAD_RESET: Duration = Duration::from_millis(500);
 
 /// The characters typed in quick succession over a grouping control, cleared once the
 /// platform's clock has run [`TYPE_AHEAD_RESET`] past the last.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 #[must_use]
 pub struct TypeAhead {
   buffer: RefCell<String>,
   reset: Cell<Option<Timer>>,
+  ops: ControlOps,
 }
 
 impl TypeAhead {
-  /// An empty buffer.
+  /// An empty buffer, reset on the clock of the realization `ops` reaches.
   #[inline(always)]
-  pub fn new() -> Self {
-    Self::default()
+  pub const fn new(ops: ControlOps) -> Self {
+    Self {
+      buffer: RefCell::new(String::new()),
+      reset: Cell::new(None),
+      ops,
+    }
   }
 
   /// Feeds `event` into the buffer: the buffer so far for a printable key typed
   /// without `Ctrl`, `Alt` or `Meta`, a space only extending a buffer already begun;
   /// `None` for any other key. Each character schedules the reset afresh.
-  pub fn typed<P: Realization>(self: &Rc<Self>, event: &KeyEvent) -> Option<String> {
+  pub fn typed(self: &Rc<Self>, event: &KeyEvent) -> Option<String> {
     let modifiers = event.modifiers;
 
     if modifiers.ctrl || modifiers.alt || modifiers.meta {
@@ -50,20 +56,19 @@ impl TypeAhead {
     }
 
     if let Some(timer) = self.reset.take() {
-      P::cancel(timer);
+      self.ops.cancel(timer);
     }
 
     self.buffer.borrow_mut().push(character);
 
     let cleared = Rc::clone(self);
 
-    self.reset.set(Some(P::schedule(
-      TYPE_AHEAD_RESET,
-      Box::new(move || {
+    self
+      .reset
+      .set(Some(self.ops.schedule(TYPE_AHEAD_RESET, move || {
         cleared.buffer.borrow_mut().clear();
         cleared.reset.set(None);
-      }),
-    )));
+      })));
 
     Some(self.buffer.borrow().clone())
   }

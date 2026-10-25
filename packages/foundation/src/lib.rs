@@ -51,7 +51,9 @@
 //! [`Visibility`], [`OneOf`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
 //! keep the branches they hide. [`Theme`] defines a token set beneath it, and
 //! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
-//! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Slider`],
+//! [`Behavior`] saying what the interaction is, acting through a [`ControlHandle`] whose
+//! [`ControlOps`] reach the build's realization as plain functions, so a behavior names
+//! none; [`Activate`], [`Toggle`], [`Slider`],
 //! [`RadioGroup`] with [`Radio`], [`Popup`], [`Listbox`] with [`ListboxOption`], and
 //! [`TextEntry`] ship, and the `Basic*` aliases name the control over each; a choice's
 //! value is the app's own type, a [`Choice`], which the cores hold erased ([`AnyChoice`],
@@ -149,6 +151,7 @@ pub use crate::{
     Control,
     ControlBase,
     ControlHandle,
+    ControlOps,
     Controlled,
     ControlledChoice,
     Label,

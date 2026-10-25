@@ -4,14 +4,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_terminal::{
-  self as terminal,
-  Activate,
-  HasChild,
-  platform::terminal::Terminal,
-  prelude::*,
-  testing,
-};
+use skene_terminal::{self as terminal, Activate, HasChild, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -72,7 +65,7 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
   /// Takes every turn for itself.
   struct Dial;
 
-  impl terminal::Behavior<Terminal> for Dial {
+  impl terminal::Behavior for Dial {
     fn native(&self) -> Option<terminal::NativeElement> {
       Some(terminal::NativeElement::Button)
     }

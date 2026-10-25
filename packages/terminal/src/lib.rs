@@ -172,6 +172,8 @@ pub use skene_foundation::{
   ContextMenuBase,
   ContextMenuWithCornerRadius,
   ControlBase,
+  ControlHandle,
+  ControlOps,
   ControlState,
   CornerRadius,
   DecorationBase,

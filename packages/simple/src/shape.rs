@@ -211,7 +211,7 @@ pub(crate) fn as_part<P: Realization>(part: Part, view: impl View<P>) -> NodeId 
 /// The chrome of a text entry: full width, padded, on the card surface, a hairline in
 /// the border color that becomes the ring while focused, rounded; on the disabled
 /// surface under the default cursor while disabled.
-pub(crate) fn field_chrome<P: Realization, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
+pub(crate) fn field_chrome<P: Realization, B: Behavior>(control: Control<P, B>) -> Control<P, B>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,

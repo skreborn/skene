@@ -433,7 +433,7 @@ fn a_low_level_node_takes_its_wrappers_layout() {
 /// A behavior standing for a set that is only partly checked.
 struct Partial;
 
-impl Behavior<Web> for Partial {
+impl Behavior for Partial {
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Checkbox)
   }

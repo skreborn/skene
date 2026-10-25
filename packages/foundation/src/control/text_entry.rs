@@ -11,7 +11,6 @@ use crate::{
   EventKind,
   Keyboard,
   NativeElement,
-  Realization,
   Role,
   TextSelection,
   contents,
@@ -201,7 +200,7 @@ impl Default for TextEntry {
   }
 }
 
-impl<P: Realization> Behavior<P> for TextEntry {
+impl Behavior for TextEntry {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(if self.lines > 1 {
@@ -227,24 +226,25 @@ impl<P: Realization> Behavior<P> for TextEntry {
     self.lines
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn attach(&self, control: &ControlHandle) {
     let node = control.node();
+    let ops = control.ops().content();
 
     if let Some(placeholder) = self.placeholder.clone() {
-      placeholder.bind(node, |node, hint| {
-        contents::PLACEHOLDER.write::<P>(node, hint);
+      placeholder.bind(node, move |node, hint| {
+        contents::PLACEHOLDER.write_with(ops, node, hint);
       });
     }
 
     if let Some(secure) = self.secure.clone().filter(|_| self.lines == 1) {
-      secure.bind(node, |node, secure| {
-        contents::SECURE.write::<P>(node, secure);
+      secure.bind(node, move |node, secure| {
+        contents::SECURE.write_with(ops, node, secure);
       });
     }
 
     if let Some(keyboard) = self.keyboard.clone() {
-      keyboard.bind(node, |node, keyboard| {
-        contents::KEYBOARD.write::<P>(node, keyboard);
+      keyboard.bind(node, move |node, keyboard| {
+        contents::KEYBOARD.write_with(ops, node, keyboard);
       });
     }
 

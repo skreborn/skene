@@ -5,6 +5,7 @@ mod choice;
 mod collection;
 mod controlled;
 mod native_picker;
+mod ops;
 mod popup;
 mod roster;
 mod slider;
@@ -12,7 +13,7 @@ mod text_entry;
 mod toggle;
 mod type_ahead;
 
-use std::{marker::PhantomData, rc::Rc};
+use std::rc::Rc;
 
 use skene_reactive::{Effect, Get, Owner, Set, Signal, Trigger, untrack};
 
@@ -40,6 +41,7 @@ pub use self::{
   },
   controlled::Controlled,
   native_picker::NativePicker,
+  ops::ControlOps,
   popup::Popup,
   roster::Roster,
   slider::{Slider, SliderRange},
@@ -56,7 +58,6 @@ use crate::{
   ClickEvent,
   Condition,
   ContainerName,
-  ContentOps,
   ControlFacts,
   ControlState,
   Controls,
@@ -94,7 +95,6 @@ use crate::{
   View,
   WheelEvent,
   Wraps,
-  dispatch_click,
   realize::{Source, report_access},
 };
 
@@ -138,6 +138,10 @@ pub enum LabelPlacement {
 /// signals re-applies when it changes. Only the events in [`listens`] and those the
 /// control's handlers want are registered.
 ///
+/// A behavior names no realization: every hook is given the control's
+/// [`ControlHandle`], which reaches the build's one realization through plain functions
+/// ([`ControlOps`]), so a third party's behavior is written as the shipped ones are.
+///
 /// [`access`]: Self::access
 /// [`focus_order`]: Self::focus_order
 /// [`state`]: Self::state
@@ -146,7 +150,7 @@ pub enum LabelPlacement {
   message = "`{Self}` is not a control behavior",
   label = "a behavior states a control's kind, role, the events it acts on, and what it reports"
 )]
-pub trait Behavior<P: Realization>: 'static {
+pub trait Behavior: 'static {
   /// The native element the control stands in, where a platform has one; `None`, the
   /// default, for a control its view draws.
   #[inline(always)]
@@ -193,40 +197,40 @@ pub trait Behavior<P: Realization>: 'static {
   /// registered here ([`ControlHandle::register`]). A behavior whose reports change here
   /// calls [`ControlHandle::refresh`].
   #[inline(always)]
-  fn attach(&self, _control: &ControlHandle<P>) {}
+  fn attach(&self, _control: &ControlHandle) {}
 
   /// Runs once the control's parts and child are in place, under the control's owner:
   /// what a behavior finds among its parts, and measures, goes here.
   #[inline(always)]
-  fn mounted(&self, _control: &ControlHandle<P>) {}
+  fn mounted(&self, _control: &ControlHandle) {}
 
   /// What the behavior does on a click.
   #[inline(always)]
-  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle) -> Prevent {
     Prevent::None
   }
 
   /// What the behavior does on a key pressed while the control holds focus.
   #[inline(always)]
-  fn on_key(&self, _event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key(&self, _event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     Prevent::None
   }
 
   /// What the behavior does on a key released while the control holds focus.
   #[inline(always)]
-  fn on_key_up(&self, _event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key_up(&self, _event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     Prevent::None
   }
 
   /// What the behavior does when the control loses focus.
   #[inline(always)]
-  fn on_blur(&self, _control: &ControlHandle<P>) {}
+  fn on_blur(&self, _control: &ControlHandle) {}
 
   /// What the behavior does on a wheel turned over the control, before the platform
   /// scrolls by it; suppressing the platform's response keeps the scroll from
   /// happening.
   #[inline(always)]
-  fn on_wheel(&self, _event: &WheelEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_wheel(&self, _event: &WheelEvent, _control: &ControlHandle) -> Prevent {
     Prevent::None
   }
 
@@ -236,7 +240,7 @@ pub trait Behavior<P: Realization>: 'static {
     &self,
     _phase: PointerPhase,
     _event: &PointerEvent,
-    _control: &ControlHandle<P>,
+    _control: &ControlHandle,
   ) -> Prevent {
     Prevent::None
   }
@@ -260,18 +264,22 @@ pub trait Behavior<P: Realization>: 'static {
   }
 }
 
-/// A behavior's access to the control it drives: the node, its sink, focus, a click
-/// dispatched at it, and a re-read of its reports.
+/// A behavior's access to the control it drives.
+///
+/// It holds the node, its name and disabled state, focus, a click dispatched at it, its
+/// parts, the registration of what it controls, a re-read of its reports, and the
+/// build's realization's operations ([`ControlOps`]) for what it does beyond its own
+/// node.
 #[must_use]
-pub struct ControlHandle<P: Realization> {
+pub struct ControlHandle {
   node: NodeId,
   name: Option<Rc<dyn Fn() -> String>>,
   disabled: Rc<dyn Fn() -> bool>,
   changed: Trigger,
-  platform: PhantomData<fn() -> P>,
+  ops: ControlOps,
 }
 
-impl<P: Realization> std::fmt::Debug for ControlHandle<P> {
+impl std::fmt::Debug for ControlHandle {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ControlHandle")
@@ -279,7 +287,7 @@ impl<P: Realization> std::fmt::Debug for ControlHandle<P> {
   }
 }
 
-impl<P: Realization> ControlHandle<P> {
+impl ControlHandle {
   /// The control's node.
   #[inline(always)]
   pub const fn node(&self) -> NodeId {
@@ -316,16 +324,30 @@ impl<P: Realization> ControlHandle<P> {
     Rc::clone(&self.disabled)
   }
 
+  /// The operations of the build's realization, for what the behavior does beyond the
+  /// control's own node.
+  #[inline(always)]
+  pub const fn ops(&self) -> ControlOps {
+    self.ops
+  }
+
   /// Moves focus to the control.
   #[inline(always)]
   pub fn focus(&self) {
-    P::focus(self.node);
+    self.ops.focus(self.node);
   }
 
   /// Dispatches `event` as a click at the control, so its behavior and handlers see it.
   #[inline(always)]
   pub fn click(&self, event: &ClickEvent) -> Prevented {
-    dispatch_click::<P>(self.node, event)
+    self.ops.click(self.node, event)
+  }
+
+  /// The control's first node recorded as `part`.
+  #[inline(always)]
+  #[must_use]
+  pub fn find_part(&self, part: Part) -> Option<NodeId> {
+    self.ops.find_part(self.node, part)
   }
 
   /// Registers `controller` for the control's content: the truth it reads is written to
@@ -337,7 +359,7 @@ impl<P: Realization> ControlHandle<P> {
 
     controller
       .derive_disabled(move || disabled())
-      .register_with(ContentOps::of::<P>(), self.node);
+      .register_with(self.ops.content(), self.node);
   }
 
   /// Re-reads what the behavior reports: its state, accessibility and focus order.
@@ -420,7 +442,7 @@ impl<P: Realization> From<&str> for Label<P> {
 /// behavior places it ([`Behavior::label_placement`]): leading or trailing in the row,
 /// or beside the box, before it among its siblings.
 #[must_use]
-pub struct Control<P: Realization, B: Behavior<P>> {
+pub struct Control<P: Realization, B: Behavior> {
   behavior: B,
   inner: LayoutBox<P, PlainChild>,
   label: Option<Label<P>>,
@@ -437,13 +459,13 @@ pub struct Control<P: Realization, B: Behavior<P>> {
   child: Option<AnyView<P>>,
 }
 
-impl<P: Realization, B: Behavior<P>> std::fmt::Debug for Control<P, B> {
+impl<P: Realization, B: Behavior> std::fmt::Debug for Control<P, B> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter.debug_struct("Control").finish_non_exhaustive()
   }
 }
 
-impl<P: Realization, B: Behavior<P>> Control<P, B> {
+impl<P: Realization, B: Behavior> Control<P, B> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[inline(always)]
   pub fn new(behavior: B) -> Self {
@@ -474,14 +496,14 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
   }
 }
 
-impl<P: Realization, B: Behavior<P> + Default> Default for Control<P, B> {
+impl<P: Realization, B: Behavior + Default> Default for Control<P, B> {
   #[inline(always)]
   fn default() -> Self {
     Self::new(B::default())
   }
 }
 
-impl<P: Realization, B: Behavior<P>> Control<P, B> {
+impl<P: Realization, B: Behavior> Control<P, B> {
   crate::properties! { box_style_mut, P;
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between the control's parts, body and label; half an em unless told otherwise";
@@ -761,7 +783,7 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
   }
 }
 
-impl<P: Realization, B: Behavior<P>> Control<P, B> {
+impl<P: Realization, B: Behavior> Control<P, B> {
   /// The behavior driving the control.
   #[inline(always)]
   pub const fn behavior(&self) -> &B {
@@ -777,9 +799,9 @@ impl<P: Realization, B: Behavior<P>> Control<P, B> {
   }
 }
 
-impl<P: Realization, B: Behavior<P>> AnyKind for Control<P, B> {}
+impl<P: Realization, B: Behavior> AnyKind for Control<P, B> {}
 
-impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
+impl<P: Realization, B: Behavior> View<P> for Control<P, B> {
   fn build(self) -> NodeId {
     let Self {
       behavior,
@@ -860,7 +882,7 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
         name,
         disabled: Rc::clone(&disabled),
         changed: Trigger::new(),
-        platform: PhantomData,
+        ops: const { ControlOps::of::<P>() },
       });
       let flags = Flags {
         disabled: Rc::clone(&disabled),
@@ -875,9 +897,9 @@ impl<P: Realization, B: Behavior<P>> View<P> for Control<P, B> {
         }),
       };
 
-      bind_reports(&handle, &behavior, &flags, focus_order);
+      bind_reports::<P, B>(&handle, &behavior, &flags, focus_order);
       behavior.attach(&handle);
-      register(node, &behavior, &handle, &disabled, observers);
+      register::<P, B>(node, &behavior, &handle, &disabled, observers);
       mount_contents::<P>(
         node,
         placement,
@@ -959,8 +981,8 @@ struct Flags {
 
 /// Binds the render effects writing the control's state, accessibility and focus
 /// order, each re-applied when what it reads changes or the handle is refreshed.
-fn bind_reports<P: Realization, B: Behavior<P>>(
-  handle: &Rc<ControlHandle<P>>,
+fn bind_reports<P: Realization, B: Behavior>(
+  handle: &Rc<ControlHandle>,
   behavior: &Rc<B>,
   flags: &Flags,
   focus_order: Option<Source<FocusOrder>>,
@@ -1053,13 +1075,13 @@ fn bind_reports<P: Realization, B: Behavior<P>>(
 }
 
 /// What every acting handler shares: the behavior, its handle and the disabled read.
-struct Actor<P: Realization, B: Behavior<P>> {
+struct Actor<B: Behavior> {
   behavior: Rc<B>,
-  handle: Rc<ControlHandle<P>>,
+  handle: Rc<ControlHandle>,
   disabled: Rc<dyn Fn() -> bool>,
 }
 
-impl<P: Realization, B: Behavior<P>> Clone for Actor<P, B> {
+impl<B: Behavior> Clone for Actor<B> {
   fn clone(&self) -> Self {
     Self {
       behavior: Rc::clone(&self.behavior),
@@ -1069,7 +1091,7 @@ impl<P: Realization, B: Behavior<P>> Clone for Actor<P, B> {
   }
 }
 
-impl<P: Realization, B: Behavior<P>> Actor<P, B> {
+impl<B: Behavior> Actor<B> {
   /// The behavior's handler for an event of `kind`, `None` for a kind no behavior
   /// acts on: a disabled control answers without acting, and a key an input method is
   /// composing never reaches the behavior.
@@ -1150,7 +1172,7 @@ impl<P: Realization, B: Behavior<P>> Actor<P, B> {
   fn act<E: ?Sized + 'static>(
     &self,
     kind: EventKind,
-    act: impl Fn(&B, &E, &ControlHandle<P>) -> Prevent + 'static,
+    act: impl Fn(&B, &E, &ControlHandle) -> Prevent + 'static,
   ) -> Rc<Acting<E>> {
     let actor = self.clone();
     let when_disabled = match kind {
@@ -1175,10 +1197,10 @@ impl<P: Realization, B: Behavior<P>> Actor<P, B> {
 
 /// Registers the behavior's handler for each event it acts on, then the observers:
 /// the behavior acts first and its verdict stands, and the observers see what it did.
-fn register<P: Realization, B: Behavior<P>>(
+fn register<P: Realization, B: Behavior>(
   node: NodeId,
   behavior: &Rc<B>,
-  handle: &Rc<ControlHandle<P>>,
+  handle: &Rc<ControlHandle>,
   disabled: &Rc<dyn Fn() -> bool>,
   observers: Vec<Handler>,
 ) {
@@ -1331,14 +1353,14 @@ pub trait BasicListboxBase<P: Realization, C: Chosen>: Wraps<Inner = Control<P, 
   }
 }
 
-impl<P: Realization, B: Behavior<P>> HasBoxStyle<P> for Control<P, B> {
+impl<P: Realization, B: Behavior> HasBoxStyle<P> for Control<P, B> {
   #[inline(always)]
   fn box_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 }
 
-impl<P: Realization, B: Behavior<P>> HasLayoutBox<P> for Control<P, B> {
+impl<P: Realization, B: Behavior> HasLayoutBox<P> for Control<P, B> {
   type Kind = PlainChild;
 
   #[inline(always)]
@@ -1353,14 +1375,14 @@ impl<P: Realization, B: Behavior<P>> HasLayoutBox<P> for Control<P, B> {
   }
 }
 
-impl<P: Realization, B: Behavior<P>> DecorationBase<P> for Control<P, B> {}
+impl<P: Realization, B: Behavior> DecorationBase<P> for Control<P, B> {}
 
-impl<P: Realization, B: Behavior<P>> MotionBase<P> for Control<P, B> {}
+impl<P: Realization, B: Behavior> MotionBase<P> for Control<P, B> {}
 
 /// What a facade's [`Control`] carries beyond its decoration and motion.
 ///
 /// Its constructor, its row, its caption, its reported state, its parts and its handlers.
-pub trait ControlBase<P: Realization, B: Behavior<P>>: Wraps<Inner = Control<P, B>> {
+pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[must_use]
   fn new(behavior: B) -> Self {

@@ -303,7 +303,7 @@ struct Noted {
   asked: Rc<RefCell<Vec<String>>>,
 }
 
-impl Behavior<Terminal> for Noted {
+impl Behavior for Noted {
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::TextField)
   }
@@ -316,7 +316,7 @@ impl Behavior<Terminal> for Noted {
     &[]
   }
 
-  fn attach(&self, control: &ControlHandle<Terminal>) {
+  fn attach(&self, control: &ControlHandle) {
     let (truth, asked) = (self.truth, Rc::clone(&self.asked));
 
     control.register(EditController::new(

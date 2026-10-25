@@ -27,7 +27,6 @@ use skene_terminal::{
   TextEntry,
   Toggle,
   WheelEvent,
-  platform::terminal::Terminal,
   prelude::*,
   testing,
   testing::user,
@@ -1682,7 +1681,7 @@ struct Stepper {
   count: Signal<i32>,
 }
 
-impl Behavior<Terminal> for Stepper {
+impl Behavior for Stepper {
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Button)
   }
@@ -1695,7 +1694,7 @@ impl Behavior<Terminal> for Stepper {
     &[EventKind::KeyDown, EventKind::Wheel]
   }
 
-  fn on_key(&self, event: &KeyEvent, _: &ControlHandle<Terminal>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
     match event.key {
       Key::Named(NamedKey::ArrowUp) => self.count.set(self.count.get() + 1),
       Key::Named(NamedKey::ArrowDown) => self.count.set(self.count.get() - 1),
@@ -1705,7 +1704,7 @@ impl Behavior<Terminal> for Stepper {
     Prevent::All
   }
 
-  fn on_wheel(&self, event: &WheelEvent, _: &ControlHandle<Terminal>) -> Prevent {
+  fn on_wheel(&self, event: &WheelEvent, _: &ControlHandle) -> Prevent {
     let step = if event.delta.vertical < 0. { 1 } else { -1 };
 
     self.count.set(self.count.get() + step);

@@ -51,20 +51,20 @@ use crate::Active;
 /// ```
 #[derive(Debug, View, Wraps)]
 #[must_use]
-pub struct Control<B: Behavior<Active>>(skene_foundation::Control<Active, B>);
+pub struct Control<B: Behavior>(skene_foundation::Control<Active, B>);
 
-impl<B: Behavior<Active> + Default> Default for Control<B> {
+impl<B: Behavior + Default> Default for Control<B> {
   #[inline(always)]
   fn default() -> Self {
     Self::new(B::default())
   }
 }
 
-impl<B: Behavior<Active>> ControlBase<Active, B> for Control<B> {}
+impl<B: Behavior> ControlBase<Active, B> for Control<B> {}
 
-impl<B: Behavior<Active>> DecorationBase<Active> for Control<B> {}
+impl<B: Behavior> DecorationBase<Active> for Control<B> {}
 
-impl<B: Behavior<Active>> MotionBase<Active> for Control<B> {}
+impl<B: Behavior> MotionBase<Active> for Control<B> {}
 
 /// A button: a control over [`Activate`].
 pub type BasicButton = Control<Activate>;

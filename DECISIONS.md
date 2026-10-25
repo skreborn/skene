@@ -8,6 +8,20 @@ supersedes.
 
 ## Decided against
 
+- **A facade-concrete `ControlHandle`** (2026-10-25), each facade declaring a handle
+  of its own over its `Active`, a behavior written against one facade's handle: a
+  behavior is foundation code the facades share, so a handle per facade would fix the
+  shipped behaviors to a realization again or write them twice, and a third party's
+  behavior would name its facade. The handle is one type carrying `ControlOps`, the
+  build's realization's operations as plain functions filled once by
+  `ControlOps::of::<P>()`. Revisit if a behavior needs an operation a plain function
+  cannot carry.
+- **Behavior hooks generic over the realization** (2026-10-25), each hook a generic
+  method, `fn on_click<R: Realization>(&self, control: &ControlHandle<R>)` and its kin:
+  a generic method makes `Behavior` not dyn-compatible, so a control could not hold
+  its behavior erased and build once whatever the behavior, and every hook would still
+  name a realization. Revisit if a behavior needs an operation a plain function cannot
+  carry.
 - **A door's `ControlSink` handed over in `adopt`, and its `read` returning an owned
   value** (2026-10-25), the prototype's shape: `LowLevel::adopt` takes the view alone
   and `LowLevel::register_sink` the sink, since a view that holds no value has none to

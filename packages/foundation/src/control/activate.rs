@@ -3,17 +3,7 @@
 use std::cell::Cell;
 
 use super::{Behavior, ControlHandle};
-use crate::{
-  ClickEvent,
-  EventKind,
-  Key,
-  KeyEvent,
-  NamedKey,
-  NativeElement,
-  Prevent,
-  Realization,
-  Role,
-};
+use crate::{ClickEvent, EventKind, Key, KeyEvent, NamedKey, NativeElement, Prevent, Role};
 
 /// A button: activated by a click, `Enter` or `Space`.
 ///
@@ -47,7 +37,7 @@ impl Activate {
   }
 }
 
-impl<P: Realization> Behavior<P> for Activate {
+impl Behavior for Activate {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Button)
@@ -64,11 +54,11 @@ impl<P: Realization> Behavior<P> for Activate {
   }
 
   #[inline(always)]
-  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle) -> Prevent {
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, control: &ControlHandle<P>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, control: &ControlHandle) -> Prevent {
     match &event.key {
       Key::Named(NamedKey::Enter) => {
         let _clicked = control.click(&ClickEvent {
@@ -89,7 +79,7 @@ impl<P: Realization> Behavior<P> for Activate {
     }
   }
 
-  fn on_key_up(&self, event: &KeyEvent, control: &ControlHandle<P>) -> Prevent {
+  fn on_key_up(&self, event: &KeyEvent, control: &ControlHandle) -> Prevent {
     if !event.types(" ") || !self.armed.replace(false) {
       return Prevent::None;
     }
@@ -103,7 +93,7 @@ impl<P: Realization> Behavior<P> for Activate {
   }
 
   #[inline(always)]
-  fn on_blur(&self, _control: &ControlHandle<P>) {
+  fn on_blur(&self, _control: &ControlHandle) {
     self.armed.set(false);
   }
 }

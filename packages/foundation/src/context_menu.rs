@@ -545,7 +545,7 @@ impl<P: Realization> ContextMenu<P> {
     // rows and their states have settled by the time it looks.
     Effect::new(move |_: Option<()>| {
       if open.get() {
-        untrack(|| group.focus_at::<P>(0));
+        untrack(|| group.focus_at(0));
       }
     });
 

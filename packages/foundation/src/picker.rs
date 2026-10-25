@@ -14,6 +14,7 @@ use crate::{
   Choices,
   Chosen,
   Control,
+  ControlOps,
   ControlledChoice,
   DeclaredBoxStyle,
   DecorationBase,
@@ -488,7 +489,7 @@ struct ControlSettings {
 
 impl ControlSettings {
   /// `control` carrying the caption and the disabled setting.
-  fn apply<P: Realization, B: Behavior<P>>(&self, mut control: Control<P, B>) -> Control<P, B> {
+  fn apply<P: Realization, B: Behavior>(&self, mut control: Control<P, B>) -> Control<P, B> {
     if let Some((node, name)) = &self.caption {
       let label = Label::new(*node);
 
@@ -547,7 +548,8 @@ impl<P: Realization> View<P> for BasicPickerCore<P> {
     // The option views build once, under the group both forms answer through, and
     // attach wherever the form in force lists them.
     provide_context(
-      ListboxContext::new::<P>(
+      ListboxContext::new(
+        ControlOps::of::<P>(),
         {
           let chosen = Rc::clone(&chosen);
 
@@ -638,13 +640,13 @@ fn build_native<P: Realization>(
   let parts = parts.as_mut().expect("the native form builds first");
 
   *shared.choose.borrow_mut() = Rc::clone(&on_change);
-  shared.roster.root_at(shared.options);
+  shared.roster.root_at(shared.options, ControlOps::of::<P>());
 
   let (chosen, roster) = (Rc::clone(&shared.chosen), shared.roster.clone());
   let choices = {
     let (chosen, roster) = (Rc::clone(&chosen), roster.clone());
 
-    move || Choices::new(Rc::from(roster.options::<P>()), roster.key_of(&chosen()))
+    move || Choices::new(Rc::from(roster.options()), roster.key_of(&chosen()))
   };
   let picker = NativePicker::new()
     .derive_choices(choices)
@@ -705,7 +707,8 @@ fn build_drawn<P: Realization>(
         face_handle.focus();
       }
     })
-    .set_key_fallback(choose_typed::<P>(
+    .set_key_fallback(choose_typed(
+      ControlOps::of::<P>(),
       roster.clone(),
       Rc::clone(&chosen),
       on_change,
@@ -732,31 +735,33 @@ fn build_drawn<P: Realization>(
   Scene::<P>::with(|scene| scene.attach(node, overlay, None));
   Effect::render(move |_: Option<()>| {
     if open.get() {
-      untrack(|| roster.focus_chosen::<P>(&chosen()));
+      untrack(|| roster.focus_chosen(&chosen()));
     }
   });
 
   node
 }
 
-/// The closed face's type-ahead: a character typed picks among `roster`'s options by
-/// name from the one `chosen` reads, and `on_change` is asked for the pick.
-fn choose_typed<P: Realization>(
+/// The closed face's type-ahead, reset on the clock of the realization `ops` reaches: a
+/// character typed picks among `roster`'s options by name from the one `chosen` reads,
+/// and `on_change` is asked for the pick.
+fn choose_typed(
+  ops: ControlOps,
   roster: Roster,
   chosen: Rc<dyn Fn() -> AnyChosen>,
   on_change: Rc<dyn Fn(AnyChosen)>,
 ) -> impl Fn(&KeyEvent) -> bool {
-  let type_ahead = Rc::new(TypeAhead::new());
+  let type_ahead = Rc::new(TypeAhead::new(ops));
 
   move |event| {
-    let Some(buffer) = type_ahead.typed::<P>(event)
+    let Some(buffer) = type_ahead.typed(event)
     else {
       return false;
     };
     let current = chosen();
 
-    if let Some(index) = roster.typed::<P>(&buffer, |value| current.contains(value))
-      && let Some((_, value)) = roster.enabled::<P>().get(index)
+    if let Some(index) = roster.typed(&buffer, |value| current.contains(value))
+      && let Some((_, value)) = roster.enabled().get(index)
     {
       on_change(current.choosing(value));
     }

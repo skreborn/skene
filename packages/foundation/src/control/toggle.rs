@@ -14,7 +14,6 @@ use crate::{
   KeyEvent,
   NativeElement,
   Prevent,
-  Realization,
   Role,
   contents,
 };
@@ -115,7 +114,7 @@ impl Toggle {
   }
 }
 
-impl<P: Realization> Behavior<P> for Toggle {
+impl Behavior for Toggle {
   #[inline(always)]
   fn native(&self) -> Option<NativeElement> {
     Some(NativeElement::Checkbox)
@@ -131,7 +130,7 @@ impl<P: Realization> Behavior<P> for Toggle {
     Self::EVENTS
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn attach(&self, control: &ControlHandle) {
     let checked = self.reads_checked();
     let asks = self.checked.clone();
 
@@ -142,13 +141,13 @@ impl<P: Realization> Behavior<P> for Toggle {
     ));
   }
 
-  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle) -> Prevent {
     self.flip();
 
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     if !event.types(" ") {
       return Prevent::None;
     }
@@ -160,7 +159,7 @@ impl<P: Realization> Behavior<P> for Toggle {
     Prevent::All
   }
 
-  fn on_key_up(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+  fn on_key_up(&self, event: &KeyEvent, _control: &ControlHandle) -> Prevent {
     if !event.types(" ") || !self.armed.replace(false) {
       return Prevent::None;
     }
@@ -171,7 +170,7 @@ impl<P: Realization> Behavior<P> for Toggle {
   }
 
   #[inline(always)]
-  fn on_blur(&self, _control: &ControlHandle<P>) {
+  fn on_blur(&self, _control: &ControlHandle) {
     self.armed.set(false);
   }
 

@@ -84,8 +84,6 @@ macro_rules! facade {
     /// The view a `set_key` named, built under a keyed scope; see
     /// [`skene_foundation::Keyed`].
     pub type Keyed<V> = $crate::Keyed<$platform, V>;
-    /// A built control, for a behavior to act on; see [`skene_foundation::ControlHandle`].
-    pub type ControlHandle = $crate::ControlHandle<$platform>;
     /// A control's label; see [`skene_foundation::Label`].
     pub type Label = $crate::Label<$platform>;
     /// A handle naming the node a view built; see [`skene_foundation::NodeHandle`].

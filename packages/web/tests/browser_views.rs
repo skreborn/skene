@@ -3065,3 +3065,186 @@ fn a_checkboxs_default_mark_follows_it_and_a_mark_of_its_users_replaces_it() {
   assert_eq!(computed(&own, "width"), "10px");
   assert_eq!(background(&own), probe(&root, "background-color", red));
 }
+
+/// The built-in radio group lays its radios out in a column beneath its caption, each
+/// radio's default mark beside the page's own radio button, ringed in the accent and
+/// dotted while chosen, and a mark its user sets takes the default's place.
+#[wasm_bindgen_test]
+fn a_radio_groups_radios_sit_in_a_column_their_marks_following_the_choice() {
+  let (_guard, root) = fresh_root();
+  let size = Signal::new(1);
+  let red = Color::srgb(1., 0., 0.);
+
+  let _ = mount(move || {
+    skene_web::RadioGroup::new()
+      .set_label("Size")
+      .bind_chosen(size)
+      .set_children((
+        skene_web::Radio::new(1).set_label("Small"),
+        skene_web::Radio::new(2).set_label("Medium"),
+        skene_web::Radio::new(3).set_label("Mine").set_part(
+          skene_web::Part::Mark,
+          Container::new()
+            .set_width(skene_web::Dimension::Length(10.))
+            .set_height(skene_web::Dimension::Length(10.))
+            .set_background(red),
+        ),
+      ))
+      .build()
+  });
+
+  let labels = select(&root, "label");
+  let [small, medium, mine] = labels.as_slice()
+  else {
+    panic!("three radios: {}", root.inner_html());
+  };
+  let (first, second) = (
+    small.get_bounding_client_rect(),
+    medium.get_bounding_client_rect(),
+  );
+
+  assert!(
+    second.top() >= first.bottom() + 7.5,
+    "a column, spaced: {} then {}",
+    first.bottom(),
+    second.top()
+  );
+  assert!((second.left() - first.left()).abs() < 0.5, "at the start");
+  assert!(
+    select(small, "input[type=radio]").len() == 1,
+    "the page's own radio button keeps it scriptless"
+  );
+
+  let marks = |label: &Element| select(label, ":scope > div");
+  let [chosen] = marks(small).try_into().expect("one mark");
+  let [other] = marks(medium).try_into().expect("one mark");
+  let dot = |mark: &Element| only_child(mark);
+
+  assert_eq!(computed(&chosen, "width"), "18px");
+  assert_eq!(
+    computed(&chosen, "border-top-color"),
+    system(&root, "border-top-color", SystemColors::ACCENT)
+  );
+  assert_eq!(
+    computed(&other, "border-top-color"),
+    system(&root, "border-top-color", SystemColors::BORDER)
+  );
+  assert_eq!(
+    background(&dot(&chosen)),
+    system(&root, "background-color", SystemColors::ACCENT)
+  );
+  assert_eq!(
+    background(&dot(&other)),
+    probe(&root, "background-color", Color::TRANSPARENT)
+  );
+
+  size.set(2);
+  web::end_turn();
+
+  assert_eq!(
+    background(&dot(&other)),
+    system(&root, "background-color", SystemColors::ACCENT),
+    "the dot follows the choice"
+  );
+  assert_eq!(
+    computed(&chosen, "border-top-color"),
+    system(&root, "border-top-color", SystemColors::BORDER)
+  );
+
+  let [own] = marks(mine).try_into().expect("its user's mark alone");
+
+  assert_eq!(computed(&own, "width"), "10px");
+  assert_eq!(background(&own), probe(&root, "background-color", red));
+}
+
+/// The built-in slider keeps the page's own range input and draws its track, its fill
+/// and its thumb in the platform's colors, the thumb travelling the track less its own
+/// width and the fill running to it as the value moves, on the same elements; a width
+/// its user sets replaces the default one.
+#[wasm_bindgen_test]
+fn a_sliders_fill_and_thumb_follow_its_value_in_place() {
+  let (_guard, root) = fresh_root();
+  let volume = Signal::new(0.0f32);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_item_alignment(skene_web::prelude::ItemAlignment::Start)
+      .set_children((
+        skene_web::Slider::new()
+          .set_label("Volume")
+          .bind_value(volume),
+        skene_web::Slider::new().set_width(skene_web::Dimension::Length(300.)),
+      ))
+      .build()
+  });
+
+  let labels = select(&root, "label");
+  let [slider, wide] = labels.as_slice()
+  else {
+    panic!("two sliders: {}", root.inner_html());
+  };
+
+  assert_eq!(select(slider, "input[type=range]").len(), 1);
+  assert_eq!(computed(slider, "width"), "160px");
+  assert_eq!(computed(wide, "width"), "300px", "a width its user sets");
+
+  let [track] = select(slider, ":scope > div")
+    .try_into()
+    .expect("the track alone");
+  let [fill, thumb] = select(&track, ":scope > div > div > div")
+    .try_into()
+    .expect("the fill and the thumb");
+  let rail = fill.parent_element().expect("the rail");
+  let left = |element: &Element| element.get_bounding_client_rect().left();
+  let right = |element: &Element| element.get_bounding_client_rect().right();
+  let near = |a: f64, b: f64| (a - b).abs() < 0.5;
+
+  assert_eq!(
+    background(&rail),
+    system(&root, "background-color", SystemColors::TRACK)
+  );
+  assert_eq!(
+    background(&fill),
+    system(&root, "background-color", SystemColors::ACCENT)
+  );
+  assert_eq!(
+    background(&thumb),
+    system(&root, "background-color", SystemColors::KNOB)
+  );
+  assert_eq!(computed(&rail, "overflow-x"), "hidden");
+  assert!(
+    near(left(&thumb), left(&track)),
+    "at the minimum: the start"
+  );
+  assert!(
+    near(right(&fill), left(&thumb)),
+    "the fill runs to the thumb"
+  );
+
+  volume.set(50.);
+  web::end_turn();
+
+  let travel = track.get_bounding_client_rect().width() - 18.;
+
+  assert!(
+    near(left(&thumb) - left(&track), travel / 2.),
+    "half way: {} of {travel}",
+    left(&thumb) - left(&track)
+  );
+  assert!(near(right(&fill), left(&thumb)));
+  assert!(near(left(&rail), left(&track)), "the rail keeps its place");
+
+  volume.set(100.);
+  web::end_turn();
+
+  assert!(
+    near(right(&thumb), right(&track)),
+    "at the maximum: the end"
+  );
+  assert!(
+    select(&track, ":scope > div > div > div")
+      .first()
+      .is_some_and(|first| *first == fill),
+    "the same fill"
+  );
+}

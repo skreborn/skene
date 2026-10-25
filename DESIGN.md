@@ -917,10 +917,12 @@ re-export.
   glyph token—painted by the same painters as everything else, so they carry roles,
   accessibility properties and focus order, and the keyboard tables live in the
   behaviors rather than in a match per medium.
-- **The styled built-ins are each facade's own.** `Button`, `Checkbox` and `Toggle` (a
-  switch) are drawn, default-styled controls over `Activate`, `Toggle` and
-  `Toggle::switch` (which reports `Role::Switch`), written in parallel files per facade
-  (`views/button.rs`, `views/checkbox.rs`, `views/toggle.rs`), since the trees the media
+- **The styled built-ins are each facade's own.** `Button`, `Checkbox`, `Toggle` (a
+  switch), `RadioGroup<T>`, `Radio` and `Slider` are drawn, default-styled controls over
+  `Activate`, `Toggle`, `Toggle::switch` (which reports `Role::Switch`), the `RadioGroup`
+  collection, its `Radio` member and `Slider`, written in parallel files per facade
+  (`views/button.rs`, `views/checkbox.rs`, `views/toggle.rs`, `views/radio.rs`,
+  `views/slider.rs`), since the trees the media
   compose differ; every default reads `SystemColors`, so a theme of the set restyles
   them all. Each builds its defaults as a control of its own at build and lays the
   control its user configured over it (`Control::over`: the user's box style overlaid
@@ -948,7 +950,28 @@ re-export.
   the accent while on, with a 16-pixel `KNOB` disc, or three cells with a `●` thumb, the
   thumb shifted to the end by offset rather than layout while on; on the web its input
   is `<input type=checkbox switch role=switch>`, kept as the scriptless form as a
-  checkbox's is. The conformance pages keep the `Basic*` controls.
+  checkbox's is. `RadioGroup<T>` and `Radio` are drawn over the `RadioGroup` collection
+  and its `Radio` member, the group keeping `BasicRadioGroupBase`'s typed
+  `set_chosen`/`derive_chosen`/`handle_choose`/`bind_chosen` (the trait, as
+  `BasicListboxBase`, rides `HasControl`, so a view holding its control beside its own
+  state carries it): the group holds its children (`add_child`, `set_children` and their
+  kin, through `HasChildren` with a flex child's kind) in a `Column` spaced 8 pixels, or
+  on rows of their own in cells, beneath its caption, its control's axis vertical and its
+  items at the start, a body `set_child` supplies taking the column's place. A radio's
+  default `Part::Mark` is an 18-pixel ring in `FIELD` and `BORDER` turning to the accent,
+  an 8-pixel accent dot showing at its center while chosen, or the glyphs `○` and `◉` in
+  cells, read from the group's context. `Slider` is drawn over the `Slider` behavior,
+  which reports where its value sits along its range (`Slider::reads_fraction`) for the
+  defaults to follow: 160 pixels or 20 cells wide, its `Part::Track` a flexible child
+  taking what its caption leaves and holding its `Part::Fill` and its `Part::Thumb`
+  (marked after build, as the switch's thumb is), a rail in `TRACK` clipping a fill in
+  the accent that runs to the thumb, beneath a lane the thumb travels less its own width,
+  the fill offset back by the unfilled fraction and the thumb forward by the filled one,
+  so the value moves them by offset rather than layout; the thumb is an 18-pixel `KNOB`
+  disc ringed in the accent (`INK` while focus shows) or a `KNOB` cell (`ACCENT_PRESSED`
+  while focus shows), and the behavior's thumb extent is the default thumb's until
+  `set_thumb_extent` says otherwise. On the web the slider keeps its range input covering
+  its label, the scriptless form. The conformance pages keep the `Basic*` controls.
 
 ## The style model
 

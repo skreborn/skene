@@ -21,6 +21,8 @@ mod overlay;
 mod painted;
 mod picker;
 mod pinned;
+mod radio;
+mod slider;
 mod span;
 mod stack;
 mod suspense;
@@ -65,6 +67,8 @@ pub use self::{
   painted::Painted,
   picker::BasicPicker,
   pinned::Pinned,
+  radio::{Radio, RadioGroup},
+  slider::Slider,
   span::{RichText, Span},
   stack::Stack,
   suspense::Suspense,

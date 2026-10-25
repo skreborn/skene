@@ -23,7 +23,8 @@ fn settings(name: Signal<String>, agreed: Signal<bool>) -> impl View {
 ## The built-in controls
 
 Beneath any library, the facade draws its own controls in the platform's colors:
-`Button`, `Checkbox` and `Toggle`, a switch. Each comes styled, every default a value
+`Button`, `Checkbox`, `Toggle` (a switch), `RadioGroup` with its `Radio`s, and
+`Slider`. Each comes styled, every default a value
 its setters replace, so a library's preset is a built-in it styles further. A button's
 label is its content and its name, and `set_prominent` marks the screen's primary
 action, which each platform shows in its own idiom: the accent's fill in pixels, accent
@@ -47,8 +48,40 @@ fn form(dirty: Signal<bool>, notify: Signal<bool>, sync: Signal<bool>) -> impl V
 }
 ```
 
-A checkbox's mark and a switch's track are parts (`Part::Mark`, `Part::Track`), and
-`set_part` replaces the default one with a view of the app's own.
+A radio group is typed by the app's own value, each radio tagged with one, and lays
+the radios it is given out in a column beneath its caption; a slider fills its track to
+its thumb as its value moves:
+
+```rust
+use skene_web::{behavior::SliderRange, prelude::*};
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Quality {
+  Draft,
+  Final,
+}
+
+fn export(quality: Signal<Quality>, scale: Signal<f32>) -> impl View {
+  Column::new().set_spacing(12).set_children((
+    RadioGroup::new()
+      .set_label("Quality")
+      .bind_chosen(quality)
+      .set_children((
+        Radio::new(Quality::Draft).set_label("Draft"),
+        Radio::new(Quality::Final).set_label("Final"),
+      )),
+    Slider::new()
+      .set_label("Scale")
+      .set_range(SliderRange::new(50., 200., 10.))
+      .bind_value(scale),
+  ))
+}
+```
+
+A checkbox's and a radio's mark, a switch's track and a slider's track are parts
+(`Part::Mark`, `Part::Track`), and `set_part` replaces the default one with a view of
+the app's own; a radio group's `set_child` replaces its column with a layout of the
+app's own.
 
 ## The bound signal is the truth
 

@@ -58,6 +58,12 @@ expression: styled
     │                                                   │
     │  [x] Agree  ●   Wi-Fi                             │
     │                                                   │
+    │  Size           ▎▎        Level                   │
+    │                                                   │
+    │  ○ Small                                          │
+    │  ◉ Medium                                         │
+    │  ○ Large                                          │
+    │                                                   │
     │  published 0 time(s)                              │
     │                                                   │
     ╰───────────────────────────────────────────────────╯
@@ -217,12 +223,6 @@ expression: styled
 
 
 
-
-
-
-
-
-
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaabbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -279,6 +279,12 @@ aaaacddstttttttsdduvvvvvvudduwwwwwwwwuddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddxxxdfffffddyzzdfffffdddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddffffddddddsssssAyzzzzzzzdfffffdddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddxdfffffddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddxdffffffdddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacddxdfffffddddddddddddddddddddddddddddddddddddddddddcaaa
+aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddgggggggggggggggggggddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
@@ -306,16 +312,16 @@ aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
-aaaacddcdAAAAAAAAAdddddddddddddddddddddddddddddddddddcddcaaa
+aaaacddcdBBBBBBBBBdddddddddddddddddddddddddddddddddddcddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
-aaaacddcdAAAAAAAAAAAAAAAAAAAAAdddddddddddddddddddddddcddcaaa
+aaaacddcdBBBBBBBBBBBBBBBBBBBBBdddddddddddddddddddddddcddcaaa
 aaaacddcdddddddddddddddddddddddddddddddddddddddddddddcddcaaa
 aaaacddcdddddddddddddddddddddddddddddddddddddddddddddcddcaaa
 aaaacddcccccccccccccccccccccccccccccccccccccccccccccccddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddkkkkkkkBCmmmmmmmmmmmddgggddddddddddddddddddddddddcaaa
+aaaacddkkkkkkkCDmmmmmmmmmmmddgggddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddffffffdddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
@@ -344,9 +350,9 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeeeeeeeeeeeeeddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddDDDDDDDDDDDdEEEEEEEEEEEdFFFFFFFFFFFdGGGGGGGGGGGddcaaa
+aaaacddEEEEEEEEEEEdFFFFFFFFFFFdGGGGGGGGGGGdHHHHHHHHHHHddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddGGGGGGGGGGGdFFFFFFFFFFFdEEEEEEEEEEEdDDDDDDDDDDDddcaaa
+aaaacddHHHHHHHHHHHdGGGGGGGGGGGdFFFFFFFFFFFdEEEEEEEEEEEddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
 aaaacddmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmddcaaa
@@ -362,12 +368,12 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeeeedddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
-aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddHddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddIddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddIddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddIddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddIddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddIddcaaa
+aaaacddfffffdgggggggggggdddddddddddddddddddddddddddddIddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -375,7 +381,7 @@ aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacddeeeeeeeddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
-aaaacddHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHdddddddddcaaa
+aaaacddIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIdddddddddcaaa
 aaaacdddddddddddddddddddddddddddddddddddddddddddddddddddcaaa
 aaaacccccccccccccccccccccccccccccccccccccccccccccccccccccaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -437,12 +443,6 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 a surface #09090b
 b ink #a1a1aa, surface #09090b, bold
@@ -470,11 +470,12 @@ w ink #808080, surface #0b0b0b
 x ink #ffffff, surface #18181b
 y ink #ffffff, surface #2e2e2e
 z surface #2e2e2e
-A ink #89898b, surface #18181b
-B ink #fafafa, surface #a1a1aa
-C ink #a1a1aa, surface #27272a
-D surface #264c2a
-E surface #336638
-F surface #408046
-G surface #4d9954
-H ink #ffffff, surface #525254
+A ink #0000ee, surface #ffffff
+B ink #89898b, surface #18181b
+C ink #fafafa, surface #a1a1aa
+D ink #a1a1aa, surface #27272a
+E surface #264c2a
+F surface #336638
+G surface #408046
+H surface #4d9954
+I ink #ffffff, surface #525254

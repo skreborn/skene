@@ -1458,39 +1458,33 @@ pub type BasicMenuItem<P> = Control<P, MenuOption>;
 /// The group is a [`Control`] over a [`RadioGroup`], which holds the choice erased, so
 /// every group is one type whatever its `T`. A group that starts with nothing chosen
 /// holds an `Option`, its radios tagged `Some(..)`.
-pub trait BasicRadioGroupBase<P: Realization, T: Choice>:
-  Wraps<Inner = Control<P, RadioGroup>>
-{
+pub trait BasicRadioGroupBase<P: Realization, T: Choice>: HasControl<P, RadioGroup> {
   /// Sets the chosen radio's value.
   #[must_use]
   fn set_chosen(self, chosen: T) -> Self {
-    Self::wrap(
-      self
-        .into_inner()
-        .map_behavior(|group| group.set_chosen(Some(chosen))),
-    )
+    self.map_control(|control| control.map_behavior(|group| group.set_chosen(Some(chosen))))
   }
 
   /// Derives the chosen radio's value from the signals `chosen` reads.
   #[must_use]
   fn derive_chosen(self, chosen: impl Fn() -> T + 'static) -> Self {
-    Self::wrap(
-      self
-        .into_inner()
-        .map_behavior(|group| group.derive_chosen(move || Some(chosen()))),
-    )
+    self.map_control(|control| {
+      control.map_behavior(|group| group.derive_chosen(move || Some(chosen())))
+    })
   }
 
   /// Runs `action` with the value a choice asks for.
   #[must_use]
   fn handle_choose(self, action: impl Fn(T) + 'static) -> Self {
-    Self::wrap(self.into_inner().map_behavior(|group| {
-      group.handle_choose(move |chosen: Option<T>| {
-        if let Some(chosen) = chosen {
-          action(chosen);
-        }
+    self.map_control(|control| {
+      control.map_behavior(|group| {
+        group.handle_choose(move |chosen: Option<T>| {
+          if let Some(chosen) = chosen {
+            action(chosen);
+          }
+        })
       })
-    }))
+    })
   }
 
   /// Binds the chosen value to `signal` in both directions.
@@ -1508,45 +1502,29 @@ pub trait BasicRadioGroupBase<P: Realization, T: Choice>:
 ///
 /// The listbox is a [`Control`] over a [`Listbox`], which holds the choice erased, so
 /// every listbox is one type whatever its `C`.
-pub trait BasicListboxBase<P: Realization, C: Chosen>: Wraps<Inner = Control<P, Listbox>> {
+pub trait BasicListboxBase<P: Realization, C: Chosen>: HasControl<P, Listbox> {
   /// Sets what is chosen.
   #[must_use]
   fn set_chosen(self, chosen: C) -> Self {
-    Self::wrap(
-      self
-        .into_inner()
-        .map_behavior(|listbox| listbox.set_chosen(chosen)),
-    )
+    self.map_control(|control| control.map_behavior(|listbox| listbox.set_chosen(chosen)))
   }
 
   /// Derives what is chosen from the signals `chosen` reads.
   #[must_use]
   fn derive_chosen(self, chosen: impl Fn() -> C + 'static) -> Self {
-    Self::wrap(
-      self
-        .into_inner()
-        .map_behavior(|listbox| listbox.derive_chosen(chosen)),
-    )
+    self.map_control(|control| control.map_behavior(|listbox| listbox.derive_chosen(chosen)))
   }
 
   /// Runs `action` with what a choice asks for.
   #[must_use]
   fn handle_choose(self, action: impl Fn(C) + 'static) -> Self {
-    Self::wrap(
-      self
-        .into_inner()
-        .map_behavior(|listbox| listbox.handle_choose(action)),
-    )
+    self.map_control(|control| control.map_behavior(|listbox| listbox.handle_choose(action)))
   }
 
   /// Binds what is chosen to `signal` in both directions.
   #[must_use]
   fn bind_chosen(self, signal: Signal<C>) -> Self {
-    Self::wrap(
-      self
-        .into_inner()
-        .map_behavior(|listbox| listbox.bind_chosen(signal)),
-    )
+    self.map_control(|control| control.map_behavior(|listbox| listbox.bind_chosen(signal)))
   }
 }
 

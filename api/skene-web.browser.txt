@@ -286,6 +286,8 @@ impl core::marker::StructuralPartialEq for skene_web::platform::web::Web
 impl skene_foundation::container::ContainerBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::context_menu::ContextMenuBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::RadioPolicy>> for skene_web::Radio
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::slider::Slider> for skene_web::Slider
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Checkbox
 impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::toggle::Toggle> for skene_web::Toggle
 impl skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::activate::Activate> for skene_web::Button
@@ -394,10 +396,14 @@ impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for sken
 pub fn skene_web::Overlay::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Painted
 pub fn skene_web::Painted::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Radio
+pub fn skene_web::Radio::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::RichText
 pub fn skene_web::RichText::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Row
 pub fn skene_web::Row::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Slider
+pub fn skene_web::Slider::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Span
 pub fn skene_web::Span::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Stack
@@ -420,6 +426,8 @@ impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> fo
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::ContextMenu
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Overlay
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Radio
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Slider
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Tooltip
 impl skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::Button
@@ -431,6 +439,8 @@ impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for sk
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Checkbox
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Container
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Overlay
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Radio
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Slider
 impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Toggle
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::surface::RunBase<skene_web::platform::web::Web> for skene_web::Text
@@ -474,15 +484,32 @@ impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_f
 pub fn skene_web::Theme<S>::build(self) -> skene_foundation::spine::node::NodeId
 impl<S: skene_foundation::spine::token::TokenSet<skene_web::TokenValue>> skene_foundation::theme::ThemeBase<skene_web::platform::web::Web, S> for skene_web::Theme<S>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::RadioGroup<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>
+pub fn skene_web::RadioGroup<T>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::picker::BasicPickerBase<skene_web::platform::web::Web, T> for skene_web::BasicPicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_web::RadioGroup<T>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicPicker<T> where skene_foundation::picker::BasicPicker<skene_web::Active, T>: skene_foundation::thin::Thin<skene_web::Active, Core = skene_foundation::picker::BasicPickerCore<skene_web::Active>>, Self: 'static
 pub fn skene_web::BasicPicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T> where Self: 'static
 pub fn skene_web::BasicRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicPicker<T>
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::RadioGroup<T>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::BasicRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 pub const skene_web::platform::web::CONTROL_ATTRIBUTE: &str
 pub const skene_web::platform::web::SCHEME_ATTRIBUTE: &str
 pub fn skene_web::platform::web::add_head_element(&str, &[(&str, &str)]) -> skene_foundation::web::head::HeadId
@@ -1050,6 +1077,49 @@ pub fn skene_web::Pinned::inner(&self) -> &Self::Inner
 pub fn skene_web::Pinned::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Pinned::into_inner(self) -> Self::Inner
 pub fn skene_web::Pinned::wrap(Self::Inner) -> Self
+pub struct skene_web::prelude::Radio(_)
+impl skene_web::Radio
+pub fn skene_web::Radio::new(impl skene_foundation::control::choice::Choice) -> Self
+impl core::fmt::Debug for skene_web::Radio
+pub fn skene_web::Radio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::RadioPolicy>> for skene_web::Radio
+impl skene_foundation::spine::view::AnyKind for skene_web::Radio
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Radio
+pub fn skene_web::Radio::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Radio
+pub type skene_web::Radio::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::RadioPolicy>>
+pub fn skene_web::Radio::inner(&self) -> &Self::Inner
+pub fn skene_web::Radio::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Radio::into_inner(self) -> Self::Inner
+pub fn skene_web::Radio::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Radio
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Radio
+pub struct skene_web::prelude::RadioGroup<T: skene_foundation::control::choice::Choice>
+impl<T: skene_foundation::control::choice::Choice> skene_web::RadioGroup<T>
+pub const skene_web::RadioGroup<T>::SPACING: f32
+pub fn skene_web::RadioGroup<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>
+pub fn skene_web::RadioGroup<T>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_web::RadioGroup<T>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::RadioGroup<T>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 pub struct skene_web::prelude::RichText(_)
 impl core::default::Default for skene_web::RichText
 pub fn skene_web::RichText::default() -> skene_web::RichText
@@ -1081,6 +1151,33 @@ pub fn skene_web::Row::inner(&self) -> &Self::Inner
 pub fn skene_web::Row::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Row::into_inner(self) -> Self::Inner
 pub fn skene_web::Row::wrap(Self::Inner) -> Self
+pub struct skene_web::prelude::Slider(_)
+impl skene_web::Slider
+pub const skene_web::Slider::THUMB: f32
+pub fn skene_web::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
+pub fn skene_web::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
+pub fn skene_web::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
+pub fn skene_web::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
+pub fn skene_web::Slider::new() -> Self
+pub fn skene_web::Slider::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
+pub fn skene_web::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::spine::expr::Length>) -> Self
+pub fn skene_web::Slider::set_value(self, f32) -> Self
+impl core::default::Default for skene_web::Slider
+pub fn skene_web::Slider::default() -> Self
+impl core::fmt::Debug for skene_web::Slider
+pub fn skene_web::Slider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::slider::Slider> for skene_web::Slider
+impl skene_foundation::spine::view::AnyKind for skene_web::Slider
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Slider
+pub fn skene_web::Slider::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Slider
+pub type skene_web::Slider::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::slider::Slider>
+pub fn skene_web::Slider::inner(&self) -> &Self::Inner
+pub fn skene_web::Slider::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Slider::into_inner(self) -> Self::Inner
+pub fn skene_web::Slider::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Slider
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Slider
 pub struct skene_web::prelude::Span(_)
 impl skene_web::Span
 pub fn skene_web::Span::set_link_policy(self, skene_web::LinkPolicy) -> Self
@@ -1726,6 +1823,49 @@ pub fn skene_web::Pinned::inner(&self) -> &Self::Inner
 pub fn skene_web::Pinned::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Pinned::into_inner(self) -> Self::Inner
 pub fn skene_web::Pinned::wrap(Self::Inner) -> Self
+pub struct skene_web::Radio(_)
+impl skene_web::Radio
+pub fn skene_web::Radio::new(impl skene_foundation::control::choice::Choice) -> Self
+impl core::fmt::Debug for skene_web::Radio
+pub fn skene_web::Radio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::RadioPolicy>> for skene_web::Radio
+impl skene_foundation::spine::view::AnyKind for skene_web::Radio
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Radio
+pub fn skene_web::Radio::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Radio
+pub type skene_web::Radio::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::collection::Member<skene_foundation::control::collection::RadioPolicy>>
+pub fn skene_web::Radio::inner(&self) -> &Self::Inner
+pub fn skene_web::Radio::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Radio::into_inner(self) -> Self::Inner
+pub fn skene_web::Radio::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Radio
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Radio
+pub struct skene_web::RadioGroup<T: skene_foundation::control::choice::Choice>
+impl<T: skene_foundation::control::choice::Choice> skene_web::RadioGroup<T>
+pub const skene_web::RadioGroup<T>::SPACING: f32
+pub fn skene_web::RadioGroup<T>::new() -> Self
+impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::default() -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::BasicRadioGroupBase<skene_web::platform::web::Web, T> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::control::HasControl<skene_web::platform::web::Web, skene_foundation::control::collection::Collection<skene_foundation::control::collection::RadioPolicy>> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::control(&self) -> &skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>
+pub fn skene_web::RadioGroup<T>::map_control(self, impl core::ops::function::FnOnce(skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> skene_foundation::control::Control<skene_web::Active, skene_foundation::control::collection::RadioGroup>) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::children::HasChildren<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::FlexChild
+pub fn skene_web::RadioGroup<T>::children_mut(&mut self, skene_foundation::spine::children::Seal) -> &mut skene_foundation::spine::children::Children<skene_web::Active, skene_foundation::spine::view::FlexChild>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasBoxStyle<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub fn skene_web::RadioGroup<T>::box_style_mut(&mut self) -> &mut skene_foundation::spine::props::DeclaredBoxStyle<skene_web::Active>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::HasLayoutBox<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
+pub type skene_web::RadioGroup<T>::Kind = skene_foundation::spine::view::PlainChild
+pub fn skene_web::RadioGroup<T>::map_layout_box(self, impl core::ops::function::FnOnce(skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> skene_foundation::layout_box::LayoutBox<skene_web::Active, skene_foundation::spine::view::PlainChild>) -> Self
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::RadioGroup<T>
 pub struct skene_web::RichText(_)
 impl core::default::Default for skene_web::RichText
 pub fn skene_web::RichText::default() -> skene_web::RichText
@@ -1757,6 +1897,33 @@ pub fn skene_web::Row::inner(&self) -> &Self::Inner
 pub fn skene_web::Row::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Row::into_inner(self) -> Self::Inner
 pub fn skene_web::Row::wrap(Self::Inner) -> Self
+pub struct skene_web::Slider(_)
+impl skene_web::Slider
+pub const skene_web::Slider::THUMB: f32
+pub fn skene_web::Slider::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
+pub fn skene_web::Slider::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
+pub fn skene_web::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
+pub fn skene_web::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
+pub fn skene_web::Slider::new() -> Self
+pub fn skene_web::Slider::set_range(self, skene_foundation::control::slider::SliderRange) -> Self
+pub fn skene_web::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::spine::expr::Length>) -> Self
+pub fn skene_web::Slider::set_value(self, f32) -> Self
+impl core::default::Default for skene_web::Slider
+pub fn skene_web::Slider::default() -> Self
+impl core::fmt::Debug for skene_web::Slider
+pub fn skene_web::Slider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_foundation::control::ControlBase<skene_web::platform::web::Web, skene_foundation::control::slider::Slider> for skene_web::Slider
+impl skene_foundation::spine::view::AnyKind for skene_web::Slider
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_web::Slider
+pub fn skene_web::Slider::build(self) -> skene_foundation::spine::node::NodeId
+impl skene_foundation::spine::wraps::Wraps for skene_web::Slider
+pub type skene_web::Slider::Inner = skene_foundation::control::Control<skene_web::platform::web::Web, skene_foundation::control::slider::Slider>
+pub fn skene_web::Slider::inner(&self) -> &Self::Inner
+pub fn skene_web::Slider::inner_mut(&mut self) -> &mut Self::Inner
+pub fn skene_web::Slider::into_inner(self) -> Self::Inner
+pub fn skene_web::Slider::wrap(Self::Inner) -> Self
+impl skene_foundation::surface::DecorationBase<skene_web::platform::web::Web> for skene_web::Slider
+impl skene_foundation::surface::MotionBase<skene_web::platform::web::Web> for skene_web::Slider
 pub struct skene_web::Span(_)
 impl skene_web::Span
 pub fn skene_web::Span::set_link_policy(self, skene_web::LinkPolicy) -> Self

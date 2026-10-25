@@ -15,6 +15,13 @@ supersedes.
   border ring against reversed cells), so the code would only look alike, and each
   facade writes its built-ins in parallel files over the foundation's `Control::over`.
   Revisit when two facades' trees for a control coincide.
+- **A radio group's options from an option builder** (2026-10-25), the spike's
+  `RadioGroup::add_option(tag, caption)` building each radio from a tag and a caption:
+  the group takes its radios as children (`add_child`, `set_children` and their kin)
+  into its default column, each a `Radio` its user styles and wraps like any control and
+  which may sit at any depth beside other views, as `BasicRadioGroup`'s do, and a
+  `set_child` body replaces the column outright. Revisit when a group's radios must be
+  built from data the group alone holds, such as a list it filters.
 - **The accent itself as a prominent button's fill on the web** (2026-10-25): Chromium
   answers `AccentColor` with `#0075ff` and `AccentColorText` with white, 4.2:1, below
   WCAG AA's 4.5:1 for a label, so the web's prominent fill is the accent darkened by a

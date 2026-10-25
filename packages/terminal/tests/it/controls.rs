@@ -2141,3 +2141,198 @@ fn a_switch_is_reported_as_one_and_its_thumb_moves_as_it_turns_on() {
     );
   });
 }
+
+/// The built-in radio group lays its radios out in a column beneath its caption, each
+/// radio's mark a glyph before its caption, the chosen one filled; the arrows choose,
+/// and a mark its user sets replaces the default.
+#[test]
+fn a_radio_group_lays_its_radios_in_a_column_and_marks_the_chosen_one() {
+  with_platform(|| {
+    let size = Signal::new(1);
+    let [group] = mount_nodes(|| {
+      [terminal::RadioGroup::new()
+        .set_label("Size")
+        .bind_chosen(size)
+        .set_children((
+          terminal::Radio::new(1).set_label("Small"),
+          terminal::Radio::new(2).set_label("Medium"),
+          terminal::Radio::new(3)
+            .set_label("Mine")
+            .set_part(Part::Mark, Text::new("<>")),
+        ))
+        .build()]
+    });
+    let frame = testing::render_to_text(12, 5);
+
+    assert_eq!(
+      rows(&frame),
+      "Size\n\n\u{25c9} Small\n\u{25cb} Medium\n<> Mine\n",
+      "{frame}"
+    );
+    assert_eq!(read(group).role(), Role::RadioGroup);
+
+    let small = testing::find_by_role(Role::RadioButton, "Small").expect("a radio");
+
+    assert!(
+      Scene::<Terminal>::with(|scene| scene.find_part(small, Part::Mark)).is_some(),
+      "the default mark is the radio's mark"
+    );
+    assert!(is_checked(small));
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("ArrowDown");
+
+    assert_eq!(size.get_untracked(), 2, "the arrow chooses the next");
+    assert_eq!(
+      rows(&testing::render_to_text(12, 5)),
+      "Size\n\n\u{25cb} Small\n\u{25c9} Medium\n<> Mine\n"
+    );
+
+    let medium = testing::find_by_role(Role::RadioButton, "Medium").expect("a radio");
+
+    assert!(is_checked(medium));
+    assert_ne!(
+      colors_at(12, 5, 0, 3).0,
+      colors_at(12, 5, 0, 2).0,
+      "the focused radio's mark takes the accent"
+    );
+  });
+}
+
+/// A body its user sets takes the place of the radio group's default column.
+#[test]
+fn a_radio_groups_body_of_its_users_replaces_its_column() {
+  with_platform(|| {
+    let size = Signal::new(1);
+    let _ = mount_nodes(|| {
+      [terminal::RadioGroup::new()
+        .bind_chosen(size)
+        .set_child(Row::new().set_spacing(2).set_children((
+          terminal::Radio::new(1).set_label("S"),
+          terminal::Radio::new(2).set_label("M"),
+        )))
+        .build()]
+    });
+
+    assert_eq!(
+      rows(&testing::render_to_text(12, 1)),
+      "\u{25c9} S  \u{25cb} M\n"
+    );
+  });
+}
+
+/// The built-in slider draws its track in cells, filled in the accent to its thumb, a
+/// cell of its own color travelling the track as the value moves, by a fraction of a
+/// cell; the keys move it, and its track holds its fill and its thumb as its parts.
+#[test]
+fn a_slider_draws_its_track_fill_and_thumb_in_cells() {
+  with_platform(|| {
+    let volume = Signal::new(0.0f32);
+    let [slider] = mount_nodes(|| {
+      [terminal::Slider::new()
+        .set_label("Vol")
+        .set_range(SliderRange::new(0., 100., 1.))
+        .bind_value(volume)
+        .build()]
+    });
+
+    assert_eq!(read(slider).role(), Role::Slider);
+
+    let (track, fill, thumb) = Scene::<Terminal>::with(|scene| {
+      (
+        scene.find_part(slider, Part::Track),
+        scene.find_part(slider, Part::Fill),
+        scene.find_part(slider, Part::Thumb),
+      )
+    });
+    let track = track.expect("the default track is the slider's track");
+
+    for (part, name) in [(fill, "fill"), (thumb, "thumb")] {
+      let part = part.unwrap_or_else(|| panic!("its {name} is the slider's {name}"));
+
+      assert!(
+        Scene::<Terminal>::with(|scene| {
+          std::iter::successors(Some(part), |node| scene.parent(*node)).any(|node| node == track)
+        }),
+        "the track holds the {name}"
+      );
+    }
+
+    // Twenty cells, the caption's three and a cell between them leaving sixteen to the
+    // track.
+    assert_eq!(
+      rows(&testing::render_to_text(24, 1)),
+      "                 Vol\n"
+    );
+
+    let surface = |column: usize| colors_at(24, 1, column, 0).1;
+    let (knob, rail) = (surface(0), surface(1));
+
+    assert_ne!(
+      knob, rail,
+      "the thumb sits on the first cell in its own color"
+    );
+    assert_eq!(surface(15), rail);
+
+    // Half of the fifteen cells the thumb travels is seven and a half: the fill covers
+    // seven cells and half of the eighth, where the thumb begins.
+    volume.set(50.);
+
+    assert_eq!(
+      rows(&testing::render_to_text(24, 1)),
+      "       \u{258c}\u{258c}        Vol\n"
+    );
+
+    let accent = surface(0);
+
+    assert_ne!(accent, rail);
+    assert_ne!(accent, knob);
+    assert_eq!(surface(6), accent, "the fill runs to the thumb");
+    assert_eq!(surface(10), rail);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("End");
+
+    assert!(holds(volume, 100.));
+    assert_eq!(surface(14), accent);
+    assert_ne!(
+      surface(15),
+      accent,
+      "the thumb ends on the track's last cell"
+    );
+    assert_ne!(surface(15), knob, "and shows focus");
+    assert!(is_live(slider));
+  });
+}
+
+/// A width its user sets on the slider gives its track the rest, and a track its user
+/// sets replaces the default with its fill and its thumb.
+#[test]
+fn a_sliders_width_and_track_of_its_users_replace_the_defaults() {
+  with_platform(|| {
+    let volume = Signal::new(100.0f32);
+    let [_, replaced] = mount_nodes(|| {
+      [
+        terminal::Slider::new()
+          .set_width(10)
+          .bind_value(volume)
+          .build(),
+        terminal::Slider::new()
+          .set_part(Part::Track, Text::new("----"))
+          .bind_value(volume)
+          .build(),
+      ]
+    });
+    let surface = |column: usize, row: usize| colors_at(24, 2, column, row).1;
+    let accent = surface(0, 0);
+
+    assert_eq!(surface(8, 0), accent, "the fill spans the narrower track");
+    assert_ne!(surface(9, 0), accent, "to the thumb on its last cell");
+    assert_eq!(surface(10, 0), surface(23, 0), "and nothing past it");
+    assert_eq!(rows(&testing::render_to_text(24, 2)), "\n----\n");
+    assert!(
+      Scene::<Terminal>::with(|scene| scene.find_part(replaced, Part::Thumb)).is_none(),
+      "a track its user sets brings no default thumb"
+    );
+  });
+}

@@ -7950,6 +7950,7 @@ pub fn skene_foundation::Slider::derive_range(self, impl core::ops::function::Fn
 pub fn skene_foundation::Slider::derive_value(self, impl core::ops::function::Fn() -> f32 + 'static) -> Self
 pub fn skene_foundation::Slider::handle_change(self, impl core::ops::function::Fn(f32) + 'static) -> Self
 pub fn skene_foundation::Slider::new() -> Self
+pub fn skene_foundation::Slider::reads_fraction(&self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> f32>
 pub const fn skene_foundation::Slider::set_axis(self, skene_foundation::Axis) -> Self
 pub fn skene_foundation::Slider::set_range(self, skene_foundation::SliderRange) -> Self
 pub fn skene_foundation::Slider::set_thumb_extent(self, impl core::convert::Into<skene_foundation::Length>) -> Self
@@ -8678,7 +8679,7 @@ pub trait skene_foundation::Apply: core::marker::Sized
 pub fn skene_foundation::Apply::apply<T>(self, core::option::Option<T>, impl core::ops::function::FnOnce(Self, T) -> Self) -> Self
 impl<T: skene_foundation::Wraps> skene_foundation::Apply for T
 pub fn T::apply<T>(self, core::option::Option<T>, impl core::ops::function::FnOnce(Self, T) -> Self) -> Self
-pub trait skene_foundation::BasicListboxBase<P: skene_foundation::Realization, C: skene_foundation::Chosen>: skene_foundation::Wraps<Inner = skene_foundation::Control<P, skene_foundation::Listbox>>
+pub trait skene_foundation::BasicListboxBase<P: skene_foundation::Realization, C: skene_foundation::Chosen>: skene_foundation::HasControl<P, skene_foundation::Listbox>
 pub fn skene_foundation::BasicListboxBase::bind_chosen(self, skene_reactive::signal::Signal<C>) -> Self
 pub fn skene_foundation::BasicListboxBase::derive_chosen(self, impl core::ops::function::Fn() -> C + 'static) -> Self
 pub fn skene_foundation::BasicListboxBase::handle_choose(self, impl core::ops::function::Fn(C) + 'static) -> Self
@@ -8695,7 +8696,7 @@ pub fn skene_foundation::BasicPickerBase::set_face<V: skene_foundation::View<P>>
 pub fn skene_foundation::BasicPickerBase::set_label(self, impl core::convert::Into<skene_foundation::Label<P>>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_options(self, impl skene_foundation::IntoChildren<P>) -> Self
 pub fn skene_foundation::BasicPickerBase::set_placement(self, skene_foundation::Placement) -> Self
-pub trait skene_foundation::BasicRadioGroupBase<P: skene_foundation::Realization, T: skene_foundation::Choice>: skene_foundation::Wraps<Inner = skene_foundation::Control<P, skene_foundation::RadioGroup>>
+pub trait skene_foundation::BasicRadioGroupBase<P: skene_foundation::Realization, T: skene_foundation::Choice>: skene_foundation::HasControl<P, skene_foundation::RadioGroup>
 pub fn skene_foundation::BasicRadioGroupBase::bind_chosen(self, skene_reactive::signal::Signal<T>) -> Self
 pub fn skene_foundation::BasicRadioGroupBase::derive_chosen(self, impl core::ops::function::Fn() -> T + 'static) -> Self
 pub fn skene_foundation::BasicRadioGroupBase::handle_choose(self, impl core::ops::function::Fn(T) + 'static) -> Self

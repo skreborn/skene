@@ -151,9 +151,10 @@ exactly one child. A control is `Control<B: Behavior>`, the shipped behaviors in
 facade's `behavior` module; `BasicButton`, `BasicCheckbox`, `BasicSlider`,
 `BasicTextField` and `BasicTextEditor` are aliases over them, `BasicRadioGroup<T>`,
 `BasicListbox<C>` and `BasicPicker<T>` are views typed by what they choose, a value of
-the app's own type. `Button`, `Checkbox` and `Toggle`, a switch, are the facade's own
-drawn controls in the platform's colors, every default a value their setters replace,
-`Button::set_prominent` marking a screen's primary action. The `Simple*` components
+the app's own type. `Button`, `Checkbox`, `Toggle` (a switch), `RadioGroup<T>` with
+its `Radio`s and `Slider` are the facade's own drawn controls in the platform's colors,
+every default a value their setters replace, `Button::set_prominent` marking a screen's
+primary action. The `Simple*` components
 dress the controls:
 
 ```rust,ignore

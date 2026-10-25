@@ -190,6 +190,8 @@ fn built_ins() -> impl View {
   let published = Signal::tagged("published", 0u64);
   let agreed = Signal::tagged("built-in agreed", true);
   let wifi = Signal::tagged("built-in wifi", false);
+  let size = Signal::tagged("built-in size", 2u8);
+  let level = Signal::tagged("built-in level", 40.0f32);
 
   // The framework's own controls, drawn in the platform's colors: what a component
   // library's presets build on, each default a value its setters replace.
@@ -212,6 +214,24 @@ fn built_ins() -> impl View {
         .set_children((
           Checkbox::new().set_label("Agree").bind_checked(agreed),
           Toggle::new().set_label("Wi-Fi").bind_checked(wifi),
+        )),
+      Row::new()
+        .set_spacing(2)
+        .set_wrap(Wrap::Forward)
+        .set_item_alignment(ItemAlignment::Start)
+        .set_children((
+          RadioGroup::new()
+            .set_label("Size")
+            .bind_chosen(size)
+            .set_children((
+              Radio::new(1u8).set_label("Small"),
+              Radio::new(2u8).set_label("Medium"),
+              Radio::new(3u8).set_label("Large"),
+            )),
+          Slider::new()
+            .set_label("Level")
+            .set_range(SliderRange::new(0., 100., 5.))
+            .bind_value(level),
         )),
       Text::derive(move || format!("published {} time(s)", published.get()))
         .set_color(SimplePalette::MUTED_FOREGROUND),

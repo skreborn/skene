@@ -85,6 +85,21 @@ impl Slider {
     }
   }
 
+  /// The closure where the value sits along the range is read through, `0..=1`: what
+  /// a drawn fill and thumb measure, the range's minimum standing for the value where
+  /// none is set.
+  #[must_use]
+  pub fn reads_fraction(&self) -> Rc<dyn Fn() -> f32> {
+    let range = self.range.clone();
+    let value = self.value.reader();
+
+    Rc::new(move || {
+      let range = range.get();
+
+      range.fraction_of(value.as_ref().map_or_else(|| range.min(), |value| value()))
+    })
+  }
+
   /// Sets the axis the range runs along.
   #[inline(always)]
   pub const fn set_axis(mut self, axis: Axis) -> Self {

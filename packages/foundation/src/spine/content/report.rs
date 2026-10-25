@@ -232,12 +232,13 @@ impl Answer {
 /// A text entry's controlled [`Edit`]: the truth the platform is brought back to, and
 /// the ask a reader's change makes of the app.
 ///
-/// [`register`](Self::register) writes the truth as the entry's content whenever what it
-/// reads changes, skipping a write of what the entry shows already and holding one back
-/// while the reader's text is [composing](Realization::composing); and it answers every
-/// reader's change [`report`]ed at the node: one the truth holds already asks nothing
-/// and stands, and so does one made while it writes, but for a selection the write moved,
-/// which it asks for; any other asks the app for each part it changes, the text then the
+/// [`register_with`](Self::register_with) writes the truth as the entry's content,
+/// through the realization its [`ContentOps`] reach, whenever what it reads changes,
+/// skipping a write of what the entry shows already and holding one back while the
+/// reader's text is [composing](Realization::composing); and it answers every reader's
+/// change [`report`]ed at the node: one the truth holds already asks nothing and stands,
+/// and so does one made while it writes, but for a selection the write moved, which it
+/// asks for; any other asks the app for each part it changes, the text then the
 /// selection, and stands where the truth then holds it, replaced by the truth otherwise
 /// ([`Verdict`]). A disabled entry asks nothing and is answered with its truth.
 #[must_use]
@@ -449,18 +450,18 @@ impl Controllable for Option<Rc<str>> {
 /// The content is a checked state, a range, a choice's options, a group's chosen key or
 /// a value of a view adopted through the native door.
 ///
-/// [`register`](Self::register) writes the truth as the node's content whenever what it
-/// reads changes, skipping a write of what the node shows already, which it reads once
-/// through [`Realization::read`], reached through the [`ContentOps`] it is registered
-/// with, and then keeps from what it writes and what is reported, and holding one back
-/// while the reader's change is [composing](Realization::composing); a door's content
-/// is written, read and composed through the [`ControlSink`](crate::ControlSink)
-/// registered on its node instead ([`ContentKey::door`]). It answers every reader's
-/// change [`report`]ed at the node: one the truth holds ([`Controllable::holds`]) asks
-/// nothing and stands, and so does one made while it writes; any other asks the app,
-/// and stands where the truth then holds it, else is refused and repaired by the write
-/// of the truth ([`Verdict::Refuse`]). A disabled control asks nothing and is answered
-/// with its truth.
+/// [`register_with`](Self::register_with) writes the truth as the node's content,
+/// through the realization its [`ContentOps`] reach, whenever what it reads changes,
+/// skipping a write of what the node shows already, which it reads once through
+/// [`Realization::read`] and then keeps from what it writes and what is reported, and
+/// holding one back while the reader's change is [composing](Realization::composing); a
+/// door's content is written, read and composed through the
+/// [`ControlSink`](crate::ControlSink) registered on its node instead
+/// ([`ContentKey::door`]). It answers every reader's change [`report`]ed at the node: one
+/// the truth holds ([`Controllable::holds`]) asks nothing and stands, and so does one
+/// made while it writes; any other asks the app, and stands where the truth then holds
+/// it, else is refused and repaired by the write of the truth ([`Verdict::Refuse`]). A
+/// disabled control asks nothing and is answered with its truth.
 #[must_use]
 pub struct Controller<T: Controllable> {
   key: ContentKey<T>,

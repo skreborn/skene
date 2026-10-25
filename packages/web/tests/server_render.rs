@@ -1627,6 +1627,29 @@ fn a_native_view_renders_its_markup_as_its_placeholder() {
   );
 }
 
+/// A native view's class value is escaped as every attribute value is, so an app's own
+/// value stays inside its one `class` attribute.
+#[test]
+fn a_native_class_value_serializes_escaped_inside_its_attribute() {
+  use skene_web::platform::web::NativeView;
+
+  let rendered = render_to_string(|| {
+    NativeView::new("div").add_attribute(
+      "class",
+      String::from("tile\"onmouseover=\"alert(1)\" <b>&amp"),
+    )
+  });
+  let body = rendered.body();
+
+  assert!(
+    body.contains(
+      "<div data-h=\"1\" class=\"tile&quot;onmouseover=&quot;alert(1)&quot; &lt;b&gt;&amp;amp\"></div>"
+    ),
+    "{body}"
+  );
+  assert!(!body.contains("onmouseover=\""), "{body}");
+}
+
 /// A required, read-only text field serializes the native attributes a form enforces
 /// without script, and its description gets the id the field names.
 #[test]

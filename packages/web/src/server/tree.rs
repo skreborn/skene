@@ -86,21 +86,16 @@ impl Element {
     }
   }
 
-  /// Sets the attribute `name` to `value`: `class` replaces the classes and `style`
-  /// the declarations, as a browser parses them.
+  /// Sets the attribute `name` to `value`: `class` replaces the classes, as a browser
+  /// parses them.
   fn set_attribute(&mut self, name: &str, value: &str) {
-    let value = match name {
-      "class" => {
-        self.classes = value.split_whitespace().map(Rc::from).collect();
+    let value = if name == "class" {
+      self.classes = value.split_whitespace().map(Rc::from).collect();
 
-        ""
-      }
-      "style" => {
-        self.inline.clear();
-
-        value
-      }
-      _ => value,
+      ""
+    }
+    else {
+      value
     };
 
     match self
@@ -216,7 +211,7 @@ impl Element {
         out.push(' ');
       }
 
-      out.push_str(class);
+      Document::escape_attribute(class, out);
     }
 
     out.push('"');

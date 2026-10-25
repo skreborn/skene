@@ -1079,9 +1079,9 @@ number token alone.
 
 `Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web; the terminal makes no node for it, keeping no record,
-and its definitions still reach it through `define_tokens`), provides `Memo<P>`
-through context, and runs one effect that writes `P::definitions()` onto the scope, so
-nothing rebuilds. On the web a palette change therefore costs the number of tokens, never
+and its definitions still reach it through `define_tokens`), provides `Memo<S>`
+through context, and runs one effect in its `ThemeCore` that writes the palette's
+definitions (`S::definitions()`, as they read now) onto the scope, so nothing rebuilds. On the web a palette change therefore costs the number of tokens, never
 the number of nodes; the terminal still re-resolves every node beneath the scope until its
 token caches take per-scope epochs. Nesting a theme redefines beneath it. On the web the static definitions
 are an interned class on the scope element (with `@media` blocks and the scheme double

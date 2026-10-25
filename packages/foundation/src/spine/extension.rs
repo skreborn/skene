@@ -65,13 +65,14 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
 /// Each property names its field in the extension's block, its value type, which the
 /// module resolves as the invoking module does, and its variant of the extension's
 /// property enum, which the field type is named for. A property may start with
-/// `#[cfg(<predicate>)]`, a platform's own property, whose field type and visit exist where
-/// the predicate holds alone, as its field and its variant do.
+/// `[cfg(<predicate>)]`, as a line of [`properties!`](crate::properties) does, a
+/// platform's own property, whose field type and visit exist where the predicate holds
+/// alone, as its field and its variant do.
 ///
 /// ```ignore
 /// skene_foundation::extension_fields! {
 ///   pub mod acme_fields for AcmeExt, AcmeProperty;
-///   box: tint: Color => Tint, #[cfg(skene_platform = "linux")] linux_glow: Color => LinuxGlow;
+///   box: tint: Color => Tint, [cfg(skene_platform = "linux")] linux_glow: Color => LinuxGlow;
 ///   run: tracking: Length => Tracking,
 /// }
 /// ```
@@ -81,10 +82,10 @@ macro_rules! extension_fields {
     $(#[$meta:meta])*
     $vis:vis mod $module:ident for $ext:ident, $property:ident;
     box: $(
-      $(#[cfg($box_predicate:meta)])? $box_field:ident: $box_value:ty => $box_property:ident
+      $([cfg($box_predicate:meta)])? $box_field:ident: $box_value:ty => $box_property:ident
     ),* $(,)?;
     run: $(
-      $(#[cfg($run_predicate:meta)])? $run_field:ident: $run_value:ty => $run_property:ident
+      $([cfg($run_predicate:meta)])? $run_field:ident: $run_value:ty => $run_property:ident
     ),* $(,)?
   ) => {
     $(#[$meta])*

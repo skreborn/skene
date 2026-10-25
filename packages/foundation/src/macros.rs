@@ -363,7 +363,7 @@ mod tests {
   crate::extension_fields! {
     #[expect(unreachable_pub, reason = "the macro makes a facade's field types public")]
     mod probe_fields for Probe, ProbeProperty;
-    box: #[cfg(test)] tint: u16 => Tint, #[cfg(any())] gone: u16 => Gone;
+    box: [cfg(test)] tint: u16 => Tint, [cfg(any())] gone: u16 => Gone;
     run:
   }
 

@@ -593,19 +593,25 @@ in a code comment.
 26. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-27. **A terminal field centers its value in a taller box.** A browser draws a
+27. **A drawn slider stands upright.** The drawn `Slider`'s default track runs along
+    its row alone, so a vertical slider is a `BasicSlider` over the behavior set
+    vertical (`behavior::Slider::set_axis`) with parts of its own. The drawn one takes
+    the behavior's axis by a setter named apart from the control's own row axis
+    (`ControlBase::set_axis`), its default fill growing from the bottom and its thumb
+    travelling up, in pixels and in cells alike.
+28. **A terminal field centers its value in a taller box.** A browser draws a
     single-line `<input>`'s value in the middle of a box taller than its line; the
     terminal draws it on the box's first row, now that a row stretching its items
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
-28. **A plain toggle draws its box on the web.** The reset's default chrome for an
+29. **A plain toggle draws its box on the web.** The reset's default chrome for an
     `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
-29. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+30. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-30. **Server rendering beyond the native binary.** The native server binary stays the
+31. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
@@ -623,7 +629,7 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-31. **Confirm docs.rs documents every platform's build.** `skene-web` and
+32. **Confirm docs.rs documents every platform's build.** `skene-web` and
     `skene-simple-web` name each target's leaf, and `skene-terminal` and
     `skene-simple-terminal` the terminal, through `cargo-args` setting
     `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over

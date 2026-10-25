@@ -85,9 +85,8 @@ impl Slider {
     }
   }
 
-  /// The closure where the value sits along the range is read through, `0..=1`: what
-  /// a drawn fill and thumb measure, the range's minimum standing for the value where
-  /// none is set.
+  /// The closure the value's fraction of the range is read through, `0..=1`, as a drawn
+  /// fill and thumb place themselves; the minimum's with no value set.
   #[must_use]
   pub fn reads_fraction(&self) -> Rc<dyn Fn() -> f32> {
     let range = self.range.clone();
@@ -561,6 +560,30 @@ mod tests {
       SliderRange::new(5., 5., 0.).fraction_of(5.),
       0.,
       "an empty range paints no fill",
+    );
+  }
+
+  /// The fraction a drawn fill and thumb read follows the value and the range, and
+  /// reads the minimum's with no value set.
+  #[test]
+  fn a_sliders_fraction_follows_its_value() {
+    let range = SliderRange::new(20., 60., 0.);
+
+    assert_eq!(Slider::new().set_range(range).reads_fraction()(), 0.);
+    assert_eq!(
+      Slider::new()
+        .set_range(range)
+        .set_value(50.)
+        .reads_fraction()(),
+      0.75
+    );
+    assert_eq!(
+      Slider::new()
+        .set_range(range)
+        .set_value(90.)
+        .reads_fraction()(),
+      1.,
+      "a value past the range reads full"
     );
   }
 

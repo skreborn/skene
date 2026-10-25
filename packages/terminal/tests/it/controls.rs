@@ -2300,6 +2300,7 @@ fn a_slider_draws_its_track_fill_and_thumb_in_cells() {
       accent,
       "the thumb ends on the track's last cell"
     );
+    assert_ne!(surface(15), rail, "the thumb, not the bare rail");
     assert_ne!(surface(15), knob, "and shows focus");
     assert!(is_live(slider));
   });

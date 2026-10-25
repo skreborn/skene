@@ -59,8 +59,8 @@ type Colors = SystemColors<i32>;
 /// the start, and its children ([`add_child`](HasChildren::add_child) and its kin) in a
 /// column on rows of their own, a [`Flexible`](crate::Flexible) among them taking its
 /// flexibility there. A body [`set_child`](ControlBase::set_child) supplies takes the
-/// column's place, the children added to the column with it; every other default is the
-/// control's.
+/// column's place, and the children given to the column are dropped with it; every other
+/// default is the control's.
 ///
 /// ```
 /// use skene_terminal::prelude::*;

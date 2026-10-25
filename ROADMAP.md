@@ -41,9 +41,9 @@ in a code comment.
     and editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
-    re-inking its built-in. `skene new`'s app and library scaffolds take that shape, and the gate compiles what
-    they write on every platform they name, so a scaffold cannot fall behind the surface
-    it teaches.
+    re-inking its built-in. `skene new`'s app and library scaffolds take that shape, and
+    the gate compiles what they write on every platform they name, so a scaffold cannot
+    fall behind the surface it teaches.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.

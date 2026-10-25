@@ -40,14 +40,17 @@ impl NativeMarkup {
 /// door.
 ///
 /// It is an ordinary node, placed, styled by the layout a wrapper gives it and removed
-/// as any other, the element keeping its own look. It is built from a tag and its attributes, its
-/// [`NativeMarkup`]. The server renders that markup as the view's placeholder, and the browser
-/// creates the element from it, or, while hydrating, adopts the server's placeholder in place, so
-/// the rest of the page hydrates as it would without it. On the browser leaf the element is handed,
-/// once adopted, to its `handle_adopt`, to draw into or listen on; a
-/// view holding a value registers a [`ControlSink`](skene_foundation::ControlSink) of
-/// its own there ([`LowLevel::register_sink`]), so a
-/// [`Controller`](skene_foundation::Controller) of a
+/// as any other, the element keeping its own look. It is built from a tag and its
+/// attributes (`createElement`, `setAttribute`), its [`NativeMarkup`]. The server
+/// renders that markup as the view's placeholder, and the browser creates the element
+/// from it or, while hydrating, adopts the server's placeholder in place, writing each
+/// attribute the markup gives it another value, so the rest of the page hydrates as it
+/// would without it.
+///
+/// On the browser leaf the element is handed, once adopted, to its `handle_adopt`, to
+/// draw into or listen on; a view holding a value registers a
+/// [`ControlSink`](skene_foundation::ControlSink) of its own there
+/// ([`LowLevel::register_sink`]), so a [`Controller`](skene_foundation::Controller) of a
 /// [`ContentKey::door`](skene_foundation::ContentKey::door) key controls the value under
 /// a built-in's contract.
 ///
@@ -85,6 +88,7 @@ impl std::fmt::Debug for NativeView {
 
 impl NativeView {
   /// An element of `tag` with no attributes.
+  #[doc(alias = "createElement")]
   #[inline(always)]
   pub const fn new(tag: &'static str) -> Self {
     Self {
@@ -99,6 +103,7 @@ impl NativeView {
 
   /// Adds the attribute `name` of `value` to the element's markup, replacing a value
   /// added for `name` before.
+  #[doc(alias = "setAttribute")]
   pub fn add_attribute(mut self, name: &'static str, value: impl Into<Cow<'static, str>>) -> Self {
     let value = value.into();
     let attributes = &mut self.markup.attributes;
@@ -145,16 +150,17 @@ impl skene_foundation::View<Web> for NativeView {
   #[cfg(not(skene_server))]
   fn build(self) -> NodeId {
     let element = Web::served(self.markup.tag).unwrap_or_else(|| {
-      let element = crate::browser::document()
+      crate::browser::document()
         .create_element(self.markup.tag)
-        .expect("an element");
+        .expect("an element")
+    });
 
-      for (name, value) in self.markup.attributes() {
+    for (name, value) in self.markup.attributes() {
+      if element.get_attribute(name).as_deref() != Some(value) {
         let _ = element.set_attribute(name, value);
       }
+    }
 
-      element
-    });
     let node = LowLevel::<Web>::adopt(&Self::spec(), element.clone());
 
     if let Some(adopt) = self.adopted {

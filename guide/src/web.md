@@ -156,8 +156,8 @@ build alone, so code naming one sits in an arm under `#[cfg(skene_platform = "<p
 low-level view puts an element of the DOM in a Skene tree, and the leaves' own entry
 points. A `NativeView` is built from a tag and its attributes; the server renders them as
 its placeholder, and the browser creates the element from them or adopts the served one
-in place while hydrating, handing it to `handle_adopt` to draw into or listen on. `platform::apple`
-holds what iOS and macOS share.
+in place while hydrating, handing it to `handle_adopt` to draw into or listen on.
+`platform::apple` holds what iOS and macOS share.
 
 ## Pixels
 

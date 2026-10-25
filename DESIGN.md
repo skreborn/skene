@@ -1429,8 +1429,9 @@ adds only what is its own:
   content by its controller's write, a toggle's checked state read as the hydration
   begins, before the client writes any radio of its group, and convergence
   once the tree is built: every server node the client built differently or never built removed, every adopted
-  element but a native view, which keeps its own, given exactly the client's classes, and the order-keyed resource values no
-  resource adopted dropped, a native view's placeholder adopted in place where the
+  element given exactly the client's classes, a native view keeping its own beside
+  them and losing only the server's compiled ones, and the order-keyed resource values
+  no resource adopted dropped, a native view's placeholder adopted in place where the
   door adopts that very element and removed where it adopts another), scroll and focus
   restoration keyed by a segment's end anchor, the live element behind a native view,
   the History binding and the head.
@@ -1818,18 +1819,18 @@ Two guarantees, both properties of what is public rather than of any one API.
   `skene new lib` creates the same shape: a core holding a palette, a unit trait and a
   view, and a crate per platform named.
 - **A low-level view, against the platform, like a built-in.** It is written against a
-  platform's escape trait or through its native door and realized through the same
-  scene and node ids as a `Container`, so it composes with wrappers, themes, conditions and events. A view of a
-  platform of its own is concrete, as a built-in is: `acme-sparkline`'s `Sparkline` is a
-  `View<skene_terminal::Active>` with no parameter, building a sized `Container` and
-  handing the platform its cell painter (`<Active as CellPainter>::paint`) and its pixel
-  painter (`<Active as Painting>::paint`) for that one box, so an app writes
-  `Sparkline::new(..)` and names no platform. `acme-map`'s `Map` is likewise a
-  `View<skene_web::Active>`: a `NativeView` canvas inside a sized `Container`, its
-  markup served as is and painted on the browser leaf once its element is in hand, so
-  the web's two leaves are one view with a `cfg` only around the painting, inside the
-  library. Selecting the platform is what selecting the facade already does. A
-  platform's escape traits live in its facade's `platform::<p>` module:
+  platform's escape trait or through its native door and realized through the same scene
+  and node ids as a `Container`, so it composes with wrappers, themes, conditions and
+  events. A view of a platform of its own is concrete, as a built-in is:
+  `acme-sparkline`'s `Sparkline` is a `View<skene_terminal::Active>` with no parameter,
+  building a sized `Container` and handing the platform its cell painter
+  (`<Active as CellPainter>::paint`) and its pixel painter
+  (`<Active as Painting>::paint`) for that one box, so an app writes `Sparkline::new(..)` and names no platform. `acme-map`'s
+  `Map` is likewise a `View<skene_web::Active>`: a `NativeView` canvas inside a sized
+  `Container`, its markup served as is and painted on the browser leaf once its element
+  is in hand, so the web's two leaves are one view with a `cfg` only around the
+  painting, inside the library. Selecting the platform is what selecting the facade
+  already does. A platform's escape traits live in its facade's `platform::<p>` module:
   `skene_terminal::platform::terminal::CellPainter`, which has no `Realization`
   supertrait, so a failed bound states its one rule, that cells are painted on the
   terminal alone; the web has none, its low-level views going through its native door.
@@ -1849,12 +1850,12 @@ Two guarantees, both properties of what is public rather than of any one API.
   terminal nothing. The door's view on the web is `platform::web::NativeView`, built
   from a tag and its attributes: the server renders them as its placeholder, and the
   browser creates the element from them or, while hydrating, adopts the served
-  placeholder in place, the door taking the next hydration marker as any element does
-  (`Page::claim`), so the rest of the page hydrates with no mismatch. On the browser
-  leaf `handle_adopt` hands it the element with its node, where a library draws, listens
-  and registers its sink; the browser tests adopting a color input under the contract,
-  as a `NativeView` and as an element of a test's own (`browser_views`), are the door's
-  standing proofs.
+  placeholder in place, writing each attribute its markup gives another value, the door
+  taking the next hydration marker as any element does (`Page::claim`), so the rest of
+  the page hydrates with no mismatch. On the browser leaf `handle_adopt` hands it the
+  element with its node, where a library draws, listens and registers its sink; the
+  browser tests adopting a color input under the contract, as a `NativeView` and as an
+  element of a test's own (`browser_views`), are the door's standing proofs.
 
 A platform need not be first-party: a crate that implements `Realization`, provides its
 scalar, leaves, extension, a `launch` and views over `skene-foundation` is a facade.

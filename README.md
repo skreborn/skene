@@ -256,12 +256,12 @@ through its facade's `platform::<p>` module, the web's native door
 place) or the terminal's escape trait (`skene_terminal::platform::terminal::CellPainter`),
 takes the `Realization` seam from `skene-foundation` where it needs it, since a facade
 re-exports none, and is realized through the same scene as a built-in, a concrete view of
-its facade's `Active` (`acme_map::Map`, `acme_sparkline::Sparkline`); `Painted` is the portable one for pixels, a
-vello scene the platform renders, the web on the CPU or, with `skene-web`'s `gpu`
-feature, on the GPU where the page has WebGPU, and the terminal through the kitty
-graphics protocol where it proves one. `examples/third-party` shows both escape paths: `acme-map` (a canvas
-through the web's door, its markup served as the placeholder the browser adopts and paints)
-and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
+its facade's `Active` (`acme_map::Map`, `acme_sparkline::Sparkline`); `Painted` is the
+portable one for pixels, a vello scene the platform renders, the web on the CPU or, with
+`skene-web`'s `gpu` feature, on the GPU where the page has WebGPU, and the terminal
+through the kitty graphics protocol where it proves one. `examples/third-party` shows
+both paths: `acme-map` (a canvas through the web's door, its markup served as the
+placeholder the browser adopts and paints) and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
 where the terminal proves its graphics), each used by its platform's gallery and tested
 on its platform.
 

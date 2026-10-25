@@ -56,6 +56,7 @@ use self::{
   sheet::Sheet,
 };
 use super::{
+  interner::CLASS_PREFIX,
   markup::{MARKER_ATTRIBUTE, STYLE_ID},
   platform::web::Web,
   realize::{Realized, Realizer, Record},
@@ -117,6 +118,25 @@ impl Record<Page> {
     }
     else {
       let _ = element.set_attribute("class", &classes.join(" "));
+    }
+  }
+
+  /// Removes from a native view's element every compiled class that is not the node's
+  /// own, keeping the view's own classes.
+  fn write_native_classes(&self) {
+    let Some(element) = self.dom_element()
+    else {
+      return;
+    };
+    let list = element.class_list();
+    let own = [self.style_class.as_deref(), self.token_class.as_deref()];
+    let stale: Vec<String> = (0..list.length())
+      .filter_map(|index| list.item(index))
+      .filter(|class| class.starts_with(CLASS_PREFIX) && !own.contains(&Some(class.as_str())))
+      .collect();
+
+    for class in stale {
+      let _ = list.remove_1(&class);
     }
   }
 }
@@ -431,8 +451,8 @@ impl Dom {
 
   /// Ends hydration: reports what the server rendered and the client never built or
   /// built differently, removes it, so the page converges on the client's tree, gives
-  /// each adopted element exactly the client's classes, and forgets which nodes were
-  /// adopted.
+  /// each adopted element exactly the client's classes, a native view's keeping its own
+  /// beside them, and forgets which nodes were adopted.
   fn finish_hydration(&mut self) -> Vec<NodeId> {
     let Some(hydration) = self.realizer.sink.hydration.take()
     else {
@@ -457,8 +477,13 @@ impl Dom {
     }
 
     for node in self.realizer.records.values_mut() {
-      if node.adopted && !matches!(node.realized, Realized::Native) {
-        node.write_classes();
+      if node.adopted {
+        if matches!(node.realized, Realized::Native) {
+          node.write_native_classes();
+        }
+        else {
+          node.write_classes();
+        }
       }
 
       node.adopted = false;

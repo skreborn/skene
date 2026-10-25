@@ -32,13 +32,16 @@ pub(crate) struct ClassInterner {
   rules: FxHashMap<Rc<str>, Rule>,
 }
 
-/// The class name for a template: `skene-` and the template's 128-bit
+/// The prefix of every class name the interner generates.
+pub(crate) const CLASS_PREFIX: &str = "skene-";
+
+/// The class name for a template: [`CLASS_PREFIX`] and the template's 128-bit
 /// [`hash`](skene_reactive::hash::wide) in hex, identical on every leaf and independent
 /// of intern order.
 #[must_use]
 pub(crate) fn class_name(template: &str) -> String {
   format!(
-    "skene-{:032x}",
+    "{CLASS_PREFIX}{:032x}",
     skene_reactive::hash::wide(template.as_bytes())
   )
 }

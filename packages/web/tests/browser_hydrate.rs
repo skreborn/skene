@@ -450,12 +450,13 @@ fn a_client_only_view_builds_after_hydrating_without_shifting_markers() {
 }
 
 /// A native view adopts the placeholder the server rendered for it in place, its
-/// element handed over as served with its own classes, and the nodes around it hydrate
-/// with no mismatch.
+/// element handed over with the client's attributes written over the served ones, its
+/// own classes kept and a compiled class the client does not give it dropped, and the
+/// nodes around it hydrate with no mismatch.
 #[wasm_bindgen_test]
 fn a_native_view_adopts_its_served_placeholder_in_place() {
   let root = server_root(
-    "<div data-h=\"1\"><canvas data-h=\"2\" class=\"chart\" width=\"20\"></canvas>\
+    "<div data-h=\"1\"><canvas data-h=\"2\" class=\"chart skene-stale\" width=\"20\"></canvas>\
      <span data-h=\"3\">after</span></div>",
   );
   let column = only_child(&root);
@@ -471,8 +472,7 @@ fn a_native_view_adopts_its_served_placeholder_in_place() {
     move || {
       Column::new().set_children((
         web::NativeView::new("canvas")
-          .add_attribute("class", "chart")
-          .add_attribute("width", "20")
+          .add_attribute("width", "40")
           .handle_adopt(move |_, element| *handed.borrow_mut() = Some(element.clone())),
         Text::new("after"),
       ))
@@ -498,9 +498,14 @@ fn a_native_view_adopts_its_served_placeholder_in_place() {
   );
   assert!(!served.has_attribute("data-h"), "its marker is spent");
   assert_eq!(
+    served.get_attribute("width").as_deref(),
+    Some("40"),
+    "the client's attribute is written over the served one"
+  );
+  assert_eq!(
     served.get_attribute("class").as_deref(),
     Some("chart"),
-    "and it keeps its own classes"
+    "and it keeps its own classes, losing a compiled one the client does not give it"
   );
   assert!(
     hydrated.last_element_child() == Some(after),

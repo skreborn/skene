@@ -589,8 +589,8 @@ fn painted() -> impl View {
   )
 }
 
-/// A low-level view from outside the framework: a map covering every platform of the web
-/// medium through a trait of its own.
+/// A low-level view from outside the framework: a map through the web's native door,
+/// served as its markup and painted once the browser holds its element.
 fn third_party() -> impl View {
   section("Third party", acme_map::Map::new())
 }

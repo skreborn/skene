@@ -23,6 +23,7 @@ pub use self::{
 use self::{
   controls::AccessReports,
   drag::DragRecord,
+  focus_order::Autofocus,
   overlays::OverlayRecord,
   placement::Structural,
   structure::SegmentRecord,
@@ -253,6 +254,7 @@ pub struct Scene<P: Realization> {
   open_overlays: Vec<NodeId>,
   held: Held,
   kept_focus: FxHashMap<NodeId, NodeId>,
+  autofocus: Autofocus,
   drag: Option<DragRecord>,
   resolved_tokens: ResolvedTokens<P::Scalar>,
 }
@@ -283,6 +285,7 @@ impl<P: Realization> Scene<P> {
       open_overlays: Vec::new(),
       held: Held::new(),
       kept_focus: FxHashMap::default(),
+      autofocus: Autofocus::Asked(Vec::new()),
       drag: None,
       resolved_tokens: ResolvedTokens::default(),
     }

@@ -32,7 +32,7 @@ pub fn skene_conformance::Scenario<D>::check(&self, &mut D) -> core::result::Res
 impl<D> core::fmt::Debug for skene_conformance::Scenario<D>
 pub fn skene_conformance::Scenario<D>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub const skene_conformance::BREAKPOINT: i32
-pub const skene_conformance::PAGES: [&str; 19]
+pub const skene_conformance::PAGES: [&str; 20]
 pub const skene_conformance::RETURN: core::time::Duration
 pub trait skene_conformance::Driver
 pub type skene_conformance::Driver::Node: core::clone::Clone + core::fmt::Debug + core::cmp::PartialEq

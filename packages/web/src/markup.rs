@@ -503,7 +503,6 @@ pub(crate) fn anchor_text(ordinal: u32) -> String {
 pub(crate) fn render_focus_order(focus_order: FocusOrder) -> String {
   match focus_order {
     FocusOrder::Auto => "0".into(),
-    FocusOrder::Position(position) => (u32::from(position) + 1).to_string(),
     FocusOrder::Skip => "-1".into(),
   }
 }

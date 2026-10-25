@@ -1082,6 +1082,91 @@ fn an_activatable_row_is_a_tab_stop_in_child_order() {
   assert_eq!(order, ["Before", "Inside", "Inside", "Named"]);
 }
 
+/// A page opens with nothing focused, the body active, where no control asks for focus.
+#[wasm_bindgen_test]
+fn a_page_opens_with_nothing_focused() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new()).set_label("a"),
+        BasicTextField::new(TextEntry::new()),
+      ))
+      .build()
+  });
+
+  assert!(root.query_selector("[autofocus]").expect("query").is_none());
+  assert_eq!(
+    document().active_element(),
+    document().body().map(Into::into),
+    "the body is active"
+  );
+}
+
+/// A control set to autofocus takes focus as the mount that opens the page ends, the
+/// first in the scene's child order of those that ask and are enabled, and carries
+/// `autofocus` as the served page's element does; a mount after the page opened moves
+/// no focus.
+#[wasm_bindgen_test]
+fn an_autofocus_control_is_focused_after_the_mount() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        BasicButton::new(Activate::new()).set_label("a"),
+        BasicButton::new(Activate::new())
+          .set_label("off")
+          .set_disabled(true)
+          .set_autofocus(true),
+        BasicButton::new(Activate::new())
+          .set_label("b")
+          .set_autofocus(true),
+        BasicButton::new(Activate::new())
+          .set_label("c")
+          .set_autofocus(true),
+      ))
+      .build()
+  });
+
+  let buttons = root.query_selector_all("button").expect("query");
+  let button = |index| {
+    buttons
+      .item(index)
+      .and_then(|node| node.dyn_into::<Element>().ok())
+      .expect("a button")
+  };
+
+  assert_eq!(
+    document().active_element(),
+    Some(button(2)),
+    "b takes focus"
+  );
+  assert!(button(2).has_attribute("autofocus"));
+  assert_eq!(
+    root
+      .query_selector_all("[autofocus]")
+      .expect("query")
+      .length(),
+    1,
+    "one element opens focused"
+  );
+
+  let _ = mount(|| {
+    BasicButton::new(Activate::new())
+      .set_label("d")
+      .set_autofocus(true)
+      .build()
+  });
+
+  assert_eq!(
+    document().active_element(),
+    Some(button(2)),
+    "the page has opened"
+  );
+}
+
 #[wasm_bindgen_test]
 fn click_handler_runs_on_a_real_click() {
   let (_guard, root) = fresh_root();

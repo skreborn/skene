@@ -110,6 +110,10 @@ pub fn pages() -> Vec<Page> {
       build: row_page,
     },
     Page {
+      name: "autofocus",
+      build: autofocus_page,
+    },
+    Page {
       name: "text",
       build: text_page,
     },
@@ -439,6 +443,13 @@ fn row_page(probes: &mut Probes) -> AnyView {
     .set_label("Row")
     .handle_click(move || row.update(|count| *count += 1))
     .set_child(button("Inside").handle_activate(move || inside.update(|count| *count += 1)))
+    .into_any()
+}
+
+/// The buttons a and b in a column, b set to autofocus.
+fn autofocus_page(_: &mut Probes) -> AnyView {
+  Column::new()
+    .set_children((button("a"), button("b").set_autofocus(true)))
     .into_any()
 }
 

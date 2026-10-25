@@ -31,11 +31,9 @@ in a code comment.
     tree of Skene's views (boxes and runs, a `Painted` canvas where it draws marks), and
     on the web over the form element CSS styles; a shared option is semantic
     (`Button::set_prominent`) rather than a per-platform preset; a shared `set_shortcut`
-    joins them. Focus order follows the scene's child order, and a window opens with
-    nothing focused but a control set to `set_autofocus`. `TextEntry::on_key` takes the
-    core's `Binding` table once every field is drawn, the terminal's key default
-    consulting it until then, and the engine and editor move from the drawing
-    realization onto the platform's seam.
+    joins them. `TextEntry::on_key` takes the core's `Binding` table once every field
+    is drawn, the terminal's key default consulting it until then, and the engine and
+    editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
     re-inking its built-in. The core holds colors, named sizes and logic and no view, so

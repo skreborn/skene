@@ -15,8 +15,10 @@ use std::{
 };
 
 use skene_web::{
+  Activate,
   AsyncView,
   AsyncViewBase,
+  BasicButton,
   BasicListboxOption,
   BasicPicker,
   BasicPickerBase,
@@ -178,6 +180,86 @@ fn hydrate_keeps_the_readers_scroll_and_focus() {
   web::uninstall();
   root.remove();
   block.remove();
+}
+
+/// A page whose buttons `a` and `b`, `b` set to autofocus, as the server serves it,
+/// connected under a fresh root, with the served buttons.
+fn served_autofocus() -> (
+  impl FnOnce() -> skene_web::Column + 'static,
+  Element,
+  [HtmlElement; 2],
+) {
+  let app = || {
+    skene_web::Column::new().set_children((
+      BasicButton::new(Activate::new()).set_label("a"),
+      BasicButton::new(Activate::new())
+        .set_label("b")
+        .set_autofocus(true),
+    ))
+  };
+  let (markup, _) = served(move || skene_web::View::into_any(app()));
+  let root = server_root(&markup);
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  let buttons = root.query_selector_all("button").expect("query");
+  let button = |index| {
+    buttons
+      .item(index)
+      .and_then(|node| node.dyn_into::<HtmlElement>().ok())
+      .expect("a served button")
+  };
+
+  (app, root, [button(0), button(1)])
+}
+
+/// The served element the browser focused for its `autofocus` stays focused across
+/// hydration.
+#[wasm_bindgen_test]
+fn the_served_autofocus_element_stays_focused_across_hydration() {
+  let (app, root, [_, b]) = served_autofocus();
+
+  assert!(b.has_attribute("autofocus"), "the server marks it");
+
+  // The browser focuses the served `autofocus` element as the page loads.
+  b.focus().expect("focus the served button");
+  hydrate(root.clone(), "", app);
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert!(b.is_connected(), "the button was adopted");
+  assert!(b.has_attribute("autofocus"));
+  assert_eq!(
+    document().active_element(),
+    Some(b.into()),
+    "the focus survived hydration"
+  );
+
+  web::uninstall();
+  root.remove();
+}
+
+/// Hydration moves no focus: a reader who moved focus off the served `autofocus`
+/// element before the bundle arrived keeps where they moved it.
+#[wasm_bindgen_test]
+fn hydration_moves_no_focus_to_the_autofocus_control() {
+  let (app, root, [a, _]) = served_autofocus();
+
+  a.focus().expect("focus the other button");
+  hydrate(root.clone(), "", app);
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(
+    document().active_element(),
+    Some(a.into()),
+    "the reader's focus stays"
+  );
+
+  web::uninstall();
+  root.remove();
 }
 
 /// A container's static child sits between the anchors of a segment of its own: the

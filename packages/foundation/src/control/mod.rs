@@ -460,6 +460,7 @@ struct Members<P: Realization> {
   described_by: Option<NodeId>,
   labelled_by: Option<NodeId>,
   focus_order: Option<Source<FocusOrder>>,
+  autofocus: bool,
   parts: Vec<(Part, AnyView<P>)>,
   observers: Vec<Handler>,
   child: Option<AnyView<P>>,
@@ -496,6 +497,7 @@ impl<P: Realization, B: Behavior> Control<P, B> {
         labelled_by: None,
         accessible_name: None,
         focus_order: None,
+        autofocus: false,
         parts: Vec::new(),
         observers: Vec::new(),
         child: None,
@@ -661,6 +663,16 @@ impl<P: Realization, B: Behavior> Control<P, B> {
   /// reads, over the behavior's default.
   pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
     self.members.focus_order = Some(Source::derive(focus_order));
+
+    self
+  }
+
+  /// Sets whether the control takes focus as its window opens, where otherwise nothing
+  /// is focused; the first in the scene's child order of the controls built with the
+  /// window that ask for it, and enabled, takes it, and focus does not show for it.
+  #[inline(always)]
+  pub const fn set_autofocus(mut self, autofocus: bool) -> Self {
+    self.members.autofocus = autofocus;
 
     self
   }
@@ -887,6 +899,7 @@ impl<P: Realization> View<P> for ControlCore<P> {
           labelled_by: named_by,
           accessible_name,
           focus_order,
+          autofocus,
           parts,
           observers,
           child,
@@ -928,15 +941,7 @@ impl<P: Realization> View<P> for ControlCore<P> {
         |_, _, _| {},
       );
 
-      Scene::<P>::with(|scene| {
-        if native.is_some_and(NativeElement::is_text_entry) {
-          scene.note_entry(node);
-        }
-
-        if placement == LabelPlacement::Beside {
-          scene.keep_caption_beside(node);
-        }
-      });
+      note_facts::<P>(node, native, placement, autofocus);
       // A caption whose text is the platform's to read names the control by reference;
       // it is built after the control, so the markup keeps the control first.
       let (label, labelled_by) = match label {
@@ -984,6 +989,30 @@ impl<P: Realization> View<P> for ControlCore<P> {
       node
     })
   }
+}
+
+/// Records in the scene what the control `node` is beside its node: a text entry where
+/// `native` is one, a caption kept beside it where `placement` places it there, and a
+/// request for focus as the window opens where it makes one.
+fn note_facts<P: Realization>(
+  node: NodeId,
+  native: Option<NativeElement>,
+  placement: LabelPlacement,
+  autofocus: bool,
+) {
+  Scene::<P>::with(|scene| {
+    if native.is_some_and(NativeElement::is_text_entry) {
+      scene.note_entry(node);
+    }
+
+    if placement == LabelPlacement::Beside {
+      scene.keep_caption_beside(node);
+    }
+
+    if autofocus {
+      scene.note_autofocus(node);
+    }
+  });
 }
 
 /// Mounts what a control holds under `node`, in order: the label where it leads, the
@@ -1646,6 +1675,15 @@ pub trait ControlBase<P: Realization, B: Behavior>: Wraps<Inner = Control<P, B>>
   #[must_use]
   fn derive_focus_order(self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
     Self::wrap(self.into_inner().derive_focus_order(focus_order))
+  }
+
+  /// Sets whether the control takes focus as its window opens, where otherwise
+  /// nothing is focused; the first in the scene's child order of the controls built
+  /// with the window that ask for it, and enabled, takes it, and focus does not show
+  /// for it.
+  #[must_use]
+  fn set_autofocus(self, autofocus: bool) -> Self {
+    Self::wrap(self.into_inner().set_autofocus(autofocus))
   }
 
   /// Adds `view` as the part `part` of the control, a styling target its

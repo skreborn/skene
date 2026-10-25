@@ -428,6 +428,12 @@ supersedes.
   row holding controls does. The row carries the role its app gives it through
   `set_role`, and none otherwise. Revisit when ARIA gains a role for an activatable
   container that may hold controls.
+- **Positional focus order** (2026-10-25), `FocusOrder::Position`, a control reached at
+  a position of its own before everything in document order, the web's positive
+  `tabindex`: focus follows the scene's child order on every platform, so the order a
+  reader tabs through is the order a reader reads, and an app that wants another order
+  builds its views in it. `FocusOrder` keeps `Auto` and `Skip`. Revisit when a reader or
+  a platform needs an order the child order cannot express.
 - **Content-addressed token tags on display-wide colors** (2026-10-14), a toolkit's
   named colors tagged by their definition's content: a palette switch changed every tag
   and so restyled every node naming one. A palette switch touches no node: named

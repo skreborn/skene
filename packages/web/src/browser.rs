@@ -36,7 +36,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use skene_dev::STATE_SCRIPT_ID;
-use skene_foundation::{EventKind, NodeId, NodeKind, Scene, Size, Timer, View};
+use skene_foundation::{EventKind, NodeId, NodeKind, Realization, Scene, Size, Timer, View};
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{Document, Element, HtmlElement, ResizeObserver, ResizeObserverEntry};
 
@@ -539,6 +539,11 @@ pub fn install(root: Element) {
 
 /// Builds `view` under the installed root as one turn, returning its node.
 ///
+/// The first mount opens the window: once its turn ends, the control set to autofocus
+/// that comes first in the scene's child order is marked `autofocus` and takes focus,
+/// or, while a hydration adopts the server's markup, keeps the focus the browser gave
+/// the served element and moves none; nothing is focused where no control asked.
+///
 /// # Panics
 ///
 /// Panics if the platform is not installed for this thread.
@@ -555,6 +560,17 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   });
 
   end_turn();
+
+  let (root, hydrating) = with_dom(|dom| (dom.root_node, dom.realizer.sink.hydration.is_some()));
+
+  if let Some(opening) = Scene::<Web>::with(|scene| scene.take_autofocus(root, |_| false)) {
+    with_dom(|dom| dom.realizer.mark_autofocus(opening));
+
+    if !hydrating {
+      Web::focus(opening);
+      end_turn();
+    }
+  }
 
   node
 }

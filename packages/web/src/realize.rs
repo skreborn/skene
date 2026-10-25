@@ -632,6 +632,14 @@ impl<S: Sink> Realizer<S> {
     }
   }
 
+  /// Marks the element carrying `node`'s focus as the one the page opens focused, as a
+  /// page that runs no script focuses it.
+  pub(crate) fn mark_autofocus(&mut self, node: NodeId) {
+    if let Some(record) = self.records.get(node) {
+      self.sink.set_attribute(record.carrier(), "autofocus", "");
+    }
+  }
+
   /// Replaces the accessibility attributes of the element carrying `node`'s state with
   /// those `access` maps to, and gives every node it refers to the id the reference
   /// names.

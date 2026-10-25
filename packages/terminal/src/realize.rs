@@ -545,15 +545,19 @@ pub fn uninstall() {
 
 /// Builds `view` under the installed root as one turn, returning its node.
 ///
+/// The first mount opens the window: once its turn ends, the control set to autofocus
+/// that comes first in the scene's child order takes focus, without showing it; nothing
+/// is focused where no control asked.
+///
 /// # Panics
 ///
 /// Panics if the platform is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   end_turn();
 
+  let root = root_node().expect("the root node exists once installed");
   let node = skene_reactive::Owner::root().enter(|| {
     let node = view();
-    let root = root_node().expect("the root node exists once installed");
 
     Scene::<Terminal>::with(|scene| scene.attach(root, node, None));
 
@@ -561,6 +565,15 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   });
 
   end_turn();
+
+  let opening = with_records(|records| {
+    Scene::<Terminal>::with(|scene| scene.take_autofocus(root, |node| records.is_hidden(node)))
+  });
+
+  if let Some(opening) = opening {
+    Terminal::focus(opening);
+    end_turn();
+  }
 
   node
 }

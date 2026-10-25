@@ -3389,7 +3389,6 @@ impl core::marker::Copy for skene_foundation::Focus
 impl core::marker::StructuralPartialEq for skene_foundation::Focus
 pub enum skene_foundation::FocusOrder
 pub skene_foundation::FocusOrder::Auto
-pub skene_foundation::FocusOrder::Position(u16)
 pub skene_foundation::FocusOrder::Skip
 impl core::clone::Clone for skene_foundation::FocusOrder
 pub fn skene_foundation::FocusOrder::clone(&self) -> skene_foundation::FocusOrder
@@ -5542,6 +5541,7 @@ pub fn skene_foundation::Control<P, B>::handle_scroll(self, impl core::ops::func
 pub fn skene_foundation::Control<P, B>::handle_wheel(self, impl core::ops::function::Fn(&skene_foundation::WheelEvent) + 'static) -> Self
 pub fn skene_foundation::Control<P, B>::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::Control<P, B>::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub const fn skene_foundation::Control<P, B>::set_autofocus(self, bool) -> Self
 pub fn skene_foundation::Control<P, B>::set_axis(self, skene_foundation::Axis) -> Self
 pub fn skene_foundation::Control<P, B>::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::Control<P, B>::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
@@ -7774,10 +7774,12 @@ pub fn skene_foundation::Scene<P>::drop_handlers(&self, skene_foundation::NodeId
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::focus_holder_within(&self, skene_foundation::NodeId) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::focus_order(&self, skene_foundation::NodeId) -> core::option::Option<skene_foundation::FocusOrder>
+pub fn skene_foundation::Scene<P>::note_autofocus(&mut self, skene_foundation::NodeId)
 pub fn skene_foundation::Scene<P>::note_focus_order(&mut self, skene_foundation::NodeId, core::option::Option<skene_foundation::FocusOrder>)
 pub fn skene_foundation::Scene<P>::set_focus_order(&mut self, skene_foundation::NodeId, core::option::Option<skene_foundation::FocusOrder>)
 pub fn skene_foundation::Scene<P>::tab_from(&self, skene_foundation::NodeId, &[skene_foundation::NodeId], core::option::Option<skene_foundation::NodeId>, isize) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Scene<P>::tab_order(&self, skene_foundation::NodeId, &[skene_foundation::NodeId], impl core::ops::function::Fn(skene_foundation::NodeId) -> bool) -> alloc::vec::Vec<skene_foundation::NodeId>
+pub fn skene_foundation::Scene<P>::take_autofocus(&mut self, skene_foundation::NodeId, impl core::ops::function::Fn(skene_foundation::NodeId) -> bool) -> core::option::Option<skene_foundation::NodeId>
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::focus_shows(&self, skene_foundation::NodeId) -> bool
 pub const fn skene_foundation::Scene<P>::focus_visible(&self) -> bool
@@ -9171,6 +9173,7 @@ pub fn skene_foundation::ControlBase::handle_wheel(self, impl core::ops::functio
 pub fn skene_foundation::ControlBase::new(B) -> Self
 pub fn skene_foundation::ControlBase::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_foundation::ControlBase::set_alignment(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Alignment, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub fn skene_foundation::ControlBase::set_autofocus(self, bool) -> Self
 pub fn skene_foundation::ControlBase::set_axis(self, skene_foundation::Axis) -> Self
 pub fn skene_foundation::ControlBase::set_child(self, impl skene_foundation::View<P>) -> Self
 pub fn skene_foundation::ControlBase::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self

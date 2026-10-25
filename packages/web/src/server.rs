@@ -277,6 +277,14 @@ where
   });
 }
 
+/// Marks the control set to autofocus that comes first in the scene's child order under
+/// `root` as the one the page opens focused, settling the page's opening focus.
+fn mark_autofocus(root: NodeId) {
+  if let Some(opening) = Scene::<Web>::with(|scene| scene.take_autofocus(root, |_| false)) {
+    with_realizer(|realizer| realizer.mark_autofocus(opening));
+  }
+}
+
 /// Tears a render down so the next one starts clean.
 fn end_render(scope: Owner) {
   scope.dispose();
@@ -301,6 +309,7 @@ where
 
   build_app(root, scope, None, app);
   task::stabilize();
+  mark_autofocus(root);
 
   let state = crate::resource_state::collect_state();
   let (styles, head, body, language) = with_tree(|tree| {
@@ -367,6 +376,7 @@ where
 
   build_app(root, scope, Some(shell), app);
   task::stabilize_until(move || shell.is_settled());
+  mark_autofocus(root);
 
   let (styles, head, language) = with_tree(|tree| {
     (

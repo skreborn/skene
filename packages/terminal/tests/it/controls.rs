@@ -75,6 +75,84 @@ fn focus_variant_and_enter_click() {
   });
 }
 
+/// A window opens with nothing focused where no control asks for focus.
+#[test]
+fn a_window_opens_with_nothing_focused() {
+  with_platform(|| {
+    let _ = mount_nodes(|| {
+      [
+        BasicButton::new(Activate::new()).set_label("a").build(),
+        BasicTextField::new(TextEntry::new()).set_width(6).build(),
+      ]
+    });
+    let _ = testing::render_to_text(10, 3);
+
+    assert_eq!(testing::focused_node(), None);
+  });
+}
+
+/// A control set to autofocus takes focus as its window opens, the first in the
+/// scene's child order of those that ask and are enabled, without showing it, as
+/// Chromium's autofocus does; `Tab` goes on from it, and a control built after the
+/// window opened takes nothing.
+#[test]
+fn an_autofocus_control_takes_focus_as_its_window_opens() {
+  with_platform(|| {
+    let [_, _, b, _] = mount_nodes(|| {
+      [
+        BasicButton::new(Activate::new()).set_label("a").build(),
+        BasicButton::new(Activate::new())
+          .set_label("off")
+          .set_disabled(true)
+          .set_autofocus(true)
+          .build(),
+        BasicButton::new(Activate::new())
+          .set_label("b")
+          .set_width(3)
+          .set_background(red().when(State::FocusVisible, blue()))
+          .set_autofocus(true)
+          .build(),
+        BasicButton::new(Activate::new())
+          .set_label("c")
+          .set_autofocus(true)
+          .build(),
+      ]
+    });
+    let frame = testing::render_to_text(10, 6);
+    let (column, row) = locate(&frame, "b");
+
+    assert_eq!(testing::focused_node(), Some(b));
+    assert_eq!(
+      colors_at(10, 6, usize::from(column), usize::from(row)).1,
+      Some(rgb(red())),
+      "focus does not show: {frame}"
+    );
+
+    let later = mount_nodes(|| {
+      [BasicButton::new(Activate::new())
+        .set_label("d")
+        .set_autofocus(true)
+        .build()]
+    });
+
+    assert_eq!(testing::focused_node(), Some(b), "the window has opened");
+    assert_ne!(Some(later[0]), testing::focused_node());
+
+    testing::trigger_key("Tab");
+
+    assert_ne!(testing::focused_node(), Some(b), "Tab goes on from it");
+
+    testing::trigger_key("Shift+Tab");
+
+    assert_eq!(testing::focused_node(), Some(b));
+    assert_eq!(
+      colors_at(10, 6, usize::from(column), usize::from(row)).1,
+      Some(rgb(blue())),
+      "focus a key moves shows"
+    );
+  });
+}
+
 /// A mouse click hits the topmost control at the cell, runs its click handlers, and
 /// focuses it, so `Enter` and `Space` click it again.
 #[test]
@@ -1731,13 +1809,13 @@ impl Behavior for Stepper {
   }
 
   fn focus_order(&self) -> Option<FocusOrder> {
-    Some(FocusOrder::Position(2))
+    Some(FocusOrder::Auto)
   }
 }
 
 /// A third-party behavior gets focus, decoration, parts, observers and reactive reports
-/// from the same builder as the shipped ones: its positive position leads the tab
-/// order, its keys and the wheel step it, and its focus variant paints.
+/// from the same builder as the shipped ones: its place in the tab order follows the
+/// scene's child order, its keys and the wheel step it, and its focus variant paints.
 #[test]
 fn a_third_party_behavior_builds_through_public_types_alone() {
   with_platform(|| {
@@ -1764,7 +1842,19 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
 
     testing::trigger_key("Tab");
 
-    assert_eq!(testing::focused_node(), Some(node), "the position leads");
+    assert_ne!(
+      testing::focused_node(),
+      Some(node),
+      "the button before it comes first"
+    );
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::focused_node(),
+      Some(node),
+      "the child order goes on"
+    );
     assert_eq!(
       colors_at(40, 12, usize::from(column), 1).1,
       Some(rgb(blue()))

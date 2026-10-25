@@ -170,7 +170,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
 #[test]
 fn focus_order_and_accessibility_follow_their_signals() {
   with_platform(|| {
-    let position = Signal::new(FocusOrder::Position(1));
+    let order = Signal::new(FocusOrder::Skip);
     let expanded = Signal::new(false);
     let [fixed, derived] = mount_nodes(move || {
       [
@@ -181,7 +181,7 @@ fn focus_order_and_accessibility_follow_their_signals() {
           .build(),
         Container::new()
           .set_height(1)
-          .derive_focus_order(move || position.get())
+          .derive_focus_order(move || order.get())
           .derive_accessibility(move || vec![AccessProp::Expanded(expanded.get())])
           .build(),
       ]
@@ -192,17 +192,17 @@ fn focus_order_and_accessibility_follow_their_signals() {
 
     testing::trigger_key("Tab");
 
-    assert_eq!(
-      testing::focused_node(),
-      Some(derived),
-      "a position goes first"
-    );
+    assert_eq!(testing::focused_node(), Some(fixed));
 
     testing::trigger_key("Tab");
 
-    assert_eq!(testing::focused_node(), Some(fixed));
+    assert_eq!(
+      testing::focused_node(),
+      Some(fixed),
+      "the skipped box is passed over"
+    );
 
-    position.set(FocusOrder::Skip);
+    order.set(FocusOrder::Auto);
     expanded.set(true);
 
     let _ = testing::render_to_text(40, 12);
@@ -213,8 +213,8 @@ fn focus_order_and_accessibility_follow_their_signals() {
 
     assert_eq!(
       testing::focused_node(),
-      Some(fixed),
-      "the skipped box is passed over"
+      Some(derived),
+      "the box takes its place in the child order"
     );
   });
 }

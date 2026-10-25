@@ -1,4 +1,5 @@
-//! The tab order: each node's place in it, and the traversal from one stop to the next.
+//! The tab order: each node's place in it, the traversal from one stop to the next, and
+//! the focus a window opens with.
 
 use rustc_hash::FxHashMap;
 
@@ -18,23 +19,15 @@ pub(in crate::spine) struct TabStop {
 }
 
 impl TabStop {
-  /// The tab order of `stops`: positioned ones first by position, then the rest in
-  /// document order, each tie in document order; a stop that skips, or that `reachable`
-  /// rejects, as the topmost modal does a node outside it, is left out.
+  /// The tab order of `stops`: document order, the scene's child order; a stop that
+  /// skips, or that `reachable` rejects, as the topmost modal does a node outside it, is
+  /// left out.
   pub(in crate::spine) fn order(
     mut stops: Vec<Self>,
     reachable: impl Fn(NodeId) -> bool,
   ) -> Vec<NodeId> {
     stops.retain(|stop| stop.order != FocusOrder::Skip);
-    stops.sort_by_key(|stop| {
-      (
-        match stop.order {
-          FocusOrder::Position(position) => (0, position),
-          FocusOrder::Auto | FocusOrder::Skip => (1, 0),
-        },
-        stop.document,
-      )
-    });
+    stops.sort_by_key(|stop| stop.document);
 
     stops
       .into_iter()
@@ -44,7 +37,84 @@ impl TabStop {
   }
 }
 
+/// The requests for the focus a window opens with.
+#[derive(Debug)]
+pub(in crate::spine) enum Autofocus {
+  /// The window has not opened: the nodes that asked, in the order they asked.
+  Asked(Vec<NodeId>),
+  /// The window has opened, settling its focus; a later request is ignored.
+  Settled,
+}
+
+impl Autofocus {
+  /// The node the window opens focused, `asked` in the order the nodes asked and
+  /// `document` every candidate in document order: the first of them that asked; `None`
+  /// where none did.
+  pub(in crate::spine) fn opening(
+    asked: &[NodeId],
+    document: impl IntoIterator<Item = NodeId>,
+  ) -> Option<NodeId> {
+    document.into_iter().find(|node| asked.contains(node))
+  }
+}
+
 impl<P: Realization> Scene<P> {
+  /// Notes that `node` asks for focus as its window opens; a request made once the
+  /// window has opened is ignored.
+  pub fn note_autofocus(&mut self, node: NodeId) {
+    if let Autofocus::Asked(asked) = &mut self.autofocus {
+      asked.push(node);
+    }
+  }
+
+  /// Settles the focus the window under `root` opens with, once, as the mount that
+  /// opens it ends: the first node in document order that asked for it and has a place
+  /// in focus traversal, closed overlays and the subtrees `hidden` answers for passed
+  /// over; `None` where none did, and every later call. Focus moved there does not
+  /// show, as Chromium's autofocus does not, until a key shows it.
+  pub fn take_autofocus(
+    &mut self,
+    root: NodeId,
+    hidden: impl Fn(NodeId) -> bool,
+  ) -> Option<NodeId> {
+    let Autofocus::Asked(asked) = std::mem::replace(&mut self.autofocus, Autofocus::Settled)
+    else {
+      return None;
+    };
+
+    if asked.is_empty() {
+      return None;
+    }
+
+    let mut candidates = Vec::new();
+    let mut stack = vec![root];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      if record.overlay.is_some_and(|overlay| !overlay.open) || hidden(current) {
+        continue;
+      }
+
+      if record.focus_order.is_some() {
+        candidates.push(current);
+      }
+
+      stack.extend(self.children_reversed(current));
+    }
+
+    let opening = Autofocus::opening(&asked, candidates);
+
+    if opening.is_some() {
+      self.held.set_focus_visible(false);
+    }
+
+    opening
+  }
+
   /// Records `node`'s place in focus traversal as the platform was given it at
   /// creation; `None` keeps it out of focus.
   pub fn note_focus_order(&mut self, node: NodeId, order: Option<FocusOrder>) {
@@ -101,9 +171,9 @@ impl<P: Realization> Scene<P> {
   }
 
   /// The tab stops under `root` in traversal order, with `overlays` the open overlays
-  /// in the order they opened: positioned ones first by position, then the rest in
-  /// document order; closed overlays and the subtrees `hidden` answers for skipped, and
-  /// the topmost modal containing the order with the overlays opened after it.
+  /// in the order they opened: document order, the scene's child order; closed overlays and the
+  /// subtrees `hidden` answers for skipped, and the topmost modal containing the order with the
+  /// overlays opened after it.
   #[must_use]
   pub fn tab_order(
     &self,
@@ -211,23 +281,23 @@ impl<P: Realization> Scene<P> {
 mod tests {
   use rustc_hash::FxHashMap;
 
-  use super::TabStop;
+  use super::{Autofocus, TabStop};
   use crate::spine::{
     FocusOrder,
     NodeId,
     scene::overlays::{OpenOverlay, OverlayStack},
   };
 
-  /// The tab order puts positioned stops first by position, then the rest in document
-  /// order, leaving out the stops that skip and those the last modal does not contain
-  /// with the overlays opened after it, whatever order they were built in.
+  /// The tab order is document order, leaving out the stops that skip and those the
+  /// last modal does not contain with the overlays opened after it, whatever order they
+  /// were built in.
   #[test]
-  fn the_tab_order_follows_positions_documents_and_the_last_modal() {
+  fn the_tab_order_follows_the_document_and_the_last_modal() {
     let [
       root,
       first,
       second,
-      positioned,
+      third,
       skipped,
       earlier,
       later,
@@ -237,7 +307,7 @@ mod tests {
     let parents: FxHashMap<NodeId, NodeId> = [
       (first, root),
       (second, root),
-      (positioned, root),
+      (third, root),
       (skipped, root),
       (earlier, root),
       (later, root),
@@ -256,11 +326,11 @@ mod tests {
     let stops = vec![
       stop(inside_later, FocusOrder::Auto, 8),
       stop(first, FocusOrder::Auto, 1),
-      stop(positioned, FocusOrder::Position(2), 3),
+      stop(third, FocusOrder::Auto, 3),
       stop(second, FocusOrder::Auto, 2),
       stop(skipped, FocusOrder::Skip, 4),
-      stop(earlier, FocusOrder::Position(1), 6),
-      stop(inside_earlier, FocusOrder::Auto, 5),
+      stop(earlier, FocusOrder::Auto, 5),
+      stop(inside_earlier, FocusOrder::Auto, 6),
     ];
     let order = |open: &[(NodeId, bool)]| {
       let overlays = OverlayStack::new(open.iter().map(|&(node, modal)| OpenOverlay {
@@ -274,14 +344,7 @@ mod tests {
 
     assert_eq!(
       order(&[]),
-      [
-        earlier,
-        positioned,
-        first,
-        second,
-        inside_earlier,
-        inside_later
-      ]
+      [first, second, third, earlier, inside_earlier, inside_later]
     );
     assert_eq!(
       order(&[(later, true), (earlier, true)]),
@@ -294,5 +357,19 @@ mod tests {
       [earlier, inside_earlier, inside_later],
       "an overlay opened after the modal stays reachable"
     );
+  }
+
+  /// A window opens focused on the first node in document order that asked, whatever
+  /// order the requests came in, and on none where none of them is a candidate.
+  #[test]
+  fn the_opening_focus_is_the_first_asking_node_in_document_order() {
+    let [first, second, third, gone] = std::array::from_fn(NodeId::plain);
+
+    assert_eq!(
+      Autofocus::opening(&[third, second], [first, second, third]),
+      Some(second)
+    );
+    assert_eq!(Autofocus::opening(&[gone], [first, second]), None);
+    assert_eq!(Autofocus::opening(&[], [first]), None);
   }
 }

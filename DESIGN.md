@@ -113,7 +113,13 @@ which the scene records as it creates the node, and a tab stop unless its focus 
 says otherwise. It answers which popups focus leaves as it moves to another node
 (`Scene::popups_left_by`, dismissed by `notify_focus_moved` on every platform), and where
 a modal takes focus as it opens (`Scene::modal_focus`: its first tab stop, else itself,
-as a dialog's focusing steps choose). The scene holds the interaction every platform reports: the
+as a dialog's focusing steps choose). The tab order is the scene's child order alone
+(`Scene::tab_order`; a `FocusOrder` is `Auto` or `Skip`, never a position), and a window
+opens with nothing focused but a control set to autofocus: the scene notes each request
+(`Scene::note_autofocus`) and settles the opening focus once, as the mount that opens the
+window ends (`Scene::take_autofocus`: the first requesting node in document order that
+has a place in focus traversal, so a disabled one is passed over, its focus not
+showing), every later request ignored. The scene holds the interaction every platform reports: the
 focused node with whether focus shows (a key but a modifier alone sets it, a pointer
 press clears it, a text entry's shows however reached), the pressed node and the hovered
 one, dropping each with its node, and resolves every node's interaction from them
@@ -771,7 +777,12 @@ re-export.
   around it and `button` may hold no interactive content. The browser leaf listens for
   the keys wherever a box handles a click and maps the scene's key defaults, a row's
   `Enter` dispatched as its click, its `Space` press kept from scrolling the page and
-  its release dispatched as its click. The gallery runs under
+  its release dispatched as its click. A focus order is `tabindex="0"` or `"-1"`, never a
+  positive index. The control set to autofocus that opens the page focused carries the
+  `autofocus` attribute on the element carrying its focus, its input for a native
+  control and its box otherwise, on both leaves, so the scriptless page opens focused
+  on it; the browser leaf's first mount focuses it once its turn ends, and a hydration
+  keeps the focus the browser gave the served element and moves none. The gallery runs under
   axe-core in the browser tier (`browser_axe`, the library vendored beside the test), so
   every built-in is checked against the ARIA rules as it is drawn and with each of the
   gallery's overlays open: a tooltip, the picker's popup and a context menu, once under
@@ -837,6 +848,16 @@ re-export.
   `SetTextSelection` and `ReplaceSelectedText`, a read-only entry the selection alone
   and a disabled one none. The outline leaves the runs out, and an entry's value stays
   its real text.
+- **Focus follows the scene's child order.** A control's place in the tab order is its
+  behavior's `focus_order` or the one its user sets (`set_focus_order`): reached in the
+  scene's child order (`FocusOrder::Auto`) or passed over (`FocusOrder::Skip`), never at
+  a position of its own, so the order a reader tabs through is the order a reader
+  reads. `ControlBase::set_autofocus` asks for focus as the window opens, a fact read
+  once at build: the first enabled control that asks, in the scene's child order, takes
+  focus through `Realization::focus` once the mount that opens the window has ended,
+  not showing it until a key does, as Chromium's autofocus shows none (Firefox's shows
+  it, and the web leaves that to the engine), and a window where none asks opens with
+  nothing focused, as a Chromium page does.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot
@@ -1710,7 +1731,9 @@ an anchor does: `Enter` is a focused link's click, staged for the system handler
 a handler prevented it, a press on its cell focuses it, and while its focus shows it
 paints in the typography's focused-link ink and surface, reverse video where those are
 transparent, as the default leaves them. Focus shows as `:focus-visible` does: after a
-key, or in a text entry, and not since a pointer press. A key's default runs after the handlers' writes
+key, or in a text entry, and not since a pointer press. A window opens with nothing
+focused, and the control set to autofocus that comes first in the scene's child order
+takes focus as the first mount ends, without showing it. A key's default runs after the handlers' writes
 have taken effect, as a browser's does after its microtask checkpoint. A key release
 dispatches as `KeyUp` (`handle_key_up` on a box and a control) with no default but the
 scene's (`Scene::key_up_default`, a row's `Space`), a held

@@ -216,18 +216,48 @@ fn input_styling_interns_with_variants() {
   );
 }
 
-/// The focus order serializes as `tabindex` on the native input; positions count from
-/// 0, so the first position maps to `tabindex="1"`.
+/// The focus order serializes as `tabindex` on the native input, a skipped field as
+/// `-1`, and a field set to autofocus carries `autofocus` there, so the page opens
+/// focused on it without script.
 #[test]
 fn focus_attributes_serialize() {
-  let rendered = render_to_string(|| {
-    BasicTextField::new(TextEntry::new()).set_focus_order(FocusOrder::Position(0))
-  });
-
+  let rendered =
+    render_to_string(|| BasicTextField::new(TextEntry::new()).set_focus_order(FocusOrder::Skip));
   let body = rendered.body();
   let input = body.find("<input").expect("the input");
+  let tag = &body[input..input + body[input..].find('>').expect("the input's end")];
 
-  assert!(body[input..].contains("tabindex=\"1\""), "{body}");
+  assert!(tag.contains("tabindex=\"-1\""), "{body}");
+  assert!(!tag.contains("autofocus"), "{body}");
+
+  let rendered = render_to_string(|| {
+    Row::new()
+      .add_child(BasicTextField::new(TextEntry::new()).set_accessible_name("plain"))
+      .add_child(
+        BasicTextField::new(TextEntry::new())
+          .set_accessible_name("first")
+          .set_autofocus(true),
+      )
+      .add_child(
+        BasicTextField::new(TextEntry::new())
+          .set_accessible_name("second")
+          .set_autofocus(true),
+      )
+  });
+  let body = rendered.body();
+  let input = body.find("aria-label=\"first\"").expect("the first field");
+  let start = body[..input].rfind("<input").expect("its input");
+  let tag = &body[start..input + body[input..].find('>').expect("the input's end")];
+
+  assert!(
+    tag.contains(" autofocus"),
+    "the first field asking takes it: {body}"
+  );
+  assert_eq!(
+    body.matches("autofocus").count(),
+    1,
+    "the page opens focused on one element: {body}"
+  );
 }
 
 /// Handlers are inert on the server: registering them changes nothing in the output.

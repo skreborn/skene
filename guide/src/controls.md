@@ -89,6 +89,29 @@ click is an activatable row: it takes focus and `Enter` and `Space` activate it,
 the controls inside it own their presses and keys, so a button in a row never also
 activates the row.
 
+## Focus
+
+`Tab` moves focus through the controls in the order the views are built in, the order a
+reader reads them; `set_focus_order(FocusOrder::Skip)` keeps a control out of that
+order, still focusable by a click. A window opens with nothing focused. A control set to
+autofocus takes focus as its window opens, the first of them in that order where several
+ask, and a server-rendered page carries it as the `autofocus` attribute, so the page
+opens focused on it before its script arrives:
+
+```rust
+use skene_simple_web::prelude::*;
+use skene_web::{TextEntry, prelude::*};
+
+fn search() -> impl View {
+  Column::new().set_spacing(12).set_children((
+    BasicTextField::new(TextEntry::new())
+      .set_label("Search")
+      .set_autofocus(true),
+    SimpleButton::new("Go"),
+  ))
+}
+```
+
 ## Labels and accessibility
 
 A control's label sits where its kind places it: beside a checkbox's box, before a text

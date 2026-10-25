@@ -154,6 +154,16 @@ pub(crate) fn all<D: Driver>() -> Vec<Scenario<D>> {
       page: "row",
       act: an_activatable_row_activates,
     },
+    Scenario {
+      name: "a page opens with nothing focused",
+      page: "buttons",
+      act: a_page_opens_with_nothing_focused,
+    },
+    Scenario {
+      name: "a control set to autofocus takes focus as its page opens",
+      page: "autofocus",
+      act: an_autofocus_control_takes_focus,
+    },
   ]
 }
 
@@ -866,5 +876,38 @@ fn an_activatable_row_activates<D: Driver>(driver: &mut D) {
     probes(driver),
     ("2".to_owned(), "3".to_owned()),
     "the control's keys and click are its own"
+  );
+}
+
+fn a_page_opens_with_nothing_focused<D: Driver>(driver: &mut D) {
+  assert_eq!(driver.focused(), None, "nothing holds focus");
+
+  let one = found(driver, Role::Button, "One");
+
+  driver.press(&key("Tab"));
+
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&one),
+    "the first Tab reaches the first control"
+  );
+}
+
+fn an_autofocus_control_takes_focus<D: Driver>(driver: &mut D) {
+  let a = found(driver, Role::Button, "a");
+  let b = found(driver, Role::Button, "b");
+
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&b),
+    "the control set to autofocus holds focus"
+  );
+
+  driver.press(&shifted("Tab"));
+
+  assert_eq!(
+    driver.focused().as_ref(),
+    Some(&a),
+    "Shift-Tab goes back from it"
   );
 }

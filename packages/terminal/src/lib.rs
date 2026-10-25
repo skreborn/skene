@@ -130,6 +130,8 @@ mod tty;
 #[cfg(skene_platform = "terminal")]
 mod views;
 
+extern crate self as skene_terminal;
+
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
 #[cfg(skene_platform = "terminal")]

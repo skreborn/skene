@@ -138,6 +138,8 @@ mod token;
 #[cfg(skene_platform = "web")]
 mod views;
 
+extern crate self as skene_web;
+
 /// The web medium's shared vocabulary: the style extension, the typography set and the
 /// painting path.
 pub use skene_foundation::web::{

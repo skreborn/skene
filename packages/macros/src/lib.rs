@@ -356,7 +356,14 @@ pub fn derive_wraps(input: TokenStream) -> TokenStream {
 /// [`AnyKind`](../skene_foundation/trait.AnyKind.html) for a tuple struct of one field,
 /// beside any `PhantomData` markers.
 ///
-/// The struct builds as the view it holds, on every platform that one is a view on.
+/// The struct builds as the view it holds, for the `Active` of the one facade
+/// (`skene-web`, `skene-terminal`) the deriving crate is or depends on, so its build is
+/// compiled once, in the deriving crate, and a crate reaching no facade is refused. A
+/// struct whose field names none of its own generic parameters builds through a
+/// function that is not generic either; one whose field does builds generic in them
+/// alone. A crate reaching both facades, a crate of documents' examples, gets a build
+/// for each under the cfg naming its platform.
+///
 /// The generated code names the foundation through the deriving crate's direct
 /// dependency on `skene-foundation`.
 #[proc_macro_derive(View)]

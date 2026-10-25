@@ -32,8 +32,12 @@ facade's own contribution is small by design: a scalar, the medium's condition l
 the properties only that medium has, the platform it selects, and a type of its own per
 view, a newtype over the foundation's, that gives app code a flat, medium-typed surface.
 The newtype derives `Wraps`, which gives it `Apply`: `.apply(option, Type::set_<prop>)`
-sets a property only where a value is given. What a medium lacks is absent at compile
-time because the platform's associated types say so.
+sets a property only where a value is given. It derives `View` too, which builds it for
+its facade's `Active` and no other: a derived view belongs to one facade, and its build
+is a function the facade's crate compiles once, a view generic over the app's types
+building through one that is not wherever its field names none of them, so an app's
+rebuild compiles the app's code and not the built-ins'. What a medium lacks is absent at
+compile time because the platform's associated types say so.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
 platform; each facade names only its own platforms, and publishes the selected one as

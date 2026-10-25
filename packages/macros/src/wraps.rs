@@ -1,11 +1,11 @@
 //! The derives of a facade's view over the foundation's: `Wraps`, a tuple struct of one
 //! field, beside any `PhantomData` markers, holding that field as its whole content, and
-//! `View`, that struct building as the view it holds.
+//! `View`, that struct building as the view it holds for its facade's `Active`.
 
 use proc_macro_crate::{FoundCrate, crate_name};
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Fields, Type, parse_quote};
+use proc_macro2::{Ident, TokenStream, TokenTree};
+use quote::{ToTokens, format_ident, quote};
+use syn::{Data, DeriveInput, Fields, GenericParam, Type, parse_quote};
 
 /// The path to the foundation from the deriving crate: the crate itself (and its doctests),
 /// through the name it gives itself, or its direct dependency.
@@ -115,35 +115,108 @@ pub(crate) fn derive_wraps(input: &DeriveInput) -> syn::Result<TokenStream> {
   })
 }
 
+/// The facades a derived view builds for: the path to each one's `Active` from the
+/// deriving crate, the crate itself (and its doctests) through the name it gives itself or
+/// its dependency, with the platform its build names.
+fn facades() -> Vec<(TokenStream, &'static str)> {
+  [("skene-web", "web"), ("skene-terminal", "terminal")]
+    .into_iter()
+    .filter_map(|(facade, platform)| {
+      let name = match crate_name(facade).ok()? {
+        FoundCrate::Itself => format_ident!("{}", facade.replace('-', "_")),
+        FoundCrate::Name(name) => format_ident!("{name}"),
+      };
+
+      Some((quote!(::#name::Active), platform))
+    })
+    .collect()
+}
+
+/// Whether `tokens` name any of `names`, at any depth.
+fn names_any(tokens: TokenStream, names: &[Ident]) -> bool {
+  tokens.into_iter().any(|token| match token {
+    TokenTree::Ident(ident) => names.contains(&ident),
+    TokenTree::Group(group) => names_any(group.stream(), names),
+    TokenTree::Punct(_) | TokenTree::Literal(_) => false,
+  })
+}
+
 /// Expands `#[derive(View)]` on `input`.
 pub(crate) fn derive_view(input: &DeriveInput) -> syn::Result<TokenStream> {
   let (inner, _) = field(input, "View")?;
   let name = &input.ident;
   let foundation = foundation().unwrap_or_else(|| quote!(::skene_foundation));
+  let facades = facades();
+
+  if facades.is_empty() {
+    return Err(syn::Error::new_spanned(
+      name,
+      "a derived view belongs to one facade: `View` derives for the `Active` of the facade \
+       (`skene-web` or `skene-terminal`) the deriving crate is or depends on, and this \
+       crate reaches neither",
+    ));
+  }
+
   let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
-  let mut generics = input.generics.clone();
-
-  generics
+  let params: Vec<Ident> = input
+    .generics
     .params
-    .push(parse_quote!(__P: #foundation::Realization));
-  generics
-    .make_where_clause()
-    .predicates
-    .extend::<[syn::WherePredicate; 2]>([
-      parse_quote!(#inner: #foundation::View<__P>),
-      parse_quote!(Self: 'static),
-    ]);
+    .iter()
+    .map(|param| match param {
+      GenericParam::Type(param) => param.ident.clone(),
+      GenericParam::Const(param) => param.ident.clone(),
+      GenericParam::Lifetime(param) => param.lifetime.ident.clone(),
+    })
+    .collect();
+  let generic = names_any(inner.to_token_stream(), &params);
+  let gated = facades.len() > 1;
+  let views = facades.into_iter().map(|(active, platform)| {
+    let gate = gated.then(|| quote!(#[cfg(skene_platform = #platform)]));
+    let mut generics = input.generics.clone();
 
-  let (view_generics, _, view_where_clause) = generics.split_for_impl();
+    if generic {
+      generics
+        .make_where_clause()
+        .predicates
+        .extend::<[syn::WherePredicate; 2]>([
+          parse_quote!(#inner: #foundation::View<#active>),
+          parse_quote!(Self: 'static),
+        ]);
+    }
+    else if !params.is_empty() {
+      generics
+        .make_where_clause()
+        .predicates
+        .push(parse_quote!(Self: 'static));
+    }
+
+    let (_, _, view_where_clause) = generics.split_for_impl();
+    let body = if params.is_empty() || generic {
+      quote!(#foundation::View::<#active>::build(self.0))
+    }
+    else {
+      quote! {
+        fn build(inner: #inner) -> #foundation::NodeId {
+          #foundation::View::<#active>::build(inner)
+        }
+
+        build(self.0)
+      }
+    };
+
+    quote! {
+      #gate
+      impl #impl_generics #foundation::View<#active> for #name #type_generics #view_where_clause {
+        fn build(self) -> #foundation::NodeId {
+          #body
+        }
+      }
+    }
+  });
 
   Ok(quote! {
     impl #impl_generics #foundation::AnyKind for #name #type_generics #where_clause {}
 
-    impl #view_generics #foundation::View<__P> for #name #type_generics #view_where_clause {
-      #[inline(always)]
-      fn build(self) -> #foundation::NodeId {
-        #foundation::View::<__P>::build(self.0)
-      }
-    }
+    #(#views)*
   })
 }

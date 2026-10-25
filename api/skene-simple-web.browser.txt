@@ -17,6 +17,8 @@ pub struct skene_simple_web::SimpleButton(_)
 impl core::fmt::Debug for skene_simple_web::SimpleButton
 pub fn skene_simple_web::SimpleButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleButton
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleButton
+pub fn skene_simple_web::SimpleButton::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleButton
 pub type skene_simple_web::SimpleButton::Inner = skene_simple::button::SimpleButton<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleButton::inner(&self) -> &Self::Inner
@@ -24,14 +26,14 @@ pub fn skene_simple_web::SimpleButton::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_simple_web::SimpleButton::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleButton::wrap(Self::Inner) -> Self
 impl skene_simple::button::SimpleButtonBase<skene_web::platform::web::Web> for skene_simple_web::SimpleButton
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleButton where skene_simple::button::SimpleButton<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleButton::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleCard(_)
 impl core::default::Default for skene_simple_web::SimpleCard
 pub fn skene_simple_web::SimpleCard::default() -> skene_simple_web::SimpleCard
 impl core::fmt::Debug for skene_simple_web::SimpleCard
 pub fn skene_simple_web::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleCard
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleCard
+pub fn skene_simple_web::SimpleCard::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleCard
 pub type skene_simple_web::SimpleCard::Inner = skene_simple::card::SimpleCard<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleCard::inner(&self) -> &Self::Inner
@@ -39,14 +41,14 @@ pub fn skene_simple_web::SimpleCard::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_simple_web::SimpleCard::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleCard::wrap(Self::Inner) -> Self
 impl skene_simple::card::SimpleCardBase<skene_web::platform::web::Web> for skene_simple_web::SimpleCard
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleCard where skene_simple::card::SimpleCard<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleCard::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleCheckbox(_)
 impl core::default::Default for skene_simple_web::SimpleCheckbox
 pub fn skene_simple_web::SimpleCheckbox::default() -> skene_simple_web::SimpleCheckbox
 impl core::fmt::Debug for skene_simple_web::SimpleCheckbox
 pub fn skene_simple_web::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleCheckbox
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleCheckbox
+pub fn skene_simple_web::SimpleCheckbox::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleCheckbox
 pub type skene_simple_web::SimpleCheckbox::Inner = skene_simple::checkbox::SimpleCheckbox<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleCheckbox::inner(&self) -> &Self::Inner
@@ -54,14 +56,14 @@ pub fn skene_simple_web::SimpleCheckbox::inner_mut(&mut self) -> &mut Self::Inne
 pub fn skene_simple_web::SimpleCheckbox::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleCheckbox::wrap(Self::Inner) -> Self
 impl skene_simple::checkbox::SimpleCheckboxBase<skene_web::platform::web::Web> for skene_simple_web::SimpleCheckbox
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleCheckbox where skene_simple::checkbox::SimpleCheckbox<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleCheckbox::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleContextMenu(_)
 impl core::default::Default for skene_simple_web::SimpleContextMenu
 pub fn skene_simple_web::SimpleContextMenu::default() -> Self
 impl core::fmt::Debug for skene_simple_web::SimpleContextMenu
 pub fn skene_simple_web::SimpleContextMenu::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleContextMenu
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleContextMenu
+pub fn skene_simple_web::SimpleContextMenu::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleContextMenu
 pub type skene_simple_web::SimpleContextMenu::Inner = skene_simple::context_menu::SimpleContextMenu<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleContextMenu::inner(&self) -> &Self::Inner
@@ -69,16 +71,14 @@ pub fn skene_simple_web::SimpleContextMenu::inner_mut(&mut self) -> &mut Self::I
 pub fn skene_simple_web::SimpleContextMenu::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleContextMenu::wrap(Self::Inner) -> Self
 impl skene_simple::context_menu::SimpleContextMenuBase<skene_web::platform::web::Web> for skene_simple_web::SimpleContextMenu
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleContextMenu where skene_simple::context_menu::SimpleContextMenu<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleContextMenu::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimplePicker<T: skene_foundation::control::choice::Choice>(_)
 impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_simple_web::SimplePicker<T>
 pub fn skene_simple_web::SimplePicker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: skene_foundation::control::choice::Choice, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimplePicker<T> where skene_simple::picker::SimplePicker<skene_web::Active, T>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimplePicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_simple_web::SimplePicker<T>
 pub fn skene_simple_web::SimplePicker<T>::default() -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_simple_web::SimplePicker<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimplePicker<T> where skene_simple::picker::SimplePicker<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+pub fn skene_simple_web::SimplePicker<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_simple_web::SimplePicker<T>
 pub type skene_simple_web::SimplePicker<T>::Inner = skene_simple::picker::SimplePicker<skene_web::platform::web::Web, T>
 pub fn skene_simple_web::SimplePicker<T>::inner(&self) -> &Self::Inner
@@ -90,6 +90,8 @@ pub struct skene_simple_web::SimpleRadio(_)
 impl core::fmt::Debug for skene_simple_web::SimpleRadio
 pub fn skene_simple_web::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleRadio
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleRadio
+pub fn skene_simple_web::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleRadio
 pub type skene_simple_web::SimpleRadio::Inner = skene_simple::radio::SimpleRadio<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleRadio::inner(&self) -> &Self::Inner
@@ -97,16 +99,14 @@ pub fn skene_simple_web::SimpleRadio::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_simple_web::SimpleRadio::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleRadio::wrap(Self::Inner) -> Self
 impl skene_simple::radio::SimpleRadioBase<skene_web::platform::web::Web> for skene_simple_web::SimpleRadio
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleRadio where skene_simple::radio::SimpleRadio<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleRadioGroup<T: skene_foundation::control::choice::Choice>(_)
 impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_simple_web::SimpleRadioGroup<T>
 pub fn skene_simple_web::SimpleRadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: skene_foundation::control::choice::Choice, __P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleRadioGroup<T> where skene_simple::radio::SimpleRadioGroup<skene_web::Active, T>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_simple_web::SimpleRadioGroup<T>
 pub fn skene_simple_web::SimpleRadioGroup<T>::default() -> Self
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleRadioGroup<T>
+impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleRadioGroup<T> where skene_simple::radio::SimpleRadioGroup<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
+pub fn skene_simple_web::SimpleRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleRadioGroup<T>
 pub type skene_simple_web::SimpleRadioGroup<T>::Inner = skene_simple::radio::SimpleRadioGroup<skene_web::platform::web::Web, T>
 pub fn skene_simple_web::SimpleRadioGroup<T>::inner(&self) -> &Self::Inner
@@ -120,6 +120,8 @@ pub fn skene_simple_web::SimpleSlider::default() -> skene_simple_web::SimpleSlid
 impl core::fmt::Debug for skene_simple_web::SimpleSlider
 pub fn skene_simple_web::SimpleSlider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleSlider
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleSlider
+pub fn skene_simple_web::SimpleSlider::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleSlider
 pub type skene_simple_web::SimpleSlider::Inner = skene_simple::slider::SimpleSlider<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleSlider::inner(&self) -> &Self::Inner
@@ -127,14 +129,14 @@ pub fn skene_simple_web::SimpleSlider::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_simple_web::SimpleSlider::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleSlider::wrap(Self::Inner) -> Self
 impl skene_simple::slider::SimpleSliderBase<skene_web::platform::web::Web> for skene_simple_web::SimpleSlider
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleSlider where skene_simple::slider::SimpleSlider<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleSlider::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleTextEditor(_)
 impl core::default::Default for skene_simple_web::SimpleTextEditor
 pub fn skene_simple_web::SimpleTextEditor::default() -> skene_simple_web::SimpleTextEditor
 impl core::fmt::Debug for skene_simple_web::SimpleTextEditor
 pub fn skene_simple_web::SimpleTextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleTextEditor
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleTextEditor
+pub fn skene_simple_web::SimpleTextEditor::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleTextEditor
 pub type skene_simple_web::SimpleTextEditor::Inner = skene_simple::text_editor::SimpleTextEditor<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleTextEditor::inner(&self) -> &Self::Inner
@@ -142,14 +144,14 @@ pub fn skene_simple_web::SimpleTextEditor::inner_mut(&mut self) -> &mut Self::In
 pub fn skene_simple_web::SimpleTextEditor::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleTextEditor::wrap(Self::Inner) -> Self
 impl skene_simple::text_editor::SimpleTextEditorBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTextEditor
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleTextEditor where skene_simple::text_editor::SimpleTextEditor<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleTextEditor::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleTextField(_)
 impl core::default::Default for skene_simple_web::SimpleTextField
 pub fn skene_simple_web::SimpleTextField::default() -> skene_simple_web::SimpleTextField
 impl core::fmt::Debug for skene_simple_web::SimpleTextField
 pub fn skene_simple_web::SimpleTextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleTextField
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleTextField
+pub fn skene_simple_web::SimpleTextField::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleTextField
 pub type skene_simple_web::SimpleTextField::Inner = skene_simple::text_field::SimpleTextField<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleTextField::inner(&self) -> &Self::Inner
@@ -157,12 +159,12 @@ pub fn skene_simple_web::SimpleTextField::inner_mut(&mut self) -> &mut Self::Inn
 pub fn skene_simple_web::SimpleTextField::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleTextField::wrap(Self::Inner) -> Self
 impl skene_simple::text_field::SimpleTextFieldBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTextField
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleTextField where skene_simple::text_field::SimpleTextField<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleTextField::build(self) -> skene_foundation::spine::node::NodeId
 pub struct skene_simple_web::SimpleTooltip(_)
 impl core::fmt::Debug for skene_simple_web::SimpleTooltip
 pub fn skene_simple_web::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleTooltip
+impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleTooltip
+pub fn skene_simple_web::SimpleTooltip::build(self) -> skene_foundation::spine::node::NodeId
 impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleTooltip
 pub type skene_simple_web::SimpleTooltip::Inner = skene_simple::tooltip::SimpleTooltip<skene_web::platform::web::Web>
 pub fn skene_simple_web::SimpleTooltip::inner(&self) -> &Self::Inner
@@ -170,7 +172,5 @@ pub fn skene_simple_web::SimpleTooltip::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_simple_web::SimpleTooltip::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleTooltip::wrap(Self::Inner) -> Self
 impl skene_simple::tooltip::SimpleTooltipBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTooltip
-impl<__P: skene_foundation::spine::realization::Realization> skene_foundation::spine::view::View<__P> for skene_simple_web::SimpleTooltip where skene_simple::tooltip::SimpleTooltip<skene_web::Active>: skene_foundation::spine::view::View<__P>, Self: 'static
-pub fn skene_simple_web::SimpleTooltip::build(self) -> skene_foundation::spine::node::NodeId
 pub type skene_simple_web::SimpleLook = skene_simple::palette::SimpleLook<f32>
 pub type skene_simple_web::SimplePalette = skene_simple::palette::SimplePalette<f32>

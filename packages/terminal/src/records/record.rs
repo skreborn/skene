@@ -139,7 +139,7 @@ pub(crate) enum Kind {
     label: Option<String>,
     /// The control's own box.
     inner: BoxRecord,
-    /// The editing state of a text entry; `None` for every other control.
+    /// A text entry's presentation of its value; `None` for every other control.
     field: Option<Box<Field>>,
   },
   /// An overlay: a box shown above the app while open.
@@ -271,7 +271,7 @@ impl Kind {
     self.box_record().and_then(BoxRecord::style)
   }
 
-  /// The editing state of a text entry.
+  /// A text entry's presentation of its value.
   #[inline(always)]
   pub(crate) fn field(&self) -> Option<&Field> {
     match self {
@@ -280,7 +280,7 @@ impl Kind {
     }
   }
 
-  /// The editing state of a text entry, mutably.
+  /// A text entry's presentation of its value, mutably.
   #[inline(always)]
   pub(crate) fn field_mut(&mut self) -> Option<&mut Field> {
     match self {

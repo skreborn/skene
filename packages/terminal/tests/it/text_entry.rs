@@ -6,6 +6,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_terminal::{
   self as terminal,
+  Activate,
   Scene,
   TextEntry,
   platform::terminal::Terminal,
@@ -1491,8 +1492,8 @@ fn a_secure_fields_runs_read_marks() {
   });
 }
 
-/// A drawn entry's editing state is the scene's: kept for its node, holding what the
-/// entry shows, and dropped with the node.
+/// A drawn entry's editing state is the scene's: kept for its node alone, holding what
+/// the entry shows, handed out only while the scene is free, and dropped with the node.
 #[test]
 fn an_entrys_editing_state_lives_and_goes_with_its_node() {
   with_platform(|| {
@@ -1503,24 +1504,37 @@ fn an_entrys_editing_state_lives_and_goes_with_its_node() {
           return Text::new("gone").build();
         }
 
-        BasicTextField::new(TextEntry::new().set_placeholder("name").set_value("hi"))
+        Column::new()
+          .set_children((
+            BasicTextField::new(TextEntry::new().set_placeholder("name").set_value("hi")),
+            BasicButton::new(Activate::new()).set_label("Send"),
+          ))
           .into_any()
           .build()
       })
     });
-    let _ = testing::render_to_text(10, 1);
+    let _ = testing::render_to_text(10, 2);
     let node = testing::find_by_role(Role::TextInput, "name").expect("the field");
+    let button = testing::find_by_role(Role::Button, "Send").expect("the button");
     let entry = Scene::<Terminal>::entry_of(node).expect("the scene keeps the field's entry");
 
     assert_eq!(entry.editor().borrow().text(), "hi");
     assert_eq!(entry.node(), node);
+    assert!(
+      Scene::<Terminal>::entry_of(button).is_none(),
+      "a control that is no entry has no editing state"
+    );
+    assert!(
+      Scene::<Terminal>::with(|_| Scene::<Terminal>::entry_of(node)).is_none(),
+      "nothing is handed out while the scene is borrowed"
+    );
 
     let kept = Rc::downgrade(&entry);
 
     drop(entry);
     shown.set(false);
 
-    assert!(testing::render_to_text(10, 1).starts_with("gone"));
+    assert!(testing::render_to_text(10, 2).starts_with("gone"));
     assert!(kept.upgrade().is_none(), "the entry went with its node");
   });
 }

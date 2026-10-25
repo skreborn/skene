@@ -70,6 +70,7 @@ pub(crate) fn paragraph_style() -> ParagraphStyle {
 /// points sum to, the cluster lays out as one character as wide as the terminal draws it,
 /// which a line breaks around as it does around an ideograph.
 #[derive(Clone, Copy, Debug, Default)]
+#[must_use]
 pub struct StandIns;
 
 impl Substitute for StandIns {

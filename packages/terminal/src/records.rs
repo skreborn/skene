@@ -93,7 +93,8 @@ pub(crate) struct Records {
   /// arriving without its press stands in for a click whose press the terminal
   /// swallowed.
   pub(crate) buttons: PointerButtons,
-  /// The selection over the document's runs; a text entry's lives in its [`Field`].
+  /// The selection over the document's runs; a text entry's lives in the editing state
+  /// the scene keeps for it ([`EntryState`]).
   pub(crate) selection: Option<Selection>,
   /// The last press, for counting multi-click sequences: its clock reading, cell, and
   /// count.

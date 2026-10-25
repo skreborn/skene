@@ -1,7 +1,7 @@
 //! The terminal's text entries as clients of the shared editing core: each operation on an
-//! entry's editor runs with no records borrowed, and what it changed is settled after; the
-//! keys bound to the core's commands, the clipboard the launch offers, the pointer, and the
-//! window over the value.
+//! entry's editor runs with neither the records nor the scene borrowed, and what it changed is
+//! settled after; the keys bound to the core's commands, the clipboard the launch offers, the
+//! pointer, and the window over the value.
 
 use std::rc::Rc;
 

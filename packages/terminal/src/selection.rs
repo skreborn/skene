@@ -5,8 +5,9 @@
 //! text—so it survives reflow and copies as the text appears in the source, soft wraps
 //! excluded. A press anchors it, a drag extends it across runs in document order, a
 //! double click takes the word, a triple click the run. A text entry's selection lives
-//! in its [`Field`](crate::records::Field) instead, over its value, and holds while a
-//! popup takes focus from the entry, so the context menu acts on it. `Copy` stages the
+//! in the editing state the scene keeps for it
+//! ([`EntryState`](crate::records::EntryState)) instead, over its value, and holds while
+//! a popup takes focus from the entry, so the context menu acts on it. `Copy` stages the
 //! text for the terminal loop's OSC 52 write, `Cut` removes it as well, and `Paste`
 //! stages an OSC 52 read whose reply lands in the entry that asked. The launch's
 //! [`Clipboard`](crate::Clipboard) says which actions exist; within it every action is

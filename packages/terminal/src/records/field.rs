@@ -1,6 +1,7 @@
 //! A text entry's presentation: the window the entry shows its value through, over the
 //! editing state the scene keeps for it, the shared editing core over the cell engine,
-//! masked where the entry is secure, which runs with no records borrowed.
+//! masked where the entry is secure, which runs with neither the records nor the scene
+//! borrowed.
 
 use std::{cell::Cell, rc::Rc};
 

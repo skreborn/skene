@@ -1724,8 +1724,8 @@ first client: its editing state is the shared entry the scene keeps for its node
 (`Entry<CellEngine>`, its `Editor` over the cell engine, a field one unwrapped line and
 an editor wrapped at its content width, a secure entry's mark `•`), and the terminal's
 `Field` record keeps only its presentation over it—the window over the value and the
-area it was settled in, the placeholder, the lines it asks for and its widest line—
-reading the entry through the scene. So an operation on the editor—a key, a press or
+area it was settled in, the placeholder, the lines it asks for and its widest
+line—reading the entry through the scene. So an operation on the editor—a key, a press or
 a drag, a paste, a write from the app—runs with neither the records nor the scene
 borrowed and what it changed (damage, restyle, the window, a moved selection to
 report) is settled after, an operation reaching an editor another holds (a handler

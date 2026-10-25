@@ -254,8 +254,7 @@ A disabled control takes no focus.
 A radio group holds its radios as children and binds the chosen one. What it chooses is
 a value of the app's own type, any type that is `Clone`, `Eq` and `Hash`, each radio
 tagged with one. A group that starts with nothing chosen binds an `Option<Size>`, its
-radios tagged `Some(Size::Small)` and so on. A listbox binds an `Option` the same way,
-or a set of values for several choices.
+radios tagged `Some(Size::Small)` and so on. A listbox binds an `Option` the same way.
 
 A picker offers the same choice in a popup, and on the web renders as a `<select>`
 until the page hydrates; typing over it picks the option whose name the characters
@@ -311,12 +310,12 @@ fn order(name: Signal<String>, size: Signal<Size>) -> impl View {
     ),
     SimplePicker::new()
       .set_label("Size")
+      .bind_chosen(size)
       .set_options([
         (Size::Small, "Small"),
         (Size::Medium, "Medium"),
         (Size::Large, "Large"),
-      ])
-      .bind_chosen(size),
+      ]),
     SimpleButton::new("Order").handle_activate(move || println!("ordered {}", name.get())),
   ))
 }

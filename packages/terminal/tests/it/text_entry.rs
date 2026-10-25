@@ -13,7 +13,7 @@ use skene_terminal::{
   testing,
 };
 
-use crate::common::{colors_at, green, is_live, red, rgb, rows, white, with_platform};
+use crate::common::{colors_at, green, is_live, red, rgb, rows, swatches, white, with_platform};
 
 /// Typing into a focused field flows through `bind_value` into the signal and back onto
 /// the frame; the placeholder shows while the value is empty.
@@ -1540,8 +1540,8 @@ fn an_entrys_editing_state_lives_and_goes_with_its_node() {
 
 /// The built-in field draws its defaults in cells: its caption on the row above, its
 /// value padded a cell inside a border in the border color that takes the accent while
-/// focus shows, its value selected on the selection color, and every default a value its
-/// setters replace.
+/// focus shows, filled with the field color, its value selected on the selection color,
+/// and every default a value its setters replace.
 #[test]
 fn a_text_field_draws_its_defaults_in_cells() {
   with_platform(|| {
@@ -1556,49 +1556,65 @@ fn a_text_field_draws_its_defaults_in_cells() {
             .set_value("a@b")
             .set_border_color(red())
             .set_selection_background(green()),
+          swatches(&[
+            SystemColors::BORDER,
+            SystemColors::ACCENT,
+            SystemColors::FIELD,
+            SystemColors::SELECTION,
+          ]),
         ))
         .build()
     });
 
     assert_eq!(
-      testing::render_to_text(12, 8),
-      "Name\n┌──────────┐\n│ Ada      │\n└──────────┘\nMail\n┌──────────┐\n│ a@b      │\n└──────────┘\n"
+      rows(&testing::render_to_text(12, 9)),
+      "Name\n┌──────────┐\n│ Ada      │\n└──────────┘\nMail\n┌──────────┐\n│ a@b      │\n└──────────┘\n\n"
     );
 
-    let border = colors_at(12, 8, 0, 1).0;
-    let field = colors_at(12, 8, 2, 2).1;
+    let swatch = |column: usize| colors_at(12, 9, column, 8).1;
+    let (border, accent, field, selection) = (swatch(0), swatch(1), swatch(2), swatch(3));
 
-    assert_ne!(border, None, "the border is inked");
+    assert!(
+      border.is_some() && accent != border && selection != field,
+      "the swatches tell the colors apart"
+    );
     assert_eq!(
-      colors_at(12, 8, 0, 5).0,
+      colors_at(12, 9, 0, 1).0,
+      border,
+      "the border in the border color"
+    );
+    assert_eq!(
+      colors_at(12, 9, 2, 2).1,
+      field,
+      "filled with the field color"
+    );
+    assert_eq!(
+      colors_at(12, 9, 0, 5).0,
       Some(rgb(red())),
       "a set border color replaces the default"
     );
 
     testing::trigger_key("Tab");
 
-    let focused = colors_at(12, 8, 0, 1).0;
-    let selected = colors_at(12, 8, 2, 2).1;
-
-    assert_ne!(
-      focused, border,
+    assert_eq!(
+      colors_at(12, 9, 0, 1).0,
+      accent,
       "the border takes the accent while focus shows"
     );
-    assert_ne!(
-      selected, field,
-      "keyboard focus selects the value on the selection color"
-    );
-    assert_eq!(
-      colors_at(12, 8, 3, 2).1,
-      selected,
-      "the whole value is selected"
-    );
+
+    for column in 2..5 {
+      assert_eq!(
+        colors_at(12, 9, column, 2).1,
+        selection,
+        "keyboard focus selects the whole value on the selection color"
+      );
+    }
 
     testing::trigger_key("Tab");
 
-    assert_eq!(colors_at(12, 8, 0, 1).0, border, "the ring goes with focus");
+    assert_eq!(colors_at(12, 9, 0, 1).0, border, "the ring goes with focus");
     assert_eq!(
-      colors_at(12, 8, 2, 6).1,
+      colors_at(12, 9, 2, 6).1,
       Some(rgb(green())),
       "a set selection background replaces the default"
     );

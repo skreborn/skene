@@ -19,7 +19,7 @@ use skene_terminal::{
   testing,
 };
 
-use crate::common::{colors_at, locate, read, red, rgb, rows, with_platform};
+use crate::common::{colors_at, locate, read, red, rgb, rows, swatches, with_platform};
 
 fn picker(unit: Signal<&'static str>) -> SimplePicker<&'static str> {
   SimplePicker::new()
@@ -900,20 +900,43 @@ fn inside_part(node: NodeId, part: Part) -> bool {
 fn the_built_in_picker_draws_its_face_and_list_in_cells() {
   with_platform(|| {
     let size = Signal::new(2);
-    let _ = terminal::mount(move || Column::new().add_child(styled_picker(size)).build());
+    let _ = terminal::mount(move || {
+      Column::new()
+        .set_children((
+          styled_picker(size),
+          swatches(&[
+            SystemColors::CONTROL,
+            SystemColors::ACCENT,
+            SystemColors::BORDER,
+            SystemColors::FIELD,
+          ]),
+        ))
+        .build()
+    });
 
     assert_eq!(
       rows(&testing::render_to_text(12, 8)),
       "Size\n Large ▾\n\n\n\n\n\n\n"
     );
 
-    let resting = colors_at(12, 8, 1, 1).1;
+    let swatch = |column: usize| colors_at(12, 8, column, 2).1;
+    let (control, accent, border, field) = (swatch(0), swatch(1), swatch(2), swatch(3));
+
+    assert!(
+      control.is_some() && accent != control && border != field,
+      "the swatches tell the colors apart"
+    );
+    assert_eq!(
+      colors_at(12, 8, 1, 1).1,
+      control,
+      "the face in the control color"
+    );
 
     testing::trigger_key("Tab");
 
-    assert_ne!(
+    assert_eq!(
       colors_at(12, 8, 1, 1).1,
-      resting,
+      accent,
       "the face takes the accent while focus shows"
     );
 
@@ -923,6 +946,16 @@ fn the_built_in_picker_draws_its_face_and_list_in_cells() {
       rows(&testing::render_to_text(12, 8)),
       "Size\n Large ▾\n┌──────────┐\n│    Small │\n│ ✓  Large │\n└──────────┘\n\n\n",
       "the list opens beneath the face, the chosen option checked"
+    );
+    assert_eq!(
+      colors_at(12, 8, 0, 2).0,
+      border,
+      "the list framed in the border color"
+    );
+    assert_eq!(
+      colors_at(12, 8, 10, 3).1,
+      field,
+      "the list filled with the field color"
     );
     assert!(
       inside_part(option("Small"), Part::List),

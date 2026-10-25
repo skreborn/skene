@@ -2,7 +2,22 @@
 //! build on, and the probes reading a frame, a reader's tree and the scene back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
-use skene_terminal::{Color, NodeId, Scene, platform::terminal::Terminal, testing};
+use skene_terminal::{Color, NodeId, Scene, TokenRef, platform::terminal::Terminal, testing};
+
+/// A row of boxes a cell square, each filled with the color of its token in `colors`'
+/// order: the swatches a frame shows what the tokens resolve to in.
+pub(crate) fn swatches(colors: &[TokenRef<Color>]) -> skene_terminal::Row {
+  use skene_terminal::prelude::*;
+
+  colors.iter().fold(Row::new(), |row, color| {
+    row.add_child(
+      Container::new()
+        .set_width(1)
+        .set_height(1)
+        .set_background(*color),
+    )
+  })
+}
 
 /// A cell's foreground and background.
 pub(crate) type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);

@@ -1,8 +1,10 @@
 //! Controls: their state, their parts, and what each node reports to assistive
 //! technology.
 
+use std::rc::Rc;
+
 use super::{Mirror, NodeKind, NodeRecord, Scene};
-use crate::spine::{AccessProp, ControlState, NodeId, Part, Realization};
+use crate::spine::{AccessProp, ControlSink, ControlState, NodeId, Part, Realization};
 
 /// What a node reports to assistive technology: the view's own report, and the report
 /// of a view describing it.
@@ -20,6 +22,21 @@ impl AccessReports {
 }
 
 impl<P: Realization> Scene<P> {
+  /// Registers `sink` as what reads and writes the door's contents of `node`, a view
+  /// adopted through the native door, replacing the sink registered before.
+  pub fn set_sink(&mut self, node: NodeId, sink: Rc<dyn ControlSink>) {
+    if let Some(record) = self.record_mut(node) {
+      record.sink = Some(sink);
+    }
+  }
+
+  /// The sink reading and writing the door's contents of `node`, where one is
+  /// registered.
+  #[must_use]
+  pub fn sink(&self, node: NodeId) -> Option<Rc<dyn ControlSink>> {
+    self.record(node)?.sink.clone()
+  }
+
   /// Writes the state of the control `node` and mirrors it, bringing the platform back
   /// to it whether or not it changed; a node of any other kind is left alone.
   pub fn set_control_state(&mut self, node: NodeId, state: ControlState) {

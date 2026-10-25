@@ -288,11 +288,13 @@ impl skene_foundation::pinned::PinnedBase<skene_web::platform::web::Web> for ske
 impl skene_foundation::span::RichTextBase<skene_web::platform::web::Web> for skene_web::RichText
 impl skene_foundation::span::SpanBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::spine::realization::Realization for skene_web::platform::web::Web
+pub type skene_web::platform::web::Web::Native = web_sys::features::gen_Element::Element
 pub type skene_web::platform::web::Web::Scalar = f32
 pub type skene_web::platform::web::Web::StyleExt = skene_foundation::web::ext::WebStyle
 pub type skene_web::platform::web::Web::TokenValue = skene_web::platform::web::WebTokenValue
 pub const skene_web::platform::web::Web::FONT_SIZE: f32
 pub const skene_web::platform::web::Web::KEEP: skene_foundation::spine::record::Keep
+pub fn skene_web::platform::web::Web::adopt(skene_foundation::spine::node::NodeId, web_sys::features::gen_Element::Element, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_web::platform::web::Web::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::apply_style(skene_foundation::spine::node::NodeId, skene_foundation::spine::record::CompiledStyle<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
@@ -314,6 +316,7 @@ pub fn skene_web::platform::web::Web::hydration() -> core::option::Option<skene_
 pub fn skene_web::platform::web::Web::listen(skene_foundation::spine::node::NodeId, skene_foundation::spine::props::EventKind)
 pub fn skene_web::platform::web::Web::localize_pointer(skene_foundation::spine::node::NodeId, &skene_foundation::spine::events::PointerEvent) -> skene_foundation::spine::events::PointerEvent
 pub fn skene_web::platform::web::Web::media() -> skene_foundation::spine::props::MediaSignals<f32>
+pub fn skene_web::platform::web::Web::native(skene_foundation::spine::node::NodeId) -> core::option::Option<web_sys::features::gen_Element::Element>
 pub fn skene_web::platform::web::Web::observe_size(skene_foundation::spine::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<f32>)>) -> skene_foundation::spine::realization::Observation
 pub fn skene_web::platform::web::Web::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)
 pub fn skene_web::platform::web::Web::push_path(&str)

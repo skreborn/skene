@@ -8,6 +8,14 @@ supersedes.
 
 ## Decided against
 
+- **A door's `ControlSink` handed over in `adopt`, and its `read` returning an owned
+  value** (2026-10-25), the prototype's shape: `LowLevel::adopt` takes the view alone
+  and `LowLevel::register_sink` the sink, since a view that holds no value has none to
+  give and an `Option` of one has no type to infer, and `ControlSink::read` runs a
+  closure with the value as `Realization::read` does, so a door's value crosses
+  borrowed in both directions as a `ContentValue::Door` and is owned by its key alone.
+  Revisit when a library's door must hand over its sink before the node exists, or a
+  sink cannot lend what its view shows.
 - **Naming a scriptless option by `Key::of(tag)`** (2026-10-25), a `<select>`'s
   `<option value>` and a radio's `value` the hash of the option's value as 32 hex
   digits, as the roadmap first had it: the server leaf and the browser must name an

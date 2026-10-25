@@ -16,13 +16,19 @@ use skene_foundation::{
   Arrangement,
   Axis,
   BasicPickerBase,
+  BoxFacts,
   ColorScheme,
   ColumnBase,
   Condition,
   ContainerBase,
   Content,
+  ContentKey,
+  ContentType,
   ContentValue,
   ControlBase,
+  ControlSink,
+  Controllable,
+  Controller,
   DecorationBase,
   DecorationWithCornerRadius,
   Edge,
@@ -35,13 +41,17 @@ use skene_foundation::{
   ItemAlignment,
   LabelPlacement,
   Layout,
+  LowLevel,
   Media,
   MotionBase,
   NativeElement,
+  NodeFacts,
+  NodeSpec,
   OverlayBase,
   Placement,
   PointerPrecision,
   Property,
+  Realization,
   Report,
   RichTextBase,
   RowBase,
@@ -1457,6 +1467,191 @@ fn a_sliders_native_value_is_answered_and_a_refused_one_undone() {
   web::end_turn();
 
   assert_eq!(input(1).value(), "20");
+}
+
+/// The value of a color input adopted through the native door.
+#[derive(Debug, Clone, PartialEq)]
+struct Hex(Rc<str>);
+
+impl ContentType for Hex {}
+
+impl Controllable for Hex {
+  fn holds(&self, proposed: &Self) -> bool {
+    self == proposed
+  }
+}
+
+/// The door's name for a color input's value.
+const COLOR: ContentKey<Hex> = ContentKey::door("color");
+
+/// A sink over a color input's `value`, counting the writes it shows.
+struct ColorSink {
+  input: HtmlInputElement,
+  writes: Rc<Cell<usize>>,
+}
+
+impl ControlSink for ColorSink {
+  fn read(&self, content: Content, read: &mut dyn FnMut(ContentValue<'_>)) {
+    if content == COLOR.content() {
+      read(COLOR.erase(&Hex(Rc::from(self.input.value()))));
+    }
+  }
+
+  fn write(&self, _content: Content, value: ContentValue<'_>) {
+    if let Some(Hex(color)) = COLOR.own(value) {
+      self.writes.set(self.writes.get() + 1);
+      self.input.set_value(&color);
+    }
+  }
+}
+
+/// A view of a test's own adopting a real `<input type=color>` through the native door,
+/// its value controlled by `truth` and asked for through `ask`, every verdict on a
+/// reader's change noted in `verdicts`.
+fn color_well(
+  truth: impl Fn() -> Hex + 'static,
+  ask: impl Fn(&Hex) + 'static,
+  writes: Rc<Cell<usize>>,
+  verdicts: Rc<RefCell<Vec<Verdict>>>,
+) -> NodeId {
+  let input: HtmlInputElement = document()
+    .create_element("input")
+    .expect("an input")
+    .dyn_into()
+    .expect("an input element");
+
+  input.set_type("color");
+
+  let spec = NodeSpec::new(
+    None,
+    None,
+    None,
+    NodeFacts::Box(BoxFacts {
+      layout: Layout::Document,
+      container: None,
+      transition_name: None,
+      link: false,
+    }),
+  );
+  let node = LowLevel::<Web>::adopt(&spec, input.clone().into());
+
+  LowLevel::<Web>::register_sink(
+    node,
+    ColorSink {
+      input: input.clone(),
+      writes,
+    },
+  );
+  Controller::new(COLOR, truth, ask).register::<Web>(node);
+
+  let reported = input.clone();
+  let on_input = Closure::<dyn Fn()>::new(move || {
+    let proposed = Hex(Rc::from(reported.value()));
+    let verdict = report::<Web>(
+      node,
+      Report::Change {
+        content: COLOR.content(),
+        proposed: COLOR.erase(&proposed),
+        applied: true,
+      },
+    );
+
+    verdicts.borrow_mut().push(verdict);
+  });
+
+  let _ = input.add_event_listener_with_callback("input", on_input.as_ref().unchecked_ref());
+
+  on_input.forget();
+
+  node
+}
+
+/// A view adopted through the native door is controlled under a built-in's contract
+/// through its sink: a signal's write shows, a reader's change its toolkit applied is
+/// accepted, a refused one is repaired to the truth, and a write of what the view
+/// shows is skipped.
+#[wasm_bindgen_test]
+fn a_door_s_value_is_controlled_through_its_sink() {
+  let (_guard, root) = fresh_root();
+  let color = Signal::new(Hex(Rc::from("#000000")));
+  let locked = Signal::new(false);
+  let asked = Rc::new(RefCell::new(Vec::new()));
+  let writes = Rc::new(Cell::new(0));
+  let verdicts = Rc::new(RefCell::new(Vec::new()));
+  let node = mount({
+    let asked = Rc::clone(&asked);
+    let writes = Rc::clone(&writes);
+    let verdicts = Rc::clone(&verdicts);
+
+    move || {
+      color_well(
+        move || color.get(),
+        move |proposed| {
+          asked.borrow_mut().push(proposed.clone());
+
+          if !locked.get() {
+            color.set(proposed.clone());
+          }
+        },
+        writes,
+        verdicts,
+      )
+    }
+  });
+  let input: HtmlInputElement = root
+    .query_selector("input[type=color]")
+    .expect("query the input")
+    .and_then(|element| element.dyn_into().ok())
+    .expect("the adopted input under the root");
+
+  assert_eq!(
+    Web::native(node),
+    Some(input.clone().unchecked_into::<Element>()),
+    "the node is realized by the view it adopted"
+  );
+  assert_eq!(writes.get(), 0, "the truth the input shows is not written");
+
+  color.set(Hex(Rc::from("#ff0000")));
+  web::end_turn();
+
+  assert_eq!(input.value(), "#ff0000", "a signal's write shows");
+  assert_eq!(writes.get(), 1);
+
+  input.set_value("#00ff00");
+  dispatch(&input, "input");
+  web::end_turn();
+
+  assert_eq!(
+    *verdicts.borrow(),
+    [Verdict::Accept],
+    "the change is accepted"
+  );
+  assert_eq!(*asked.borrow(), [Hex(Rc::from("#00ff00"))]);
+  assert_eq!(color.get(), Hex(Rc::from("#00ff00")), "and taken");
+  assert_eq!(input.value(), "#00ff00");
+  assert_eq!(
+    writes.get(),
+    1,
+    "the truth the reader's change shows is not written"
+  );
+
+  locked.set(true);
+  input.set_value("#0000ff");
+  dispatch(&input, "input");
+
+  assert_eq!(
+    verdicts.borrow().last(),
+    Some(&Verdict::Refuse),
+    "the change is refused"
+  );
+  assert_eq!(input.value(), "#00ff00", "and repaired inside the event");
+  assert_eq!(writes.get(), 2);
+
+  web::end_turn();
+
+  assert_eq!(input.value(), "#00ff00");
+  assert_eq!(color.get(), Hex(Rc::from("#00ff00")));
+  assert_eq!(writes.get(), 2, "the repair is written once");
 }
 
 /// A radio choice the handler answers with another key is repaired by one write of the

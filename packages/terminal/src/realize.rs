@@ -42,7 +42,7 @@ use crate::{
   Typography,
   cells::{CellPainter, Painter},
   interaction,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, Unadoptable},
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
 
@@ -91,6 +91,7 @@ impl Realization for Terminal {
   type Scalar = i32;
   type StyleExt = TerminalStyle;
   type TokenValue = skene_foundation::TokenValue<i32>;
+  type Native = Unadoptable;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -197,6 +198,10 @@ impl Realization for Terminal {
     }
   }
 
+  fn adopt(_node: NodeId, native: Unadoptable, _spec: &NodeSpec) -> bool {
+    match native {}
+  }
+
   fn write(node: NodeId, value: ContentValue<'_>) {
     match value {
       ContentValue::Text(text) => with_records(|records| records.write_text(node, text)),
@@ -235,7 +240,7 @@ impl Realization for Terminal {
       ContentValue::Secure(secure) => {
         with_records(|records| records.set_entry_secure(node, secure));
       }
-      ContentValue::Keyboard(_) => {}
+      ContentValue::Keyboard(_) | ContentValue::Door { .. } => {}
       ContentValue::Placement(placement) => with_records(|records| {
         if let Some(Kind::Overlay {
           placement: held,

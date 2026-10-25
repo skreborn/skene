@@ -9,6 +9,7 @@ mod content;
 mod control;
 mod derived;
 mod dispatch;
+mod door;
 mod drag;
 mod errors;
 mod events;
@@ -105,6 +106,7 @@ pub use dispatch::{
   notify_pointer_moved,
   notify_scroll,
 };
+pub use door::{ControlSink, DoorValue};
 pub use drag::{
   DragData,
   DragSource,

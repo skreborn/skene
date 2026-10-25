@@ -778,7 +778,9 @@ impl<P: skene_foundation::Realization> core::fmt::Debug for skene_foundation::re
 pub fn skene_foundation::realize::ChildBuilder<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::realize::LowLevel<P: skene_foundation::Realization>(_)
 impl<P: skene_foundation::Realization> skene_foundation::realize::LowLevel<P>
+pub fn skene_foundation::realize::LowLevel<P>::adopt(&skene_foundation::NodeSpec, <P as skene_foundation::Realization>::Native) -> skene_foundation::NodeId
 pub fn skene_foundation::realize::LowLevel<P>::realize(skene_foundation::NodeKind, impl core::ops::function::FnOnce(skene_foundation::NodeId)) -> skene_foundation::NodeId
+pub fn skene_foundation::realize::LowLevel<P>::register_sink(skene_foundation::NodeId, impl skene_foundation::ControlSink + 'static)
 impl<P: core::fmt::Debug + skene_foundation::Realization> core::fmt::Debug for skene_foundation::realize::LowLevel<P>
 pub fn skene_foundation::realize::LowLevel<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn skene_foundation::realize::bind_slot<P: skene_foundation::Realization, K, V: 'static>(skene_foundation::NodeId, skene_foundation::DerivedSlot<K, V>) where skene_foundation::StaticLeaf<V>: core::convert::Into<skene_foundation::SlotLeaf<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>>
@@ -3135,6 +3137,7 @@ pub skene_foundation::Content::Checked
 pub skene_foundation::Content::Choice
 pub skene_foundation::Content::Chosen
 pub skene_foundation::Content::Destination
+pub skene_foundation::Content::Door(&'static str)
 pub skene_foundation::Content::Edit
 pub skene_foundation::Content::Keyboard
 pub skene_foundation::Content::Membership
@@ -3163,6 +3166,9 @@ pub skene_foundation::ContentValue::Checked(skene_foundation::CheckState)
 pub skene_foundation::ContentValue::Choice(&'a skene_foundation::Choices)
 pub skene_foundation::ContentValue::Chosen(core::option::Option<&'a str>)
 pub skene_foundation::ContentValue::Destination(&'a str)
+pub skene_foundation::ContentValue::Door
+pub skene_foundation::ContentValue::Door::name: &'static str
+pub skene_foundation::ContentValue::Door::value: &'a dyn skene_foundation::DoorValue
 pub skene_foundation::ContentValue::Edit(&'a skene_foundation::Edit)
 pub skene_foundation::ContentValue::Keyboard(skene_foundation::Keyboard)
 pub skene_foundation::ContentValue::Membership(&'a skene_foundation::Membership)
@@ -5415,7 +5421,9 @@ pub fn skene_foundation::ContainerSizes<N>::default() -> Self
 pub struct skene_foundation::ContentKey<T: skene_foundation::ContentType>
 impl<T: skene_foundation::ContentType> skene_foundation::ContentKey<T>
 pub const fn skene_foundation::ContentKey<T>::content(&self) -> skene_foundation::Content
+pub const fn skene_foundation::ContentKey<T>::door(&'static str) -> Self
 pub fn skene_foundation::ContentKey<T>::erase<'a>(&self, &'a T) -> skene_foundation::ContentValue<'a>
+pub fn skene_foundation::ContentKey<T>::is_composing<P: skene_foundation::Realization>(&self, skene_foundation::NodeId) -> bool
 pub fn skene_foundation::ContentKey<T>::own(&self, skene_foundation::ContentValue<'_>) -> core::option::Option<T>
 pub fn skene_foundation::ContentKey<T>::read<P: skene_foundation::Realization>(&self, skene_foundation::NodeId) -> core::option::Option<T>
 pub fn skene_foundation::ContentKey<T>::write<P: skene_foundation::Realization>(&self, skene_foundation::NodeId, &T)
@@ -6649,7 +6657,9 @@ pub const skene_foundation::ListboxPolicy::WRAPS: bool
 pub fn skene_foundation::ListboxPolicy::member_access(bool) -> alloc::vec::Vec<skene_foundation::AccessProp>
 pub struct skene_foundation::LowLevel<P: skene_foundation::Realization>(_)
 impl<P: skene_foundation::Realization> skene_foundation::realize::LowLevel<P>
+pub fn skene_foundation::realize::LowLevel<P>::adopt(&skene_foundation::NodeSpec, <P as skene_foundation::Realization>::Native) -> skene_foundation::NodeId
 pub fn skene_foundation::realize::LowLevel<P>::realize(skene_foundation::NodeKind, impl core::ops::function::FnOnce(skene_foundation::NodeId)) -> skene_foundation::NodeId
+pub fn skene_foundation::realize::LowLevel<P>::register_sink(skene_foundation::NodeId, impl skene_foundation::ControlSink + 'static)
 impl<P: core::fmt::Debug + skene_foundation::Realization> core::fmt::Debug for skene_foundation::realize::LowLevel<P>
 pub fn skene_foundation::realize::LowLevel<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::MediaEnv<'a, N>
@@ -7613,6 +7623,8 @@ pub fn skene_foundation::Scene<P>::part(&self, skene_foundation::NodeId) -> core
 pub fn skene_foundation::Scene<P>::report_access(&mut self, skene_foundation::NodeId, alloc::vec::Vec<skene_foundation::AccessProp>) -> alloc::vec::Vec<skene_foundation::AccessProp>
 pub fn skene_foundation::Scene<P>::set_control_state(&mut self, skene_foundation::NodeId, skene_foundation::ControlState)
 pub fn skene_foundation::Scene<P>::set_part(&mut self, skene_foundation::NodeId, skene_foundation::Part)
+pub fn skene_foundation::Scene<P>::set_sink(&mut self, skene_foundation::NodeId, alloc::rc::Rc<dyn skene_foundation::ControlSink>)
+pub fn skene_foundation::Scene<P>::sink(&self, skene_foundation::NodeId) -> core::option::Option<alloc::rc::Rc<dyn skene_foundation::ControlSink>>
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::access_outline(impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> alloc::string::String
 pub fn skene_foundation::Scene<P>::access_tree(impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> accesskit::TreeUpdate
@@ -7622,6 +7634,18 @@ pub fn skene_foundation::Scene<P>::find_all_by_role(accesskit::Role, impl core::
 pub fn skene_foundation::Scene<P>::find_all_unnamed(impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> alloc::vec::Vec<skene_foundation::NodeId>
 pub fn skene_foundation::Scene<P>::find_by_role(accesskit::Role, &str, impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Scene<P>::find_by_text(&str, impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> core::option::Option<skene_foundation::NodeId>
+impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
+pub fn skene_foundation::Scene<P>::adopt(&skene_foundation::NodeSpec, <P as skene_foundation::Realization>::Native, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::contains(&self, skene_foundation::NodeId) -> bool
+pub fn skene_foundation::Scene<P>::create(&mut self, skene_foundation::NodeKind, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::is_borrowed() -> bool
+pub fn skene_foundation::Scene<P>::new() -> Self
+pub fn skene_foundation::Scene<P>::node_at(&self, &skene_reactive::path::SnapshotPlace) -> core::option::Option<skene_foundation::NodeId>
+pub fn skene_foundation::Scene<P>::read<R>(impl core::ops::function::FnOnce(&Self) -> R) -> R
+pub fn skene_foundation::Scene<P>::realize(&skene_foundation::NodeSpec, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::record(&self, skene_foundation::NodeId) -> core::option::Option<&skene_foundation::NodeRecord<P>>
+pub fn skene_foundation::Scene<P>::record_mut(&mut self, skene_foundation::NodeId) -> core::option::Option<&mut skene_foundation::NodeRecord<P>>
+pub fn skene_foundation::Scene<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::ancestry(&self, skene_foundation::NodeId) -> smallvec::SmallVec<[skene_foundation::NodeId; 16]>
 pub fn skene_foundation::Scene<P>::attach(&mut self, skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
@@ -7648,17 +7672,6 @@ impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::annotate(impl core::convert::Into<core::option::Option<skene_foundation::Annotation<P>>>, impl core::ops::function::FnOnce() -> skene_foundation::NodeId) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::set_pending_annotation(&mut self, skene_foundation::Annotation<P>)
 pub const fn skene_foundation::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_foundation::Annotation<P>>
-impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
-pub fn skene_foundation::Scene<P>::contains(&self, skene_foundation::NodeId) -> bool
-pub fn skene_foundation::Scene<P>::create(&mut self, skene_foundation::NodeKind, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
-pub fn skene_foundation::Scene<P>::is_borrowed() -> bool
-pub fn skene_foundation::Scene<P>::new() -> Self
-pub fn skene_foundation::Scene<P>::node_at(&self, &skene_reactive::path::SnapshotPlace) -> core::option::Option<skene_foundation::NodeId>
-pub fn skene_foundation::Scene<P>::read<R>(impl core::ops::function::FnOnce(&Self) -> R) -> R
-pub fn skene_foundation::Scene<P>::realize(&skene_foundation::NodeSpec, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
-pub fn skene_foundation::Scene<P>::record(&self, skene_foundation::NodeId) -> core::option::Option<&skene_foundation::NodeRecord<P>>
-pub fn skene_foundation::Scene<P>::record_mut(&mut self, skene_foundation::NodeId) -> core::option::Option<&mut skene_foundation::NodeRecord<P>>
-pub fn skene_foundation::Scene<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
 pub fn skene_foundation::Scene<P>::define_root_set(&mut self, core::any::TypeId, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>) -> bool
 pub fn skene_foundation::Scene<P>::define_tokens(&mut self, skene_foundation::TokenScope, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>)
@@ -9087,6 +9100,10 @@ pub fn skene_foundation::ControlBase::set_part(self, skene_foundation::Part, imp
 pub fn skene_foundation::ControlBase::set_read_only(self, bool) -> Self
 pub fn skene_foundation::ControlBase::set_required(self, bool) -> Self
 pub fn skene_foundation::ControlBase::set_spacing(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Spacing<<P as skene_foundation::Realization>::Scalar>, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub trait skene_foundation::ControlSink
+pub fn skene_foundation::ControlSink::composing(&self) -> bool
+pub fn skene_foundation::ControlSink::read(&self, skene_foundation::Content, &mut dyn core::ops::function::FnMut(skene_foundation::ContentValue<'_>))
+pub fn skene_foundation::ControlSink::write(&self, skene_foundation::Content, skene_foundation::ContentValue<'_>)
 pub trait skene_foundation::Controllable: skene_foundation::ContentType
 pub fn skene_foundation::Controllable::holds(&self, &Self) -> bool
 impl skene_foundation::Controllable for core::option::Option<alloc::rc::Rc<str>>
@@ -9384,6 +9401,12 @@ pub fn skene_foundation::DecorationWithCornerRadius::set_corner_radius(self, imp
 impl<P: skene_foundation::Realization, T: skene_foundation::DecorationBase<P>> skene_foundation::DecorationWithCornerRadius<P> for T where <P as skene_foundation::Realization>::StyleExt: skene_foundation::CornerRadius
 pub fn T::derive_corner_radius<R: core::convert::Into<skene_foundation::StaticLeaf<skene_foundation::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn T::set_corner_radius(self, impl core::convert::Into<skene_foundation::Value<skene_foundation::Length, skene_foundation::Condition<<P as skene_foundation::Realization>::Scalar>>>) -> Self
+pub trait skene_foundation::DoorValue: core::fmt::Debug
+pub fn skene_foundation::DoorValue::as_any(&self) -> &dyn core::any::Any
+pub fn skene_foundation::DoorValue::is_equal(&self, &dyn skene_foundation::DoorValue) -> bool
+impl<T: skene_foundation::ContentType> skene_foundation::DoorValue for T
+pub fn T::as_any(&self) -> &(dyn core::any::Any + 'static)
+pub fn T::is_equal(&self, &dyn skene_foundation::DoorValue) -> bool
 pub trait skene_foundation::EnhanceBase<P: skene_foundation::Realization>: skene_foundation::Wraps<Inner = skene_foundation::Enhance<P>>
 pub fn skene_foundation::EnhanceBase::new(skene_reactive::signal::ReadSignal<bool>) -> Self
 pub fn skene_foundation::EnhanceBase::set_child_builder<V: skene_foundation::View<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
@@ -10049,11 +10072,13 @@ pub fn skene_foundation::Length::literal(f32) -> skene_foundation::ExprNode
 impl skene_foundation::Quantity for skene_foundation::Number
 pub fn skene_foundation::Number::literal(f32) -> skene_foundation::ExprNode
 pub trait skene_foundation::Realization: core::marker::Copy + core::default::Default + 'static
+pub type skene_foundation::Realization::Native: core::clone::Clone + 'static
 pub type skene_foundation::Realization::Scalar: skene_foundation::Scalar
 pub type skene_foundation::Realization::StyleExt: skene_foundation::StyleExtension
 pub type skene_foundation::Realization::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_foundation::Definition<skene_foundation::Color, Self::Scalar>> + core::convert::From<skene_foundation::Definition<f32, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Dimension<Self::Scalar>, Self::Scalar>> + 'static
 pub const skene_foundation::Realization::FONT_SIZE: f32
 pub const skene_foundation::Realization::KEEP: skene_foundation::Keep
+pub fn skene_foundation::Realization::adopt(skene_foundation::NodeId, Self::Native, &skene_foundation::NodeSpec) -> bool
 pub fn skene_foundation::Realization::apply_slot(skene_foundation::NodeId, skene_foundation::Slot, &skene_foundation::SlotLeaf<Self::Scalar, Self::StyleExt>)
 pub fn skene_foundation::Realization::apply_style(skene_foundation::NodeId, skene_foundation::CompiledStyle<Self::Scalar, Self::StyleExt>)
 pub fn skene_foundation::Realization::attach(skene_foundation::NodeId, skene_foundation::NodeId, core::option::Option<skene_foundation::NodeId>)
@@ -10076,6 +10101,7 @@ pub fn skene_foundation::Realization::lay_out()
 pub fn skene_foundation::Realization::listen(skene_foundation::NodeId, skene_foundation::EventKind)
 pub fn skene_foundation::Realization::localize_pointer(skene_foundation::NodeId, &skene_foundation::PointerEvent) -> skene_foundation::PointerEvent
 pub fn skene_foundation::Realization::media() -> skene_foundation::MediaSignals<Self::Scalar>
+pub fn skene_foundation::Realization::native(skene_foundation::NodeId) -> core::option::Option<Self::Native>
 pub fn skene_foundation::Realization::observe_size(skene_foundation::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::Size<Self::Scalar>)>) -> skene_foundation::Observation
 pub fn skene_foundation::Realization::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)
 pub fn skene_foundation::Realization::push_path(&str)

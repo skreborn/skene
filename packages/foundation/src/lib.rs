@@ -61,7 +61,9 @@
 //! estimated and measured [`ItemExtent`]. [`CornerRadius`] is what a decorated box asks of a
 //! medium's style extension to round its corners, and [`TypeMetrics`] what a run asks of it to size
 //! its type; both are silently declined by a medium without them. [`LowLevel`] registers a sink a
-//! low-level view made against a platform's escape trait as a node, so it composes like a built-in.
+//! low-level view made against a platform's escape trait as a node, so it composes like a built-in,
+//! and adopts a compositor platform's own view through the native door, a value it holds
+//! controlled by a [`Controller`] through the [`ControlSink`] registered on its node.
 
 mod apply;
 mod container;

@@ -388,7 +388,7 @@ fn install<P: Realization>(node: NodeId, content: Content, answer: Rc<ReportHand
 /// it the truth must hold for the change to stand.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a content a controller holds whole",
-  label = "a controller holds a checked state, a range, choices or a group's chosen key",
+  label = "a controller holds a checked state, a range, choices, a group's chosen key or a door's value",
   note = "a text entry's `Edit` is controlled by an `EditController`"
 )]
 pub trait Controllable: ContentType {
@@ -427,15 +427,19 @@ impl Controllable for Option<Rc<str>> {
   }
 }
 
-/// A controlled content held whole, a checked state, a range, a choice's options or a
-/// group's chosen key: the truth the platform is brought back to, and the ask a
-/// reader's change makes of the app.
+/// A controlled content held whole: the truth the platform is brought back to, and the
+/// ask a reader's change makes of the app.
+///
+/// The content is a checked state, a range, a choice's options, a group's chosen key or
+/// a value of a view adopted through the native door.
 ///
 /// [`register`](Self::register) writes the truth as the node's content whenever what it
 /// reads changes, skipping a write of what the node shows already, which it reads once
 /// through [`Realization::read`] and then keeps from what it writes and what is
 /// reported, and holding one back while the reader's change is
-/// [composing](Realization::composing); and it answers every reader's change
+/// [composing](Realization::composing); a door's content is written, read and composed
+/// through the [`ControlSink`](crate::ControlSink) registered on its node instead
+/// ([`ContentKey::door`]). It answers every reader's change
 /// [`report`]ed at the node: one the truth holds ([`Controllable::holds`]) asks
 /// nothing and stands, and so does one made while it writes; any other asks the app,
 /// and stands where the truth then holds it, else is refused and repaired by the write
@@ -509,7 +513,11 @@ impl<T: Controllable> Controller<T> {
     let truth = (self.truth)();
 
     untrack(|| {
-      let Some(truth) = Self::written(truth, self.shown.borrow().as_ref(), P::composing(node))
+      let Some(truth) = Self::written(
+        truth,
+        self.shown.borrow().as_ref(),
+        self.key.is_composing::<P>(node),
+      )
       else {
         return;
       };

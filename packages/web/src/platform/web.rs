@@ -15,7 +15,10 @@
 //! A low-level view states an escape trait as its bound: [`WebMarkup`] (an element,
 //! its attributes, raw [`Declarations`] and text) is implemented on both leaves, and
 //! `WebDom` (the live element and document) on the browser leaf alone, so
-//! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
+//! DOM-reaching code fails to compile for the server. The native door adopts the
+//! browser leaf's live `Element` as a node
+//! ([`Realization::Native`](skene_foundation::Realization::Native)); the server leaf's
+//! native view is `Unadoptable`, so its door cannot be reached. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
 #[cfg(skene_server)]
@@ -90,6 +93,11 @@ pub use crate::{
   low_level::WebMarkup,
   token::WebTokenValue,
 };
+
+/// The server leaf's native view: none, so the native door cannot be reached there.
+#[cfg(skene_server)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Unadoptable {}
 
 /// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the
 /// browser and over a string tree on the server.

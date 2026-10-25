@@ -190,6 +190,18 @@ pub skene_web::platform::web::StreamPiece::Shell::styles: &'a str
 pub skene_web::platform::web::StreamPiece::Tail(alloc::string::String)
 impl<'a> core::fmt::Debug for skene_web::platform::web::StreamPiece<'a>
 pub fn skene_web::platform::web::StreamPiece<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_web::platform::web::Unadoptable
+impl core::clone::Clone for skene_web::platform::web::Unadoptable
+pub fn skene_web::platform::web::Unadoptable::clone(&self) -> skene_web::platform::web::Unadoptable
+impl core::cmp::Eq for skene_web::platform::web::Unadoptable
+impl core::cmp::PartialEq for skene_web::platform::web::Unadoptable
+pub fn skene_web::platform::web::Unadoptable::eq(&self, &skene_web::platform::web::Unadoptable) -> bool
+impl core::fmt::Debug for skene_web::platform::web::Unadoptable
+pub fn skene_web::platform::web::Unadoptable::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::platform::web::Unadoptable
+pub fn skene_web::platform::web::Unadoptable::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_web::platform::web::Unadoptable
+impl core::marker::StructuralPartialEq for skene_web::platform::web::Unadoptable
 pub enum skene_web::platform::web::WebTokenValue
 pub skene_web::platform::web::WebTokenValue::Color(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, f32>)
 pub skene_web::platform::web::WebTokenValue::Dimension(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::dimension::Dimension<f32>, f32>)
@@ -312,11 +324,13 @@ impl skene_foundation::pinned::PinnedBase<skene_web::platform::web::Web> for ske
 impl skene_foundation::span::RichTextBase<skene_web::platform::web::Web> for skene_web::RichText
 impl skene_foundation::span::SpanBase<skene_web::platform::web::Web> for skene_web::Span
 impl skene_foundation::spine::realization::Realization for skene_web::platform::web::Web
+pub type skene_web::platform::web::Web::Native = skene_web::platform::web::Unadoptable
 pub type skene_web::platform::web::Web::Scalar = f32
 pub type skene_web::platform::web::Web::StyleExt = skene_foundation::web::ext::WebStyle
 pub type skene_web::platform::web::Web::TokenValue = skene_web::platform::web::WebTokenValue
 pub const skene_web::platform::web::Web::FONT_SIZE: f32
 pub const skene_web::platform::web::Web::KEEP: skene_foundation::spine::record::Keep
+pub fn skene_web::platform::web::Web::adopt(skene_foundation::spine::node::NodeId, skene_web::platform::web::Unadoptable, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_web::platform::web::Web::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::apply_style(skene_foundation::spine::node::NodeId, skene_foundation::spine::record::CompiledStyle<f32, skene_foundation::web::ext::WebStyle>)
 pub fn skene_web::platform::web::Web::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)

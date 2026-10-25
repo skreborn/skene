@@ -10,7 +10,7 @@ mod placement;
 mod structure;
 mod tokens;
 
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
 use rustc_hash::FxHashMap;
 use skene_reactive::SnapshotPlace;
@@ -30,6 +30,7 @@ use self::{
 };
 use crate::spine::{
   ContainerName,
+  ControlSink,
   ControlState,
   Definitions,
   EventKind,
@@ -91,6 +92,7 @@ pub struct NodeRecord<P: Realization> {
   access: Option<Box<AccessReports>>,
   focus_order: Option<FocusOrder>,
   overlay: Option<OverlayRecord>,
+  sink: Option<Rc<dyn ControlSink>>,
 }
 
 impl<P: Realization> std::fmt::Debug for NodeRecord<P> {
@@ -381,6 +383,7 @@ impl<P: Realization> Scene<P> {
       access: None,
       focus_order: None,
       overlay: None,
+      sink: None,
     };
 
     self.nodes.insert(record)
@@ -397,6 +400,27 @@ impl<P: Realization> Scene<P> {
     let node = Self::with(|scene| scene.create(spec.kind(), annotation));
 
     if !P::create(node, spec) {
+      Self::with(|scene| {
+        if let Some(record) = scene.record_mut(node) {
+          record.realized = false;
+        }
+      });
+    }
+
+    node
+  }
+
+  /// Mints a detached node as `spec` describes it, recording the `annotation` a wrapper
+  /// gave it, and has the platform adopt `native`, its own view, as the node, recording
+  /// whether it made a node; see [`Realization::adopt`].
+  ///
+  /// # Panics
+  ///
+  /// Panics past 2^32 live nodes, or if the scene is borrowed.
+  pub fn adopt(spec: &NodeSpec, native: P::Native, annotation: Option<Annotation<P>>) -> NodeId {
+    let node = Self::with(|scene| scene.create(spec.kind(), annotation));
+
+    if !P::adopt(node, native, spec) {
       Self::with(|scene| {
         if let Some(record) = scene.record_mut(node) {
           record.realized = false;

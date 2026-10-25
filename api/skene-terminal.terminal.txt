@@ -166,6 +166,18 @@ pub fn skene_terminal::media::viewport() -> skene_reactive::signal::ReadSignal<s
 pub fn skene_terminal::media::watch(&skene_terminal::Media) -> skene_reactive::memo::Memo<bool>
 pub mod skene_terminal::platform
 pub mod skene_terminal::platform::terminal
+pub enum skene_terminal::platform::terminal::Unadoptable
+impl core::clone::Clone for skene_terminal::platform::terminal::Unadoptable
+pub fn skene_terminal::platform::terminal::Unadoptable::clone(&self) -> skene_terminal::platform::terminal::Unadoptable
+impl core::cmp::Eq for skene_terminal::platform::terminal::Unadoptable
+impl core::cmp::PartialEq for skene_terminal::platform::terminal::Unadoptable
+pub fn skene_terminal::platform::terminal::Unadoptable::eq(&self, &skene_terminal::platform::terminal::Unadoptable) -> bool
+impl core::fmt::Debug for skene_terminal::platform::terminal::Unadoptable
+pub fn skene_terminal::platform::terminal::Unadoptable::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_terminal::platform::terminal::Unadoptable
+pub fn skene_terminal::platform::terminal::Unadoptable::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_terminal::platform::terminal::Unadoptable
+impl core::marker::StructuralPartialEq for skene_terminal::platform::terminal::Unadoptable
 pub struct skene_terminal::platform::terminal::Cells<'a>
 impl<'a> skene_terminal::platform::terminal::Cells<'a>
 pub fn skene_terminal::platform::terminal::Cells<'a>::put(&mut self, u32, u32, char)
@@ -212,11 +224,13 @@ impl skene_foundation::pinned::PinnedBase<skene_terminal::platform::terminal::Te
 impl skene_foundation::span::RichTextBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::RichText
 impl skene_foundation::span::SpanBase<skene_terminal::platform::terminal::Terminal> for skene_terminal::Span
 impl skene_foundation::spine::realization::Realization for skene_terminal::platform::terminal::Terminal
+pub type skene_terminal::platform::terminal::Terminal::Native = skene_terminal::platform::terminal::Unadoptable
 pub type skene_terminal::platform::terminal::Terminal::Scalar = i32
 pub type skene_terminal::platform::terminal::Terminal::StyleExt = skene_foundation::terminal::ext::TerminalStyle
 pub type skene_terminal::platform::terminal::Terminal::TokenValue = skene_foundation::spine::resolve::TokenValue<i32>
 pub const skene_terminal::platform::terminal::Terminal::FONT_SIZE: f32
 pub const skene_terminal::platform::terminal::Terminal::KEEP: skene_foundation::spine::record::Keep
+pub fn skene_terminal::platform::terminal::Terminal::adopt(skene_foundation::spine::node::NodeId, skene_terminal::platform::terminal::Unadoptable, &skene_foundation::spine::props::NodeSpec) -> bool
 pub fn skene_terminal::platform::terminal::Terminal::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<i32, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_terminal::platform::terminal::Terminal::apply_style(skene_foundation::spine::node::NodeId, skene_foundation::spine::record::CompiledStyle<i32, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_terminal::platform::terminal::Terminal::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)

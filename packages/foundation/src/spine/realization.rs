@@ -185,9 +185,11 @@ impl<A> Timers<A> {
   }
 }
 
-/// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
-/// anchors, scopes, tree mutations, tokens, contents, event registration, focus, sizes,
-/// media and a clock.
+/// A medium that realizes the portable vocabulary: nodes, tree mutations, tokens,
+/// contents, event registration, focus, sizes, media and a clock.
+///
+/// Its nodes are boxes, controls, overlays, runs, anchors, scopes and the platform's own
+/// views the native door adopts.
 ///
 /// Zero-sized and monomorphized: a facade names exactly one platform, and every
 /// operation is an associated function over the [`NodeId`]s the scene mints, each of
@@ -195,8 +197,10 @@ impl<A> Timers<A> {
 /// [`Scalar`](Self::Scalar) as `Condition<Self::Scalar>`. Core owns the [`Scene`] and
 /// every operation on it; a platform declares the thread-local holding it and is called
 /// only to mirror each mutation into its records, never under the scene's borrow, so it
-/// may reach the scene itself. `Painted` and embeds are outside this trait: their
-/// payloads arrive through a platform's extension traits.
+/// may reach the scene itself. A compositor platform's own view enters the scene through
+/// the native door ([`adopt`](Self::adopt)), its values read and written through the
+/// [`ControlSink`](crate::ControlSink) a library registers on its node; a `Painted`
+/// node's payload, and a low-level view's, arrive through a platform's extension traits.
 ///
 /// A platform holds every flush until its turn ends—an event, a mount, a round of task
 /// polls—through [`hold_flushes`](crate::hold_flushes), ending each with
@@ -209,7 +213,7 @@ impl<A> Timers<A> {
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a realization",
   label = "a realization is a platform's zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
-  note = "`Painted` and embeds are outside `Realization`; a realization offers them through its own extension traits"
+  note = "a platform's own view enters through `Realization::adopt`; `Painted` and low-level views reach a realization through its own extension traits"
 )]
 pub trait Realization: Copy + Default + 'static {
   /// The font size in force where no typography defines one, in the medium's unit.
@@ -232,6 +236,9 @@ pub trait Realization: Copy + Default + 'static {
     + From<Definition<Length, Self::Scalar>>
     + From<Definition<Dimension<Self::Scalar>, Self::Scalar>>
     + 'static;
+  /// The platform's own view the native door adopts into the scene; an uninhabited type
+  /// of the platform's own where its door adopts nothing, so the door cannot be reached.
+  type Native: Clone + 'static;
 
   /// The thread-local holding this platform's scene.
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
@@ -247,6 +254,20 @@ pub trait Realization: Copy + Default + 'static {
   /// [`destroy`](Self::destroy) does not reach it. Tokens defined on it still reach
   /// [`define_tokens`](Self::define_tokens).
   fn create(node: NodeId, spec: &NodeSpec) -> bool;
+
+  /// Realizes `node` as `native`, the platform's own view, adopted as the node `spec`
+  /// describes: an ordinary node from then on, placed, styled by the layout a wrapper
+  /// gives it and removed as any other, the view keeping what it draws; returns whether
+  /// the platform made a node, as [`create`](Self::create) does.
+  fn adopt(node: NodeId, native: Self::Native, spec: &NodeSpec) -> bool;
+
+  /// The platform's own view realizing `node`, a node adopted or one the platform made;
+  /// `None`, the default, where it has none.
+  #[inline(always)]
+  #[must_use]
+  fn native(_node: NodeId) -> Option<Self::Native> {
+    None
+  }
 
   /// Gives `node` its style: every property it sets, its own and the per-child layout a
   /// wrapper annotated it with, with its motion, as the shared half compiles its record

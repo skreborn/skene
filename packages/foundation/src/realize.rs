@@ -2,7 +2,7 @@
 //!
 //! Reaching a node's sink, binding the render effect behind each derived slot, writing
 //! a value that is fixed or derived, building a child under a provided context, and
-//! registering a platform-made sink as a node.
+//! registering a platform-made sink, or a platform's own view, as a node.
 
 use std::{marker::PhantomData, rc::Rc};
 
@@ -10,10 +10,13 @@ use skene_reactive::Effect;
 
 use crate::{
   AccessProp,
+  Annotation,
   AnyView,
+  ControlSink,
   DerivedSlot,
   NodeId,
   NodeKind,
+  NodeSpec,
   Realization,
   Record,
   Scene,
@@ -151,8 +154,11 @@ impl<P: Realization> ChildBuilder<P> {
   }
 }
 
-/// The entry a low-level view realizes through: a node the scene mints, realized by the
-/// view against a platform's escape trait, an ordinary node from then on.
+/// The entry a low-level view realizes through: a node the scene mints, an ordinary node
+/// from then on.
+///
+/// The view realizes the node against a platform's escape trait, or has the platform
+/// adopt its own view as the node through the native door.
 ///
 /// The node it returns is a [`View`], so it composes as a built-in does: as the child
 /// of a [`Container`](crate::Container) that sizes and decorates it, under a theme,
@@ -176,19 +182,48 @@ impl<P: Realization> LowLevel<P> {
     });
 
     make(node);
-
-    if let Some(annotation) = annotation {
-      let (layout, slots) = annotation.into_style().split();
-      let mut record = Record::new();
-
-      record.add_box(&layout);
-      P::apply_style(node, record.into_kept());
-
-      for slot in slots {
-        bind_slot::<P, _, _>(node, slot);
-      }
-    }
+    Self::apply_annotation(node, annotation);
 
     node
+  }
+
+  /// Mints a detached node as `spec` describes it, has the platform adopt `native`, its
+  /// own view, as the node through the native door, and returns its id, recording the
+  /// annotation a wrapper around the view gave it and applying it as
+  /// [`realize`](Self::realize) does; see [`Realization::adopt`].
+  pub fn adopt(spec: &NodeSpec, native: P::Native) -> NodeId {
+    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
+    let node = Scene::<P>::adopt(spec, native, annotation.clone());
+
+    Self::apply_annotation(node, annotation);
+
+    node
+  }
+
+  /// Registers `sink` on `node`, a view adopted through the native door, as what reads
+  /// and writes its door's contents ([`ContentKey::door`](crate::ContentKey::door)), so a
+  /// [`Controller`](crate::Controller) of one writes and reads through it.
+  pub fn register_sink(node: NodeId, sink: impl ControlSink + 'static) {
+    let sink: Rc<dyn ControlSink> = Rc::new(sink);
+
+    Scene::<P>::with(|scene| scene.set_sink(node, sink));
+  }
+
+  /// Applies the layout `annotation` holds to `node` as a style holding it alone, where
+  /// a wrapper gave one.
+  fn apply_annotation(node: NodeId, annotation: Option<Annotation<P>>) {
+    let Some(annotation) = annotation
+    else {
+      return;
+    };
+    let (layout, slots) = annotation.into_style().split();
+    let mut record = Record::new();
+
+    record.add_box(&layout);
+    P::apply_style(node, record.into_kept());
+
+    for slot in slots {
+      bind_slot::<P, _, _>(node, slot);
+    }
   }
 }

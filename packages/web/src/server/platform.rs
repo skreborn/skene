@@ -1,5 +1,6 @@
 //! The server leaf's platform: the portable vocabulary and the markup escape over the
-//! string tree; handlers are inert, focus and sizes the client's, overlays closed.
+//! string tree; handlers are inert, focus and sizes the client's, overlays closed, and
+//! the native door adopts nothing.
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey, time::Duration};
 
@@ -41,7 +42,7 @@ use crate::{
   LinkPolicy,
   declarations::Declarations,
   low_level::WebMarkup,
-  platform::web::Web,
+  platform::web::{Unadoptable, Web},
   token::WebTokenValue,
 };
 
@@ -60,6 +61,7 @@ impl Realization for Web {
   type Scalar = f32;
   type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
+  type Native = Unadoptable;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -90,6 +92,10 @@ impl Realization for Web {
   }
 
   fn set_overlay_open(_: NodeId, _: bool, _: Option<NodeId>) {}
+
+  fn adopt(_node: NodeId, native: Unadoptable, _spec: &NodeSpec) -> bool {
+    match native {}
+  }
 
   fn write(node: NodeId, value: ContentValue<'_>) {
     with_realizer(|realizer| realizer.write(node, value));

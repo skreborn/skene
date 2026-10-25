@@ -514,6 +514,24 @@ impl<S: Sink> Realizer<S> {
     }
   }
 
+  /// Realizes `node` as `element`, the platform's own view adopted through the native
+  /// door: a box stating the role `spec` gives it, which takes the layout a wrapper gives
+  /// it and keeps its own look; always `true`.
+  #[cfg(not(skene_server))]
+  pub(crate) fn adopt(&mut self, node: NodeId, element: &S::Element, spec: &NodeSpec) -> bool {
+    self.insert(node, element.clone(), "", Realized::Box, false);
+
+    if let Some(role) = spec.role.and_then(aria_role) {
+      self.sink.set_attribute(element, "role", role);
+    }
+
+    if let Some(record) = self.records.get_mut(node) {
+      record.template = Some(Template::Layout);
+    }
+
+    true
+  }
+
   /// Gives `node` the class `style` compiles to under the facts of its construction,
   /// noting whether it scrolls its content; a node that takes no style ignores it.
   pub(crate) fn apply_style(&mut self, node: NodeId, style: &KeptStyle) {
@@ -757,7 +775,7 @@ impl<S: Sink> Realizer<S> {
   /// form element carrying it, a range's bounds and step before its value and a radio's
   /// membership as its `name`, an entry's secure flag and keyboard as its `type` and its
   /// input method's attributes; a control drawn without one shows its content through
-  /// its parts.
+  /// its parts, and a door's content is its sink's, shown by nothing here.
   pub(crate) fn write(&mut self, node: NodeId, value: ContentValue<'_>) {
     match value {
       ContentValue::Secure(_) | ContentValue::Keyboard(_) => return self.write_entry(node, value),
@@ -766,6 +784,7 @@ impl<S: Sink> Realizer<S> {
       ContentValue::Placement(placement) => return self.place_overlay(node, placement),
       ContentValue::Chosen(chosen) => return self.write_chosen(node, chosen),
       ContentValue::Membership(membership) => return self.write_membership(node, membership),
+      ContentValue::Door { .. } => return,
       _ => {}
     }
 
@@ -788,7 +807,8 @@ impl<S: Sink> Realizer<S> {
       | ContentValue::Chosen(_)
       | ContentValue::Membership(_)
       | ContentValue::Secure(_)
-      | ContentValue::Keyboard(_) => {}
+      | ContentValue::Keyboard(_)
+      | ContentValue::Door { .. } => {}
       ContentValue::Edit(edit) => {
         self.sink.set_value(carrier, &edit.text);
 

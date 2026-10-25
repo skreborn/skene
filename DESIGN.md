@@ -106,7 +106,8 @@ the control state and reports it holds, which the platforms read rather than cop
 
 **`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
-properties), `TokenValue` (the erased definition the medium accepts), with the constants
+properties), `TokenValue` (the erased definition the medium accepts), `Native` (the
+platform's own view the native door adopts), with the constants
 `FONT_SIZE` (the size in force where no typography defines one) and `KEEP` (the `Keep`
 level of a style its toolkit keeps unresolved). Its methods are the portable vocabulary
 over node ids:
@@ -118,6 +119,10 @@ over node ids:
   overlay's modality and backdrop, a run's placement and whether it is a link),
   answering whether it made a node. What can change once the node exists crosses as a
   content instead. The scene creates it through `Scene::realize` and records the answer.
+- **Adopt** the platform's own view through the native door (`adopt`, from the node's
+  `NodeSpec` and the view, answering as `create` does): an ordinary node from then on,
+  placed, styled by the layout a wrapper gives it and removed as any other. `native`
+  hands back the view realizing a node, `None` where the platform has none.
 - **Style** each box, control, overlay and run once, right after its creation and before
   any token definition on it: `apply_style` hands it the node's record compiled at
   `Keep::Everything` (a style that sets nothing included; a low-level node receives the
@@ -162,8 +167,8 @@ over node ids:
 - **The rest**: register event kinds, focus, observe sizes, report media, schedule on
   the clock, route, and reach the clipboard.
 
-A method with a default body is one a platform lacking what it reaches keeps (`listen`,
-`read` and `composing`, the focus order and accessibility where the scene is read for
+A method with a default body is one a platform lacking what it reaches keeps (`native`,
+`listen`, `read` and `composing`, the focus order and accessibility where the scene is read for
 them, `focus_visible`,
 `lay_out`, `hydration`, the window title, routing, static routes, the clipboard): the
 default does nothing, or answers that nothing is there. Every behavior is required,
@@ -172,7 +177,23 @@ transition in the browser and at once on the server leaf and in the terminal, an
 pointer event is localized against its node's laid-out box, except on the server leaf,
 which lays nothing out and hands it back unchanged.
 
-`Painted` and embeds are deliberately outside the trait—their payloads never cross a crate
+**The native door's seam** is the trait's own: `Realization::Native` is the platform's own
+view (the browser leaf's `web_sys::Element`), and a platform whose door adopts nothing
+names an uninhabited type of its own (`Unadoptable` on the server leaf and in the
+terminal), so its door cannot be reached. `LowLevel::adopt` mints the node and has the
+platform adopt the view as it, and `LowLevel::register_sink` registers the library's
+`ControlSink` on it: `read`, `write` and `composing` (`false` by default) of the view's
+values by the door's own names. A door's content is `Content::Door(name)`, keyed by
+`ContentKey::door(name)` and typed like every key, its value crossing erased as a
+`ContentValue::Door` (`DoorValue`, compared and downcast as the value it holds); the key
+writes, reads and asks whether it composes through the node's sink rather than the
+realization, so a `Controller` of a door's content holds the built-ins' contract (the
+echo rule, the equal-write skip, the refusal's repair, the composition hold) with no
+code of its own, and the library reports the reader's change through `report` with
+whether the view shows it already, as a realization does. `NodeKind::contents` lists no
+door's content, which a node takes through its sink alone.
+
+`Painted` and a low-level view's payload are outside the trait—they never cross a crate
 boundary—and arrive through extension traits (`Painting`; each platform's escape trait).
 The leaf-only surface (`document`, `element`, `render_to_string`, `launch`) stays free
 functions in the platform crate, since it is not a shared contract. One entry is
@@ -275,12 +296,13 @@ toolkit's keeps the default, which does nothing.
   terminal proved one, its fallback standing elsewhere. The native layers sit behind
   the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-foundation`, since
   both medium cores realize them. Vello is the one renderer, everywhere.
-- **Embeds are platform-specific views**, written against a platform's escape trait: raw DOM
-  through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
-  platform view through `PlatformView`. `LowLevel::realize` mints a scene node the view
-  realizes through its escape trait, so the view composes with wrappers, themes and
-  events. There is no
-  `Any` and no downcast.
+- **Low-level views are platform-specific views**, written against a platform's escape
+  trait (raw DOM through `WebDom`, markup through `WebMarkup`, cells through
+  `CellPainter`) or adopted through the native door (`LowLevel::adopt`, the browser
+  leaf's live element). `LowLevel::realize` mints a scene node the view realizes
+  through its escape trait, and `LowLevel::adopt` one the platform realizes as the view
+  itself, so either composes with wrappers, themes and events. A door's value crosses
+  erased and is downcast by the door's own key alone.
 
   **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
   views in one crate and platforms in others, `impl View for Container` can live in neither
@@ -1771,6 +1793,19 @@ Two guarantees, both properties of what is public rather than of any one API.
   leaf through `WebDom`, a placeholder through `WebMarkup` before it and on the server)
   and `acme-sparkline` (bars through `CellPainter`) are the standing proofs. The
   portable low-level path for pixel media is `Painted`.
+- **A compositor platform's own view, through the native door, like a built-in
+  control.** `LowLevel::adopt` makes the view an ordinary scene node, and where it holds
+  a value the library registers a `ControlSink` of its own on the node, keys the value
+  by `ContentKey::door(name)` with a value type of its own (`ContentType` and
+  `Controllable`), controls it with the same `Controller` a toggle's checked state has,
+  and reports what the reader did through `report` with whether the view applied it. The
+  value is then controlled as a built-in's is: the truth written when it changes and not
+  when the view shows it already, a reader's change asked of the app, and a refused one
+  repaired to the truth by one write through the sink. The browser leaf adopts a live
+  `Element`; the server leaf and the terminal adopt nothing. The door's view on the web,
+  `platform::web::NativeView` with its markup placeholder on the server, is open in
+  `ROADMAP.md`; until it lands, the browser test adopting a color input under the
+  contract (`browser_views`) is the door's standing proof.
 
 A platform need not be first-party: a crate that implements `Realization`, provides its
 scalar, leaves, extension, a `launch` and views over `skene-foundation` is a facade.

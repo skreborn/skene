@@ -1,6 +1,6 @@
-//! The browser leaf's platform: the portable vocabulary, the markup escape and the DOM
-//! escape over the live document, with the popups' placement and the clipboard's
-//! reach.
+//! The browser leaf's platform: the portable vocabulary, the native door, the markup
+//! escape and the DOM escape over the live document, with the popups' placement and the
+//! clipboard's reach.
 
 use std::{
   cell::{Cell, RefCell},
@@ -298,6 +298,7 @@ impl Realization for Web {
   type Scalar = f32;
   type StyleExt = WebStyle;
   type TokenValue = WebTokenValue;
+  type Native = Element;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -326,6 +327,14 @@ impl Realization for Web {
 
       made
     })
+  }
+
+  fn adopt(sink: NodeId, native: Element, spec: &NodeSpec) -> bool {
+    with_dom(|dom| dom.realizer.adopt(sink, &native.into(), spec))
+  }
+
+  fn native(sink: NodeId) -> Option<Element> {
+    with_dom(|dom| dom.node(sink).and_then(Node::dom_element).cloned())
   }
 
   fn apply_style(sink: NodeId, style: CompiledStyle<f32, WebStyle>) {
@@ -943,7 +952,7 @@ impl WebMarkup for Web {
 
 impl WebDom for Web {
   fn element(sink: NodeId) -> Option<Element> {
-    with_dom(|dom| dom.node(sink).and_then(Node::dom_element).cloned())
+    Self::native(sink)
   }
 
   fn document() -> Document {

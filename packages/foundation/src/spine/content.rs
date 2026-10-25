@@ -2,13 +2,11 @@
 //! with its selection, a toggle's checked state, a range's value within its bounds, a
 //! choice's options with the chosen one, a group's chosen key and a member's place in
 //! its group, a link's destination, an entry's placeholder, whether it is secure and the
-//! keyboard it asks for, an overlay's placement. A content a behavior controls is
-//! answered by its [`Controller`], or an entry's by its [`EditController`], when a reader
-//! changes it.
+//! keyboard it asks for, an overlay's placement, and a value of a view adopted through
+//! the native door. A content a behavior controls is answered by its [`Controller`], or
+//! an entry's by its [`EditController`], when a reader changes it.
 
-#[cfg(debug_assertions)]
-use std::cell::Ref;
-use std::{fmt::Debug, marker::PhantomData, rc::Rc};
+use std::{cell::Ref, fmt::Debug, marker::PhantomData, rc::Rc};
 
 pub use self::report::{
   Asked,
@@ -20,9 +18,21 @@ pub use self::report::{
   Report,
   report,
 };
-use crate::spine::{CheckState, Edit, Keyboard, NodeId, NodeKind, Placement, Point, Realization};
 #[cfg(debug_assertions)]
-use crate::spine::{NodeRecord, Scene};
+use crate::spine::NodeRecord;
+use crate::spine::{
+  CheckState,
+  ControlSink,
+  DoorValue,
+  Edit,
+  Keyboard,
+  NodeId,
+  NodeKind,
+  Placement,
+  Point,
+  Realization,
+  Scene,
+};
 
 mod report;
 
@@ -54,10 +64,15 @@ pub enum Content {
   Keyboard,
   /// Where an overlay sits, or the point it is pinned at.
   Placement,
+  /// A value of a view adopted through the native door, by the door's own name, read
+  /// and written through its node's [`ControlSink`](crate::ControlSink).
+  Door(&'static str),
 }
 
 impl NodeKind {
-  /// The contents a node of this kind takes.
+  /// The contents a node of this kind takes; a door's content, which a node takes
+  /// through the [`ControlSink`](crate::ControlSink) registered on it, is not among
+  /// them.
   #[must_use]
   pub const fn contents(self) -> &'static [Content] {
     match self {
@@ -109,6 +124,13 @@ pub enum ContentValue<'a> {
   Keyboard(Keyboard),
   /// Where an overlay sits, or the point it is pinned at.
   Placement(OverlayPlacement),
+  /// A value of a view adopted through the native door.
+  Door {
+    /// The door's name for the value.
+    name: &'static str,
+    /// The value, erased.
+    value: &'a dyn DoorValue,
+  },
 }
 
 impl ContentValue<'_> {
@@ -128,6 +150,7 @@ impl ContentValue<'_> {
       Self::Secure(_) => Content::Secure,
       Self::Keyboard(_) => Content::Keyboard,
       Self::Placement(_) => Content::Placement,
+      Self::Door { name, .. } => Content::Door(name),
     }
   }
 }
@@ -135,8 +158,8 @@ impl ContentValue<'_> {
 /// A value a content holds: what a view writes through a [`ContentKey`] of its type.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a value a node's content holds",
-  label = "a content holds a text, an edit, a checked state, a range, choices, a chosen key, a membership, a flag, a keyboard or an overlay's placement",
-  note = "write a content through its key in `contents`, with the value of the key's type"
+  label = "a content holds a text, an edit, a checked state, a range, choices, a chosen key, a membership, a flag, a keyboard, an overlay's placement or a door's value",
+  note = "write a content through its key in `contents`, or a door's through `ContentKey::door`, with the value of the key's type"
 )]
 pub trait ContentType: Clone + PartialEq + Debug + 'static {}
 
@@ -176,6 +199,19 @@ impl ContentType for OverlayPlacement {}
 /// }
 /// ```
 ///
+/// A door's content is keyed by the door's own name, typed alike, and read and written
+/// through the [`ControlSink`](crate::ControlSink) registered on its node:
+///
+/// ```
+/// use std::rc::Rc;
+///
+/// use skene_foundation::{Content, ContentKey};
+///
+/// const COLOR: ContentKey<Rc<str>> = ContentKey::door("color");
+///
+/// assert_eq!(COLOR.content(), Content::Door("color"));
+/// ```
+///
 /// A value of another type is refused:
 ///
 /// ```compile_fail,E0308
@@ -188,7 +224,7 @@ impl ContentType for OverlayPlacement {}
 #[must_use]
 pub struct ContentKey<T: ContentType> {
   content: Content,
-  erase: for<'a> fn(&'a T) -> ContentValue<'a>,
+  erase: for<'a> fn(Content, &'a T) -> ContentValue<'a>,
   own: fn(ContentValue<'_>) -> Option<T>,
   value: PhantomData<fn(&T)>,
 }
@@ -214,7 +250,7 @@ impl<T: ContentType> ContentKey<T> {
   #[inline(always)]
   const fn new(
     content: Content,
-    erase: for<'a> fn(&'a T) -> ContentValue<'a>,
+    erase: for<'a> fn(Content, &'a T) -> ContentValue<'a>,
     own: fn(ContentValue<'_>) -> Option<T>,
   ) -> Self {
     Self {
@@ -225,34 +261,97 @@ impl<T: ContentType> ContentKey<T> {
     }
   }
 
+  /// The key of the door's content `name`: a value of a view adopted through the native
+  /// door, read and written through the [`ControlSink`](crate::ControlSink) registered
+  /// on its node rather than through the realization.
+  #[inline(always)]
+  pub const fn door(name: &'static str) -> Self {
+    Self::new(Content::Door(name), Self::erase_door, Self::own_door)
+  }
+
+  /// `value` as a door content's.
+  fn erase_door(content: Content, value: &T) -> ContentValue<'_> {
+    let Content::Door(name) = content
+    else {
+      unreachable!("a door's key names a door's content");
+    };
+
+    ContentValue::Door { name, value }
+  }
+
+  /// A door content's value as `T`, where it holds one.
+  fn own_door(value: ContentValue<'_>) -> Option<T> {
+    match value {
+      ContentValue::Door { value, .. } => value.as_any().downcast_ref::<T>().cloned(),
+      _ => None,
+    }
+  }
+
   /// The content the key writes.
   #[inline(always)]
   pub const fn content(&self) -> Content {
     self.content
   }
 
-  /// `value` as the realization receives it.
+  /// `value` as the realization, or a door's sink, receives it.
   #[inline(always)]
   pub fn erase<'a>(&self, value: &'a T) -> ContentValue<'a> {
-    (self.erase)(value)
+    (self.erase)(self.content, value)
   }
 
   /// `value` as the key's type, where it is of the key's content.
   #[inline(always)]
   #[must_use]
   pub fn own(&self, value: ContentValue<'_>) -> Option<T> {
-    (self.own)(value)
+    (value.content() == self.content)
+      .then(|| (self.own)(value))
+      .flatten()
   }
 
-  /// What `node` shows of the content as `P` reads it; `None` where `P` reads none.
+  /// What `node` shows of the content as `P` reads it, or a door's sink; `None` where
+  /// neither reads it.
   #[must_use]
   pub fn read<P: Realization>(&self, node: NodeId) -> Option<T> {
-    P::read(node, self.content, self.own).flatten()
+    if let Content::Door(_) = self.content {
+      let mut owned = None;
+
+      if let Some(sink) = Self::sink_of::<P>(node) {
+        sink.read(self.content, &mut |value| owned = self.own(value));
+      }
+
+      return owned;
+    }
+
+    P::read(node, self.content, |value| self.own(value)).flatten()
   }
 
-  /// Writes `value` as `node`'s content through `P`, which shows it whole; a node of a
-  /// kind that does not take the content is a debug assertion.
+  /// Whether what `node` shows of the content is the reader's until it is reported, as
+  /// `P` or a door's sink says; see [`Realization::composing`].
+  #[must_use]
+  pub fn is_composing<P: Realization>(&self, node: NodeId) -> bool {
+    if let Content::Door(_) = self.content {
+      return Self::sink_of::<P>(node).is_some_and(|sink| sink.composing());
+    }
+
+    P::composing(node)
+  }
+
+  /// Writes `value` as `node`'s content through `P`, or a door's through the sink
+  /// registered on the node, which shows it whole; a node of a kind that does not take
+  /// the content, or a door's content of a node with no sink, is a debug assertion.
   pub fn write<P: Realization>(&self, node: NodeId, value: &T) {
+    if let Content::Door(_) = self.content {
+      let sink = Self::sink_of::<P>(node);
+
+      debug_assert!(sink.is_some(), "a door's content is written through a sink");
+
+      if let Some(sink) = sink {
+        sink.write(self.content, self.erase(value));
+      }
+
+      return;
+    }
+
     #[cfg(debug_assertions)]
     if let Some(kind) = Self::kind_of::<P>(node) {
       debug_assert!(
@@ -263,6 +362,15 @@ impl<T: ContentType> ContentKey<T> {
     }
 
     P::write(node, self.erase(value));
+  }
+
+  /// The sink registered on `node`, where `P`'s scene is free to read and holds one.
+  fn sink_of<P: Realization>(node: NodeId) -> Option<Rc<dyn ControlSink>> {
+    P::scene().with(|cell| {
+      let scene: Ref<'_, Scene<P>> = cell.try_borrow().ok()?;
+
+      scene.sink(node)
+    })
   }
 
   /// The kind of `node`, where `P`'s scene is free to read and holds it.
@@ -423,7 +531,7 @@ pub mod contents {
   /// A run's text.
   pub const TEXT: ContentKey<Rc<str>> = ContentKey::new(
     Content::Text,
-    |text| ContentValue::Text(text),
+    |_, text| ContentValue::Text(text),
     |value| match value {
       ContentValue::Text(text) => Some(Rc::from(text)),
       _ => None,
@@ -432,7 +540,7 @@ pub mod contents {
   /// A text entry's text with its selection.
   pub const EDIT: ContentKey<Edit> = ContentKey::new(
     Content::Edit,
-    |edit| ContentValue::Edit(edit),
+    |_, edit| ContentValue::Edit(edit),
     |value| match value {
       ContentValue::Edit(edit) => Some(edit.clone()),
       _ => None,
@@ -441,7 +549,7 @@ pub mod contents {
   /// A toggle's checked state.
   pub const CHECKED: ContentKey<CheckState> = ContentKey::new(
     Content::Checked,
-    |checked| ContentValue::Checked(*checked),
+    |_, checked| ContentValue::Checked(*checked),
     |value| match value {
       ContentValue::Checked(checked) => Some(checked),
       _ => None,
@@ -450,7 +558,7 @@ pub mod contents {
   /// A range's value with its bounds and step.
   pub const RANGE: ContentKey<Range> = ContentKey::new(
     Content::Range,
-    |range| ContentValue::Range(range),
+    |_, range| ContentValue::Range(range),
     |value| match value {
       ContentValue::Range(range) => Some(*range),
       _ => None,
@@ -459,7 +567,7 @@ pub mod contents {
   /// A choice's options with the chosen one.
   pub const CHOICE: ContentKey<Choices> = ContentKey::new(
     Content::Choice,
-    |choices| ContentValue::Choice(choices),
+    |_, choices| ContentValue::Choice(choices),
     |value| match value {
       ContentValue::Choice(choices) => Some(choices.clone()),
       _ => None,
@@ -468,7 +576,7 @@ pub mod contents {
   /// The key of the member a group has chosen, or none.
   pub const CHOSEN: ContentKey<Option<Rc<str>>> = ContentKey::new(
     Content::Chosen,
-    |chosen| ContentValue::Chosen(chosen.as_deref()),
+    |_, chosen| ContentValue::Chosen(chosen.as_deref()),
     |value| match value {
       ContentValue::Chosen(chosen) => Some(chosen.map(Rc::from)),
       _ => None,
@@ -477,7 +585,7 @@ pub mod contents {
   /// The group a member belongs to, with its key there.
   pub const MEMBERSHIP: ContentKey<Membership> = ContentKey::new(
     Content::Membership,
-    |membership| ContentValue::Membership(membership),
+    |_, membership| ContentValue::Membership(membership),
     |value| match value {
       ContentValue::Membership(membership) => Some(membership.clone()),
       _ => None,
@@ -486,7 +594,7 @@ pub mod contents {
   /// The path a box or a run that is a link navigates to when followed.
   pub const DESTINATION: ContentKey<Rc<str>> = ContentKey::new(
     Content::Destination,
-    |path| ContentValue::Destination(path),
+    |_, path| ContentValue::Destination(path),
     |value| match value {
       ContentValue::Destination(path) => Some(Rc::from(path)),
       _ => None,
@@ -495,7 +603,7 @@ pub mod contents {
   /// The hint a text entry shows while its value is empty.
   pub const PLACEHOLDER: ContentKey<Rc<str>> = ContentKey::new(
     Content::Placeholder,
-    |hint| ContentValue::Placeholder(hint),
+    |_, hint| ContentValue::Placeholder(hint),
     |value| match value {
       ContentValue::Placeholder(hint) => Some(Rc::from(hint)),
       _ => None,
@@ -504,7 +612,7 @@ pub mod contents {
   /// Whether a text entry is secure: its text masked, and kept from the clipboard.
   pub const SECURE: ContentKey<bool> = ContentKey::new(
     Content::Secure,
-    |secure| ContentValue::Secure(*secure),
+    |_, secure| ContentValue::Secure(*secure),
     |value| match value {
       ContentValue::Secure(secure) => Some(secure),
       _ => None,
@@ -513,7 +621,7 @@ pub mod contents {
   /// The keyboard a text entry asks the platform for.
   pub const KEYBOARD: ContentKey<Keyboard> = ContentKey::new(
     Content::Keyboard,
-    |keyboard| ContentValue::Keyboard(*keyboard),
+    |_, keyboard| ContentValue::Keyboard(*keyboard),
     |value| match value {
       ContentValue::Keyboard(keyboard) => Some(keyboard),
       _ => None,
@@ -522,7 +630,7 @@ pub mod contents {
   /// Where an overlay sits, or the point it is pinned at.
   pub const PLACEMENT: ContentKey<OverlayPlacement> = ContentKey::new(
     Content::Placement,
-    |placement| ContentValue::Placement(*placement),
+    |_, placement| ContentValue::Placement(*placement),
     |value| match value {
       ContentValue::Placement(placement) => Some(placement),
       _ => None,

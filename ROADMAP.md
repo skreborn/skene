@@ -41,12 +41,13 @@ in a code comment.
     and editor move from the drawing realization onto the platform's seam.
     - Libraries: a core with a crate per facade (`skene-simple-gui`,
     `skene-simple-tui`), a preset a constructor per variant and a `derive_variant`
-    re-inking its built-in, and the native door, `platform::<p>::NativeView` with its
-    `ControlSink`, for a native view no built-in covers, the realization's own view type
-    among the door's seam items named in Skene's vocabulary (the gate's lint bans
-    `Widget`). `skene new`'s app and library scaffolds take that shape, and the gate
-    compiles what they write on every platform they name, so a scaffold cannot fall
-    behind the surface it teaches.
+    re-inking its built-in, and the native door's view, `platform::<p>::NativeView`, for
+    a native view no built-in covers: on the web the browser leaf adopting its element
+    through `LowLevel::adopt` with a `ControlSink` of its own and the server leaf
+    rendering a markup placeholder, so acme-map leaves `WebDom` and `WebMarkup` for it.
+    `skene new`'s app and library scaffolds take that shape, and the gate compiles what
+    they write on every platform they name, so a scaffold cannot fall behind the surface
+    it teaches.
     - The scene drops the copy of a wrapper's annotation it records per node
     (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
     crosses in its style alone, and nothing reads the copy.

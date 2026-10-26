@@ -49,7 +49,6 @@ impl<T> Arena<T> {
   }
 
   /// The value at `index`, when the slot still holds generation `generation`.
-  #[inline(always)]
   pub(crate) fn get(&self, generation: u16, index: u32) -> Option<&T> {
     let slot = self.slots.get(index as usize)?;
 
@@ -61,7 +60,6 @@ impl<T> Arena<T> {
   }
 
   /// The value at `index`, mutably; see [`get`](Self::get).
-  #[inline(always)]
   pub(crate) fn get_mut(&mut self, generation: u16, index: u32) -> Option<&mut T> {
     let slot = self.slots.get_mut(index as usize)?;
 

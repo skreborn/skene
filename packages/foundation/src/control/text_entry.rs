@@ -79,7 +79,6 @@ impl TextEntry {
   }
 
   /// Sets the lines shown at once; more than one makes the entry an editor.
-  #[inline(always)]
   pub const fn set_lines(mut self, lines: u16) -> Self {
     self.lines = if lines == 0 { 1 } else { lines };
 

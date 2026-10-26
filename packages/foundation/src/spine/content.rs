@@ -137,7 +137,6 @@ pub enum ContentValue<'a> {
 
 impl ContentValue<'_> {
   /// The content this value is of.
-  #[inline(always)]
   pub const fn content(&self) -> Content {
     match self {
       Self::Text(_) => Content::Text,

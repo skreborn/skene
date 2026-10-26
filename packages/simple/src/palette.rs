@@ -32,7 +32,6 @@ pub enum SimpleVariant {
 
 impl SimpleVariant {
   /// The variant's surface token.
-  #[inline(always)]
   pub const fn surface(self) -> TokenRef<Color> {
     TokenRef::new(match self {
       Self::Primary => "simple-primary-surface",
@@ -44,7 +43,6 @@ impl SimpleVariant {
   }
 
   /// The variant's ink token.
-  #[inline(always)]
   pub const fn ink(self) -> TokenRef<Color> {
     TokenRef::new(match self {
       Self::Primary => "simple-primary-ink",
@@ -57,7 +55,6 @@ impl SimpleVariant {
 
   /// The variant's border token: a bordered look's hairline, and transparent for a
   /// filled one.
-  #[inline(always)]
   pub const fn border(self) -> TokenRef<Color> {
     TokenRef::new(match self {
       Self::Primary => "simple-primary-border",
@@ -69,7 +66,6 @@ impl SimpleVariant {
   }
 
   /// The variant's hover surface token.
-  #[inline(always)]
   pub const fn hover(self) -> TokenRef<Color> {
     TokenRef::new(match self {
       Self::Primary => "simple-primary-hover",
@@ -81,7 +77,6 @@ impl SimpleVariant {
   }
 
   /// The variant's focus surface token.
-  #[inline(always)]
   pub const fn focus(self) -> TokenRef<Color> {
     TokenRef::new(match self {
       Self::Primary => "simple-primary-focus",
@@ -336,7 +331,6 @@ impl<N: Scalar> SimplePalette<N> {
   pub const SECONDARY_SURFACE: TokenRef<Color> = SimpleVariant::Secondary.surface();
 
   /// The look of `variant`.
-  #[inline(always)]
   #[must_use]
   pub const fn look(&self, variant: SimpleVariant) -> &SimpleLook<N> {
     match variant {

@@ -41,7 +41,6 @@ impl<T: Scalar> Inset<T> {
 
 impl<T: Copy> Inset<T> {
   /// The value at `edge`.
-  #[inline(always)]
   pub const fn edge(&self, edge: Edge) -> T {
     match edge {
       Edge::Start => self.start,

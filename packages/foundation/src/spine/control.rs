@@ -32,7 +32,6 @@ impl ControlState {
 
   /// Whether `state` holds; `false` for a state that is a node's own rather than the
   /// control's.
-  #[inline(always)]
   #[must_use]
   pub const fn holds(self, state: State) -> bool {
     match state {
@@ -84,7 +83,6 @@ pub enum NativeElement {
 impl NativeElement {
   /// The role the element carries where nothing states another: a text entry's, a
   /// button's, a toggle's, a range's or a picker's.
-  #[inline(always)]
   #[must_use]
   pub const fn role(self) -> Role {
     match self {

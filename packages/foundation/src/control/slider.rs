@@ -418,7 +418,6 @@ impl SliderRange {
   /// The bounds are normalized as a browser normalizes a range input's: a `min` or
   /// `max` that is not a number stands at `0` or `100`, a `max` below `min` collapses
   /// onto `min`, and a `step` that is not a number leaves the range continuous.
-  #[inline(always)]
   pub const fn new(min: f32, max: f32, step: f32) -> Self {
     let min = if min.is_nan() { 0. } else { min };
     let max = if max.is_nan() { 100. } else { max };

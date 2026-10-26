@@ -823,10 +823,11 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   license and repository, the house rules no compiler checks (em-dashes unspaced,
   children last, no public name in another framework's vocabulary, fields and variants
   documented all or none, a test seam's simulated events named `trigger_`, nothing in
-  the foundation crate-private), the dependencies' licenses against the workspace's MIT,
-  unused dependencies, clippy and rustdoc with warnings denied in every platform's
-  build, every pixel target cross-clippied against its real platform bindings, clippy on
-  the host in release as well, where code built for debug assertions alone drops out,
+  the foundation crate-private, a forced inline on a tiny body alone), the
+  dependencies' licenses against the workspace's MIT, unused dependencies, clippy and
+  rustdoc with warnings denied in every platform's build, every pixel target
+  cross-clippied against its real platform bindings, clippy on the host in release as
+  well, where code built for debug assertions alone drops out,
   each library crate's public API against its snapshot under `api/`, read by a pinned
   nightly and `cargo public-api`, clippy on the code written for Apple's platforms (the
   terminal's, on `aarch64-apple-darwin`), the app and the library `skene new` writes

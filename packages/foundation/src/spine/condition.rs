@@ -55,7 +55,6 @@ impl<N: Scalar> ContainerQuery<N> {
   }
 
   /// Whether a container of `size` satisfies the query.
-  #[inline(always)]
   pub fn holds_for(&self, size: Size<N>) -> bool {
     match *self {
       Self::MinWidth(width) => size.width >= width,
@@ -185,7 +184,6 @@ impl<N: Scalar> Media<N> {
 }
 
 impl<N: Scalar> ConditionTree for Media<N> {
-  #[inline(always)]
   fn shape(&self) -> ConditionShape<'_, Self> {
     match self {
       Self::And(subconditions) => ConditionShape::And(subconditions),
@@ -377,7 +375,6 @@ impl<N: Scalar> Condition<N> {
 }
 
 impl<N: Scalar> ConditionTree for Condition<N> {
-  #[inline(always)]
   fn shape(&self) -> ConditionShape<'_, Self> {
     match self {
       Self::And(subconditions) => ConditionShape::And(subconditions),

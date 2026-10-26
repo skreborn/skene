@@ -43,7 +43,6 @@ pub enum Method {
 
 impl Method {
   /// The method's name on the wire.
-  #[inline(always)]
   #[must_use]
   pub const fn as_str(self) -> &'static str {
     match self {

@@ -29,7 +29,6 @@ pub trait IntoChildren<P: Realization, Kind = PlainChild> {
 }
 
 impl<P: Realization, Kind, V: IntoChildOf<P, Kind>> IntoChildren<P, Kind> for Vec<V> {
-  #[inline(always)]
   fn into_children(self) -> Vec<AnyView<P>> {
     self.into_iter().map(IntoChildOf::into_child).collect()
   }
@@ -38,7 +37,6 @@ impl<P: Realization, Kind, V: IntoChildOf<P, Kind>> IntoChildren<P, Kind> for Ve
 impl<P: Realization, Kind, V: IntoChildOf<P, Kind>, const N: usize> IntoChildren<P, Kind>
   for [V; N]
 {
-  #[inline(always)]
   fn into_children(self) -> Vec<AnyView<P>> {
     self.into_iter().map(IntoChildOf::into_child).collect()
   }

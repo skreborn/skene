@@ -69,7 +69,6 @@ impl<T: 'static> Controlled<T> {
   }
 
   /// Reads the value from `signal` and asks it for every change.
-  #[inline(always)]
   pub fn bind(&mut self, signal: Signal<T>)
   where
     T: Clone,

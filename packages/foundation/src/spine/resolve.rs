@@ -238,7 +238,6 @@ impl<N: Scalar> Resolved<N> {
 }
 
 impl<N: Scalar> From<ExprValue> for Resolved<N> {
-  #[inline(always)]
   fn from(value: ExprValue) -> Self {
     match value {
       ExprValue::Color(color) => Self::Color(color),
@@ -300,7 +299,6 @@ pub enum Focus {
 
 impl Focus {
   /// The focus `held` reports, shown when `shown`.
-  #[inline(always)]
   pub const fn new(held: bool, shown: bool) -> Self {
     match (held, shown) {
       (false, _) => Self::None,

@@ -94,7 +94,6 @@ impl ResolutionSource<Terminal> for Records {
 impl Records {
   /// Whether the scheme in force is dark: the app's choice when it has made one, and
   /// the background the terminal reported otherwise.
-  #[inline(always)]
   pub(crate) const fn dark(&self) -> bool {
     match self.choice {
       Some(ColorScheme::Light) => false,

@@ -228,7 +228,6 @@ pub enum TerminalProperty {
 
 impl TerminalProperty {
   /// The property's name in the framework's vocabulary: the field it is set through.
-  #[inline(always)]
   #[must_use]
   pub const fn name(self) -> &'static str {
     match self {

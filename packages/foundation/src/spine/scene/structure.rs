@@ -74,7 +74,6 @@ impl<P: Realization> Scene<P> {
   }
 
   /// The children of `node`, in order; empty for a leaf or a stale id.
-  #[inline(always)]
   pub fn children(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {
     let mut next = self.record(node).and_then(|record| record.first_child);
 
@@ -88,7 +87,6 @@ impl<P: Realization> Scene<P> {
   }
 
   /// The children of `node`, last first; empty for a leaf or a stale id.
-  #[inline(always)]
   pub(super) fn children_reversed(&self, node: NodeId) -> impl Iterator<Item = NodeId> + '_ {
     let mut previous = self.record(node).and_then(|record| record.last_child);
 

@@ -479,7 +479,6 @@ impl<P: Realization, B: Behavior> std::fmt::Debug for Control<P, B> {
 
 impl<P: Realization, B: Behavior> Control<P, B> {
   /// A control driven by `behavior`, undecorated and without a body.
-  #[inline(always)]
   pub fn new(behavior: B) -> Self {
     let mut inner = LayoutBox::new(Layout::Flex {
       axis: Axis::Horizontal,

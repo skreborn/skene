@@ -234,7 +234,6 @@ impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for Dimension<N> {
     BoxValue::Dimension(self)
   }
 
-  #[inline(always)]
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
     match value {
       BoxValue::Dimension(value) => Some(value),
@@ -250,7 +249,6 @@ impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for Length {
     BoxValue::Length(self)
   }
 
-  #[inline(always)]
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
     match value {
       BoxValue::Length(length) => Some(length),
@@ -266,7 +264,6 @@ impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for AspectRatio {
     BoxValue::AspectRatio(self)
   }
 
-  #[inline(always)]
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
     match value {
       BoxValue::AspectRatio(ratio) => Some(ratio),
@@ -286,7 +283,6 @@ macro_rules! box_values {
         BoxValue::$variant(self)
       }
 
-      #[inline(always)]
       fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
         match value {
           BoxValue::$variant(value) => Some(value),

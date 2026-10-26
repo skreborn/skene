@@ -288,7 +288,6 @@ impl<P: Realization> ContextMenu<P> {
   /// Attaches the menu to `node`, a view that already exists, mounting the list under
   /// it; returns the list's node. A view [`set_child`](Self::set_child) supplied is not
   /// built.
-  #[inline(always)]
   pub fn serve(self, node: NodeId) -> NodeId {
     let list = self.mount(node);
 

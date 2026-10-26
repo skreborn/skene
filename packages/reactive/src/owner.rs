@@ -35,7 +35,6 @@ impl fmt::Debug for Owner {
 
 impl Owner {
   /// Creates a detached root owner, disposed only by [`dispose`](Self::dispose).
-  #[inline(always)]
   pub fn new() -> Self {
     Self::from_id(with_graph(|graph| {
       let owner = graph.allocate_owner();

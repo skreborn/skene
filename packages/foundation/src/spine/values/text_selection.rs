@@ -78,7 +78,6 @@ impl TextSelection {
   }
 
   /// This selection with each index clamped to `count`, a value's cluster count.
-  #[inline(always)]
   pub const fn clamped(self, count: usize) -> Self {
     Self {
       start: if self.start < count {

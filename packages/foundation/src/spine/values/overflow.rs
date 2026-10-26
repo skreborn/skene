@@ -28,7 +28,6 @@ impl Overflow {
 impl Axes<Overflow> {
   /// The overflow each axis computes to, as CSS computes it: an axis left visible beside
   /// one that is not scrolls where its content needs.
-  #[inline(always)]
   pub const fn computed(self) -> Self {
     match (self.horizontal, self.vertical) {
       (Overflow::Visible, Overflow::Visible) => self,

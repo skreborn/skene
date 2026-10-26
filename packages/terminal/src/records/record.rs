@@ -234,7 +234,6 @@ impl Kind {
 
   /// The generation and the interaction the node's style was resolved under, once a
   /// frame resolved it.
-  #[inline(always)]
   pub(crate) fn resolved_under(&self) -> Option<(u64, Interaction)> {
     match self {
       Self::Run { cache, .. } => cache

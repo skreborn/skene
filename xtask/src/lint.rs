@@ -1,7 +1,8 @@
 //! The house rules no compiler checks: unspaced em-dashes, children last, the
 //! framework's own vocabulary, fields and variants documented all or none, a test
 //! double's simulated events named `trigger_`, the spine naming nothing of the
-//! foundation outside itself, and nothing in the foundation crate-private.
+//! foundation outside itself, nothing in the foundation crate-private, and a forced
+//! inline on a tiny body alone.
 
 use std::{
   fs,
@@ -11,15 +12,25 @@ use std::{
 use proc_macro2::Span;
 use syn::{
   Attribute,
+  Block,
   Expr,
   ExprCall,
+  ExprClosure,
+  ExprForLoop,
+  ExprLoop,
+  ExprMatch,
   ExprMethodCall,
+  ExprWhile,
   Ident,
+  ImplItemFn,
+  Item,
   ItemEnum,
   ItemFn,
   ItemStruct,
+  Meta,
   Path as SynPath,
   Stmt,
+  TraitItemFn,
   UsePath,
   UseTree,
   Visibility,
@@ -66,6 +77,17 @@ const SPINE: [&str; 2] = [
   "packages/foundation/src/spine",
 ];
 
+/// The directories whose sources hold a forced inline to a tiny body: every one but the
+/// spikes', which are prototypes.
+const INLINED: &[&str] = &["examples", "packages", "xtask"];
+
+/// The most statements a tiny body holds, its tail expression and the statements of its
+/// nested blocks and closures counted.
+const TINY_STATEMENTS: usize = 3;
+
+/// The most arms a match in a tiny body holds.
+const TINY_ARMS: usize = 2;
+
 /// Directories never searched for sources, the compile-fail programs among them.
 const SKIPPED: &[&str] = &[
   ".git",
@@ -99,6 +121,9 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         let mut rules = Rules {
           foundation: relative.starts_with(FOUNDATION),
           spine: is_spine_source(&relative),
+          inlined: INLINED
+            .iter()
+            .any(|directory| relative.starts_with(directory)),
           path: &relative,
           findings: &mut findings,
         };
@@ -176,6 +201,8 @@ struct Rules<'a> {
   /// Whether the file is the foundation's spine, which names nothing of its crate
   /// outside itself.
   spine: bool,
+  /// Whether the file holds a forced inline to a tiny body.
+  inlined: bool,
   /// The file's path from the workspace root.
   path: &'a Path,
   /// Where the rules report what they find.
@@ -236,6 +263,29 @@ impl Rules<'_> {
       self.report(
         item.sig.ident.span(),
         &format!("`{name}` simulates an event through `trigger`: name it `trigger_<event>`"),
+      );
+    }
+  }
+
+  /// Reports a function forcing an inline on a body that is not tiny: a tiny body is a
+  /// field read, a constructor or a forwarding call, at most [`TINY_STATEMENTS`]
+  /// statements with no loop and no match of more than [`TINY_ARMS`] arms.
+  fn check_forced_inline(&mut self, attributes: &[Attribute], name: &Ident, body: &Block) {
+    if !self.inlined || !attributes.iter().any(is_forced_inline) {
+      return;
+    }
+
+    let mut size = BodySize::default();
+
+    size.visit_block(body);
+
+    if let Some(excess) = size.excess() {
+      self.report(
+        name.span(),
+        &format!(
+          "`{name}` forces an inline on a body that {excess}: `#[inline(always)]` goes on a \
+           field read, a constructor or a forwarding call alone"
+        ),
       );
     }
   }
@@ -332,7 +382,21 @@ impl<'ast> Visit<'ast> for Rules<'_> {
 
   fn visit_item_fn(&mut self, item: &'ast ItemFn) {
     self.check_trigger_name(item);
+    self.check_forced_inline(&item.attrs, &item.sig.ident, &item.block);
     visit::visit_item_fn(self, item);
+  }
+
+  fn visit_impl_item_fn(&mut self, item: &'ast ImplItemFn) {
+    self.check_forced_inline(&item.attrs, &item.sig.ident, &item.block);
+    visit::visit_impl_item_fn(self, item);
+  }
+
+  fn visit_trait_item_fn(&mut self, item: &'ast TraitItemFn) {
+    if let Some(body) = &item.default {
+      self.check_forced_inline(&item.attrs, &item.sig.ident, body);
+    }
+
+    visit::visit_trait_item_fn(self, item);
   }
 
   fn visit_expr_method_call(&mut self, call: &'ast ExprMethodCall) {
@@ -363,6 +427,73 @@ impl<'ast> Visit<'ast> for TriggerCalls {
 
     visit::visit_expr_call(self, call);
   }
+}
+
+/// What makes a function's body more than tiny, gathered over the body.
+#[derive(Default)]
+struct BodySize {
+  /// The statements it holds, its tail expression and its nested blocks' and closures'
+  /// among them.
+  statements: usize,
+  /// Whether it loops.
+  loops: bool,
+  /// The most arms a match in it holds.
+  arms: usize,
+}
+
+impl BodySize {
+  /// What makes the body more than tiny, as a report states it; `None` for a tiny one.
+  fn excess(&self) -> Option<String> {
+    if self.loops {
+      Some("loops".to_owned())
+    }
+    else if self.arms > TINY_ARMS {
+      Some(format!("matches over {} arms", self.arms))
+    }
+    else if self.statements > TINY_STATEMENTS {
+      Some(format!("holds {} statements", self.statements))
+    }
+    else {
+      None
+    }
+  }
+}
+
+impl<'ast> Visit<'ast> for BodySize {
+  fn visit_stmt(&mut self, statement: &'ast Stmt) {
+    self.statements += 1;
+    visit::visit_stmt(self, statement);
+  }
+
+  fn visit_expr_closure(&mut self, closure: &'ast ExprClosure) {
+    if !matches!(*closure.body, Expr::Block(_)) {
+      self.statements += 1;
+    }
+
+    visit::visit_expr_closure(self, closure);
+  }
+
+  fn visit_expr_for_loop(&mut self, expression: &'ast ExprForLoop) {
+    self.loops = true;
+    visit::visit_expr_for_loop(self, expression);
+  }
+
+  fn visit_expr_while(&mut self, expression: &'ast ExprWhile) {
+    self.loops = true;
+    visit::visit_expr_while(self, expression);
+  }
+
+  fn visit_expr_loop(&mut self, expression: &'ast ExprLoop) {
+    self.loops = true;
+    visit::visit_expr_loop(self, expression);
+  }
+
+  fn visit_expr_match(&mut self, expression: &'ast ExprMatch) {
+    self.arms = self.arms.max(expression.arms.len());
+    visit::visit_expr_match(self, expression);
+  }
+
+  fn visit_item(&mut self, _: &'ast Item) {}
 }
 
 /// The child setter a builder call gives a view its content through, written out or
@@ -438,6 +569,12 @@ fn use_heads(tree: &UseTree) -> Vec<String> {
     UseTree::Glob(_) => vec!["*".to_owned()],
     UseTree::Group(group) => group.items.iter().flat_map(use_heads).collect(),
   }
+}
+
+/// Whether `attribute` forces an inline, `#[inline(always)]`.
+fn is_forced_inline(attribute: &Attribute) -> bool {
+  attribute.path().is_ident("inline")
+    && matches!(&attribute.meta, Meta::List(list) if list.tokens.to_string() == "always")
 }
 
 /// Whether `attribute` is documentation, as a `///` comment is.
@@ -567,6 +704,7 @@ mod tests {
     Rules {
       foundation: false,
       spine: false,
+      inlined: true,
       path: Path::new("test.rs"),
       findings: &mut findings,
     }
@@ -740,6 +878,65 @@ mod tests {
     );
   }
 
+  #[test]
+  fn a_forced_inline_on_a_tiny_body_passes() {
+    assert_eq!(
+      findings(
+        "impl Spacing { \
+         #[inline(always)] pub fn set_row(mut self, row: f32) -> Self { self.row = row; self } \
+         #[inline(always)] pub const fn new(a: f32, b: f32, c: f32, d: f32) -> Self { \
+           Self { top: a, right: b, bottom: c, left: d, start: a, end: b } } \
+         #[inline(always)] pub fn row(&self) -> &f32 { &self.row } \
+         #[inline(always)] fn is_set(&self) -> bool { match self.row { 0. => false, _ => true } } } \
+         #[inline(always)] pub fn derive(value: impl Fn() -> f32) -> Spacing { \
+           Spacing::from_leaf(Leaf::derive(move || value())) } \
+         trait Sized { #[inline(always)] fn width(&self) -> f32 { self.size().width } }"
+      ),
+      Vec::<String>::new()
+    );
+  }
+
+  #[test]
+  fn a_forced_inline_on_a_body_that_is_not_tiny_is_reported() {
+    assert_eq!(
+      findings(
+        "#[inline(always)] fn total(items: &[u8]) -> u8 { \
+           let mut sum = 0; for item in items { sum += item; } sum }\n\
+         #[inline(always)] fn long(a: u8) -> u8 { let b = a + 1; let c = b + 1; \
+           if c > 2 { let d = c + 1; d } else { c } }\n\
+         trait Named { #[inline(always)] fn name(&self) -> &str { match self.index() { \
+           0 => \"start\", 1 => \"middle\", _ => \"end\" } } }\n\
+         #[inline] fn plain(items: &[u8]) { for item in items { drop(item); } }"
+      ),
+      [
+        "test.rs:1: `total` forces an inline on a body that loops: `#[inline(always)]` goes on \
+         a field read, a constructor or a forwarding call alone",
+        "test.rs:2: `long` forces an inline on a body that holds 6 statements: \
+         `#[inline(always)]` goes on a field read, a constructor or a forwarding call alone",
+        "test.rs:3: `name` forces an inline on a body that matches over 3 arms: \
+         `#[inline(always)]` goes on a field read, a constructor or a forwarding call alone",
+      ]
+    );
+  }
+
+  #[test]
+  fn a_forced_inline_outside_the_held_sources_passes() {
+    let file = syn::parse_file("#[inline(always)] fn total(items: &[u8]) { for _ in items {} }")
+      .expect("the source parses");
+    let mut findings = Vec::new();
+
+    Rules {
+      foundation: false,
+      spine: false,
+      inlined: false,
+      path: Path::new("spikes/test.rs"),
+      findings: &mut findings,
+    }
+    .visit_file(&file);
+
+    assert_eq!(findings, Vec::<String>::new());
+  }
+
   /// What the rules find in `source` read as the spine's.
   fn spine_findings(source: &str) -> Vec<String> {
     let file = syn::parse_file(source).expect("the source parses");
@@ -748,6 +945,7 @@ mod tests {
     Rules {
       foundation: true,
       spine: true,
+      inlined: true,
       path: Path::new("test.rs"),
       findings: &mut findings,
     }
@@ -764,6 +962,7 @@ mod tests {
     Rules {
       foundation: true,
       spine: false,
+      inlined: true,
       path: Path::new("test.rs"),
       findings: &mut findings,
     }

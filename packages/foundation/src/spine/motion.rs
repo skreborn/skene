@@ -21,7 +21,6 @@ pub enum StyleProperty<P = NoProperty> {
 
 impl<P: PartialEq> StyleProperty<P> {
   /// Whether a transition of this target interpolates the property `key`.
-  #[inline(always)]
   #[must_use]
   pub fn covers(&self, key: &PropertyKey<P>) -> bool {
     match (self, key) {

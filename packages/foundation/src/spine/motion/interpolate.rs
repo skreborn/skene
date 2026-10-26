@@ -190,7 +190,6 @@ impl<T: Interpolate> Interpolate for Dimension<T> {
 /// Whether a box goes undrawn: drawn through every change to or from drawn, as CSS
 /// interpolates `visibility`.
 impl Interpolate for bool {
-  #[inline(always)]
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(if self == to || amount <= 0. {
       *self

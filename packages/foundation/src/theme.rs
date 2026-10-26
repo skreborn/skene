@@ -179,7 +179,6 @@ pub trait ThemedIn<P: Realization>: TokenSet<P::TokenValue> + Default {
 
 #[diagnostic::do_not_recommend]
 impl<P: Realization, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
-  #[inline(always)]
   fn current() -> Self {
     use_context::<Memo<Self>>().map_or_else(
       || {
@@ -191,7 +190,6 @@ impl<P: Realization, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
     )
   }
 
-  #[inline(always)]
   fn watch() -> Memo<Self> {
     use_context::<Memo<Self>>().unwrap_or_else(|| {
       <Self as ThemedIn<P>>::define_root();

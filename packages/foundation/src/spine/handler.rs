@@ -77,7 +77,6 @@ pub enum Handler {
 
 impl Handler {
   /// The kind of event the handler runs on.
-  #[inline(always)]
   pub const fn kind(&self) -> EventKind {
     match self {
       Self::Click(_) | Self::ActingClick(_) => EventKind::Click,

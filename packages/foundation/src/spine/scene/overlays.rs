@@ -231,7 +231,6 @@ impl<P: Realization> Scene<P> {
   }
 
   /// The node focused when the overlay `node` opened, while it is open.
-  #[inline(always)]
   #[must_use]
   pub fn overlay_opener(&self, node: NodeId) -> Option<NodeId> {
     self

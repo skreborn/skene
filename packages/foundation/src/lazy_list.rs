@@ -58,7 +58,6 @@ impl ItemWindow {
 ///
 /// Extents are in the caller's unit (pixels, cells); a non-positive `item_extent`
 /// yields the full list.
-#[inline(always)]
 pub fn item_window(
   offset: f32,
   viewport: f32,

@@ -46,7 +46,6 @@ impl Id {
   }
 
   /// The arena this id addresses.
-  #[inline(always)]
   pub(crate) const fn kind(self) -> Kind {
     match self.0 >> KIND_SHIFT {
       0 => Kind::Signal,

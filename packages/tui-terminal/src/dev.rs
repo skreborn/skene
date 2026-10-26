@@ -357,6 +357,7 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl View<Terminal> {
   else {
     Color::srgb(1., 1., 1.)
   };
+
   let mut title = Text::<Terminal>::new("Rebuild failed").set_color(Color::srgb(0.8, 0.2, 0.2));
 
   title.run_style_mut().ext.bold = Some(true.into());

@@ -310,6 +310,7 @@ pub use crate::{
     Visibility,
   },
 };
+
 /// The realization the build names: the terminal's.
 #[cfg(skene_platform = "terminal")]
 pub type Active = skene_tui_terminal::Terminal;

@@ -2087,21 +2087,20 @@ offset rounded up, and the pixels place it exactly and soften its edge.
 
 The terminal itself is spoken to through four modules of `skene-tui-terminal`, with no
 terminal crate beneath them: `device` is the `Device` the loop runs on, which carries
-bytes and the window's size; `tty` opens the process's own terminal (standard input
-and output, or `/dev/tty` where those are not terminals), puts it in raw mode with
-`rustix`, polls
-it with a timeout, reads what arrived and restores its mode on drop and in a panic
+bytes and the window's size; `tty` opens the process's own terminal (standard input and
+output, or `/dev/tty` where those are not terminals), puts it in raw mode with `rustix`,
+polls it with a timeout, reads what arrived and restores its mode on drop and in a panic
 hook; the window's size is read by `ioctl` after every wait and a change is a resize
-event, beside the in-band notification; `parse` decodes the bytes incrementally into
-the loop's own vocabulary—keys in the legacy encodings and the kitty protocol with
-its event kinds, alternate keys and lock state, SGR and X10 mouse reports as
-`PointerButton`s, bracketed pastes, and exactly the replies the loop asks for
-(DECRPM for any mode, the theme report, the cursor position, the keyboard flags, the
-in-band resize, OSC 11 and 52, DECRPSS with its SGR list in either separator)—and
-drops any other string or CSI whole rather than reading it as keys; `escape` writes
-the sequences the loop emits through `Display`, so a frame allocates nothing. Every
-enhancement that needs a new reply adds it to `parse` in the same change. Windows
-has no console layer yet; it is the tty module's to grow.
+event, beside the in-band notification; `parse` decodes the bytes incrementally into the
+loop's own vocabulary—keys in the legacy encodings and the kitty protocol with its event
+kinds, alternate keys and lock state, SGR and X10 mouse reports as `PointerButton`s,
+bracketed pastes, and exactly the replies the loop asks for (DECRPM for any mode, the
+theme report, the cursor position, the keyboard flags, the in-band resize, OSC 11 and
+52, DECRPSS with its SGR list in either separator)—and drops any other string or CSI
+whole rather than reading it as keys; `escape` writes the sequences the loop emits
+through `Display`, so a frame allocates nothing. Every enhancement that needs a new
+reply adds it to `parse` in the same change. Windows has no console layer yet; it is the
+tty module's to grow.
 
 Pictures come through the kitty graphics protocol. Launch sends the protocol's query
 (`a=q`, one pixel, an id of its own) among the other queries; a terminal that answers

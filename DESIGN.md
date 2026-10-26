@@ -2179,10 +2179,11 @@ Two guarantees, both properties of what is public rather than of any one API.
   `trait_properties!`, each taking the condition type its values vary under, the
   facade's `Condition` on a view written on a facade) and the surfaces they share
   (`DecorationBase`, `RunBase`) are public, so a third-party layout view built on
-  `LayoutBox` spells its surface the way `Row` does, naming no realization. A line of either macro may start with `[cfg(<predicate>)]`, a platform's
-  own property of a shared view: its pair is generated in every build with one
-  signature, writing its field where the predicate holds and dropping the value in every
-  other build, so the field need exist only there. `extension_fields!` takes the same
+  `LayoutBox` spells its surface the way `Row` does, naming no realization. A line of
+  either macro may start with `[cfg(<predicate>)]`, a platform's own property of a
+  shared view: its pair is generated in every build with one signature, writing its
+  field where the predicate holds and dropping the value in every other build, so the
+  field need exist only there. `extension_fields!` takes the same
   `[cfg(..)]` on a property of a medium's extension, gating its field type and its
   visit, so with the field and the property's variant gated alike the record entry
   exists in that build alone. The macros' text names no platform; the predicate is the

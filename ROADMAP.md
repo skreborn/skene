@@ -283,9 +283,10 @@ in a code comment.
     and axis alignments, a viewport's size, `set_children` beside `add_child`).
     - The surface traits without a parameter on both facades, as AGENTS states, so a
     facade's impl line is `impl ContainerBase for Container {}` and a library bounds
-    on its facade's `DecorationBase` rather than the foundation's at `Active`; each
-    facade's trait keeps a member resolvable while the foundation's is in scope too,
-    which a same-named subtrait does not (`DECISIONS.md`, 2026-10-26).
+    on its facade's own traits (`E: TextEntryBase + DecorationBase`), retiring
+    `DecoratedTextEntry`; each facade's trait keeps a member resolvable while the
+    foundation's is in scope too, which a same-named subtrait does not
+    (`DECISIONS.md`, 2026-10-26).
     - The web: `EditContext` or a rendering of its own a progressive enhancement over
     its form elements, never a replacement.
 10. **The CLI for every platform.**

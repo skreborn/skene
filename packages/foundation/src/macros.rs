@@ -16,21 +16,22 @@
 /// exist under the same predicate alone. Their documentation names the predicate.
 ///
 /// ```
-/// use skene_foundation::{Color, Condition, Realization, Value};
+/// use skene_foundation::{Color, Condition, Value};
 ///
 /// /// A gauge's own style: its face, and the tint Linux draws its needle in.
-/// pub struct GaugeStyle<N> {
-///   face: Option<Value<Color, Condition<N>>>,
+/// pub struct GaugeStyle {
+///   face: Option<Value<Color, Condition<f32>>>,
 ///   #[cfg(skene_platform = "linux")]
-///   linux_tint: Option<Value<Color, Condition<N>>>,
+///   linux_tint: Option<Value<Color, Condition<f32>>>,
 /// }
 ///
-/// /// A gauge, a third party's view.
-/// pub struct Gauge<P: Realization> {
-///   style: GaugeStyle<P::Scalar>,
+/// /// A gauge, a third party's view, its values under the conditions of a facade
+/// /// measuring in `f32`.
+/// pub struct Gauge {
+///   style: GaugeStyle,
 /// }
 ///
-/// impl<P: Realization> Gauge<P> {
+/// impl Gauge {
 ///   /// A gauge with nothing set.
 ///   pub const fn new() -> Self {
 ///     Self {
@@ -42,11 +43,11 @@
 ///     }
 ///   }
 ///
-///   const fn style_mut(&mut self) -> &mut GaugeStyle<P::Scalar> {
+///   const fn style_mut(&mut self) -> &mut GaugeStyle {
 ///     &mut self.style
 ///   }
 ///
-///   skene_foundation::properties! { style_mut, Condition<P::Scalar>;
+///   skene_foundation::properties! { style_mut, Condition<f32>;
 ///     set_face / derive_face (color) => face: Color, "the face's color";
 ///     [cfg(skene_platform = "linux")]
 ///     set_linux_tint / derive_linux_tint (tint) => linux_tint: Color, "the needle's tint";
@@ -54,7 +55,7 @@
 /// }
 ///
 /// /// Compiles in every build; Linux's alone tints the needle.
-/// pub fn gauge<P: Realization>() -> Gauge<P> {
+/// pub fn gauge() -> Gauge {
 ///   Gauge::new()
 ///     .set_face(Color::oklch(0.98, 0.0, 0.0))
 ///     .set_linux_tint(Color::oklch(0.6, 0.2, 25.0))

@@ -9,11 +9,11 @@ supersedes.
 ## Decided against
 
 - **The surface traits re-declared without a parameter in each facade, now**
-  (2026-10-26), the shape AGENTS states (`impl ContainerBase for Container {}`): about
-  forty traits (`ContainerBase`, `DecorationBase`, `MotionBase` and their kin), each a
-  facade trait over the foundation's at `Active` that forwards every member, and every
-  impl line of both facades rewritten, to close a gap a library met in one bound alone,
-  which `DecoratedTextEntry` closes. Revisit with ROADMAP item 9, which makes the two
+  (2026-10-26), the shape AGENTS states (`impl ContainerBase for Container {}`): 41
+  traits (`ContainerBase`, `DecorationBase`, `MotionBase` and their kin), each a facade
+  trait over the foundation's at `Active` that forwards every member, and the 120 impl
+  lines of both facades that name them rewritten, to close a gap a library met in one
+  bound alone, which `DecoratedTextEntry` closes. Revisit with ROADMAP item 9, which makes the two
   facades' surfaces parallel name for name.
 - **A same-named subtrait without members for a library's bound** (2026-10-26), the
   facade's own `TextEntryBase` and `DecorationBase` over the foundation's at `Active`:

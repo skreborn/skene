@@ -121,9 +121,7 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         let mut rules = Rules {
           foundation: relative.starts_with(FOUNDATION),
           spine: is_spine_source(&relative),
-          inlined: INLINED
-            .iter()
-            .any(|directory| relative.starts_with(directory)),
+          inlined: is_inlining_source(&relative),
           path: &relative,
           findings: &mut findings,
         };
@@ -560,6 +558,12 @@ fn is_spine_source(path: &Path) -> bool {
   path == Path::new(SPINE[0]) || path.starts_with(SPINE[1])
 }
 
+/// Whether `path`, relative to the workspace, is a source holding a forced inline to a
+/// tiny body.
+fn is_inlining_source(path: &Path) -> bool {
+  INLINED.iter().any(|directory| path.starts_with(directory))
+}
+
 /// The first name of every path a use tree imports.
 fn use_heads(tree: &UseTree) -> Vec<String> {
   match tree {
@@ -695,7 +699,7 @@ mod tests {
 
   use syn::visit::Visit as _;
 
-  use super::{Rules, banned_in_snapshot, listed_name, spaced_em_dashes};
+  use super::{Rules, banned_in_snapshot, is_inlining_source, listed_name, spaced_em_dashes};
 
   fn findings(source: &str) -> Vec<String> {
     let file = syn::parse_file(source).expect("the source parses");
@@ -890,6 +894,8 @@ mod tests {
          #[inline(always)] fn is_set(&self) -> bool { match self.row { 0. => false, _ => true } } } \
          #[inline(always)] pub fn derive(value: impl Fn() -> f32) -> Spacing { \
            Spacing::from_leaf(Leaf::derive(move || value())) } \
+         #[inline(always)] fn outer() -> u8 { \
+           fn inner() -> u8 { let mut sum = 0; for i in 0..3 { sum += i; } sum } inner() } \
          trait Sized { #[inline(always)] fn width(&self) -> f32 { self.size().width } }"
       ),
       Vec::<String>::new()
@@ -906,6 +912,7 @@ mod tests {
            if c > 2 { let d = c + 1; d } else { c } }\n\
          trait Named { #[inline(always)] fn name(&self) -> &str { match self.index() { \
            0 => \"start\", 1 => \"middle\", _ => \"end\" } } }\n\
+         #[inline(always)] fn with(f: u8) -> u8 { run(|x| { let a = x; let b = a; b + f }) }\n\
          #[inline] fn plain(items: &[u8]) { for item in items { drop(item); } }"
       ),
       [
@@ -915,6 +922,8 @@ mod tests {
          `#[inline(always)]` goes on a field read, a constructor or a forwarding call alone",
         "test.rs:3: `name` forces an inline on a body that matches over 3 arms: \
          `#[inline(always)]` goes on a field read, a constructor or a forwarding call alone",
+        "test.rs:4: `with` forces an inline on a body that holds 4 statements: \
+         `#[inline(always)]` goes on a field read, a constructor or a forwarding call alone",
       ]
     );
   }
@@ -923,18 +932,25 @@ mod tests {
   fn a_forced_inline_outside_the_held_sources_passes() {
     let file = syn::parse_file("#[inline(always)] fn total(items: &[u8]) { for _ in items {} }")
       .expect("the source parses");
-    let mut findings = Vec::new();
+    let findings_in = |path: &str| {
+      let mut findings = Vec::new();
 
-    Rules {
-      foundation: false,
-      spine: false,
-      inlined: false,
-      path: Path::new("spikes/test.rs"),
-      findings: &mut findings,
-    }
-    .visit_file(&file);
+      Rules {
+        foundation: false,
+        spine: false,
+        inlined: is_inlining_source(Path::new(path)),
+        path: Path::new(path),
+        findings: &mut findings,
+      }
+      .visit_file(&file);
 
-    assert_eq!(findings, Vec::<String>::new());
+      findings.len()
+    };
+
+    assert_eq!(findings_in("spikes/linux/src/main.rs"), 0);
+    assert_eq!(findings_in("packages/foundation/src/control/mod.rs"), 1);
+    assert_eq!(findings_in("examples/gui/counter/src/main.rs"), 1);
+    assert_eq!(findings_in("xtask/src/lint.rs"), 1);
   }
 
   /// What the rules find in `source` read as the spine's.

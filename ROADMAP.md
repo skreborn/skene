@@ -397,12 +397,13 @@ in a code comment.
     pages instead of inlined into each; a bundle budget the gate holds, a release
     `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15
     and 2026-10-02, `skene-web` and `skene-foundation` most of it.
-    - The terminal's resized 16k-row frame measured about a twelfth slower (54 ms
-    against 50, eleven alternating runs) once the forced inlines on bodies that are not
-    tiny went (2026-10-26), under run-to-run noise of a tenth; restoring the spine's
-    left it slow and restoring the rest brought it back. Callgrind's instruction counts
-    on builds that keep their symbols settle it against its parent, and a gain shown
-    from one forced inline reopens the `#[inline(always)]` entry in `DECISIONS.md`.
+    - The terminal's resized 16k-row frame measured between a twentieth and a twelfth
+    slower (54 ms against 50 over eleven alternating runs, 47.5 against 45.0 over five
+    more) once the forced inlines on bodies that are not tiny went (2026-10-26), under
+    run-to-run noise of a tenth; restoring the spine's left it slow and restoring the
+    rest brought it back. Callgrind's instruction counts on builds that keep their
+    symbols settle it against its parent, and a gain shown from one forced inline
+    reopens the `#[inline(always)]` entry in `DECISIONS.md`.
 15. **The dev reload costs production nothing.** The saved tier is no second API:
     Android's process death writes the same snapshot of the state an app saves (item 6),
     and the web and the desktops keep none beyond the dev reload.

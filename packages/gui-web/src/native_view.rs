@@ -4,7 +4,7 @@ use std::borrow::Cow;
 
 use skene_foundation::{AnyKind, BoxFacts, Layout, LowLevel, NodeFacts, NodeId, NodeSpec};
 
-use super::Web;
+use crate::Web;
 
 /// The markup a [`NativeView`] describes: a tag and its attributes, what the server
 /// renders as the view's placeholder and the browser's element starts with.
@@ -57,13 +57,17 @@ impl NativeMarkup {
 /// Raw CSS reaches a native view through its own `style` attribute.
 ///
 /// ```
-/// use skene_gui::{platform::web::NativeView, prelude::*};
+/// use skene_foundation::{Container, DecorationBase, HasChild};
+/// use skene_gui_web::{NativeView, Web};
 ///
-/// let well = Container::new().set_width(48).set_height(24).set_child(
-///   NativeView::new("input")
-///     .add_attribute("type", "color")
-///     .add_attribute("aria-label", "Ink"),
-/// );
+/// let well = Container::<Web>::new()
+///   .set_width(48)
+///   .set_height(24)
+///   .set_child(
+///     NativeView::new("input")
+///       .add_attribute("type", "color")
+///       .add_attribute("aria-label", "Ink"),
+///   );
 /// ```
 #[doc(alias = "HTMLElement")]
 #[must_use]

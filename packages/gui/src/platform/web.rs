@@ -1,5 +1,5 @@
 //! The web platform: [`Web`], its native door and its seams beyond the
-//! [`Realization`](skene_foundation::Realization) trait.
+//! [`Realization`](skene_foundation::Realization) trait, realized by `skene-gui-web`.
 //!
 //! For a library author writing a view against the browser DOM or the server's markup.
 //! The browser leaf (`skene_platform = "web"` on `wasm32-unknown-unknown`) realizes
@@ -20,47 +20,32 @@
 //! answers with, parsed from a request's client hints. Every text entry is the web's form
 //! element, edited by the browser, so the web draws no entry and its editing state is
 //! [`Undrawn`].
-
-mod native_view;
+//!
+//! ```
+//! use skene_gui::{platform::web::NativeView, prelude::*};
+//!
+//! let well = Container::new().set_width(48).set_height(24).set_child(
+//!   NativeView::new("input")
+//!     .add_attribute("type", "color")
+//!     .add_attribute("aria-label", "Ink"),
+//! );
+//! ```
 
 #[cfg(skene_server)]
-pub use skene_dev::Document;
-pub use skene_dev::STATE_SCRIPT_ID;
-
-pub use self::native_view::{NativeMarkup, NativeView};
-#[cfg(not(skene_server))]
-pub use crate::browser::boot_with_dev_state;
-#[cfg(not(skene_server))]
-pub use crate::browser::uninstall;
-#[cfg(not(skene_server))]
-pub use crate::browser::{
-  add_head_element,
-  adopt_restoration,
-  commit_navigation,
-  current_path,
-  document,
-  drive,
-  element,
-  enable_view_transitions,
-  end_turn,
-  hydrate,
-  hydration_mismatches,
-  install,
-  install_executor,
-  launch,
-  media_query,
-  mount,
-  on_pop,
-  persisted_scheme,
-  push_path,
-  remove_head_entry,
-  set_document_language,
-  set_scheme,
-  view_transitions_enabled,
-  watch_media,
+pub use skene_gui_web::Document;
+pub use skene_gui_web::{
+  CONTROL_ATTRIBUTE,
+  NativeMarkup,
+  NativeView,
+  RenderHints,
+  SCHEME_ATTRIBUTE,
+  STATE_SCRIPT_ID,
+  Undrawn,
+  Web,
+  WebTokenValue,
 };
 #[cfg(skene_server)]
-pub use crate::server::{
+pub use skene_gui_web::{
   Rendered,
   StreamPiece,
   add_head_element,
@@ -87,23 +72,32 @@ pub use crate::server::{
   set_script_nonce,
   sleep,
 };
-pub use crate::{
-  condition::{CONTROL_ATTRIBUTE, SCHEME_ATTRIBUTE},
-  hints::RenderHints,
-  token::WebTokenValue,
+#[cfg(not(skene_server))]
+pub use skene_gui_web::{
+  add_head_element,
+  adopt_restoration,
+  boot_with_dev_state,
+  commit_navigation,
+  current_path,
+  document,
+  drive,
+  element,
+  enable_view_transitions,
+  end_turn,
+  hydrate,
+  hydration_mismatches,
+  install,
+  install_executor,
+  launch,
+  media_query,
+  mount,
+  on_pop,
+  persisted_scheme,
+  push_path,
+  remove_head_entry,
+  set_document_language,
+  set_scheme,
+  uninstall,
+  view_transitions_enabled,
+  watch_media,
 };
-
-/// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the
-/// browser and over a string tree on the server.
-///
-/// Lengths are logical pixels ([`Scalar`](skene_foundation::Realization::Scalar) `f32`), the
-/// style extension is [`WebStyle`](skene_foundation::web::WebStyle), and a token is a
-/// [`WebTokenValue`].
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-#[must_use]
-pub struct Web;
-
-/// The web's drawn entry's editing state: none, since every text entry is its `<input>` or
-/// `<textarea>`, edited by the browser, so the shared editing state cannot be reached.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Undrawn {}

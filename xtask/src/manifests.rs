@@ -1,7 +1,7 @@
 //! What the gate reads from the workspace's manifests and its lockfile.
 
 use std::{
-  collections::BTreeSet,
+  collections::{BTreeMap, BTreeSet},
   fs,
   path::{Component, Path, PathBuf},
 };
@@ -20,12 +20,12 @@ const NOTES: &str = "SKENE.md";
 
 /// Checks every manifest in the workspace: each dependency table and each `[patch]` table
 /// lists its crates in alphabetical order, a cargo feature enables optional dependencies
-/// alone and none is on by default, a crate is optional only where a feature enables it,
-/// each member inherits the workspace's lints and rust-version, a crate under `packages/`
-/// declares a description, inherits the license and the repository and names a workspace
-/// crate it tests against by its path alone, every other member is never published, and
-/// every crate a `[patch]` table patches in is a `path` under `vendor/` holding a
-/// `SKENE.md`.
+/// alone, beside a member's feature held to the same rule, and none is on by default, a
+/// crate is optional only where a feature enables it, each member inherits the
+/// workspace's lints and rust-version, a crate under `packages/` declares a description,
+/// inherits the license and the repository and names a workspace crate it tests against
+/// by its path alone, every other member is never published, and every crate a
+/// `[patch]` table patches in is a `path` under `vendor/` holding a `SKENE.md`.
 ///
 /// A vendored crate is exempt from the rest: it is no member (the workspace excludes
 /// `vendor/`), so it keeps its published manifest and its own lints, outside the
@@ -33,18 +33,16 @@ const NOTES: &str = "SKENE.md";
 pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
   let workspace = root.join("Cargo.toml");
-  let members: Vec<String> = manifest_paths(root)?
+  let manifests: BTreeMap<String, DocumentMut> = manifest_paths(root)?
     .iter()
     .filter_map(|path| {
       let manifest = read(path).ok()?;
+      let name = manifest.get("package")?.get("name")?.as_str()?.to_owned();
 
-      manifest
-        .get("package")?
-        .get("name")?
-        .as_str()
-        .map(str::to_owned)
+      Some((name, manifest))
     })
     .collect();
+  let members: Vec<String> = manifests.keys().cloned().collect();
 
   for path in manifest_paths(root)? {
     let manifest = read(&path)?;
@@ -81,7 +79,7 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
       }
     }
 
-    let enabled = features(&manifest, &name.to_string(), &mut problems);
+    let enabled = features(&manifest, &name.to_string(), &manifests, &mut problems);
 
     check_patches(
       &name.to_string(),
@@ -272,8 +270,14 @@ fn check_patches(
 }
 
 /// The optional dependencies the features of `manifest` (named `name`) enable, a
-/// problem noted for a default feature and for a feature enabling anything else.
-fn features(manifest: &DocumentMut, name: &str, problems: &mut Vec<String>) -> Vec<String> {
+/// problem noted for a default feature and for a feature enabling anything the rule
+/// [`holds`] admits not, `members` holding each member's manifest by its package name.
+fn features(
+  manifest: &DocumentMut,
+  name: &str,
+  members: &BTreeMap<String, DocumentMut>,
+  problems: &mut Vec<String>,
+) -> Vec<String> {
   let mut enabled = Vec::new();
   let Some(features) = manifest.get("features").and_then(Item::as_table_like)
   else {
@@ -289,22 +293,76 @@ fn features(manifest: &DocumentMut, name: &str, problems: &mut Vec<String>) -> V
       continue;
     }
 
-    let dependencies: Option<Vec<&str>> = enables.as_array().and_then(|array| {
-      array
-        .iter()
-        .map(|value| value.as_str().and_then(|value| value.strip_prefix("dep:")))
-        .collect()
-    });
+    if !holds(manifest, feature, members, 0) {
+      problems.push(format!(
+        "{name}: feature `{feature}` enables more than optional dependencies (`dep:` crates) \
+         and members' features held to the same rule (`<member>/<feature>`)"
+      ));
 
-    match dependencies {
-      Some(dependencies) => enabled.extend(dependencies.into_iter().map(str::to_owned)),
-      None => problems.push(format!(
-        "{name}: feature `{feature}` enables more than optional dependencies (`dep:` crates)"
-      )),
+      continue;
     }
+
+    enabled.extend(
+      enables
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|value| value.as_str()?.strip_prefix("dep:"))
+        .map(str::to_owned),
+    );
   }
 
   enabled
+}
+
+/// Whether the feature `feature` of `manifest` enables optional dependencies (`dep:`
+/// crates) alone, beside features of the workspace's members held to the same rule
+/// (`<member>/<feature>`), `members` holding each member's manifest by its package name
+/// and `depth` counting the features forwarded through on the way to it.
+fn holds(
+  manifest: &DocumentMut,
+  feature: &str,
+  members: &BTreeMap<String, DocumentMut>,
+  depth: usize,
+) -> bool {
+  let Some(enables) = manifest
+    .get("features")
+    .and_then(|features| features.get(feature))
+    .and_then(Item::as_array)
+  else {
+    return false;
+  };
+
+  depth <= members.len()
+    && enables.iter().all(|value| match value.as_str() {
+      Some(entry) if entry.starts_with("dep:") => true,
+      Some(entry) => forwarded(manifest, entry, members)
+        .is_some_and(|(member, feature)| holds(member, feature, members, depth + 1)),
+      None => false,
+    })
+}
+
+/// The member's manifest and its feature the feature entry `entry`
+/// (`<dependency>/<feature>`) of `manifest` enables, where that dependency is one of the
+/// workspace's `members` in a table of `manifest` that is not for its tests.
+fn forwarded<'m, 'e>(
+  manifest: &DocumentMut,
+  entry: &'e str,
+  members: &'m BTreeMap<String, DocumentMut>,
+) -> Option<(&'m DocumentMut, &'e str)> {
+  let (dependency, feature) = entry.split_once('/')?;
+  let package = member_dependency_tables(manifest)
+    .into_iter()
+    .filter(|(kind, _)| *kind != "dev-dependencies")
+    .find_map(|(_, entries)| entries.get(dependency))
+    .map(|entry| {
+      entry
+        .get("package")
+        .and_then(Item::as_str)
+        .unwrap_or(dependency)
+    })?;
+
+  Some((members.get(package)?, feature))
 }
 
 /// Whether the key at `path` in `manifest` is `true`.
@@ -321,8 +379,9 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
   item.as_bool() == Some(true)
 }
 
-/// The web's facade: a package reaching it is built for the web's leaves alone.
-pub(crate) const WEB: &str = "skene-gui";
+/// The web's realization, which every web member reaches, its facade included: a package
+/// reaching it is built for the web's leaves alone.
+pub(crate) const WEB: &str = "skene-gui-web";
 
 /// The terminal's facade: a package reaching it is built for the terminal alone.
 pub(crate) const TERMINAL: &str = "skene-tui";
@@ -667,11 +726,11 @@ fn patch_tables(manifest: &DocumentMut) -> Vec<(String, &dyn TableLike)> {
 
 #[cfg(test)]
 mod tests {
-  use std::path::Path;
+  use std::{collections::BTreeMap, path::Path};
 
   use toml_edit::DocumentMut;
 
-  use super::{Workspace, check_order, check_patches, dependency_tables};
+  use super::{Workspace, check_order, check_patches, dependency_tables, features};
 
   fn manifest(source: &str) -> DocumentMut {
     source.parse().expect("the manifest parses")
@@ -739,10 +798,58 @@ mod tests {
   }
 
   #[test]
+  fn a_feature_forwards_to_a_members_feature_held_to_the_rule() {
+    let members: BTreeMap<String, DocumentMut> = [
+      (
+        "inner",
+        "[package]\nname = \"inner\"\n[dependencies]\nserde = \"1\"\nwgpu = { optional = \
+         true, version = \"30\" }\n[features]\ngpu = [\"dep:wgpu\"]\nloose = [\"serde/std\"]\n",
+      ),
+      (
+        "outer",
+        "[package]\nname = \"outer\"\n[target.'cfg(unix)'.dependencies]\ninner = { path = \
+         \"..\" }\nrenamed = { package = \"inner\", path = \"..\" }\nserde = \"1\"\n\
+         [dev-dependencies]\ntested = { package = \"inner\", path = \"..\" }\n[features]\ngpu \
+         = [\"inner/gpu\"]\nrenamed = [\"renamed/gpu\"]\nloose = [\"inner/loose\"]\nmissing = \
+         [\"inner/missing\"]\nforeign = [\"serde/std\"]\ntest = [\"tested/gpu\"]\n",
+      ),
+    ]
+    .into_iter()
+    .map(|(name, source)| (name.to_owned(), manifest(source)))
+    .collect();
+    let mut problems = Vec::new();
+
+    let enabled = features(&members["inner"], "inner", &members, &mut problems);
+
+    assert_eq!(enabled, ["wgpu"]);
+    assert_eq!(problems.len(), 1, "{problems:#?}");
+    assert!(problems[0].contains("`loose`"), "{}", problems[0]);
+
+    problems.clear();
+
+    let enabled = features(&members["outer"], "outer", &members, &mut problems);
+
+    assert!(enabled.is_empty(), "{enabled:?}");
+    assert_eq!(problems.len(), 4, "{problems:#?}");
+
+    for feature in ["loose", "missing", "foreign", "test"] {
+      assert!(
+        problems
+          .iter()
+          .any(|problem| problem.contains(&format!("`{feature}`"))),
+        "{feature}: {problems:#?}"
+      );
+    }
+  }
+
+  #[test]
   fn a_member_reaches_a_facade_through_what_its_build_compiles() {
     let workspace = Workspace::new(&[
       manifest("[workspace]\nmembers = [\"*\"]\n"),
-      manifest("[package]\nname = \"skene-gui\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"skene-gui-web\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest(
+        "[package]\nname = \"skene-gui\"\n[target.'cfg(skene_platform = \"web\")'.dependencies]\nskene-gui-web = { path = \"..\" }\n",
+      ),
       manifest("[package]\nname = \"base\"\n[dependencies]\nserde = \"1\"\n"),
       manifest("[package]\nname = \"lib\"\n[dependencies]\nskene-gui.workspace = true\n"),
       manifest(
@@ -762,13 +869,21 @@ mod tests {
 
     assert_eq!(
       workspace.web(),
-      ["skene-gui", "lib", "app", "docs", "probe"]
+      ["skene-gui-web", "skene-gui", "lib", "app", "docs", "probe"]
     );
     assert_eq!(workspace.terminal(), ["docs", "skene-tui", "shell"]);
     assert_eq!(workspace.host(), ["base", "tool", "user"]);
     assert_eq!(
       workspace.web_build(),
-      ["skene-gui", "base", "lib", "app", "docs", "probe"]
+      [
+        "skene-gui-web",
+        "skene-gui",
+        "base",
+        "lib",
+        "app",
+        "docs",
+        "probe"
+      ]
     );
   }
 }

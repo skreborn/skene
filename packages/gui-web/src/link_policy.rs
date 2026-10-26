@@ -100,8 +100,8 @@ impl LinkPolicy {
 
   /// Opens the link run `node` as this policy says, its destination's attributes
   /// rewritten now and at every later write.
-  pub(crate) fn realize(self, node: NodeId) {
-    crate::Active::set_link_policy(node, self);
+  pub fn realize(self, node: NodeId) {
+    crate::Web::set_link_policy(node, self);
   }
 }
 

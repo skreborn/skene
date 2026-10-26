@@ -8,6 +8,24 @@ supersedes.
 
 ## Decided against
 
+- **The web's `gpu` feature declared on the facade** (2026-10-26), `skene-gui`'s
+  `gpu = ["dep:vello_gpu", "dep:wgpu"]` over dependencies the facade's code never
+  reaches: the GPU path is the realization's, so the feature and its dependencies live
+  on `skene-gui-web` and the facade forwards to it (`gpu = ["skene-gui-web/gpu"]`), the
+  gate's manifest rule admitting a member's feature held to the same rule. Revisit if
+  an app depends on a realization crate directly.
+- **The gate's web partition keyed on the facade** (2026-10-26), `skene-gui` as the
+  crate whose reach marks a member as the web's: the realization beneath it reaches
+  no facade and would be classed a host crate, built with no platform named. The
+  partition keys on `skene-gui-web`, which every web member reaches, the facade
+  included. Revisit if a web member reaches the web without its realization.
+- **The realization's doctests written in the facade's vocabulary** (2026-10-26),
+  `skene-gui-web` taking `skene-gui` as a dev-dependency so `NativeView`'s example could
+  use the facade's `Container`: a cycle through the tests, building the realization a
+  second time beneath the facade for its unit tests, for one example. The realization's
+  example builds on the foundation's views at `Web`, and the facade's `platform::web`
+  keeps the example in its own vocabulary. Revisit if the realization's own tests need
+  the facade's views.
 - **The surface traits re-declared without a parameter in each facade, now**
   (2026-10-26), the shape AGENTS states (`impl ContainerBase for Container {}`): 41
   traits (`ContainerBase`, `DecorationBase`, `MotionBase` and their kin), each a facade

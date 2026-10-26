@@ -16,10 +16,10 @@ use skene_foundation::{
 
 use super::{PREEMPT_SCHEME, PREEMPT_SCHEME_SCRIPT, ROOT, SCRIPT_NONCE, VIEW_TRANSITIONS};
 use crate::{
+  Web,
   condition::CLASS_PLACEHOLDER,
   markup::{FormElement, MARKER_ATTRIBUTE, STYLE_ATTRIBUTE, STYLE_ID},
   motion::VIEW_TRANSITION_RULE,
-  platform::web::Web,
   realize::{Realizer, Sink},
   style_book::{STYLE_LAYER, StyleSink, base_stylesheet, push_style_text},
 };

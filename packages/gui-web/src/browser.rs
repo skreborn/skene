@@ -56,9 +56,9 @@ use self::{
   sheet::Sheet,
 };
 use super::{
+  Web,
   interner::CLASS_PREFIX,
   markup::{MARKER_ATTRIBUTE, STYLE_ID},
-  platform::web::Web,
   realize::{Realized, Realizer, Record},
   token::WebTokenValue,
 };

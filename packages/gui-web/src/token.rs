@@ -17,7 +17,9 @@ use skene_foundation::{
   TokenValue,
 };
 
-use crate::{SystemColors, condition::Conjunction, platform::web::Web};
+use crate::{Web, condition::Conjunction};
+
+type SystemColors = skene_foundation::SystemColors<f32>;
 
 /// The erased token definition the web platform stores per token: a color, a number, a
 /// length, or a dimension.

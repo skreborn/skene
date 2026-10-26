@@ -24,6 +24,8 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
+    - The terminal's realization moves into a crate of its own, `skene-tui-terminal`
+      beneath `skene-tui`, as the web's did into `skene-gui-web` beneath `skene-gui`.
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.
@@ -643,8 +645,8 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-35. **Confirm docs.rs documents every platform's build.** `skene-gui` and
-    `skene-simple-gui` name each target's leaf, and `skene-tui` and
+35. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
+    and `skene-simple-gui` name each target's leaf, and `skene-tui` and
     `skene-simple-tui` the terminal, through `cargo-args` setting
     `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over
     `build.*` and an environment variable over both, so on the first publish either

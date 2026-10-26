@@ -38,11 +38,7 @@ use super::{
   media::{media_signals, with_media},
   with_realizer,
 };
-use crate::{
-  LinkPolicy,
-  platform::web::{NativeMarkup, Undrawn, Web},
-  token::WebTokenValue,
-};
+use crate::{LinkPolicy, NativeMarkup, Undrawn, Web, token::WebTokenValue};
 
 impl Painting for Web {
   fn paint(_node: NodeId, _painter: Box<Painter>) {}

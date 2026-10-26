@@ -93,7 +93,8 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   a trait bound, a type, a variant, a platform or an item an app names, so the build
   without it is complete and merely slower or larger (the web's `gpu`, painting on the
   GPU where the page has WebGPU). None is on by default, and the gate's manifest check
-  holds a feature to `dep:` crates alone.
+  holds a feature to `dep:` crates alone, or to a member's feature held to the same rule
+  (the facade's `gpu` forwarding its realization's).
 - **A platform's own vocabulary lives in `platform::<p>`.** Its data types exist in every
   build, its controls only in its own. A platform's own property of a shared view is a
   **prefixed setter** (`set_ios_*`, `set_linux_*`, `set_web_*`) beside the shared ones,

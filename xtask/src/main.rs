@@ -898,6 +898,8 @@ fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
     "clippy",
     "-p",
     "skene-gui",
+    "-p",
+    "skene-gui-web",
     "--lib",
     "--locked",
     "--",

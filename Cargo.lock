@@ -2578,26 +2578,41 @@ dependencies = [
 name = "skene-gui"
 version = "0.1.0"
 dependencies = [
+ "js-sys",
+ "rustix",
+ "skene-dev",
+ "skene-foundation",
+ "skene-gui-web",
+ "skene-macros",
+ "skene-reactive",
+ "skene-simple-gui",
+ "tracing",
+ "trybuild",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
+name = "skene-gui-web"
+version = "0.1.0"
+dependencies = [
  "async-task",
  "console_error_panic_hook",
  "futures-timer",
  "js-sys",
  "rustc-hash 2.1.3",
- "rustix",
  "serde_json",
  "sfv",
  "skene-dev",
  "skene-foundation",
- "skene-macros",
  "skene-reactive",
- "skene-simple-gui",
  "smallvec",
  "tracing",
- "trybuild",
  "vello_gpu",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-bindgen-test",
  "web-sys",
  "wgpu",
 ]

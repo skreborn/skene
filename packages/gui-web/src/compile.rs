@@ -1182,7 +1182,7 @@ mod tests {
   };
 
   use super::{BoxTemplate, KeptStyle, Template};
-  use crate::platform::web::Web;
+  use crate::Web;
 
   /// A style kept at `Keep::Everything`, its height set where `height` says.
   fn kept(height: bool) -> KeptStyle {

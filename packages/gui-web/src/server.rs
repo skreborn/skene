@@ -39,8 +39,8 @@ use self::{
   tree::{Frame, StringTree, Tree},
 };
 use crate::{
+  Web,
   hints::RenderHints,
-  platform::web::Web,
   realize::{Realized, Realizer},
   token::WebTokenValue,
 };

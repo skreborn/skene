@@ -70,12 +70,7 @@ use super::{
   try_with_dom,
   with_dom,
 };
-use crate::{
-  LinkPolicy,
-  platform::web::{Undrawn, Web},
-  realize::Realized,
-  token::WebTokenValue,
-};
+use crate::{LinkPolicy, Undrawn, Web, realize::Realized, token::WebTokenValue};
 
 /// Whether the engine places a box against a CSS anchor (`position-area`), decided
 /// once per page.

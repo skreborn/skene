@@ -39,6 +39,7 @@ use skene_foundation::{
 
 use crate::{
   LinkPolicy,
+  Web,
   compile::{
     Compiled,
     KeptStyle,
@@ -74,7 +75,6 @@ use crate::{
     scrolls,
     takes_disabled,
   },
-  platform::web::Web,
   style_book::{StyleBook, StyleSink},
   token::WebTokenValue,
 };
@@ -534,7 +534,7 @@ impl<S: Sink> Realizer<S> {
   pub(crate) fn adopt_markup(
     &mut self,
     node: NodeId,
-    markup: &crate::platform::web::NativeMarkup,
+    markup: &crate::NativeMarkup,
     spec: &NodeSpec,
   ) -> bool {
     let (element, _) = self.create_element(node, markup.tag(), Realized::Native);

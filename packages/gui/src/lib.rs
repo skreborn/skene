@@ -1,16 +1,17 @@
 //! # skene-gui
 //!
-//! The web's shell: a web app's single dependency. It fixes the scalar (logical pixels,
-//! `f32`), names the platform it realizes ([`Active`], the web platform in the browser
-//! and on a server render) and aliases every built-in view to it, so app code names no
-//! platform. The medium's own contribution is [`Typography`], the [`media`] module and
-//! the entry points: `launch` in the browser, `render_to_string`, `render_to_stream`
-//! and `render_main` on the server leaf, and [`macro@main`] expanding to whichever the
-//! build names. [`Platform`] is the build's platform as a const an app matches on, and
-//! [`platform`] holds each platform's own vocabulary: [`platform::web`] is the web
-//! platform itself, for a view written against the DOM or the server's markup. The
-//! [`behavior`] module holds what a [`Control`] runs over: the shipped behaviors, the
-//! trait a library's own implements and the handle it acts through.
+//! The pixel facade: a web app's single dependency. It fixes the scalar (logical pixels,
+//! `f32`), names the platform it realizes ([`Active`], the web's realization from
+//! `skene-gui-web`, in the browser and on a server render) and aliases every built-in
+//! view to it, so app code names no platform. The medium's own contribution is
+//! [`Typography`], the [`media`] module and the entry points: `launch` in the browser,
+//! `render_to_string`, `render_to_stream` and `render_main` on the server leaf, and
+//! [`macro@main`] expanding to whichever the build names. [`Platform`] is the build's
+//! platform as a const an app matches on, and [`platform`] holds each platform's own
+//! vocabulary: [`platform::web`] is the web platform itself, its realization's surface,
+//! for a view written against the DOM or the server's markup. The [`behavior`] module
+//! holds what a [`Control`] runs over: the shipped behaviors, the trait a library's own
+//! implements and the handle it acts through.
 //!
 //! A build names the web by `--cfg skene_platform="web"`: the browser leaf on
 //! `wasm32-unknown-unknown`, and the server leaf on any target with `--cfg skene_server`
@@ -98,46 +99,12 @@ pub mod view_transitions;
 #[cfg(skene_platform = "web")]
 pub mod window;
 
-#[cfg(all(skene_platform = "web", not(skene_server)))]
-mod browser;
-#[cfg(skene_platform = "web")]
-mod compile;
-#[cfg(skene_platform = "web")]
-mod condition;
-#[cfg(skene_platform = "web")]
-mod declarations;
-#[cfg(skene_platform = "web")]
-mod expr;
-#[cfg(all(skene_platform = "web", not(skene_server), feature = "gpu"))]
-mod gpu;
-#[cfg(skene_platform = "web")]
-mod hints;
-#[cfg(skene_platform = "web")]
-mod interner;
-#[cfg(skene_platform = "web")]
-mod link_policy;
-#[cfg(skene_platform = "web")]
-mod logging;
-#[cfg(skene_platform = "web")]
-mod markup;
-#[cfg(skene_platform = "web")]
-mod motion;
-#[cfg(skene_platform = "web")]
-mod realize;
 #[cfg(skene_platform = "web")]
 mod resource;
 #[cfg(skene_platform = "web")]
-mod resource_state;
-#[cfg(skene_platform = "web")]
 mod routing;
-#[cfg(all(skene_platform = "web", skene_server))]
-mod server;
-#[cfg(skene_platform = "web")]
-mod style_book;
 #[cfg(skene_platform = "web")]
 mod task;
-#[cfg(skene_platform = "web")]
-mod token;
 #[cfg(skene_platform = "web")]
 mod views;
 
@@ -274,6 +241,8 @@ pub use skene_foundation::{
   typography,
   web::{AsyncViewBase, DeferredBase},
 };
+#[cfg(skene_platform = "web")]
+pub use skene_gui_web::{LinkAnnotation, LinkPolicy};
 pub use skene_macros::{gui_main as main, lazy};
 pub use skene_reactive as reactive;
 pub use tracing;
@@ -287,7 +256,6 @@ pub use self::platform::web::Rendered;
 use crate::platform::web;
 #[cfg(skene_platform = "web")]
 pub use crate::{
-  link_policy::{LinkAnnotation, LinkPolicy},
   media::{chosen_scheme, derive_scheme, set_scheme},
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
@@ -347,10 +315,10 @@ pub use crate::{
   },
 };
 
-/// The realization the build selected: the web's, in the browser and on a server
-/// render (`--cfg skene_server`).
+/// The realization the build selected: the web's ([`skene_gui_web::Web`]), in the
+/// browser and on a server render (`--cfg skene_server`).
 #[cfg(skene_platform = "web")]
-pub type Active = web::Web;
+pub type Active = skene_gui_web::Web;
 
 #[cfg(skene_platform = "web")]
 skene_foundation::facade!(Active, f32, "logical pixels");

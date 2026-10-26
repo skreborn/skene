@@ -1,9 +1,5 @@
 pub mod skene_simple_web
-pub use skene_simple_web::SimpleCheckboxBase
 pub use skene_simple_web::SimpleContextMenuBase
-pub use skene_simple_web::SimplePickerBase
-pub use skene_simple_web::SimpleRadioBase
-pub use skene_simple_web::SimpleRadioGroupBase
 pub use skene_simple_web::SimpleSliderBase
 pub use skene_simple_web::SimpleTextEditorBase
 pub use skene_simple_web::SimpleTextFieldBase
@@ -29,6 +25,42 @@ pub fn skene_simple_web::SimpleCard::spacing() -> f32
 pub fn skene_simple_web::SimpleCard::styled(skene_web::views::container::Container) -> skene_web::views::container::Container
 impl core::fmt::Debug for skene_simple_web::SimpleCard
 pub fn skene_simple_web::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleCheckbox
+impl skene_simple_web::SimpleCheckbox
+pub fn skene_simple_web::SimpleCheckbox::mark() -> skene_web::views::container::Container
+pub fn skene_simple_web::SimpleCheckbox::new() -> skene_web::views::checkbox::Checkbox
+pub fn skene_simple_web::SimpleCheckbox::styled(skene_web::views::checkbox::Checkbox) -> skene_web::views::checkbox::Checkbox
+impl core::fmt::Debug for skene_simple_web::SimpleCheckbox
+pub fn skene_simple_web::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleListboxOption
+impl skene_simple_web::SimpleListboxOption
+pub fn skene_simple_web::SimpleListboxOption::check() -> skene_web::views::container::Container
+pub fn skene_simple_web::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_foundation::control::Label<skene_web::Active>
+pub fn skene_simple_web::SimpleListboxOption::new(impl skene_foundation::control::choice::Choice, impl core::convert::Into<alloc::string::String>) -> skene_web::views::listbox::ListboxOption
+pub fn skene_simple_web::SimpleListboxOption::styled(skene_web::views::listbox::ListboxOption) -> skene_web::views::listbox::ListboxOption
+impl core::fmt::Debug for skene_simple_web::SimpleListboxOption
+pub fn skene_simple_web::SimpleListboxOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimplePicker
+impl skene_simple_web::SimplePicker
+pub fn skene_simple_web::SimplePicker::face(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_web::views::flex::Row
+pub fn skene_simple_web::SimplePicker::list() -> skene_web::views::container::Container
+pub fn skene_simple_web::SimplePicker::new<T: skene_foundation::control::choice::Choice>() -> skene_web::views::picker::Picker<T>
+pub fn skene_simple_web::SimplePicker::styled<T: skene_foundation::control::choice::Choice>(skene_web::views::picker::Picker<T>) -> skene_web::views::picker::Picker<T>
+impl core::fmt::Debug for skene_simple_web::SimplePicker
+pub fn skene_simple_web::SimplePicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleRadio
+impl skene_simple_web::SimpleRadio
+pub fn skene_simple_web::SimpleRadio::mark() -> skene_web::views::container::Container
+pub fn skene_simple_web::SimpleRadio::new(impl skene_foundation::control::choice::Choice) -> skene_web::views::radio::Radio
+pub fn skene_simple_web::SimpleRadio::styled(skene_web::views::radio::Radio) -> skene_web::views::radio::Radio
+impl core::fmt::Debug for skene_simple_web::SimpleRadio
+pub fn skene_simple_web::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleRadioGroup
+impl skene_simple_web::SimpleRadioGroup
+pub fn skene_simple_web::SimpleRadioGroup::new<T: skene_foundation::control::choice::Choice>() -> skene_web::views::radio::RadioGroup<T>
+pub fn skene_simple_web::SimpleRadioGroup::styled<T: skene_foundation::control::choice::Choice>(skene_web::views::radio::RadioGroup<T>) -> skene_web::views::radio::RadioGroup<T>
+impl core::fmt::Debug for skene_simple_web::SimpleRadioGroup
+pub fn skene_simple_web::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_simple_web::SimpleTooltip
 impl skene_simple_web::SimpleTooltip
 pub fn skene_simple_web::SimpleTooltip::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_web::views::tooltip::Tooltip
@@ -37,21 +69,6 @@ pub fn skene_simple_web::SimpleTooltip::styled(skene_web::views::tooltip::Toolti
 pub fn skene_simple_web::SimpleTooltip::view(impl skene_web::View) -> skene_web::views::tooltip::Tooltip
 impl core::fmt::Debug for skene_simple_web::SimpleTooltip
 pub fn skene_simple_web::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_simple_web::SimpleCheckbox(_)
-impl core::default::Default for skene_simple_web::SimpleCheckbox
-pub fn skene_simple_web::SimpleCheckbox::default() -> skene_simple_web::SimpleCheckbox
-impl core::fmt::Debug for skene_simple_web::SimpleCheckbox
-pub fn skene_simple_web::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleCheckbox
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleCheckbox
-pub fn skene_simple_web::SimpleCheckbox::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleCheckbox
-pub type skene_simple_web::SimpleCheckbox::Inner = skene_simple::checkbox::SimpleCheckbox<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleCheckbox::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleCheckbox::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleCheckbox::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleCheckbox::wrap(Self::Inner) -> Self
-impl skene_simple::checkbox::SimpleCheckboxBase<skene_web::platform::web::Web> for skene_simple_web::SimpleCheckbox
 pub struct skene_simple_web::SimpleContextMenu(_)
 impl core::default::Default for skene_simple_web::SimpleContextMenu
 pub fn skene_simple_web::SimpleContextMenu::default() -> Self
@@ -67,49 +84,6 @@ pub fn skene_simple_web::SimpleContextMenu::inner_mut(&mut self) -> &mut Self::I
 pub fn skene_simple_web::SimpleContextMenu::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleContextMenu::wrap(Self::Inner) -> Self
 impl skene_simple::context_menu::SimpleContextMenuBase<skene_web::platform::web::Web> for skene_simple_web::SimpleContextMenu
-pub struct skene_simple_web::SimplePicker<T: skene_foundation::control::choice::Choice>(_)
-impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_simple_web::SimplePicker<T>
-pub fn skene_simple_web::SimplePicker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_simple_web::SimplePicker<T>
-pub fn skene_simple_web::SimplePicker<T>::default() -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_simple_web::SimplePicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimplePicker<T> where skene_simple::picker::SimplePicker<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
-pub fn skene_simple_web::SimplePicker<T>::build(self) -> skene_foundation::spine::node::NodeId
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_simple_web::SimplePicker<T>
-pub type skene_simple_web::SimplePicker<T>::Inner = skene_simple::picker::SimplePicker<skene_web::platform::web::Web, T>
-pub fn skene_simple_web::SimplePicker<T>::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimplePicker<T>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimplePicker<T>::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimplePicker<T>::wrap(Self::Inner) -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_simple::picker::SimplePickerBase<skene_web::platform::web::Web, T> for skene_simple_web::SimplePicker<T>
-pub struct skene_simple_web::SimpleRadio(_)
-impl core::fmt::Debug for skene_simple_web::SimpleRadio
-pub fn skene_simple_web::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleRadio
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleRadio
-pub fn skene_simple_web::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleRadio
-pub type skene_simple_web::SimpleRadio::Inner = skene_simple::radio::SimpleRadio<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleRadio::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleRadio::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleRadio::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleRadio::wrap(Self::Inner) -> Self
-impl skene_simple::radio::SimpleRadioBase<skene_web::platform::web::Web> for skene_simple_web::SimpleRadio
-pub struct skene_simple_web::SimpleRadioGroup<T: skene_foundation::control::choice::Choice>(_)
-impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_simple_web::SimpleRadioGroup<T>
-pub fn skene_simple_web::SimpleRadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_simple_web::SimpleRadioGroup<T>
-pub fn skene_simple_web::SimpleRadioGroup<T>::default() -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleRadioGroup<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleRadioGroup<T> where skene_simple::radio::SimpleRadioGroup<skene_web::Active, T>: skene_foundation::spine::view::View<skene_web::Active>, Self: 'static
-pub fn skene_simple_web::SimpleRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleRadioGroup<T>
-pub type skene_simple_web::SimpleRadioGroup<T>::Inner = skene_simple::radio::SimpleRadioGroup<skene_web::platform::web::Web, T>
-pub fn skene_simple_web::SimpleRadioGroup<T>::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleRadioGroup<T>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleRadioGroup<T>::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleRadioGroup<T>::wrap(Self::Inner) -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_simple::radio::SimpleRadioGroupBase<skene_web::platform::web::Web, T> for skene_simple_web::SimpleRadioGroup<T>
 pub struct skene_simple_web::SimpleSlider(_)
 impl core::default::Default for skene_simple_web::SimpleSlider
 pub fn skene_simple_web::SimpleSlider::default() -> skene_simple_web::SimpleSlider

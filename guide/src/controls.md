@@ -313,19 +313,23 @@ fn order(name: Signal<String>, size: Signal<Size>) -> impl View {
     SimplePicker::new()
       .set_label("Size")
       .bind_chosen(size)
-      .set_options([
-        (Size::Small, "Small"),
-        (Size::Medium, "Medium"),
-        (Size::Large, "Large"),
-      ]),
+      .set_options((
+        SimpleListboxOption::new(Size::Small, "Small"),
+        SimpleListboxOption::new(Size::Medium, "Medium"),
+        SimpleListboxOption::new(Size::Large, "Large"),
+      )),
     SimpleButton::new("Order").handle_activate(move || println!("ordered {}", name.get())),
   ))
 }
 ```
 
-Simple's button, card and tooltip are presets: each constructor returns the facade's own
-built-in, styled, so every member of the built-in applies. A button takes a constructor
-per variant, and `derive_variant` follows a signal, re-inking the button in place:
+Simple's button, card, tooltip, checkbox, radio group and radio, and its picker and the
+options it lists, are presets: each constructor returns the facade's own built-in,
+styled, so every member of the built-in applies. `SimpleRadioGroup::new()` is a
+`RadioGroup`, `SimplePicker::new()` a `Picker`, and `SimpleListboxOption::new(value,
+caption)` a `ListboxOption` whose caption names it for the face and for type-ahead. A
+button takes a constructor per variant, and `derive_variant` follows a signal, re-inking
+the button in place:
 
 ```rust
 use skene_simple_web::prelude::*;
@@ -350,4 +354,8 @@ fn actions(dirty: Signal<bool>) -> impl View {
 `SimpleButton::styled(button, variant)` dresses a button built otherwise, a derived
 label's (`Button::derive`) or one drawn by an icon, and `SimpleCard::new()` is a
 `Container` around the one child it is given, a `Column` spaced `SimpleCard::spacing()`
-apart where it groups several.
+apart where it groups several. Every preset has its `styled` beside it, and the pieces it
+composes, a checkbox's or a radio's `mark`, a picker's `face` and `list`, an option's
+`check` and `label`, are public, so a library composes them differently. A mark follows
+the control's state rather than a value it reads, so the checked state may be bound
+after the preset is made.

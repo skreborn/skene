@@ -3,7 +3,7 @@ name = "skene-simple"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Simple, skene's component library: its palette, shapes and glyphs, and its views generic over the platform"
+description = "Simple, skene's component library: its palette and shapes, and its views generic over the platform"
 license.workspace = true
 repository.workspace = true
 

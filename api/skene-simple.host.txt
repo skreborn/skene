@@ -1,47 +1,4 @@
 pub mod skene_simple
-pub mod skene_simple::glyphs
-pub struct skene_simple::glyphs::SimpleGlyphs
-pub skene_simple::glyphs::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::glyphs::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::glyphs::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::glyphs::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::glyphs::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-impl skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
-pub fn skene_simple::glyphs::SimpleGlyphs::current() -> Self
-pub fn skene_simple::glyphs::SimpleGlyphs::indicator(&self) -> alloc::string::String
-pub fn skene_simple::glyphs::SimpleGlyphs::radio(&self, bool) -> alloc::string::String
-pub fn skene_simple::glyphs::SimpleGlyphs::set_checkbox(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::glyphs::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::glyphs::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
-impl core::clone::Clone for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::clone(&self) -> skene_simple::glyphs::SimpleGlyphs
-impl core::cmp::PartialEq for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::eq(&self, &skene_simple::glyphs::SimpleGlyphs) -> bool
-impl core::default::Default for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::default() -> Self
-impl core::fmt::Debug for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_simple::glyphs::SimpleGlyphs
-impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, i32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
-pub const skene_simple::glyphs::CHECKBOX_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::CHECKBOX_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::PICKER_INDICATOR: skene_foundation::spine::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::RADIO_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
-pub const skene_simple::glyphs::RADIO_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
-pub enum skene_simple::SimpleMarks
-pub skene_simple::SimpleMarks::Drawn
-pub skene_simple::SimpleMarks::Glyph
-impl core::clone::Clone for skene_simple::SimpleMarks
-pub fn skene_simple::SimpleMarks::clone(&self) -> skene_simple::SimpleMarks
-impl core::cmp::Eq for skene_simple::SimpleMarks
-impl core::cmp::PartialEq for skene_simple::SimpleMarks
-pub fn skene_simple::SimpleMarks::eq(&self, &skene_simple::SimpleMarks) -> bool
-impl core::fmt::Debug for skene_simple::SimpleMarks
-pub fn skene_simple::SimpleMarks::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_simple::SimpleMarks
-impl core::marker::StructuralPartialEq for skene_simple::SimpleMarks
 pub enum skene_simple::SimpleVariant
 pub skene_simple::SimpleVariant::Destructive
 pub skene_simple::SimpleVariant::Ghost
@@ -65,31 +22,6 @@ impl core::fmt::Debug for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_simple::SimpleVariant
 impl core::marker::StructuralPartialEq for skene_simple::SimpleVariant
-pub struct skene_simple::SimpleGlyphs
-pub skene_simple::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-pub skene_simple::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
-impl skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
-pub fn skene_simple::glyphs::SimpleGlyphs::current() -> Self
-pub fn skene_simple::glyphs::SimpleGlyphs::indicator(&self) -> alloc::string::String
-pub fn skene_simple::glyphs::SimpleGlyphs::radio(&self, bool) -> alloc::string::String
-pub fn skene_simple::glyphs::SimpleGlyphs::set_checkbox(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::glyphs::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::glyphs::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
-impl core::clone::Clone for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::clone(&self) -> skene_simple::glyphs::SimpleGlyphs
-impl core::cmp::PartialEq for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::eq(&self, &skene_simple::glyphs::SimpleGlyphs) -> bool
-impl core::default::Default for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::default() -> Self
-impl core::fmt::Debug for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for skene_simple::glyphs::SimpleGlyphs
-impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, i32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple::glyphs::SimpleGlyphs
-pub fn skene_simple::glyphs::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
 pub struct skene_simple::SimpleLook<N: skene_foundation::spine::scalar::Scalar>
 pub skene_simple::SimpleLook::border: core::option::Option<skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>>
 pub skene_simple::SimpleLook::focus: skene_foundation::spine::token::Token<skene_foundation::spine::values::color::Color, N>
@@ -218,39 +150,11 @@ impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_simple
 impl<N: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleShape<N>
 pub fn skene_simple::SimpleShape<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: core::marker::Copy> core::marker::Copy for skene_simple::SimpleShape<N>
-pub trait skene_simple::SimpleCheckboxBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleCheckbox<P>>
-pub fn skene_simple::SimpleCheckboxBase::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
-pub fn skene_simple::SimpleCheckboxBase::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_simple::SimpleCheckboxBase::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
-pub fn skene_simple::SimpleCheckboxBase::new() -> Self
-pub fn skene_simple::SimpleCheckboxBase::set_checked(self, bool) -> Self
-pub fn skene_simple::SimpleCheckboxBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleContextMenuBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleContextMenu<P>>
 pub fn skene_simple::SimpleContextMenuBase::new() -> Self
 pub fn skene_simple::SimpleContextMenuBase::serve(self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId where <P as skene_foundation::spine::realization::Realization>::Scalar: skene_simple::SimpleUnit, <P as skene_foundation::spine::realization::Realization>::StyleExt: skene_foundation::corner_radius::CornerRadius
 pub fn skene_simple::SimpleContextMenuBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
 pub fn skene_simple::SimpleContextMenuBase::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::context_menu::MenuEntry>) -> Self
-pub trait skene_simple::SimplePickerBase<P: skene_foundation::spine::realization::Realization, T: skene_foundation::control::choice::Choice>: skene_foundation::spine::wraps::Wraps<Inner = SimplePicker<P, T>>
-pub fn skene_simple::SimplePickerBase::bind_chosen(self, skene_reactive::signal::Signal<T>) -> Self
-pub fn skene_simple::SimplePickerBase::derive_chosen(self, impl core::ops::function::Fn() -> T + 'static) -> Self
-pub fn skene_simple::SimplePickerBase::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_simple::SimplePickerBase::handle_choose(self, impl core::ops::function::Fn(T) + 'static) -> Self
-pub fn skene_simple::SimplePickerBase::new() -> Self
-pub fn skene_simple::SimplePickerBase::set_chosen(self, T) -> Self
-pub fn skene_simple::SimplePickerBase::set_disabled(self, bool) -> Self
-pub fn skene_simple::SimplePickerBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimplePickerBase::set_options<L: core::convert::Into<alloc::string::String>>(self, impl core::iter::traits::collect::IntoIterator<Item = (T, L)>) -> Self
-pub trait skene_simple::SimpleRadioBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleRadio<P>>
-pub fn skene_simple::SimpleRadioBase::new(impl skene_foundation::control::choice::Choice) -> Self
-pub fn skene_simple::SimpleRadioBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub trait skene_simple::SimpleRadioGroupBase<P: skene_foundation::spine::realization::Realization, T: skene_foundation::control::choice::Choice>: skene_foundation::spine::wraps::Wraps<Inner = SimpleRadioGroup<P, T>>
-pub fn skene_simple::SimpleRadioGroupBase::bind_chosen(self, skene_reactive::signal::Signal<T>) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::derive_chosen(self, impl core::ops::function::Fn() -> T + 'static) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::handle_choose(self, impl core::ops::function::Fn(T) + 'static) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::new() -> Self
-pub fn skene_simple::SimpleRadioGroupBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::set_chosen(self, T) -> Self
-pub fn skene_simple::SimpleRadioGroupBase::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleSliderBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleSlider<P>>
 pub fn skene_simple::SimpleSliderBase::bind_value(self, skene_reactive::signal::Signal<f32>) -> Self
 pub fn skene_simple::SimpleSliderBase::derive_range(self, impl core::ops::function::Fn() -> skene_foundation::control::slider::SliderRange + 'static) -> Self
@@ -286,11 +190,8 @@ pub fn skene_simple::SimpleTextFieldBase::set_placeholder(self, impl core::conve
 pub fn skene_simple::SimpleTextFieldBase::set_secure(self, bool) -> Self
 pub fn skene_simple::SimpleTextFieldBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub trait skene_simple::SimpleUnit: skene_foundation::spine::scalar::Scalar
-pub const skene_simple::SimpleUnit::MARKS: skene_simple::SimpleMarks
 pub fn skene_simple::SimpleUnit::shape() -> skene_simple::SimpleShape<Self>
 impl skene_simple::SimpleUnit for f32
-pub const f32::MARKS: skene_simple::SimpleMarks
 pub fn f32::shape() -> skene_simple::SimpleShape<Self>
 impl skene_simple::SimpleUnit for i32
-pub const i32::MARKS: skene_simple::SimpleMarks
 pub fn i32::shape() -> skene_simple::SimpleShape<Self>

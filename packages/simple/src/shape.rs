@@ -32,8 +32,7 @@ use super::SimplePalette;
 /// The lengths the Simple views are drawn with, in one medium's unit.
 ///
 /// [`SimpleUnit`] gives each unit its shape: logical pixels keep the language's pixel
-/// metrics, cells take whole-cell insets and glyph-sized marks, and one view draws
-/// both.
+/// metrics, and cells take whole-cell insets and glyph-sized marks.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct SimpleShape<N> {
@@ -93,17 +92,6 @@ pub struct SimpleShape<N> {
 pub trait SimpleUnit: Scalar {
   /// The shape in this unit.
   fn shape() -> SimpleShape<Self>;
-  /// How the medium shows a control's marks.
-  const MARKS: SimpleMarks;
-}
-
-/// How a medium shows a checkbox or radio mark and a picker's indicator.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SimpleMarks {
-  /// Boxes the medium draws: a ring, a dot, a check.
-  Drawn,
-  /// Glyphs from the [`SimpleGlyphs`](crate::SimpleGlyphs) token set.
-  Glyph,
 }
 
 impl SimpleUnit for f32 {
@@ -133,8 +121,6 @@ impl SimpleUnit for f32 {
       thumb_focus: SimplePalette::<Self>::PRIMARY_SURFACE,
     }
   }
-
-  const MARKS: SimpleMarks = SimpleMarks::Drawn;
 }
 
 impl SimpleUnit for i32 {
@@ -164,8 +150,6 @@ impl SimpleUnit for i32 {
       thumb_focus: SimplePalette::<Self>::RING,
     }
   }
-
-  const MARKS: SimpleMarks = SimpleMarks::Glyph;
 }
 
 /// The shape of the platform's unit.

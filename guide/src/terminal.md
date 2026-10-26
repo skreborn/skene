@@ -19,6 +19,23 @@ fn status(saved: Signal<bool>) -> impl View {
 }
 ```
 
+The Simple library draws its marks there in glyphs: a checkbox shows `[x]` or `[ ]`, a
+radio `(x)` or `( )` and a picker's face `▾`, each from `SimpleGlyphs`, a token set of
+the terminal's Simple crate that a theme redefines beneath it like any palette:
+
+```rust
+use skene_simple_terminal::prelude::*;
+use skene_terminal::prelude::*;
+
+fn consent(agreed: Signal<bool>) -> impl View {
+  Theme::new(SimpleGlyphs::default().set_checkbox("[*]", "[ ]")).set_child_builder(move || {
+    SimpleCheckbox::new()
+      .set_label("I agree")
+      .bind_checked(agreed)
+  })
+}
+```
+
 The terminal is its facade's one platform, so `Platform::CURRENT` is
 `Platform::Terminal` in every build an app's terminal shell compiles in. Its own
 vocabulary lives in `skene_terminal::platform::terminal`: `CellPainter`, the escape

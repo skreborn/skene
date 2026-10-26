@@ -6,10 +6,13 @@
 use skene_foundation::{
   Animation,
   Axes,
+  BasicPickerBase,
+  BasicRadioGroupBase,
   BoxStyle,
   Color,
   ColumnBase,
   ContainerBase,
+  ControlBase,
   DecorationBase,
   DecorationWithCornerRadius,
   Dimension,
@@ -40,6 +43,7 @@ use skene_foundation::{
   StaticLeaf,
   TextBase,
   ThemeBase,
+  ToggleBase,
   TooltipBase,
   TrackLimit,
   Transition,
@@ -1031,7 +1035,10 @@ fn every_rule_has_a_class_specificity() {
       SimpleTextField::new().bind_value(Signal::new(String::new())),
       SimplePicker::new()
         .set_label("picker")
-        .set_options([('a', "A"), ('b', "B")])
+        .set_options((
+          SimpleListboxOption::new('a', "A"),
+          SimpleListboxOption::new('b', "B"),
+        ))
         .bind_chosen(Signal::new('a')),
       SimpleTooltip::new("described").set_child(SimpleButton::new("Described")),
     ))

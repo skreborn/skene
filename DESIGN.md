@@ -638,8 +638,19 @@ Each preset's pieces are public (`SimpleButton::styled`, `derive_styled`,
 tokens without defining them: a `Theme` of the palette above it defines them, or a read
 of the palette defines its default at the root. The palette defines every variant's
 border token, transparent for a filled look, so a derived border needs the variant
-alone. Simple's other views are still written once in `skene-simple` over the
-realization and wrapped per facade.
+alone. Its checkbox, radio group and radio, and its picker with its option
+(`SimpleCheckbox::new()`, `SimpleRadioGroup::new()`, `SimpleRadio::new(value)`,
+`SimplePicker::new()`, `SimpleListboxOption::new(value, caption)`) are presets too, each
+replacing the built-in's mark and chrome by property and part. A mark follows the
+control's state, `State::Checked` resolving against the enclosing control, rather than
+reading the value the app binds after the preset is made: the web draws a box or a ring
+on the card surface that fills with the primary surface while checked, and the terminal
+stacks the checked and the unchecked glyph of `SimpleGlyphs` in one place, each hidden
+unless the state matches. The picker's face reads the chosen option's name from the
+roster (`Roster::name_of`), its indicator the face's `Part::Face`, its list surface the
+`Part::List`, and an option's caption, which the preset takes so it inks in the primary
+ink while chosen, also names it for type-ahead. Simple's other views are still written
+once in `skene-simple` over the realization and wrapped per facade.
 
 - **A control decides its verdict.** The behavior runs first and its verdict is the
   whole verdict; a user's handler observes. A button's click never reaches the row it
@@ -1296,8 +1307,9 @@ through the same `define_tokens` call as a scope's (`Scene::define_tokens` and t
 seam's alike), their scope `TokenScope::Root`: the web writes them as
 the root rule's class, and the terminal re-resolves its styles as it does for a scope's.
 `Typography` (all text inheritance on both facades) and the Simple library's
-`SimpleGlyphs` (its terminal marks, a set only a platform with text tokens over cells can
-theme) are token sets, so the framework has one inheritance mechanism.
+`SimpleGlyphs` (its terminal marks, in `skene-simple-terminal`, the crate of the one
+platform whose tokens hold text over cells) are token sets, so the framework has one
+inheritance mechanism.
 `SystemColors<N>` (`skene_foundation::SystemColors`, a facade's `SystemColors` in its
 unit) is the platform's colors, as CSS's system colors are: sixteen color tokens (the
 ink, a muted ink, the window, a control with its hover and pressed fills, a border, the

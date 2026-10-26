@@ -125,7 +125,7 @@ proptest! {
               ),
             SimplePicker::new()
               .set_label("season")
-              .set_options([("spring", "Spring"), ("summer", "Summer"), ("autumn", "Autumn")])
+              .set_options((SimpleListboxOption::new("spring", "Spring"), SimpleListboxOption::new("summer", "Summer"), SimpleListboxOption::new("autumn", "Autumn")))
               .bind_chosen(season),
             Container::new()
               .set_background(SimplePalette::CARD)

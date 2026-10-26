@@ -31,8 +31,8 @@ supersedes.
   and one whose members hold no stop is passed over. Revisit when a collection must
   act on its shortcut beyond taking focus, such as choosing its next member.
 - **A picker's and a listbox's options from `(value, caption)` pairs** (2026-10-25),
-  as `SimplePicker::set_options` and the spike's `Picker::add_option` take them: the
-  styled `Picker<T>` and `Listbox<C>` take `ListboxOption` views (`set_options`,
+  as `SimplePicker::set_options` took them and the spike's `Picker::add_option` takes
+  them: the styled `Picker<T>` and `Listbox<C>` take `ListboxOption` views (`set_options`,
   `set_children`), styled and wrapped like any control and at any depth beside other
   views, as a radio group takes its radios, and the picker's face reads the chosen
   option's name from its roster. Revisit when a list's options must be built from data

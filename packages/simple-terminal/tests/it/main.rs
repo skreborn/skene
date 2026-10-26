@@ -167,7 +167,11 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
 
     mount_themed(move || {
       Column::new().set_children((SimplePicker::new()
-        .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
+        .set_options((
+          SimpleListboxOption::new("sm", "Small"),
+          SimpleListboxOption::new("md", "Medium"),
+          SimpleListboxOption::new("lg", "Large"),
+        ))
         .bind_chosen(value),))
     });
 

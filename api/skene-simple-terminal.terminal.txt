@@ -1,15 +1,40 @@
 pub mod skene_simple_terminal
-pub use skene_simple_terminal::SimpleCheckboxBase
 pub use skene_simple_terminal::SimpleContextMenuBase
-pub use skene_simple_terminal::SimpleGlyphs
-pub use skene_simple_terminal::SimplePickerBase
-pub use skene_simple_terminal::SimpleRadioBase
-pub use skene_simple_terminal::SimpleRadioGroupBase
 pub use skene_simple_terminal::SimpleSliderBase
 pub use skene_simple_terminal::SimpleTextEditorBase
 pub use skene_simple_terminal::SimpleTextFieldBase
 pub use skene_simple_terminal::SimpleVariant
-pub use skene_simple_terminal::glyph
+pub mod skene_simple_terminal::glyph
+pub struct skene_simple_terminal::glyph::SimpleGlyphs
+pub skene_simple_terminal::glyph::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::glyph::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::glyph::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::glyph::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::glyph::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+impl skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::current() -> Self
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::indicator(&self) -> alloc::string::String
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::radio(&self, bool) -> alloc::string::String
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::set_checkbox(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::clone(&self) -> skene_simple_terminal::glyph::SimpleGlyphs
+impl core::cmp::PartialEq for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::eq(&self, &skene_simple_terminal::glyph::SimpleGlyphs) -> bool
+impl core::default::Default for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::default() -> Self
+impl core::fmt::Debug for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_simple_terminal::glyph::SimpleGlyphs
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, i32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+pub const skene_simple_terminal::glyph::CHECKBOX_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_terminal::glyph::CHECKBOX_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_terminal::glyph::PICKER_INDICATOR: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_terminal::glyph::RADIO_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_terminal::glyph::RADIO_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
 pub mod skene_simple_terminal::prelude
 pub use skene_simple_terminal::prelude::<<super::*>>
 pub enum skene_simple_terminal::SimpleButton
@@ -31,6 +56,42 @@ pub fn skene_simple_terminal::SimpleCard::spacing() -> i32
 pub fn skene_simple_terminal::SimpleCard::styled(skene_terminal::views::container::Container) -> skene_terminal::views::container::Container
 impl core::fmt::Debug for skene_simple_terminal::SimpleCard
 pub fn skene_simple_terminal::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_terminal::SimpleCheckbox
+impl skene_simple_terminal::SimpleCheckbox
+pub fn skene_simple_terminal::SimpleCheckbox::mark() -> skene_terminal::views::stack::Stack
+pub fn skene_simple_terminal::SimpleCheckbox::new() -> skene_terminal::views::checkbox::Checkbox
+pub fn skene_simple_terminal::SimpleCheckbox::styled(skene_terminal::views::checkbox::Checkbox) -> skene_terminal::views::checkbox::Checkbox
+impl core::fmt::Debug for skene_simple_terminal::SimpleCheckbox
+pub fn skene_simple_terminal::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_terminal::SimpleListboxOption
+impl skene_simple_terminal::SimpleListboxOption
+pub fn skene_simple_terminal::SimpleListboxOption::check() -> skene_terminal::views::container::Container
+pub fn skene_simple_terminal::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_foundation::control::Label<skene_terminal::Active>
+pub fn skene_simple_terminal::SimpleListboxOption::new(impl skene_foundation::control::choice::Choice, impl core::convert::Into<alloc::string::String>) -> skene_terminal::views::listbox::ListboxOption
+pub fn skene_simple_terminal::SimpleListboxOption::styled(skene_terminal::views::listbox::ListboxOption) -> skene_terminal::views::listbox::ListboxOption
+impl core::fmt::Debug for skene_simple_terminal::SimpleListboxOption
+pub fn skene_simple_terminal::SimpleListboxOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_terminal::SimplePicker
+impl skene_simple_terminal::SimplePicker
+pub fn skene_simple_terminal::SimplePicker::face(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_terminal::views::flex::Row
+pub fn skene_simple_terminal::SimplePicker::list() -> skene_terminal::views::container::Container
+pub fn skene_simple_terminal::SimplePicker::new<T: skene_foundation::control::choice::Choice>() -> skene_terminal::views::picker::Picker<T>
+pub fn skene_simple_terminal::SimplePicker::styled<T: skene_foundation::control::choice::Choice>(skene_terminal::views::picker::Picker<T>) -> skene_terminal::views::picker::Picker<T>
+impl core::fmt::Debug for skene_simple_terminal::SimplePicker
+pub fn skene_simple_terminal::SimplePicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_terminal::SimpleRadio
+impl skene_simple_terminal::SimpleRadio
+pub fn skene_simple_terminal::SimpleRadio::mark() -> skene_terminal::views::stack::Stack
+pub fn skene_simple_terminal::SimpleRadio::new(impl skene_foundation::control::choice::Choice) -> skene_terminal::views::radio::Radio
+pub fn skene_simple_terminal::SimpleRadio::styled(skene_terminal::views::radio::Radio) -> skene_terminal::views::radio::Radio
+impl core::fmt::Debug for skene_simple_terminal::SimpleRadio
+pub fn skene_simple_terminal::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_terminal::SimpleRadioGroup
+impl skene_simple_terminal::SimpleRadioGroup
+pub fn skene_simple_terminal::SimpleRadioGroup::new<T: skene_foundation::control::choice::Choice>() -> skene_terminal::views::radio::RadioGroup<T>
+pub fn skene_simple_terminal::SimpleRadioGroup::styled<T: skene_foundation::control::choice::Choice>(skene_terminal::views::radio::RadioGroup<T>) -> skene_terminal::views::radio::RadioGroup<T>
+impl core::fmt::Debug for skene_simple_terminal::SimpleRadioGroup
+pub fn skene_simple_terminal::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_simple_terminal::SimpleTooltip
 impl skene_simple_terminal::SimpleTooltip
 pub fn skene_simple_terminal::SimpleTooltip::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_terminal::views::tooltip::Tooltip
@@ -39,21 +100,6 @@ pub fn skene_simple_terminal::SimpleTooltip::styled(skene_terminal::views::toolt
 pub fn skene_simple_terminal::SimpleTooltip::view(impl skene_terminal::View) -> skene_terminal::views::tooltip::Tooltip
 impl core::fmt::Debug for skene_simple_terminal::SimpleTooltip
 pub fn skene_simple_terminal::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_simple_terminal::SimpleCheckbox(_)
-impl core::default::Default for skene_simple_terminal::SimpleCheckbox
-pub fn skene_simple_terminal::SimpleCheckbox::default() -> skene_simple_terminal::SimpleCheckbox
-impl core::fmt::Debug for skene_simple_terminal::SimpleCheckbox
-pub fn skene_simple_terminal::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleCheckbox
-impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimpleCheckbox
-pub fn skene_simple_terminal::SimpleCheckbox::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleCheckbox
-pub type skene_simple_terminal::SimpleCheckbox::Inner = skene_simple::checkbox::SimpleCheckbox<skene_terminal::platform::terminal::Terminal>
-pub fn skene_simple_terminal::SimpleCheckbox::inner(&self) -> &Self::Inner
-pub fn skene_simple_terminal::SimpleCheckbox::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_terminal::SimpleCheckbox::into_inner(self) -> Self::Inner
-pub fn skene_simple_terminal::SimpleCheckbox::wrap(Self::Inner) -> Self
-impl skene_simple::checkbox::SimpleCheckboxBase<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimpleCheckbox
 pub struct skene_simple_terminal::SimpleContextMenu(_)
 impl core::default::Default for skene_simple_terminal::SimpleContextMenu
 pub fn skene_simple_terminal::SimpleContextMenu::default() -> Self
@@ -69,49 +115,31 @@ pub fn skene_simple_terminal::SimpleContextMenu::inner_mut(&mut self) -> &mut Se
 pub fn skene_simple_terminal::SimpleContextMenu::into_inner(self) -> Self::Inner
 pub fn skene_simple_terminal::SimpleContextMenu::wrap(Self::Inner) -> Self
 impl skene_simple::context_menu::SimpleContextMenuBase<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimpleContextMenu
-pub struct skene_simple_terminal::SimplePicker<T: skene_foundation::control::choice::Choice>(_)
-impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_simple_terminal::SimplePicker<T>
-pub fn skene_simple_terminal::SimplePicker<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_simple_terminal::SimplePicker<T>
-pub fn skene_simple_terminal::SimplePicker<T>::default() -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimplePicker<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimplePicker<T> where skene_simple::picker::SimplePicker<skene_terminal::Active, T>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
-pub fn skene_simple_terminal::SimplePicker<T>::build(self) -> skene_foundation::spine::node::NodeId
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimplePicker<T>
-pub type skene_simple_terminal::SimplePicker<T>::Inner = skene_simple::picker::SimplePicker<skene_terminal::platform::terminal::Terminal, T>
-pub fn skene_simple_terminal::SimplePicker<T>::inner(&self) -> &Self::Inner
-pub fn skene_simple_terminal::SimplePicker<T>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_terminal::SimplePicker<T>::into_inner(self) -> Self::Inner
-pub fn skene_simple_terminal::SimplePicker<T>::wrap(Self::Inner) -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_simple::picker::SimplePickerBase<skene_terminal::platform::terminal::Terminal, T> for skene_simple_terminal::SimplePicker<T>
-pub struct skene_simple_terminal::SimpleRadio(_)
-impl core::fmt::Debug for skene_simple_terminal::SimpleRadio
-pub fn skene_simple_terminal::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleRadio
-impl skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimpleRadio
-pub fn skene_simple_terminal::SimpleRadio::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleRadio
-pub type skene_simple_terminal::SimpleRadio::Inner = skene_simple::radio::SimpleRadio<skene_terminal::platform::terminal::Terminal>
-pub fn skene_simple_terminal::SimpleRadio::inner(&self) -> &Self::Inner
-pub fn skene_simple_terminal::SimpleRadio::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_terminal::SimpleRadio::into_inner(self) -> Self::Inner
-pub fn skene_simple_terminal::SimpleRadio::wrap(Self::Inner) -> Self
-impl skene_simple::radio::SimpleRadioBase<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimpleRadio
-pub struct skene_simple_terminal::SimpleRadioGroup<T: skene_foundation::control::choice::Choice>(_)
-impl<T: core::fmt::Debug + skene_foundation::control::choice::Choice> core::fmt::Debug for skene_simple_terminal::SimpleRadioGroup<T>
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T: skene_foundation::control::choice::Choice> core::default::Default for skene_simple_terminal::SimpleRadioGroup<T>
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::default() -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::AnyKind for skene_simple_terminal::SimpleRadioGroup<T>
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal> for skene_simple_terminal::SimpleRadioGroup<T> where skene_simple::radio::SimpleRadioGroup<skene_terminal::Active, T>: skene_foundation::spine::view::View<skene_terminal::Active>, Self: 'static
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::build(self) -> skene_foundation::spine::node::NodeId
-impl<T: skene_foundation::control::choice::Choice> skene_foundation::spine::wraps::Wraps for skene_simple_terminal::SimpleRadioGroup<T>
-pub type skene_simple_terminal::SimpleRadioGroup<T>::Inner = skene_simple::radio::SimpleRadioGroup<skene_terminal::platform::terminal::Terminal, T>
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::inner(&self) -> &Self::Inner
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::into_inner(self) -> Self::Inner
-pub fn skene_simple_terminal::SimpleRadioGroup<T>::wrap(Self::Inner) -> Self
-impl<T: skene_foundation::control::choice::Choice> skene_simple::radio::SimpleRadioGroupBase<skene_terminal::platform::terminal::Terminal, T> for skene_simple_terminal::SimpleRadioGroup<T>
+pub struct skene_simple_terminal::SimpleGlyphs
+pub skene_simple_terminal::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_terminal::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+impl skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::current() -> Self
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::indicator(&self) -> alloc::string::String
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::radio(&self, bool) -> alloc::string::String
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::set_checkbox(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::clone(&self) -> skene_simple_terminal::glyph::SimpleGlyphs
+impl core::cmp::PartialEq for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::eq(&self, &skene_simple_terminal::glyph::SimpleGlyphs) -> bool
+impl core::default::Default for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::default() -> Self
+impl core::fmt::Debug for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_simple_terminal::glyph::SimpleGlyphs
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, i32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple_terminal::glyph::SimpleGlyphs
+pub fn skene_simple_terminal::glyph::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
 pub struct skene_simple_terminal::SimpleSlider(_)
 impl core::default::Default for skene_simple_terminal::SimpleSlider
 pub fn skene_simple_terminal::SimpleSlider::default() -> skene_simple_terminal::SimpleSlider

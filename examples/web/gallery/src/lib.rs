@@ -400,12 +400,12 @@ fn inputs() -> impl View {
         )),
       SimplePicker::new()
         .set_label("Season")
-        .set_options([
-          (Season::Spring, "Spring"),
-          (Season::Summer, "Summer"),
-          (Season::Autumn, "Autumn"),
-          (Season::Winter, "Winter"),
-        ])
+        .set_options((
+          SimpleListboxOption::new(Season::Spring, "Spring"),
+          SimpleListboxOption::new(Season::Summer, "Summer"),
+          SimpleListboxOption::new(Season::Autumn, "Autumn"),
+          SimpleListboxOption::new(Season::Winter, "Winter"),
+        ))
         .bind_chosen(season),
     )),
   )

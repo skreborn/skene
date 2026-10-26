@@ -21,15 +21,23 @@ use skene_terminal::{
 
 use crate::common::{colors_at, locate, read, red, rgb, rows, swatches, with_platform};
 
-fn picker(unit: Signal<&'static str>) -> SimplePicker<&'static str> {
+fn picker(unit: Signal<&'static str>) -> Picker<&'static str> {
   SimplePicker::new()
-    .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
+    .set_options((
+      SimpleListboxOption::new("px", "pixels"),
+      SimpleListboxOption::new("cell", "cells"),
+      SimpleListboxOption::new("pt", "points"),
+    ))
     .bind_chosen(unit)
 }
 
-/// Mounts a picker bound to `unit` at the top of the frame.
+/// Mounts a picker bound to `unit` at the top of the frame, under the Simple theme.
 fn mount_picker(unit: Signal<&'static str>) {
-  let _ = terminal::mount(|| Column::new().add_child(picker(unit)).build());
+  let _ = terminal::mount(|| {
+    Theme::new(SimplePalette::default())
+      .set_child_builder(move || Column::new().add_child(picker(unit)))
+      .build()
+  });
 }
 
 /// The row of the last line containing `needle`: the popup's row, beneath the face

@@ -426,7 +426,10 @@ fn a_radio_group_set_to_autofocus_serves_it_on_its_chosen_radio() {
 fn a_picker_renders_to_a_select() {
   let page = render_to_string(|| {
     SimplePicker::new()
-      .set_options([(Size::Small, "Small"), (Size::Medium, "Medium")])
+      .set_options((
+        SimpleListboxOption::new(Size::Small, "Small"),
+        SimpleListboxOption::new(Size::Medium, "Medium"),
+      ))
       .set_chosen(Size::Medium)
       .set_label("Size")
   });
@@ -503,7 +506,10 @@ fn a_styled_picker_renders_to_a_select_in_the_faces_decoration() {
 fn a_picker_choosing_none_of_its_options_selects_an_empty_one() {
   let page = render_to_string(|| {
     SimplePicker::new()
-      .set_options([(Size::Small, "Small"), (Size::Medium, "Medium")])
+      .set_options((
+        SimpleListboxOption::new(Size::Small, "Small"),
+        SimpleListboxOption::new(Size::Medium, "Medium"),
+      ))
       .set_chosen(Size::Large)
       .set_label("Size")
   });

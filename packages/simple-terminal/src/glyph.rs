@@ -1,8 +1,7 @@
-//! The glyphs the Simple controls show their marks as where the medium draws with
-//! characters, as a token set.
+//! The glyphs the Simple controls show their marks as in the terminal, as a token set.
 
 use skene_foundation::{Definition, StaticLeaf, Token, TokenName, TokenRef, TokenSet};
-use skene_reactive::{Get, Memo, use_context};
+use skene_terminal::reactive::{Get, Memo, use_context};
 
 /// A checkbox's checked mark.
 pub const CHECKBOX_CHECKED: TokenRef<String> = TokenRef::new("simple-glyph-checkbox-checked");
@@ -19,13 +18,12 @@ pub const RADIO_UNCHECKED: TokenRef<String> = TokenRef::new("simple-glyph-radio-
 /// The indicator after a picker's chosen label.
 pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("simple-glyph-picker-indicator");
 
-/// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with
-/// where the medium draws with characters: a token set a theme defines beneath it, in
-/// cells.
+/// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with in
+/// the terminal: a token set a theme defines beneath it, in cells.
 ///
-/// It exists only for a platform whose tokens hold text over cells—the terminal—so the
-/// web, which draws its marks, cannot theme it. Every default is one cell per
-/// character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
+/// It belongs to the terminal's Simple crate, whose tokens hold text over cells; the web,
+/// which draws its marks, has none. Every default is one cell per character in every
+/// terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
 /// some emulators; a theme opting into them takes that on itself.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]

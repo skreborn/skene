@@ -364,10 +364,10 @@ fn a_radio_ring_follows_the_groups_choice() {
   assert_eq!(background(&dot(0)), transparent);
 }
 
-/// A radio group without its child builds an empty group, as a control without a body
-/// does: the group's element, named and reporting its role, holding its caption alone.
+/// A radio group without radios builds an empty group: the group's element, named and
+/// reporting its role, holding its caption and an empty column of radios.
 #[wasm_bindgen_test]
-fn a_radio_group_without_its_child_builds_an_empty_group() {
+fn a_radio_group_without_radios_builds_an_empty_group() {
   let (_guard, group) = themed(|| {
     SimpleRadioGroup::new()
       .set_label("Size")
@@ -377,8 +377,9 @@ fn a_radio_group_without_its_child_builds_an_empty_group() {
 
   assert_eq!(group.get_attribute("role").as_deref(), Some("radiogroup"));
   assert_eq!(group.get_attribute("aria-label").as_deref(), Some("Size"));
-  assert_eq!(content.len(), 1, "{}", group.outer_html());
+  assert_eq!(content.len(), 2, "{}", group.outer_html());
   assert_eq!(content[0].text_content().as_deref(), Some("Size"));
+  assert!(elements(&content[1]).is_empty(), "{}", group.outer_html());
 }
 
 /// A slider's fill and its thumb's pinned edge are the fraction of the range the bound
@@ -685,7 +686,11 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   let value = Signal::new("md");
   let (_guard, picker) = themed(move || {
     SimplePicker::new()
-      .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
+      .set_options((
+        SimpleListboxOption::new("sm", "Small"),
+        SimpleListboxOption::new("md", "Medium"),
+        SimpleListboxOption::new("lg", "Large"),
+      ))
       .bind_chosen(value)
   });
   let [face, popup] = &elements(&picker)[..]
@@ -697,7 +702,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
     panic!("the shown label and the indicator");
   };
   let listbox = only_child(popup);
-  let surface = only_child(&only_child(&listbox));
+  let surface = only_child(&listbox);
   let rows = elements(&only_child(&surface));
   let check = |index: usize| elements(&rows[index])[0].clone();
   let glyph = |index: usize| only_child(&check(index));

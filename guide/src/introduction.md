@@ -7,7 +7,7 @@ can express it, and asks the terminal for every capability beyond a plain emulat
 using it only once the terminal's reply proves it.
 
 Each platform is a crate of its own, with a vocabulary typed to exactly that platform:
-`skene-gui` measures in logical pixels, `skene-terminal` in cells, and what a platform
+`skene-gui` measures in logical pixels, `skene-tui` in cells, and what a platform
 cannot draw does not exist to call. What every platform shares with identical semantics
 lives once beneath them, in `skene-foundation`: the scene, event dispatch, the controls'
 behaviors and their keys, accessibility, the style model, design tokens, motion and

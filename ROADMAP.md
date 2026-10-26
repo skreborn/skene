@@ -379,7 +379,7 @@ in a code comment.
     token and per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
-    -p skene-terminal --bench frame --target host-tuple --config
+    -p skene-tui --bench frame --target host-tuple --config
     "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`);
     selection spans compute once per frame; clusters re-segment around an edit, and undo
     stores range diffs.
@@ -644,8 +644,8 @@ in a code comment.
     `window().fetch`, which also serves Web Workers.
 
 35. **Confirm docs.rs documents every platform's build.** `skene-gui` and
-    `skene-simple-gui` name each target's leaf, and `skene-terminal` and
-    `skene-simple-terminal` the terminal, through `cargo-args` setting
+    `skene-simple-gui` name each target's leaf, and `skene-tui` and
+    `skene-simple-tui` the terminal, through `cargo-args` setting
     `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over
     `build.*` and an environment variable over both, so on the first publish either
     docs.rs's own rustdoc flags or these may be dropped: check every target's pages, and

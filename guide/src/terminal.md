@@ -7,8 +7,8 @@ border is a cell of box-drawing glyphs. What the terminal cannot draw does not e
 call.
 
 ```rust
-use skene_simple_terminal::prelude::*;
-use skene_terminal::prelude::*;
+use skene_simple_tui::prelude::*;
+use skene_tui::prelude::*;
 
 fn status(saved: Signal<bool>) -> impl View {
   Row::new().set_spacing(2).set_children((
@@ -24,8 +24,8 @@ radio `(x)` or `( )` and a picker's face `▾`, each from `SimpleGlyphs`, a toke
 the terminal's Simple crate that a theme redefines beneath it like any palette:
 
 ```rust
-use skene_simple_terminal::prelude::*;
-use skene_terminal::prelude::*;
+use skene_simple_tui::prelude::*;
+use skene_tui::prelude::*;
 
 fn consent(agreed: Signal<bool>) -> impl View {
   Theme::new(SimpleGlyphs::default().set_checkbox("[*]", "[ ]")).set_child_builder(move || {
@@ -38,7 +38,7 @@ fn consent(agreed: Signal<bool>) -> impl View {
 
 The terminal is its facade's one platform, so `Platform::CURRENT` is
 `Platform::Terminal` in every build an app's terminal shell compiles in. Its own
-vocabulary lives in `skene_terminal::platform::terminal`: `CellPainter`, the escape
+vocabulary lives in `skene_tui::platform::terminal`: `CellPainter`, the escape
 trait a low-level view paints the terminal's cells through, and `install`, `mount` and
 `uninstall`, the seams an in-process test builds its views through (see
 [Testing](testing.md)), while `launch` stays at the root.
@@ -65,7 +65,7 @@ through `Launch`: which clipboard operations exist, and whether the app takes th
 mouse at all.
 
 ```rust,no_run
-use skene_terminal::{Clipboard, Launch, prelude::*};
+use skene_tui::{Clipboard, Launch, prelude::*};
 
 fn app() -> impl View {
   Text::new("Copy me")

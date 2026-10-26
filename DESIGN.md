@@ -20,7 +20,7 @@ throughout—there is no separate "widget" concept.
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout every platform but the web computes
 (`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
-platforms (`skene-gui`, `skene-terminal`) on the foundation and, where
+platforms (`skene-gui`, `skene-tui`) on the foundation and, where
 they draw, on those two, the Simple core (its palette, variants and sizes, naming no
 realization) on the foundation, each platform's Simple crate (its presets) on its
 facade, and the macros, the transport and the CLI beside them.
@@ -540,7 +540,7 @@ local position in `f32`, a length rounded to the realization's unit, and the
 `ControlOps::of::<P>()` in the control's build, never a `dyn` realization; so a
 third party's behavior is written exactly as the shipped ones are, naming no
 realization. Each facade's `behavior` module (`skene_gui::behavior`,
-`skene_terminal::behavior`, parallel member for member) re-exports the shipped
+`skene_tui::behavior`, parallel member for member) re-exports the shipped
 behaviors (`Collection` and `Member` under a `CollectionPolicy` among them, with the
 collections' contexts `CollectionContext`, `RadioGroupContext`, `ListboxContext` and
 `MenuContext`, and the slider's `SliderContext`), `Behavior` with what its hooks name
@@ -1374,7 +1374,7 @@ through the same `define_tokens` call as a scope's (`Scene::define_tokens` and t
 seam's alike), their scope `TokenScope::Root`: the web writes them as
 the root rule's class, and the terminal re-resolves its styles as it does for a scope's.
 `Typography` (all text inheritance on both facades) and the Simple library's
-`SimpleGlyphs` (its terminal marks, in `skene-simple-terminal`, the crate of the one
+`SimpleGlyphs` (its terminal marks, in `skene-simple-tui`, the crate of the one
 platform whose tokens hold text over cells) are token sets, so the framework has one
 inheritance mechanism.
 `SystemColors<N>` (`skene_foundation::SystemColors`, a facade's `SystemColors` in its
@@ -1839,7 +1839,7 @@ Off-thread work uses the engine's scheduler wired to the event-loop proxy, and a
 loop-integrated timer is fair game there, the loop being the shell's. The plan, its
 prerequisites and its order are in `ROADMAP.md`.
 
-### The terminal (`skene-terminal`)
+### The terminal (`skene-tui`)
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
@@ -1854,7 +1854,7 @@ terminal app is first-class at compile time rather than best-effort at run time.
 The terminal's build names it, `--cfg skene_platform="terminal"` on the host's target:
 the crate, its dependencies and `#[main]`'s `main` exist there alone, a build naming no
 platform fails with the crate's `compile_error!`, and every other platform's build
-compiles it empty, as it does `skene-simple-terminal`, `acme-sparkline` and the terminal
+compiles it empty, as it does `skene-simple-tui`, `acme-sparkline` and the terminal
 examples, each gated on the same cfg.
 
 Its `platform` module holds the terminal's own vocabulary as the web's holds each pixel
@@ -2064,7 +2064,7 @@ by whole cells), and the shadow's offset and softening (`set_shadow_offset`,
 `set_shadow_softening`, half a cell each where unset): the cells take the shadow at its
 offset rounded up, and the pixels place it exactly and soften its edge.
 
-The terminal itself is spoken to through three modules of `skene-terminal`, with no
+The terminal itself is spoken to through three modules of `skene-tui`, with no
 terminal crate beneath them: `tty` opens the device (standard input and output, or
 `/dev/tty` where those are not terminals), puts it in raw mode with `rustix`, polls
 it with a timeout, reads what arrived and restores its mode on drop and in a panic
@@ -2188,7 +2188,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   visit, so with the field and the property's variant gated alike the record entry
   exists in that build alone. The macros' text names no platform; the predicate is the
   declaring crate's. Simple is the standing proof: `skene-simple` its core, naming no
-  realization, and `skene-simple-gui` and `skene-simple-terminal` its platforms' crates of
+  realization, and `skene-simple-gui` and `skene-simple-tui` its platforms' crates of
   presets, written exactly as a third party's. `skene new lib`
   creates the core-plus-presets shape: a core holding a palette and a unit trait and
   naming no realization, and a crate per platform named whose badge is a preset, an
@@ -2199,7 +2199,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   platform's escape trait or through its native door and realized through the same scene
   and node ids as a `Container`, so it composes with wrappers, themes, conditions and
   events. A view of a platform of its own is concrete, as a built-in is:
-  `acme-sparkline`'s `Sparkline` is a `View<skene_terminal::Active>` with no parameter,
+  `acme-sparkline`'s `Sparkline` is a `View<skene_tui::Active>` with no parameter,
   building a sized `Container` and handing the platform its cell painter
   (`<Active as CellPainter>::paint`) and its pixel painter
   (`<Active as Painting>::paint`) for that one box, so an app writes `Sparkline::new(..)` and names no platform. `acme-map`'s
@@ -2208,7 +2208,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   is in hand, so the web's two leaves are one view with a `cfg` only around the
   painting, inside the library. Selecting the platform is what selecting the facade
   already does. A platform's escape traits live in its facade's `platform::<p>` module:
-  `skene_terminal::platform::terminal::CellPainter`, which has no `Realization`
+  `skene_tui::platform::terminal::CellPainter`, which has no `Realization`
   supertrait, so a failed bound states its one rule, that cells are painted on the
   terminal alone; the web has none, its low-level views going through its native door.
   `acme-map` (a canvas through the web's door) and `acme-sparkline` (bars through
@@ -2248,11 +2248,11 @@ build script infers a platform or a leaf and no cargo feature selects one. The w
 two leaves are one platform: the browser leaf is the `web` build on
 `wasm32-unknown-unknown`, and the server leaf the `web` build with `--cfg skene_server`
 beside it, on any target. Selection is by facade dependency first, a web app depending
-on `skene-gui` and a terminal app on `skene-terminal`, and the cfg selects within the
+on `skene-gui` and a terminal app on `skene-tui`, and the cfg selects within the
 facade. `skene-gui` compiles under `web`, compiles empty in a terminal build, and
 refuses every other build with a `compile_error!` of its own: one naming no platform,
 the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
-does not realize yet, named. `skene-terminal` compiles under `terminal` on the host's
+does not realize yet, named. `skene-tui` compiles under `terminal` on the host's
 target, refuses a build naming no platform, and compiles empty in every other
 platform's. Every root item that reaches a leaf is gated on its leaf's cfgs, so each
 refusal is its build's one error, which the gate's `selection` step holds. A crate
@@ -2350,7 +2350,7 @@ the checked-in rust-analyzer settings (`.zed/settings.json`) name the browser le
 teaches them. docs.rs documents each leaf of `skene-gui` and `skene-simple-gui` from
 their metadata's `cargo-args`, which name the browser in `wasm32-unknown-unknown`'s
 rustflags and rustdocflags and the server leaf in `x86_64-unknown-linux-gnu`'s, and
-`skene-terminal` and `skene-simple-terminal` from theirs, naming the terminal in
+`skene-tui` and `skene-simple-tui` from theirs, naming the terminal in
 `x86_64-unknown-linux-gnu`'s.
 
 A facade is the one place allowed to name its platforms, which is why the shared

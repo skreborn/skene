@@ -21,7 +21,7 @@ counter
 ├── Cargo.toml     the workspace
 ├── gui            counter-gui: the web's shell
 ├── shared         counter-shared: the state and logic every shell shares
-└── terminal       counter-terminal: the terminal's shell
+└── tui            counter-tui: the terminal's shell
 ```
 
 The shared crate depends on `skene-reactive` alone and knows nothing of any platform.
@@ -97,7 +97,7 @@ changes. `skene run terminal` builds the terminal binary, rebuilds it on every c
 and prints the command that runs it in another terminal:
 
 ```sh
-cd counter/terminal
+cd counter/tui
 skene run terminal
 skene attach <id>
 ```

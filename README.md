@@ -3,7 +3,7 @@
 A client-side Rust UI framework: one spine, a facade per platform. A web app depends on
 `skene-gui` and runs wherever the build targets it—the browser, client-rendered; a
 server, rendering or statically generating pages from the same app crate built natively.
-A terminal app depends on `skene-terminal`, a facade of equal standing with its own
+A terminal app depends on `skene-tui`, a facade of equal standing with its own
 vocabulary typed to the medium. Every built-in view is written once, generic over the
 platform a facade selects; the reactive engine is signal-based, fine-grained and
 vdom-free; styling is data, compiled to CSS on the web and resolved natively elsewhere,
@@ -74,13 +74,13 @@ The app is its library alone, which `skene` builds as each target's crate type.
 
 ## A terminal app
 
-A terminal app depends on `skene-terminal` (and `skene-simple-terminal` for the components) and
-marks its entry with `#[main]` (`examples/terminal/counter`):
+A terminal app depends on `skene-tui` (and `skene-simple-tui` for the components) and
+marks its entry with `#[main]` (`examples/tui/counter`):
 
 ```rust
 # #[cfg(skene_platform = "terminal")] {
-use skene_simple_terminal::prelude::*;
-use skene_terminal::prelude::*;
+use skene_simple_tui::prelude::*;
+use skene_tui::prelude::*;
 
 #[main]
 fn app() -> impl View {
@@ -126,11 +126,11 @@ with the mouse off a plain drag is the terminal's.
 | `skene-layout` | `packages/layout` | The layout every platform but the web computes: the resolved style model on taffy (`BoxLayout`), generic over the scalar, a `Tree` keyed by the scene's nodes, retained across layouts and written node by node, by a walk of the scene or for the nodes a shared `Restyle` says moved, each node's part classified by its platform, and `TextFlow`, a box's inline runs and boxes laid out as one text through the platform's text engine, answering which run a point falls on. |
 | `skene-parley` | `packages/parley` | The `TextEngine` over the patched Parley (`vendor/parley`), on the typefaces it is given and no system font: paragraphs shaped once and broken per width, on threads off the web for a batch, bidirectional carets and movement, ICU4X's dictionaries for complex-script breaking, and drawing through vello. Its tests and `skene-layout`'s shape in the pinned Inter face under `fonts`. |
 | `skene-gui` | `packages/gui` | The web facade and platform: `f32`, `Active`, a type of its own for every view, the drawn built-in controls (`Button`, `Checkbox`, `Toggle`, `RadioGroup<T>`/`Radio`, `Slider`, `TextField`, `TextEditor`, `Picker<T>`, `Listbox<C>`/`ListboxOption`) in the platform's colors, `behavior` (the shipped behaviors a `Control` runs over, `Behavior` with what its hooks name, `ControlHandle`, `ControlOps`, `Roster`, `TypeAhead`, the collections' contexts and the slider's), `Typography`, `SystemColors` in pixels, defined at the root as CSS's system colors, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; `Platform`, the build's platform as a const (`CURRENT`, `IS_SERVER`, `IS_APPLE`); and `platform`, a module per pixel platform's own vocabulary: `platform::web`, the web `Realization`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the native door `NativeView` (an element built from its `NativeMarkup`, served as a placeholder and adopted in place at hydration), and `skene-dev`'s served `Document`, re-exported; and `android`, `apple`, `ios`, `linux`, `macos` and `windows`, empty today. |
-| `skene-terminal` | `packages/terminal` | The terminal facade and platform: `i32` cells, the same views and built-in controls drawn in cells, the same `behavior` module, its own decoration on them, `Typography`, `SystemColors` in cells, defined at the root from the colors the terminal reports, `BorderGlyphs`, `media`, `launch`, `Platform` (`CURRENT`), `platform::terminal` (`Terminal`, the `CellPainter` escape trait and its `Cells`, and the seams `install`, `mount` and `uninstall` an in-process test drives), and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
+| `skene-tui` | `packages/tui` | The terminal facade and platform: `i32` cells, the same views and built-in controls drawn in cells, the same `behavior` module, its own decoration on them, `Typography`, `SystemColors` in cells, defined at the root from the colors the terminal reports, `BorderGlyphs`, `media`, `launch`, `Platform` (`CURRENT`), `platform::terminal` (`Terminal`, the `CellPainter` escape trait and its `Cells`, and the seams `install`, `mount` and `uninstall` an in-process test drives), and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams, on the pages each facade writes in its own vocabulary under the names `PAGES` lists. |
 | `skene-conformance-web` | `packages/conformance-web` | The conformance suite in real browsers: its pages, written in the web's vocabulary, served as one web app, acted on over WebDriver by trusted input. |
 | `skene-simple` | `packages/simple` | The Simple core, naming no platform: `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, and the sizes per unit, `SimpleShape` through `SimpleUnit`. |
-| `skene-simple-terminal` | `packages/simple-terminal` | The Simple presets of the terminal's built-in views, `SimpleButton`, `SimpleCard`, `SimpleTooltip`, `SimpleCheckbox`, `SimpleRadioGroup`/`SimpleRadio`, `SimplePicker`/`SimpleListboxOption`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor` and `SimpleContextMenu`, each returning the built-in it styles; `SimpleGlyphs` (the token set its marks are drawn in) and its `glyph` tokens; the palette in cells, and a `prelude` an app imports beside the facade's own. |
+| `skene-simple-tui` | `packages/simple-tui` | The Simple presets of the terminal's built-in views, `SimpleButton`, `SimpleCard`, `SimpleTooltip`, `SimpleCheckbox`, `SimpleRadioGroup`/`SimpleRadio`, `SimplePicker`/`SimpleListboxOption`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor` and `SimpleContextMenu`, each returning the built-in it styles; `SimpleGlyphs` (the token set its marks are drawn in) and its `glyph` tokens; the palette in cells, and a `prelude` an app imports beside the facade's own. |
 | `skene-simple-gui` | `packages/simple-gui` | The Simple presets of the web's built-in views, as on the terminal, their marks drawn rather than glyphs, the palette in pixels, and its `prelude`. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
@@ -184,11 +184,11 @@ skene new app counter web terminal                         # a shared crate and 
 skene new lib acme-ui web terminal                         # a library's core and a crate per platform
 cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
 cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
-cargo skene --dir examples/terminal/counter run terminal   # build, rebuild on change, print the attach command
+cargo skene --dir examples/tui/counter run terminal        # build, rebuild on change, print the attach command
 cargo skene attach <id>                                    # run the app here, swapped on each rebuild
 ```
 
-Examples live under `examples/gui` and `examples/terminal`, one folder per feature, the same
+Examples live under `examples/gui` and `examples/tui`, one folder per feature, the same
 names on both facades where the feature exists: `counter` (state, snapshot-preserving
 reloads), `gallery` (every built-in view and control, a live palette switch), `theme`
 (a palette built per property, an accent the reader switches, a nested theme, the color
@@ -232,7 +232,7 @@ terminal's and the browser's builds, and four test tiers. A crate reaching a fac
 built for that facade's platform alone, and the host tier runs the tests of every crate
 reaching neither, which name no platform and which plain cargo at the root builds: the
 foundation's and the layout engine's unit tests among them. The terminal tier builds
-every crate reaching `skene-terminal` in the terminal's build and runs their tests and
+every crate reaching `skene-tui` in the terminal's build and runs their tests and
 doctests, the terminal's in-process tests, which act through real input and read what a
 reader finds, and the guide's and this README's terminal examples among them. The server
 tier builds every crate reaching the web on the server leaf natively and runs their
@@ -268,7 +268,7 @@ asks for (`Scene`, `IntoChildOf<Kind>`, `DecoratedTextEntry`, `Condition`);
 `skene new lib` writes that shape. A low-level view goes
 through its facade's `platform::<p>` module, the web's native door
 (`skene_gui::platform::web::NativeView`, a DOM element served as its markup and adopted in
-place) or the terminal's escape trait (`skene_terminal::platform::terminal::CellPainter`),
+place) or the terminal's escape trait (`skene_tui::platform::terminal::CellPainter`),
 takes the `Realization` seam from `skene-foundation` where it needs it, since a facade
 re-exports none, and is realized through the same scene as a built-in, a concrete view of
 its facade's `Active` (`acme_map::Map`, `acme_sparkline::Sparkline`); `Painted` is the

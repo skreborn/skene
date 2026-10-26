@@ -522,7 +522,7 @@ mod tests {
     assert!(builds_from("gui"));
     assert!(builds_from("foundation"));
     assert!(!builds_from("cli"));
-    assert!(!builds_from("terminal"));
+    assert!(!builds_from("tui"));
   }
 
   /// A build dependency is a package the app builds from, and a dev dependency is not.

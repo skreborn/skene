@@ -1,0 +1,26 @@
+[package]
+name = "skene-simple-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Simple's presets of the built-in views of skene's terminal facade"
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+skene-foundation.workspace = true
+skene-simple.workspace = true
+skene-tui.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+# The target names the terminal.
+cargo-args = [
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustflags = ["--cfg", "skene_platform=\"terminal\""]',
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
+
+[lints]
+workspace = true

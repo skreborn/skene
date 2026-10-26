@@ -143,7 +143,7 @@ supersedes.
   carry a behavior and a view of one name.
 - **A crate of the terminal's conformance pages** (2026-10-25), beside
   `skene-conformance-web`, so the terminal's pages would stand as the web's do: the
-  crate would depend on `skene-terminal` and be its dev-dependency, a cycle in the
+  crate would depend on `skene-tui` and be its dev-dependency, a cycle in the
   crate graph that a module of the terminal's own tests does not need, so the
   terminal's pages are a module beside its driver there, shaped as the web's file.
   Revisit when the terminal's realization moves into a crate of its own (item 1's

@@ -195,7 +195,7 @@ impl Platform {
   const fn directory(self) -> &'static str {
     match self {
       Self::Web => "gui",
-      Self::Terminal => "terminal",
+      Self::Terminal => "tui",
     }
   }
 
@@ -248,9 +248,9 @@ impl Platform {
   const fn crates(self, kind: Kind) -> &'static [&'static str] {
     match (kind, self) {
       (Kind::App, Self::Web) => &["skene-gui", "skene-simple-gui"],
-      (Kind::App, Self::Terminal) => &["skene-simple-terminal", "skene-terminal"],
+      (Kind::App, Self::Terminal) => &["skene-simple-tui", "skene-tui"],
       (Kind::Library, Self::Web) => &["skene-gui"],
-      (Kind::Library, Self::Terminal) => &["skene-terminal"],
+      (Kind::Library, Self::Terminal) => &["skene-tui"],
     }
   }
 
@@ -262,16 +262,16 @@ impl Platform {
         include_str!("../templates/app/gui-lib.rs.tmpl"),
       ),
       (Kind::App, Self::Terminal) => (
-        include_str!("../templates/app/terminal-Cargo.toml.tmpl"),
-        include_str!("../templates/app/terminal-lib.rs.tmpl"),
+        include_str!("../templates/app/tui-Cargo.toml.tmpl"),
+        include_str!("../templates/app/tui-lib.rs.tmpl"),
       ),
       (Kind::Library, Self::Web) => (
         include_str!("../templates/lib/gui-Cargo.toml.tmpl"),
         include_str!("../templates/lib/gui-lib.rs.tmpl"),
       ),
       (Kind::Library, Self::Terminal) => (
-        include_str!("../templates/lib/terminal-Cargo.toml.tmpl"),
-        include_str!("../templates/lib/terminal-lib.rs.tmpl"),
+        include_str!("../templates/lib/tui-Cargo.toml.tmpl"),
+        include_str!("../templates/lib/tui-lib.rs.tmpl"),
       ),
     }
   }
@@ -476,16 +476,16 @@ mod tests {
         "gui/Cargo.toml",
         "gui/src/lib.rs",
         "gui/skene.toml",
-        "terminal/Cargo.toml",
-        "terminal/src/lib.rs",
-        "terminal/skene.toml",
+        "tui/Cargo.toml",
+        "tui/src/lib.rs",
+        "tui/skene.toml",
       ]
     );
 
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
-      workspace.contains("members = [\"shared\", \"gui\", \"terminal\"]"),
+      workspace.contains("members = [\"shared\", \"gui\", \"tui\"]"),
       "{workspace}"
     );
     assert!(
@@ -498,7 +498,7 @@ mod tests {
     );
     assert!(workspace.contains("skene-gui = \"0.1\""), "{workspace}");
     assert!(
-      workspace.contains("skene-simple-terminal = \"0.1\""),
+      workspace.contains("skene-simple-tui = \"0.1\""),
       "{workspace}"
     );
     assert!(workspace.contains("'cfg(skene_server)'"), "{workspace}");
@@ -516,8 +516,8 @@ mod tests {
     assert!(file(&files, "shared/Cargo.toml").contains("name = \"my-app-shared\""));
 
     for (shell, platform, facade, other) in [
-      ("gui", "web", "skene_gui", "terminal"),
-      ("terminal", "terminal", "skene_terminal", "gui"),
+      ("gui", "web", "skene_gui", "tui"),
+      ("tui", "terminal", "skene_tui", "gui"),
     ] {
       let manifest = file(&files, &format!("{shell}/Cargo.toml"));
       let library = file(&files, &format!("{shell}/src/lib.rs"));
@@ -564,11 +564,10 @@ mod tests {
     }
 
     assert!(
-      ["shared", "gui", "terminal"].iter().all(|member| file(
-        &files,
-        &format!("{member}/Cargo.toml")
-      )
-      .contains("[lints]\nworkspace = true")),
+      ["shared", "gui", "tui"]
+        .iter()
+        .all(|member| file(&files, &format!("{member}/Cargo.toml"))
+          .contains("[lints]\nworkspace = true")),
       "every member declares the platform's cfgs"
     );
   }
@@ -581,24 +580,24 @@ mod tests {
         Kind::App,
         Platform::Web,
         &["skene-gui", "skene-simple-gui"][..],
-        &["skene-simple-terminal", "skene-terminal"][..],
+        &["skene-simple-tui", "skene-tui"][..],
       ),
       (
         Kind::App,
         Platform::Terminal,
-        &["skene-simple-terminal", "skene-terminal"],
+        &["skene-simple-tui", "skene-tui"],
         &["skene-gui", "skene-simple-gui"],
       ),
       (
         Kind::Library,
         Platform::Web,
         &["skene-gui"],
-        &["skene-simple", "skene-terminal"],
+        &["skene-simple", "skene-tui"],
       ),
       (
         Kind::Library,
         Platform::Terminal,
-        &["skene-terminal"],
+        &["skene-tui"],
         &["skene-simple", "skene-gui"],
       ),
     ] {
@@ -640,15 +639,15 @@ mod tests {
         "core/src/lib.rs",
         "gui/Cargo.toml",
         "gui/src/lib.rs",
-        "terminal/Cargo.toml",
-        "terminal/src/lib.rs",
+        "tui/Cargo.toml",
+        "tui/src/lib.rs",
       ]
     );
 
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
-      workspace.contains("members = [\"core\", \"gui\", \"terminal\"]"),
+      workspace.contains("members = [\"core\", \"gui\", \"tui\"]"),
       "{workspace}"
     );
     assert!(
@@ -668,7 +667,7 @@ mod tests {
     assert_eq!(file(&files, ".gitignore"), "/target\n");
     assert!(file(&files, "core/Cargo.toml").contains("name = \"acme-ui\""));
     assert!(
-      ["skene-gui", "skene-terminal"]
+      ["skene-gui", "skene-tui"]
         .iter()
         .all(|facade| !file(&files, "core/Cargo.toml").contains(facade)),
       "the core names no facade"
@@ -686,7 +685,7 @@ mod tests {
       "{core}"
     );
 
-    for (directory, platform) in [("gui", "web"), ("terminal", "terminal")] {
+    for (directory, platform) in [("gui", "web"), ("tui", "terminal")] {
       let library = file(&files, &format!("{directory}/src/lib.rs"));
 
       assert!(
@@ -724,11 +723,10 @@ mod tests {
     }
 
     assert!(
-      ["core", "gui", "terminal"].iter().all(|member| file(
-        &files,
-        &format!("{member}/Cargo.toml")
-      )
-      .contains("[lints]\nworkspace = true")),
+      ["core", "gui", "tui"]
+        .iter()
+        .all(|member| file(&files, &format!("{member}/Cargo.toml"))
+          .contains("[lints]\nworkspace = true")),
       "every member declares the platform's cfgs"
     );
   }
@@ -834,12 +832,11 @@ mod tests {
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
-      workspace.contains("skene-terminal = { path = \"/src/skene/packages/terminal\" }"),
+      workspace.contains("skene-tui = { path = \"/src/skene/packages/tui\" }"),
       "{workspace}"
     );
     assert!(
-      workspace
-        .contains("skene-simple-terminal = { path = \"/src/skene/packages/simple-terminal\" }"),
+      workspace.contains("skene-simple-tui = { path = \"/src/skene/packages/simple-tui\" }"),
       "{workspace}"
     );
     assert!(

@@ -325,7 +325,7 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
 pub(crate) const WEB: &str = "skene-gui";
 
 /// The terminal's facade: a package reaching it is built for the terminal alone.
-pub(crate) const TERMINAL: &str = "skene-terminal";
+pub(crate) const TERMINAL: &str = "skene-tui";
 
 /// The workspace's packages and what each depends on among them, from which every step
 /// reads the packages it builds.
@@ -749,14 +749,14 @@ mod tests {
         "[package]\nname = \"app\"\n[target.'cfg(unix)'.dependencies]\nlib = { path = \"..\" }\n",
       ),
       manifest(
-        "[package]\nname = \"docs\"\n[dev-dependencies]\nskene-terminal = { path = \"..\" }\nweb = { package = \"skene-gui\", path = \"..\" }\n",
+        "[package]\nname = \"docs\"\n[dev-dependencies]\nskene-tui = { path = \"..\" }\nweb = { package = \"skene-gui\", path = \"..\" }\n",
       ),
       manifest("[package]\nname = \"tool\"\n[build-dependencies]\nbase = { path = \"..\" }\n"),
       manifest("[package]\nname = \"probe\"\n[dev-dependencies]\nskene-gui = { path = \"..\" }\n"),
       manifest("[package]\nname = \"user\"\n[dependencies]\nprobe = { path = \"..\" }\n"),
-      manifest("[package]\nname = \"skene-terminal\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"skene-tui\"\n[dependencies]\nbase = { path = \"..\" }\n"),
       manifest(
-        "[package]\nname = \"shell\"\n[target.'cfg(skene_platform = \"terminal\")'.dependencies]\nskene-terminal = { path = \"..\" }\n",
+        "[package]\nname = \"shell\"\n[target.'cfg(skene_platform = \"terminal\")'.dependencies]\nskene-tui = { path = \"..\" }\n",
       ),
     ]);
 
@@ -764,7 +764,7 @@ mod tests {
       workspace.web(),
       ["skene-gui", "lib", "app", "docs", "probe"]
     );
-    assert_eq!(workspace.terminal(), ["docs", "skene-terminal", "shell"]);
+    assert_eq!(workspace.terminal(), ["docs", "skene-tui", "shell"]);
     assert_eq!(workspace.host(), ["base", "tool", "user"]);
     assert_eq!(
       workspace.web_build(),

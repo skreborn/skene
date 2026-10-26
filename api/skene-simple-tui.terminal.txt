@@ -1,0 +1,151 @@
+pub mod skene_simple_tui
+pub use skene_simple_tui::SimpleVariant
+pub mod skene_simple_tui::glyph
+pub struct skene_simple_tui::glyph::SimpleGlyphs
+pub skene_simple_tui::glyph::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::glyph::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::glyph::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::glyph::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::glyph::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+impl skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
+pub fn skene_simple_tui::glyph::SimpleGlyphs::current() -> Self
+pub fn skene_simple_tui::glyph::SimpleGlyphs::indicator(&self) -> alloc::string::String
+pub fn skene_simple_tui::glyph::SimpleGlyphs::radio(&self, bool) -> alloc::string::String
+pub fn skene_simple_tui::glyph::SimpleGlyphs::set_checkbox(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_tui::glyph::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_tui::glyph::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::clone(&self) -> skene_simple_tui::glyph::SimpleGlyphs
+impl core::cmp::PartialEq for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::eq(&self, &skene_simple_tui::glyph::SimpleGlyphs) -> bool
+impl core::default::Default for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::default() -> Self
+impl core::fmt::Debug for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_simple_tui::glyph::SimpleGlyphs
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, i32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+pub const skene_simple_tui::glyph::CHECKBOX_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_tui::glyph::CHECKBOX_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_tui::glyph::PICKER_INDICATOR: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_tui::glyph::RADIO_CHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub const skene_simple_tui::glyph::RADIO_UNCHECKED: skene_foundation::spine::token::TokenRef<alloc::string::String>
+pub mod skene_simple_tui::prelude
+pub use skene_simple_tui::prelude::<<super::*>>
+pub enum skene_simple_tui::SimpleButton
+impl skene_simple_tui::SimpleButton
+pub fn skene_simple_tui::SimpleButton::derive_styled(skene_tui::views::button::Button, impl core::ops::function::Fn() -> skene_simple::palette::SimpleVariant + 'static) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::derive_variant(impl core::convert::Into<alloc::string::String>, impl core::ops::function::Fn() -> skene_simple::palette::SimpleVariant + 'static) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::destructive(impl core::convert::Into<alloc::string::String>) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::ghost(impl core::convert::Into<alloc::string::String>) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::new(impl core::convert::Into<alloc::string::String>) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::outline(impl core::convert::Into<alloc::string::String>) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::secondary(impl core::convert::Into<alloc::string::String>) -> skene_tui::views::button::Button
+pub fn skene_simple_tui::SimpleButton::styled(skene_tui::views::button::Button, skene_simple::palette::SimpleVariant) -> skene_tui::views::button::Button
+impl core::fmt::Debug for skene_simple_tui::SimpleButton
+pub fn skene_simple_tui::SimpleButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleCard
+impl skene_simple_tui::SimpleCard
+pub fn skene_simple_tui::SimpleCard::new() -> skene_tui::views::container::Container
+pub fn skene_simple_tui::SimpleCard::spacing() -> i32
+pub fn skene_simple_tui::SimpleCard::styled(skene_tui::views::container::Container) -> skene_tui::views::container::Container
+impl core::fmt::Debug for skene_simple_tui::SimpleCard
+pub fn skene_simple_tui::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleCheckbox
+impl skene_simple_tui::SimpleCheckbox
+pub fn skene_simple_tui::SimpleCheckbox::mark() -> skene_tui::views::stack::Stack
+pub fn skene_simple_tui::SimpleCheckbox::new() -> skene_tui::views::checkbox::Checkbox
+pub fn skene_simple_tui::SimpleCheckbox::styled(skene_tui::views::checkbox::Checkbox) -> skene_tui::views::checkbox::Checkbox
+impl core::fmt::Debug for skene_simple_tui::SimpleCheckbox
+pub fn skene_simple_tui::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleContextMenu
+impl skene_simple_tui::SimpleContextMenu
+pub fn skene_simple_tui::SimpleContextMenu::new() -> skene_tui::views::context_menu::ContextMenu
+pub fn skene_simple_tui::SimpleContextMenu::styled(skene_tui::views::context_menu::ContextMenu) -> skene_tui::views::context_menu::ContextMenu
+impl core::fmt::Debug for skene_simple_tui::SimpleContextMenu
+pub fn skene_simple_tui::SimpleContextMenu::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleListboxOption
+impl skene_simple_tui::SimpleListboxOption
+pub fn skene_simple_tui::SimpleListboxOption::check() -> skene_tui::views::container::Container
+pub fn skene_simple_tui::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_tui::Label
+pub fn skene_simple_tui::SimpleListboxOption::new(impl skene_foundation::control::choice::Choice, impl core::convert::Into<alloc::string::String>) -> skene_tui::views::listbox::ListboxOption
+pub fn skene_simple_tui::SimpleListboxOption::styled(skene_tui::views::listbox::ListboxOption) -> skene_tui::views::listbox::ListboxOption
+impl core::fmt::Debug for skene_simple_tui::SimpleListboxOption
+pub fn skene_simple_tui::SimpleListboxOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimplePicker
+impl skene_simple_tui::SimplePicker
+pub fn skene_simple_tui::SimplePicker::face(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_tui::views::flex::Row
+pub fn skene_simple_tui::SimplePicker::list() -> skene_tui::views::container::Container
+pub fn skene_simple_tui::SimplePicker::new<T: skene_foundation::control::choice::Choice>() -> skene_tui::views::picker::Picker<T>
+pub fn skene_simple_tui::SimplePicker::styled<T: skene_foundation::control::choice::Choice>(skene_tui::views::picker::Picker<T>) -> skene_tui::views::picker::Picker<T>
+impl core::fmt::Debug for skene_simple_tui::SimplePicker
+pub fn skene_simple_tui::SimplePicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleRadio
+impl skene_simple_tui::SimpleRadio
+pub fn skene_simple_tui::SimpleRadio::mark() -> skene_tui::views::stack::Stack
+pub fn skene_simple_tui::SimpleRadio::new(impl skene_foundation::control::choice::Choice) -> skene_tui::views::radio::Radio
+pub fn skene_simple_tui::SimpleRadio::styled(skene_tui::views::radio::Radio) -> skene_tui::views::radio::Radio
+impl core::fmt::Debug for skene_simple_tui::SimpleRadio
+pub fn skene_simple_tui::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleRadioGroup
+impl skene_simple_tui::SimpleRadioGroup
+pub fn skene_simple_tui::SimpleRadioGroup::new<T: skene_foundation::control::choice::Choice>() -> skene_tui::views::radio::RadioGroup<T>
+pub fn skene_simple_tui::SimpleRadioGroup::styled<T: skene_foundation::control::choice::Choice>(skene_tui::views::radio::RadioGroup<T>) -> skene_tui::views::radio::RadioGroup<T>
+impl core::fmt::Debug for skene_simple_tui::SimpleRadioGroup
+pub fn skene_simple_tui::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleSlider
+impl skene_simple_tui::SimpleSlider
+pub fn skene_simple_tui::SimpleSlider::new() -> skene_tui::views::slider::Slider
+pub fn skene_simple_tui::SimpleSlider::styled(skene_tui::views::slider::Slider) -> skene_tui::views::slider::Slider
+pub fn skene_simple_tui::SimpleSlider::thumb() -> skene_tui::views::container::Container
+pub fn skene_simple_tui::SimpleSlider::track() -> skene_tui::AnyView
+impl core::fmt::Debug for skene_simple_tui::SimpleSlider
+pub fn skene_simple_tui::SimpleSlider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleTextEditor
+impl skene_simple_tui::SimpleTextEditor
+pub fn skene_simple_tui::SimpleTextEditor::new() -> skene_tui::views::text_field::TextEditor
+pub fn skene_simple_tui::SimpleTextEditor::styled(skene_tui::views::text_field::TextEditor) -> skene_tui::views::text_field::TextEditor
+impl core::fmt::Debug for skene_simple_tui::SimpleTextEditor
+pub fn skene_simple_tui::SimpleTextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleTextField
+impl skene_simple_tui::SimpleTextField
+pub fn skene_simple_tui::SimpleTextField::new() -> skene_tui::views::text_field::TextField
+pub fn skene_simple_tui::SimpleTextField::styled(skene_tui::views::text_field::TextField) -> skene_tui::views::text_field::TextField
+impl core::fmt::Debug for skene_simple_tui::SimpleTextField
+pub fn skene_simple_tui::SimpleTextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_tui::SimpleTooltip
+impl skene_simple_tui::SimpleTooltip
+pub fn skene_simple_tui::SimpleTooltip::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_tui::views::tooltip::Tooltip
+pub fn skene_simple_tui::SimpleTooltip::new(impl core::convert::Into<alloc::string::String>) -> skene_tui::views::tooltip::Tooltip
+pub fn skene_simple_tui::SimpleTooltip::styled(skene_tui::views::tooltip::Tooltip) -> skene_tui::views::tooltip::Tooltip
+pub fn skene_simple_tui::SimpleTooltip::view(impl skene_tui::View) -> skene_tui::views::tooltip::Tooltip
+impl core::fmt::Debug for skene_simple_tui::SimpleTooltip
+pub fn skene_simple_tui::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_simple_tui::SimpleGlyphs
+pub skene_simple_tui::SimpleGlyphs::checkbox_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::SimpleGlyphs::checkbox_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::SimpleGlyphs::picker_indicator: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::SimpleGlyphs::radio_checked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+pub skene_simple_tui::SimpleGlyphs::radio_unchecked: skene_foundation::spine::token::Token<alloc::string::String, i32>
+impl skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::checkbox(&self, bool) -> alloc::string::String
+pub fn skene_simple_tui::glyph::SimpleGlyphs::current() -> Self
+pub fn skene_simple_tui::glyph::SimpleGlyphs::indicator(&self) -> alloc::string::String
+pub fn skene_simple_tui::glyph::SimpleGlyphs::radio(&self, bool) -> alloc::string::String
+pub fn skene_simple_tui::glyph::SimpleGlyphs::set_checkbox(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_tui::glyph::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple_tui::glyph::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::clone(&self) -> skene_simple_tui::glyph::SimpleGlyphs
+impl core::cmp::PartialEq for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::eq(&self, &skene_simple_tui::glyph::SimpleGlyphs) -> bool
+impl core::default::Default for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::default() -> Self
+impl core::fmt::Debug for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_simple_tui::glyph::SimpleGlyphs
+impl<V: core::convert::From<skene_foundation::spine::leaf::Definition<alloc::string::String, i32>> + 'static> skene_foundation::spine::token::TokenSet<V> for skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::definitions(&self) -> alloc::vec::Vec<(skene_foundation::spine::token::TokenName, V)>
+pub type skene_simple_tui::SimpleLook = skene_simple::palette::SimpleLook<i32>
+pub type skene_simple_tui::SimplePalette = skene_simple::palette::SimplePalette<i32>

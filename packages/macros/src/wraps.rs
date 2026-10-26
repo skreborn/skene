@@ -117,7 +117,7 @@ pub(crate) fn derive_wraps(input: &DeriveInput) -> syn::Result<TokenStream> {
 }
 
 /// Each facade's package, with the platform its build names.
-const FACADES: [(&str, &str); 2] = [("skene-gui", "web"), ("skene-terminal", "terminal")];
+const FACADES: [(&str, &str); 2] = [("skene-gui", "web"), ("skene-tui", "terminal")];
 
 /// The facades a derived view builds for: the path to each one's `Active` from the
 /// deriving crate, the crate itself (and its doctests) through the name it gives itself or
@@ -189,7 +189,7 @@ fn view(
     return Err(syn::Error::new_spanned(
       name,
       "a derived view belongs to one facade: `View` derives for the `Active` of the facade \
-       (`skene-gui` or `skene-terminal`) the deriving crate is or depends on, and this \
+       (`skene-gui` or `skene-tui`) the deriving crate is or depends on, and this \
        crate reaches neither",
     ));
   }
@@ -350,7 +350,7 @@ mod tests {
 
     assert!(
       expansion.contains(
-        "impl<T>::skene_foundation::View<::skene_terminal::Active>forGroup<T>whereSelf:'static{"
+        "impl<T>::skene_foundation::View<::skene_tui::Active>forGroup<T>whereSelf:'static{"
       ),
       "{expansion}"
     );
@@ -432,7 +432,7 @@ mod tests {
     );
     assert!(
       expansion.contains(
-        "#[cfg(skene_platform=\"terminal\")]impl::skene_foundation::View<::skene_terminal::\
+        "#[cfg(skene_platform=\"terminal\")]impl::skene_foundation::View<::skene_tui::\
          Active>"
       ),
       "{expansion}"

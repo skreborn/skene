@@ -7,8 +7,8 @@ name or by text, and acts as a user acts, through the gestures of the `user` mod
 
 ```rust
 # #[cfg(skene_platform = "terminal")] {
-use skene_simple_terminal::prelude::*;
-use skene_terminal::{
+use skene_simple_tui::prelude::*;
+use skene_tui::{
   platform::terminal::mount,
   prelude::*,
   testing::{find_by_role, find_by_text, render_to_text, user, with_platform},

@@ -5,7 +5,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use acme_sparkline::Sparkline;
-use skene_terminal::{
+use skene_tui::{
   Color,
   View as _,
   platform::terminal::{install, mount, uninstall},

@@ -69,13 +69,13 @@ pub fn gui_main(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// the build names the platform.
 ///
 /// ```ignore
-/// #[skene_terminal::main]
+/// #[skene_tui::main]
 /// fn app() -> impl View {
 ///   Text::new("hello")
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn terminal_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn tui_main(attr: TokenStream, item: TokenStream) -> TokenStream {
   let function = match entry(attr, item) {
     Ok(function) => function,
     Err(error) => return error,
@@ -88,7 +88,7 @@ pub fn terminal_main(attr: TokenStream, item: TokenStream) -> TokenStream {
     #[cfg(skene_platform = "terminal")]
     #[doc(hidden)]
     pub fn main() {
-      ::skene_terminal::launch(#name);
+      ::skene_tui::launch(#name);
     }
   }
   .into()
@@ -299,7 +299,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
 /// `#[store(tag = "name")]` keys it by `name` instead, so the location survives a
 /// rename, and `#[store(skip)]` generates no accessor for the field. The generated code
 /// names `skene_reactive` through the deriving crate's direct dependency on it, or
-/// through the `reactive` re-export of the facade (`skene-gui`, `skene-terminal`) or
+/// through the `reactive` re-export of the facade (`skene-gui`, `skene-tui`) or
 /// `skene-foundation` it depends on.
 #[proc_macro_derive(Store, attributes(store))]
 pub fn derive_store(input: TokenStream) -> TokenStream {
@@ -342,7 +342,7 @@ pub fn derive_snapshot(input: TokenStream) -> TokenStream {
 ///
 /// The generated code names `Wraps` through the deriving crate's direct dependency on
 /// `skene-foundation`, or through the re-export of the facade (`skene-gui`,
-/// `skene-terminal`) it depends on.
+/// `skene-tui`) it depends on.
 #[proc_macro_derive(Wraps)]
 pub fn derive_wraps(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
@@ -357,7 +357,7 @@ pub fn derive_wraps(input: TokenStream) -> TokenStream {
 /// beside any `PhantomData` markers.
 ///
 /// The struct builds as the view it holds, for the `Active` of the one facade
-/// (`skene-gui`, `skene-terminal`) the deriving crate is or depends on, and a crate
+/// (`skene-gui`, `skene-tui`) the deriving crate is or depends on, and a crate
 /// reaching no facade is refused. A struct whose field names none of its own generic
 /// parameters, it having none or holding a core that names none, builds through a
 /// function generic in nothing, compiled once, in the deriving crate; one whose field

@@ -3,7 +3,7 @@
 //! The core of the Simple component library, built once over [`skene_foundation`] and
 //! naming no platform: one palette with a look per emphasis variant, the variants
 //! themselves, and the sizes every Simple preset is drawn with in each medium's unit.
-//! Each facade's crate (`skene-simple-gui`, `skene-simple-terminal`) writes the presets,
+//! Each facade's crate (`skene-simple-gui`, `skene-simple-tui`) writes the presets,
 //! each returning the facade's built-in view styled from this palette and the
 //! [`SimpleShape`] of its unit, exactly as a third party's library writes its own.
 //!

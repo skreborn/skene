@@ -4,7 +4,7 @@ A component library is a core of colors, sizes and logic, naming no platform, wi
 crate per facade holding its presets: functions returning the facade's built-in views,
 styled from the core. Simple is written this way from the public API alone—its core,
 `skene-simple`, is the palette, the looks, the variants and the sizes, and
-`skene-simple-gui` and `skene-simple-terminal` are its presets—and a library of your own
+`skene-simple-gui` and `skene-simple-tui` are its presets—and a library of your own
 stands on the same footing.
 
 ```sh
@@ -17,7 +17,7 @@ acme-ui
 ├── Cargo.toml     the workspace
 ├── core           acme-ui: the palette and the sizes
 ├── gui            acme-ui-gui: the presets of the web's views
-└── terminal       acme-ui-terminal: the presets of the terminal's views
+└── tui            acme-ui-tui: the presets of the terminal's views
 ```
 
 ## The palette

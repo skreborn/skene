@@ -1,0 +1,56 @@
+[package]
+name = "skene-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "skene's terminal facade and platform: views typed to the terminal, down to the device"
+license.workspace = true
+repository.workspace = true
+
+# The terminal's build alone: every other build compiles the crate empty.
+[target.'cfg(skene_platform = "terminal")'.dependencies]
+base64 = "0.23"
+libc = "0.2"
+memchr = "2"
+miniz_oxide = "0.9"
+parley.workspace = true
+rustc-hash.workspace = true
+rustix = { default-features = false, features = ["event", "pty", "std", "stdio", "termios"], version = "1" }
+skene-dev.workspace = true
+skene-foundation.workspace = true
+skene-layout.workspace = true
+skene-macros.workspace = true
+skene-parley.workspace = true
+skene-reactive.workspace = true
+smallvec.workspace = true
+tracing.workspace = true
+unicode-segmentation.workspace = true
+unicode-width = "0.2"
+
+[target.'cfg(skene_platform = "terminal")'.dev-dependencies]
+accesskit.workspace = true
+criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.7" }
+proptest.workspace = true
+skene-conformance = { path = "../conformance" }
+skene-simple-tui = { path = "../simple-tui" }
+vt100 = "0.18"
+
+[[bench]]
+name = "frame"
+harness = false
+
+[build-dependencies]
+unicode-width = "0.2"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+# The target names the terminal.
+cargo-args = [
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustflags = ["--cfg", "skene_platform=\"terminal\""]',
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustdocflags = ["--cfg", "skene_platform=\"terminal\""]',
+]
+
+[lints]
+workspace = true

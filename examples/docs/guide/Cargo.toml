@@ -11,8 +11,8 @@ skene-gui.workspace = true
 skene-reactive.workspace = true
 skene-simple.workspace = true
 skene-simple-gui.workspace = true
-skene-simple-terminal.workspace = true
-skene-terminal.workspace = true
+skene-simple-tui.workspace = true
+skene-tui.workspace = true
 
 [package.metadata.cargo-shear]
 ignored = [
@@ -21,8 +21,8 @@ ignored = [
   "skene-reactive",
   "skene-simple",
   "skene-simple-gui",
-  "skene-simple-terminal",
-  "skene-terminal",
+  "skene-simple-tui",
+  "skene-tui",
 ]
 
 [lints]

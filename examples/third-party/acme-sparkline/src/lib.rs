@@ -14,7 +14,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_foundation::{AnyKind, NodeId, Painting, View, kurbo::Rect};
-use skene_terminal::{
+use skene_tui::{
   Active,
   Color,
   Container,

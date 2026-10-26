@@ -176,7 +176,7 @@ const APPLE: &str = "aarch64-apple-darwin";
 
 /// The crates with code of their own for Apple's platforms, none of which compiles C,
 /// which would need Apple's SDK.
-const APPLE_PACKAGES: &[&str] = &["skene-terminal"];
+const APPLE_PACKAGES: &[&str] = &["skene-tui"];
 
 /// The flag that names the web in a build: on [`WASM`], its browser leaf.
 const WEB_CFG: &str = r#"--cfg skene_platform="web""#;
@@ -792,9 +792,9 @@ const REFUSED: &[(&str, Option<&str>, &str)] = &[
     "skene-gui realizes no linux yet",
   ),
   (
-    "skene-terminal",
+    "skene-tui",
     None,
-    "skene-terminal builds for the platform its build names",
+    "skene-tui builds for the platform its build names",
   ),
 ];
 

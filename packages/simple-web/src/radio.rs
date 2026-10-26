@@ -41,13 +41,13 @@ use crate::{SimplePalette, shape};
 /// }
 ///
 /// let size = Signal::new(Size::Medium);
-/// let sizes =
-///   SimpleRadioGroup::new()
-///     .bind_chosen(size)
-///     .set_child(Column::new().set_spacing(8).set_children((
-///       SimpleRadio::new(Size::Small).set_label("Small"),
-///       SimpleRadio::new(Size::Medium).set_label("Medium"),
-///     )));
+/// let sizes = SimpleRadioGroup::new()
+///   .set_label("Size")
+///   .bind_chosen(size)
+///   .set_child(Column::new().set_spacing(8).set_children((
+///     SimpleRadio::new(Size::Small).set_label("Small"),
+///     SimpleRadio::new(Size::Medium).set_label("Medium"),
+///   )));
 /// ```
 #[derive(Debug)]
 pub enum SimpleRadioGroup {}

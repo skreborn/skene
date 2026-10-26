@@ -16,6 +16,13 @@ supersedes.
   `Theme` of the palette above it defines them, or a read of the palette (`current()`,
   `watch()`) where no theme does. Revisit when a built-in offers a mount hook a preset
   can attach without a view of its own.
+- **A Simple option captioned by the app's `set_label`** (2026-10-26),
+  `SimpleListboxOption::new(value)` styling a `ListboxOption` whose caption its user
+  sets afterwards: a control's caption takes no run style from the control, so a
+  caption set after the preset could not ink in the primary ink while chosen, and the
+  preset takes its caption (`SimpleListboxOption::new(value, caption)`), built by its
+  public `label`. Revisit when a control's caption inherits a run style the control
+  sets.
 - **Styled built-ins hosted once in the foundation with per-medium defaults**
   (2026-10-25), one `Button`, `Checkbox` and `Toggle` over `P: Realization` whose
   defaults each medium supplies as data: the trees the two media compose differ (a drawn

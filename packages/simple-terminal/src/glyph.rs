@@ -21,10 +21,9 @@ pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("simple-glyph-picke
 /// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with in
 /// the terminal: a token set a theme defines beneath it, in cells.
 ///
-/// It belongs to the terminal's Simple crate, whose tokens hold text over cells; the web,
-/// which draws its marks, has none. Every default is one cell per character in every
-/// terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
-/// some emulators; a theme opting into them takes that on itself.
+/// Every default is one cell per character in every terminal. Box-symbol marks (`☑`,
+/// `◉`) render two cells wide in some emulators; a theme opting into them takes that on
+/// itself.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct SimpleGlyphs {

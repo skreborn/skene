@@ -2200,11 +2200,12 @@ patches and starts from the checkout's lock. The gate's `scaffolds` step writes 
 and the library scaffolds from this checkout, both naming the terminal and the web, and
 holds each clippy-clean with warnings denied in every build of the platforms they name,
 the browser leaf, the server leaf and the terminal, their doctests passing in the two on
-the host, so a scaffold cannot fall behind the surface it teaches. It names each build's
-platform in `RUSTFLAGS` and `RUSTDOCFLAGS`, which outrank the project's configuration,
-since a target's flags would join the project's and name two platforms. Each build has
-a target directory of its own, and once a project's lock has taken its own crates every
-build runs locked and offline.
+the host, so a scaffold cannot fall behind the surface it teaches. The terminal's build
+is plain cargo, the project's configuration alone naming its platform, and each other
+build names its platform in `RUSTFLAGS` and `RUSTDOCFLAGS`, which outrank the project's
+configuration, since a target's flags would join the project's and name two platforms.
+Each build has a target directory of its own, and once a project's lock has taken its
+own crates every build runs locked and offline.
 
 **The CLI builds any platform by substituting the cfg where cargo reads it**
 (`packages/cli/src/flags.rs`). It reads the flags cargo would use for the build's

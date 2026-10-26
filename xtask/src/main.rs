@@ -575,29 +575,40 @@ impl Gate {
     command
   }
 
-  /// A cargo command run in the scaffolded `project`, building for `build`: its flags in
-  /// `RUSTFLAGS` and `RUSTDOCFLAGS`, which outrank the project's own configuration, in
-  /// the build's target directory under [`SCAFFOLDS`].
+  /// A cargo command run in the scaffolded `project`, building for `build` in the build's
+  /// target directory under [`SCAFFOLDS`]: a build with flags has them in `RUSTFLAGS` and
+  /// `RUSTDOCFLAGS`, which outrank the project's own configuration, and one without is
+  /// named by that configuration alone.
   fn scaffold_cargo<I, S>(&self, project: &Path, build: &ScaffoldBuild, arguments: I) -> Command
   where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
   {
-    let target = build.target.unwrap_or(&self.host);
     let mut command = Command::new("cargo");
 
     command
       .current_dir(project)
       .env("CARGO_TERM_COLOR", "never")
-      .env_remove("CARGO_ENCODED_RUSTFLAGS")
-      .env_remove("CARGO_ENCODED_RUSTDOCFLAGS")
-      .env("RUSTFLAGS", build.flags)
-      .env("RUSTDOCFLAGS", build.flags)
       .env(
         "CARGO_TARGET_DIR",
         self.target.join(SCAFFOLDS).join(build.name),
-      )
-      .args(targeted(target, arguments));
+      );
+
+    for variable in SCAFFOLD_OUTRANKING {
+      command.env_remove(variable);
+    }
+
+    match build.flags {
+      Some(flags) => {
+        command
+          .env("RUSTFLAGS", flags)
+          .env("RUSTDOCFLAGS", flags)
+          .args(targeted(build.target.unwrap_or(&self.host), arguments));
+      }
+      None => {
+        command.args(arguments);
+      }
+    }
 
     command
   }
@@ -918,38 +929,51 @@ const SCAFFOLD_PROJECTS: &[&str] = &["app", "lib"];
 /// runs needs no test runner.
 const SCAFFOLD_PLATFORMS: &[&str] = &["terminal", "web"];
 
+/// The variables that would outrank a scaffold's own configuration, which a scaffold's
+/// build never inherits from the gate's environment.
+const SCAFFOLD_OUTRANKING: &[&str] = &[
+  "CARGO_BUILD_RUSTDOCFLAGS",
+  "CARGO_BUILD_RUSTFLAGS",
+  "CARGO_BUILD_TARGET",
+  "CARGO_ENCODED_RUSTDOCFLAGS",
+  "CARGO_ENCODED_RUSTFLAGS",
+  "RUSTDOCFLAGS",
+  "RUSTFLAGS",
+];
+
 /// A build a scaffold is linted in.
 struct ScaffoldBuild {
   /// The build's name, which names its target directory under [`SCAFFOLDS`].
   name: &'static str,
   /// What the build is, as a failure names it.
   description: &'static str,
-  /// The build's target, the host's where none is named.
+  /// The build's target, the host's where none is named; ignored without `flags`.
   target: Option<&'static str>,
-  /// The flags naming the build's platform.
-  flags: &'static str,
+  /// The flags naming the build's platform, none where it is the platform the project's
+  /// configuration names, the first of [`SCAFFOLD_PLATFORMS`].
+  flags: Option<&'static str>,
 }
 
-/// Every build of the platforms the scaffolds name; the doctests run in those on the
-/// host.
+/// Every build of the platforms the scaffolds name, the one the project's configuration
+/// names last; the doctests run in those on the host.
 const SCAFFOLD_BUILDS: &[ScaffoldBuild] = &[
   ScaffoldBuild {
     name: "browser",
     description: "the web's browser leaf",
     target: Some(WASM),
-    flags: WEB_CFG,
+    flags: Some(WEB_CFG),
   },
   ScaffoldBuild {
     name: "server",
     description: "the web's server leaf",
     target: None,
-    flags: SERVER_CFG,
+    flags: Some(SERVER_CFG),
   },
   ScaffoldBuild {
     name: "terminal",
     description: "the terminal",
     target: None,
-    flags: TERMINAL_CFG,
+    flags: None,
   },
 ];
 
@@ -1198,13 +1222,16 @@ mod tests {
   use std::{
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
+    process::Command,
   };
 
   use super::{
     Gate,
     SCAFFOLD_BUILDS,
+    SCAFFOLD_OUTRANKING,
+    SCAFFOLD_PLATFORMS,
     SERVER_CFG,
-    TERMINAL_CFG,
+    ScaffoldBuild,
     WASM,
     WEB_CFG,
     scaffold_arguments,
@@ -1264,31 +1291,54 @@ mod tests {
     );
   }
 
+  /// What `command` sets the variable `name` to, if it sets it.
+  fn variable<'a>(command: &'a Command, name: &str) -> Option<&'a OsStr> {
+    command
+      .get_envs()
+      .find(|(key, _)| *key == name)
+      .and_then(|(_, value)| value)
+  }
+
+  /// Whether `command` removes the variable `name` from what it inherits.
+  fn removes(command: &Command, name: &str) -> bool {
+    command
+      .get_envs()
+      .any(|(key, value)| key == name && value.is_none())
+  }
+
+  fn build(name: &str) -> &'static ScaffoldBuild {
+    SCAFFOLD_BUILDS
+      .iter()
+      .find(|build| build.name == name)
+      .expect("the build is listed")
+  }
+
   /// A scaffold's build names its platform in the flags that outrank the project's own
   /// configuration, never in the target's, which cargo would join to the project's.
   #[test]
   fn a_scaffold_build_outranks_the_projects_platform() {
     let gate = gate();
     let project = Path::new("/src/skene/target/scaffolds/app");
-    let server = SCAFFOLD_BUILDS
-      .iter()
-      .find(|build| build.name == "server")
-      .expect("the server leaf is a build");
-    let command = gate.scaffold_cargo(project, server, ["clippy", "--", "-D", "warnings"]);
-    let variable = |name: &str| {
-      command
-        .get_envs()
-        .find(|(key, _)| *key == name)
-        .and_then(|(_, value)| value)
-    };
+    let command = gate.scaffold_cargo(project, build("server"), ["clippy", "--", "-D", "warnings"]);
 
     assert_eq!(command.get_current_dir(), Some(project));
-    assert_eq!(variable("RUSTFLAGS"), Some(OsStr::new(SERVER_CFG)));
-    assert_eq!(variable("RUSTDOCFLAGS"), Some(OsStr::new(SERVER_CFG)));
     assert_eq!(
-      variable("CARGO_TARGET_DIR"),
+      variable(&command, "RUSTFLAGS"),
+      Some(OsStr::new(SERVER_CFG))
+    );
+    assert_eq!(
+      variable(&command, "RUSTDOCFLAGS"),
+      Some(OsStr::new(SERVER_CFG))
+    );
+    assert_eq!(
+      variable(&command, "CARGO_TARGET_DIR"),
       Some(OsStr::new("/src/skene/target/scaffolds/server"))
     );
+
+    for name in ["CARGO_ENCODED_RUSTFLAGS", "CARGO_ENCODED_RUSTDOCFLAGS"] {
+      assert!(removes(&command, name), "{name}");
+    }
+
     assert!(
       command
         .get_envs()
@@ -1309,9 +1359,35 @@ mod tests {
     );
   }
 
+  /// The build of the platform the project's configuration names is what plain cargo
+  /// builds there: no flag, target or variable of the gate's outranks the configuration.
+  #[test]
+  fn the_configured_build_is_plain_cargo() {
+    let gate = gate();
+    let project = Path::new("/src/skene/target/scaffolds/lib");
+    let terminal = build("terminal");
+    let command = gate.scaffold_cargo(project, terminal, ["clippy", "--", "-D", "warnings"]);
+
+    assert_eq!(SCAFFOLD_PLATFORMS.first(), Some(&"terminal"));
+    assert_eq!(terminal.flags, None);
+
+    for name in SCAFFOLD_OUTRANKING {
+      assert!(removes(&command, name), "{name}");
+    }
+
+    assert_eq!(
+      variable(&command, "CARGO_TARGET_DIR"),
+      Some(OsStr::new("/src/skene/target/scaffolds/terminal"))
+    );
+    assert_eq!(
+      command.get_args().collect::<Vec<_>>(),
+      ["clippy", "--", "-D", "warnings"]
+    );
+  }
+
   #[test]
   fn every_platform_a_scaffold_names_is_built() {
-    let builds: Vec<(&str, Option<&str>, &str)> = SCAFFOLD_BUILDS
+    let builds: Vec<(&str, Option<&str>, Option<&str>)> = SCAFFOLD_BUILDS
       .iter()
       .map(|build| (build.name, build.target, build.flags))
       .collect();
@@ -1319,9 +1395,9 @@ mod tests {
     assert_eq!(
       builds,
       [
-        ("browser", Some(WASM), WEB_CFG),
-        ("server", None, SERVER_CFG),
-        ("terminal", None, TERMINAL_CFG),
+        ("browser", Some(WASM), Some(WEB_CFG)),
+        ("server", None, Some(SERVER_CFG)),
+        ("terminal", None, None),
       ]
     );
   }

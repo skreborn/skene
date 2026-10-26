@@ -252,8 +252,8 @@ impl<P: Realization> Scene<P> {
   /// to those in force change nothing.
   ///
   /// The default of every palette a token the definitions name links to is laid over the
-  /// root next, as [`define_defaults`](Self::define_defaults) lays it, except, on a node,
-  /// a token the definitions define themselves.
+  /// root next, its own tokens alone, as [`define_defaults`](Self::define_defaults) lays
+  /// it, except, on a node, a token the definitions define themselves.
   ///
   /// # Panics
   ///
@@ -290,8 +290,10 @@ impl<P: Realization> Scene<P> {
   }
 
   /// Lays over the root the default of every palette a token of `names` links to, once
-  /// per palette: a palette whose definitions were laid over the root before, by a
-  /// reference or by a read of the set, is passed over, as is a name with no link.
+  /// per palette and its own tokens alone, as
+  /// [`define_root_set`](Self::define_root_set) lays it: a palette whose definitions were
+  /// laid over the root before, by a reference or by a read of the set, is passed over,
+  /// as is a name with no link.
   ///
   /// A default's own references lay their palettes' defaults in turn, each claimed before
   /// its definitions are laid, and a kind the platform's token value holds none of is
@@ -338,6 +340,11 @@ impl<P: Realization> Scene<P> {
   /// Lays `set`'s `definitions` over the tokens every node falls back to, once per set: a
   /// later call for the same set does nothing and returns `false`.
   ///
+  /// Only the set's own tokens reach the root: the definitions whose names link to `set`,
+  /// or every one where no name links to it. A definition of another set's token, such
+  /// as a palette's alias of the typography's ink, applies beneath a theme of the set
+  /// alone.
+  ///
   /// [`defines_root_set`](Self::defines_root_set) tells a caller whether the set's
   /// definitions are wanted before it builds them, outside the scene's borrow.
   pub fn define_root_set(&mut self, set: TypeId, definitions: Definitions<P::TokenValue>) -> bool {
@@ -347,7 +354,7 @@ impl<P: Realization> Scene<P> {
 
     let mut root = self.tokens.take_root();
 
-    root.overlay(definitions);
+    root.overlay(definitions.owned_by(set));
     self.define_tokens(TokenScope::Root, root);
 
     true

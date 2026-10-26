@@ -14,9 +14,11 @@ use skene_tui::{
   Token,
   TokenName,
   TokenSet,
+  TokenValue,
   platform::terminal::mount,
   prelude::*,
   testing::{self, locate, user, with_platform},
+  typography,
 };
 
 /// The frame's width.
@@ -518,8 +520,10 @@ fn root_tokens() -> usize {
   Scene::read(|scene| scene.root_definitions().len())
 }
 
-/// However many presets are mounted, the palette's definitions are laid at the root
-/// once: the root gains exactly the names it did not define already.
+/// However many presets are mounted, the palette's own definitions are laid at the root
+/// once: the root gains exactly the palette's own names it did not define already, its
+/// `simple-` tokens, and keeps the terminal's typography where the palette's aliases of
+/// it, which apply beneath a theme of the palette alone, would redefine it.
 #[test]
 fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
   with_platform(|| {
@@ -532,7 +536,7 @@ fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
         let root = scene.root_definitions();
         let new = definitions
           .iter()
-          .filter(|(name, _)| root.get(*name).is_none())
+          .filter(|(name, _)| name.as_str().starts_with("simple-") && root.get(*name).is_none())
           .count();
 
         root.len() + new
@@ -558,14 +562,25 @@ fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
       |scene| scene.defines_root_set(TypeId::of::<SimplePalette>())
     ));
     assert_eq!(root_tokens(), expected.get());
+    assert_eq!(
+      Scene::read(|scene| scene
+        .root_definitions()
+        .get(typography::INK.name())
+        .cloned()),
+      Some(TokenValue::Color(
+        Typography::default().ink.definition().clone()
+      )),
+      "the terminal's own ink, not the palette's alias of its foreground"
+    );
   });
 }
 
-/// A plain text is inked in the terminal's own foreground on a page naming no Simple
-/// token, and in the palette's foreground beside a preset, the palette's default reaching
-/// the root with its typography aliases.
+/// A plain text keeps the terminal's own foreground on a page naming no Simple token and
+/// beside a preset, whose default reaches the root without its typography aliases; it
+/// takes the palette's foreground beneath a theme of the palette, and an app's
+/// typography beneath the app's theme beside a preset.
 #[test]
-fn a_presets_default_inks_the_plain_text_beside_it() {
+fn a_presets_default_leaves_the_plain_text_beside_it() {
   with_platform(|| {
     mount_bare(|| Text::new("plain"));
 
@@ -576,8 +591,6 @@ fn a_presets_default_inks_the_plain_text_beside_it() {
   });
 
   with_platform(|| {
-    let palette = SimplePalette::default();
-
     mount_bare(|| Column::new().set_children((SimpleButton::new("OK"), Text::new("plain"))));
 
     let frame = testing::render_to_text(WIDTH, HEIGHT);
@@ -585,8 +598,42 @@ fn a_presets_default_inks_the_plain_text_beside_it() {
 
     assert_eq!(
       ink_at(x, y),
+      None,
+      "a preset's default at the root leaves the typography alone: {frame}"
+    );
+  });
+
+  with_platform(|| {
+    let palette = SimplePalette::default();
+
+    mount_themed(|| Column::new().set_children((SimpleButton::new("OK"), Text::new("plain"))));
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (x, y) = locate(&frame, "plain");
+
+    assert_eq!(
+      ink_at(x, y),
       Some(light(&palette.foreground)),
-      "the palette's foreground: {frame}"
+      "the palette's foreground beneath its theme: {frame}"
+    );
+  });
+
+  with_platform(|| {
+    let red = Color::srgb(1., 0., 0.);
+
+    mount_bare(move || {
+      Theme::new(Typography::default().set_ink(red)).set_child_builder(|| {
+        Column::new().set_children((SimpleButton::new("OK"), Text::new("plain")))
+      })
+    });
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (x, y) = locate(&frame, "plain");
+
+    assert_eq!(
+      ink_at(x, y),
+      Some(rgb(red)),
+      "the app's typography beside a preset: {frame}"
     );
   });
 }

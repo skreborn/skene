@@ -11,9 +11,11 @@
 //! name. Each reference carries the palette's default, so a preset is inked in it with
 //! no theme above it and nothing to read: the default reaches the root the first time a
 //! node references one of the tokens, and `Theme::new(palette)` redefines them beneath
-//! the theme. The palette also defines the typography tokens, so a plain text wherever
-//! the palette is defined is inked in its foreground. Corners round where the medium has
-//! a [`CornerRadius`](skene_foundation::CornerRadius) and stay square where it has none.
+//! the theme. The palette also defines the typography tokens, so a plain text beneath a
+//! `Theme` of the palette is inked in its foreground; the default at the root holds the
+//! palette's own tokens alone, leaving the text beside a preset to the app. Corners round
+//! where the medium has a [`CornerRadius`](skene_foundation::CornerRadius) and stay
+//! square where it has none.
 
 mod palette;
 mod shape;

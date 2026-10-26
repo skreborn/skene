@@ -285,8 +285,9 @@ fn bare() -> impl View {
 A component library dresses the controls in a design language of its own. Simple's
 controls come drawn and ready, in the platform's crate of the Simple library, each
 inked from its palette. A preset references the palette's tokens, each carrying the
-palette's default, so it is inked with nothing above it, and a `Theme` of the palette
-redefines them beneath it:
+palette's default, so it is inked with nothing above it, leaving the plain text beside
+it in the app's ink, and a `Theme` of the palette redefines them beneath it, inking the
+plain text there in the palette's foreground too:
 
 ```rust
 use skene_gui::prelude::*;

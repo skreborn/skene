@@ -1386,7 +1386,8 @@ fn a_theme_of_a_linked_palette_defines_its_scope_over_the_default() {
 
 /// A Simple preset below no theme renders the Simple palette's default on the root: the
 /// light values on `:root` and the dark ones under both scheme guards, the preset naming
-/// the tokens alone.
+/// the tokens alone, and none of the typography's tokens the palette aliases beneath a
+/// theme of it.
 #[test]
 fn a_simple_preset_below_no_theme_defines_its_palette_at_the_root() {
   let rendered = render_to_string(|| SimpleButton::new("OK"));
@@ -1414,6 +1415,36 @@ fn a_simple_preset_below_no_theme_defines_its_palette_at_the_root() {
       .iter()
       .any(|rule| rule.contains(&format!("--simple-primary-surface:{dark};"))),
     "{styles}"
+  );
+
+  for selector in [ROOT, ROOT_DEFERRING, ROOT_CHOSEN] {
+    assert!(
+      rules(styles, selector)
+        .iter()
+        .all(|rule| !rule.contains("--typography-")),
+      "no typography alias under {selector}: {styles}"
+    );
+  }
+}
+
+/// A theme of the Simple palette defines its typography aliases on its own scope, so a
+/// text beneath it takes the palette's foreground, and lays none of them at the root.
+#[test]
+fn a_theme_of_simple_defines_the_typography_aliases_on_its_scope() {
+  let rendered =
+    render_to_string(|| Theme::new(SimplePalette::default()).set_child_builder(|| Text::new("t")));
+  let scope = root_class(rendered.body());
+  let styles = rendered.styles();
+
+  assert!(
+    rule(styles, &format!(".{scope}")).contains("--typography-ink:var(--simple-foreground);"),
+    "the scope's own alias: {styles}"
+  );
+  assert!(
+    rules(styles, ROOT)
+      .iter()
+      .all(|rule| !rule.contains("--typography-")),
+    "no alias at the root: {styles}"
   );
 }
 

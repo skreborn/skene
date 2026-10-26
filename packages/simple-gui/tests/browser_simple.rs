@@ -931,7 +931,8 @@ async fn a_preset_below_no_theme_is_inked_in_the_palettes_default() {
 }
 
 /// However many presets are mounted with no theme above, the root rule defines each of
-/// the palette's tokens once.
+/// the palette's own tokens, its `simple-` ones, once, and none of the typography's,
+/// which the palette's aliases redefine beneath a theme of it alone.
 #[wasm_bindgen_test]
 fn many_presets_define_each_simple_token_once_on_the_root() {
   let _scheme = Scheme::choose(ColorScheme::Light);
@@ -966,7 +967,10 @@ fn many_presets_define_each_simple_token_once_on_the_root() {
   let declarations = format!(";{root}");
   let definitions: Vec<(TokenName, Definition<Color>)> = SimplePalette::default().definitions();
 
-  for (name, _) in definitions {
+  for (name, _) in definitions
+    .iter()
+    .filter(|(name, _)| name.as_str().starts_with("simple-"))
+  {
     let defined = format!(";--{}:", name.as_str());
 
     assert_eq!(
@@ -975,6 +979,11 @@ fn many_presets_define_each_simple_token_once_on_the_root() {
       "{defined} in {root}"
     );
   }
+
+  assert!(
+    !declarations.contains(";--typography-"),
+    "no typography alias at the root: {root}"
+  );
 }
 
 /// A picker wears the field chrome and rings while focused; its indicator follows the

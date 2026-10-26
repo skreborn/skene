@@ -169,7 +169,8 @@ SimpleButton::new("Save").handle_activate(save),
 SimpleButton::destructive("Delete").handle_activate(delete),
 ```
 
-A Simple preset is inked in its palette's default with no theme above it.
+A Simple preset is inked in its palette's default with no theme above it, and the plain
+text beside it keeps the app's own ink.
 `Theme::new(palette)` redefines a token set beneath it and
 `Theme::derive(|| palette.get())` follows a signal, redefining the tokens in place so
 nothing rebuilds; `SimplePalette` is one such set, and a third party's palette is on

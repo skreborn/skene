@@ -10,6 +10,14 @@ supersedes there.
 
 ## Decided against
 
+- **A palette's root default defining another set's tokens** (2026-10-26), the default a
+  reference or a read lays at the root carrying every definition of the palette, its
+  aliases of the typography's tokens included: with Simple's typography aliases riding
+  the default, the first preset on a page re-inked every plain text under no theme in
+  Simple's foreground, a library inking the app's text. The default keeps the palette's
+  own tokens, those its references link to it, and its definitions of another set's
+  tokens apply beneath a theme of it alone. Revisit if a library must style text outside
+  its own views without the app placing its theme.
 - **A crate of the terminal's conformance pages** (2026-10-26), beside
   `skene-conformance-web`, so the terminal's pages would stand as the web's do: the
   pages are written in `skene-tui`'s vocabulary, so the crate would depend on

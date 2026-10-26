@@ -166,8 +166,9 @@ impl<N: Scalar> SimpleLook<N> {
 ///
 /// The palette also defines the [`typography`] tokens as aliases—the ink is the
 /// foreground, the link ink the link color, selected text the background on the
-/// foreground—so a plain text wherever the palette is defined reads as one design with
-/// the controls. Use the tokens for the chrome around the components too.
+/// foreground—so a plain text beneath a `Theme` of the palette reads as one design with
+/// the controls; the default a preset lays at the root holds the palette's own tokens
+/// alone. Use the tokens for the chrome around the components too.
 ///
 /// This type is the Simple library's, not the framework's: a third-party component
 /// library defines its own struct of [`Token`]s.

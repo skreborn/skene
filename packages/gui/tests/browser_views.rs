@@ -1145,9 +1145,9 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
 
 /// The facade's typography inks the runs: a text on a page naming no Simple token in the
 /// default ink, a text under the Simple theme in the palette's foreground while the text
-/// beside the theme keeps the default ink, and a text beside a Simple preset in the
-/// palette's foreground, the palette's default reaching the root with its typography
-/// aliases over the typography's own default.
+/// beside the theme keeps the default ink, a text beside a Simple preset in the default
+/// ink, the palette's default reaching the root without its typography aliases, and a
+/// text beside a preset under an app's typography in the app's ink.
 #[wasm_bindgen_test]
 fn typography_inks_the_runs() {
   let ink = fixed(Typography::default().ink.definition().base());
@@ -1199,23 +1199,46 @@ fn typography_inks_the_runs() {
     );
   }
 
+  {
+    let (_guard, root) = fresh_root();
+    let _scheme = Scheme::choose(ColorScheme::Light);
+
+    let _ = mount(|| {
+      assert_eq!(Typography::current(), Typography::default());
+
+      Column::new()
+        .set_children((Text::new("bare"), SimpleButton::new("Go")))
+        .build()
+    });
+
+    let bare = &elements(&only_child(&root))[0];
+
+    assert_eq!(
+      computed(bare, "color"),
+      probe(&root, "color", ink),
+      "a preset's default at the root leaves the typography alone"
+    );
+  }
+
   let (_guard, root) = fresh_root();
   let _scheme = Scheme::choose(ColorScheme::Light);
+  let red = Color::srgb(1., 0., 0.);
 
-  let _ = mount(|| {
-    assert_eq!(Typography::current(), Typography::default());
-
-    Column::new()
-      .set_children((Text::new("bare"), SimpleButton::new("Go")))
+  let _ = mount(move || {
+    Theme::new(Typography::default().set_ink(red))
+      .set_child_builder(|| {
+        Column::new().set_children((Text::new("bare"), SimpleButton::new("Go")))
+      })
       .build()
   });
 
-  let bare = &elements(&only_child(&root))[0];
+  let column = only_child(&only_child(&root));
+  let bare = &elements(&column)[0];
 
   assert_eq!(
     computed(bare, "color"),
-    probe(&root, "color", foreground),
-    "a preset lays the palette's default at the root, aliasing the typography"
+    probe(&root, "color", red),
+    "the app's typography beside a preset"
   );
 }
 

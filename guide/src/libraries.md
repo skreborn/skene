@@ -63,8 +63,11 @@ A preset references a token by its `TokenRef` and emits only its name. A referen
 by `TokenRef::of::<Self, N>` carries the palette's default with it: the first time a
 node references one of the palette's tokens, its default definitions reach the root, so
 a preset is inked with no theme above it and no code of the library's own, and a `Theme`
-of the palette redefines them beneath it. `TokenRef::new` names a token carrying no
-default, for a set something else always defines.
+of the palette redefines them beneath it. The default reaching the root is the
+palette's own tokens alone: a definition of another set's token, such as an alias of the
+typography's ink, applies only beneath a `Theme` of the palette, so a library inks its
+own views and leaves the page's text to the app. `TokenRef::new` names a token carrying
+no default, for a set something else always defines.
 
 ## The sizes
 

@@ -588,13 +588,14 @@ in a code comment.
     color reaches every run inside the button, as `color` inherits on the web, and a
     button drawn by its body alone has no label, so a Simple icon button is inked in its
     variant's ink again.
-26. **A library's default at the root leaves the page's text alone.** Simple's palette
-    defines the typography tokens as aliases of its own, and its default reaches the
-    root with them, so the first Simple token a page names outside a theme of the
-    palette (a preset's) re-inks every plain text under no theme in Simple's
-    foreground.
-    Decide whether a root default may define another set's tokens, or keeps such
-    aliases to a theme's own scope, so a library inks its own views alone.
+26. **A Simple field and card ink the text on their own surface.** A text entry has no
+    text color of its own and a `Container` hands none to its runs, so
+    `SimpleTextField`, `SimpleTextEditor` and `SimpleCard`, which paint Simple's card
+    surface, leave the text on it to the typography in force: Simple's foreground
+    beneath a `Theme` of the palette, the platform's or the app's ink with none. Decide
+    how a text entry takes its value's color and a box the color its runs inherit, as a
+    button inks its label (`Button::set_text_color`), and ink them in
+    `SimplePalette::FOREGROUND`, so a preset inks its own views with no theme above it.
 27. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.

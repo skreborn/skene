@@ -4,10 +4,12 @@
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
 //! A linked palette's default is laid at the root once, the first time a node names one
 //! of its tokens, under the claim a read of the set makes, and a theme of it still wins
-//! beneath it, laying no palette whose tokens it defines itself. The nearest theme's palette
-//! answers, as the tree stands after a box moves, an expression or a derived leaf over a token
-//! resolves through it, and the token answers the scheme where it is read. The platform's colors at
-//! the root follow what the terminal reports and the app's scheme.
+//! beneath it, laying no palette whose tokens it defines itself; the default defines the
+//! palette's own tokens alone, its definitions of another set's applying beneath a theme
+//! of it. The nearest theme's palette answers, as the tree stands after a box moves, an
+//! expression or a derived leaf over a token resolves through it, and the token answers
+//! the scheme where it is read. The platform's colors at the root follow what the
+//! terminal reports and the app's scheme.
 
 use std::{any::TypeId, cell::Cell, rc::Rc};
 
@@ -300,6 +302,43 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for SelfAliasing {
   }
 }
 
+/// A linked palette that also defines another set's tokens, an unlinked one and one
+/// linked to [`Linked`], each as an alias of its own surface, as Simple's palette
+/// defines the typography's.
+#[derive(Debug, Clone, PartialEq)]
+struct Foreign {
+  /// The surface.
+  surface: Token<Color>,
+  /// The unlinked surface, by reference to its own.
+  plain: Token<Color>,
+  /// [`Linked`]'s ink, by reference to its own surface.
+  ink: Token<Color>,
+}
+
+impl Foreign {
+  const SURFACE: TokenRef<Color> = TokenRef::of::<Self, i32>("foreign-surface");
+}
+
+impl Default for Foreign {
+  fn default() -> Self {
+    Self {
+      surface: Token::new(Self::SURFACE, red()),
+      plain: Token::new(SURFACE, Self::SURFACE),
+      ink: Token::new(Linked::INK, Self::SURFACE),
+    }
+  }
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Foreign {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![
+      self.surface.define(),
+      self.plain.define(),
+      self.ink.define(),
+    ]
+  }
+}
+
 /// Whether the root defines `reference`.
 fn root_defines(reference: TokenRef<Color>) -> bool {
   Scene::read(|scene| scene.root_definitions().get(reference.name()).is_some())
@@ -554,6 +593,86 @@ fn a_theme_lays_only_the_palettes_it_leaves_undefined() {
     assert!(root_defines(Linked::INK));
     assert!(!root_defines(Aliasing::TINT), "the theme's own scope alone");
     assert_eq!(root_tokens(), before.get() + 2);
+  });
+}
+
+/// A linked palette's default laid at the root by a reference defines its own tokens
+/// alone: neither another set's token it defines nor the palette that token links to.
+#[test]
+fn a_default_at_the_root_defines_its_palettes_own_tokens_alone() {
+  with_platform(|| {
+    let before = Signal::new(0);
+    let _ = mount(move || {
+      before.set(root_tokens());
+
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_background(Foreign::SURFACE)
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())), "the default");
+    assert_eq!(root_tokens(), before.get() + 1, "its own surface alone");
+    assert!(root_defines(Foreign::SURFACE));
+    assert!(!root_defines(SURFACE), "no unlinked alias");
+    assert!(!root_defines(Linked::INK), "no alias of another palette");
+    assert!(!linked_claimed(), "the aliased palette is not laid");
+  });
+}
+
+/// A read of a linked palette below no theme lays what a reference lays: its own tokens
+/// alone.
+#[test]
+fn a_read_at_the_root_defines_its_palettes_own_tokens_alone() {
+  with_platform(|| {
+    let before = root_tokens();
+
+    assert_eq!(Foreign::current(), Foreign::default());
+    assert_eq!(root_tokens(), before + 1, "its own surface alone");
+    assert!(root_defines(Foreign::SURFACE));
+    assert!(!root_defines(SURFACE));
+    assert!(!root_defines(Linked::INK));
+    assert!(!linked_claimed());
+  });
+}
+
+/// A palette's definitions of another set's tokens apply beneath a theme of it: a box
+/// under the theme naming them paints the palette's surface, while one beside the theme
+/// paints nothing of the unlinked token and the other palette's own default for its.
+#[test]
+fn a_palettes_aliases_apply_beneath_a_theme_of_it() {
+  with_platform(|| {
+    let _ = mount(|| {
+      let cell = |color: TokenRef<Color>| {
+        Container::new()
+          .set_width(2)
+          .set_height(1)
+          .set_background(color)
+      };
+
+      Column::new()
+        .set_children((
+          Theme::new(Foreign::default()).set_child_builder(move || {
+            Column::new().set_children((cell(SURFACE), cell(Linked::INK)))
+          }),
+          cell(SURFACE),
+          cell(Linked::INK),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 4, 0, 0).1, Some(rgb(red())), "the theme's");
+    assert_eq!(colors_at(2, 4, 0, 1).1, Some(rgb(red())), "the theme's");
+    assert_eq!(colors_at(2, 4, 0, 2).1, None, "nothing outside the theme");
+    assert_eq!(
+      colors_at(2, 4, 0, 3).1,
+      Some(rgb(blue())),
+      "the other palette's default outside the theme"
+    );
+    assert!(!root_defines(SURFACE));
   });
 }
 

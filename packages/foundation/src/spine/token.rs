@@ -238,10 +238,11 @@ impl<T: Tokenable> TokenRef<T> {
   /// carrying the palette's default.
   ///
   /// How a component library names its palette's tokens: the palette's default
-  /// definitions reach the scene's root the first time a node references one of them,
-  /// and a theme of the palette redefines them beneath it. The default is built with the
-  /// scene borrowed, so the palette's `Default` and its definitions are plain data that
-  /// never reach the scene.
+  /// definitions of its own tokens reach the scene's root the first time a node
+  /// references one of them, and a theme of the palette redefines them beneath it. Its
+  /// definitions of another set's tokens apply beneath a theme of it alone. The default
+  /// is built with the scene borrowed, so the palette's `Default` and its definitions are
+  /// plain data that never reach the scene.
   #[inline(always)]
   pub const fn of<S: TokenSet<TokenValue<N>> + Default, N: Scalar>(name: &'static str) -> Self {
     Self {
@@ -475,6 +476,20 @@ impl<V> Definitions<V> {
     )
   }
 
+  /// The definitions of `set`'s own tokens: those whose names link to `set`, or every
+  /// definition where no name links to it.
+  pub(in crate::spine) fn owned_by(mut self, set: TypeId) -> Self {
+    if self
+      .0
+      .iter()
+      .any(|(name, _)| name.default_set() == Some(set))
+    {
+      self.0.retain(|(name, _)| name.default_set() == Some(set));
+    }
+
+    self
+  }
+
   /// Lays `over` on this set: every token `over` defines replaces this set's
   /// definition of the same name, and the rest are appended in `over`'s order.
   pub fn overlay(&mut self, over: Self) {
@@ -556,6 +571,30 @@ mod tests {
   impl<V: From<Definition<Color, f32>> + From<Definition<f32, f32>>> TokenSet<V> for Palette {
     fn definitions(&self) -> Vec<(TokenName, V)> {
       vec![self.card.define(), self.gutter.define()]
+    }
+  }
+
+  #[derive(Debug, Clone, PartialEq)]
+  struct Other {
+    rule: Token<Color, f32>,
+  }
+
+  impl Other {
+    /// The rule's color, linked to this palette's default.
+    const RULE: TokenRef<Color> = TokenRef::of::<Self, f32>("rule");
+  }
+
+  impl Default for Other {
+    fn default() -> Self {
+      Self {
+        rule: Token::new(Self::RULE, Color::srgb(0.5, 0.5, 0.5)),
+      }
+    }
+  }
+
+  impl<V: From<Definition<Color, f32>>> TokenSet<V> for Other {
+    fn definitions(&self) -> Vec<(TokenName, V)> {
+      vec![self.rule.define()]
     }
   }
 
@@ -668,6 +707,30 @@ mod tests {
       Definitions::<TokenValue<f32>>::from(vec![alias]).linked_beyond(),
       [Palette::CARD.name()],
       "an alias of a token the set leaves undefined"
+    );
+  }
+
+  /// A set whose tokens link to it owns those alone, an unlinked alias and a token
+  /// linked to another set left out; definitions none of whose names link to the set
+  /// keep every one.
+  #[test]
+  fn a_set_owns_the_tokens_linked_to_it() {
+    let alias = Token::<Color, f32>::new(TokenRef::new("ink"), Palette::CARD).define();
+    let foreign = Token::<Color, f32>::new(Other::RULE, Palette::CARD).define();
+    let own = Definitions::<TokenValue<f32>>::of(&Palette::default());
+    let mut aliasing = own.clone();
+
+    aliasing.overlay(Definitions::from(vec![alias.clone(), foreign]));
+
+    assert_eq!(aliasing.len(), own.len() + 2);
+    assert_eq!(aliasing.owned_by(TypeId::of::<Palette>()), own);
+
+    let unlinked = Definitions::<TokenValue<f32>>::from(vec![alias]);
+
+    assert_eq!(
+      unlinked.clone().owned_by(TypeId::of::<Palette>()),
+      unlinked,
+      "definitions naming no link keep every one"
     );
   }
 

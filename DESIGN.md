@@ -659,8 +659,9 @@ Each preset's pieces are public (`SimpleButton::styled`, `derive_styled`,
 tokens without defining them. The palette links its references with `TokenRef::of`, so
 its default reaches the root the first time a node references one and a preset is
 inked with no theme above it, a `Theme` of the palette above redefining them. The
-default carries the palette's typography aliases, so once a page names a Simple token its
-plain text under no theme takes Simple's foreground. The palette defines every variant's
+default at the root holds the palette's own tokens alone: its typography aliases take
+effect beneath a `Theme` of the palette, so a preset beside plain text leaves that text to
+the platform's typography or the app's theme. The palette defines every variant's
 border token, transparent for a filled look, so a derived border needs the variant
 alone. Its checkbox, radio group and radio, and its picker with its option
 (`SimpleCheckbox::new()`, `SimpleRadioGroup::new()`, `SimpleRadio::new(value)`,
@@ -1340,19 +1341,26 @@ set by its `TypeId`, builds its default through the link, converts each definiti
 the realization's token value, dropping a kind it holds none of (a text default on the
 web), and lays them over the root through `Scene::define_root_set`, the claim a read
 through `ThemedIn` makes too, so a read and a reference lay a set once between them; a
-read still lays it on a miss. `Scene::define_tokens`, the one entry for every
-definition, lists the linked tokens its definitions name in turn, so a default or a
-theme aliasing another palette's token lays that palette as well, the claim ending the
-recursion; on a node's scope it passes over a token the same definitions define, so a
-theme of a palette aliasing its own tokens (Simple's typography aliases) lays nothing at
-the root and the text outside it keeps its ink. The default is laid whether or not a
-theme above defines the palette, since a style is applied before its node is attached
-and its ancestors are unknown; the nearer definition wins, the theme's scope over the
-root on every platform. An unlinked name costs one `Option` check; a linked one costs a
-read of the scene, which is borrowed mutably only where its set is not laid yet. Once per root is once per render on the server, whose every render starts a
-fresh scene, so a palette first referenced in a streamed chunk carries its root rule in
-that chunk's style delta; on the browser leaf and the terminal it is once per
-installation of the platform, however many mounts it holds.
+read still lays it on a miss. `define_root_set` keeps the set's own tokens alone: the
+definitions whose names link to the set, or every one where no name links to it, as for
+an unlinked set (`Typography`, `SystemColors`, an app's own). A palette's definitions of
+another set's tokens (Simple's typography aliases) therefore never reach the root; they
+take effect beneath a theme of the palette, so a preset leaves the page's text to the
+platform or the app. `Scene::define_tokens`, the one entry for every definition, lists
+the linked tokens its definitions name in turn, so a default whose own token aliases
+another palette's lays that palette as well, the claim ending the recursion, while a
+default that only defines another palette's token lays nothing of it; on a node's scope
+it passes over a token the same definitions define, so a theme of a palette aliasing its
+own tokens (Simple's typography aliases) lays nothing at the root and the text outside it
+keeps its ink. The default is laid whether or not a theme above defines the palette,
+since a style is applied before its node is attached and its ancestors are unknown; the
+nearer definition wins, the theme's scope over the root on every platform. An unlinked
+name costs one `Option` check; a linked one costs a read of the scene, which is borrowed
+mutably only where its set is not laid yet. Once per root is once per render on the
+server, whose every render starts a fresh scene, so a palette first referenced in a
+streamed chunk carries its root rule in that chunk's style delta; on the browser leaf
+and the terminal it is once per installation of the platform, however many mounts it
+holds.
 
 `Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web; the terminal makes no node for it, keeping no record,

@@ -44,7 +44,7 @@ const RUNS: &[Run] = &[
   Run {
     package: "skene-simple-web",
     arguments: &[],
-    binaries: &[("browser_simple", 13)],
+    binaries: &[("browser_simple", 14)],
   },
   Run {
     package: "skene-transport",

@@ -2105,8 +2105,11 @@ Two guarantees, both properties of what is public rather than of any one API.
   its presets on its facade's vocabulary, each a function returning the facade's
   built-in styled from the core (`SimpleButton::outline(label)` returns a `Button`),
   with the pieces it composes public (`SimpleButton::styled`), and, where a preset is not
-  enough, concrete views of its own, as each facade writes its built-ins; nothing in it
-  names the platform's realization or is generic over one. Nothing on the path a
+  enough, concrete views of its own, as each facade writes its built-ins; no public
+  signature in it names the platform's realization, nothing in it is generic over one,
+  and where the facade's own surface still asks for the realization (a base trait's
+  bound, a part recorded in the scene, a wrapper erased into a flex child) it names it
+  as the facade's `Active` alone. Nothing on the path a
   built-in takes is crate-private: the setter macros the
   built-ins generate their `set_`/`derive_` pairs with (`properties!`,
   `trait_properties!`) and the surfaces they share (`DecorationBase`, `RunBase`) are

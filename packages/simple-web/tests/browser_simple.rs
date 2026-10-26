@@ -21,11 +21,28 @@ use skene_web::{
   behavior::SliderRange,
   platform::web::{self, WebTokenValue, mount},
   prelude::*,
-  testing::{Installed, computed, dispatch, document, frames_until, fresh_root, only_child},
+  testing::{
+    Installed,
+    computed,
+    dispatch,
+    document,
+    frames_until,
+    fresh_root,
+    next_frame,
+    only_child,
+  },
   wasm_bindgen::JsCast,
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit};
+use web_sys::{
+  Element,
+  HtmlElement,
+  HtmlInputElement,
+  KeyboardEvent,
+  KeyboardEventInit,
+  PointerEvent,
+  PointerEventInit,
+};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -151,6 +168,53 @@ async fn settled(element: &Element, expected: &str) -> String {
   background(element)
 }
 
+/// The text of every stylesheet the platform owns.
+fn sheet_text() -> String {
+  let styles = document()
+    .query_selector_all("style[data-skene-style]")
+    .expect("query the styles");
+
+  (0..styles.length())
+    .filter_map(|index| styles.item(index))
+    .filter_map(|style| style.text_content())
+    .collect()
+}
+
+/// The custom property the rule styling `element` while hovered takes its background
+/// from.
+fn hover_slot(element: &Element) -> String {
+  let class = element
+    .get_attribute("class")
+    .unwrap_or_default()
+    .split(' ')
+    .find(|class| class.starts_with("skene-"))
+    .expect("a styled element")
+    .to_owned();
+  let sheet = sheet_text();
+  let rule = format!(".{class}:where(:hover){{background-color:var(");
+  let start = sheet
+    .find(&rule)
+    .unwrap_or_else(|| panic!("the hover rule references a slot: {sheet}"))
+    + rule.len();
+
+  sheet[start..]
+    .split(')')
+    .next()
+    .expect("the slot's name")
+    .to_owned()
+}
+
+/// The color the custom property `slot` holds on `element`, as `outline-color` computes
+/// it.
+fn slot_color(element: &Element, slot: &str) -> String {
+  let style = html(element).style();
+  let _ = style.set_property("outline-color", &format!("var({slot})"));
+  let color = computed(element, "outline-color");
+  let _ = style.remove_property("outline-color");
+
+  color
+}
+
 /// The view `view` builds under a default Simple theme on a fresh root, the guard of
 /// the root and the element the view realizes, the theme realizing a scope of its own.
 fn themed<V: View + 'static>(view: impl FnOnce() -> V + 'static) -> (Installed, Element) {
@@ -237,7 +301,8 @@ async fn a_buttons_surface_and_focus_resolve_the_primary_look_on_the_control() {
 }
 
 /// A derived variant re-inks the button's own element: the surface, the border and the
-/// label's ink follow the signal and the element is never rebuilt.
+/// label's ink follow the signal, the hovered and focused surfaces are the variant's own
+/// and follow a flip while they show, and the element is never rebuilt.
 #[wasm_bindgen_test]
 async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   let _scheme = Scheme::choose(ColorScheme::Light);
@@ -269,6 +334,42 @@ async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   assert_eq!(
     ink(&only_child(&button)),
     probe("color", light(&palette.destructive.ink))
+  );
+
+  let hovered = hover_slot(&button);
+
+  assert_eq!(
+    slot_color(&button, &hovered),
+    probe("outline-color", light(&palette.destructive.hover)),
+    "the hovered surface is the variant's"
+  );
+
+  html(&button).focus().expect("focus the button");
+
+  assert!(button.matches(":focus-visible").expect("a selector"));
+
+  let focus = probe("background-color", light(&palette.destructive.focus));
+
+  assert_eq!(
+    settled(&button, &focus).await,
+    focus,
+    "the focused surface is the variant's"
+  );
+
+  variant.set(SimpleVariant::Primary);
+  web::end_turn();
+
+  let focus = probe("background-color", light(&palette.primary.focus));
+
+  assert_eq!(
+    settled(&button, &focus).await,
+    focus,
+    "the focused surface follows a flip"
+  );
+  assert_eq!(
+    slot_color(&button, &hovered),
+    probe("outline-color", light(&palette.primary.hover)),
+    "the hovered surface follows a flip"
   );
   assert!(button.is_connected(), "re-inked, not rebuilt");
 }
@@ -456,6 +557,101 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
 
   assert!(field.matches(":focus-visible").expect("a selector"));
   assert_eq!(border(&thumb), drawn(2, light(&palette.ring)));
+}
+
+/// A captioned slider's caption trails its track, the flexible track taking what the
+/// caption leaves from the box's start, and a press on the track's first pixel reaches
+/// the minimum and one on its last pixel the maximum.
+#[wasm_bindgen_test]
+async fn a_captioned_sliders_track_takes_what_its_caption_leaves() {
+  let _scheme = Scheme::choose(ColorScheme::Light);
+  let value = Signal::new(50.0f32);
+  let (_guard, boxed) = themed(move || {
+    Container::new().set_width(300).set_child(
+      SimpleSlider::new()
+        .set_label("Volume")
+        .set_range(SliderRange::new(0., 100., 1.))
+        .bind_value(value),
+    )
+  });
+
+  next_frame().await;
+
+  let slider = only_child(&boxed);
+  let [_, face, caption] = &elements(&slider)[..]
+  else {
+    panic!("the input, the slider's face and its caption");
+  };
+  let stack = only_child(face);
+  let [track, ..] = &elements(&stack)[..]
+  else {
+    panic!("the track");
+  };
+  let (bounds, track_bounds, caption_bounds) = (
+    slider.get_bounding_client_rect(),
+    track.get_bounding_client_rect(),
+    caption.get_bounding_client_rect(),
+  );
+
+  assert_eq!(caption.text_content().as_deref(), Some("Volume"));
+  assert!(
+    (track_bounds.left() - bounds.left()).abs() < 0.5,
+    "the track starts at the box's start"
+  );
+  assert!(
+    caption_bounds.left() >= track_bounds.right(),
+    "the caption trails the track"
+  );
+  assert!(
+    caption_bounds.right() <= bounds.right() + 0.5,
+    "the caption fits the box"
+  );
+  assert!(
+    track_bounds.width() > 200.,
+    "the track takes what the caption leaves: {}",
+    track_bounds.width()
+  );
+
+  let press = |x: f64| {
+    let init = PointerEventInit::new();
+
+    init.set_bubbles(true);
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a coordinate inside the test page fits an i32"
+    )]
+    init.set_client_x(x as i32);
+    init.set_button(0);
+
+    let event = PointerEvent::new_with_event_init_dict("pointerdown", &init).expect("a press");
+    let _ = track.dispatch_event(&event);
+
+    let event = PointerEvent::new_with_event_init_dict("pointerup", &init).expect("a release");
+    let _ = track.dispatch_event(&event);
+
+    web::end_turn();
+  };
+  let reached = |target: f32| (value.get_untracked() - target).abs() < f32::EPSILON;
+  let last = (track_bounds.right() - 1.).floor();
+
+  assert!(
+    frames_until(|| {
+      press(last);
+
+      reached(100.)
+    })
+    .await,
+    "the last pixel reaches the maximum: {}",
+    value.get_untracked()
+  );
+
+  press(track_bounds.left().ceil());
+
+  assert!(
+    reached(0.),
+    "the first pixel reaches the minimum: {}",
+    value.get_untracked()
+  );
 }
 
 /// A text field's border is the ring only while it is focused, an edit commits into its

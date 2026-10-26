@@ -8,12 +8,10 @@ use skene_foundation::{
   HasChild,
   HasChildren,
   ItemAlignment,
-  Label,
   ListboxContext,
   Spacing,
 };
 use skene_terminal::{
-  Active,
   BasicPickerBase,
   Choice,
   Color,
@@ -23,6 +21,7 @@ use skene_terminal::{
   DecorationBase,
   DecorationWithCornerRadius,
   Inset,
+  Label,
   ListboxOption,
   Part,
   Picker,
@@ -203,7 +202,7 @@ impl SimpleListboxOption {
 
   /// The caption `label`, naming the option: in the foreground, the primary ink while the
   /// option is chosen.
-  pub fn label(label: impl Into<String>) -> Label<Active> {
+  pub fn label(label: impl Into<String>) -> Label {
     let label = label.into();
     let caption = Text::new(label.as_str())
       .set_color(SimplePalette::FOREGROUND.when(State::Checked, SimplePalette::PRIMARY_INK));

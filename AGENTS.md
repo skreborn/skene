@@ -831,11 +831,11 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   each library crate's public API against its snapshot under `api/`, read by a pinned
   nightly and `cargo public-api`, clippy on the code written for Apple's platforms (the
   terminal's, on `aarch64-apple-darwin`), the app and the library `skene new` writes
-  from the checkout, clippy-clean and their doctests passing in every build of the
-  platforms they name, every platform's tests the gate's machine runs and the workspace
-  on its declared `rust-version`. A realization crate enables only the binding features
-  it uses and keeps target-side C build scripts out, so a pixel target cross-checks from
-  any host. Everything but formatting, the API snapshots and that last check runs on the
+  from the checkout, clippy-clean in every build of the platforms they name and their
+  doctests passing in the builds on the host, every platform's tests the gate's machine
+  runs and the workspace on its declared `rust-version`. A realization crate enables
+  only the binding features it uses and keeps target-side C build scripts out, so a
+  pixel target cross-checks from any host. Everything but formatting, the API snapshots and that last check runs on the
   stable `rust-toolchain.toml` pins, so a Rust release changes nothing until a change of
   its own moves the pin and answers what the release asks.
   `cargo xtask gate test:browser` runs one step and `cargo xtask gate clippy` a group;

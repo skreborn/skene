@@ -37,7 +37,7 @@ pub fn skene_simple_web::SimpleContextMenu::fmt(&self, &mut core::fmt::Formatter
 pub enum skene_simple_web::SimpleListboxOption
 impl skene_simple_web::SimpleListboxOption
 pub fn skene_simple_web::SimpleListboxOption::check() -> skene_web::views::container::Container
-pub fn skene_simple_web::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_foundation::control::Label<skene_web::Active>
+pub fn skene_simple_web::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_web::Label
 pub fn skene_simple_web::SimpleListboxOption::new(impl skene_foundation::control::choice::Choice, impl core::convert::Into<alloc::string::String>) -> skene_web::views::listbox::ListboxOption
 pub fn skene_simple_web::SimpleListboxOption::styled(skene_web::views::listbox::ListboxOption) -> skene_web::views::listbox::ListboxOption
 impl core::fmt::Debug for skene_simple_web::SimpleListboxOption

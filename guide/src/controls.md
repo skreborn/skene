@@ -284,7 +284,8 @@ fn bare() -> impl View {
 
 A component library dresses the controls in a design language of its own. Simple's
 controls come drawn and ready, in the platform's crate of the Simple library, each
-inked from its palette:
+inked from its palette. A preset references the palette's tokens, which a `Theme` of the
+palette above it defines, so an app puts one at its root:
 
 ```rust
 use skene_simple_web::prelude::*;
@@ -298,28 +299,30 @@ enum Size {
 }
 
 fn order(name: Signal<String>, size: Signal<Size>) -> impl View {
-  Column::new().set_spacing(12).set_children((
-    SimpleTextField::new()
-      .set_label("Name")
-      .set_placeholder("Your name")
-      .bind_value(name),
-    SimpleRadioGroup::new().set_label("Size").bind_chosen(size).set_child(
-      Row::new().set_spacing(16).set_children((
-        SimpleRadio::new(Size::Small).set_label("Small"),
-        SimpleRadio::new(Size::Medium).set_label("Medium"),
-        SimpleRadio::new(Size::Large).set_label("Large"),
-      )),
-    ),
-    SimplePicker::new()
-      .set_label("Size")
-      .bind_chosen(size)
-      .set_options((
-        SimpleListboxOption::new(Size::Small, "Small"),
-        SimpleListboxOption::new(Size::Medium, "Medium"),
-        SimpleListboxOption::new(Size::Large, "Large"),
-      )),
-    SimpleButton::new("Order").handle_activate(move || println!("ordered {}", name.get())),
-  ))
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
+    Column::new().set_spacing(12).set_children((
+      SimpleTextField::new()
+        .set_label("Name")
+        .set_placeholder("Your name")
+        .bind_value(name),
+      SimpleRadioGroup::new().set_label("Size").bind_chosen(size).set_child(
+        Row::new().set_spacing(16).set_children((
+          SimpleRadio::new(Size::Small).set_label("Small"),
+          SimpleRadio::new(Size::Medium).set_label("Medium"),
+          SimpleRadio::new(Size::Large).set_label("Large"),
+        )),
+      ),
+      SimplePicker::new()
+        .set_label("Size")
+        .bind_chosen(size)
+        .set_options((
+          SimpleListboxOption::new(Size::Small, "Small"),
+          SimpleListboxOption::new(Size::Medium, "Medium"),
+          SimpleListboxOption::new(Size::Large, "Large"),
+        )),
+      SimpleButton::new("Order").handle_activate(move || println!("ordered {}", name.get())),
+    ))
+  })
 }
 ```
 
@@ -330,27 +333,28 @@ styled, so every member of the built-in applies. `SimpleTextField::new()` is a
 `Picker`, and `SimpleListboxOption::new(value, caption)` a `ListboxOption` whose caption
 names it for the face and for type-ahead. A slider's `set_label` is the built-in's
 visible caption, so a Simple slider nothing visible names takes its name from
-`set_accessible_name`. A
-button takes a constructor per variant, and `derive_variant` follows a signal, re-inking
-the button in place:
+`set_accessible_name`. A button takes a constructor per variant, and `derive_variant`
+follows a signal, re-inking the button in place:
 
 ```rust
 use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 fn actions(dirty: Signal<bool>) -> impl View {
-  Row::new().set_spacing(8).set_children((
-    SimpleButton::outline("Cancel"),
-    SimpleButton::derive_variant("Save", move || {
-      if dirty.get() {
-        SimpleVariant::Primary
-      }
-      else {
-        SimpleVariant::Secondary
-      }
-    }),
-    SimpleButton::destructive("Delete").set_disabled(true),
-  ))
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
+    Row::new().set_spacing(8).set_children((
+      SimpleButton::outline("Cancel"),
+      SimpleButton::derive_variant("Save", move || {
+        if dirty.get() {
+          SimpleVariant::Primary
+        }
+        else {
+          SimpleVariant::Secondary
+        }
+      }),
+      SimpleButton::destructive("Delete").set_disabled(true),
+    ))
+  })
 }
 ```
 

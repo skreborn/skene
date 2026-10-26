@@ -263,7 +263,8 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
 }
 
 /// A derived variant re-inks the button in place: its surface and its label's ink follow
-/// the signal, and the control is never rebuilt.
+/// the signal, its hovered and focused surfaces are the variant's own and follow a flip
+/// while they show, and the control is never rebuilt.
 #[test]
 fn a_derived_variant_reinks_the_button_without_a_rebuild() {
   with_platform(|| {
@@ -295,6 +296,45 @@ fn a_derived_variant_reinks_the_button_without_a_rebuild() {
         Some(light(&palette.destructive.surface))
       ),
       "re-inked in the destructive look"
+    );
+
+    user::hover(button);
+    settle();
+
+    assert_eq!(
+      background_at(x, y),
+      Some(light(&palette.destructive.hover)),
+      "the hovered surface is the variant's"
+    );
+
+    variant.set(SimpleVariant::Primary);
+    settle();
+
+    assert_eq!(
+      background_at(x, y),
+      Some(light(&palette.primary.hover)),
+      "the hovered surface follows a flip"
+    );
+
+    testing::trigger_mouse_move(WIDTH - 1, HEIGHT - 1);
+    variant.set(SimpleVariant::Destructive);
+    testing::trigger_key("Tab");
+    settle();
+
+    assert_eq!(testing::focused_node(), Some(button));
+    assert_eq!(
+      background_at(x, y),
+      Some(light(&palette.destructive.focus)),
+      "the focused surface is the variant's"
+    );
+
+    variant.set(SimpleVariant::Primary);
+    settle();
+
+    assert_eq!(
+      background_at(x, y),
+      Some(light(&palette.primary.focus)),
+      "the focused surface follows a flip"
     );
     assert_eq!(
       testing::find_by_role(Role::Button, "Go"),

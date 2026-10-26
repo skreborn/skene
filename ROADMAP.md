@@ -27,6 +27,11 @@ in a code comment.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.
+    - A library's facade crate names no realization even in its bodies: each facade
+    gives a name of its own to what Simple still reaches through `Active` (the bound
+    of `field_chrome` on `TextEntryBase` and `DecorationBase`, `Scene::<Active>` to
+    record a part, `IntoChildOf::<Active, FlexChild>` to erase the slider's flexible
+    track).
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.

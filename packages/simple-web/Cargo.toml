@@ -25,6 +25,8 @@ web-sys = { workspace = true, features = [
   "HtmlInputElement",
   "KeyboardEvent",
   "KeyboardEventInit",
+  "PointerEvent",
+  "PointerEventInit",
   "Window",
 ] }
 

@@ -68,7 +68,7 @@ pub fn skene_simple_terminal::SimpleContextMenu::fmt(&self, &mut core::fmt::Form
 pub enum skene_simple_terminal::SimpleListboxOption
 impl skene_simple_terminal::SimpleListboxOption
 pub fn skene_simple_terminal::SimpleListboxOption::check() -> skene_terminal::views::container::Container
-pub fn skene_simple_terminal::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_foundation::control::Label<skene_terminal::Active>
+pub fn skene_simple_terminal::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_terminal::Label
 pub fn skene_simple_terminal::SimpleListboxOption::new(impl skene_foundation::control::choice::Choice, impl core::convert::Into<alloc::string::String>) -> skene_terminal::views::listbox::ListboxOption
 pub fn skene_simple_terminal::SimpleListboxOption::styled(skene_terminal::views::listbox::ListboxOption) -> skene_terminal::views::listbox::ListboxOption
 impl core::fmt::Debug for skene_simple_terminal::SimpleListboxOption

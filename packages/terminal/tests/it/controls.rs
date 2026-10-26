@@ -753,6 +753,62 @@ fn a_sliders_end_cells_reach_its_ends() {
   });
 }
 
+/// A Simple slider's visible caption trails its track, the flexible track taking the
+/// cells the caption leaves from the box's start, and a press on the track's first cell
+/// reaches the minimum and one on its last cell the maximum.
+#[test]
+fn a_captioned_simple_sliders_track_takes_what_its_caption_leaves() {
+  with_platform(|| {
+    let volume = Signal::new(50.0f32);
+
+    let _ = terminal::mount(|| {
+      Theme::new(SimplePalette::default())
+        .set_child_builder(move || {
+          Container::new().set_width(20).set_child(
+            SimpleSlider::new()
+              .set_label("Volume")
+              .set_range(SliderRange::new(0., 100., 1.))
+              .bind_value(volume),
+          )
+        })
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(20, 1);
+    let colors = testing::render_to_colors(20, 1);
+
+    assert_eq!(locate(&frame, "Volume"), (14, 0), "{frame}");
+    assert!(
+      colors[0].1.is_some(),
+      "the track starts at the box's start: {frame}"
+    );
+
+    let end = (0..14)
+      .rev()
+      .find(|&x| colors[x].1.is_some())
+      .unwrap_or_else(|| panic!("the track is drawn beside the caption: {frame}"));
+
+    assert!(end > 9, "the track takes what the caption leaves: {frame}");
+
+    testing::trigger_mouse_click(u16::try_from(end).expect("a column"), 0);
+
+    assert!(
+      (volume.get_untracked() - 100.).abs() < f32::EPSILON,
+      "{}",
+      volume.get_untracked()
+    );
+
+    testing::trigger_mouse_click(0, 0);
+
+    assert!(
+      volume.get_untracked().abs() < f32::EPSILON,
+      "{}",
+      volume.get_untracked()
+    );
+  });
+}
+
 /// A slider's drag ends with the release wherever the pointer is: motion afterwards
 /// over the slider changes nothing.
 #[test]

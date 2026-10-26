@@ -6,12 +6,12 @@ pub skene_simple::SimpleVariant::Outline
 pub skene_simple::SimpleVariant::Primary
 pub skene_simple::SimpleVariant::Secondary
 impl core::clone::Clone for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
+pub fn skene_simple::SimpleVariant::clone(&self) -> Self
 impl core::cmp::Eq for skene_simple::SimpleVariant
 impl core::cmp::PartialEq for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::eq(&self, &skene_simple::SimpleVariant) -> bool
+pub fn skene_simple::SimpleVariant::eq(&self, &Self) -> bool
 impl core::default::Default for skene_simple::SimpleVariant
-pub fn skene_simple::SimpleVariant::default() -> skene_simple::SimpleVariant
+pub fn skene_simple::SimpleVariant::default() -> Self
 impl core::fmt::Debug for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_simple::SimpleVariant
@@ -31,9 +31,9 @@ pub fn skene_simple::SimpleLook<N>::set_ink(self, impl core::convert::Into<skene
 pub fn skene_simple::SimpleLook<N>::set_surface(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub const fn skene_simple::SimpleLook<N>::variant(&self) -> skene_simple::SimpleVariant
 impl<N: core::clone::Clone + skene_foundation::spine::scalar::Scalar> core::clone::Clone for skene_simple::SimpleLook<N>
-pub fn skene_simple::SimpleLook<N>::clone(&self) -> skene_simple::SimpleLook<N>
+pub fn skene_simple::SimpleLook<N>::clone(&self) -> Self
 impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimpleLook<N>
-pub fn skene_simple::SimpleLook<N>::eq(&self, &skene_simple::SimpleLook<N>) -> bool
+pub fn skene_simple::SimpleLook<N>::eq(&self, &Self) -> bool
 impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::marker::StructuralPartialEq for skene_simple::SimpleLook<N>
 impl<N: core::fmt::Debug + skene_foundation::spine::scalar::Scalar> core::fmt::Debug for skene_simple::SimpleLook<N>
 pub fn skene_simple::SimpleLook<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -108,9 +108,9 @@ pub fn skene_simple::SimplePalette<N>::set_ring(self, impl core::convert::Into<s
 pub fn skene_simple::SimplePalette<N>::set_secondary(self, skene_simple::SimpleLook<N>) -> Self
 pub const fn skene_simple::SimplePalette<N>::surface_of(skene_simple::SimpleVariant) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 impl<N: core::clone::Clone + skene_foundation::spine::scalar::Scalar> core::clone::Clone for skene_simple::SimplePalette<N>
-pub fn skene_simple::SimplePalette<N>::clone(&self) -> skene_simple::SimplePalette<N>
+pub fn skene_simple::SimplePalette<N>::clone(&self) -> Self
 impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimplePalette<N>
-pub fn skene_simple::SimplePalette<N>::eq(&self, &skene_simple::SimplePalette<N>) -> bool
+pub fn skene_simple::SimplePalette<N>::eq(&self, &Self) -> bool
 impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::marker::StructuralPartialEq for skene_simple::SimplePalette<N>
 impl<N: core::fmt::Debug + skene_foundation::spine::scalar::Scalar> core::fmt::Debug for skene_simple::SimplePalette<N>
 pub fn skene_simple::SimplePalette<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -142,9 +142,9 @@ pub skene_simple::SimpleShape::thumb_surface: skene_foundation::spine::token::To
 pub skene_simple::SimpleShape::tooltip_inset: skene_foundation::spine::values::inset::Inset<N>
 pub skene_simple::SimpleShape::track_height: N
 impl<N: core::clone::Clone> core::clone::Clone for skene_simple::SimpleShape<N>
-pub fn skene_simple::SimpleShape<N>::clone(&self) -> skene_simple::SimpleShape<N>
+pub fn skene_simple::SimpleShape<N>::clone(&self) -> Self
 impl<N: core::cmp::PartialEq> core::cmp::PartialEq for skene_simple::SimpleShape<N>
-pub fn skene_simple::SimpleShape<N>::eq(&self, &skene_simple::SimpleShape<N>) -> bool
+pub fn skene_simple::SimpleShape<N>::eq(&self, &Self) -> bool
 impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_simple::SimpleShape<N>
 impl<N: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleShape<N>
 pub fn skene_simple::SimpleShape<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

@@ -392,10 +392,10 @@ pub const skene_gui::Platform::IS_APPLE: bool
 pub const skene_gui::Platform::IS_SERVER: bool
 pub const fn skene_gui::Platform::name(self) -> &'static str
 impl core::clone::Clone for skene_gui::Platform
-pub fn skene_gui::Platform::clone(&self) -> skene_gui::Platform
+pub fn skene_gui::Platform::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui::Platform
 impl core::cmp::PartialEq for skene_gui::Platform
-pub fn skene_gui::Platform::eq(&self, &skene_gui::Platform) -> bool
+pub fn skene_gui::Platform::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_gui::Platform
 pub fn skene_gui::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_gui::Platform
@@ -486,7 +486,7 @@ impl skene_foundation::surface::DecorationBase<skene_gui_web::Web> for skene_gui
 impl skene_foundation::surface::MotionBase<skene_gui_web::Web> for skene_gui::Checkbox
 pub struct skene_gui::prelude::Column(_)
 impl core::default::Default for skene_gui::Column
-pub fn skene_gui::Column::default() -> skene_gui::Column
+pub fn skene_gui::Column::default() -> Self
 impl core::fmt::Debug for skene_gui::Column
 pub fn skene_gui::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::ColumnBase<skene_gui_web::Web> for skene_gui::Column
@@ -502,7 +502,7 @@ pub fn skene_gui::Column::into_inner(self) -> Self::Inner
 pub fn skene_gui::Column::wrap(Self::Inner) -> Self
 pub struct skene_gui::prelude::Container(_)
 impl core::default::Default for skene_gui::Container
-pub fn skene_gui::Container::default() -> skene_gui::Container
+pub fn skene_gui::Container::default() -> Self
 impl core::fmt::Debug for skene_gui::Container
 pub fn skene_gui::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::container::ContainerBase<skene_gui_web::Web> for skene_gui::Container
@@ -594,7 +594,7 @@ pub fn skene_gui::Flexible::into_inner(self) -> Self::Inner
 pub fn skene_gui::Flexible::wrap(Self::Inner) -> Self
 pub struct skene_gui::prelude::Grid(_)
 impl core::default::Default for skene_gui::Grid
-pub fn skene_gui::Grid::default() -> skene_gui::Grid
+pub fn skene_gui::Grid::default() -> Self
 impl core::fmt::Debug for skene_gui::Grid
 pub fn skene_gui::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::grid::GridBase<skene_gui_web::Web> for skene_gui::Grid
@@ -638,7 +638,7 @@ pub fn skene_gui::Keymap::into_inner(self) -> Self::Inner
 pub fn skene_gui::Keymap::wrap(Self::Inner) -> Self
 pub struct skene_gui::prelude::LazyColumn(_)
 impl core::default::Default for skene_gui::LazyColumn
-pub fn skene_gui::LazyColumn::default() -> skene_gui::LazyColumn
+pub fn skene_gui::LazyColumn::default() -> Self
 impl core::fmt::Debug for skene_gui::LazyColumn
 pub fn skene_gui::LazyColumn::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyColumnBase<skene_gui_web::Web> for skene_gui::LazyColumn
@@ -653,7 +653,7 @@ pub fn skene_gui::LazyColumn::into_inner(self) -> Self::Inner
 pub fn skene_gui::LazyColumn::wrap(Self::Inner) -> Self
 pub struct skene_gui::prelude::LazyRow(_)
 impl core::default::Default for skene_gui::LazyRow
-pub fn skene_gui::LazyRow::default() -> skene_gui::LazyRow
+pub fn skene_gui::LazyRow::default() -> Self
 impl core::fmt::Debug for skene_gui::LazyRow
 pub fn skene_gui::LazyRow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyRowBase<skene_gui_web::Web> for skene_gui::LazyRow
@@ -843,7 +843,7 @@ pub fn skene_gui::RadioGroup<T>::map_layout_box(self, impl core::ops::function::
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_gui_web::Web> for skene_gui::RadioGroup<T>
 pub struct skene_gui::prelude::RichText(_)
 impl core::default::Default for skene_gui::RichText
-pub fn skene_gui::RichText::default() -> skene_gui::RichText
+pub fn skene_gui::RichText::default() -> Self
 impl core::fmt::Debug for skene_gui::RichText
 pub fn skene_gui::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::span::RichTextBase<skene_gui_web::Web> for skene_gui::RichText
@@ -858,7 +858,7 @@ pub fn skene_gui::RichText::into_inner(self) -> Self::Inner
 pub fn skene_gui::RichText::wrap(Self::Inner) -> Self
 pub struct skene_gui::prelude::Row(_)
 impl core::default::Default for skene_gui::Row
-pub fn skene_gui::Row::default() -> skene_gui::Row
+pub fn skene_gui::Row::default() -> Self
 impl core::fmt::Debug for skene_gui::Row
 pub fn skene_gui::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::FlexBase<skene_gui_web::Web> for skene_gui::Row
@@ -911,7 +911,7 @@ pub fn skene_gui::Span::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_gui_web::Web> for skene_gui::Span
 pub struct skene_gui::prelude::Stack(_)
 impl core::default::Default for skene_gui::Stack
-pub fn skene_gui::Stack::default() -> skene_gui::Stack
+pub fn skene_gui::Stack::default() -> Self
 impl core::fmt::Debug for skene_gui::Stack
 pub fn skene_gui::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_gui::Stack
@@ -1135,10 +1135,10 @@ pub const skene_gui::Platform::IS_APPLE: bool
 pub const skene_gui::Platform::IS_SERVER: bool
 pub const fn skene_gui::Platform::name(self) -> &'static str
 impl core::clone::Clone for skene_gui::Platform
-pub fn skene_gui::Platform::clone(&self) -> skene_gui::Platform
+pub fn skene_gui::Platform::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui::Platform
 impl core::cmp::PartialEq for skene_gui::Platform
-pub fn skene_gui::Platform::eq(&self, &skene_gui::Platform) -> bool
+pub fn skene_gui::Platform::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_gui::Platform
 pub fn skene_gui::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_gui::Platform
@@ -1262,7 +1262,7 @@ impl skene_foundation::surface::DecorationBase<skene_gui_web::Web> for skene_gui
 impl skene_foundation::surface::MotionBase<skene_gui_web::Web> for skene_gui::Checkbox
 pub struct skene_gui::Column(_)
 impl core::default::Default for skene_gui::Column
-pub fn skene_gui::Column::default() -> skene_gui::Column
+pub fn skene_gui::Column::default() -> Self
 impl core::fmt::Debug for skene_gui::Column
 pub fn skene_gui::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::ColumnBase<skene_gui_web::Web> for skene_gui::Column
@@ -1278,7 +1278,7 @@ pub fn skene_gui::Column::into_inner(self) -> Self::Inner
 pub fn skene_gui::Column::wrap(Self::Inner) -> Self
 pub struct skene_gui::Container(_)
 impl core::default::Default for skene_gui::Container
-pub fn skene_gui::Container::default() -> skene_gui::Container
+pub fn skene_gui::Container::default() -> Self
 impl core::fmt::Debug for skene_gui::Container
 pub fn skene_gui::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::container::ContainerBase<skene_gui_web::Web> for skene_gui::Container
@@ -1383,7 +1383,7 @@ pub fn skene_gui::Flexible::into_inner(self) -> Self::Inner
 pub fn skene_gui::Flexible::wrap(Self::Inner) -> Self
 pub struct skene_gui::Grid(_)
 impl core::default::Default for skene_gui::Grid
-pub fn skene_gui::Grid::default() -> skene_gui::Grid
+pub fn skene_gui::Grid::default() -> Self
 impl core::fmt::Debug for skene_gui::Grid
 pub fn skene_gui::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::grid::GridBase<skene_gui_web::Web> for skene_gui::Grid
@@ -1427,7 +1427,7 @@ pub fn skene_gui::Keymap::into_inner(self) -> Self::Inner
 pub fn skene_gui::Keymap::wrap(Self::Inner) -> Self
 pub struct skene_gui::LazyColumn(_)
 impl core::default::Default for skene_gui::LazyColumn
-pub fn skene_gui::LazyColumn::default() -> skene_gui::LazyColumn
+pub fn skene_gui::LazyColumn::default() -> Self
 impl core::fmt::Debug for skene_gui::LazyColumn
 pub fn skene_gui::LazyColumn::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyColumnBase<skene_gui_web::Web> for skene_gui::LazyColumn
@@ -1442,7 +1442,7 @@ pub fn skene_gui::LazyColumn::into_inner(self) -> Self::Inner
 pub fn skene_gui::LazyColumn::wrap(Self::Inner) -> Self
 pub struct skene_gui::LazyRow(_)
 impl core::default::Default for skene_gui::LazyRow
-pub fn skene_gui::LazyRow::default() -> skene_gui::LazyRow
+pub fn skene_gui::LazyRow::default() -> Self
 impl core::fmt::Debug for skene_gui::LazyRow
 pub fn skene_gui::LazyRow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyRowBase<skene_gui_web::Web> for skene_gui::LazyRow
@@ -1632,7 +1632,7 @@ pub fn skene_gui::RadioGroup<T>::map_layout_box(self, impl core::ops::function::
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_gui_web::Web> for skene_gui::RadioGroup<T>
 pub struct skene_gui::RichText(_)
 impl core::default::Default for skene_gui::RichText
-pub fn skene_gui::RichText::default() -> skene_gui::RichText
+pub fn skene_gui::RichText::default() -> Self
 impl core::fmt::Debug for skene_gui::RichText
 pub fn skene_gui::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::span::RichTextBase<skene_gui_web::Web> for skene_gui::RichText
@@ -1647,7 +1647,7 @@ pub fn skene_gui::RichText::into_inner(self) -> Self::Inner
 pub fn skene_gui::RichText::wrap(Self::Inner) -> Self
 pub struct skene_gui::Row(_)
 impl core::default::Default for skene_gui::Row
-pub fn skene_gui::Row::default() -> skene_gui::Row
+pub fn skene_gui::Row::default() -> Self
 impl core::fmt::Debug for skene_gui::Row
 pub fn skene_gui::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::FlexBase<skene_gui_web::Web> for skene_gui::Row
@@ -1700,7 +1700,7 @@ pub fn skene_gui::Span::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_gui_web::Web> for skene_gui::Span
 pub struct skene_gui::Stack(_)
 impl core::default::Default for skene_gui::Stack
-pub fn skene_gui::Stack::default() -> skene_gui::Stack
+pub fn skene_gui::Stack::default() -> Self
 impl core::fmt::Debug for skene_gui::Stack
 pub fn skene_gui::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_gui::Stack

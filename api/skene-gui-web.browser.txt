@@ -5,20 +5,20 @@ pub skene_gui_web::LinkAnnotation::NoFollow
 pub skene_gui_web::LinkAnnotation::Sponsored
 pub skene_gui_web::LinkAnnotation::Ugc
 impl core::clone::Clone for skene_gui_web::LinkAnnotation
-pub fn skene_gui_web::LinkAnnotation::clone(&self) -> skene_gui_web::LinkAnnotation
+pub fn skene_gui_web::LinkAnnotation::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui_web::LinkAnnotation
 impl core::cmp::PartialEq for skene_gui_web::LinkAnnotation
-pub fn skene_gui_web::LinkAnnotation::eq(&self, &skene_gui_web::LinkAnnotation) -> bool
+pub fn skene_gui_web::LinkAnnotation::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_gui_web::LinkAnnotation
 pub fn skene_gui_web::LinkAnnotation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_gui_web::LinkAnnotation
 impl core::marker::StructuralPartialEq for skene_gui_web::LinkAnnotation
 pub enum skene_gui_web::Undrawn
 impl core::clone::Clone for skene_gui_web::Undrawn
-pub fn skene_gui_web::Undrawn::clone(&self) -> skene_gui_web::Undrawn
+pub fn skene_gui_web::Undrawn::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui_web::Undrawn
 impl core::cmp::PartialEq for skene_gui_web::Undrawn
-pub fn skene_gui_web::Undrawn::eq(&self, &skene_gui_web::Undrawn) -> bool
+pub fn skene_gui_web::Undrawn::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_gui_web::Undrawn
 pub fn skene_gui_web::Undrawn::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_gui_web::Undrawn
@@ -31,9 +31,9 @@ pub skene_gui_web::WebTokenValue::Dimension(skene_foundation::spine::leaf::Defin
 pub skene_gui_web::WebTokenValue::Length(skene_foundation::spine::leaf::Definition<skene_foundation::spine::expr::Length, f32>)
 pub skene_gui_web::WebTokenValue::Number(skene_foundation::spine::leaf::Definition<f32, f32>)
 impl core::clone::Clone for skene_gui_web::WebTokenValue
-pub fn skene_gui_web::WebTokenValue::clone(&self) -> skene_gui_web::WebTokenValue
+pub fn skene_gui_web::WebTokenValue::clone(&self) -> Self
 impl core::cmp::PartialEq for skene_gui_web::WebTokenValue
-pub fn skene_gui_web::WebTokenValue::eq(&self, &skene_gui_web::WebTokenValue) -> bool
+pub fn skene_gui_web::WebTokenValue::eq(&self, &Self) -> bool
 impl core::convert::From<skene_foundation::spine::leaf::Conditional<skene_foundation::spine::leaf::StaticLeaf<f32>, skene_foundation::spine::condition::Media<f32>>> for skene_gui_web::WebTokenValue
 pub fn skene_gui_web::WebTokenValue::from(skene_foundation::spine::leaf::Definition<f32, f32>) -> Self
 impl core::convert::From<skene_foundation::spine::leaf::Conditional<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::expr::Length>, skene_foundation::spine::condition::Media<f32>>> for skene_gui_web::WebTokenValue
@@ -64,12 +64,12 @@ pub const fn skene_gui_web::LinkPolicy::set_expose_opener(self, bool) -> Self
 pub const fn skene_gui_web::LinkPolicy::set_new_page(self, bool) -> Self
 pub const fn skene_gui_web::LinkPolicy::set_send_referrer(self, bool) -> Self
 impl core::clone::Clone for skene_gui_web::LinkPolicy
-pub fn skene_gui_web::LinkPolicy::clone(&self) -> skene_gui_web::LinkPolicy
+pub fn skene_gui_web::LinkPolicy::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui_web::LinkPolicy
 impl core::cmp::PartialEq for skene_gui_web::LinkPolicy
-pub fn skene_gui_web::LinkPolicy::eq(&self, &skene_gui_web::LinkPolicy) -> bool
+pub fn skene_gui_web::LinkPolicy::eq(&self, &Self) -> bool
 impl core::default::Default for skene_gui_web::LinkPolicy
-pub fn skene_gui_web::LinkPolicy::default() -> skene_gui_web::LinkPolicy
+pub fn skene_gui_web::LinkPolicy::default() -> Self
 impl core::fmt::Debug for skene_gui_web::LinkPolicy
 pub fn skene_gui_web::LinkPolicy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_gui_web::LinkPolicy
@@ -79,10 +79,10 @@ impl skene_gui_web::NativeMarkup
 pub fn skene_gui_web::NativeMarkup::attributes(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
 pub const fn skene_gui_web::NativeMarkup::tag(&self) -> &'static str
 impl core::clone::Clone for skene_gui_web::NativeMarkup
-pub fn skene_gui_web::NativeMarkup::clone(&self) -> skene_gui_web::NativeMarkup
+pub fn skene_gui_web::NativeMarkup::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui_web::NativeMarkup
 impl core::cmp::PartialEq for skene_gui_web::NativeMarkup
-pub fn skene_gui_web::NativeMarkup::eq(&self, &skene_gui_web::NativeMarkup) -> bool
+pub fn skene_gui_web::NativeMarkup::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_gui_web::NativeMarkup
 pub fn skene_gui_web::NativeMarkup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_gui_web::NativeMarkup
@@ -112,9 +112,9 @@ pub const skene_gui_web::RenderHints::REQUEST_HEADERS: [&'static str; 6]
 pub fn skene_gui_web::RenderHints::from_headers<'a>(impl core::iter::traits::collect::IntoIterator<Item = (&'a str, &'a str)>) -> Self
 pub fn skene_gui_web::RenderHints::response_headers() -> alloc::vec::Vec<(&'static str, alloc::string::String)>
 impl core::clone::Clone for skene_gui_web::RenderHints
-pub fn skene_gui_web::RenderHints::clone(&self) -> skene_gui_web::RenderHints
+pub fn skene_gui_web::RenderHints::clone(&self) -> Self
 impl core::cmp::PartialEq for skene_gui_web::RenderHints
-pub fn skene_gui_web::RenderHints::eq(&self, &skene_gui_web::RenderHints) -> bool
+pub fn skene_gui_web::RenderHints::eq(&self, &Self) -> bool
 impl core::default::Default for skene_gui_web::RenderHints
 pub fn skene_gui_web::RenderHints::default() -> Self
 impl core::fmt::Debug for skene_gui_web::RenderHints
@@ -125,12 +125,12 @@ pub struct skene_gui_web::Web
 impl skene_gui_web::Web
 pub fn skene_gui_web::Web::set_link_policy(skene_foundation::spine::node::NodeId, skene_gui_web::LinkPolicy)
 impl core::clone::Clone for skene_gui_web::Web
-pub fn skene_gui_web::Web::clone(&self) -> skene_gui_web::Web
+pub fn skene_gui_web::Web::clone(&self) -> Self
 impl core::cmp::Eq for skene_gui_web::Web
 impl core::cmp::PartialEq for skene_gui_web::Web
-pub fn skene_gui_web::Web::eq(&self, &skene_gui_web::Web) -> bool
+pub fn skene_gui_web::Web::eq(&self, &Self) -> bool
 impl core::default::Default for skene_gui_web::Web
-pub fn skene_gui_web::Web::default() -> skene_gui_web::Web
+pub fn skene_gui_web::Web::default() -> Self
 impl core::fmt::Debug for skene_gui_web::Web
 pub fn skene_gui_web::Web::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_gui_web::Web
@@ -171,7 +171,7 @@ pub fn skene_gui_web::Web::listen(skene_foundation::spine::node::NodeId, skene_f
 pub fn skene_gui_web::Web::localize_pointer(skene_foundation::spine::node::NodeId, &skene_foundation::spine::events::PointerEvent) -> skene_foundation::spine::events::PointerEvent
 pub fn skene_gui_web::Web::media() -> skene_foundation::spine::props::MediaSignals<f32>
 pub fn skene_gui_web::Web::native(skene_foundation::spine::node::NodeId) -> core::option::Option<web_sys::features::gen_Element::Element>
-pub fn skene_gui_web::Web::observe_size(skene_foundation::spine::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<f32>)>) -> skene_foundation::spine::realization::Observation
+pub fn skene_gui_web::Web::observe_size(skene_foundation::spine::node::NodeId, alloc::rcs::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<f32>)>) -> skene_foundation::spine::realization::Observation
 pub fn skene_gui_web::Web::on_pop(impl core::ops::function::Fn(alloc::string::String) + 'static)
 pub fn skene_gui_web::Web::push_path(&str)
 pub fn skene_gui_web::Web::read<R>(skene_foundation::spine::node::NodeId, skene_foundation::spine::content::Content, impl core::ops::function::FnOnce(skene_foundation::spine::content::ContentValue<'_>) -> R) -> core::option::Option<R>

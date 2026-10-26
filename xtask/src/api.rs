@@ -27,7 +27,7 @@ use crate::{
 
 /// The toolchain every surface is read with; a snapshot holds under this toolchain's
 /// rustdoc alone.
-const TOOLCHAIN: &str = "nightly-2026-08-13";
+const TOOLCHAIN: &str = "nightly-2026-10-26";
 
 /// The `cargo public-api` release every surface is listed by; a snapshot holds under
 /// this release's listing alone.

@@ -6,10 +6,10 @@ pub skene_layout::Borders::Width
 impl skene_layout::Borders
 pub fn skene_layout::Borders::room<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension>(self, &skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>) -> skene_foundation::spine::values::inset::Inset<f32>
 impl core::clone::Clone for skene_layout::Borders
-pub fn skene_layout::Borders::clone(&self) -> skene_layout::Borders
+pub fn skene_layout::Borders::clone(&self) -> Self
 impl core::cmp::Eq for skene_layout::Borders
 impl core::cmp::PartialEq for skene_layout::Borders
-pub fn skene_layout::Borders::eq(&self, &skene_layout::Borders) -> bool
+pub fn skene_layout::Borders::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_layout::Borders
 pub fn skene_layout::Borders::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::Borders
@@ -28,7 +28,7 @@ pub skene_layout::Revisit::Every
 pub skene_layout::Revisit::Nodes(alloc::vec::Vec<skene_foundation::spine::node::NodeId>, bool)
 impl core::cmp::Eq for skene_layout::Revisit
 impl core::cmp::PartialEq for skene_layout::Revisit
-pub fn skene_layout::Revisit::eq(&self, &skene_layout::Revisit) -> bool
+pub fn skene_layout::Revisit::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_layout::Revisit
 pub fn skene_layout::Revisit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_layout::Revisit
@@ -40,9 +40,9 @@ pub fn skene_layout::Frames::iter(&self) -> impl core::iter::traits::iterator::I
 pub fn skene_layout::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 pub fn skene_layout::Frames::visible(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 impl core::clone::Clone for skene_layout::Frames
-pub fn skene_layout::Frames::clone(&self) -> skene_layout::Frames
+pub fn skene_layout::Frames::clone(&self) -> Self
 impl core::default::Default for skene_layout::Frames
-pub fn skene_layout::Frames::default() -> skene_layout::Frames
+pub fn skene_layout::Frames::default() -> Self
 impl core::fmt::Debug for skene_layout::Frames
 pub fn skene_layout::Frames::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::Place
@@ -52,10 +52,10 @@ impl skene_layout::Place
 pub fn skene_layout::Place::apply(self, &mut taffy::style::Style)
 pub const fn skene_layout::Place::detached(self) -> Self
 impl core::clone::Clone for skene_layout::Place
-pub fn skene_layout::Place::clone(&self) -> skene_layout::Place
+pub fn skene_layout::Place::clone(&self) -> Self
 impl core::cmp::Eq for skene_layout::Place
 impl core::cmp::PartialEq for skene_layout::Place
-pub fn skene_layout::Place::eq(&self, &skene_layout::Place) -> bool
+pub fn skene_layout::Place::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_layout::Place
 pub fn skene_layout::Place::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::Place
@@ -82,10 +82,10 @@ pub struct skene_layout::RunHit<N>
 pub skene_layout::RunHit::node: N
 pub skene_layout::RunHit::offset: usize
 impl<N: core::clone::Clone> core::clone::Clone for skene_layout::RunHit<N>
-pub fn skene_layout::RunHit<N>::clone(&self) -> skene_layout::RunHit<N>
+pub fn skene_layout::RunHit<N>::clone(&self) -> Self
 impl<N: core::cmp::Eq> core::cmp::Eq for skene_layout::RunHit<N>
 impl<N: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::RunHit<N>
-pub fn skene_layout::RunHit<N>::eq(&self, &skene_layout::RunHit<N>) -> bool
+pub fn skene_layout::RunHit<N>::eq(&self, &Self) -> bool
 impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout::RunHit<N>
 impl<N: core::fmt::Debug> core::fmt::Debug for skene_layout::RunHit<N>
 pub fn skene_layout::RunHit<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

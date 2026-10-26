@@ -7,7 +7,7 @@ pub skene_parley::render::DecorationShape::Stroke(kurbo::bezpath::BezPath, kurbo
 impl skene_parley::render::DecorationShape
 pub fn skene_parley::render::DecorationShape::of(&skene_foundation::text::decoration::DecorationLine) -> Self
 impl core::clone::Clone for skene_parley::render::DecorationShape
-pub fn skene_parley::render::DecorationShape::clone(&self) -> skene_parley::render::DecorationShape
+pub fn skene_parley::render::DecorationShape::clone(&self) -> Self
 impl core::fmt::Debug for skene_parley::render::DecorationShape
 pub fn skene_parley::render::DecorationShape::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_parley::GlyphRun
@@ -16,7 +16,7 @@ pub skene_parley::GlyphRun::font: linebender_resource_handle::font::FontData
 pub skene_parley::GlyphRun::glyphs: alloc::vec::Vec<skene_parley::PositionedGlyph>
 pub skene_parley::GlyphRun::size: f32
 impl core::clone::Clone for skene_parley::GlyphRun
-pub fn skene_parley::GlyphRun::clone(&self) -> skene_parley::GlyphRun
+pub fn skene_parley::GlyphRun::clone(&self) -> Self
 impl core::fmt::Debug for skene_parley::GlyphRun
 pub fn skene_parley::GlyphRun::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_parley::ParleyEngine
@@ -27,7 +27,7 @@ pub fn skene_parley::ParleyEngine::set_tab_size(&self, parley::style::TabSize)
 pub fn skene_parley::ParleyEngine::shape_cache_stats(&self) -> (u64, u64)
 pub fn skene_parley::ParleyEngine::with_typefaces(&[skene_parley::Typeface]) -> Self
 impl core::clone::Clone for skene_parley::ParleyEngine
-pub fn skene_parley::ParleyEngine::clone(&self) -> skene_parley::ParleyEngine
+pub fn skene_parley::ParleyEngine::clone(&self) -> Self
 impl core::fmt::Debug for skene_parley::ParleyEngine
 pub fn skene_parley::ParleyEngine::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::text::engine::TextEngine for skene_parley::ParleyEngine
@@ -46,7 +46,7 @@ impl skene_parley::ParleyLaid
 pub fn skene_parley::ParleyLaid::paint_decorations(&self, &mut vello_cpu::render::RenderContext)
 pub fn skene_parley::ParleyLaid::paint_outlines(&self, &mut vello_cpu::render::RenderContext, (f64, f64))
 impl core::clone::Clone for skene_parley::ParleyLaid
-pub fn skene_parley::ParleyLaid::clone(&self) -> skene_parley::ParleyLaid
+pub fn skene_parley::ParleyLaid::clone(&self) -> Self
 impl core::fmt::Debug for skene_parley::ParleyLaid
 pub fn skene_parley::ParleyLaid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::text::engine::Laid for skene_parley::ParleyLaid
@@ -80,9 +80,9 @@ pub skene_parley::PositionedGlyph::id: u32
 pub skene_parley::PositionedGlyph::x: f32
 pub skene_parley::PositionedGlyph::y: f32
 impl core::clone::Clone for skene_parley::PositionedGlyph
-pub fn skene_parley::PositionedGlyph::clone(&self) -> skene_parley::PositionedGlyph
+pub fn skene_parley::PositionedGlyph::clone(&self) -> Self
 impl core::cmp::PartialEq for skene_parley::PositionedGlyph
-pub fn skene_parley::PositionedGlyph::eq(&self, &skene_parley::PositionedGlyph) -> bool
+pub fn skene_parley::PositionedGlyph::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_parley::PositionedGlyph
 pub fn skene_parley::PositionedGlyph::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_parley::PositionedGlyph
@@ -93,7 +93,7 @@ pub skene_parley::Typeface::family: &'static str
 impl skene_parley::Typeface
 pub const fn skene_parley::Typeface::new(&'static str, &'static [u8]) -> Self
 impl core::clone::Clone for skene_parley::Typeface
-pub fn skene_parley::Typeface::clone(&self) -> skene_parley::Typeface
+pub fn skene_parley::Typeface::clone(&self) -> Self
 impl core::fmt::Debug for skene_parley::Typeface
 pub fn skene_parley::Typeface::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_parley::Typeface

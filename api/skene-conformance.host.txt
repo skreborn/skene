@@ -4,7 +4,7 @@ impl skene_conformance::Probes
 pub fn skene_conformance::Probes::publish(&mut self, &'static str, impl core::ops::function::Fn() -> alloc::string::String + 'static)
 pub fn skene_conformance::Probes::read(&self, &str) -> core::option::Option<alloc::string::String>
 impl core::default::Default for skene_conformance::Probes
-pub fn skene_conformance::Probes::default() -> skene_conformance::Probes
+pub fn skene_conformance::Probes::default() -> Self
 impl core::fmt::Debug for skene_conformance::Probes
 pub fn skene_conformance::Probes::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_conformance::Reading
@@ -14,12 +14,12 @@ pub skene_conformance::Reading::value: core::option::Option<alloc::string::Strin
 impl skene_conformance::Reading
 pub fn skene_conformance::Reading::of_tree(&accesskit::TreeUpdate, skene_foundation::spine::node::NodeId) -> Self
 impl core::clone::Clone for skene_conformance::Reading
-pub fn skene_conformance::Reading::clone(&self) -> skene_conformance::Reading
+pub fn skene_conformance::Reading::clone(&self) -> Self
 impl core::cmp::Eq for skene_conformance::Reading
 impl core::cmp::PartialEq for skene_conformance::Reading
-pub fn skene_conformance::Reading::eq(&self, &skene_conformance::Reading) -> bool
+pub fn skene_conformance::Reading::eq(&self, &Self) -> bool
 impl core::default::Default for skene_conformance::Reading
-pub fn skene_conformance::Reading::default() -> skene_conformance::Reading
+pub fn skene_conformance::Reading::default() -> Self
 impl core::fmt::Debug for skene_conformance::Reading
 pub fn skene_conformance::Reading::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_conformance::Reading

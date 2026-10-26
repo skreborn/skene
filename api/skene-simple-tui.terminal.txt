@@ -16,9 +16,9 @@ pub fn skene_simple_tui::glyph::SimpleGlyphs::set_checkbox(self, impl core::conv
 pub fn skene_simple_tui::glyph::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple_tui::glyph::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for skene_simple_tui::glyph::SimpleGlyphs
-pub fn skene_simple_tui::glyph::SimpleGlyphs::clone(&self) -> skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::clone(&self) -> Self
 impl core::cmp::PartialEq for skene_simple_tui::glyph::SimpleGlyphs
-pub fn skene_simple_tui::glyph::SimpleGlyphs::eq(&self, &skene_simple_tui::glyph::SimpleGlyphs) -> bool
+pub fn skene_simple_tui::glyph::SimpleGlyphs::eq(&self, &Self) -> bool
 impl core::default::Default for skene_simple_tui::glyph::SimpleGlyphs
 pub fn skene_simple_tui::glyph::SimpleGlyphs::default() -> Self
 impl core::fmt::Debug for skene_simple_tui::glyph::SimpleGlyphs
@@ -137,9 +137,9 @@ pub fn skene_simple_tui::glyph::SimpleGlyphs::set_checkbox(self, impl core::conv
 pub fn skene_simple_tui::glyph::SimpleGlyphs::set_picker_indicator(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple_tui::glyph::SimpleGlyphs::set_radio(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for skene_simple_tui::glyph::SimpleGlyphs
-pub fn skene_simple_tui::glyph::SimpleGlyphs::clone(&self) -> skene_simple_tui::glyph::SimpleGlyphs
+pub fn skene_simple_tui::glyph::SimpleGlyphs::clone(&self) -> Self
 impl core::cmp::PartialEq for skene_simple_tui::glyph::SimpleGlyphs
-pub fn skene_simple_tui::glyph::SimpleGlyphs::eq(&self, &skene_simple_tui::glyph::SimpleGlyphs) -> bool
+pub fn skene_simple_tui::glyph::SimpleGlyphs::eq(&self, &Self) -> bool
 impl core::default::Default for skene_simple_tui::glyph::SimpleGlyphs
 pub fn skene_simple_tui::glyph::SimpleGlyphs::default() -> Self
 impl core::fmt::Debug for skene_simple_tui::glyph::SimpleGlyphs

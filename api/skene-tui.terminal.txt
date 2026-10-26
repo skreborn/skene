@@ -355,10 +355,10 @@ impl skene_tui::Platform
 pub const skene_tui::Platform::CURRENT: Self
 pub const fn skene_tui::Platform::name(self) -> &'static str
 impl core::clone::Clone for skene_tui::Platform
-pub fn skene_tui::Platform::clone(&self) -> skene_tui::Platform
+pub fn skene_tui::Platform::clone(&self) -> Self
 impl core::cmp::Eq for skene_tui::Platform
 impl core::cmp::PartialEq for skene_tui::Platform
-pub fn skene_tui::Platform::eq(&self, &skene_tui::Platform) -> bool
+pub fn skene_tui::Platform::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_tui::Platform
 pub fn skene_tui::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_tui::Platform
@@ -493,7 +493,7 @@ impl skene_foundation::surface::DecorationBase<skene_tui_terminal::Terminal> for
 impl skene_foundation::surface::MotionBase<skene_tui_terminal::Terminal> for skene_tui::Checkbox
 pub struct skene_tui::prelude::Column(_)
 impl core::default::Default for skene_tui::Column
-pub fn skene_tui::Column::default() -> skene_tui::Column
+pub fn skene_tui::Column::default() -> Self
 impl core::fmt::Debug for skene_tui::Column
 pub fn skene_tui::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::ColumnBase<skene_tui_terminal::Terminal> for skene_tui::Column
@@ -524,7 +524,7 @@ pub fn skene_tui::Container::set_shadow(self, impl core::convert::Into<skene_fou
 pub fn skene_tui::Container::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_tui::Condition>>) -> Self
 pub fn skene_tui::Container::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_tui::Condition>>) -> Self
 impl core::default::Default for skene_tui::Container
-pub fn skene_tui::Container::default() -> skene_tui::Container
+pub fn skene_tui::Container::default() -> Self
 impl core::fmt::Debug for skene_tui::Container
 pub fn skene_tui::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::container::ContainerBase<skene_tui_terminal::Terminal> for skene_tui::Container
@@ -631,7 +631,7 @@ pub fn skene_tui::Flexible::into_inner(self) -> Self::Inner
 pub fn skene_tui::Flexible::wrap(Self::Inner) -> Self
 pub struct skene_tui::prelude::Grid(_)
 impl core::default::Default for skene_tui::Grid
-pub fn skene_tui::Grid::default() -> skene_tui::Grid
+pub fn skene_tui::Grid::default() -> Self
 impl core::fmt::Debug for skene_tui::Grid
 pub fn skene_tui::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::grid::GridBase<skene_tui_terminal::Terminal> for skene_tui::Grid
@@ -675,7 +675,7 @@ pub fn skene_tui::Keymap::into_inner(self) -> Self::Inner
 pub fn skene_tui::Keymap::wrap(Self::Inner) -> Self
 pub struct skene_tui::prelude::LazyColumn(_)
 impl core::default::Default for skene_tui::LazyColumn
-pub fn skene_tui::LazyColumn::default() -> skene_tui::LazyColumn
+pub fn skene_tui::LazyColumn::default() -> Self
 impl core::fmt::Debug for skene_tui::LazyColumn
 pub fn skene_tui::LazyColumn::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyColumnBase<skene_tui_terminal::Terminal> for skene_tui::LazyColumn
@@ -690,7 +690,7 @@ pub fn skene_tui::LazyColumn::into_inner(self) -> Self::Inner
 pub fn skene_tui::LazyColumn::wrap(Self::Inner) -> Self
 pub struct skene_tui::prelude::LazyRow(_)
 impl core::default::Default for skene_tui::LazyRow
-pub fn skene_tui::LazyRow::default() -> skene_tui::LazyRow
+pub fn skene_tui::LazyRow::default() -> Self
 impl core::fmt::Debug for skene_tui::LazyRow
 pub fn skene_tui::LazyRow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyRowBase<skene_tui_terminal::Terminal> for skene_tui::LazyRow
@@ -970,7 +970,7 @@ pub fn skene_tui::RadioGroup<T>::map_layout_box(self, impl core::ops::function::
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_tui_terminal::Terminal> for skene_tui::RadioGroup<T>
 pub struct skene_tui::prelude::RichText(_)
 impl core::default::Default for skene_tui::RichText
-pub fn skene_tui::RichText::default() -> skene_tui::RichText
+pub fn skene_tui::RichText::default() -> Self
 impl core::fmt::Debug for skene_tui::RichText
 pub fn skene_tui::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::span::RichTextBase<skene_tui_terminal::Terminal> for skene_tui::RichText
@@ -985,7 +985,7 @@ pub fn skene_tui::RichText::into_inner(self) -> Self::Inner
 pub fn skene_tui::RichText::wrap(Self::Inner) -> Self
 pub struct skene_tui::prelude::Row(_)
 impl core::default::Default for skene_tui::Row
-pub fn skene_tui::Row::default() -> skene_tui::Row
+pub fn skene_tui::Row::default() -> Self
 impl core::fmt::Debug for skene_tui::Row
 pub fn skene_tui::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::FlexBase<skene_tui_terminal::Terminal> for skene_tui::Row
@@ -1053,7 +1053,7 @@ pub fn skene_tui::Span::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_tui_terminal::Terminal> for skene_tui::Span
 pub struct skene_tui::prelude::Stack(_)
 impl core::default::Default for skene_tui::Stack
-pub fn skene_tui::Stack::default() -> skene_tui::Stack
+pub fn skene_tui::Stack::default() -> Self
 impl core::fmt::Debug for skene_tui::Stack
 pub fn skene_tui::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_tui::Stack
@@ -1312,10 +1312,10 @@ impl skene_tui::Platform
 pub const skene_tui::Platform::CURRENT: Self
 pub const fn skene_tui::Platform::name(self) -> &'static str
 impl core::clone::Clone for skene_tui::Platform
-pub fn skene_tui::Platform::clone(&self) -> skene_tui::Platform
+pub fn skene_tui::Platform::clone(&self) -> Self
 impl core::cmp::Eq for skene_tui::Platform
 impl core::cmp::PartialEq for skene_tui::Platform
-pub fn skene_tui::Platform::eq(&self, &skene_tui::Platform) -> bool
+pub fn skene_tui::Platform::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_tui::Platform
 pub fn skene_tui::Platform::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_tui::Platform
@@ -1485,7 +1485,7 @@ impl skene_foundation::surface::DecorationBase<skene_tui_terminal::Terminal> for
 impl skene_foundation::surface::MotionBase<skene_tui_terminal::Terminal> for skene_tui::Checkbox
 pub struct skene_tui::Column(_)
 impl core::default::Default for skene_tui::Column
-pub fn skene_tui::Column::default() -> skene_tui::Column
+pub fn skene_tui::Column::default() -> Self
 impl core::fmt::Debug for skene_tui::Column
 pub fn skene_tui::Column::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::ColumnBase<skene_tui_terminal::Terminal> for skene_tui::Column
@@ -1516,7 +1516,7 @@ pub fn skene_tui::Container::set_shadow(self, impl core::convert::Into<skene_fou
 pub fn skene_tui::Container::set_shadow_offset(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_tui::Condition>>) -> Self
 pub fn skene_tui::Container::set_shadow_softening(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::expr::Length, skene_tui::Condition>>) -> Self
 impl core::default::Default for skene_tui::Container
-pub fn skene_tui::Container::default() -> skene_tui::Container
+pub fn skene_tui::Container::default() -> Self
 impl core::fmt::Debug for skene_tui::Container
 pub fn skene_tui::Container::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::container::ContainerBase<skene_tui_terminal::Terminal> for skene_tui::Container
@@ -1623,7 +1623,7 @@ pub fn skene_tui::Flexible::into_inner(self) -> Self::Inner
 pub fn skene_tui::Flexible::wrap(Self::Inner) -> Self
 pub struct skene_tui::Grid(_)
 impl core::default::Default for skene_tui::Grid
-pub fn skene_tui::Grid::default() -> skene_tui::Grid
+pub fn skene_tui::Grid::default() -> Self
 impl core::fmt::Debug for skene_tui::Grid
 pub fn skene_tui::Grid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::grid::GridBase<skene_tui_terminal::Terminal> for skene_tui::Grid
@@ -1667,7 +1667,7 @@ pub fn skene_tui::Keymap::into_inner(self) -> Self::Inner
 pub fn skene_tui::Keymap::wrap(Self::Inner) -> Self
 pub struct skene_tui::LazyColumn(_)
 impl core::default::Default for skene_tui::LazyColumn
-pub fn skene_tui::LazyColumn::default() -> skene_tui::LazyColumn
+pub fn skene_tui::LazyColumn::default() -> Self
 impl core::fmt::Debug for skene_tui::LazyColumn
 pub fn skene_tui::LazyColumn::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyColumnBase<skene_tui_terminal::Terminal> for skene_tui::LazyColumn
@@ -1682,7 +1682,7 @@ pub fn skene_tui::LazyColumn::into_inner(self) -> Self::Inner
 pub fn skene_tui::LazyColumn::wrap(Self::Inner) -> Self
 pub struct skene_tui::LazyRow(_)
 impl core::default::Default for skene_tui::LazyRow
-pub fn skene_tui::LazyRow::default() -> skene_tui::LazyRow
+pub fn skene_tui::LazyRow::default() -> Self
 impl core::fmt::Debug for skene_tui::LazyRow
 pub fn skene_tui::LazyRow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::lazy_list::LazyRowBase<skene_tui_terminal::Terminal> for skene_tui::LazyRow
@@ -1962,7 +1962,7 @@ pub fn skene_tui::RadioGroup<T>::map_layout_box(self, impl core::ops::function::
 impl<T: skene_foundation::control::choice::Choice> skene_foundation::surface::MotionBase<skene_tui_terminal::Terminal> for skene_tui::RadioGroup<T>
 pub struct skene_tui::RichText(_)
 impl core::default::Default for skene_tui::RichText
-pub fn skene_tui::RichText::default() -> skene_tui::RichText
+pub fn skene_tui::RichText::default() -> Self
 impl core::fmt::Debug for skene_tui::RichText
 pub fn skene_tui::RichText::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::span::RichTextBase<skene_tui_terminal::Terminal> for skene_tui::RichText
@@ -1977,7 +1977,7 @@ pub fn skene_tui::RichText::into_inner(self) -> Self::Inner
 pub fn skene_tui::RichText::wrap(Self::Inner) -> Self
 pub struct skene_tui::Row(_)
 impl core::default::Default for skene_tui::Row
-pub fn skene_tui::Row::default() -> skene_tui::Row
+pub fn skene_tui::Row::default() -> Self
 impl core::fmt::Debug for skene_tui::Row
 pub fn skene_tui::Row::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::flex::FlexBase<skene_tui_terminal::Terminal> for skene_tui::Row
@@ -2045,7 +2045,7 @@ pub fn skene_tui::Span::wrap(Self::Inner) -> Self
 impl skene_foundation::surface::RunBase<skene_tui_terminal::Terminal> for skene_tui::Span
 pub struct skene_tui::Stack(_)
 impl core::default::Default for skene_tui::Stack
-pub fn skene_tui::Stack::default() -> skene_tui::Stack
+pub fn skene_tui::Stack::default() -> Self
 impl core::fmt::Debug for skene_tui::Stack
 pub fn skene_tui::Stack::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl skene_foundation::spine::view::AnyKind for skene_tui::Stack

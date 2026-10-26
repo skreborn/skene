@@ -6,10 +6,10 @@ impl skene_dev::Control
 pub fn skene_dev::Control::parse(&str) -> core::option::Option<Self>
 pub fn skene_dev::Control::to_line(&self) -> alloc::string::String
 impl core::clone::Clone for skene_dev::Control
-pub fn skene_dev::Control::clone(&self) -> skene_dev::Control
+pub fn skene_dev::Control::clone(&self) -> Self
 impl core::cmp::Eq for skene_dev::Control
 impl core::cmp::PartialEq for skene_dev::Control
-pub fn skene_dev::Control::eq(&self, &skene_dev::Control) -> bool
+pub fn skene_dev::Control::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_dev::Control
 pub fn skene_dev::Control::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_dev::Control
@@ -26,12 +26,12 @@ pub fn skene_dev::Document::opening(&self, &str, &str) -> alloc::string::String
 pub fn skene_dev::Document::push_script(&mut alloc::string::String, core::option::Option<&str>, bool, &str)
 pub fn skene_dev::Document::state_script(&str) -> alloc::string::String
 impl core::clone::Clone for skene_dev::Document
-pub fn skene_dev::Document::clone(&self) -> skene_dev::Document
+pub fn skene_dev::Document::clone(&self) -> Self
 impl core::cmp::Eq for skene_dev::Document
 impl core::cmp::PartialEq for skene_dev::Document
-pub fn skene_dev::Document::eq(&self, &skene_dev::Document) -> bool
+pub fn skene_dev::Document::eq(&self, &Self) -> bool
 impl core::default::Default for skene_dev::Document
-pub fn skene_dev::Document::default() -> skene_dev::Document
+pub fn skene_dev::Document::default() -> Self
 impl core::fmt::Debug for skene_dev::Document
 pub fn skene_dev::Document::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_dev::Document

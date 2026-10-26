@@ -7,22 +7,22 @@ publish = false
 
 [dev-dependencies]
 skene-foundation.workspace = true
+skene-gui.workspace = true
 skene-reactive.workspace = true
 skene-simple.workspace = true
+skene-simple-gui.workspace = true
 skene-simple-terminal.workspace = true
-skene-simple-web.workspace = true
 skene-terminal.workspace = true
-skene-web.workspace = true
 
 [package.metadata.cargo-shear]
 ignored = [
   "skene-foundation",
+  "skene-gui",
   "skene-reactive",
   "skene-simple",
+  "skene-simple-gui",
   "skene-simple-terminal",
-  "skene-simple-web",
   "skene-terminal",
-  "skene-web",
 ]
 
 [lints]

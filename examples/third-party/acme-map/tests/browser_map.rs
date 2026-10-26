@@ -6,7 +6,7 @@
 
 use acme_map::Map;
 use skene_foundation::{Size, View};
-use skene_web::{
+use skene_gui::{
   platform::web,
   testing::{computed, fresh_root},
 };

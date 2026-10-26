@@ -8,7 +8,7 @@ every default a value its setters replace, so a library's preset is a built-in i
 styles further:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn settings(name: Signal<String>, agreed: Signal<bool>) -> impl View {
   Column::new().set_spacing(12).set_children((
@@ -29,7 +29,7 @@ primary action, which each platform shows in its own idiom: the accent's fill in
 accent cells in the terminal. A derived prominence re-inks the button in place:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn form(dirty: Signal<bool>, notify: Signal<bool>, sync: Signal<bool>) -> impl View {
   Column::new().set_spacing(12).set_children((
@@ -51,7 +51,7 @@ the radios it is given out in a column beneath its caption; a slider fills its t
 its thumb as its value moves:
 
 ```rust
-use skene_web::{behavior::SliderRange, prelude::*};
+use skene_gui::{behavior::SliderRange, prelude::*};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Quality {
@@ -84,7 +84,7 @@ a list; a listbox shows them all. Both take `ListboxOption`s, each tagged with a
 of the app's own type and named by its caption, a check showing on the chosen one:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Unit {
@@ -130,7 +130,7 @@ wires both to one signal; `derive_value` and `handle_change` take them apart, so
 handler can refuse a change and the control returns to the signal's value:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn digits(code: Signal<String>) -> impl View {
   TextField::new()
@@ -162,7 +162,7 @@ keyboard as `inputmode`, `autocomplete` and `enterkeyhint`, and the terminal mas
 secure field in its cells and has no keyboard to offer.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn sign_in(email: Signal<String>, password: Signal<String>) -> impl View {
   Column::new().set_spacing(12).set_children((
@@ -205,7 +205,7 @@ focuses its chosen member, or its first. A server-rendered page carries it as th
 opens focused on it before its script arrives:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn search() -> impl View {
   Column::new().set_spacing(12).set_children((
@@ -228,7 +228,7 @@ a listbox's shortcut moves focus to its chosen member, or its first, rather than
 activating it. An activatable row takes a shortcut the same way as a control:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn editor(save: impl Fn() + 'static) -> impl View {
   Column::new().set_spacing(12).set_children((
@@ -271,7 +271,7 @@ A built-in is a `Control` over a behavior, which the facade's `behavior` module 
 The `Basic*` controls are those controls undecorated, for a look built from nothing:
 
 ```rust
-use skene_web::{behavior::TextEntry, prelude::*};
+use skene_gui::{behavior::TextEntry, prelude::*};
 
 fn bare() -> impl View {
   BasicTextField::new(TextEntry::new().set_placeholder("Search"))
@@ -289,8 +289,8 @@ palette's default, so it is inked with nothing above it, and a `Theme` of the pa
 redefines them beneath it:
 
 ```rust
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Size {
@@ -336,8 +336,8 @@ visible caption, so a Simple slider nothing visible names takes its name from
 follows a signal, re-inking the button in place:
 
 ```rust
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 fn actions(dirty: Signal<bool>) -> impl View {
   Row::new().set_spacing(8).set_children((

@@ -322,7 +322,7 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
 }
 
 /// The web's facade: a package reaching it is built for the web's leaves alone.
-pub(crate) const WEB: &str = "skene-web";
+pub(crate) const WEB: &str = "skene-gui";
 
 /// The terminal's facade: a package reaching it is built for the terminal alone.
 pub(crate) const TERMINAL: &str = "skene-terminal";
@@ -742,17 +742,17 @@ mod tests {
   fn a_member_reaches_a_facade_through_what_its_build_compiles() {
     let workspace = Workspace::new(&[
       manifest("[workspace]\nmembers = [\"*\"]\n"),
-      manifest("[package]\nname = \"skene-web\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"skene-gui\"\n[dependencies]\nbase = { path = \"..\" }\n"),
       manifest("[package]\nname = \"base\"\n[dependencies]\nserde = \"1\"\n"),
-      manifest("[package]\nname = \"lib\"\n[dependencies]\nskene-web.workspace = true\n"),
+      manifest("[package]\nname = \"lib\"\n[dependencies]\nskene-gui.workspace = true\n"),
       manifest(
         "[package]\nname = \"app\"\n[target.'cfg(unix)'.dependencies]\nlib = { path = \"..\" }\n",
       ),
       manifest(
-        "[package]\nname = \"docs\"\n[dev-dependencies]\nskene-terminal = { path = \"..\" }\nweb = { package = \"skene-web\", path = \"..\" }\n",
+        "[package]\nname = \"docs\"\n[dev-dependencies]\nskene-terminal = { path = \"..\" }\nweb = { package = \"skene-gui\", path = \"..\" }\n",
       ),
       manifest("[package]\nname = \"tool\"\n[build-dependencies]\nbase = { path = \"..\" }\n"),
-      manifest("[package]\nname = \"probe\"\n[dev-dependencies]\nskene-web = { path = \"..\" }\n"),
+      manifest("[package]\nname = \"probe\"\n[dev-dependencies]\nskene-gui = { path = \"..\" }\n"),
       manifest("[package]\nname = \"user\"\n[dependencies]\nprobe = { path = \"..\" }\n"),
       manifest("[package]\nname = \"skene-terminal\"\n[dependencies]\nbase = { path = \"..\" }\n"),
       manifest(
@@ -762,13 +762,13 @@ mod tests {
 
     assert_eq!(
       workspace.web(),
-      ["skene-web", "lib", "app", "docs", "probe"]
+      ["skene-gui", "lib", "app", "docs", "probe"]
     );
     assert_eq!(workspace.terminal(), ["docs", "skene-terminal", "shell"]);
     assert_eq!(workspace.host(), ["base", "tool", "user"]);
     assert_eq!(
       workspace.web_build(),
-      ["skene-web", "base", "lib", "app", "docs", "probe"]
+      ["skene-gui", "base", "lib", "app", "docs", "probe"]
     );
   }
 }

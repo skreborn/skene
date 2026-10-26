@@ -10,7 +10,7 @@ publish = false
 
 [dependencies]
 skene-conformance.workspace = true
-skene-web.workspace = true
+skene-gui.workspace = true
 
 # The server leaf's: the harness drives a browser from outside it, and in every other
 # build its binary compiles to an empty stub.

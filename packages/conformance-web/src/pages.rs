@@ -1,10 +1,10 @@
-//! The suite's pages in skene-web's vocabulary: a page of each name the suite lists
+//! The suite's pages in skene-gui's vocabulary: a page of each name the suite lists
 //! ([`PAGES`](skene_conformance::PAGES)), holding what its scenarios find there.
 
 use std::fmt::{self, Debug, Formatter};
 
 use skene_conformance::{BREAKPOINT, Probes, RETURN};
-use skene_web::{
+use skene_gui::{
   behavior::{Activate, ListboxOption, Radio, RadioGroup, Slider, TextEntry, Toggle},
   prelude::*,
   schedule,

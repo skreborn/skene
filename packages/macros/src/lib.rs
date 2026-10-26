@@ -20,13 +20,13 @@ use syn::{DeriveInput, FnArg, ItemFn, Pat, ReturnType, parse_macro_input};
 /// the build names the platform.
 ///
 /// ```ignore
-/// #[skene_web::main]
+/// #[skene_gui::main]
 /// fn app() -> impl View {
 ///   Text::new("hello")
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn web_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn gui_main(attr: TokenStream, item: TokenStream) -> TokenStream {
   let function = match entry(attr, item) {
     Ok(function) => function,
     Err(error) => return error,
@@ -38,9 +38,9 @@ pub fn web_main(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(all(skene_platform = "web", not(skene_server)))]
     #[doc(hidden)]
-    #[::skene_web::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_web::wasm_bindgen)]
+    #[::skene_gui::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_gui::wasm_bindgen)]
     pub fn __skene_start() {
-      ::skene_web::launch(#name);
+      ::skene_gui::launch(#name);
     }
 
     // The split tool roots its call graph at a function named `main`; the entry
@@ -52,7 +52,7 @@ pub fn web_main(attr: TokenStream, item: TokenStream) -> TokenStream {
     #[cfg(all(skene_platform = "web", skene_server))]
     #[doc(hidden)]
     pub fn main() {
-      ::skene_web::render_main(env!("CARGO_CRATE_NAME"), #name);
+      ::skene_gui::render_main(env!("CARGO_CRATE_NAME"), #name);
     }
   }
   .into()
@@ -143,7 +143,7 @@ fn entry(attr: TokenStream, item: TokenStream) -> Result<ItemFn, TokenStream> {
 /// which a browser build carrying lazy functions requires; every other build, the
 /// server leaf's among them, calls the body directly.
 ///
-/// Pair with [`AsyncView`](../skene_web/struct.AsyncView.html) to render a lazy function's view:
+/// Pair with [`AsyncView`](../skene_gui/struct.AsyncView.html) to render a lazy function's view:
 /// `AsyncView::new().set_child_loader(settings)`.
 #[expect(
   clippy::too_many_lines,
@@ -268,11 +268,11 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
       }
 
       ::std::thread_local! {
-        static #loader: ::skene_web::split::SplitLoader =
-          unsafe { ::skene_web::split::SplitLoader::new(#load) };
+        static #loader: ::skene_gui::split::SplitLoader =
+          unsafe { ::skene_gui::split::SplitLoader::new(#load) };
       }
 
-      ::skene_web::split::SplitLoader::ensure(&#loader).await;
+      ::skene_gui::split::SplitLoader::ensure(&#loader).await;
 
       unsafe { #import(#(#arguments),*) }.await
     }
@@ -299,7 +299,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
 /// `#[store(tag = "name")]` keys it by `name` instead, so the location survives a
 /// rename, and `#[store(skip)]` generates no accessor for the field. The generated code
 /// names `skene_reactive` through the deriving crate's direct dependency on it, or
-/// through the `reactive` re-export of the facade (`skene-web`, `skene-terminal`) or
+/// through the `reactive` re-export of the facade (`skene-gui`, `skene-terminal`) or
 /// `skene-foundation` it depends on.
 #[proc_macro_derive(Store, attributes(store))]
 pub fn derive_store(input: TokenStream) -> TokenStream {
@@ -341,7 +341,7 @@ pub fn derive_snapshot(input: TokenStream) -> TokenStream {
 /// a core that is not.
 ///
 /// The generated code names `Wraps` through the deriving crate's direct dependency on
-/// `skene-foundation`, or through the re-export of the facade (`skene-web`,
+/// `skene-foundation`, or through the re-export of the facade (`skene-gui`,
 /// `skene-terminal`) it depends on.
 #[proc_macro_derive(Wraps)]
 pub fn derive_wraps(input: TokenStream) -> TokenStream {
@@ -357,7 +357,7 @@ pub fn derive_wraps(input: TokenStream) -> TokenStream {
 /// beside any `PhantomData` markers.
 ///
 /// The struct builds as the view it holds, for the `Active` of the one facade
-/// (`skene-web`, `skene-terminal`) the deriving crate is or depends on, and a crate
+/// (`skene-gui`, `skene-terminal`) the deriving crate is or depends on, and a crate
 /// reaching no facade is refused. A struct whose field names none of its own generic
 /// parameters, it having none or holding a core that names none, builds through a
 /// function generic in nothing, compiled once, in the deriving crate; one whose field

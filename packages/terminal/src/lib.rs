@@ -1,7 +1,7 @@
 //! # skene-terminal
 //!
 //! The terminal facade and its platform: a terminal app's single dependency, equal in
-//! standing to `skene-web`. It fixes the scalar (cells, `i32`), names the platform
+//! standing to `skene-gui`. It fixes the scalar (cells, `i32`), names the platform
 //! ([`Active`]: [`Terminal`]) and aliases every built-in view to it, so app code names
 //! no platform. The medium's own contribution is [`Typography`], the [`media`] module,
 //! the terminal's decoration on its decorated views (the border's glyphs, a shadow,

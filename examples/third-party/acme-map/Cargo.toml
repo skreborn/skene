@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 skene-foundation.workspace = true
-skene-web.workspace = true
+skene-gui.workspace = true
 
 [target.'cfg(all(skene_platform = "web", not(skene_server)))'.dependencies]
 wasm-bindgen.workspace = true

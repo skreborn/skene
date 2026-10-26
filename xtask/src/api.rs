@@ -82,13 +82,13 @@ const SNAPSHOTS: &[Snapshot] = &[
   Snapshot::new("skene-reactive", Leaf::Host),
   Snapshot::new("skene-simple", Leaf::Host),
   Snapshot::new("skene-simple-terminal", Leaf::Terminal),
-  Snapshot::new("skene-simple-web", Leaf::Server),
-  Snapshot::new("skene-simple-web", Leaf::Browser),
+  Snapshot::new("skene-simple-gui", Leaf::Server),
+  Snapshot::new("skene-simple-gui", Leaf::Browser),
   Snapshot::new("skene-terminal", Leaf::Terminal),
   Snapshot::new("skene-transport", Leaf::Host),
   Snapshot::new("skene-transport", Leaf::Browser),
-  Snapshot::new("skene-web", Leaf::Server),
-  Snapshot::new("skene-web", Leaf::Browser),
+  Snapshot::new("skene-gui", Leaf::Server),
+  Snapshot::new("skene-gui", Leaf::Browser),
 ];
 
 impl Snapshot {

@@ -6,13 +6,13 @@ rust-version.workspace = true
 publish = false
 
 [dev-dependencies]
+skene-gui.workspace = true
+skene-simple-gui.workspace = true
 skene-simple-terminal.workspace = true
-skene-simple-web.workspace = true
 skene-terminal.workspace = true
-skene-web.workspace = true
 
 [package.metadata.cargo-shear]
-ignored = ["skene-simple-terminal", "skene-simple-web", "skene-terminal", "skene-web"]
+ignored = ["skene-gui", "skene-simple-gui", "skene-simple-terminal", "skene-terminal"]
 
 [lints]
 workspace = true

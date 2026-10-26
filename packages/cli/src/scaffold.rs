@@ -190,10 +190,11 @@ pub(crate) enum Platform {
 }
 
 impl Platform {
-  /// The platform crate's directory, and the suffix of its name.
+  /// The directory of the project's crate on the platform's facade, and the suffix of
+  /// its name.
   const fn directory(self) -> &'static str {
     match self {
-      Self::Web => "web",
+      Self::Web => "gui",
       Self::Terminal => "terminal",
     }
   }
@@ -246,9 +247,9 @@ impl Platform {
   /// The skene crates the platform crate of a project of `kind` depends on.
   const fn crates(self, kind: Kind) -> &'static [&'static str] {
     match (kind, self) {
-      (Kind::App, Self::Web) => &["skene-simple-web", "skene-web"],
+      (Kind::App, Self::Web) => &["skene-gui", "skene-simple-gui"],
       (Kind::App, Self::Terminal) => &["skene-simple-terminal", "skene-terminal"],
-      (Kind::Library, Self::Web) => &["skene-web"],
+      (Kind::Library, Self::Web) => &["skene-gui"],
       (Kind::Library, Self::Terminal) => &["skene-terminal"],
     }
   }
@@ -257,16 +258,16 @@ impl Platform {
   const fn templates(self, kind: Kind) -> (&'static str, &'static str) {
     match (kind, self) {
       (Kind::App, Self::Web) => (
-        include_str!("../templates/app/web-Cargo.toml.tmpl"),
-        include_str!("../templates/app/web-lib.rs.tmpl"),
+        include_str!("../templates/app/gui-Cargo.toml.tmpl"),
+        include_str!("../templates/app/gui-lib.rs.tmpl"),
       ),
       (Kind::App, Self::Terminal) => (
         include_str!("../templates/app/terminal-Cargo.toml.tmpl"),
         include_str!("../templates/app/terminal-lib.rs.tmpl"),
       ),
       (Kind::Library, Self::Web) => (
-        include_str!("../templates/lib/web-Cargo.toml.tmpl"),
-        include_str!("../templates/lib/web-lib.rs.tmpl"),
+        include_str!("../templates/lib/gui-Cargo.toml.tmpl"),
+        include_str!("../templates/lib/gui-lib.rs.tmpl"),
       ),
       (Kind::Library, Self::Terminal) => (
         include_str!("../templates/lib/terminal-Cargo.toml.tmpl"),
@@ -459,7 +460,7 @@ mod tests {
   fn an_app_has_a_shell_per_platform() {
     let files = Kind::App.files(
       "my-app",
-      &[Platform::Terminal, Platform::Web],
+      &[Platform::Web, Platform::Terminal],
       Platform::Web,
       &Source::Registry,
     );
@@ -472,19 +473,19 @@ mod tests {
         ".gitignore",
         "shared/Cargo.toml",
         "shared/src/lib.rs",
+        "gui/Cargo.toml",
+        "gui/src/lib.rs",
+        "gui/skene.toml",
         "terminal/Cargo.toml",
         "terminal/src/lib.rs",
         "terminal/skene.toml",
-        "web/Cargo.toml",
-        "web/src/lib.rs",
-        "web/skene.toml",
       ]
     );
 
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
-      workspace.contains("members = [\"shared\", \"terminal\", \"web\"]"),
+      workspace.contains("members = [\"shared\", \"gui\", \"terminal\"]"),
       "{workspace}"
     );
     assert!(
@@ -495,7 +496,7 @@ mod tests {
       workspace.contains("skene-reactive = \"0.1\""),
       "{workspace}"
     );
-    assert!(workspace.contains("skene-web = \"0.1\""), "{workspace}");
+    assert!(workspace.contains("skene-gui = \"0.1\""), "{workspace}");
     assert!(
       workspace.contains("skene-simple-terminal = \"0.1\""),
       "{workspace}"
@@ -515,8 +516,8 @@ mod tests {
     assert!(file(&files, "shared/Cargo.toml").contains("name = \"my-app-shared\""));
 
     for (shell, platform, facade, other) in [
-      ("terminal", "terminal", "skene_terminal", "web"),
-      ("web", "web", "skene_web", "terminal"),
+      ("gui", "web", "skene_gui", "terminal"),
+      ("terminal", "terminal", "skene_terminal", "gui"),
     ] {
       let manifest = file(&files, &format!("{shell}/Cargo.toml"));
       let library = file(&files, &format!("{shell}/src/lib.rs"));
@@ -563,7 +564,7 @@ mod tests {
     }
 
     assert!(
-      ["shared", "terminal", "web"].iter().all(|member| file(
+      ["shared", "gui", "terminal"].iter().all(|member| file(
         &files,
         &format!("{member}/Cargo.toml")
       )
@@ -579,26 +580,26 @@ mod tests {
       (
         Kind::App,
         Platform::Web,
-        &["skene-simple-web", "skene-web"][..],
+        &["skene-gui", "skene-simple-gui"][..],
         &["skene-simple-terminal", "skene-terminal"][..],
       ),
       (
         Kind::App,
         Platform::Terminal,
         &["skene-simple-terminal", "skene-terminal"],
-        &["skene-simple-web", "skene-web"],
+        &["skene-gui", "skene-simple-gui"],
       ),
       (
         Kind::Library,
         Platform::Web,
-        &["skene-web"],
+        &["skene-gui"],
         &["skene-simple", "skene-terminal"],
       ),
       (
         Kind::Library,
         Platform::Terminal,
         &["skene-terminal"],
-        &["skene-simple", "skene-web"],
+        &["skene-simple", "skene-gui"],
       ),
     ] {
       let files = kind.files("demo", &[platform], platform, &Source::Registry);
@@ -624,7 +625,7 @@ mod tests {
   fn a_library_has_a_crate_per_platform() {
     let files = Kind::Library.files(
       "acme-ui",
-      &[Platform::Terminal, Platform::Web],
+      &[Platform::Web, Platform::Terminal],
       Platform::Terminal,
       &Source::Registry,
     );
@@ -637,17 +638,17 @@ mod tests {
         ".gitignore",
         "core/Cargo.toml",
         "core/src/lib.rs",
+        "gui/Cargo.toml",
+        "gui/src/lib.rs",
         "terminal/Cargo.toml",
         "terminal/src/lib.rs",
-        "web/Cargo.toml",
-        "web/src/lib.rs",
       ]
     );
 
     let workspace = file(&files, "Cargo.toml");
 
     assert!(
-      workspace.contains("members = [\"core\", \"terminal\", \"web\"]"),
+      workspace.contains("members = [\"core\", \"gui\", \"terminal\"]"),
       "{workspace}"
     );
     assert!(
@@ -667,7 +668,7 @@ mod tests {
     assert_eq!(file(&files, ".gitignore"), "/target\n");
     assert!(file(&files, "core/Cargo.toml").contains("name = \"acme-ui\""));
     assert!(
-      ["skene-terminal", "skene-web"]
+      ["skene-gui", "skene-terminal"]
         .iter()
         .all(|facade| !file(&files, "core/Cargo.toml").contains(facade)),
       "the core names no facade"
@@ -685,7 +686,7 @@ mod tests {
       "{core}"
     );
 
-    for (directory, platform) in [("terminal", "terminal"), ("web", "web")] {
+    for (directory, platform) in [("gui", "web"), ("terminal", "terminal")] {
       let library = file(&files, &format!("{directory}/src/lib.rs"));
 
       assert!(
@@ -723,7 +724,7 @@ mod tests {
     }
 
     assert!(
-      ["core", "terminal", "web"].iter().all(|member| file(
+      ["core", "gui", "terminal"].iter().all(|member| file(
         &files,
         &format!("{member}/Cargo.toml")
       )
@@ -799,7 +800,7 @@ mod tests {
       fs::read_to_string(app.join(".cargo/config.toml")).expect("written"),
       Platform::Terminal.config()
     );
-    assert!(app.join("web/src/lib.rs").is_file());
+    assert!(app.join("gui/src/lib.rs").is_file());
     assert!(!app.join("Cargo.lock").exists(), "the registry has no lock");
 
     let library = directory.join("acme");

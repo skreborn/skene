@@ -1,0 +1,22 @@
+error[E0277]: `skene_gui::Flexible` is not a child this container accepts
+ --> tests/compile_fail/a_wrapper_in_a_container.rs:6:28
+  |
+6 |   let _ = Container::new().set_child(Flexible::new().set_child(Text::new("a")));
+  |                            ^^^^^^^^^ ----------------------------------------- `skene_gui::Flexible` doesn't satisfy the trait bound
+  |                            |
+  |                            not a child this container accepts
+  |
+  = note: every container accepts any view
+  = note: a wrapper is accepted only by a container that understands it: `Flexible` by a row or a column, `GridCell` by a grid, `Pinned` by a stack
+help: the trait `IntoChildOf<Web, skene_foundation::spine::view::PlainChild>` is not implemented for `skene_gui::Flexible`
+      but trait `IntoChildOf<Web, skene_foundation::spine::view::FlexChild>` is implemented for it
+ --> src/views/flexible.rs
+  |
+  | impl IntoChildOf<Active, FlexChild> for Flexible {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: for that trait implementation, expected `skene_foundation::spine::view::FlexChild`, found `skene_foundation::spine::view::PlainChild`
+note: required by a bound in `skene_gui::HasChild::set_child`
+ --> $WORKSPACE/packages/foundation/src/spine/children.rs
+  |
+  |   fn set_child(mut self, child: impl IntoChildOf<P, Self::Kind>) -> Self {
+  |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `HasChild::set_child`

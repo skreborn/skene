@@ -777,19 +777,19 @@ fn clippy_host(gate: &Gate, log: &mut Log) -> Outcome {
 /// platform (none, then on the host's target), the message it fails with.
 const REFUSED: &[(&str, Option<&str>, &str)] = &[
   (
-    "skene-web",
+    "skene-gui",
     None,
-    "skene-web builds for the platform its build names",
+    "skene-gui builds for the platform its build names",
   ),
   (
-    "skene-web",
+    "skene-gui",
     Some(WEB_CFG),
     r#"skene_platform = "web" builds the browser on wasm32-unknown-unknown alone"#,
   ),
   (
-    "skene-web",
+    "skene-gui",
     Some(r#"--cfg skene_platform="linux""#),
-    "skene-web realizes no linux yet",
+    "skene-gui realizes no linux yet",
   ),
   (
     "skene-terminal",
@@ -897,7 +897,7 @@ fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(gate.wasm_cargo([
     "clippy",
     "-p",
-    "skene-web",
+    "skene-gui",
     "--lib",
     "--locked",
     "--",

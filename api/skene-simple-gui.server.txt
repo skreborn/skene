@@ -1,0 +1,95 @@
+pub mod skene_simple_gui
+pub use skene_simple_gui::SimpleVariant
+pub mod skene_simple_gui::prelude
+pub use skene_simple_gui::prelude::<<super::*>>
+pub enum skene_simple_gui::SimpleButton
+impl skene_simple_gui::SimpleButton
+pub fn skene_simple_gui::SimpleButton::derive_styled(skene_gui::views::button::Button, impl core::ops::function::Fn() -> skene_simple::palette::SimpleVariant + 'static) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::derive_variant(impl core::convert::Into<alloc::string::String>, impl core::ops::function::Fn() -> skene_simple::palette::SimpleVariant + 'static) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::destructive(impl core::convert::Into<alloc::string::String>) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::ghost(impl core::convert::Into<alloc::string::String>) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::new(impl core::convert::Into<alloc::string::String>) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::outline(impl core::convert::Into<alloc::string::String>) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::secondary(impl core::convert::Into<alloc::string::String>) -> skene_gui::views::button::Button
+pub fn skene_simple_gui::SimpleButton::styled(skene_gui::views::button::Button, skene_simple::palette::SimpleVariant) -> skene_gui::views::button::Button
+impl core::fmt::Debug for skene_simple_gui::SimpleButton
+pub fn skene_simple_gui::SimpleButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleCard
+impl skene_simple_gui::SimpleCard
+pub fn skene_simple_gui::SimpleCard::new() -> skene_gui::views::container::Container
+pub fn skene_simple_gui::SimpleCard::spacing() -> f32
+pub fn skene_simple_gui::SimpleCard::styled(skene_gui::views::container::Container) -> skene_gui::views::container::Container
+impl core::fmt::Debug for skene_simple_gui::SimpleCard
+pub fn skene_simple_gui::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleCheckbox
+impl skene_simple_gui::SimpleCheckbox
+pub fn skene_simple_gui::SimpleCheckbox::mark() -> skene_gui::views::container::Container
+pub fn skene_simple_gui::SimpleCheckbox::new() -> skene_gui::views::checkbox::Checkbox
+pub fn skene_simple_gui::SimpleCheckbox::styled(skene_gui::views::checkbox::Checkbox) -> skene_gui::views::checkbox::Checkbox
+impl core::fmt::Debug for skene_simple_gui::SimpleCheckbox
+pub fn skene_simple_gui::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleContextMenu
+impl skene_simple_gui::SimpleContextMenu
+pub fn skene_simple_gui::SimpleContextMenu::new() -> skene_gui::views::context_menu::ContextMenu
+pub fn skene_simple_gui::SimpleContextMenu::styled(skene_gui::views::context_menu::ContextMenu) -> skene_gui::views::context_menu::ContextMenu
+impl core::fmt::Debug for skene_simple_gui::SimpleContextMenu
+pub fn skene_simple_gui::SimpleContextMenu::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleListboxOption
+impl skene_simple_gui::SimpleListboxOption
+pub fn skene_simple_gui::SimpleListboxOption::check() -> skene_gui::views::container::Container
+pub fn skene_simple_gui::SimpleListboxOption::label(impl core::convert::Into<alloc::string::String>) -> skene_gui::Label
+pub fn skene_simple_gui::SimpleListboxOption::new(impl skene_foundation::control::choice::Choice, impl core::convert::Into<alloc::string::String>) -> skene_gui::views::listbox::ListboxOption
+pub fn skene_simple_gui::SimpleListboxOption::styled(skene_gui::views::listbox::ListboxOption) -> skene_gui::views::listbox::ListboxOption
+impl core::fmt::Debug for skene_simple_gui::SimpleListboxOption
+pub fn skene_simple_gui::SimpleListboxOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimplePicker
+impl skene_simple_gui::SimplePicker
+pub fn skene_simple_gui::SimplePicker::face(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_gui::views::flex::Row
+pub fn skene_simple_gui::SimplePicker::list() -> skene_gui::views::container::Container
+pub fn skene_simple_gui::SimplePicker::new<T: skene_foundation::control::choice::Choice>() -> skene_gui::views::picker::Picker<T>
+pub fn skene_simple_gui::SimplePicker::styled<T: skene_foundation::control::choice::Choice>(skene_gui::views::picker::Picker<T>) -> skene_gui::views::picker::Picker<T>
+impl core::fmt::Debug for skene_simple_gui::SimplePicker
+pub fn skene_simple_gui::SimplePicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleRadio
+impl skene_simple_gui::SimpleRadio
+pub fn skene_simple_gui::SimpleRadio::mark() -> skene_gui::views::container::Container
+pub fn skene_simple_gui::SimpleRadio::new(impl skene_foundation::control::choice::Choice) -> skene_gui::views::radio::Radio
+pub fn skene_simple_gui::SimpleRadio::styled(skene_gui::views::radio::Radio) -> skene_gui::views::radio::Radio
+impl core::fmt::Debug for skene_simple_gui::SimpleRadio
+pub fn skene_simple_gui::SimpleRadio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleRadioGroup
+impl skene_simple_gui::SimpleRadioGroup
+pub fn skene_simple_gui::SimpleRadioGroup::new<T: skene_foundation::control::choice::Choice>() -> skene_gui::views::radio::RadioGroup<T>
+pub fn skene_simple_gui::SimpleRadioGroup::styled<T: skene_foundation::control::choice::Choice>(skene_gui::views::radio::RadioGroup<T>) -> skene_gui::views::radio::RadioGroup<T>
+impl core::fmt::Debug for skene_simple_gui::SimpleRadioGroup
+pub fn skene_simple_gui::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleSlider
+impl skene_simple_gui::SimpleSlider
+pub fn skene_simple_gui::SimpleSlider::new() -> skene_gui::views::slider::Slider
+pub fn skene_simple_gui::SimpleSlider::styled(skene_gui::views::slider::Slider) -> skene_gui::views::slider::Slider
+pub fn skene_simple_gui::SimpleSlider::thumb() -> skene_gui::views::container::Container
+pub fn skene_simple_gui::SimpleSlider::track() -> skene_gui::AnyView
+impl core::fmt::Debug for skene_simple_gui::SimpleSlider
+pub fn skene_simple_gui::SimpleSlider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleTextEditor
+impl skene_simple_gui::SimpleTextEditor
+pub fn skene_simple_gui::SimpleTextEditor::new() -> skene_gui::views::text_field::TextEditor
+pub fn skene_simple_gui::SimpleTextEditor::styled(skene_gui::views::text_field::TextEditor) -> skene_gui::views::text_field::TextEditor
+impl core::fmt::Debug for skene_simple_gui::SimpleTextEditor
+pub fn skene_simple_gui::SimpleTextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleTextField
+impl skene_simple_gui::SimpleTextField
+pub fn skene_simple_gui::SimpleTextField::new() -> skene_gui::views::text_field::TextField
+pub fn skene_simple_gui::SimpleTextField::styled(skene_gui::views::text_field::TextField) -> skene_gui::views::text_field::TextField
+impl core::fmt::Debug for skene_simple_gui::SimpleTextField
+pub fn skene_simple_gui::SimpleTextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_gui::SimpleTooltip
+impl skene_simple_gui::SimpleTooltip
+pub fn skene_simple_gui::SimpleTooltip::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_gui::views::tooltip::Tooltip
+pub fn skene_simple_gui::SimpleTooltip::new(impl core::convert::Into<alloc::string::String>) -> skene_gui::views::tooltip::Tooltip
+pub fn skene_simple_gui::SimpleTooltip::styled(skene_gui::views::tooltip::Tooltip) -> skene_gui::views::tooltip::Tooltip
+pub fn skene_simple_gui::SimpleTooltip::view(impl skene_gui::View) -> skene_gui::views::tooltip::Tooltip
+impl core::fmt::Debug for skene_simple_gui::SimpleTooltip
+pub fn skene_simple_gui::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub type skene_simple_gui::SimpleLook = skene_simple::palette::SimpleLook<f32>
+pub type skene_simple_gui::SimplePalette = skene_simple::palette::SimplePalette<f32>

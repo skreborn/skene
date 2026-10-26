@@ -1,0 +1,23 @@
+error[E0599]: the method `set_children` exists for struct `skene_gui::Container`, but its trait bounds were not satisfied
+ --> tests/compile_fail/a_container_with_two_children.rs:6:28
+  |
+6 |   let _ = Container::new().set_children((Text::new("a"), Text::new("b")));
+  |                            ^^^^^^^^^^^^
+  |
+ ::: src/views/container.rs
+  |
+  | pub struct Container(skene_foundation::Container<Active>);
+  | -------------------- doesn't satisfy `skene_gui::Container: skene_gui::HasChildren<_>`
+  |
+ ::: $WORKSPACE/packages/foundation/src/container.rs
+  |
+  | pub struct Container<P: Realization> {
+  | ------------------------------------ doesn't satisfy `_: HasChildren<_>`
+  |
+  = note: the following trait bounds were not satisfied:
+          `skene_foundation::container::Container<skene_gui::platform::web::Web>: skene_gui::HasChildren<_>`
+          which is required by `skene_gui::Container: skene_gui::HasChildren<_>`
+          `&skene_gui::Container: Wraps`
+          which is required by `&skene_gui::Container: skene_gui::HasChildren<_>`
+          `&mut skene_gui::Container: Wraps`
+          which is required by `&mut skene_gui::Container: skene_gui::HasChildren<_>`

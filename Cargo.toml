@@ -41,16 +41,16 @@ serde_json = "1"
 skene-conformance = { path = "packages/conformance", version = "0.1.0" }
 skene-dev = { path = "packages/dev", version = "0.1.0" }
 skene-foundation = { path = "packages/foundation", version = "0.1.0" }
+skene-gui = { path = "packages/gui", version = "0.1.0" }
 skene-layout = { path = "packages/layout", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-parley = { path = "packages/parley", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
 skene-simple = { path = "packages/simple", version = "0.1.0" }
+skene-simple-gui = { path = "packages/simple-gui", version = "0.1.0" }
 skene-simple-terminal = { path = "packages/simple-terminal", version = "0.1.0" }
-skene-simple-web = { path = "packages/simple-web", version = "0.1.0" }
 skene-terminal = { path = "packages/terminal", version = "0.1.0" }
 skene-transport = { path = "packages/transport", version = "0.1.0" }
-skene-web = { path = "packages/web", version = "0.1.0" }
 smallvec = "1.15"
 syn = { version = "3", features = ["full"] }
 tracing = "0.1"

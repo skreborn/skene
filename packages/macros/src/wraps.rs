@@ -28,7 +28,7 @@ fn wraps() -> TokenStream {
     return quote!(#foundation::Wraps);
   }
 
-  for facade in ["skene-web", "skene-terminal"] {
+  for (facade, _) in FACADES {
     if let Ok(FoundCrate::Name(name)) = crate_name(facade) {
       let name = format_ident!("{name}");
 
@@ -116,11 +116,14 @@ pub(crate) fn derive_wraps(input: &DeriveInput) -> syn::Result<TokenStream> {
   })
 }
 
+/// Each facade's package, with the platform its build names.
+const FACADES: [(&str, &str); 2] = [("skene-gui", "web"), ("skene-terminal", "terminal")];
+
 /// The facades a derived view builds for: the path to each one's `Active` from the
 /// deriving crate, the crate itself (and its doctests) through the name it gives itself or
 /// its dependency, with the platform its build names.
 fn facades() -> Vec<(TokenStream, &'static str)> {
-  [("skene-web", "web"), ("skene-terminal", "terminal")]
+  FACADES
     .into_iter()
     .filter_map(|(facade, platform)| {
       let name = match crate_name(facade).ok()? {
@@ -186,7 +189,7 @@ fn view(
     return Err(syn::Error::new_spanned(
       name,
       "a derived view belongs to one facade: `View` derives for the `Active` of the facade \
-       (`skene-web` or `skene-terminal`) the deriving crate is or depends on, and this \
+       (`skene-gui` or `skene-terminal`) the deriving crate is or depends on, and this \
        crate reaches neither",
     ));
   }
@@ -278,14 +281,18 @@ mod tests {
   use quote::{format_ident, quote};
   use syn::{DeriveInput, parse_quote};
 
-  use super::view;
+  use super::{FACADES, view};
 
   /// The expansion of `#[derive(View)]` on `input` for `facades`, as a string.
   fn expand(input: &DeriveInput, facades: &[&'static str]) -> String {
     let facades = facades
       .iter()
       .map(|&platform| {
-        let facade = format_ident!("skene_{platform}");
+        let (facade, _) = FACADES
+          .into_iter()
+          .find(|&(_, named)| named == platform)
+          .expect("a facade's platform");
+        let facade = format_ident!("{}", facade.replace('-', "_"));
 
         (quote!(::#facade::Active), platform)
       })
@@ -326,7 +333,7 @@ mod tests {
     ));
 
     assert!(
-      expansion.contains("impl::skene_foundation::View<::skene_web::Active>forButton{"),
+      expansion.contains("impl::skene_foundation::View<::skene_gui::Active>forButton{"),
       "{expansion}"
     );
     assert!(!expansion.contains("inline"), "{expansion}");
@@ -363,8 +370,8 @@ mod tests {
 
     assert!(
       expansion.contains(
-        "impl<S>::skene_foundation::View<::skene_web::Active>forTheme<S>whereCore<S>:::\
-         skene_foundation::View<::skene_web::Active>,Self:'static{"
+        "impl<S>::skene_foundation::View<::skene_gui::Active>forTheme<S>whereCore<S>:::\
+         skene_foundation::View<::skene_gui::Active>,Self:'static{"
       ),
       "{expansion}"
     );
@@ -381,8 +388,8 @@ mod tests {
 
     assert!(
       expansion.contains(
-        "impl<B:Behavior>::skene_foundation::View<::skene_web::Active>forControl<B>whereCore<B>\
-         :::skene_foundation::Thin<::skene_web::Active,Core=ControlCore<Active>>,Self:'static{"
+        "impl<B:Behavior>::skene_foundation::View<::skene_gui::Active>forControl<B>whereCore<B>\
+         :::skene_foundation::Thin<::skene_gui::Active,Core=ControlCore<Active>>,Self:'static{"
       ),
       "{expansion}"
     );
@@ -392,7 +399,7 @@ mod tests {
     );
     assert!(
       expansion
-        .contains("build(::skene_foundation::Thin::<::skene_web::Active>::into_core(self.0))"),
+        .contains("build(::skene_foundation::Thin::<::skene_gui::Active>::into_core(self.0))"),
       "{expansion}"
     );
   }
@@ -419,7 +426,7 @@ mod tests {
 
     assert!(
       expansion.contains(
-        "#[cfg(skene_platform=\"web\")]impl::skene_foundation::View<::skene_web::Active>"
+        "#[cfg(skene_platform=\"web\")]impl::skene_foundation::View<::skene_gui::Active>"
       ),
       "{expansion}"
     );

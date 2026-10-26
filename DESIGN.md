@@ -20,7 +20,7 @@ throughout—there is no separate "widget" concept.
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout every platform but the web computes
 (`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
-platforms (`skene-web`, `skene-terminal`) on the foundation and, where
+platforms (`skene-gui`, `skene-terminal`) on the foundation and, where
 they draw, on those two, the Simple core (its palette, variants and sizes, naming no
 realization) on the foundation, each platform's Simple crate (its presets) on its
 facade, and the macros, the transport and the CLI beside them.
@@ -539,7 +539,7 @@ local position in `f32`, a length rounded to the realization's unit, and the
 `ContentOps` beneath the controllers) as plain functions, filled once per build by
 `ControlOps::of::<P>()` in the control's build, never a `dyn` realization; so a
 third party's behavior is written exactly as the shipped ones are, naming no
-realization. Each facade's `behavior` module (`skene_web::behavior`,
+realization. Each facade's `behavior` module (`skene_gui::behavior`,
 `skene_terminal::behavior`, parallel member for member) re-exports the shipped
 behaviors (`Collection` and `Member` under a `CollectionPolicy` among them, with the
 collections' contexts `CollectionContext`, `RadioGroupContext`, `ListboxContext` and
@@ -1710,7 +1710,7 @@ into a layer and interpolate named pairs.
 
 ## Platforms
 
-### Web (`skene-web`)
+### Web (`skene-gui`)
 
 Two leaves of one platform over one node record, selected by the build's cfg alone and
 enforced by it: a build naming the web (`--cfg skene_platform="web"`) compiles the
@@ -1820,24 +1820,24 @@ stylesheet, holding every rule the browser interns.
 ### Native (planned)
 
 Each OS joins the pixel facade as a platform under its cfg (`ios`, `android`, `macos`,
-`windows` and `linux`), the facade `skene-web` today and `skene-gui` once item 1 splits
-it: its realization a crate of its own compiled in that platform's build alone, its own
-vocabulary for its controls, structure and navigation in the facade's `platform::<p>`
-module, and an app's pixel shell one crate built once per platform it declares, where
-`skene-web` refuses each of these builds today with a `compile_error!` naming the
-platform. Where the OS composites views (iOS, Android, macOS) a shell realizes the tree
-into the OS's own view hierarchy, a box a view with its layers, and where it composites
-windows alone (Linux, Windows) it draws the whole window. Every text is laid out and
-drawn by the OS's own engine behind `TextEngine` (TextKit 2, `android.text` over
-Minikin, DirectWrite, and on Linux `skene-parley` over the system's fonts), and a text
-entry is Skene's own field over the editing core, speaking the OS's text-input protocol
-itself and reporting its text to AccessKit from the core; the OS's own controls stay
-reachable as its own. No realization is a hybrid of drawn content around a toolkit's
-controls inside a window Skene draws. Layout is taffy, the OS's measure its leaves; the
-resolution cache tells a shell whether a layout-affecting value moved, so a palette
-write relays out only when it must. Off-thread work uses the engine's scheduler wired to
-the event-loop proxy, and a loop-integrated timer is fair game there, the loop being the
-shell's. The plan, its prerequisites and its order are in `ROADMAP.md`.
+`windows` and `linux`), the facade `skene-gui`: its realization a crate of its own
+compiled in that platform's build alone, its own vocabulary for its controls, structure
+and navigation in the facade's `platform::<p>` module, and an app's pixel shell one
+crate built once per platform it declares, where `skene-gui` refuses each of these
+builds today with a `compile_error!` naming the platform. Where the OS composites views
+(iOS, Android, macOS) a shell realizes the tree into the OS's own view hierarchy, a box
+a view with its layers, and where it composites windows alone (Linux, Windows) it draws
+the whole window. Every text is laid out and drawn by the OS's own engine behind
+`TextEngine` (TextKit 2, `android.text` over Minikin, DirectWrite, and on Linux
+`skene-parley` over the system's fonts), and a text entry is Skene's own field over the
+editing core, speaking the OS's text-input protocol itself and reporting its text to
+AccessKit from the core; the OS's own controls stay reachable as its own. No realization
+is a hybrid of drawn content around a toolkit's controls inside a window Skene draws.
+Layout is taffy, the OS's measure its leaves; the resolution cache tells a shell whether
+a layout-affecting value moved, so a palette write relays out only when it must.
+Off-thread work uses the engine's scheduler wired to the event-loop proxy, and a
+loop-integrated timer is fair game there, the loop being the shell's. The plan, its
+prerequisites and its order are in `ROADMAP.md`.
 
 ### The terminal (`skene-terminal`)
 
@@ -2188,7 +2188,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   visit, so with the field and the property's variant gated alike the record entry
   exists in that build alone. The macros' text names no platform; the predicate is the
   declaring crate's. Simple is the standing proof: `skene-simple` its core, naming no
-  realization, and `skene-simple-web` and `skene-simple-terminal` its platforms' crates of
+  realization, and `skene-simple-gui` and `skene-simple-terminal` its platforms' crates of
   presets, written exactly as a third party's. `skene new lib`
   creates the core-plus-presets shape: a core holding a palette and a unit trait and
   naming no realization, and a crate per platform named whose badge is a preset, an
@@ -2203,7 +2203,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   building a sized `Container` and handing the platform its cell painter
   (`<Active as CellPainter>::paint`) and its pixel painter
   (`<Active as Painting>::paint`) for that one box, so an app writes `Sparkline::new(..)` and names no platform. `acme-map`'s
-  `Map` is likewise a `View<skene_web::Active>`: a `NativeView` canvas inside a sized
+  `Map` is likewise a `View<skene_gui::Active>`: a `NativeView` canvas inside a sized
   `Container`, its markup served as is and painted on the browser leaf once its element
   is in hand, so the web's two leaves are one view with a `cfg` only around the
   painting, inside the library. Selecting the platform is what selecting the facade
@@ -2248,8 +2248,8 @@ build script infers a platform or a leaf and no cargo feature selects one. The w
 two leaves are one platform: the browser leaf is the `web` build on
 `wasm32-unknown-unknown`, and the server leaf the `web` build with `--cfg skene_server`
 beside it, on any target. Selection is by facade dependency first, a web app depending
-on `skene-web` and a terminal app on `skene-terminal`, and the cfg selects within the
-facade. `skene-web` compiles under `web`, compiles empty in a terminal build, and
+on `skene-gui` and a terminal app on `skene-terminal`, and the cfg selects within the
+facade. `skene-gui` compiles under `web`, compiles empty in a terminal build, and
 refuses every other build with a `compile_error!` of its own: one naming no platform,
 the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
 does not realize yet, named. `skene-terminal` compiles under `terminal` on the host's
@@ -2262,7 +2262,7 @@ facade's crates empty, and one naming no platform fails with both facades' messa
 Target-gating stays the enforcement layer where it applies: each leaf's dependencies
 are keyed on its cfgs, so the server leaf cannot reach the DOM. A cargo feature is an
 opt-in upgrade that enables optional dependencies alone, never a bound, a type, a
-variant or a platform, and none is on by default: `skene-web`'s `gpu` is the one there
+variant or a platform, and none is on by default: `skene-gui`'s `gpu` is the one there
 is.
 
 **`Platform` answers the build's platform as a const.** Each facade's `Platform`, at
@@ -2347,7 +2347,7 @@ triple, each over the whole workspace in the target directory the gate builds it
 the checked-in rust-analyzer settings (`.zed/settings.json`) name the browser leaf:
 `cargo.target` its triple, and the cfg in `cargo.extraEnv`'s
 `CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS`. The guide's contributing chapter
-teaches them. docs.rs documents each leaf of `skene-web` and `skene-simple-web` from
+teaches them. docs.rs documents each leaf of `skene-gui` and `skene-simple-gui` from
 their metadata's `cargo-args`, which name the browser in `wasm32-unknown-unknown`'s
 rustflags and rustdocflags and the server leaf in `x86_64-unknown-linux-gnu`'s, and
 `skene-terminal` and `skene-simple-terminal` from theirs, naming the terminal in

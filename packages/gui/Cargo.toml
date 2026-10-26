@@ -1,0 +1,164 @@
+[package]
+name = "skene-gui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "skene's web facade and platform: views typed to the web, rendered in the browser and on the server"
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rustc-hash.workspace = true
+serde_json.workspace = true
+sfv = "0.16"
+skene-dev.workspace = true
+skene-foundation.workspace = true
+skene-macros.workspace = true
+skene-reactive.workspace = true
+smallvec.workspace = true
+tracing.workspace = true
+
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dependencies]
+async-task = "4"
+console_error_panic_hook = "0.1"
+js-sys.workspace = true
+vello_gpu = { default-features = false, features = ["std", "wgpu"], optional = true, version = "0.3" }
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+  "AddEventListenerOptions",
+  "CanvasRenderingContext2d",
+  "Clipboard",
+  "Comment",
+  "console",
+  "css",
+  "CssStyleDeclaration",
+  "CssStyleSheet",
+  "DataTransfer",
+  "Document",
+  "DomRect",
+  "DomTokenList",
+  "DragEvent",
+  "Element",
+  "Event",
+  "EventInit",
+  "EventTarget",
+  "FocusEvent",
+  "History",
+  "HtmlCanvasElement",
+  "HtmlCollection",
+  "HtmlDialogElement",
+  "HtmlElement",
+  "HtmlHeadElement",
+  "HtmlInputElement",
+  "HtmlOptionElement",
+  "HtmlOptionsCollection",
+  "HtmlSelectElement",
+  "HtmlStyleElement",
+  "HtmlTextAreaElement",
+  "ImageData",
+  "InputEvent",
+  "InputEventInit",
+  "KeyboardEvent",
+  "Location",
+  "MediaQueryList",
+  "MouseEvent",
+  "Navigator",
+  "Node",
+  "NodeList",
+  "PointerEvent",
+  "ResizeObserver",
+  "ResizeObserverBoxOptions",
+  "ResizeObserverEntry",
+  "ResizeObserverOptions",
+  "ResizeObserverSize",
+  "Response",
+  "Selection",
+  "SelectionMode",
+  "Storage",
+  "StyleSheet",
+  "WheelEvent",
+  "Window",
+] }
+wgpu = { default-features = false, features = ["std", "webgpu", "wgsl"], optional = true, version = "30" }
+
+[target.'cfg(all(skene_platform = "web", skene_server))'.dependencies]
+futures-timer = "3"
+
+[target.'cfg(all(skene_platform = "web", skene_server, unix))'.dependencies]
+rustix = { features = ["stdio"], version = "1" }
+
+[dev-dependencies]
+skene-simple-gui = { path = "../simple-gui" }
+
+[target.'cfg(all(skene_platform = "web", skene_server))'.dev-dependencies]
+trybuild.workspace = true
+
+[package.metadata.cargo-shear]
+ignored-paths = ["tests/compile_fail/*.rs"]
+
+[target.'cfg(all(skene_platform = "web", not(skene_server)))'.dev-dependencies]
+js-sys.workspace = true
+wasm-bindgen-test.workspace = true
+web-sys = { workspace = true, features = [
+  "CanvasRenderingContext2d",
+  "CompositionEvent",
+  "CompositionEventInit",
+  "css",
+  "CssStyleDeclaration",
+  "DataTransfer",
+  "Document",
+  "DomRect",
+  "DomTokenList",
+  "DragEvent",
+  "DragEventInit",
+  "Element",
+  "Event",
+  "EventInit",
+  "HtmlCanvasElement",
+  "HtmlCollection",
+  "HtmlElement",
+  "HtmlHeadElement",
+  "HtmlInputElement",
+  "HtmlSelectElement",
+  "ImageData",
+  "InputEvent",
+  "InputEventInit",
+  "KeyboardEvent",
+  "KeyboardEventInit",
+  "MouseEvent",
+  "MouseEventInit",
+  "MutationObserver",
+  "MutationObserverInit",
+  "MutationRecord",
+  "Node",
+  "NodeList",
+  "PointerEvent",
+  "PointerEventInit",
+  "WheelEvent",
+  "WheelEventInit",
+  "Window",
+] }
+
+[features]
+# Paints a painted box on the GPU where the page has WebGPU, through vello's GPU
+# renderer; without it every painted box paints on the CPU.
+gpu = ["dep:vello_gpu", "dep:wgpu"]
+
+[package.metadata.docs.rs]
+default-target = "wasm32-unknown-unknown"
+targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-gnu"]
+# Each target names its leaf: the browser on wasm32, the server leaf on the host.
+cargo-args = [
+  "--config",
+  'target.wasm32-unknown-unknown.rustflags = ["--cfg", "skene_platform=\"web\""]',
+  "--config",
+  'target.wasm32-unknown-unknown.rustdocflags = ["--cfg", "skene_platform=\"web\""]',
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+  "--config",
+  'target.x86_64-unknown-linux-gnu.rustdocflags = ["--cfg", "skene_platform=\"web\"", "--cfg", "skene_server"]',
+]
+
+[lints]
+workspace = true

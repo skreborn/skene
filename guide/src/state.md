@@ -67,7 +67,7 @@ field, so a write to one field reaches what read that field alone. A list's entr
 lenses too, keyed by what identifies an entry:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 #[derive(Store, Clone, Default, Snapshot)]
 struct Todos {

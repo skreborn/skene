@@ -19,9 +19,9 @@ skene new app counter web terminal
 counter
 ├── .cargo         config.toml: the platform plain cargo builds, the web
 ├── Cargo.toml     the workspace
+├── gui            counter-gui: the web's shell
 ├── shared         counter-shared: the state and logic every shell shares
-├── terminal       counter-terminal: the terminal's shell
-└── web            counter-web: the web's shell
+└── terminal       counter-terminal: the terminal's shell
 ```
 
 The shared crate depends on `skene-reactive` alone and knows nothing of any platform.
@@ -30,8 +30,8 @@ platform's crate of Simple, the component library the template draws with. A she
 entry is the function `#[main]` marks:
 
 ```rust
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 #[main]
 fn app() -> impl View {
@@ -49,9 +49,9 @@ fn app() -> impl View {
 `#[main]` expands to the entry the build names: in the browser, the `web` build on
 `wasm32-unknown-unknown`, it hydrates the page the server rendered, and on the server
 leaf, the `web` build with `--cfg skene_server` beside it, it renders the requested
-path. A build naming no platform, or a pixel platform `skene-web` does not realize yet,
-fails with `skene-web`'s message naming the web's builds. A terminal build compiles
-`skene-web` empty, and the web shell with it, since `skene new` gates the shell on its
+path. A build naming no platform, or a pixel platform `skene-gui` does not realize yet,
+fails with `skene-gui`'s message naming the web's builds. A terminal build compiles
+`skene-gui` empty, and the web shell with it, since `skene new` gates the shell on its
 platform (`#![cfg(skene_platform = "web")]`).
 
 ## One platform per build
@@ -88,7 +88,7 @@ shares what plain cargo compiled, its flags being the configuration's own.
 Each shell runs from its own directory:
 
 ```sh
-cd counter/web
+cd counter/gui
 skene run web
 ```
 

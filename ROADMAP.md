@@ -643,8 +643,8 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-35. **Confirm docs.rs documents every platform's build.** `skene-web` and
-    `skene-simple-web` name each target's leaf, and `skene-terminal` and
+35. **Confirm docs.rs documents every platform's build.** `skene-gui` and
+    `skene-simple-gui` name each target's leaf, and `skene-terminal` and
     `skene-simple-terminal` the terminal, through `cargo-args` setting
     `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over
     `build.*` and an environment variable over both, so on the first publish either

@@ -1,0 +1,18 @@
+error[E0277]: cannot add `skene_gui::Expr<skene_gui::Number>` to `skene_gui::Expr<skene_gui::Length>`
+ --> tests/compile_fail/adding_a_number_to_a_length.rs:6:36
+  |
+6 |   let _ = Expr::<Length>::from(8.) + Expr::<Number>::from(2.);
+  |                                    ^ no implementation for `skene_gui::Expr<skene_gui::Length> + skene_gui::Expr<skene_gui::Number>`
+  |
+  = help: the trait `Add<skene_gui::Expr<skene_gui::Number>>` is not implemented for `skene_gui::Expr<skene_gui::Length>`
+help: `skene_gui::Expr<Q>` implements trait `Add<Rhs>`
+ --> $WORKSPACE/packages/foundation/src/spine/expr.rs
+  |
+  | impl<Q: Quantity> Add for Expr<Q> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Add`
+...
+  | impl<Q: Quantity> Add<f32> for Expr<Q> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Add<f32>`
+...
+  | impl<Q: Quantity> Add<i32> for Expr<Q> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Add<i32>`

@@ -1,7 +1,7 @@
 # Skene
 
 A client-side Rust UI framework: one spine, a facade per platform. A web app depends on
-`skene-web` and runs wherever the build targets it—the browser, client-rendered; a
+`skene-gui` and runs wherever the build targets it—the browser, client-rendered; a
 server, rendering or statically generating pages from the same app crate built natively.
 A terminal app depends on `skene-terminal`, a facade of equal standing with its own
 vocabulary typed to the medium. Every built-in view is written once, generic over the
@@ -28,14 +28,14 @@ state by key rather than by position.
 
 ## A web app
 
-A web app depends on `skene-web` and, for the ready-made components, on
-`skene-simple-web`; it marks its entry with `#[main]` and names no platform
-(`examples/web/counter`):
+A web app depends on `skene-gui` and, for the ready-made components, on
+`skene-simple-gui`; it marks its entry with `#[main]` and names no platform
+(`examples/gui/counter`):
 
 ```rust
 # #[cfg(skene_platform = "web")] {
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 #[main]
 fn app() -> impl View {
@@ -67,9 +67,9 @@ fn app() -> impl View {
 `wasm32-unknown-unknown`, it launches the app, hydrating a server-rendered page in
 place; on the server leaf, the `web` build with `--cfg skene_server` beside it, it
 renders the requested path to stdout (the server build's `counter /` prints the page).
-A build naming no platform, or a pixel platform `skene-web` does not realize yet, fails
-with `skene-web`'s message naming the web's builds, and a terminal build compiles
-`skene-web` empty, as it does an app gated on the web.
+A build naming no platform, or a pixel platform `skene-gui` does not realize yet, fails
+with `skene-gui`'s message naming the web's builds, and a terminal build compiles
+`skene-gui` empty, as it does an app gated on the web.
 The app is its library alone, which `skene` builds as each target's crate type.
 
 ## A terminal app
@@ -125,13 +125,13 @@ with the mouse off a plain drag is the terminal's.
 | `skene-foundation` | `packages/foundation` | The spine: `Scene<P>`, the zero-sized `Realization` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values, knowing nothing of platforms. Beside it, every built-in view: `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Slider`/`RadioGroup`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Basic*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuEntry` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Link` to a route, `Visibility`/`OneOf`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, `SystemColors` (the platform's colors, which each realization defines at the root), the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello, and `text`: the attributed text model, the `TextEngine` contract every realization's engine implements, the layout's `TextLeaf`, the `TextIndex` between bytes, code points, UTF-16 and grapheme clusters, and `editing`, the editing core every drawn entry shares, beside the spine's `Edit`, `Verdict`, `Unit` and `AccessText`; `terminal` (`TerminalStyle`, `BorderGlyphs`, the terminal `Typography`), `web` (`WebStyle`, the web's `Typography`, the document `Head`, and `WebHydration` with the hydrating `Resource`, the streaming `Deferred` and the lazily loaded `AsyncView`) and `routing` (`Route`, `StaticRoutes`, `Router`, `install_router`: a typed route in a signal, bound to the platform's history through its seams). |
 | `skene-layout` | `packages/layout` | The layout every platform but the web computes: the resolved style model on taffy (`BoxLayout`), generic over the scalar, a `Tree` keyed by the scene's nodes, retained across layouts and written node by node, by a walk of the scene or for the nodes a shared `Restyle` says moved, each node's part classified by its platform, and `TextFlow`, a box's inline runs and boxes laid out as one text through the platform's text engine, answering which run a point falls on. |
 | `skene-parley` | `packages/parley` | The `TextEngine` over the patched Parley (`vendor/parley`), on the typefaces it is given and no system font: paragraphs shaped once and broken per width, on threads off the web for a batch, bidirectional carets and movement, ICU4X's dictionaries for complex-script breaking, and drawing through vello. Its tests and `skene-layout`'s shape in the pinned Inter face under `fonts`. |
-| `skene-web` | `packages/web` | The web facade and platform: `f32`, `Active`, a type of its own for every view, the drawn built-in controls (`Button`, `Checkbox`, `Toggle`, `RadioGroup<T>`/`Radio`, `Slider`, `TextField`, `TextEditor`, `Picker<T>`, `Listbox<C>`/`ListboxOption`) in the platform's colors, `behavior` (the shipped behaviors a `Control` runs over, `Behavior` with what its hooks name, `ControlHandle`, `ControlOps`, `Roster`, `TypeAhead`, the collections' contexts and the slider's), `Typography`, `SystemColors` in pixels, defined at the root as CSS's system colors, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; `Platform`, the build's platform as a const (`CURRENT`, `IS_SERVER`, `IS_APPLE`); and `platform`, a module per pixel platform's own vocabulary: `platform::web`, the web `Realization`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the native door `NativeView` (an element built from its `NativeMarkup`, served as a placeholder and adopted in place at hydration), and `skene-dev`'s served `Document`, re-exported; and `android`, `apple`, `ios`, `linux`, `macos` and `windows`, empty today. |
+| `skene-gui` | `packages/gui` | The web facade and platform: `f32`, `Active`, a type of its own for every view, the drawn built-in controls (`Button`, `Checkbox`, `Toggle`, `RadioGroup<T>`/`Radio`, `Slider`, `TextField`, `TextEditor`, `Picker<T>`, `Listbox<C>`/`ListboxOption`) in the platform's colors, `behavior` (the shipped behaviors a `Control` runs over, `Behavior` with what its hooks name, `ControlHandle`, `ControlOps`, `Roster`, `TypeAhead`, the collections' contexts and the slider's), `Typography`, `SystemColors` in pixels, defined at the root as CSS's system colors, `media`, `Resource` across the server boundary, `Deferred`, `AsyncView`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`; `Platform`, the build's platform as a const (`CURRENT`, `IS_SERVER`, `IS_APPLE`); and `platform`, a module per pixel platform's own vocabulary: `platform::web`, the web `Realization`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints, the native door `NativeView` (an element built from its `NativeMarkup`, served as a placeholder and adopted in place at hydration), and `skene-dev`'s served `Document`, re-exported; and `android`, `apple`, `ios`, `linux`, `macos` and `windows`, empty today. |
 | `skene-terminal` | `packages/terminal` | The terminal facade and platform: `i32` cells, the same views and built-in controls drawn in cells, the same `behavior` module, its own decoration on them, `Typography`, `SystemColors` in cells, defined at the root from the colors the terminal reports, `BorderGlyphs`, `media`, `launch`, `Platform` (`CURRENT`), `platform::terminal` (`Terminal`, the `CellPainter` escape trait and its `Cells`, and the seams `install`, `mount` and `uninstall` an in-process test drives), and `testing`: `render_to_text`, the `trigger_*` seams, `user` and the queries by role, name and text. |
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams, on the pages each facade writes in its own vocabulary under the names `PAGES` lists. |
 | `skene-conformance-web` | `packages/conformance-web` | The conformance suite in real browsers: its pages, written in the web's vocabulary, served as one web app, acted on over WebDriver by trusted input. |
 | `skene-simple` | `packages/simple` | The Simple core, naming no platform: `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, and the sizes per unit, `SimpleShape` through `SimpleUnit`. |
 | `skene-simple-terminal` | `packages/simple-terminal` | The Simple presets of the terminal's built-in views, `SimpleButton`, `SimpleCard`, `SimpleTooltip`, `SimpleCheckbox`, `SimpleRadioGroup`/`SimpleRadio`, `SimplePicker`/`SimpleListboxOption`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor` and `SimpleContextMenu`, each returning the built-in it styles; `SimpleGlyphs` (the token set its marks are drawn in) and its `glyph` tokens; the palette in cells, and a `prelude` an app imports beside the facade's own. |
-| `skene-simple-web` | `packages/simple-web` | The Simple presets of the web's built-in views, as on the terminal, their marks drawn rather than glyphs, the palette in pixels, and its `prelude`. |
+| `skene-simple-gui` | `packages/simple-gui` | The Simple presets of the web's built-in views, as on the terminal, their marks drawn rather than glyphs, the palette in pixels, and its `prelude`. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-dev` | `packages/dev` | The dev loop's protocol between the `skene` command and the app it runs, and the `Document` a web page is served as, the server leaf's pages and the command's client-rendered shell alike. |
@@ -182,13 +182,13 @@ rustup target add wasm32-unknown-unknown
 
 skene new app counter web terminal                         # a shared crate and a shell per platform
 skene new lib acme-ui web terminal                         # a library's core and a crate per platform
-cargo skene --dir examples/web/counter run web             # build, serve on :8080, live-reload
-cargo skene --dir examples/web/router build web --static   # statically generate the routed site
+cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
+cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
 cargo skene --dir examples/terminal/counter run terminal   # build, rebuild on change, print the attach command
 cargo skene attach <id>                                    # run the app here, swapped on each rebuild
 ```
 
-Examples live under `examples/web` and `examples/terminal`, one folder per feature, the same
+Examples live under `examples/gui` and `examples/terminal`, one folder per feature, the same
 names on both facades where the feature exists: `counter` (state, snapshot-preserving
 reloads), `gallery` (every built-in view and control, a live palette switch), `theme`
 (a palette built per property, an accent the reader switches, a nested theme, the color
@@ -226,7 +226,7 @@ cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` 
 The gate checks formatting, manifest order, every patched crate vendored under
 `vendor/`, the house rules, unused dependencies, clippy and rustdoc on every leaf,
 each facade refusing with its own message a build that names no platform and
-`skene-web` one it does not realize, clippy on the terminal's macOS paths, manifests
+`skene-gui` one it does not realize, clippy on the terminal's macOS paths, manifests
 free of cargo features, the minimum Rust version in the host's, the server's, the
 terminal's and the browser's builds, and four test tiers. A crate reaching a facade is
 built for that facade's platform alone, and the host tier runs the tests of every crate
@@ -267,13 +267,13 @@ own, naming no realization either, since the facade names what the foundation's 
 asks for (`Scene`, `IntoChildOf<Kind>`, `DecoratedTextEntry`, `Condition`);
 `skene new lib` writes that shape. A low-level view goes
 through its facade's `platform::<p>` module, the web's native door
-(`skene_web::platform::web::NativeView`, a DOM element served as its markup and adopted in
+(`skene_gui::platform::web::NativeView`, a DOM element served as its markup and adopted in
 place) or the terminal's escape trait (`skene_terminal::platform::terminal::CellPainter`),
 takes the `Realization` seam from `skene-foundation` where it needs it, since a facade
 re-exports none, and is realized through the same scene as a built-in, a concrete view of
 its facade's `Active` (`acme_map::Map`, `acme_sparkline::Sparkline`); `Painted` is the
 portable one for pixels, a vello scene the platform renders, the web on the CPU or, with
-`skene-web`'s `gpu` feature, on the GPU where the page has WebGPU, and the terminal
+`skene-gui`'s `gpu` feature, on the GPU where the page has WebGPU, and the terminal
 through the kitty graphics protocol where it proves one. `examples/third-party` shows
 both paths: `acme-map` (a canvas through the web's door, its markup served as the
 placeholder the browser adopts and paints) and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them

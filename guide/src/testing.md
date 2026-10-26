@@ -50,19 +50,19 @@ each cell's character, and its style as a character beside it.
 
 A web test runs in a real browser, built for `wasm32-unknown-unknown` and run under
 `wasm-bindgen-test`'s runner, which drives Firefox or Chromium over WebDriver.
-`skene_web::testing` installs the browser leaf on a fresh root, and the test reads the
+`skene_gui::testing` installs the browser leaf on a fresh root, and the test reads the
 elements it built and the styles the engine computes for them, through `web-sys` and
 `wasm-bindgen` beside `wasm-bindgen-test` among the crate's dev-dependencies:
 
 ```rust,ignore
 #![cfg(all(skene_platform = "web", not(skene_server)))]
 
-use skene_simple_web::prelude::*;
-use skene_web::{
+use skene_gui::{
   platform::web::mount,
   prelude::*,
   testing::{computed, fresh_root, only_child},
 };
+use skene_simple_gui::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
@@ -107,8 +107,8 @@ receive, here for the same counter.
 
 ```rust
 # #[cfg(all(skene_platform = "web", skene_server))] {
-# use skene_simple_web::prelude::*;
-use skene_web::{prelude::*, render_to_string};
+use skene_gui::{prelude::*, render_to_string};
+# use skene_simple_gui::prelude::*;
 #
 # fn counter() -> impl View {
 #   let count = Signal::new(0u32);

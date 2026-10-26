@@ -509,7 +509,7 @@ mod tests {
   /// dependencies over normal and build dependencies, and nothing else in the workspace.
   #[test]
   fn an_app_builds_from_its_local_packages() {
-    let counter = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/web/counter");
+    let counter = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/gui/counter");
     let app = App::load(&counter).unwrap();
     let builds_from = |package: &str| {
       app
@@ -519,7 +519,7 @@ mod tests {
     };
 
     assert_eq!(app.package_dirs.first(), Some(&app.dir));
-    assert!(builds_from("web"));
+    assert!(builds_from("gui"));
     assert!(builds_from("foundation"));
     assert!(!builds_from("cli"));
     assert!(!builds_from("terminal"));

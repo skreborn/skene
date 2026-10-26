@@ -16,7 +16,7 @@ Data a page loads crosses the boundary in a `Resource`: the server settles it an
 its value into the page, and the client adopts that value rather than loading it again.
 
 ```rust
-use skene_web::{Resource, prelude::*};
+use skene_gui::{Resource, prelude::*};
 
 fn greeting() -> impl View {
   let name: Resource<String> = Resource::new(|| async { "reader".to_owned() });
@@ -39,10 +39,10 @@ richer one the bundle brings declares both, and `Enhance` builds the fallback un
 signal turns and the child after:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn clock() -> impl View {
-  Enhance::new(skene_web::media::hydrated())
+  Enhance::new(skene_gui::media::hydrated())
     .set_fallback_builder(|| Text::new("The time, once the page is live."))
     .set_child_builder(|| Text::new("A live clock"))
 }
@@ -57,7 +57,7 @@ The `head` module registers what the document's head carries, for as long as the
 registering it lives, so a route's description leaves with the route:
 
 ```rust
-use skene_web::{head, prelude::*};
+use skene_gui::{head, prelude::*};
 
 fn about() -> impl View {
   head::add_meta("description", "Who we are");
@@ -76,7 +76,7 @@ module, through `#[lazy]` and `AsyncView`. A route type that lists every route
 without being told them:
 
 ```rust
-use skene_web::{
+use skene_gui::{
   Link,
   install_static_router,
   prelude::*,
@@ -132,7 +132,7 @@ are to join, and `Platform::CURRENT` names the one the build is for. It is a con
 match on it costs the arms of every other platform nothing:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn update_hint() -> impl View {
   Text::new(match Platform::CURRENT {
@@ -149,7 +149,7 @@ A view's content does not branch on it, since the browser adopts the markup the 
 rendered and a difference between the two is a hydration mismatch; it is for what the
 server does around a render. `Platform::IS_APPLE` answers for iOS and macOS together.
 
-What only one platform has lives in its module, `skene_web::platform::<p>`: its data
+What only one platform has lives in its module, `skene_gui::platform::<p>`: its data
 types in every build, so code naming one compiles everywhere, and its controls in its own
 build alone, so code naming one sits in an arm under `#[cfg(skene_platform = "<p>")]`.
 `platform::web` holds the web's: `NativeView`, the native door through which a

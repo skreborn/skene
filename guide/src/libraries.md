@@ -4,7 +4,7 @@ A component library is a core of colors, sizes and logic, naming no platform, wi
 crate per facade holding its presets: functions returning the facade's built-in views,
 styled from the core. Simple is written this way from the public API alone—its core,
 `skene-simple`, is the palette, the looks, the variants and the sizes, and
-`skene-simple-web` and `skene-simple-terminal` are its presets—and a library of your own
+`skene-simple-gui` and `skene-simple-terminal` are its presets—and a library of your own
 stands on the same footing.
 
 ```sh
@@ -16,8 +16,8 @@ acme-ui
 ├── .cargo         config.toml: the platform plain cargo builds, the web
 ├── Cargo.toml     the workspace
 ├── core           acme-ui: the palette and the sizes
-├── terminal       acme-ui-terminal: the presets of the terminal's views
-└── web            acme-ui-web: the presets of the web's views
+├── gui            acme-ui-gui: the presets of the web's views
+└── terminal       acme-ui-terminal: the presets of the terminal's views
 ```
 
 ## The palette
@@ -161,7 +161,7 @@ the sizes in its unit. The scaffold's web crate writes its badge this way:
 #   }
 # }
 use acme_ui::AcmeUiUnit;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 /// A badge: a short label on a rounded, tinted surface, a preset of [`Container`].
 pub enum AcmeUiBadge {}
@@ -214,7 +214,7 @@ returning `impl View`, composed from the facade's views as an app's are, its opt
 parameters:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 /// A figure under its caption, the figure kept current with the signals `value` reads.
 pub fn stat(caption: &str, value: impl Fn() -> String + 'static) -> impl View {
@@ -237,7 +237,7 @@ the `Behavior` trait a library's own implements with what its hooks name, and th
 its names for the views. A shipped behavior is configured as the app configures it:
 
 ```rust
-use skene_web::{
+use skene_gui::{
   behavior::{Slider, SliderRange},
   prelude::*,
 };
@@ -257,7 +257,7 @@ A behavior of the library's own states its role, the events it acts on and what 
 reports, and the same `Control` gives it focus, a label, decoration and parts:
 
 ```rust
-use skene_web::{
+use skene_gui::{
   Control,
   Prevent,
   behavior::{Behavior, ControlHandle, EventKind},
@@ -307,7 +307,7 @@ an app calls it without a `cfg` of its own, and does nothing outside its platfor
 build, where its backing field does not exist:
 
 ```rust
-use skene_web::{Color, Condition, Value};
+use skene_gui::{Color, Condition, Value};
 
 /// A gauge's own style, its values under the facade's conditions.
 pub struct GaugeStyle {

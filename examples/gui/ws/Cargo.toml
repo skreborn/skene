@@ -1,0 +1,14 @@
+[package]
+name = "gui-ws"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+skene-gui.workspace = true
+skene-simple-gui.workspace = true
+skene-transport.workspace = true
+
+[lints]
+workspace = true

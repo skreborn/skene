@@ -5,7 +5,7 @@ describes it, and a parent takes it as a child. The examples in this chapter use
 web's facade; the terminal's views are the same, measured in cells.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn greeting() -> impl View {
   Text::new("Hello")
@@ -27,7 +27,7 @@ A setting the chain may lack goes through `apply`, which calls the setter where 
 a value and leaves the view as it is where there is none:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn caption(text: &str, color: Option<Color>) -> impl View {
   Text::new(text).apply(color, Text::set_color)
@@ -41,7 +41,7 @@ Each layout is its own view, and exposes only the properties it honors: `Row` an
 one another.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn toolbar() -> impl View {
   Row::new()
@@ -66,7 +66,7 @@ compile. A wrapper without its child shows nothing and takes no room.
 each across it:
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn centered() -> impl View {
   Column::new()
@@ -82,7 +82,7 @@ A layout carries layout and its own padding alone. `Container` is the one decora
 a background, a border, corners, a size, and exactly one child.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn panel() -> impl View {
   Container::new()
@@ -106,7 +106,7 @@ so a list entry may hold a button of its own. It is not a button and carries no 
 the one `set_role` gives it.
 
 ```rust
-use skene_web::{behavior::Activate, prelude::*};
+use skene_gui::{behavior::Activate, prelude::*};
 
 fn entry(opened: Signal<u32>, starred: Signal<u32>) -> impl View {
   Container::new()
@@ -128,7 +128,7 @@ has a conditional setter of its own. A condition is a medium's (`Media::min_widt
 `Media::Dark`) or an interaction's (`State::Hovered`, `State::FocusVisible`):
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn responsive() -> impl View {
   Row::new()
@@ -147,7 +147,7 @@ it reads change, and `derive_children` keeps one child per item, keyed, so an it
 moves keeps its view and the state beneath it.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn names(names: Signal<Vec<String>>) -> impl View {
   Column::new().set_spacing(4).derive_children(

@@ -5,7 +5,7 @@ design token, an expression, a value derived from signals, or any of those under
 condition.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn kinds(selected: Signal<bool>) -> impl View {
   Container::new()
@@ -31,7 +31,7 @@ both set a width, and every constructor measured in lengths takes either, in the
 order of its fields.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn lengths() -> impl View {
   Row::new()
@@ -58,8 +58,8 @@ A design token is a named slot a theme defines and every view beneath it reads. 
 `TokenRef` names one, and any setter takes it in place of a value:
 
 ```rust
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 fn card_title() -> impl View {
   Text::new("Title")
@@ -75,8 +75,8 @@ palette rewrites the definitions in place: nothing beneath the theme rebuilds, a
 cost is the number of tokens, never the number of views.
 
 ```rust
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 fn themed(accent: Signal<Color>) -> impl View {
   Theme::derive(move || SimplePalette::default().set_ring(accent.get())).set_child_builder(
@@ -108,7 +108,7 @@ it reports. A set of your own that defines one of the names redefines it beneath
 theme as any token, and everything beneath that reads it follows:
 
 ```rust
-use skene_web::{Definition, TokenName, prelude::*};
+use skene_gui::{Definition, TokenName, prelude::*};
 
 /// An accent of the app's own, in place of the platform's.
 #[derive(Debug, Clone, PartialEq)]
@@ -141,8 +141,8 @@ Light and dark are one condition, `Media::Dark`, which a token's definition answ
 per token like any other condition:
 
 ```rust
-use skene_simple_web::prelude::*;
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 fn palette() -> SimplePalette {
   SimplePalette::default().set_card(
@@ -163,7 +163,7 @@ A transition animates a property whenever its value changes, from any source: a
 condition flipping, a token redefined, a derived value written.
 
 ```rust
-use skene_web::prelude::*;
+use skene_gui::prelude::*;
 
 fn fading() -> impl View {
   Container::new()

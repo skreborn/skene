@@ -796,7 +796,7 @@ mod tests {
         "pub skene_foundation::Spacing::row_gap: f32\n\
          impl core::fmt::Display for skene_foundation::Color\n\
          pub fn skene_foundation::Run<P: skene_foundation::Realization>::set_display(self) -> Self\n\
-         pub use skene_web::Widget\n"
+         pub use skene_gui::Widget\n"
       ),
       [
         "api/test.txt:1: `row_gap` uses `gap`, which the framework's vocabulary replaces",
@@ -822,7 +822,7 @@ mod tests {
         Some("Run"),
       ),
       (
-        "pub type skene_web::Resource<T> = skene_foundation::web::Resource<skene_web::Web, T>",
+        "pub type skene_gui::Resource<T> = skene_foundation::web::Resource<skene_gui::Web, T>",
         Some("Resource"),
       ),
       (

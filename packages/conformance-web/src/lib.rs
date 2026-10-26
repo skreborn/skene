@@ -1,6 +1,6 @@
 //! # The conformance suite's pages, as one web app
 //!
-//! Every page of the suite ([`pages`], written in skene-web's vocabulary) served from one
+//! Every page of the suite ([`pages`], written in skene-gui's vocabulary) served from one
 //! app: the path a browser opens names the page, `/button` the page named `button`, and
 //! the app builds it as its whole view, in the pinned font the app serves
 //! (`public/fonts`). Once built, the page is reachable from the harness
@@ -14,7 +14,7 @@ pub mod pages;
 use std::cell::RefCell;
 
 use skene_conformance::Probes;
-use skene_web::{AnyView, head, main, platform::web::current_path};
+use skene_gui::{AnyView, head, main, platform::web::current_path};
 
 thread_local! {
   /// What the page the app built publishes, once it is built.

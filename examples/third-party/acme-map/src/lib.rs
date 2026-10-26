@@ -9,7 +9,7 @@
 #![cfg(skene_platform = "web")]
 
 use skene_foundation::{AnyKind, NodeId, Size, View};
-use skene_web::{
+use skene_gui::{
   Active,
   Container,
   ContainerBase,

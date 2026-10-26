@@ -854,13 +854,13 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   each test in a process of its own, the doctests beside them through
   `cargo test --doc`, and a crate's integration tests are one binary (`tests/it`), since
   the process per test isolates them and every binary costs a link. Among them,
-  `skene-gui`'s `tests/compile_fail` (today under `packages/web`) holds a program per
-  rule the types enforce (layout's typed children, the expression kinds, the derives)
-  beside the diagnostic it must raise, rewritten by `TRYBUILD=overwrite` once a change
-  to one is meant, `proptest` drives the snapshot codec and the terminal parser with
-  arbitrary input, and a terminal frame compares against its snapshot file through
-  `insta` (`render_to_styled`: the text, each cell's style as a character, and what each
-  stands for), rewritten by `INSTA_UPDATE=always` once a change to the frame is meant. A
+  `skene-gui`'s `tests/compile_fail` holds a program per rule the types enforce
+  (layout's typed children, the expression kinds, the derives) beside the diagnostic it
+  must raise, rewritten by `TRYBUILD=overwrite` once a change to one is meant,
+  `proptest` drives the snapshot codec and the terminal parser with arbitrary input, and
+  a terminal frame compares against its snapshot file through `insta`
+  (`render_to_styled`: the text, each cell's style as a character, and what each stands
+  for), rewritten by `INSTA_UPDATE=always` once a change to the frame is meant. A
   platform that draws holds each page of the conformance suite against a golden of its
   own, drawn in the pinned font and rewritten by `SKENE_GOLDENS=overwrite`. The server's
   tests are the server leaf built natively, the byte-exact render snapshot among them.
@@ -869,7 +869,7 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   (`SKENE_GATE_BROWSERS` sets how many), through a real Firefox (geckodriver) and a real
   Chromium (chromedriver, from `CHROMEDRIVER`, `PATH` or
   `~/.local/share/chrome-for-testing`), each with WebGPU switched on by
-  `packages/web/webdriver.json`, so a painted box renders on the GPU there, until
+  `packages/gui/webdriver.json`, so a painted box renders on the GPU there, until
   headless Chromium's software adapter loses its device after the first frame and the
   box falls back to the CPU; without a GPU, Firefox finds an adapter only through Mesa's
   software Vulkan driver (`mesa-vulkan-drivers`, which CI installs); `browser_painted`

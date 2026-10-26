@@ -71,9 +71,9 @@ fn card_title() -> impl View {
 A palette is a set of tokens with their definitions. A library's palette carries its
 default in each of its references, so the title above is inked in Simple's foreground
 with no theme above it, while a text naming none of its tokens keeps the app's ink until
-a `Theme` of the palette, which redefines the palette over a subtree, sits above it. Changing the
-palette rewrites the definitions in place: nothing beneath the theme rebuilds, and the
-cost is the number of tokens, never the number of views.
+a `Theme` of the palette, which redefines the palette over a subtree, sits above it.
+Changing the palette rewrites the definitions in place: nothing beneath the theme
+rebuilds, and the cost is the number of tokens, never the number of views.
 
 ```rust
 use skene_gui::prelude::*;

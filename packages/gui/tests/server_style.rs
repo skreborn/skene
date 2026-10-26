@@ -1440,12 +1440,14 @@ fn a_theme_of_simple_defines_the_typography_aliases_on_its_scope() {
     rule(styles, &format!(".{scope}")).contains("--typography-ink:var(--simple-foreground);"),
     "the scope's own alias: {styles}"
   );
-  assert!(
-    rules(styles, ROOT)
-      .iter()
-      .all(|rule| !rule.contains("--typography-")),
-    "no alias at the root: {styles}"
-  );
+  for selector in [ROOT, ROOT_DEFERRING, ROOT_CHOSEN] {
+    assert!(
+      rules(styles, selector)
+        .iter()
+        .all(|rule| !rule.contains("--typography-")),
+      "no alias under {selector}: {styles}"
+    );
+  }
 }
 
 /// A render with no Simple preset defines none of the Simple palette's tokens.

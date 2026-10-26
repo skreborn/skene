@@ -660,8 +660,8 @@ tokens without defining them. The palette links its references with `TokenRef::o
 its default reaches the root the first time a node references one and a preset is
 inked with no theme above it, a `Theme` of the palette above redefining them. The
 default at the root holds the palette's own tokens alone: its typography aliases take
-effect beneath a `Theme` of the palette, so a preset beside plain text leaves that text to
-the platform's typography or the app's theme. The palette defines every variant's
+effect beneath a `Theme` of the palette, so a preset beside plain text leaves that text
+to the platform's typography or the app's theme. The palette defines every variant's
 border token, transparent for a filled look, so a derived border needs the variant
 alone. Its checkbox, radio group and radio, and its picker with its option
 (`SimpleCheckbox::new()`, `SimpleRadioGroup::new()`, `SimpleRadio::new(value)`,

@@ -108,6 +108,92 @@ fn suspense_inside_a_deferred_boundary_settles_its_chunk() {
   assert!(!body.contains(">hold<"));
 }
 
+/// A palette whose references carry its default: a card.
+#[derive(Debug, Clone, PartialEq)]
+struct Linked {
+  /// The card's surface.
+  card: skene_web::Token<skene_web::Color>,
+}
+
+impl Linked {
+  const CARD: skene_web::TokenRef<skene_web::Color> =
+    skene_web::TokenRef::of::<Self, f32>("streamed-card");
+}
+
+impl Default for Linked {
+  fn default() -> Self {
+    Self {
+      card: skene_web::Token::new(Self::CARD, skene_web::Color::srgb(0.9, 0.9, 0.8)),
+    }
+  }
+}
+
+impl<V: From<skene_web::Definition<skene_web::Color>> + 'static> skene_web::TokenSet<V> for Linked {
+  fn definitions(&self) -> Vec<(skene_web::TokenName, V)> {
+    vec![self.card.define()]
+  }
+}
+
+/// A palette first referenced in a `Deferred` boundary's chunk defines its default at
+/// the root in that chunk's style delta, the shell carrying none of it.
+#[test]
+fn a_palette_first_referenced_in_a_chunk_defines_its_default_there() {
+  use std::time::Duration;
+
+  use skene_web::{
+    Container,
+    ContainerBase,
+    DecorationBase,
+    Deferred,
+    HasChildren,
+    Row,
+    platform::web,
+  };
+
+  let stream = skene_web::render_to_stream(|| {
+    Row::new().set_children([
+      Text::new("shell").into_any(),
+      Deferred::new()
+        .set_child_builder(|| {
+          Suspense::new()
+            .set_fallback_builder(|| Text::new("FALLBACK"))
+            .set_child_builder(|| {
+              let value = Resource::new(|| async {
+                web::sleep(Duration::from_millis(5)).await;
+
+                5u32
+              });
+
+              derived(move || match value.get() {
+                None => Text::new("hold").build(),
+                Some(_) => Container::new().set_background(Linked::CARD).build(),
+              })
+            })
+        })
+        .into_any(),
+    ])
+  });
+  let chunks = stream.chunks();
+
+  assert!(chunks.len() >= 2, "{chunks:?}");
+  assert!(!chunks[0].contains("streamed-card"), "{}", chunks[0]);
+
+  let later = chunks[1..].concat();
+
+  assert!(
+    later.contains("@property --streamed-card{"),
+    "the registration: {later}"
+  );
+  assert!(
+    later.contains(":root{--streamed-card:"),
+    "the definition: {later}"
+  );
+  assert!(
+    later.contains("var(--streamed-card)"),
+    "the consumer: {later}"
+  );
+}
+
 /// An error boundary with nothing reported serializes its content alone.
 #[test]
 fn error_boundary_passes_content_through() {

@@ -159,8 +159,10 @@ impl<P: Realization> View<P> for ThemeCore<P> {
 ///
 /// A theme provides `Memo<Self>` through context. On a miss the set's default is
 /// returned and its definitions are laid over the root definitions of `P`'s scene,
-/// once per set, so a consumer below no theme still resolves the tokens. Every
-/// [`TokenSet`] with a default has it.
+/// once per set, so a consumer below no theme still resolves the tokens. The claim is
+/// the one a reference made by [`TokenRef::of`](crate::TokenRef::of) lays the set's
+/// default under, keyed by the set's type, so a read and a reference lay it once
+/// between them. Every [`TokenSet`] with a default has it.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a token set with a default on this platform",
   label = "a palette read without a theme is a `TokenSet` for the platform's token value that implements `Default`"
@@ -173,7 +175,8 @@ pub trait ThemedIn<P: Realization>: TokenSet<P::TokenValue> + Default {
   fn watch() -> Memo<Self>;
 
   /// Lays the set's default definitions over the root of `P`'s scene, once per set, so
-  /// a node below no theme resolves its tokens.
+  /// a node below no theme resolves its tokens; a set a reference to one of its tokens
+  /// laid there already is passed over.
   fn define_root();
 }
 

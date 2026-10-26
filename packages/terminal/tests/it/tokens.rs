@@ -2,7 +2,9 @@
 //! a definition naming another token reads it at the defining scope, and a scope
 //! beneath that redefines it changes nothing above. A token set read with no theme
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
-//! The nearest theme's palette answers, as the tree stands after a box moves, an
+//! A linked palette's default is laid at the root once, the first time a node names one
+//! of its tokens, and a theme of it still wins beneath it. The nearest theme's palette
+//! answers, as the tree stands after a box moves, an
 //! expression or a derived leaf over a token resolves through it, and the token answers
 //! the scheme where it is read. The platform's colors at the root follow what the
 //! terminal reports and the app's scheme.
@@ -204,6 +206,226 @@ fn a_token_set_read_under_a_theme_defines_nothing() {
     assert_eq!(root_tokens(), before.get() + 2);
     assert_eq!(colors_at(4, 2, 0, 0).1, Some(rgb(red())));
     assert_eq!(colors_at(4, 2, 0, 1).1, Some(rgb(green())), "the default");
+  });
+}
+
+/// A component library's palette whose references carry its default: a surface and an
+/// ink.
+#[derive(Debug, Clone, PartialEq)]
+struct Linked {
+  /// The surface.
+  surface: Token<Color>,
+  /// The ink.
+  ink: Token<Color>,
+}
+
+impl Linked {
+  const INK: TokenRef<Color> = TokenRef::of::<Self, i32>("linked-ink");
+  const SURFACE: TokenRef<Color> = TokenRef::of::<Self, i32>("linked-surface");
+
+  fn with_surface(surface: Color) -> Self {
+    Self {
+      surface: Token::new(Self::SURFACE, surface),
+      ..Self::default()
+    }
+  }
+}
+
+impl Default for Linked {
+  fn default() -> Self {
+    Self {
+      surface: Token::new(Self::SURFACE, green()),
+      ink: Token::new(Self::INK, blue()),
+    }
+  }
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Linked {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.surface.define(), self.ink.define()]
+  }
+}
+
+/// A second linked palette whose one token aliases the first palette's ink.
+#[derive(Debug, Clone, PartialEq)]
+struct Aliasing {
+  /// The first palette's ink, by reference.
+  tint: Token<Color>,
+}
+
+impl Aliasing {
+  const TINT: TokenRef<Color> = TokenRef::of::<Self, i32>("aliasing-tint");
+}
+
+impl Default for Aliasing {
+  fn default() -> Self {
+    Self {
+      tint: Token::new(Self::TINT, Linked::INK),
+    }
+  }
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Aliasing {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.tint.define()]
+  }
+}
+
+/// Whether the root defines `reference`.
+fn root_defines(reference: TokenRef<Color>) -> bool {
+  Scene::<Terminal>::read(|scene| scene.root_definitions().get(reference.name()).is_some())
+}
+
+/// A box below no theme naming a linked token paints the palette's default, with no
+/// read of the palette.
+#[test]
+fn a_linked_token_paints_its_palettes_default_below_no_theme() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_background(Linked::SURFACE)
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(green())), "the default");
+    assert!(root_defines(Linked::INK), "the whole palette");
+  });
+}
+
+/// A theme of a linked palette still wins beneath it, the default answering outside it.
+#[test]
+fn a_theme_of_a_linked_palette_wins_over_its_default() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_background(Linked::SURFACE),
+          Theme::new(Linked::with_surface(red())).set_child_builder(|| {
+            Container::new()
+              .set_width(2)
+              .set_height(1)
+              .set_background(Linked::SURFACE)
+          }),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 2, 0, 0).1, Some(rgb(green())), "the default");
+    assert_eq!(colors_at(2, 2, 0, 1).1, Some(rgb(red())), "the theme's");
+  });
+}
+
+/// However many nodes name a linked palette's tokens, its default is laid at the root
+/// once.
+#[test]
+fn many_references_lay_a_palette_once() {
+  with_platform(|| {
+    let before = Signal::new(0);
+    let _ = terminal::mount(move || {
+      before.set(root_tokens());
+
+      Column::new()
+        .set_children(
+          (0..8)
+            .map(|index| {
+              Container::new()
+                .set_width(2)
+                .set_height(1)
+                .set_background(if index % 2 == 0 {
+                  Linked::SURFACE
+                }
+                else {
+                  Linked::INK
+                })
+                .set_child(Text::new("x").set_color(Linked::INK))
+                .into_any()
+            })
+            .collect::<Vec<_>>(),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(root_tokens(), before.get() + 2, "the palette's two, once");
+    assert_eq!(colors_at(2, 8, 0, 1).1, Some(rgb(blue())));
+  });
+}
+
+/// A mount naming none of a linked palette's tokens leaves the root without them.
+#[test]
+fn an_unreferenced_palette_lays_nothing() {
+  with_platform(|| {
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_background(red())
+        .into_any()
+        .build()
+    });
+
+    assert!(!root_defines(Linked::SURFACE));
+    assert!(!root_defines(Linked::INK));
+  });
+}
+
+/// A derived leaf switching to a linked token lays the palette's default on that write.
+#[test]
+fn a_derived_leaf_naming_a_linked_token_lays_its_default() {
+  with_platform(|| {
+    let linked = Signal::new(false);
+    let _ = terminal::mount(move || {
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .derive_background(move || {
+          if linked.get() {
+            StaticLeaf::from(Linked::SURFACE)
+          }
+          else {
+            StaticLeaf::Fixed(red())
+          }
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())));
+    assert!(!root_defines(Linked::SURFACE), "nothing named it yet");
+
+    linked.set(true);
+
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(green())), "the default");
+    assert!(root_defines(Linked::SURFACE));
+  });
+}
+
+/// A linked palette whose default names another linked palette's token lays both.
+#[test]
+fn a_default_aliasing_another_palette_lays_both() {
+  with_platform(|| {
+    let before = Signal::new(0);
+    let _ = terminal::mount(move || {
+      before.set(root_tokens());
+
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_background(Aliasing::TINT)
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(root_tokens(), before.get() + 3, "the alias and the palette");
+    assert!(root_defines(Linked::INK));
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(blue())), "the ink");
   });
 }
 

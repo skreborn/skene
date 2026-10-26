@@ -59,6 +59,7 @@ use skene_web::{
   Flexible,
   Grid,
   GridCell,
+  HasChild,
   HasChildren,
   Inset,
   Media,
@@ -70,6 +71,7 @@ use skene_web::{
   Text,
   Theme,
   ThemedIn,
+  View,
   WebStyle,
   When,
   reactive::Signal,
@@ -1153,5 +1155,167 @@ fn the_root_defines_the_platforms_colors_as_system_colors() {
   assert_eq!(
     rule(styles, &format!(".{scope}")),
     format!("--system-accent:{};", css_color(red))
+  );
+}
+
+/// A component library's palette whose references carry its default: a card answering
+/// the scheme, and an ink.
+#[derive(Debug, Clone, PartialEq)]
+struct Linked {
+  /// The card's surface, dark under the dark scheme.
+  card: skene_web::Token<Color>,
+  /// The ink.
+  ink: skene_web::Token<Color>,
+}
+
+impl Linked {
+  const CARD: skene_web::TokenRef<Color> = skene_web::TokenRef::of::<Self, f32>("linked-card");
+  const INK: skene_web::TokenRef<Color> = skene_web::TokenRef::of::<Self, f32>("linked-ink");
+
+  /// The card's light value.
+  fn light() -> Color {
+    Color::srgb(0.9, 0.9, 0.8)
+  }
+
+  /// The card's dark value.
+  fn dark() -> Color {
+    Color::srgb(0.1, 0.1, 0.2)
+  }
+
+  /// A theme's card.
+  fn night() -> Color {
+    Color::srgb(0.3, 0., 0.)
+  }
+}
+
+impl Default for Linked {
+  fn default() -> Self {
+    Self {
+      card: skene_web::Token::new(Self::CARD, Self::light()).define_when(Media::Dark, Self::dark()),
+      ink: skene_web::Token::new(Self::INK, Color::srgb(0., 0., 0.)),
+    }
+  }
+}
+
+impl<V: From<skene_web::Definition<Color>> + 'static> skene_web::TokenSet<V> for Linked {
+  fn definitions(&self) -> Vec<(skene_web::TokenName, V)> {
+    vec![self.card.define(), self.ink.define()]
+  }
+}
+
+/// The rule the root's token definitions render as: the light values on `:root`.
+const ROOT: &str = ":root";
+/// The root's dark values under the platform's preference, deferring to the app's choice.
+const ROOT_DEFERRING: &str =
+  "@media (prefers-color-scheme: dark){:root:where(:not([data-skene-scheme=\"light\"]))";
+/// The root's dark values under the dark scheme the app chooses.
+const ROOT_CHOSEN: &str = ":root:where([data-skene-scheme=\"dark\"])";
+
+/// A box below no theme naming a linked token renders the palette's default on the
+/// root, its light value on `:root` and its dark one under both scheme guards, each
+/// token registered, and the box names the token alone.
+#[test]
+fn a_linked_token_defines_its_palettes_default_at_the_root() {
+  let rendered = render_to_string(|| Container::new().set_background(Linked::CARD));
+  let consumer = root_class(rendered.body());
+  let styles = rendered.styles();
+
+  assert!(
+    rule(styles, &format!(".{consumer}")).contains("background-color:var(--linked-card);"),
+    "the consumer names the token: {styles}"
+  );
+  assert!(
+    rule(styles, ROOT).contains(&format!("--linked-card:{};", css_color(Linked::light()))),
+    "{styles}"
+  );
+  assert!(
+    rule(styles, ROOT).contains("--linked-ink:"),
+    "the whole palette: {styles}"
+  );
+  assert!(
+    styles.contains(&format!(
+      "{ROOT_DEFERRING}{{--linked-card:{};}}}}",
+      css_color(Linked::dark())
+    )),
+    "{styles}"
+  );
+  assert!(
+    styles.contains(&format!(
+      "{ROOT_CHOSEN}{{--linked-card:{};}}",
+      css_color(Linked::dark())
+    )),
+    "{styles}"
+  );
+  assert_eq!(
+    styles
+      .matches(
+        "@property --linked-card{syntax:\"<color>\";inherits:true;initial-value:transparent}"
+      )
+      .count(),
+    1,
+    "{styles}"
+  );
+}
+
+/// However many nodes name a linked palette's tokens, each is defined once on the root.
+#[test]
+fn a_linked_palette_is_defined_once_on_the_root() {
+  let rendered = render_to_string(|| {
+    Column::new().set_children(
+      (0..6)
+        .map(|index| {
+          Container::new()
+            .set_background(if index % 2 == 0 {
+              Linked::CARD
+            }
+            else {
+              Linked::INK
+            })
+            .set_child(Text::new("x").set_color(Linked::INK))
+            .into_any()
+        })
+        .collect::<Vec<_>>(),
+    )
+  });
+  let styles = rendered.styles();
+
+  assert_eq!(styles.matches("--linked-card:").count(), 3, "{styles}");
+  assert_eq!(styles.matches("--linked-ink:").count(), 1, "{styles}");
+}
+
+/// A render naming none of a linked palette's tokens defines none of them.
+#[test]
+fn an_unreferenced_linked_palette_is_absent() {
+  let rendered = render_to_string(|| Container::new().set_background(Color::srgb(1., 0., 0.)));
+
+  assert!(
+    !rendered.styles().contains("linked-"),
+    "{}",
+    rendered.styles()
+  );
+}
+
+/// Under a theme of a linked palette the scope's class carries the theme's value, which
+/// wins on its subtree over the root's default.
+#[test]
+fn a_theme_of_a_linked_palette_defines_its_scope_over_the_default() {
+  let rendered = render_to_string(|| {
+    Theme::new(Linked {
+      card: skene_web::Token::new(Linked::CARD, Linked::night()),
+      ..Linked::default()
+    })
+    .set_child_builder(|| Container::new().set_background(Linked::CARD))
+  });
+  let scope = root_class(rendered.body());
+  let styles = rendered.styles();
+
+  assert!(
+    rule(styles, &format!(".{scope}"))
+      .contains(&format!("--linked-card:{};", css_color(Linked::night()))),
+    "the scope's own: {styles}"
+  );
+  assert!(
+    rule(styles, ROOT).contains(&format!("--linked-card:{};", css_color(Linked::light()))),
+    "the default stands at the root beneath it: {styles}"
   );
 }

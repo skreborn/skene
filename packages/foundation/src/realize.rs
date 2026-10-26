@@ -12,6 +12,7 @@ use crate::{
   AccessProp,
   Annotation,
   AnyView,
+  CompiledStyle,
   ControlSink,
   DerivedSlot,
   NodeId,
@@ -27,6 +28,9 @@ use crate::{
 
 /// Binds a render effect that computes `slot`'s leaf and writes it, erased over its
 /// property, into the slot on `node`, now and whenever a signal the leaf reads changes.
+///
+/// Each write first lays over the scene's root the default of every palette a token of
+/// the leaf links to, where nothing laid it before.
 pub fn bind_slot<P: Realization, K, V: 'static>(node: NodeId, slot: DerivedSlot<K, V>)
 where
   StaticLeaf<V>: Into<SlotLeaf<P::Scalar, P::StyleExt>>,
@@ -36,8 +40,18 @@ where
   Effect::render(move |_: Option<()>| {
     let leaf = compute().into();
 
+    Scene::<P>::define_referenced(&leaf);
     P::apply_slot(node, slot, &leaf);
   });
+}
+
+/// Gives `node` its style through the platform ([`Realization::apply_style`]).
+///
+/// It first lays over the scene's root the default of every palette a token of the style
+/// links to, where nothing laid it before.
+pub fn apply_style<P: Realization>(node: NodeId, style: CompiledStyle<P::Scalar, P::StyleExt>) {
+  Scene::<P>::define_referenced(&style);
+  P::apply_style(node, style);
 }
 
 /// Reports `access` as what the view that made `node` says to assistive technology,
@@ -221,7 +235,7 @@ impl<P: Realization> LowLevel<P> {
     let mut record = Record::new();
 
     record.add_box(&layout);
-    P::apply_style(node, record.into_kept());
+    apply_style::<P>(node, record.into_kept());
 
     for slot in slots {
       bind_slot::<P, _, _>(node, slot);

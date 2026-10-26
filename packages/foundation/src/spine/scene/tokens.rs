@@ -6,7 +6,17 @@ use std::any::TypeId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{Mirror, Scene};
-use crate::spine::{ContainerName, Definitions, NodeId, Realization, Resolved, Scalar, TokenName};
+use crate::spine::{
+  ContainerName,
+  Definitions,
+  NodeId,
+  Realization,
+  Resolved,
+  Scalar,
+  TokenName,
+  TokenReferences,
+  TokenValue,
+};
 
 /// Where tokens are defined: on a node, for its subtree, or at the root, the definitions
 /// every node falls back to.
@@ -211,6 +221,25 @@ impl<V: Clone + PartialEq> TokenState<V> {
     self.root_sets.insert(set)
   }
 
+  /// The set `name` links to with its default definitions over `N`, each kind `V` holds
+  /// none of left out, where the set is not laid over the root yet; `None` for a name
+  /// with no link, or one whose set is not over `N`.
+  pub(super) fn unlaid_defaults<N: Scalar>(
+    &self,
+    name: TokenName,
+  ) -> Option<(TypeId, Definitions<V>)>
+  where
+    V: TryFrom<TokenValue<N>>,
+  {
+    let set = name.default_set()?;
+
+    if self.has_root_set(set) {
+      return None;
+    }
+
+    Some((set, name.defaults::<N>()?.convert()))
+  }
+
   /// Takes the tokens every node falls back to, leaving none.
   pub(super) fn take_root(&mut self) -> Definitions<V> {
     std::mem::replace(&mut self.root, Definitions::from(Vec::new()))
@@ -221,6 +250,9 @@ impl<P: Realization> Scene<P> {
   /// Defines tokens on a scope, replacing what the scope defined before: on a node for
   /// its subtree, or at the root, the tokens every node falls back to; definitions equal
   /// to those in force change nothing.
+  ///
+  /// The default of every palette a token the definitions name links to is laid over the
+  /// root next, as [`define_defaults`](Self::define_defaults) lays it.
   ///
   /// # Panics
   ///
@@ -241,10 +273,53 @@ impl<P: Realization> Scene<P> {
       TokenScope::Root => self.tokens.define_root(definitions),
     };
 
-    if let Some(definitions) = definitions {
-      self
-        .mirrors
-        .push(Mirror::DefineTokens { scope, definitions });
+    let Some(definitions) = definitions
+    else {
+      return;
+    };
+    let linked = TokenName::linked_in(&definitions);
+
+    self
+      .mirrors
+      .push(Mirror::DefineTokens { scope, definitions });
+    self.define_defaults(linked);
+  }
+
+  /// Lays over the root the default of every palette a token of `names` links to, once
+  /// per palette: a palette whose definitions were laid over the root before, by a
+  /// reference or by a read of the set, is passed over, as is a name with no link.
+  ///
+  /// A default's own references lay their palettes' defaults in turn, each claimed before
+  /// its definitions are laid, and a kind the platform's token value holds none of is
+  /// left out.
+  pub fn define_defaults(&mut self, names: impl IntoIterator<Item = TokenName>) {
+    for name in names {
+      if let Some((set, defaults)) = self.tokens.unlaid_defaults::<P::Scalar>(name) {
+        self.define_root_set(set, defaults);
+      }
+    }
+  }
+
+  /// Lays over the root of `P`'s scene the default of every palette a token `references`
+  /// names links to, as [`define_defaults`](Self::define_defaults) does; the scene is
+  /// borrowed only where a linked token's palette is not laid yet.
+  pub fn define_referenced(references: &impl TokenReferences) {
+    let linked = TokenName::linked_in(references);
+
+    if linked.is_empty() {
+      return;
+    }
+
+    let laid = Self::read(|scene| {
+      linked.iter().all(|name| {
+        name
+          .default_set()
+          .is_some_and(|set| scene.tokens.has_root_set(set))
+      })
+    });
+
+    if !laid {
+      Self::with(|scene| scene.define_defaults(linked));
     }
   }
 
@@ -428,14 +503,41 @@ impl<P: Realization> Scene<P> {
 
 #[cfg(test)]
 mod tests {
+  use std::any::TypeId;
+
   use super::{ResolvedTokens, TokenCache, TokenScope, TokenState};
-  use crate::spine::{Definitions, NodeId, Resolved, TokenName};
+  use crate::spine::{
+    Color,
+    Definition,
+    Definitions,
+    NodeId,
+    Resolved,
+    Token,
+    TokenName,
+    TokenRef,
+    TokenSet,
+    TokenValue,
+  };
 
   /// A token value of two kinds.
   #[derive(Debug, Clone, PartialEq)]
   enum Value {
     Color(f32),
     Number(f32),
+  }
+
+  impl TryFrom<TokenValue<f32>> for Value {
+    type Error = ();
+
+    fn try_from(value: TokenValue<f32>) -> Result<Self, ()> {
+      match value {
+        TokenValue::Number(definition) => match definition.base() {
+          crate::spine::StaticLeaf::Fixed(number) => Ok(Self::Number(*number)),
+          _ => Err(()),
+        },
+        _ => Err(()),
+      }
+    }
   }
 
   fn definitions(name: &'static str, value: Value) -> Definitions<Value> {
@@ -540,6 +642,73 @@ mod tests {
       "a moved source's stamp forgets"
     );
     assert!(resolved.under((1, 2)).font_sizes.is_empty());
+  }
+
+  /// A palette of two linked tokens.
+  #[derive(Debug, Clone, PartialEq)]
+  struct Linked {
+    card: Token<Color, f32>,
+    ink: Token<Color, f32>,
+  }
+
+  impl Linked {
+    const CARD: TokenRef<Color> = TokenRef::of::<Self, f32>("linked-card");
+    const INK: TokenRef<Color> = TokenRef::of::<Self, f32>("linked-ink");
+  }
+
+  impl Default for Linked {
+    fn default() -> Self {
+      Self {
+        card: Token::new(Self::CARD, Color::srgb(1., 1., 1.)),
+        ink: Token::new(Self::INK, Color::srgb(0., 0., 0.)),
+      }
+    }
+  }
+
+  impl<V: From<Definition<Color, f32>>> TokenSet<V> for Linked {
+    fn definitions(&self) -> Vec<(TokenName, V)> {
+      vec![self.card.define(), self.ink.define()]
+    }
+  }
+
+  /// A linked name yields its palette's default while the palette is not laid over the
+  /// root, and nothing once it is, whichever of its names asks; an unlinked name, or one
+  /// over another scalar, yields nothing.
+  #[test]
+  fn a_palette_is_laid_once_over_its_names() {
+    let mut tokens = TokenState::<TokenValue<f32>>::new();
+    let (set, defaults) = tokens.unlaid_defaults::<f32>(Linked::CARD.name()).unwrap();
+
+    assert_eq!(set, TypeId::of::<Linked>());
+    assert_eq!(defaults, Definitions::of(&Linked::default()));
+    assert!(tokens.unlaid_defaults::<f32>(Linked::INK.name()).is_some());
+    assert!(tokens.claim_root_set(set));
+
+    for name in [Linked::CARD.name(), Linked::INK.name(), Linked::CARD.name()] {
+      assert_eq!(tokens.unlaid_defaults::<f32>(name), None);
+    }
+
+    assert!(!tokens.claim_root_set(set), "a set is claimed once");
+    assert_eq!(
+      tokens.unlaid_defaults::<f32>(TokenName::new("linked-card")),
+      None,
+      "an unlinked name lays nothing"
+    );
+    assert_eq!(
+      TokenState::<TokenValue<i32>>::new().unlaid_defaults::<i32>(Linked::CARD.name()),
+      None,
+      "a palette over another scalar lays nothing"
+    );
+  }
+
+  /// A palette's default is converted into the platform's token value, each kind it
+  /// refuses left out.
+  #[test]
+  fn a_default_drops_the_kinds_the_platform_refuses() {
+    let tokens = TokenState::<Value>::new();
+    let (_, defaults) = tokens.unlaid_defaults::<f32>(Linked::CARD.name()).unwrap();
+
+    assert_eq!(defaults.len(), 0, "a platform holding no color keeps none");
   }
 
   /// Redefining tokens as the ones in force changes nothing: nothing to mirror, and the

@@ -56,6 +56,7 @@ use crate::spine::{
   StaticValue,
   StyleExtension,
   TokenName,
+  TokenReferences,
   Value,
   box_style::{BoxField, BoxFieldVisitor},
   run_style::{RunField, RunFieldVisitor},
@@ -120,6 +121,18 @@ impl<N: Scalar> From<Definition<String, N>> for TokenValue<N> {
   #[inline(always)]
   fn from(definition: Definition<String, N>) -> Self {
     Self::Text(definition)
+  }
+}
+
+impl<N: Scalar> TokenReferences for TokenValue<N> {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    match self {
+      Self::Color(definition) => definition.for_each_token(visit),
+      Self::Number(definition) => definition.for_each_token(visit),
+      Self::Length(definition) => definition.for_each_token(visit),
+      Self::Dimension(definition) => definition.for_each_token(visit),
+      Self::Text(definition) => definition.for_each_token(visit),
+    }
   }
 }
 

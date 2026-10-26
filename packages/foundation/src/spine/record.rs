@@ -31,6 +31,8 @@ use super::{
   StaticLeaf,
   StaticValue,
   StyleExtension,
+  TokenName,
+  TokenReferences,
   Transition,
 };
 
@@ -483,6 +485,29 @@ impl<N: Scalar, X: StyleExtension> Fingerprint for Frame<N, X> {
     for (key, leaf) in &self.entries {
       key.hash(state);
       leaf.fingerprint(state);
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> TokenReferences for Frame<N, X> {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    for (_, leaf) in &self.entries {
+      leaf.for_each_token(visit);
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> TokenReferences for CompiledStyle<N, X> {
+  /// Every token the entries' static leaves name, then each animation's frames'.
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    for (_, value) in &self.entries {
+      value.for_each_token(visit);
+    }
+
+    for animation in &self.animations {
+      for (_, frame) in &animation.keyframes {
+        frame.for_each_token(visit);
+      }
     }
   }
 }
@@ -991,6 +1016,7 @@ mod tests {
     TextDecoration,
     TokenName,
     TokenRef,
+    TokenReferences,
     Transition,
     box_fields,
     run_fields,
@@ -1415,6 +1441,34 @@ mod tests {
         )],
       )],
     }
+  }
+
+  /// A compiled style names every token its entries' static leaves name, in a base, a
+  /// variant or an expression, and then its animations' frames'; a slot names none.
+  #[test]
+  fn a_style_lists_the_tokens_it_names() {
+    let mut record = Record::<f32, Probe>::new();
+
+    record.set_box::<box_fields::Background>(
+      StaticValue::new(KeptLeaf::Static(StaticLeaf::Token(TokenName::new("card"))))
+        .when(
+          Condition::from(Media::Dark),
+          KeptLeaf::Static(StaticLeaf::Expr(
+            Expr::from(TokenRef::<Color>::new("ink")).mix(Color::srgb(1., 1., 1.), 0.5),
+          )),
+        )
+        .when(State::Hovered.into(), KeptLeaf::Slot(Slot(0))),
+    );
+    record.set_box::<box_fields::Width>(fixed(Dimension::Length(4.)));
+    record.add_box_dynamics(&box_dynamics());
+
+    let mut names = Vec::new();
+
+    record
+      .into_kept()
+      .for_each_token(&mut |name| names.push(name.as_str()));
+
+    assert_eq!(names, ["card", "ink", "accent", "accent"]);
   }
 
   /// A record's transitions are the dynamics' own, and its animations' frames read back

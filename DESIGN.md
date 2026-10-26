@@ -143,7 +143,10 @@ the control state and reports it holds, which the platforms read rather than cop
 
 **`Realization` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
-properties), `TokenValue` (the erased definition the medium accepts), `Native` (the
+properties), `TokenValue` (the erased definition the medium accepts, which converts
+from the foundation's `TokenValue<Scalar>` by `TryFrom`, refusing a kind it holds none
+of, and lists the tokens its definitions name through `TokenReferences`, so a palette's
+default reaches it through a reference's link), `Native` (the
 platform's own view the native door adopts), `Entry` (the editing state the scene keeps
 for each text entry the platform draws), with the constants
 `FONT_SIZE` (the size in force where no typography defines one) and `KEEP` (the `Keep`
@@ -180,7 +183,11 @@ over node ids:
   resolves it at every restyle through the one `Keep::Nothing` entry,
   `ResolutionContext::resolve` (each keyframe through `resolve_frame`), which is `KEEP`'s
   one reader: it asserts at compile time that its realization keeps nothing. Each
-  derived leaf's effect writes one erased leaf into its slot (`apply_slot`). A node's
+  derived leaf's effect writes one erased leaf into its slot (`apply_slot`). Both are
+  reached through the shared half alone (the foundation's `apply_style` and `bind_slot`),
+  which first lays over the root the default of every palette a token of the style or
+  the leaf links to, so the root's definitions reach `define_tokens` before the style
+  naming them. A node's
   focus order and accessibility are not part of its spec: the shared half writes them
   once its style is applied (`update_focus_order`, `update_access`).
 - **Define tokens** on a `TokenScope` (`define_tokens`, one call, a node's or the root's,
@@ -1309,6 +1316,26 @@ slot with no link, for a set something always defines itself (`Typography`,
 ordering and formatting read the name alone, so a linked name interns the class an
 unlinked one does.
 
+The first reference defines the palette's default at the root, once per palette per
+root: before a node's style reaches the realization, and before each write of a derived
+slot, the shared half lists the tokens the style or the leaf names (`TokenReferences`,
+over every entry's static leaves, expressions included, and every animation frame's),
+and for each linked one whose set is not claimed yet `Scene::define_defaults` claims the
+set by its `TypeId`, builds its default through the link, converts each definition into
+the realization's token value, dropping a kind it holds none of (a text default on the
+web), and lays them over the root through `Scene::define_root_set`, the claim a read
+through `ThemedIn` makes too, so a read and a reference lay a set once between them; a
+read still lays it on a miss. `Scene::define_tokens`, the one entry for every
+definition, lists the linked tokens its definitions name in turn, so a default or a
+theme aliasing another palette's token lays that palette as well, the claim ending the
+recursion. The default is laid whether or not a theme above defines the palette, since
+a style is applied before its node is attached and its ancestors are unknown; the
+nearer definition wins, the theme's scope over the root on every platform. An unlinked
+name costs one `Option` check, and the scene is borrowed only where a linked set is not
+laid yet. Once per root is once per render on the server, whose every render starts a
+fresh scene, so a palette first referenced in a streamed chunk carries its root rule in
+that chunk's style delta, and once per mount on the terminal.
+
 `Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web; the terminal makes no node for it, keeping no record,
 and its definitions still reach it through `define_tokens`), provides `Memo<S>`
@@ -1319,8 +1346,10 @@ token caches take per-scope epochs. Nesting a theme redefines beneath it. On the
 are an interned class on the scope element (with `@media` blocks and the scheme double
 emission where a definition conditions on the scheme) and each token kind registers its
 custom property with `@property`, so it interpolates and inherits as a typed value; a
-token set used with no theme above registers its default under `:root` once
-(`ThemedIn::current`/`watch`). Any node defining tokens takes them as such a class,
+palette's default laid over the root, by a reference to a linked token or by a read of
+the set below no theme (`ThemedIn::current`/`watch`), is written under `:root` once,
+the root rule and its registrations interned before the class of the node that
+referenced it. Any node defining tokens takes them as such a class,
 and a redefinition whose every token is unconditional writes them inline over it; a
 node adopted from the server's markup gives up the definitions the server wrote inline on it at its first
 definition. The root's definitions are defined in the scene and reach the realization
@@ -1345,7 +1374,8 @@ constructors, is what `ThemedIn` hands out where no theme provides the set and w
 theme of the set itself defines; the platform's own colors are the realization's.
 Nothing below a component library knows what a palette is: `skene-simple` owns
 `SimplePalette`, and a third party's palette gets its `Theme`, `current()` and
-`watch()` from the same blanket.
+`watch()` from the same blanket, and its default at the root by declaring its references
+with `TokenRef::of`, with no definition code of its own.
 
 The color scheme is one `Media` leaf, answered per property in a definition or a value.
 The scheme *in force* is the document's: `media::set_scheme` writes `data-skene-scheme`

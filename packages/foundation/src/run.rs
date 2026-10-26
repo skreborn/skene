@@ -35,7 +35,7 @@ use crate::{
   TypeMetrics,
   Value,
   contents,
-  realize::{Source, bind_slot},
+  realize::{Source, apply_style, bind_slot},
   typography,
 };
 
@@ -251,7 +251,7 @@ impl<P: Realization> Run<P> {
       realization(node, &spec, &style);
     }
 
-    P::apply_style(node, style);
+    apply_style::<P>(node, style);
 
     if links {
       Scene::<P>::with(|scene| scene.note_focus_order(node, Some(FocusOrder::Auto)));

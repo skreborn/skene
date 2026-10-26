@@ -12,7 +12,7 @@ use std::{
   ops::{Add, Div, Mul, Sub},
 };
 
-use super::{Definition, Leaf, Scalar, StaticLeaf, TokenName, TokenRef, Value};
+use super::{Definition, Leaf, Scalar, StaticLeaf, TokenName, TokenRef, TokenReferences, Value};
 use crate::spine::{AspectRatio, Color, Dimension, Edge, Inset, Size, Spacing};
 
 /// A length, in the facade's scalar unit.
@@ -120,6 +120,13 @@ impl<T: ExprOutput> Expr<T> {
     resolve: &impl Fn(TokenName) -> Option<ExprValue>,
   ) -> Option<T> {
     T::from_expr_value(self.node.evaluate(env, resolve)?)
+  }
+}
+
+impl<T> TokenReferences for Expr<T> {
+  #[inline(always)]
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    self.node.for_each_token(visit);
   }
 }
 
@@ -315,6 +322,43 @@ impl Hash for ExprNode {
         color.hash(state);
         state.write_u64(amount.hash_bits());
       }
+    }
+  }
+}
+
+impl TokenReferences for ExprNode {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    match self {
+      Self::Number(_)
+      | Self::Length(_)
+      | Self::ViewportWidth(_)
+      | Self::ViewportHeight(_)
+      | Self::ContainerWidth(_)
+      | Self::ContainerHeight(_)
+      | Self::FontSize(_)
+      | Self::SafeArea(_)
+      | Self::Color(_) => {}
+      Self::Token(name) => visit(*name),
+      Self::Add(lhs, rhs)
+      | Self::Sub(lhs, rhs)
+      | Self::Mul(lhs, rhs)
+      | Self::Div(lhs, rhs)
+      | Self::Min(lhs, rhs)
+      | Self::Max(lhs, rhs)
+      | Self::Mix(lhs, rhs, _) => {
+        lhs.for_each_token(visit);
+        rhs.for_each_token(visit);
+      }
+      Self::Clamp(value, lower, upper) => {
+        value.for_each_token(visit);
+        lower.for_each_token(visit);
+        upper.for_each_token(visit);
+      }
+      Self::WithAlpha(color, _)
+      | Self::Lighter(color, _)
+      | Self::Darker(color, _)
+      | Self::WithChroma(color, _)
+      | Self::WithHue(color, _) => color.for_each_token(visit),
     }
   }
 }

@@ -783,6 +783,7 @@ pub fn skene_foundation::realize::LowLevel<P>::realize(skene_foundation::NodeKin
 pub fn skene_foundation::realize::LowLevel<P>::register_sink(skene_foundation::NodeId, impl skene_foundation::ControlSink + 'static)
 impl<P: core::fmt::Debug + skene_foundation::Realization> core::fmt::Debug for skene_foundation::realize::LowLevel<P>
 pub fn skene_foundation::realize::LowLevel<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn skene_foundation::realize::apply_style<P: skene_foundation::Realization>(skene_foundation::NodeId, skene_foundation::CompiledStyle<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>)
 pub fn skene_foundation::realize::bind_slot<P: skene_foundation::Realization, K, V: 'static>(skene_foundation::NodeId, skene_foundation::DerivedSlot<K, V>) where skene_foundation::StaticLeaf<V>: core::convert::Into<skene_foundation::SlotLeaf<<P as skene_foundation::Realization>::Scalar, <P as skene_foundation::Realization>::StyleExt>>
 pub fn skene_foundation::realize::describe<P: skene_foundation::Realization>(skene_foundation::NodeId, alloc::vec::Vec<skene_foundation::AccessProp>)
 pub fn skene_foundation::realize::report_access<P: skene_foundation::Realization>(skene_foundation::NodeId, alloc::vec::Vec<skene_foundation::AccessProp>)
@@ -3396,6 +3397,8 @@ pub fn skene_foundation::ExprNode::fmt(&self, &mut core::fmt::Formatter<'_>) -> 
 impl core::hash::Hash for skene_foundation::ExprNode
 pub fn skene_foundation::ExprNode::hash<H: core::hash::Hasher>(&self, &mut H)
 impl core::marker::StructuralPartialEq for skene_foundation::ExprNode
+impl skene_foundation::TokenReferences for skene_foundation::ExprNode
+pub fn skene_foundation::ExprNode::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub enum skene_foundation::ExprValue
 pub skene_foundation::ExprValue::Color(skene_foundation::Color)
 pub skene_foundation::ExprValue::Length(f32)
@@ -3643,6 +3646,8 @@ impl<T: core::hash::Hash> core::hash::Hash for skene_foundation::KeptLeaf<T>
 pub fn skene_foundation::KeptLeaf<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl<T: skene_foundation::Fingerprint> skene_foundation::Fingerprint for skene_foundation::KeptLeaf<T>
 pub fn skene_foundation::KeptLeaf<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<T> skene_foundation::TokenReferences for skene_foundation::KeptLeaf<T>
+pub fn skene_foundation::KeptLeaf<T>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub enum skene_foundation::KeyDefault
 pub skene_foundation::KeyDefault::Activate(skene_foundation::NodeId)
 pub skene_foundation::KeyDefault::Arm(skene_foundation::NodeId)
@@ -4351,6 +4356,8 @@ impl<T> core::convert::From<skene_foundation::Expr<T>> for skene_foundation::Sta
 pub fn skene_foundation::StaticLeaf<T>::from(skene_foundation::Expr<T>) -> Self
 impl<T> core::convert::From<skene_foundation::StaticLeaf<T>> for skene_foundation::Leaf<T>
 pub fn skene_foundation::Leaf<T>::from(skene_foundation::StaticLeaf<T>) -> Self
+impl<T> skene_foundation::TokenReferences for skene_foundation::StaticLeaf<T>
+pub fn skene_foundation::StaticLeaf<T>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub enum skene_foundation::StyleProperty<P>
 pub skene_foundation::StyleProperty::All
 pub skene_foundation::StyleProperty::Extension(P)
@@ -4489,6 +4496,8 @@ impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Conditio
 pub fn skene_foundation::TokenValue<N>::from(skene_foundation::Definition<skene_foundation::Dimension<N>, N>) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Conditional<skene_foundation::StaticLeaf<skene_foundation::Length>, skene_foundation::Media<N>>> for skene_foundation::TokenValue<N>
 pub fn skene_foundation::TokenValue<N>::from(skene_foundation::Definition<skene_foundation::Length, N>) -> Self
+impl<N: skene_foundation::Scalar> skene_foundation::TokenReferences for skene_foundation::TokenValue<N>
+pub fn skene_foundation::TokenValue<N>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub enum skene_foundation::TrackLimit<T>
 pub skene_foundation::TrackLimit::Auto
 pub skene_foundation::TrackLimit::Flex(f32)
@@ -5304,6 +5313,8 @@ pub fn skene_foundation::CompiledStyle<N, X>::eq(&self, &skene_foundation::Compi
 impl<N: core::cmp::PartialEq + skene_foundation::Scalar, X: core::cmp::PartialEq + skene_foundation::StyleExtension> core::marker::StructuralPartialEq for skene_foundation::CompiledStyle<N, X> where <X as skene_foundation::StyleExtension>::Property: core::cmp::PartialEq
 impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene_foundation::StyleExtension> core::fmt::Debug for skene_foundation::CompiledStyle<N, X> where <X as skene_foundation::StyleExtension>::Property: core::fmt::Debug
 pub fn skene_foundation::CompiledStyle<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::TokenReferences for skene_foundation::CompiledStyle<N, X>
+pub fn skene_foundation::CompiledStyle<N, X>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub struct skene_foundation::Conditional<L, C>
 impl<C: core::clone::Clone> skene_foundation::Conditional<skene_foundation::Leaf<skene_foundation::Alignment>, C>
 pub fn skene_foundation::Conditional<skene_foundation::Leaf<skene_foundation::Alignment>, C>::split_axes(&self) -> (skene_foundation::Value<skene_foundation::ItemAlignment, C>, skene_foundation::Value<skene_foundation::ItemAlignment, C>)
@@ -5334,6 +5345,8 @@ impl<L: core::hash::Hash, C: core::hash::Hash> core::hash::Hash for skene_founda
 pub fn skene_foundation::Conditional<L, C>::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl<L: skene_foundation::Fingerprint, C: core::hash::Hash> skene_foundation::Fingerprint for skene_foundation::Conditional<L, C>
 pub fn skene_foundation::Conditional<L, C>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<L: skene_foundation::TokenReferences, C> skene_foundation::TokenReferences for skene_foundation::Conditional<L, C>
+pub fn skene_foundation::Conditional<L, C>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Conditional<skene_foundation::StaticLeaf<alloc::string::String>, skene_foundation::Media<N>>> for skene_foundation::TokenValue<N>
 pub fn skene_foundation::TokenValue<N>::from(skene_foundation::Definition<alloc::string::String, N>) -> Self
 impl<N: skene_foundation::Scalar> core::convert::From<skene_foundation::Conditional<skene_foundation::StaticLeaf<f32>, skene_foundation::Media<N>>> for skene_foundation::TokenValue<N>
@@ -5811,6 +5824,8 @@ impl<V: core::default::Default> core::default::Default for skene_foundation::Def
 pub fn skene_foundation::Definitions<V>::default() -> skene_foundation::Definitions<V>
 impl<V: core::fmt::Debug> core::fmt::Debug for skene_foundation::Definitions<V>
 pub fn skene_foundation::Definitions<V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<V: skene_foundation::TokenReferences> skene_foundation::TokenReferences for skene_foundation::Definitions<V>
+pub fn skene_foundation::Definitions<V>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 impl<V> core::convert::From<alloc::vec::Vec<(skene_foundation::TokenName, V)>> for skene_foundation::Definitions<V>
 pub fn skene_foundation::Definitions<V>::from(alloc::vec::Vec<(skene_foundation::TokenName, V)>) -> Self
 impl<V> core::iter::traits::collect::FromIterator<(skene_foundation::TokenName, V)> for skene_foundation::Definitions<V>
@@ -6086,6 +6101,8 @@ impl<T> core::fmt::Debug for skene_foundation::Expr<T>
 pub fn skene_foundation::Expr<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T> core::hash::Hash for skene_foundation::Expr<T>
 pub fn skene_foundation::Expr<T>::hash<H: core::hash::Hasher>(&self, &mut H)
+impl<T> skene_foundation::TokenReferences for skene_foundation::Expr<T>
+pub fn skene_foundation::Expr<T>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub struct skene_foundation::ExprEnv
 pub skene_foundation::ExprEnv::container: core::option::Option<skene_foundation::Size<f32>>
 pub skene_foundation::ExprEnv::font_size: f32
@@ -6173,6 +6190,8 @@ impl<N: core::fmt::Debug + skene_foundation::Scalar, X: core::fmt::Debug + skene
 pub fn skene_foundation::Frame<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::Fingerprint for skene_foundation::Frame<N, X>
 pub fn skene_foundation::Frame<N, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::TokenReferences for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub struct skene_foundation::Grid<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::Grid<P>
 pub fn skene_foundation::Grid<P>::adaptive(impl skene_foundation::IntoScalar<<P as skene_foundation::Realization>::Scalar>) -> Self
@@ -7799,6 +7818,8 @@ pub fn skene_foundation::Scene<P>::annotate(impl core::convert::Into<core::optio
 pub fn skene_foundation::Scene<P>::set_pending_annotation(&mut self, skene_foundation::Annotation<P>)
 pub const fn skene_foundation::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_foundation::Annotation<P>>
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
+pub fn skene_foundation::Scene<P>::define_defaults(&mut self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::TokenName>)
+pub fn skene_foundation::Scene<P>::define_referenced(&impl skene_foundation::TokenReferences)
 pub fn skene_foundation::Scene<P>::define_root_set(&mut self, core::any::TypeId, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>) -> bool
 pub fn skene_foundation::Scene<P>::define_tokens(&mut self, skene_foundation::TokenScope, skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>)
 pub fn skene_foundation::Scene<P>::defines_root_set(&self, core::any::TypeId) -> bool
@@ -10308,7 +10329,7 @@ pub type skene_foundation::Realization::Entry: 'static
 pub type skene_foundation::Realization::Native: core::clone::Clone + 'static
 pub type skene_foundation::Realization::Scalar: skene_foundation::Scalar
 pub type skene_foundation::Realization::StyleExt: skene_foundation::StyleExtension
-pub type skene_foundation::Realization::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_foundation::Definition<skene_foundation::Color, Self::Scalar>> + core::convert::From<skene_foundation::Definition<f32, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Dimension<Self::Scalar>, Self::Scalar>> + 'static
+pub type skene_foundation::Realization::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_foundation::Definition<skene_foundation::Color, Self::Scalar>> + core::convert::From<skene_foundation::Definition<f32, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Length, Self::Scalar>> + core::convert::From<skene_foundation::Definition<skene_foundation::Dimension<Self::Scalar>, Self::Scalar>> + core::convert::TryFrom<skene_foundation::TokenValue<Self::Scalar>> + skene_foundation::TokenReferences + 'static
 pub const skene_foundation::Realization::FONT_SIZE: f32
 pub const skene_foundation::Realization::KEEP: skene_foundation::Keep
 pub fn skene_foundation::Realization::adopt(skene_foundation::NodeId, Self::Native, &skene_foundation::NodeSpec) -> bool
@@ -10673,6 +10694,26 @@ pub fn skene_foundation::ToggleBase::bind_checked(self, skene_reactive::signal::
 pub fn skene_foundation::ToggleBase::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_foundation::ToggleBase::handle_toggle(self, impl core::ops::function::Fn(bool) + 'static) -> Self
 pub fn skene_foundation::ToggleBase::set_checked(self, bool) -> Self
+pub trait skene_foundation::TokenReferences
+pub fn skene_foundation::TokenReferences::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl skene_foundation::TokenReferences for skene_foundation::ExprNode
+pub fn skene_foundation::ExprNode::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<L: skene_foundation::TokenReferences, C> skene_foundation::TokenReferences for skene_foundation::Conditional<L, C>
+pub fn skene_foundation::Conditional<L, C>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::TokenReferences for skene_foundation::CompiledStyle<N, X>
+pub fn skene_foundation::CompiledStyle<N, X>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<N: skene_foundation::Scalar, X: skene_foundation::StyleExtension> skene_foundation::TokenReferences for skene_foundation::Frame<N, X>
+pub fn skene_foundation::Frame<N, X>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<N: skene_foundation::Scalar> skene_foundation::TokenReferences for skene_foundation::TokenValue<N>
+pub fn skene_foundation::TokenValue<N>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<T> skene_foundation::TokenReferences for skene_foundation::Expr<T>
+pub fn skene_foundation::Expr<T>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<T> skene_foundation::TokenReferences for skene_foundation::KeptLeaf<T>
+pub fn skene_foundation::KeptLeaf<T>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<T> skene_foundation::TokenReferences for skene_foundation::StaticLeaf<T>
+pub fn skene_foundation::StaticLeaf<T>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
+impl<V: skene_foundation::TokenReferences> skene_foundation::TokenReferences for skene_foundation::Definitions<V>
+pub fn skene_foundation::Definitions<V>::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::TokenName))
 pub trait skene_foundation::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_foundation::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_foundation::TokenName, V)>
 impl<N: skene_foundation::Scalar, V: core::convert::From<skene_foundation::Definition<skene_foundation::Color, N>>> skene_foundation::TokenSet<V> for skene_foundation::SystemColors<N>

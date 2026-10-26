@@ -4,7 +4,18 @@ use std::{fmt::Debug, rc::Rc};
 
 use thin_vec::ThinVec;
 
-use super::{Condition, Expr, Media, Scalar, State, Token, TokenName, TokenRef, Tokenable};
+use super::{
+  Condition,
+  Expr,
+  Media,
+  Scalar,
+  State,
+  Token,
+  TokenName,
+  TokenRef,
+  TokenReferences,
+  Tokenable,
+};
 use crate::spine::{Alignment, Axes, Dimension, Inset, ItemAlignment, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
@@ -44,6 +55,24 @@ impl<T> StaticLeaf<T> {
       Self::Fixed(value) => read(value).map(StaticLeaf::Fixed),
       Self::Token(name) => Some(StaticLeaf::Token(name)),
       Self::Expr(expr) => Some(StaticLeaf::Expr(Expr::from_node(expr.into_node()))),
+    }
+  }
+}
+
+impl<T> TokenReferences for StaticLeaf<T> {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    match self {
+      Self::Fixed(_) => {}
+      Self::Token(name) => visit(*name),
+      Self::Expr(expr) => expr.for_each_token(visit),
+    }
+  }
+}
+
+impl<L: TokenReferences, C> TokenReferences for Conditional<L, C> {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    for (_, leaf) in self.leaves() {
+      leaf.for_each_token(visit);
     }
   }
 }
@@ -124,6 +153,15 @@ impl<T> KeptLeaf<T> {
     match self {
       Self::Static(leaf) => leaf.try_map(read).map(KeptLeaf::Static),
       Self::Slot(slot) => Some(KeptLeaf::Slot(slot)),
+    }
+  }
+}
+
+impl<T> TokenReferences for KeptLeaf<T> {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    match self {
+      Self::Static(leaf) => leaf.for_each_token(visit),
+      Self::Slot(_) => {}
     }
   }
 }

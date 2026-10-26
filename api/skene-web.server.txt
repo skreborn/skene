@@ -237,9 +237,14 @@ impl core::convert::From<skene_foundation::spine::leaf::Conditional<skene_founda
 pub fn skene_web::platform::web::WebTokenValue::from(skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::dimension::Dimension<f32>, f32>) -> Self
 impl core::convert::From<skene_web::platform::web::WebTokenValue> for skene_foundation::spine::resolve::TokenValue<f32>
 pub fn skene_foundation::spine::resolve::TokenValue<f32>::from(skene_web::platform::web::WebTokenValue) -> Self
+impl core::convert::TryFrom<skene_foundation::spine::resolve::TokenValue<f32>> for skene_web::platform::web::WebTokenValue
+pub type skene_web::platform::web::WebTokenValue::Error = skene_foundation::spine::leaf::Conditional<skene_foundation::spine::leaf::StaticLeaf<alloc::string::String>, skene_foundation::spine::condition::Media<f32>>
+pub fn skene_web::platform::web::WebTokenValue::try_from(skene_foundation::spine::resolve::TokenValue<f32>) -> core::result::Result<Self, Self::Error>
 impl core::fmt::Debug for skene_web::platform::web::WebTokenValue
 pub fn skene_web::platform::web::WebTokenValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_web::platform::web::WebTokenValue
+impl skene_foundation::spine::token::TokenReferences for skene_web::platform::web::WebTokenValue
+pub fn skene_web::platform::web::WebTokenValue::for_each_token(&self, &mut dyn core::ops::function::FnMut(skene_foundation::spine::token::TokenName))
 pub struct skene_web::platform::web::NativeMarkup
 impl skene_web::platform::web::NativeMarkup
 pub fn skene_web::platform::web::NativeMarkup::attributes(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>

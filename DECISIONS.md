@@ -8,14 +8,37 @@ supersedes.
 
 ## Decided against
 
-- **A preset defining its palette's default at the root** (2026-10-26), as a library's
-  view over `P: Realization` did through `ThemedIn::define_root` when it built: a preset
+- **A preset inked only under a `Theme` of its palette or after a read of it**
+  (2026-10-26), the interim after a library's view over `P: Realization` stopped
+  defining its palette's default through `ThemedIn::define_root` as it built: a preset
   is a plain function returning a built-in, which may run before any platform is
-  installed (a doctest calls it with none), and defining a token reaches the
-  realization, so it cannot be done at construction. A preset references its palette's tokens, and a
-  `Theme` of the palette above it defines them, or a read of the palette (`current()`,
-  `watch()`) where no theme does. Revisit when a built-in offers a mount hook a preset
-  can attach without a view of its own.
+  installed, so it cannot define at construction. Replaced by token references that
+  carry their palette's default (`TokenRef::of`), which the shared half lays over the
+  scene's root the first time a node's style, a derived slot's write or a definition
+  names one, once per palette per root. Revisit if a palette's default must differ per
+  subtree in a way one root definition cannot express.
+- **A mount hook on every built-in a preset attaches to define its palette**
+  (2026-10-26), a `handle_mount` the preset registers: it adds an app-facing member to
+  every built-in and runs per node rather than once per palette. Revisit when built-ins
+  gain a mount hook for a purpose of their own.
+- **A registry of palettes a library populates** (2026-10-26), the library registering
+  its palette with the framework so its default is defined at launch: it is registration
+  code of the library's own, which a reference's link makes needless, and it defines
+  palettes nothing references. Revisit if a palette's default must be defined before any
+  node references it.
+- **Defining a palette's default on a token miss at resolution time** (2026-10-26), in
+  each realization as it resolves a token nothing defines: the web keeps every token for
+  CSS to resolve and the server must emit the root rule with the render, so it would be
+  written per realization, never once in the shared half. Revisit if every realization
+  resolves its tokens in the shared half.
+- **Skipping the root default under a theme that defines the palette** (2026-10-26): a
+  node's style is applied before the node is attached, so its ancestors, and any theme
+  above it, are unknown then, and the cost of defining it anyway is one root rule per
+  palette, which the nearer theme outranks. Revisit when styles apply after attachment.
+- **A palette's link producing the realization's own token value** (2026-10-26): a
+  library core names no realization, so its consts cannot; the link yields the
+  foundation's `TokenValue<N>`, which every realization's token value converts from by
+  `TryFrom`. Revisit if a library core may name its realization.
 - **A Simple option captioned by the app's `set_label`** (2026-10-26),
   `SimpleListboxOption::new(value)` styling a `ListboxOption` whose caption its user
   sets afterwards: a control's caption takes no run style from the control, so a

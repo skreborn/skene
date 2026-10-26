@@ -222,7 +222,16 @@ pub use scene::{Annotated, Annotation, NodeKind, NodeRecord, Scene, TokenScope};
 pub use segment::{Piece, Segment};
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use task::{Boundary, count_pending};
-pub use token::{Definitions, IntoTokenValue, Token, TokenName, TokenRef, TokenSet, Tokenable};
+pub use token::{
+  Definitions,
+  IntoTokenValue,
+  Token,
+  TokenName,
+  TokenRef,
+  TokenReferences,
+  TokenSet,
+  Tokenable,
+};
 pub use ui_events::pointer::{
   PersistentDeviceId,
   PointerButton,

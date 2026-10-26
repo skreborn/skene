@@ -50,22 +50,27 @@ impl TokenName {
   }
 
   /// The token set whose default this name carries, if it carries one.
-  #[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "read by the scene's root defaults")
-  )]
   #[inline(always)]
   #[must_use]
   pub(in crate::spine) fn default_set(self) -> Option<TypeId> {
     self.defaults.map(|defaults| (defaults.0)(None))
   }
 
+  /// Every token `references` names that carries its palette's default, in order.
+  pub(in crate::spine) fn linked_in(references: &impl TokenReferences) -> Vec<Self> {
+    let mut linked = Vec::new();
+
+    references.for_each_token(&mut |name| {
+      if name.defaults.is_some() {
+        linked.push(name);
+      }
+    });
+
+    linked
+  }
+
   /// The default definitions of the token set this name carries, in the foundation's
   /// token value over `N`; `None` when it carries none, or its set is not over `N`.
-  #[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "read by the scene's root defaults")
-  )]
   #[must_use]
   pub(in crate::spine) fn defaults<N: Scalar>(self) -> Option<Definitions<TokenValue<N>>> {
     let mut sink = None::<Definitions<TokenValue<N>>>;
@@ -150,6 +155,28 @@ impl TokenDefaults {
   }
 }
 
+/// What names tokens: a leaf, an expression, a definition, a token value, a style.
+///
+/// The shared half lists the tokens a style or a definition names through it, so the
+/// first reference to a linked token lays its palette's default over the scene's root;
+/// a realization's token value implements it over each kind's [`Definition`].
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` cannot list the tokens it names",
+  label = "a token value lists the tokens its definitions name, so a referenced palette's default reaches the root"
+)]
+pub trait TokenReferences {
+  /// Calls `visit` with every token this names, in order, a token named twice twice.
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName));
+}
+
+impl<V: TokenReferences> TokenReferences for Definitions<V> {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    for (_, value) in &self.0 {
+      value.for_each_token(visit);
+    }
+  }
+}
+
 /// A type a token holds: a color, a number, a length, a dimension or a text.
 ///
 /// A [`TokenRef`] and a [`Token`] are of these types alone, so every reference names a
@@ -200,7 +227,9 @@ impl<T: Tokenable> TokenRef<T> {
   ///
   /// How a component library names its palette's tokens: the palette's default
   /// definitions reach the scene's root the first time a node references one of them,
-  /// and a theme of the palette redefines them beneath it.
+  /// and a theme of the palette redefines them beneath it. The default is built with the
+  /// scene borrowed, so the palette's `Default` and its definitions are plain data that
+  /// never reach the scene.
   #[inline(always)]
   pub const fn of<S: TokenSet<TokenValue<N>> + Default, N: Scalar>(name: &'static str) -> Self {
     Self {
@@ -423,6 +452,17 @@ impl<V> Definitions<V> {
     self.0.is_empty()
   }
 
+  /// These definitions converted into `W`, each one `W` refuses left out.
+  pub(in crate::spine) fn convert<W: TryFrom<V>>(self) -> Definitions<W> {
+    Definitions(
+      self
+        .0
+        .into_iter()
+        .filter_map(|(name, value)| Some((name, W::try_from(value).ok()?)))
+        .collect(),
+    )
+  }
+
   /// Lays `over` on this set: every token `over` defines replaces this set's
   /// definition of the same name, and the rest are appended in `over`'s order.
   pub fn overlay(&mut self, over: Self) {
@@ -456,7 +496,7 @@ mod tests {
     hash::{Hash, Hasher},
   };
 
-  use super::{Definitions, Token, TokenName, TokenRef, TokenSet};
+  use super::{Definitions, Token, TokenName, TokenRef, TokenReferences, TokenSet};
   use crate::spine::{Color, Definition, Expr, Media, StaticLeaf, TokenValue};
 
   /// The erased value a facade would keep per token.
@@ -625,6 +665,50 @@ mod tests {
         .name()
         .default_set(),
       None
+    );
+  }
+
+  /// The names of every token `references` names, in order.
+  fn names(references: &impl TokenReferences) -> Vec<&'static str> {
+    let mut names = Vec::new();
+
+    references.for_each_token(&mut |name| names.push(name.as_str()));
+
+    names
+  }
+
+  /// A definition names the tokens of its base, then of its variants, an expression's
+  /// in its tree's order; a token value and a set of definitions name their
+  /// definitions'.
+  #[test]
+  fn a_definition_lists_the_tokens_it_names() {
+    let definition = Definition::<Color, f32>::from(TokenRef::<Color>::new("card"))
+      .when(
+        Media::Dark,
+        StaticLeaf::Expr(
+          Expr::from(TokenRef::<Color>::new("ink"))
+            .mix(TokenRef::<Color>::new("accent"), 0.5)
+            .with_alpha(0.5),
+        ),
+      )
+      .when(Media::min_width(900), Color::srgb(0., 0., 0.));
+    assert_eq!(names(&definition), ["card", "ink", "accent"]);
+    assert_eq!(
+      names(&TokenValue::Color(definition.clone())),
+      ["card", "ink", "accent"]
+    );
+    assert_eq!(
+      names(&Definitions::<TokenValue<f32>>::of(&Palette::default())),
+      Vec::<&str>::new(),
+      "a palette of literals names nothing"
+    );
+    assert_eq!(
+      TokenName::linked_in(
+        &Definition::<Color, f32>::from(Palette::CARD)
+          .when(Media::Dark, StaticLeaf::Token(TokenName::new("ink")))
+      ),
+      [Palette::CARD.name()],
+      "an unlinked name is passed over"
     );
   }
 

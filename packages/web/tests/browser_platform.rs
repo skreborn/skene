@@ -105,6 +105,30 @@ impl TokenSet<WebTokenValue> for Palette {
   }
 }
 
+/// A component library's palette whose reference carries its default: a card.
+#[derive(Debug, Clone, PartialEq)]
+struct Linked {
+  card: Token<Color, f32>,
+}
+
+impl Linked {
+  const CARD: TokenRef<Color> = TokenRef::of::<Self, f32>("linked-card");
+}
+
+impl Default for Linked {
+  fn default() -> Self {
+    Self {
+      card: Token::new(Self::CARD, blue()),
+    }
+  }
+}
+
+impl<V: From<Definition<Color, f32>>> TokenSet<V> for Linked {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.card.define()]
+  }
+}
+
 fn white() -> Color {
   Color::srgb(1., 1., 1.)
 }
@@ -234,6 +258,46 @@ fn a_token_color_resolves_through_the_theme() {
       ".{}{{background-color:var(--test-card);",
       class_of(&card)
     )),
+    "{}",
+    sheet_text()
+  );
+}
+
+/// A box below no theme naming a linked token computes the palette's default, with no
+/// read of the palette, and a theme of the palette beneath redefines it for its subtree.
+#[wasm_bindgen_test]
+fn a_linked_token_computes_its_default_below_no_theme() {
+  let (_guard, root) = fresh_root();
+
+  let _ = web::mount(|| {
+    Row::<Web>::new()
+      .set_children((
+        Box_::new().set_background(Linked::CARD),
+        Theme::<Web, _>::new(Linked {
+          card: Token::new(Linked::CARD, red()),
+        })
+        .set_child_builder(|| Box_::new().set_background(Linked::CARD)),
+      ))
+      .build()
+  });
+
+  let row = only_child(&root);
+  let outside = row.first_element_child().expect("the box below no theme");
+  let inside = only_child(&row.last_element_child().expect("the theme's scope"));
+
+  assert_eq!(
+    computed(&outside, "background-color"),
+    probe(&root, &css(blue())),
+    "the default"
+  );
+  assert_eq!(
+    computed(&inside, "background-color"),
+    probe(&root, &css(red())),
+    "the theme's"
+  );
+  assert_eq!(
+    sheet_text().matches("@property --linked-card{").count(),
+    1,
     "{}",
     sheet_text()
   );

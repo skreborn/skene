@@ -21,7 +21,9 @@ use super::{
   Slot,
   SlotLeaf,
   StyleExtension,
+  TokenReferences,
   TokenScope,
+  TokenValue,
 };
 use crate::spine::{
   AccessProp,
@@ -228,6 +230,11 @@ pub trait Realization: Copy + Default + 'static {
   /// The properties only this medium has.
   type StyleExt: StyleExtension;
   /// The erased token definition this medium accepts.
+  ///
+  /// It converts from the foundation's [`TokenValue`], refusing a
+  /// kind it holds none of, so a palette's default reaches it through its references'
+  /// link, and lists the tokens its definitions name, so a definition aliasing another
+  /// palette's token lays that palette's default too.
   type TokenValue: Clone
     + PartialEq
     + Debug
@@ -235,6 +242,8 @@ pub trait Realization: Copy + Default + 'static {
     + From<Definition<f32, Self::Scalar>>
     + From<Definition<Length, Self::Scalar>>
     + From<Definition<Dimension<Self::Scalar>, Self::Scalar>>
+    + TryFrom<TokenValue<Self::Scalar>>
+    + TokenReferences
     + 'static;
   /// The platform's own view the native door adopts into the scene; an uninhabited type
   /// of the platform's own where its door adopts nothing, so the door cannot be reached.
@@ -294,12 +303,17 @@ pub trait Realization: Copy + Default + 'static {
   /// Called once for every box, control, overlay and run, after the node's creation and
   /// before any [`define_tokens`](Self::define_tokens) on it, a style that sets nothing
   /// included; a node a low-level view made receives the per-child layout alone, and
-  /// only where a wrapper annotated it.
+  /// only where a wrapper annotated it. Before each call the shared half lays the
+  /// default of every palette a token of the style links to over the root, through
+  /// [`define_tokens`](Self::define_tokens), where nothing laid it before.
   fn apply_style(node: NodeId, style: CompiledStyle<Self::Scalar, Self::StyleExt>);
 
   /// Writes the leaf a derived leaf computed into its slot on `node`, a box's, a run's,
   /// or one in the layout a wrapper gave a run or a low-level node: a value, or a token
   /// or expression the platform resolves where it reads the slot.
+  ///
+  /// Before each call the shared half lays the default of every palette a token of the
+  /// leaf links to over the root, as before [`apply_style`](Self::apply_style).
   fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<Self::Scalar, Self::StyleExt>);
 
   /// Replaces a box's place in focus traversal; `None` takes it out of focus. A platform

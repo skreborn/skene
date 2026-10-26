@@ -53,7 +53,7 @@ use crate::{
   Wrap,
   contents,
   properties,
-  realize::{Source, bind_slot, report_access},
+  realize::{Source, apply_style, bind_slot, report_access},
 };
 
 /// A box with a layout mode, a declared style, a role, a container name, focus and
@@ -665,7 +665,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     }
 
     realized(node, &spec, &style);
-    P::apply_style(node, style);
+    apply_style::<P>(node, style);
     P::update_focus_order(node, tab_stop);
     P::update_access(node, &access);
     Scene::<P>::with(|scene| {

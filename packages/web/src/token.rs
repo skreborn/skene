@@ -13,6 +13,7 @@ use skene_foundation::{
   Scene,
   TokenName,
   TokenRef,
+  TokenReferences,
   TokenValue,
 };
 
@@ -87,6 +88,34 @@ impl From<WebTokenValue> for TokenValue<f32> {
       WebTokenValue::Number(definition) => Self::Number(definition),
       WebTokenValue::Length(definition) => Self::Length(definition),
       WebTokenValue::Dimension(definition) => Self::Dimension(definition),
+    }
+  }
+}
+
+impl TryFrom<TokenValue<f32>> for WebTokenValue {
+  /// A text definition, which no custom property the web registers holds.
+  type Error = Definition<String, f32>;
+
+  /// The shared half's erased token value as the web's, of the same kind; a text is
+  /// refused.
+  fn try_from(value: TokenValue<f32>) -> Result<Self, Self::Error> {
+    match value {
+      TokenValue::Color(definition) => Ok(Self::Color(definition)),
+      TokenValue::Number(definition) => Ok(Self::Number(definition)),
+      TokenValue::Length(definition) => Ok(Self::Length(definition)),
+      TokenValue::Dimension(definition) => Ok(Self::Dimension(definition)),
+      TokenValue::Text(definition) => Err(definition),
+    }
+  }
+}
+
+impl TokenReferences for WebTokenValue {
+  fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
+    match self {
+      Self::Color(definition) => definition.for_each_token(visit),
+      Self::Number(definition) => definition.for_each_token(visit),
+      Self::Length(definition) => definition.for_each_token(visit),
+      Self::Dimension(definition) => definition.for_each_token(visit),
     }
   }
 }

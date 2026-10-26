@@ -648,6 +648,14 @@ in a code comment.
     either docs.rs's own rustdoc flags or these may be dropped: check every target's
     pages, and move the cfgs to wherever docs.rs's flags merge with them if any is
     missing.
+35. **skrifa moves with Parley.** `skene-parley` draws glyph outlines through skrifa
+    0.44, the version the vendored Parley 0.12 (its newest release and tag) reads the
+    same fonts through, as vello 0.3's glifo does; skrifa 0.49 is out and compiles
+    against `skene-parley` as it stands, but taking it alone builds a second skrifa and
+    read-fonts (0.46 beside 0.41) into every terminal binary, parsing each font twice.
+    Move it with the next Parley release, rebasing `vendor/parley`'s and
+    `vendor/parley_engine`'s patches (their `SKENE.md`) onto it, the text and
+    guaranteed-core tests green.
 
 Watched, not scheduled:
 

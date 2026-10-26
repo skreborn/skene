@@ -5,10 +5,9 @@
 use std::{cell::RefCell, rc::Rc};
 
 use skene_terminal::{
-  self as terminal,
   Scene,
   behavior::{Activate, TextEntry},
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -22,7 +21,7 @@ fn input_binds_a_signal_both_ways() {
   with_platform(|| {
     let name = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().set_placeholder("name").bind_value(name))
         .into_any()
         .build()
@@ -50,7 +49,7 @@ fn a_derived_placeholder_shows_and_names_the_field() {
   with_platform(|| {
     let hint = Signal::new("name".to_owned());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(TextEntry::new().derive_placeholder(move || hint.get()))
         .into_any()
         .build()
@@ -73,7 +72,7 @@ fn caret_edits_insert_and_delete() {
   with_platform(|| {
     let name = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
@@ -115,7 +114,7 @@ fn caret_jumps_and_deletes_by_word() {
   with_platform(|| {
     let name = Signal::new(String::from("alpha beta gamma"));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
@@ -151,7 +150,7 @@ fn word_deletion_follows_chromiums_word_boundaries() {
   with_platform(|| {
     let name = Signal::new(String::from("say don't foo.bar_baz("));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
@@ -183,7 +182,7 @@ fn caret_windows_long_values_and_follows_clicks() {
   with_platform(|| {
     let name = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(name))
         .set_width(5)
         .into_any()
@@ -217,7 +216,7 @@ fn an_editor_breaks_lines_and_moves_between_them() {
   with_platform(|| {
     let bio = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
         .into_any()
         .build()
@@ -248,7 +247,7 @@ fn an_editor_windows_its_rows_around_the_caret() {
   with_platform(|| {
     let bio = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(BasicTextEditor::new(
           TextEntry::new().set_lines(3).bind_value(bio),
@@ -284,7 +283,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
   with_platform(|| {
     let bio = Signal::new("a\nb\nc\nd\ne".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(BasicTextEditor::new(
           TextEntry::new().set_lines(3).bind_value(bio),
@@ -352,7 +351,7 @@ fn the_caret_reports_the_terminal_cursor_cell() {
   with_platform(|| {
     let open = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicTextField::new(TextEntry::new()).into_any(),
@@ -397,7 +396,7 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
   with_platform(|| {
     let bio = Signal::new("a\nb\nc\nd\ne\nf".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(
           BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
@@ -451,7 +450,7 @@ fn the_horizontal_wheel_scrolls_a_field() {
   with_platform(|| {
     let name = Signal::new("abcdefghijklmnop".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(BasicTextField::new(TextEntry::new().bind_value(name)).set_width(8))
         .into_any()
@@ -499,7 +498,7 @@ fn undo_and_redo_step_through_edits() {
   with_platform(|| {
     let name = Signal::new("x".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
@@ -612,7 +611,7 @@ fn an_editor_shows_its_laid_out_rows_and_sizes_by_its_longest_line() {
   with_platform(|| {
     let bio = Signal::new("alpha\nbe\ngamma delta".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           BasicTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).set_height(3),
@@ -637,7 +636,7 @@ fn line_breaks_arrive_as_line_feeds_in_an_editor_and_drop_in_a_field() {
     let bio = Signal::new("a\r\nb\rc".to_owned());
     let name = Signal::new("x\ny".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicTextEditor::new(TextEntry::new().set_lines(4).bind_value(bio)),
@@ -670,7 +669,7 @@ fn an_editors_keys_follow_its_rows_and_keep_their_column() {
   with_platform(|| {
     let bio = Signal::new("abcdef ghij".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
         .set_width(8)
         .into_any()
@@ -744,7 +743,7 @@ fn an_editors_keys_follow_its_rows_and_keep_their_column() {
 #[test]
 fn an_entry_takes_the_typography_ink_and_weight() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(Typography::default().set_ink(red()).set_weight(700.))
         .set_child_builder(|| {
           Column::new()
@@ -771,7 +770,7 @@ fn a_read_only_entry_takes_no_edits() {
   with_platform(|| {
     let value = Signal::new("abc".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(value))
         .set_read_only(true)
         .into_any()
@@ -806,7 +805,7 @@ fn a_tab_in_an_entry_is_one_blank_cell() {
     let name = Signal::new("a\tb".to_owned());
     let bio = Signal::new("a\tb\nc".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicTextField::new(TextEntry::new().bind_value(name))
@@ -835,7 +834,7 @@ fn a_rejected_edit_is_not_an_undo_step() {
   with_platform(|| {
     let name = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(
         TextEntry::new()
           .derive_value(move || name.get())
@@ -883,7 +882,7 @@ fn a_transformed_edit_shows_the_truth_with_the_caret_mapped() {
   with_platform(|| {
     let name = Signal::new(String::from("ab"));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(
         TextEntry::new()
           .derive_value(move || name.get())
@@ -925,7 +924,7 @@ fn a_handler_that_focuses_another_node_does_not_panic() {
     let other = Signal::new(String::from("other"));
     let next = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicTextField::new(
@@ -987,7 +986,7 @@ fn a_handler_that_destroys_and_relocates_nodes_does_not_panic() {
     let (first, last) = (NodeHandle::new(), NodeHandle::new());
     let log = Rc::new(RefCell::new(Vec::new()));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let log = Rc::clone(&log);
 
       move || {
@@ -1052,7 +1051,7 @@ fn a_caret_at_a_full_rows_end_stays_in_view() {
   with_platform(|| {
     let bio = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .add_child(BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio)).set_width(5))
         .into_any()
@@ -1088,7 +1087,7 @@ fn arrow_up_in_a_field_is_left_to_its_ancestors() {
     let name = Signal::new(String::from("abc"));
     let heard = Signal::new(Vec::<String>::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .handle_key_down(move |event| heard.update(|keys| keys.push(event.key.to_string())))
         .set_child(BasicTextField::new(TextEntry::new().bind_value(name)))
@@ -1129,7 +1128,7 @@ fn an_editor_reports_its_lines_as_text_runs_and_its_selection_in_them() {
   with_platform(|| {
     let value = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(value))
         .into_any()
         .build()
@@ -1220,7 +1219,7 @@ fn a_rejected_edit_leaves_the_platform_showing_the_bound_value() {
     let bound = Signal::new("12".to_owned());
     let disabled = Signal::new(false);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(
         TextEntry::new()
           .derive_value(move || bound.get())
@@ -1272,7 +1271,7 @@ fn a_text_entrys_selection_binds_both_ways() {
   with_platform(|| {
     let bound = Signal::new(TextSelection::new(1, 3));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(TextEntry::new().set_value("hello").bind_selection(bound))
         .set_width(10)
         .into_any()
@@ -1329,7 +1328,7 @@ fn a_written_value_reports_the_caret_it_moves() {
     let heard = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&heard);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(
         TextEntry::new()
           .bind_value(value)
@@ -1364,7 +1363,7 @@ fn a_secure_field_draws_a_mark_a_cluster_and_keeps_its_value() {
     let value = Signal::new("日e\u{301}x".to_owned());
     let secure = Signal::new(true);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(
         TextEntry::new()
           .derive_secure(move || secure.get())
@@ -1416,7 +1415,7 @@ fn a_secure_fields_menu_disables_copying_and_cutting() {
   with_platform(|| {
     let value = Signal::new("hunter2".to_owned());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(TextEntry::new().set_secure(true).bind_value(value))
         .set_width(20)
         .into_any()
@@ -1460,7 +1459,7 @@ fn a_secure_fields_menu_disables_copying_and_cutting() {
 #[test]
 fn a_secure_fields_runs_read_marks() {
   with_platform(|| {
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(TextEntry::new().set_secure(true).set_value("pä55"))
         .set_width(10)
         .into_any()
@@ -1497,7 +1496,7 @@ fn a_secure_fields_runs_read_marks() {
 fn an_entrys_editing_state_lives_and_goes_with_its_node() {
   with_platform(|| {
     let shown = Signal::new(true);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       derived(move || {
         if !shown.get() {
           return Text::new("gone").build();
@@ -1547,7 +1546,7 @@ fn a_text_field_draws_its_defaults_in_cells() {
   with_platform(|| {
     let name = Signal::new("Ada".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           TextField::new().set_label("Name").bind_value(name),
@@ -1628,7 +1627,7 @@ fn a_text_editor_draws_three_lines_in_cells() {
   with_platform(|| {
     let notes = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           TextEditor::new()

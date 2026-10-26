@@ -8,13 +8,12 @@ use std::{cell::RefCell, rc::Rc};
 use skene_foundation::TYPE_AHEAD_RESET;
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   Label,
   NodeId,
   Part,
   Scene,
   behavior::{Activate, ListboxOption},
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -33,7 +32,7 @@ fn picker(unit: Signal<&'static str>) -> Picker<&'static str> {
 
 /// Mounts a picker bound to `unit` at the top of the frame.
 fn mount_picker(unit: Signal<&'static str>) {
-  let _ = terminal::mount(|| Column::new().add_child(picker(unit)).build());
+  let _ = mount(|| Column::new().add_child(picker(unit)).build());
 }
 
 /// The row of the last line containing `needle`: the popup's row, beneath the face
@@ -170,7 +169,7 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
   with_platform(|| {
     let unit = Signal::new("px");
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           picker(unit).into_any(),
@@ -219,7 +218,7 @@ fn picker_tab_commits_closes_and_travels_on() {
     let unit = Signal::new("px");
     let next = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           picker(unit).into_any(),
@@ -431,7 +430,7 @@ fn mount_logged(picker: BasicPicker<&'static str>) -> Rc<RefCell<Vec<String>>> {
   let heard = Rc::new(RefCell::new(Vec::new()));
   let log = Rc::clone(&heard);
 
-  let _ = terminal::mount(move || {
+  let _ = mount(move || {
     Container::new()
       .handle_key_down(move |event| log.borrow_mut().push(event.key.to_string()))
       .set_child(
@@ -522,7 +521,7 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
 #[test]
 fn a_picker_without_its_face_renders_nothing() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(
           BasicPicker::<&str>::new()
@@ -855,7 +854,7 @@ fn a_picker_places_its_list() {
   with_platform(|| {
     let value = Signal::new("a");
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new().set_height(6).into_any(),
@@ -883,8 +882,8 @@ fn styled_picker(size: Signal<u8>) -> Picker<u8> {
     .set_label("Size")
     .bind_chosen(size)
     .set_options((
-      terminal::ListboxOption::new(1_u8).set_label("Small"),
-      terminal::ListboxOption::new(2_u8).set_label("Large"),
+      skene_terminal::ListboxOption::new(1_u8).set_label("Small"),
+      skene_terminal::ListboxOption::new(2_u8).set_label("Large"),
     ))
 }
 
@@ -904,7 +903,7 @@ fn inside_part(node: NodeId, part: Part) -> bool {
 fn the_built_in_picker_draws_its_face_and_list_in_cells() {
   with_platform(|| {
     let size = Signal::new(2);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           styled_picker(size),
@@ -983,7 +982,7 @@ fn the_built_in_picker_draws_its_face_and_list_in_cells() {
 fn the_built_in_pickers_face_and_list_are_replaced_by_its_setters() {
   with_platform(|| {
     let size = Signal::new(2);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .add_child(
           styled_picker(size)
@@ -1022,16 +1021,16 @@ fn the_built_in_pickers_face_and_list_are_replaced_by_its_setters() {
 fn the_built_in_listbox_draws_its_options_in_cells() {
   with_platform(|| {
     let fruit = Signal::new(Some(2));
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .add_child(
-          terminal::Listbox::new()
+          skene_terminal::Listbox::new()
             .set_label("Fruit")
             .bind_chosen(fruit)
             .set_children((
-              terminal::ListboxOption::new(1).set_label("Apple"),
-              terminal::ListboxOption::new(2).set_label("Banana"),
-              terminal::ListboxOption::new(3)
+              skene_terminal::ListboxOption::new(1).set_label("Apple"),
+              skene_terminal::ListboxOption::new(2).set_label("Banana"),
+              skene_terminal::ListboxOption::new(3)
                 .set_label("Cherry")
                 .set_part(Part::Mark, Text::new("*")),
             )),

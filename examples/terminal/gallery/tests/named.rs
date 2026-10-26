@@ -3,17 +3,21 @@
 
 #![cfg(skene_platform = "terminal")]
 
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{
+  platform::terminal::{install, mount, uninstall},
+  prelude::*,
+  testing,
+};
 
 #[test]
 fn every_control_the_gallery_shows_is_named() {
-  terminal::install();
+  install();
 
-  let _ = terminal::mount(|| terminal_gallery::app().build());
+  let _ = mount(|| terminal_gallery::app().build());
   let _ = testing::render_to_text(60, 220);
   let unnamed = testing::find_all_unnamed();
 
-  terminal::uninstall();
+  uninstall();
 
   assert!(unnamed.is_empty(), "unnamed: {unnamed:?}");
 }

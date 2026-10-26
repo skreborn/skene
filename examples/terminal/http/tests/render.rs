@@ -4,7 +4,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
-  self as terminal,
+  platform::terminal::mount,
   prelude::*,
   testing::{self, with_platform},
 };
@@ -12,7 +12,7 @@ use skene_terminal::{
 #[test]
 fn the_pending_fetch_renders() {
   let frame = with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       terminal_http::app(Some("http://127.0.0.1:1/".to_owned()))
         .into_any()
         .build()

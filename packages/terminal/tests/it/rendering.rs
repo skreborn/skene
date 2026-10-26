@@ -5,12 +5,11 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   ContainerName,
   ContainerQuery,
   Scene,
   behavior::{Activate, Radio, TextEntry},
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -21,7 +20,7 @@ use crate::common::{blue, colors_at, locate, red, with_platform};
 #[test]
 fn a_bordered_container_paints_its_border_in_the_border_color() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(3)
@@ -43,7 +42,7 @@ fn a_bordered_container_paints_its_border_in_the_border_color() {
 #[test]
 fn a_row_lays_its_children_out_in_cells() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_spacing(2)
         .set_children((Text::new("ab"), Text::new("cd")))
@@ -65,7 +64,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
     let inner = Rc::new(Cell::new(None::<Signal<u32>>));
     let counted = Rc::clone(&builds);
     let kept = Rc::clone(&inner);
-    let node = terminal::mount(|| {
+    let node = mount(|| {
       Theme::derive(move || palette.get())
         .set_child_builder(move || {
           counted.set(counted.get() + 1);
@@ -107,7 +106,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
 #[test]
 fn trigger_color_scheme_flips_a_dark_token() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(SimplePalette::default())
         .set_child_builder(|| {
           Container::new()
@@ -139,7 +138,7 @@ fn a_button_click_does_not_reach_the_container_around_it() {
     let outer_clicks = Rc::clone(&outer);
     let button_clicks = Rc::clone(&button);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_padding(Inset::all(1))
         .handle_click(move || outer_clicks.set(outer_clicks.get() + 1))
@@ -170,7 +169,7 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
   with_platform(|| {
     let agreed = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(
           SimpleCheckbox::new()
@@ -200,7 +199,7 @@ fn tab_reaches_the_controls_in_document_order() {
     let mint = NodeHandle::new();
     let last = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -251,7 +250,7 @@ fn a_container_query_switches_a_padding_when_the_terminal_narrows() {
   const CARD: ContainerName = ContainerName("card");
 
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_container_name(CARD)
         .set_child(
@@ -282,7 +281,7 @@ fn a_container_query_switches_a_padding_when_the_terminal_narrows() {
 #[test]
 fn a_hover_change_repaints_without_a_relayout() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(10)
         .set_height(3)
@@ -315,7 +314,7 @@ fn a_hover_change_repaints_without_a_relayout() {
 #[test]
 fn a_hover_resolves_only_the_nodes_reading_it() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Container::new().set_height(1).set_child(Text::new("plain")),
@@ -353,7 +352,7 @@ fn a_hover_resolves_only_the_nodes_reading_it() {
 #[test]
 fn an_unchanged_frame_repaints_nothing() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((Text::new("one"), Text::new("two")))
         .into_any()
@@ -374,7 +373,7 @@ fn a_keystroke_restyles_only_the_changed_entry() {
   with_platform(|| {
     let name = Signal::new("abcdefgh".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("label"),
@@ -403,7 +402,7 @@ fn a_keystroke_restyles_only_the_changed_entry() {
 #[test]
 fn a_corner_radius_renders_arc_corners() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(4)
         .set_height(3)
@@ -425,7 +424,7 @@ fn a_text_field_types_through_trigger_key_and_writes_the_bound_signal() {
   with_platform(|| {
     let name = Signal::new(String::new());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
@@ -452,7 +451,7 @@ fn an_overlay_opens_above_content_and_dismisses_on_escape() {
   with_platform(|| {
     let open = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("under").into_any(),
@@ -491,7 +490,7 @@ fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
     let released = Signal::new(String::new());
     let pressed = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .handle_key_down(move |event| pressed.set(event.key.to_string()))
         .handle_key_up(move |event| released.set(event.key.to_string()))
@@ -525,7 +524,7 @@ fn a_hidden_box_keeps_its_place_and_paints_nothing() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new()
@@ -579,7 +578,7 @@ fn lay_out_lays_the_scene_out_without_a_frame() {
   with_platform(|| {
     let handle = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(7)
         .set_height(2)

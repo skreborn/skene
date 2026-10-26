@@ -8,13 +8,12 @@ use std::{
 
 use skene_foundation::{AnyKind, Children, FlexChild, Realization, Seal};
 use skene_terminal::{
-  self as terminal,
   Definition,
   Length,
   Token,
   TokenName,
   behavior::TextEntry,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -25,7 +24,7 @@ use crate::common::{blue, colors_at, locate, red, rgb, white, with_platform};
 #[test]
 fn column_stacks_runs() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((Text::new("alpha"), Text::new("beta")))
         .into_any()
@@ -41,7 +40,7 @@ fn column_stacks_runs() {
 #[test]
 fn background_fills_cover_content_beneath() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(1)
@@ -70,7 +69,7 @@ fn background_fills_cover_content_beneath() {
 #[test]
 fn pinned_text_honors_its_edges() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(12)
         .set_height(3)
@@ -98,7 +97,7 @@ fn pinned_text_honors_its_edges() {
 #[test]
 fn flexible_text_takes_free_space() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Text::new("a"),
@@ -119,7 +118,7 @@ fn flexible_text_takes_free_space() {
 #[test]
 fn text_wraps_at_the_container_width() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_child(Text::new("alpha beta"))
@@ -137,7 +136,7 @@ fn text_wraps_at_the_container_width() {
 #[test]
 fn right_to_left_text_paints_in_visual_order() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("ab \u{5d0}\u{5d1}\u{5d2} cd"),
@@ -162,7 +161,7 @@ fn right_to_left_text_paints_in_visual_order() {
 #[test]
 fn a_final_newline_and_an_empty_text_open_a_line() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("one\n"),
@@ -182,7 +181,7 @@ fn a_final_newline_and_an_empty_text_open_a_line() {
 #[test]
 fn border_draws_a_frame_and_the_root_child_fills_the_viewport() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(7)
         .set_border_width(Inset::all(1))
@@ -203,7 +202,7 @@ fn border_draws_a_frame_and_the_root_child_fills_the_viewport() {
 #[test]
 fn a_zero_width_border_takes_no_cells() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(4)
         .set_height(1)
@@ -224,7 +223,7 @@ fn bold_and_derived_text() {
   with_platform(|| {
     let count = Signal::new(1u32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("title").set_bold(true),
@@ -252,7 +251,7 @@ fn bold_and_derived_text() {
 #[test]
 fn a_groups_weight_reaches_its_spans() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       RichText::new()
         .add_spans([
           Span::new("a"),
@@ -271,7 +270,7 @@ fn a_groups_weight_reaches_its_spans() {
 #[test]
 fn grid_tracks_size_columns() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Grid::new()
         .set_columns(vec![
           GridTrack::length(4),
@@ -292,7 +291,7 @@ fn grid_tracks_size_columns() {
 #[test]
 fn an_adaptive_grid_fits_its_columns() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Grid::adaptive(4)
         .set_children((
           Text::new("a"),
@@ -314,7 +313,7 @@ fn an_adaptive_grid_fits_its_columns() {
 fn a_second_adaptive_track_drops_the_list() {
   with_platform(|| {
     let adaptive = GridTrack::adaptive(4, TrackLimit::Flex(1.));
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Grid::new()
         .set_columns(vec![adaptive, adaptive])
         .set_children((Text::new("a"), Text::new("b")))
@@ -333,7 +332,7 @@ fn a_named_area_places_its_child() {
   const MAIN: GridName = GridName::new("main");
 
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Grid::new()
         .set_columns(vec![GridTrack::length(4), GridTrack::Flex(1.)])
         .set_areas(GridAreas::new(["head head", "nav main"]))
@@ -362,7 +361,7 @@ fn named_lines_place_a_child() {
   const END: GridName = GridName::new("end");
 
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Grid::new()
         .set_columns(
           GridTemplate::new()
@@ -391,7 +390,7 @@ fn named_lines_place_a_child() {
 #[test]
 fn grid_placement_spans_tracks() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Grid::uniform(2)
         .set_children((
           GridCell::new()
@@ -412,7 +411,7 @@ fn grid_placement_spans_tracks() {
 #[test]
 fn flex_grow_distributes_space() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Flexible::new()
@@ -438,7 +437,7 @@ fn a_runs_derived_flexibility_follows_its_signal() {
   with_platform(|| {
     let grows = Signal::new(false);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Row::new()
         .set_children((
           Flexible::new()
@@ -466,7 +465,7 @@ fn a_runs_derived_flexibility_follows_its_signal() {
 #[derive(Clone, PartialEq)]
 struct Home;
 
-impl terminal::router::Route for Home {
+impl skene_terminal::router::Route for Home {
   fn parse(path: &str) -> Option<Self> {
     (path == "/").then_some(Self)
   }
@@ -484,7 +483,7 @@ fn a_wrapper_without_its_child_takes_no_room() {
   let childless = with_platform(|| {
     let live = Signal::new(true);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_spacing(1)
         .set_children((
@@ -512,7 +511,7 @@ fn a_wrapper_without_its_child_takes_no_room() {
     testing::access_outline()
   });
   let texts = with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((Text::new("a"), Text::new("b")))
         .into_any()
@@ -532,7 +531,7 @@ fn pinned_annotates_the_content_of_a_derived_subtree() {
   with_platform(|| {
     let version = Signal::new(0);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Text::new("top"),
@@ -575,7 +574,7 @@ fn grid_cell_annotates_the_content_of_a_derived_subtree() {
   with_platform(|| {
     let version = Signal::new(0);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Grid::uniform(2)
         .set_rows(vec![GridTrack::Length(1), GridTrack::Length(3)])
         .add_child(Text::new("t"))
@@ -612,7 +611,7 @@ fn flexible_annotates_the_content_of_a_derived_subtree() {
   with_platform(|| {
     let version = Signal::new(0);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_height(6)
         .set_child(
@@ -672,7 +671,7 @@ fn flexible_annotates_the_content_of_a_derived_subtree() {
 #[test]
 fn a_wrapper_around_nothing_annotates_no_later_box() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Stack::new()
         .set_children((
           Pinned::new().set_edges(Inset::all(2)).set_child(empty()),
@@ -691,7 +690,7 @@ fn a_wrapper_around_nothing_annotates_no_later_box() {
 #[test]
 fn a_wrapper_without_its_child_annotates_no_later_box() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Stack::new().set_children((
@@ -732,7 +731,7 @@ fn a_wrapper_without_its_child_annotates_no_later_box() {
 #[test]
 fn a_wrapper_given_its_child_takes_its_setters() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       let wrapper = Pinned::new().set_child(Container::new().set_child(Text::new("x")));
 
       Stack::new()
@@ -750,7 +749,7 @@ fn a_wrapper_given_its_child_takes_its_setters() {
 #[test]
 fn a_negative_margin_overlaps_and_a_negative_padding_takes_no_room() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("abc"),
@@ -780,7 +779,7 @@ fn a_negative_margin_overlaps_and_a_negative_padding_takes_no_room() {
 fn a_negative_width_is_dropped() {
   with_platform(|| {
     let value = Signal::new("hi".to_owned());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Row::new().set_children((
@@ -815,7 +814,7 @@ fn a_negative_width_is_dropped() {
 #[test]
 fn a_negative_variant_lays_out_as_a_negative_base() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Row::new().set_children((
@@ -849,7 +848,7 @@ p q
 #[test]
 fn a_negative_width_expression_lays_out_at_zero() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((Container::new()
           .set_width(Expr::font_size(1.) - 5)
@@ -873,7 +872,7 @@ fn a_negative_width_expression_lays_out_at_zero() {
 #[test]
 fn a_fractional_length_rounds_to_the_nearest_cell() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_spacing(1.4)
         .set_children((
@@ -895,7 +894,7 @@ fn a_fractional_length_rounds_to_the_nearest_cell() {
 #[test]
 fn fraction_width_resolves_against_parent() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Container::new()
@@ -915,7 +914,7 @@ fn fraction_width_resolves_against_parent() {
 #[test]
 fn a_container_fills_when_sized_and_hugs_when_not() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(9)
         .set_height(3)
@@ -931,7 +930,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
   });
 
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_item_alignment(ItemAlignment::Start)
         .add_child(
@@ -952,7 +951,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
 #[test]
 fn a_container_aligns_its_child() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(3)
@@ -977,13 +976,13 @@ fn layout_properties_vary_by_condition() {
   }
 
   with_platform(|| {
-    let _ = terminal::mount(|| row().build());
+    let _ = mount(|| row().build());
 
     assert_eq!(testing::render_to_text(12, 2), "ab   cd\n\n");
   });
 
   with_platform(|| {
-    let _ = terminal::mount(|| row().build());
+    let _ = mount(|| row().build());
 
     assert_eq!(testing::render_to_text(8, 2), "ab cd\n\n");
   });
@@ -1010,7 +1009,7 @@ impl<V: From<Definition<Length>> + 'static> TokenSet<V> for Gutters {
 #[test]
 fn layout_properties_reach_the_layout_and_a_token_spacing_resolves() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(Gutters {
         gutter: Token::new(GUTTER, 2.),
       })
@@ -1052,7 +1051,7 @@ fn layout_properties_reach_the_layout_and_a_token_spacing_resolves() {
 #[test]
 fn a_media_condition_on_padding_switches_with_the_terminals_size() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_spacing(Spacing::from(1).when(Media::min_width(10), 2))
         .set_padding(Inset::all(0).when(Media::min_width(10), Inset::all(1)))
@@ -1097,7 +1096,7 @@ fn a_media_condition_on_padding_switches_with_the_terminals_size() {
 #[test]
 fn a_uniform_grid_lays_out_equal_tracks_and_splits_its_alignment() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(12)
         .set_height(3)
@@ -1120,7 +1119,7 @@ fn a_uniform_grid_lays_out_equal_tracks_and_splits_its_alignment() {
 fn a_stacks_derived_alignment_drives_both_axes() {
   with_platform(|| {
     let alignment = Signal::new(Alignment::CENTER);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(5)
         .set_height(3)
@@ -1182,13 +1181,13 @@ fn a_third_party_layout_view_matches_the_built_in() {
   impl AnyKind for Toolbar {}
 
   impl skene_foundation::View<Terminal> for Toolbar {
-    fn build(self) -> terminal::NodeId {
+    fn build(self) -> skene_terminal::NodeId {
       skene_foundation::View::build(self.base)
     }
   }
 
   let third_party = with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Toolbar::new()
         .set_spacing(1)
         .set_children((
@@ -1205,7 +1204,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
     testing::render_to_text(14, 3)
   });
   let built_in = with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_spacing(1)
         .set_children((
@@ -1234,7 +1233,7 @@ fn an_inline_box_flows_with_the_paragraph() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(10)
         .set_child(
@@ -1277,7 +1276,7 @@ fn an_inline_box_flows_with_the_paragraph() {
 #[test]
 fn a_tall_inline_box_raises_its_line() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(12)
         .set_child(
@@ -1308,7 +1307,7 @@ fn a_tall_inline_box_raises_its_line() {
 #[test]
 fn an_inline_box_never_splits_across_lines() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_child(RichText::new().add_spans([
@@ -1331,7 +1330,7 @@ fn a_span_is_hovered_and_clicked() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       RichText::new()
         .add_spans([
           Span::new("plain "),
@@ -1361,7 +1360,7 @@ fn a_span_is_hovered_and_clicked() {
 #[test]
 fn copying_across_an_inline_box_takes_its_text() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       RichText::new()
         .add_spans([
           Span::new("see ").set_selectable(true),
@@ -1390,7 +1389,7 @@ fn a_grouped_inline_box_places_its_content() {
     let pressed = Rc::new(Cell::new((f32::NAN, f32::NAN)));
     let recorded = Rc::clone(&pressed);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       RichText::new()
         .add_spans([
           Span::new("ab "),
@@ -1419,7 +1418,7 @@ fn a_frame_reports_the_laid_out_size() {
   with_platform(|| {
     let handle = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((Container::new()
           .set_width(Dimension::Fraction(0.5))
@@ -1449,7 +1448,7 @@ fn a_stopped_size_observation_hears_nothing_more() {
   with_platform(|| {
     let handle = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((Container::new()
           .set_width(Dimension::Fraction(0.5))
@@ -1491,7 +1490,7 @@ fn a_stopped_size_observation_hears_nothing_more() {
 #[test]
 fn a_text_entry_lays_out_at_its_native_size() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_item_alignment(ItemAlignment::Start)
         .set_children((
@@ -1519,7 +1518,7 @@ fn a_text_entry_lays_out_at_its_native_size() {
 #[test]
 fn a_text_entry_stretches_across_its_layout() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(12)
         .set_child(Column::new().set_children((
@@ -1549,7 +1548,7 @@ fn a_text_entry_stretches_across_its_layout() {
 #[test]
 fn a_text_entry_grows_from_its_native_size() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Flexible::new()
@@ -1570,7 +1569,7 @@ fn a_text_entry_grows_from_its_native_size() {
   });
 
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Flexible::new()
@@ -1597,7 +1596,7 @@ fn a_text_entry_grows_from_its_native_size() {
 #[test]
 fn a_text_entrys_native_size_yields_to_its_limits() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_item_alignment(ItemAlignment::Start)
         .set_children((

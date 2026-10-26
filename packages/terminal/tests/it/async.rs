@@ -5,7 +5,7 @@
 use std::{cell::Cell, fmt, rc::Rc};
 
 use skene_foundation::Boundary;
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{blue, colors_at, green, is_live, red, rgb, with_platform};
 
@@ -27,7 +27,7 @@ fn derived_swaps_content() {
   with_platform(|| {
     let on = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       derived(move || {
         if on.get() {
           Text::new("on").build()
@@ -51,7 +51,7 @@ fn derived_swaps_content() {
 #[test]
 fn suspense_swaps_fallback_for_loaded_content() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Suspense::new()
         .set_fallback_builder(|| Text::new("LOADING"))
         .set_child_builder(|| {
@@ -96,7 +96,7 @@ fn suspense_swap_preserves_the_content_and_disposal_destroys_the_fallback() {
     let boundary = Rc::new(Cell::new(None::<Boundary>));
     let local = Rc::new(Cell::new(None::<Signal<i32>>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let boundary = Rc::clone(&boundary);
       let local = Rc::clone(&local);
 
@@ -162,7 +162,7 @@ fn nested_suspense_pends_the_enclosing_boundary_once() {
     let outer = Rc::new(Cell::new(None::<Boundary>));
     let inner = Rc::new(Cell::new(None::<Boundary>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let outer = Rc::clone(&outer);
       let inner = Rc::clone(&inner);
 
@@ -218,7 +218,7 @@ fn tasks_end_with_their_scope() {
   with_platform(move || {
     let show = Signal::new(true);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       derived(move || {
         if show.get() {
           let landed = Rc::clone(&landed);
@@ -251,7 +251,7 @@ fn error_boundary_presents_and_clears_reports() {
     let handle = Rc::new(Cell::new(None::<Errors>));
     let grabbed = Rc::clone(&handle);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       derived(move || {
         let grabbed = Rc::clone(&grabbed);
 
@@ -322,7 +322,7 @@ fn a_wrapper_annotates_a_boundarys_content_and_fallback() {
     let boundary = Rc::new(Cell::new(None::<Boundary>));
     let errors = Rc::new(Cell::new(None::<Errors>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let boundary = Rc::clone(&boundary);
       let errors = Rc::clone(&errors);
 

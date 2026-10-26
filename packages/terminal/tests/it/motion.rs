@@ -8,10 +8,9 @@ use std::time::Duration;
 use skene_foundation::{BoxKeyframe, Property, RunKeyframe};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   Color,
   State,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -19,7 +18,7 @@ use skene_terminal::{
 use crate::common::{blue, colors_at, red, rgb, with_platform};
 
 /// A one-second linear color transition.
-fn color_transition() -> Transition<terminal::TerminalProperty> {
+fn color_transition() -> Transition<skene_terminal::TerminalProperty> {
   Transition::new(Property::Background, 1.).set_easing(Easing::Linear)
 }
 
@@ -44,7 +43,7 @@ fn ink_frame(color: impl Into<skene_terminal::StaticLeaf<Color>>) -> RunKeyframe
 #[test]
 fn a_hover_transition_steps_a_color_across_frames() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(4)
         .set_height(1)
@@ -80,7 +79,7 @@ fn a_hover_transition_steps_a_color_across_frames() {
 fn a_derived_length_transition_rounds_to_cells() {
   with_platform(|| {
     let width = Signal::new(2i32);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .derive_width(move || Dimension::Length(width.get()))
         .set_height(1)
@@ -117,7 +116,7 @@ fn a_derived_length_transition_rounds_to_cells() {
 fn a_derived_color_transitions_across_the_stepped_clock() {
   with_platform(|| {
     let color = Signal::new(red());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(4)
         .set_height(1)
@@ -150,7 +149,7 @@ fn a_derived_color_transitions_across_the_stepped_clock() {
 fn an_interrupted_transition_reverses_over_what_it_played() {
   with_platform(|| {
     let width = Signal::new(0i32);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((Container::new()
           .derive_width(move || Dimension::Length(width.get()))
@@ -202,7 +201,7 @@ fn an_interrupted_transition_reverses_over_what_it_played() {
 fn an_overshooting_width_transition_holds_at_zero() {
   with_platform(|| {
     let width = Signal::new(2i32);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((Container::new()
           .derive_width(move || Dimension::Length(width.get()))
@@ -248,7 +247,7 @@ fn an_overshooting_width_transition_holds_at_zero() {
 #[test]
 fn reduced_motion_cuts_a_respecting_transition() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Container::new()
@@ -290,7 +289,7 @@ fn reduced_motion_cuts_a_respecting_transition() {
 fn a_palette_flip_transitions_a_token_driven_color() {
   with_platform(|| {
     let palette = Signal::new(SimplePalette::default().set_card(red()));
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::derive(move || palette.get())
         .set_child_builder(|| {
           Container::new()
@@ -334,7 +333,7 @@ fn a_palette_flip_transitions_a_token_driven_color() {
 #[test]
 fn a_keyframe_animation_samples_its_frames() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(SimplePalette::default().set_card(blue()))
         .set_child_builder(|| {
           Container::new()
@@ -379,7 +378,7 @@ fn a_keyframe_animation_samples_its_frames() {
 #[test]
 fn a_keyframe_missing_its_ends_moves_from_the_resolved_value() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(4)
         .set_height(1)
@@ -410,7 +409,7 @@ fn a_keyframe_missing_its_ends_moves_from_the_resolved_value() {
 #[test]
 fn a_runs_keyframe_animation_samples_its_frames() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(SimplePalette::default().set_card(blue()))
         .set_child_builder(|| {
           Text::new("ink").set_color(red()).add_animation(
@@ -458,7 +457,7 @@ fn an_overlays_animation_starts_over_when_it_opens() {
   with_platform(|| {
     let open = Signal::new(false);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Text::new("page").into_any(),

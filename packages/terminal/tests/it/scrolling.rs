@@ -4,7 +4,13 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_terminal::{self as terminal, HasChild, behavior::Activate, prelude::*, testing};
+use skene_terminal::{
+  HasChild,
+  behavior::Activate,
+  platform::terminal::mount,
+  prelude::*,
+  testing,
+};
 
 use crate::common::with_platform;
 
@@ -16,7 +22,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
     let clicked = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&clicked);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_child(
           Container::new()
@@ -65,12 +71,12 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
   /// Takes every turn for itself.
   struct Dial;
 
-  impl terminal::behavior::Behavior for Dial {
-    fn native(&self) -> Option<terminal::NativeElement> {
-      Some(terminal::NativeElement::Button)
+  impl skene_terminal::behavior::Behavior for Dial {
+    fn native(&self) -> Option<skene_terminal::NativeElement> {
+      Some(skene_terminal::NativeElement::Button)
     }
 
-    fn role(&self) -> Option<terminal::Role> {
+    fn role(&self) -> Option<skene_terminal::Role> {
       None
     }
 
@@ -81,9 +87,9 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
     fn on_wheel(
       &self,
       _: &skene_foundation::WheelEvent,
-      _: &terminal::behavior::ControlHandle,
-    ) -> terminal::Prevent {
-      terminal::Prevent::All
+      _: &skene_terminal::behavior::ControlHandle,
+    ) -> skene_terminal::Prevent {
+      skene_terminal::Prevent::All
     }
   }
 
@@ -91,13 +97,15 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
     let turns = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&turns);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_height(3)
         .set_overflow(Overflow::ScrollIfNeeded)
         .set_child(
           Column::new().set_children((
-            terminal::Control::new(Dial).set_height(1).set_label("dial"),
+            skene_terminal::Control::new(Dial)
+              .set_height(1)
+              .set_label("dial"),
             Container::new()
               .handle_wheel(move |event| log.borrow_mut().push((event.delta, event.unit)))
               .set_child(
@@ -141,7 +149,7 @@ fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
 #[test]
 fn overflow_scrolls_on_its_own_axis_alone() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_child(
           Container::new()
@@ -182,7 +190,7 @@ fn overflow_scrolls_on_its_own_axis_alone() {
 #[test]
 fn focus_scrolls_into_view() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_child(
           Container::new()
@@ -230,7 +238,7 @@ fn frame_rows(width: u16, height: u16) -> Vec<String> {
 fn mount_lazy_column(count: usize, built: &Rc<RefCell<Vec<usize>>>) {
   let built = Rc::clone(built);
 
-  let _ = terminal::mount(|| {
+  let _ = mount(|| {
     Container::new()
       .set_height(10)
       .set_child(
@@ -347,7 +355,7 @@ fn a_resize_widens_the_window() {
     let built = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&built);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       LazyColumn::new()
         .set_item_height(1)
         .set_overscan(3)
@@ -410,7 +418,7 @@ fn measured_items_reshape_the_window() {
     let built = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&built);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_height(6)
         .set_child(
@@ -467,7 +475,7 @@ fn a_lazy_row_windows_along_x() {
     let built = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&built);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       LazyRow::new()
         .set_item_width(5)
         .set_overscan(3)
@@ -504,7 +512,7 @@ fn a_lazy_row_windows_along_x() {
 #[test]
 fn a_fractional_item_height_keeps_items_on_their_spacers() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_height(6)
         .set_child(
@@ -555,7 +563,7 @@ fn a_fractional_item_height_keeps_items_on_their_spacers() {
 #[test]
 fn scrollbar_jumps_and_drags() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(4)
@@ -619,7 +627,7 @@ fn scrollbar_jumps_and_drags() {
 #[test]
 fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(4)
@@ -672,7 +680,7 @@ fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
 #[test]
 fn wheel_target_latches_until_the_pointer_moves() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_child(
           Container::new()
@@ -737,7 +745,7 @@ fn wheel_target_latches_until_the_pointer_moves() {
 #[test]
 fn wheel_gesture_holds_at_the_target_limit_then_chains() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_child(
           Container::new()
@@ -798,7 +806,7 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
 #[test]
 fn page_keys_scroll_by_a_viewport_less_a_row() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_height(4)
         .set_overflow(Overflow::ScrollIfNeeded)
@@ -834,7 +842,7 @@ fn overflowing_content_takes_a_click_where_it_is_drawn() {
       let clicked = Rc::new(RefCell::new(Vec::new()));
       let log = Rc::clone(&clicked);
 
-      let _ = terminal::mount(move || {
+      let _ = mount(move || {
         Container::new()
           .set_child(
             Container::new()

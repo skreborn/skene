@@ -10,7 +10,6 @@ use std::{
 use accesskit::{HasPopup, Invalid, Orientation, Toggled};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   BasicListbox,
   NativeElement,
   NodeId,
@@ -32,7 +31,7 @@ use skene_terminal::{
     TextEntry,
     Toggle,
   },
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
   testing::user,
@@ -60,7 +59,7 @@ fn focus_variant_and_enter_click() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicButton::new(Activate::new())
         .set_width(6)
         .set_height(3)
@@ -168,7 +167,7 @@ fn a_radio_group_set_to_autofocus_focuses_its_chosen_radio() {
   with_platform(|| {
     let chosen = Signal::new(Some("b"));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new()).set_label("before"),
@@ -201,7 +200,7 @@ fn a_listbox_set_to_autofocus_focuses_its_stop() {
   with_platform(|| {
     let chosen: Signal<Option<&str>> = Signal::new(None);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new()).set_label("before"),
@@ -236,7 +235,7 @@ fn mouse_click_hits_and_focuses() {
     let second = Rc::new(Cell::new(0u32));
     let (count_first, count_second) = (Rc::clone(&first), Rc::clone(&second));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -270,7 +269,7 @@ fn space_clicks_on_the_release_the_terminal_reports_or_at_once() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
@@ -303,7 +302,7 @@ fn checkbox_toggles_by_key_and_click() {
   with_platform(|| {
     let on = Signal::new(false);
 
-    let _ = terminal::mount(|| SimpleCheckbox::new().bind_checked(on).build());
+    let _ = mount(|| SimpleCheckbox::new().bind_checked(on).build());
 
     assert!(testing::render_to_text(6, 1).contains("[ ]"));
 
@@ -327,7 +326,7 @@ fn checkbox_labels_render_and_toggle() {
   with_platform(|| {
     let on = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .add_child(
           SimpleCheckbox::new()
@@ -357,7 +356,7 @@ fn radio_group_moves_the_check() {
   with_platform(|| {
     let choice = Signal::new("a");
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       SimpleRadioGroup::new()
         .bind_chosen(choice)
         .set_child(Column::new().set_children((
@@ -405,16 +404,16 @@ fn a_slider_maps_the_pointer_through_its_track() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicSlider::new(
         Slider::new()
           .set_range(SliderRange::new(0., 10., 1.))
           .bind_value(volume),
       )
       .set_width(12)
-      .set_part(terminal::Part::Label, Text::new("vol"))
+      .set_part(skene_terminal::Part::Label, Text::new("vol"))
       .set_part(
-        terminal::Part::Track,
+        skene_terminal::Part::Track,
         Container::new().set_width(8).set_height(1),
       )
       .into_any()
@@ -439,7 +438,7 @@ fn slider_nudges_and_jumps() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicSlider::new(
         Slider::new()
           .set_range(SliderRange::new(0., 10., 1.))
@@ -491,7 +490,7 @@ fn slider_drags_to_the_pointer() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(11)
         .set_child(
@@ -529,7 +528,7 @@ fn slider_shows_the_grab_cursors() {
   with_platform(|| {
     let volume = Signal::new(5.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicSlider::new(
         Slider::new()
           .set_range(SliderRange::new(0., 10., 1.))
@@ -565,7 +564,7 @@ fn a_slider_fills_to_a_thumb_of_its_own_color() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(20)
         .set_child(
@@ -636,7 +635,7 @@ fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_item_alignment(ItemAlignment::Center)
         .add_child(
@@ -683,7 +682,7 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(25)
         .set_child(
@@ -722,7 +721,7 @@ fn a_sliders_end_cells_reach_its_ends() {
   with_platform(|| {
     let volume = Signal::new(50.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(20)
         .set_child(
@@ -755,7 +754,7 @@ fn a_captioned_simple_sliders_track_takes_what_its_caption_leaves() {
   with_platform(|| {
     let volume = Signal::new(50.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(20)
         .set_child(
@@ -809,7 +808,7 @@ fn a_slider_released_off_itself_stops_sliding() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Container::new().set_width(20).set_child(
@@ -851,7 +850,7 @@ fn a_control_keeps_its_press_from_an_ancestor() {
     let counted = Rc::clone(&outer_runs);
     let on = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .handle_click(move || counted.set(counted.get() + 1))
         .set_child(SimpleCheckbox::new().bind_checked(on).set_label("c"))
@@ -873,7 +872,7 @@ fn a_control_keeps_its_press_from_an_ancestor() {
 #[test]
 fn authored_state_variants_paint_on_a_control() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicButton::new(Activate::new())
         .set_width(4)
         .set_height(1)
@@ -908,7 +907,7 @@ fn a_focus_handle_moves_focus() {
   with_platform(|| {
     let handle = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new()).set_label("first"),
@@ -940,7 +939,7 @@ fn a_disabled_control_takes_no_focus_and_no_click() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -978,7 +977,7 @@ fn tab_leaves_a_control_disabled_while_focused_for_the_next() {
     let first = NodeHandle::new();
     let next = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -1016,7 +1015,7 @@ fn tab_leaves_a_control_disabled_while_focused_for_the_next() {
 #[test]
 fn a_container_frames_a_checkbox_mark() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_border_width(Inset::all(1))
         .set_border_color(white())
@@ -1042,7 +1041,7 @@ fn a_container_frames_a_checkbox_mark() {
 #[test]
 fn a_themed_glyph_set_draws_the_marks() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(
         SimpleGlyphs::default()
           .set_checkbox("\u{2611}", "\u{2610}")
@@ -1076,7 +1075,7 @@ fn a_themed_glyph_set_draws_the_marks() {
 #[test]
 fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
   with_platform(|| {
-    let _ = terminal::mount(|| SimpleButton::new("Save").build());
+    let _ = mount(|| SimpleButton::new("Save").build());
 
     testing::trigger_graphics(true);
 
@@ -1100,7 +1099,7 @@ fn a_text_fields_caption_sits_before_its_box() {
     let node = Rc::new(Cell::new(None));
     let built = Rc::clone(&node);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       let field = BasicTextField::new(TextEntry::new().bind_value(value))
         .set_label("Name")
         .set_width(10)
@@ -1135,7 +1134,7 @@ fn a_text_fields_caption_sits_before_its_box() {
 #[test]
 fn simple_controls_take_the_cell_shape() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(SimplePalette::default())
         .set_child_builder(|| {
           Column::new().set_children((
@@ -1219,7 +1218,7 @@ fn a_button_click_stays_on_the_button_while_a_box_click_climbs() {
       note(&log, "box"),
     );
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .handle_click(outer)
         .handle_key_down(move |_| outer_key())
@@ -1273,7 +1272,7 @@ fn space_activates_a_button_once_on_its_release() {
     let counted = Rc::clone(&clicks);
     let go = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicButton::new(Activate::new())
         .set_label("go")
         .bind_handle(go)
@@ -1383,7 +1382,7 @@ fn a_press_centers_the_thumb_under_the_pointer() {
   with_platform(|| {
     let bound = Signal::new(50.0f32);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicSlider::new(Slider::new().set_thumb_extent(4).bind_value(bound))
         .set_width(20)
         .set_height(1)
@@ -1498,7 +1497,7 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
     let items = Signal::new(vec!["a", "b"]);
     let (before, after) = (NodeHandle::new(), NodeHandle::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -1583,7 +1582,7 @@ fn a_radio_group_passes_over_its_disabled_members() {
     let second_disabled = Signal::new(false);
     let before = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -1632,7 +1631,7 @@ fn a_listbox_skips_disabled_options_and_tab_chooses_nothing() {
     let chosen: Signal<Option<&str>> = Signal::new(None);
     let after = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicListbox::new().bind_chosen(chosen).set_child(
@@ -1681,7 +1680,7 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
   with_platform(|| {
     let bound = Signal::new(false);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicCheckbox::new(Toggle::new().bind_checked(bound))
         .set_part(
           Part::Face,
@@ -1736,7 +1735,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
     let row = NodeHandle::new();
     let mut nodes = None;
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       let node = BasicButton::new(Activate::new())
         .set_label("go")
         .derive_disabled(move || disabled.get())
@@ -2088,11 +2087,11 @@ fn a_button_draws_its_defaults_and_its_prominence_re_inks_it_in_place() {
     let prominent = Signal::new(false);
     let [plain, primary, overridden] = mount_nodes(|| {
       [
-        terminal::Button::new("Save").build(),
-        terminal::Button::new("Send")
+        skene_terminal::Button::new("Save").build(),
+        skene_terminal::Button::new("Send")
           .derive_prominent(move || prominent.get())
           .build(),
-        terminal::Button::new("Stop")
+        skene_terminal::Button::new("Stop")
           .set_background(red())
           .set_text_color(green())
           .build(),
@@ -2148,8 +2147,10 @@ fn a_buttons_focus_shows_in_the_accent_and_a_disabled_one_is_muted() {
   with_platform(|| {
     let [_, _] = mount_nodes(|| {
       [
-        terminal::Button::new("Save").build(),
-        terminal::Button::new("Save").set_disabled(true).build(),
+        skene_terminal::Button::new("Save").build(),
+        skene_terminal::Button::new("Save")
+          .set_disabled(true)
+          .build(),
       ]
     });
     let column = usize::from(locate(&testing::render_to_text(10, 2), "Save").0);
@@ -2180,11 +2181,11 @@ fn a_checkbox_draws_its_mark_and_a_mark_of_its_users_replaces_it() {
     let other = Signal::new(true);
     let [checkbox, _] = mount_nodes(|| {
       [
-        terminal::Checkbox::new()
+        skene_terminal::Checkbox::new()
           .set_label("Agree")
           .bind_checked(on)
           .build(),
-        terminal::Checkbox::new()
+        skene_terminal::Checkbox::new()
           .set_label("Mine")
           .set_part(Part::Mark, Text::new("<>"))
           .bind_checked(other)
@@ -2222,7 +2223,7 @@ fn a_switch_is_reported_as_one_and_its_thumb_moves_as_it_turns_on() {
   with_platform(|| {
     let on = Signal::new(false);
     let [switch] = mount_nodes(|| {
-      [terminal::Toggle::new()
+      [skene_terminal::Toggle::new()
         .set_label("Wi-Fi")
         .bind_checked(on)
         .build()]
@@ -2272,13 +2273,13 @@ fn a_radio_group_lays_its_radios_in_a_column_and_marks_the_chosen_one() {
   with_platform(|| {
     let size = Signal::new(1);
     let [group] = mount_nodes(|| {
-      [terminal::RadioGroup::new()
+      [skene_terminal::RadioGroup::new()
         .set_label("Size")
         .bind_chosen(size)
         .set_children((
-          terminal::Radio::new(1).set_label("Small"),
-          terminal::Radio::new(2).set_label("Medium"),
-          terminal::Radio::new(3)
+          skene_terminal::Radio::new(1).set_label("Small"),
+          skene_terminal::Radio::new(2).set_label("Medium"),
+          skene_terminal::Radio::new(3)
             .set_label("Mine")
             .set_part(Part::Mark, Text::new("<>")),
         ))
@@ -2327,11 +2328,11 @@ fn a_radio_groups_body_of_its_users_replaces_its_column() {
   with_platform(|| {
     let size = Signal::new(1);
     let _ = mount_nodes(|| {
-      [terminal::RadioGroup::new()
+      [skene_terminal::RadioGroup::new()
         .bind_chosen(size)
         .set_child(Row::new().set_spacing(2).set_children((
-          terminal::Radio::new(1).set_label("S"),
-          terminal::Radio::new(2).set_label("M"),
+          skene_terminal::Radio::new(1).set_label("S"),
+          skene_terminal::Radio::new(2).set_label("M"),
         )))
         .build()]
     });
@@ -2351,7 +2352,7 @@ fn a_slider_draws_its_track_fill_and_thumb_in_cells() {
   with_platform(|| {
     let volume = Signal::new(0.0f32);
     let [slider] = mount_nodes(|| {
-      [terminal::Slider::new()
+      [skene_terminal::Slider::new()
         .set_label("Vol")
         .set_range(SliderRange::new(0., 100., 1.))
         .bind_value(volume)
@@ -2436,11 +2437,11 @@ fn a_sliders_width_and_track_of_its_users_replace_the_defaults() {
     let volume = Signal::new(100.0f32);
     let [_, replaced] = mount_nodes(|| {
       [
-        terminal::Slider::new()
+        skene_terminal::Slider::new()
           .set_width(10)
           .bind_value(volume)
           .build(),
-        terminal::Slider::new()
+        skene_terminal::Slider::new()
           .set_part(Part::Track, Text::new("----"))
           .bind_value(volume)
           .build(),

@@ -1,7 +1,7 @@
 //! Selection in cells: drags anchored in source space, the word and run gestures, the
 //! copy menu, and the selection colors a typography defines.
 
-use skene_terminal::{self as terminal, Label, behavior::Activate, prelude::*, testing};
+use skene_terminal::{Label, behavior::Activate, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{green, red, rgb, white, with_platform};
 
@@ -19,7 +19,7 @@ fn typography() -> Typography {
 
 /// Mounts `content` under the test typography.
 fn mount_themed(content: impl FnOnce() -> AnyView + 'static) {
-  let _ = terminal::mount(|| {
+  let _ = mount(|| {
     Theme::new(typography())
       .set_child_builder(content)
       .into_any()

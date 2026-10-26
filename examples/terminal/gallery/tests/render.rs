@@ -3,7 +3,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
-  self as terminal,
+  platform::terminal::mount,
   prelude::*,
   testing::{self, with_platform},
 };
@@ -11,7 +11,7 @@ use skene_terminal::{
 #[test]
 fn the_gallery_renders_and_responds() {
   let (frame, clicked, switched, neutral, indigo) = with_platform(|| {
-    let _ = terminal::mount(|| terminal_gallery::app().build());
+    let _ = mount(|| terminal_gallery::app().build());
 
     let frame = testing::render_to_text(60, 240);
     let neutral = testing::render_to_colors(60, 240);

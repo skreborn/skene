@@ -2,7 +2,7 @@
 //! OSC 66 once it proves the protocol, and one cell until then—in layout, paint,
 //! wrapping, a paragraph's baseline and the selection.
 
-use skene_terminal::{self as terminal, CellScale, prelude::*, testing};
+use skene_terminal::{CellScale, platform::terminal::mount, prelude::*, testing};
 
 use crate::{common, common::with_platform};
 
@@ -17,7 +17,7 @@ fn scale_at(width: u16, height: u16, x: usize, y: usize) -> CellScale {
 #[test]
 fn a_size_is_honored_once_the_terminal_proves_it() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Container::new()
@@ -75,7 +75,7 @@ fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
   with_platform(|| {
     testing::trigger_text_sizing(true);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           RichText::new().add_spans([
@@ -111,7 +111,7 @@ fn the_selection_takes_the_clusters_whose_blocks_are_hit() {
   with_platform(|| {
     testing::trigger_text_sizing(true);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Text::new("abc")
         .set_font_size(2.)
         .set_selectable(true)
@@ -145,7 +145,7 @@ fn the_selection_takes_the_clusters_whose_blocks_are_hit() {
 #[test]
 fn an_em_is_the_typography_size_in_cells() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Row::new().set_children((
@@ -180,7 +180,7 @@ fn a_groups_size_reaches_its_spans() {
   with_platform(|| {
     testing::trigger_text_sizing(true);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       RichText::new()
         .add_spans([Span::group([Span::new("b")]).set_font_size(2.)])
         .into_any()
@@ -200,7 +200,7 @@ fn a_tab_in_a_sized_run_is_one_sized_blank() {
   with_platform(|| {
     testing::trigger_text_sizing(true);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           RichText::new().add_spans([Span::new("a"), Span::new("\tb").set_font_size(2.)]),

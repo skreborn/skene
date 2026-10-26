@@ -2,7 +2,7 @@
 //! redefines them for its own spans, a group's media variant reaches them, and a
 //! derived span rewrites its run beside a view it embeds.
 
-use skene_terminal::{self as terminal, Color, prelude::*, testing};
+use skene_terminal::{Color, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{blue, colors_at, green, red, rgb, white, with_platform};
 
@@ -17,7 +17,7 @@ fn ink_at(width: u16, height: u16, x: usize, y: usize) -> Option<(u8, u8, u8)> {
 #[test]
 fn a_text_without_a_color_paints_the_typography_ink() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Theme::new(Typography::default().set_ink(red()).set_link_ink(green())).set_child_builder(
@@ -59,7 +59,7 @@ fn a_groups_color_redefines_the_ink_for_its_spans_alone() {
   with_platform(|| {
     let yellow = Color::srgb(1., 1., 0.);
     let accent = Signal::new(red());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::new(Typography::default().set_ink(white()).set_link_ink(blue()))
         .set_child_builder(move || {
           RichText::new().add_spans([
@@ -99,7 +99,7 @@ fn a_groups_color_redefines_the_ink_for_its_spans_alone() {
 #[test]
 fn a_groups_compound_media_variant_reaches_its_spans() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       RichText::new()
         .add_spans([Span::group([Span::new("x")]).set_color(red().when(
           Condition::and([Media::min_width(1).into(), Media::Light.into()]),
@@ -123,7 +123,7 @@ fn a_groups_compound_media_variant_reaches_its_spans() {
 fn a_derived_span_rewrites_its_run_beside_an_embedded_view() {
   with_platform(|| {
     let label = Signal::new("one".to_owned());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       RichText::new()
         .add_spans([
           Span::derive(move || label.get()),

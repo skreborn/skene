@@ -13,7 +13,6 @@ use std::{any::TypeId, cell::Cell, rc::Rc};
 
 use skene_simple_terminal::{glyph, *};
 use skene_terminal::{
-  self as terminal,
   Definition,
   Definitions,
   Length,
@@ -23,7 +22,7 @@ use skene_terminal::{
   TokenName,
   TokenScope,
   TokenValue,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -130,7 +129,7 @@ fn root_tokens() -> usize {
 #[test]
 fn a_token_set_read_without_a_theme_defines_its_defaults_once() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       let before = root_tokens();
       let cards = Cards::current();
 
@@ -171,7 +170,7 @@ fn a_token_set_read_without_a_theme_defines_its_defaults_once() {
 fn a_token_set_read_under_a_theme_defines_nothing() {
   with_platform(|| {
     let before = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       before.set(root_tokens());
 
       Column::new()
@@ -316,7 +315,7 @@ fn linked_claimed() -> bool {
 #[test]
 fn a_linked_token_paints_its_palettes_default_below_no_theme() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(2)
         .set_height(1)
@@ -334,7 +333,7 @@ fn a_linked_token_paints_its_palettes_default_below_no_theme() {
 #[test]
 fn a_theme_of_a_linked_palette_wins_over_its_default() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Container::new()
@@ -363,7 +362,7 @@ fn a_theme_of_a_linked_palette_wins_over_its_default() {
 fn many_references_lay_a_palette_once() {
   with_platform(|| {
     let before = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       before.set(root_tokens());
 
       Column::new()
@@ -399,7 +398,7 @@ fn many_references_lay_a_palette_once() {
 fn a_read_and_a_reference_lay_a_linked_palette_once() {
   with_platform(|| {
     let before = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       before.set(root_tokens());
 
       Container::new()
@@ -429,7 +428,7 @@ fn a_read_and_a_reference_lay_a_linked_palette_once() {
     assert!(linked_claimed());
     assert_eq!(root_tokens(), before + 2, "the read lays the default");
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(2)
         .set_height(1)
@@ -447,7 +446,7 @@ fn a_read_and_a_reference_lay_a_linked_palette_once() {
 #[test]
 fn an_unreferenced_palette_lays_nothing() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(2)
         .set_height(1)
@@ -466,7 +465,7 @@ fn an_unreferenced_palette_lays_nothing() {
 fn a_derived_leaf_naming_a_linked_token_lays_its_default() {
   with_platform(|| {
     let linked = Signal::new(false);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(2)
         .set_height(1)
@@ -497,7 +496,7 @@ fn a_derived_leaf_naming_a_linked_token_lays_its_default() {
 fn a_default_aliasing_another_palette_lays_both() {
   with_platform(|| {
     let before = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       before.set(root_tokens());
 
       Container::new()
@@ -521,7 +520,7 @@ fn a_default_aliasing_another_palette_lays_both() {
 fn a_theme_lays_only_the_palettes_it_leaves_undefined() {
   with_platform(|| {
     let before = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       before.set(root_tokens());
 
       Column::new()
@@ -542,7 +541,7 @@ fn a_theme_lays_only_the_palettes_it_leaves_undefined() {
 
   with_platform(|| {
     let before = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       before.set(root_tokens());
 
       Theme::new(Aliasing::default())
@@ -565,7 +564,7 @@ fn a_definition_reads_its_tokens_where_it_is_defined() {
   with_platform(|| {
     let blue = Color::srgb(0.2, 0.4, 0.8);
     let orange = Color::srgb(0.9, 0.5, 0.1);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::new(Outer {
         surface: Token::new(SURFACE, blue),
         shade: Token::new(SHADE, Expr::from(SURFACE).lighter(0.2)),
@@ -607,7 +606,7 @@ fn a_definition_reads_its_tokens_where_it_is_defined() {
 #[test]
 fn a_theme_redefines_the_glyph_tokens() {
   with_platform(|| {
-    let node = terminal::mount(|| {
+    let node = mount(|| {
       Theme::new(SimpleGlyphs::default().set_checkbox("X", "O"))
         .set_child_builder(|| Text::new("under"))
         .into_any()
@@ -642,7 +641,7 @@ fn nested_themes_resolve_the_nearest_palette() {
   with_platform(|| {
     let seen = Rc::new(Cell::new(None::<Cards>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let seen = Rc::clone(&seen);
 
       move || {
@@ -684,7 +683,7 @@ fn nested_themes_resolve_the_nearest_palette() {
 #[test]
 fn a_token_resolves_to_its_nearest_definer_as_the_tree_stands() {
   with_platform(|| {
-    let theme = terminal::mount(|| {
+    let theme = mount(|| {
       Theme::new(Cards::with_card(red()))
         .set_child_builder(|| {
           Column::new().set_children((Container::new()
@@ -748,7 +747,7 @@ fn a_token_resolves_to_its_nearest_definer_as_the_tree_stands() {
 #[test]
 fn expressions_resolve_over_tokens_and_the_environment() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(Cards::with_card(blue()))
         .set_child_builder(|| {
           Column::new().set_children((
@@ -779,7 +778,7 @@ fn expressions_resolve_over_tokens_and_the_environment() {
     assert_eq!(colors[4].1, colors[10].1);
     assert_eq!(colors[5].1, None, "half the narrower terminal's width");
     assert_eq!(
-      terminal::media::viewport().get(),
+      skene_terminal::media::viewport().get(),
       skene_foundation::Size::new(10, 2)
     );
   });
@@ -795,7 +794,7 @@ fn a_derived_leaf_names_a_token_or_an_expression_through_the_theme() {
 
     testing::trigger_color_scheme(ColorScheme::Light);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Theme::new(Cards {
@@ -846,7 +845,7 @@ fn a_derived_leaf_names_a_token_or_an_expression_through_the_theme() {
 #[test]
 fn a_runs_color_resolves_through_the_theme() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(Cards::with_card(green()))
         .set_child_builder(|| Text::new("t").set_color(CARD))
         .into_any()
@@ -882,7 +881,7 @@ fn a_theme_reads_its_definitions_with_the_scene_released() {
   with_platform(|| {
     let card = Signal::new(green());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::derive(move || Watchful {
         card: Token::new(CARD, card.get()),
       })
@@ -938,7 +937,7 @@ fn root_color(reference: TokenRef<Color>) -> (u8, u8, u8) {
 #[test]
 fn the_system_colors_at_the_root_follow_the_reported_colors_and_the_scheme_choice() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Container::new()

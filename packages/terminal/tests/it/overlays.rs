@@ -10,7 +10,13 @@ use std::{
 };
 
 use skene_simple_terminal::prelude::SimplePalette;
-use skene_terminal::{self as terminal, HasChild, behavior::Activate, prelude::*, testing};
+use skene_terminal::{
+  HasChild,
+  behavior::Activate,
+  platform::terminal::mount,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{black, blue, colors_at, red, rgb, with_platform};
 
@@ -25,7 +31,7 @@ fn a_modal_opens_and_closes_through_its_signal_without_rebuilding() {
     let built = Rc::new(Cell::new(0u32));
     let inner: Rc<Cell<Option<Signal<i32>>>> = Rc::new(Cell::new(None));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let (built, inner) = (Rc::clone(&built), Rc::clone(&inner));
 
       move || {
@@ -94,7 +100,7 @@ fn a_dismiss_requests_and_never_closes_by_itself() {
     let bound = Signal::new(false);
     let log = Rc::new(RefCell::new(Vec::new()));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let log = Rc::clone(&log);
 
       move || {
@@ -151,7 +157,7 @@ fn a_derived_placement_re_places_an_open_popup() {
     let placement = Signal::new(Placement::Bottom);
     let anchor = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Text::new("top").into_any(),
@@ -193,7 +199,7 @@ fn a_popup_in_a_themes_scope_shows_where_it_is_placed_alone() {
     let open = Signal::new(true);
     let anchor = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Text::new("top").into_any(),
@@ -235,7 +241,7 @@ fn a_press_inside_a_popup_or_on_its_anchor_leaves_it_open() {
     let open = Signal::new(false);
     let anchor = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new()
@@ -285,7 +291,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -340,7 +346,7 @@ fn popup_anchors_below_and_light_dismisses() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -390,7 +396,7 @@ fn a_nested_popup_anchors_where_its_anchor_shows() {
     let trigger = NodeHandle::new();
     let item = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Text::new("top").into_any(),
@@ -444,7 +450,7 @@ fn modal_scrim_defaults_on_and_disables() {
     with_platform(move || {
       let open = Signal::new(false);
 
-      let _ = terminal::mount(move || {
+      let _ = mount(move || {
         let modal = Overlay::modal().bind_open(open);
         let modal = match backdrop {
           Some(color) => modal.set_backdrop(Some(color)),
@@ -490,7 +496,7 @@ fn a_modal_traps_focus() {
     let outside = NodeHandle::new();
     let inside = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -537,7 +543,7 @@ fn a_closed_overlays_tab_stops_are_passed_over() {
     let open = Signal::new(false);
     let (before, inside, after) = (NodeHandle::new(), NodeHandle::new(), NodeHandle::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -600,7 +606,7 @@ fn the_modal_opened_last_holds_the_tab_order() {
     let (first_open, second_open) = (Signal::new(false), Signal::new(false));
     let (first, second) = (NodeHandle::new(), NodeHandle::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Overlay::modal()
@@ -652,7 +658,7 @@ fn a_modal_holds_under_a_popup_above_it() {
     let counted = Rc::clone(&clicks);
     let inside = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -708,7 +714,7 @@ fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
     let opener = NodeHandle::new();
     let inside = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -761,7 +767,7 @@ fn a_focus_handle_moves_focus_to_its_bound_view() {
     let plain = NodeHandle::new();
     let unbound = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -810,7 +816,7 @@ fn an_open_modal_blocks_the_autofocus_beneath_it() {
   with_platform(|| {
     let (page, first, inside) = (NodeHandle::new(), NodeHandle::new(), NodeHandle::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())

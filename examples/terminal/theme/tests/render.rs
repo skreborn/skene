@@ -4,7 +4,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
-  self as terminal,
+  platform::terminal::mount,
   prelude::*,
   testing::{self, with_platform},
 };
@@ -12,7 +12,7 @@ use skene_terminal::{
 #[test]
 fn the_theme_renders_and_switches() {
   let (frame, indigo, teal, dark) = with_platform(|| {
-    let _ = terminal::mount(|| terminal_theme::app().build());
+    let _ = mount(|| terminal_theme::app().build());
 
     let frame = testing::render_to_text(60, 60);
     let indigo = testing::render_to_colors(60, 60);

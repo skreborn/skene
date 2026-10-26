@@ -4,8 +4,8 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_terminal::{
-  self as terminal,
   behavior::{Activate, TextEntry},
+  platform::terminal::mount,
   prelude::*,
   testing,
   testing::user,
@@ -22,7 +22,7 @@ fn a_user_clicks_and_types_into_what_it_finds() {
     let counted = Rc::clone(&clicks);
     let typed = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -68,7 +68,7 @@ fn a_click_focuses_and_activates_what_it_finds() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -135,7 +135,7 @@ fn typed_text_edits_a_bound_entry() {
 #[test]
 fn a_pressed_tab_moves_focus() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new()).set_label("First"),
@@ -162,7 +162,7 @@ fn a_closed_overlay_hides_its_content_from_a_search() {
     let open = Signal::new(false);
     let anchor = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new().set_height(1).bind_handle(anchor),

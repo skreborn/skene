@@ -2,7 +2,14 @@
 //! build on, and the probes reading a frame, a reader's tree and the scene back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
-use skene_terminal::{Color, NodeId, Scene, TokenRef, platform::terminal::Terminal, testing};
+use skene_terminal::{
+  Color,
+  NodeId,
+  Scene,
+  TokenRef,
+  platform::terminal::{Terminal, mount},
+  testing,
+};
 
 /// A row of boxes a cell square, each filled with the color of its token in `colors`'
 /// order: the swatches a frame shows what the tokens resolve to in.
@@ -103,7 +110,7 @@ pub(crate) fn mount_nodes<const N: usize>(views: impl FnOnce() -> [NodeId; N]) -
   use skene_terminal::prelude::*;
 
   let mut built = None;
-  let _ = skene_terminal::mount(|| {
+  let _ = mount(|| {
     let nodes = views();
 
     built = Some(nodes);
@@ -127,7 +134,7 @@ pub(crate) fn stage<const N: usize>(nodes: impl FnOnce() -> [NodeId; N]) -> (Nod
   use skene_terminal::prelude::*;
 
   let mut built = None;
-  let stage = skene_terminal::mount(|| {
+  let stage = mount(|| {
     built = Some(nodes());
 
     Column::new().build()

@@ -4,7 +4,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{rows, with_platform};
 
@@ -17,7 +17,7 @@ fn the_fallback_stands_until_the_signal_turns() {
     let fallbacks = Rc::new(Cell::new(0));
     let children = Rc::new(Cell::new(0));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let fallbacks = Rc::clone(&fallbacks);
       let children = Rc::clone(&children);
 
@@ -70,7 +70,7 @@ fn a_signal_read_while_building_rebuilds_nothing() {
     let read = Signal::new(0);
     let builds = Rc::new(Cell::new(0));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let fallback_builds = Rc::clone(&builds);
       let child_builds = Rc::clone(&builds);
 
@@ -113,7 +113,7 @@ fn a_signal_true_from_the_start_never_builds_the_fallback() {
   with_platform(|| {
     let fallbacks = Rc::new(Cell::new(0));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let fallbacks = Rc::clone(&fallbacks);
 
       move || {
@@ -151,7 +151,7 @@ fn an_enhancement_without_its_child_empties_once_live() {
   with_platform(|| {
     let live = Signal::new(false);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Enhance::new(live.read_only()).set_fallback_builder(|| Text::new("fallback")),

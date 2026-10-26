@@ -7,7 +7,10 @@ use std::time::Duration;
 
 use skene_conformance::{Driver, PAGES, Probes, Reading};
 use skene_foundation::{KeyEvent, NodeId, Realization, Role, Scene, Size, View};
-use skene_terminal::{self as terminal, platform::terminal::Terminal, testing};
+use skene_terminal::{
+  platform::terminal::{Terminal, install, mount, uninstall},
+  testing,
+};
 
 /// The terminal driven as a user drives it, a frame painted at its size before every act
 /// so what it acts on is on screen.
@@ -21,7 +24,7 @@ struct TerminalDriver {
 impl TerminalDriver {
   /// A driver over a platform installed for it, 80 cells by 24.
   fn new() -> Self {
-    terminal::install();
+    install();
 
     Self {
       size: (80, 24),
@@ -37,7 +40,7 @@ impl TerminalDriver {
 
 impl Drop for TerminalDriver {
   fn drop(&mut self) {
-    terminal::uninstall();
+    uninstall();
   }
 }
 
@@ -48,7 +51,7 @@ impl Driver for TerminalDriver {
   fn open(&mut self, page: &str) {
     let page = pages::page(page).unwrap_or_else(|| panic!("no page named {page:?}"));
     let mut probes = Probes::default();
-    let _ = terminal::mount(|| (page.build)(&mut probes).build());
+    let _ = mount(|| (page.build)(&mut probes).build());
 
     self.probes = probes;
     self.paint();

@@ -17,11 +17,10 @@ use proptest::prelude::*;
 use skene_foundation::{NodeKind, NodeRecord, Part};
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   NodeId,
   Scene,
   TOOLTIP_DELAY,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -94,7 +93,7 @@ fn children(node: NodeId) -> Vec<NodeId> {
 fn a_derived_child_mounts_only_its_content_between_its_anchors() {
   with_platform(|| {
     let label = Signal::new("one".to_owned());
-    let root = terminal::mount(move || {
+    let root = mount(move || {
       Container::new()
         .derive_child(move || Text::new(label.get()))
         .into_any()
@@ -131,7 +130,7 @@ fn a_derived_text_rewrites_its_run_in_place() {
   with_platform(|| {
     let label = Signal::new("one".to_owned());
 
-    let _ = terminal::mount(move || Text::derive(move || label.get()).into_any().build());
+    let _ = mount(move || Text::derive(move || label.get()).into_any().build());
 
     assert_eq!(testing::render_to_text(4, 1), "one\n");
 
@@ -152,7 +151,7 @@ fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {
     let items = Signal::new(vec![1, 2, 3]);
     let inner = Rc::new(Cell::new(None::<Signal<i32>>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let inner = Rc::clone(&inner);
 
       move || {
@@ -219,7 +218,7 @@ fn derived_entries_update_in_place_and_follow_a_reorder() {
       },
     ]);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .derive_entries(entries.keyed_by(|row| row.id), |row| {
           Text::derive(move || row.label().get())
@@ -265,7 +264,7 @@ fn switch_keeps_a_branch_and_its_state_across_a_flip() {
     let builds = Rc::new(Cell::new(0));
     let local = Rc::new(Cell::new(None::<Signal<i32>>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let builds = Rc::clone(&builds);
       let local = Rc::clone(&local);
 
@@ -337,7 +336,7 @@ fn a_hidden_branch_pauses_until_it_shows() {
     let count = Signal::new(0);
     let reads = Rc::new(Cell::new(0));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let reads = Rc::clone(&reads);
 
       move || {
@@ -382,7 +381,7 @@ fn switch_forwards_the_pending_annotation_to_every_branch() {
   with_platform(|| {
     let key = Signal::new(1);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_height(4)
         .set_child(
@@ -428,7 +427,7 @@ fn a_hidden_child_builds_when_first_shown_and_pauses_while_hidden() {
     let builds = Rc::new(Cell::new(0));
     let runs = Rc::new(Cell::new(0));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let builds = Rc::clone(&builds);
       let runs = Rc::clone(&runs);
 
@@ -489,7 +488,7 @@ fn an_unchanged_condition_keeps_the_child_where_it_stands() {
     let count = Signal::new(1);
     let builds = Rc::new(Cell::new(0));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let builds = Rc::clone(&builds);
 
       move || {
@@ -539,7 +538,7 @@ fn show_detaches_and_reattaches_the_same_node() {
     let shown = Signal::new(true);
     let local = Rc::new(Cell::new(None::<Signal<i32>>));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let local = Rc::clone(&local);
 
       move || {
@@ -608,7 +607,7 @@ fn a_destroyed_node_holds_no_focus() {
     let alive = Signal::new(true);
     let handle = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       derived(move || {
         if alive.get() {
           Container::new()
@@ -652,7 +651,7 @@ fn a_destroyed_node_holds_no_focus() {
 #[test]
 fn a_view_given_its_child_takes_its_setters() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       let overlay = Overlay::popup().set_child(Text::new("content"));
       let tooltip = Tooltip::new("A tip").set_child(Text::new("described"));
 
@@ -1240,7 +1239,7 @@ fn derived_forwards_the_pending_annotation_to_each_rebuild() {
     let version = Signal::new(0);
     let content = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_height(3)
         .set_child(
@@ -1296,7 +1295,7 @@ fn derived_forwards_the_pending_annotation_to_each_rebuild() {
 fn derive_child_rebuilds_on_change() {
   with_platform(|| {
     let version = Signal::new(0);
-    let parent = terminal::mount(move || {
+    let parent = mount(move || {
       Column::new()
         .derive_child(move || Text::new(format!("v{}", version.get())))
         .into_any()
@@ -1335,7 +1334,7 @@ fn derive_entries_follow_the_locations_shape() {
   with_platform(|| {
     let store = Store::new(BTreeMap::from([(1, "a"), (2, "b")]));
     let builds = Rc::new(Cell::new(0));
-    let parent = terminal::mount({
+    let parent = mount({
       let builds = Rc::clone(&builds);
 
       move || {
@@ -1389,7 +1388,7 @@ fn derive_entries_follow_the_locations_shape() {
 fn segments_mount_in_order() {
   with_platform(|| {
     let items = Signal::new(vec![1, 2]);
-    let parent = terminal::mount(move || {
+    let parent = mount(move || {
       Column::new()
         .add_child(Text::new("a"))
         .derive_children(
@@ -1554,7 +1553,7 @@ fn anchors_and_scopes_are_made_no_node() {
 fn a_box_holding_a_scope_paints_as_one_holding_its_content() {
   let painted = |scoped: bool| {
     with_platform(|| {
-      let _ = terminal::mount(move || {
+      let _ = mount(move || {
         let inner = || Container::new().set_width(1).set_height(1).build();
         let content = if scoped {
           Theme::new(SimplePalette::default())

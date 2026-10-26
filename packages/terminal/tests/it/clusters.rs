@@ -4,11 +4,11 @@
 //! an emoji sequence's width.
 
 use skene_terminal::{
-  self as terminal,
   CellDecoration,
   HasChild,
   TextSelection,
   behavior::TextEntry,
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -37,7 +37,7 @@ fn underlined(decorations: &[CellDecoration], width: usize, row: usize) -> Optio
 #[test]
 fn text_is_measured_by_cells_not_characters() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           marked("e\u{301}x"),
@@ -91,7 +91,7 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
   with_platform(|| {
     let value = Signal::new("日本x".to_owned());
     let selection = Signal::new(TextSelection::default());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(TextEntry::new().bind_value(value).bind_selection(selection))
         .into_any()
         .build()
@@ -181,7 +181,7 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
 fn a_fields_window_scrolls_by_cells() {
   with_platform(|| {
     let value = Signal::new("日本語".to_owned());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextField::new(TextEntry::new().bind_value(value))
         .set_width(4)
         .into_any()
@@ -207,7 +207,7 @@ fn a_fields_window_scrolls_by_cells() {
 #[test]
 fn the_document_selection_takes_whole_clusters() {
   with_platform(|| {
-    let _ = terminal::mount(|| Text::new("日本語").set_selectable(true).build());
+    let _ = mount(|| Text::new("日本語").set_selectable(true).build());
     let _ = testing::render_to_text(12, 4);
 
     testing::trigger_mouse_press(0, 0);
@@ -239,7 +239,7 @@ fn the_document_selection_takes_whole_clusters() {
 #[test]
 fn a_control_character_paints_as_one_visible_cell() {
   with_platform(|| {
-    let _ = terminal::mount(|| marked("a\u{1b}]2;x\u{7}b\u{7f}c").build());
+    let _ = mount(|| marked("a\u{1b}]2;x\u{7}b\u{7f}c").build());
 
     for clustering in [false, true] {
       testing::trigger_grapheme_clustering(clustering);
@@ -262,7 +262,7 @@ fn a_control_character_paints_as_one_visible_cell() {
 #[test]
 fn a_tab_is_one_blank_cell() {
   with_platform(|| {
-    let _ = terminal::mount(|| marked("ab\tc\td").build());
+    let _ = mount(|| marked("ab\tc\td").build());
 
     let text = testing::render_to_text(24, 1);
 

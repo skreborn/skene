@@ -5,7 +5,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
-  self as terminal,
+  platform::terminal::mount,
   prelude::*,
   testing::{self, locate, with_platform},
 };
@@ -13,7 +13,7 @@ use skene_terminal::{
 #[test]
 fn the_menus_open_where_a_view_opts_in() {
   with_platform(|| {
-    let _ = terminal::mount(|| terminal_context_menu::app().build());
+    let _ = mount(|| terminal_context_menu::app().build());
 
     let frame = testing::render_to_text(60, 40);
 

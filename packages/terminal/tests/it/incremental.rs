@@ -7,7 +7,7 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use proptest::prelude::*;
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{blue, colors_at, green, red, rgb, white, with_platform};
 
@@ -90,7 +90,7 @@ proptest! {
       let season = Signal::new("spring");
       let warmed = Signal::new(false);
 
-      let _ = terminal::mount(move || {
+      let _ = mount(move || {
         Theme::derive(move || if warmed.get() { warm() } else { SimplePalette::default() })
           .set_child_builder(move || {
         Column::new()
@@ -201,7 +201,7 @@ fn the_layout_follows_the_scene_across_frames() {
     let built = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&built);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .derive_children(
           move || rows.get(),
@@ -251,7 +251,7 @@ fn a_change_resolves_only_what_it_touched() {
     let width = Signal::new(2_i32);
     let words = Signal::new("one".to_owned());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Row::new().set_children((

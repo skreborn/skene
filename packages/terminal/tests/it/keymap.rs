@@ -7,10 +7,10 @@ use std::{
 };
 
 use skene_terminal::{
-  self as terminal,
   BasicListbox,
   MenuEntry,
   behavior::{Activate, Radio, TextEntry},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -28,7 +28,7 @@ fn a_keymaps_shortcut_runs_its_action() {
     let heard = Rc::new(RefCell::new(Vec::new()));
     let (count, log) = (Rc::clone(&runs), Rc::clone(&heard));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       ContextMenu::new()
         .set_items([MenuEntry::new("Rename")])
         .set_child(
@@ -105,7 +105,7 @@ fn a_controls_shortcut_activates_it_from_anywhere() {
     let (saves, save) = counter();
     let value = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           button("Save", save.clone()).set_shortcut(CTRL_S),
@@ -152,7 +152,7 @@ fn a_shortcut_without_a_modifier_leaves_an_entry_its_key() {
     let (news, new) = counter();
     let value = Signal::new(String::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           button("New", new.clone()).set_shortcut(Shortcut::new(Modifiers::NONE, "n")),
@@ -186,7 +186,7 @@ fn a_collections_shortcut_focuses_its_stop() {
     let (chooses, choose) = counter();
     let chosen = Signal::new(Some("b"));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           BasicRadioGroup::new()
@@ -243,7 +243,7 @@ fn a_shortcut_passes_over_a_disabled_control_and_one_a_modal_excludes() {
     let open = Signal::new(false);
     let confirming = Signal::new(false);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           button("Draft", draft.clone())
@@ -305,7 +305,7 @@ fn a_control_visibility_hides_takes_no_shortcut() {
     let (saves, save) = counter();
     let shown = Signal::new(true);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Visibility::new()
         .derive_shown(move || shown.get())
         .set_child(button("Save", save.clone()).set_shortcut(CTRL_S))
@@ -335,7 +335,7 @@ fn a_keymaps_binding_wins_over_a_controls_shortcut_inside_its_view() {
     let (bound, bind) = counter();
     let (saves, save) = counter();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Keymap::new()
@@ -371,7 +371,7 @@ fn a_rows_shortcut_activates_it_and_a_plain_boxs_does_nothing() {
   with_platform(|| {
     let (clicks, click) = counter();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new()

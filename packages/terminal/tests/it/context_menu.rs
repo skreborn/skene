@@ -8,8 +8,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use skene_terminal::{
-  self as terminal,
   behavior::{Activate, TextEntry},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -34,7 +34,7 @@ fn is_disabled(node: skene_terminal::NodeId) -> bool {
 fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
   with_platform(|| {
     let log: Rc<RefCell<Vec<&'static str>>> = Rc::new(RefCell::new(Vec::new()));
-    let _ = terminal::mount({
+    let _ = mount({
       let log = Rc::clone(&log);
 
       move || {
@@ -114,7 +114,7 @@ fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
 fn the_keys_walk_the_enabled_items_with_wrapping() {
   with_platform(|| {
     let chosen = Signal::new(String::new());
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       let item = move |label: &'static str| {
         MenuEntry::new(label).handle_activate(move || chosen.set(label.to_owned()))
       };
@@ -173,10 +173,9 @@ fn a_standard_item_follows_the_launchs_clipboard() {
   };
 
   common::with_launch(
-    terminal::Launch::new().set_clipboard(Clipboard::COPY),
+    skene_terminal::Launch::new().set_clipboard(Clipboard::COPY),
     || {
-      let _ =
-        terminal::mount(|| menu(Text::new("selectable text").set_selectable(true).into_any()));
+      let _ = mount(|| menu(Text::new("selectable text").set_selectable(true).into_any()));
       let _ = testing::render_to_text(30, 8);
 
       testing::trigger_mouse_press(0, 0);
@@ -207,7 +206,7 @@ fn a_standard_item_follows_the_launchs_clipboard() {
 
   with_platform(|| {
     let value = Signal::new("alpha".to_owned());
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       menu(
         BasicTextField::new(TextEntry::new().bind_value(value))
           .set_width(20)
@@ -233,7 +232,7 @@ fn a_standard_item_follows_the_launchs_clipboard() {
 
   with_platform(|| {
     let value = Signal::new("alpha".to_owned());
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       menu(
         BasicTextField::new(TextEntry::new().bind_value(value))
           .set_read_only(true)
@@ -262,7 +261,7 @@ fn a_standard_item_follows_the_launchs_clipboard() {
 #[test]
 fn the_deepest_menu_along_the_path_wins() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       let root = Column::new()
         .set_children((
           Text::new("plain").into_any(),
@@ -302,7 +301,7 @@ fn the_deepest_menu_along_the_path_wins() {
 #[test]
 fn a_context_menu_around_a_reactive_view_hears_its_content() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       ContextMenu::new()
         .set_items([MenuEntry::new("Rename")])
         .set_child(AnyView::new(|| {
@@ -336,7 +335,7 @@ fn a_context_menu_around_a_reactive_view_hears_its_content() {
 #[test]
 fn a_context_menu_sizes_its_separators() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       ContextMenu::new()
         .set_separator_thickness(Dimension::Length(3))
         .set_items([
@@ -370,7 +369,7 @@ fn a_context_menu_sizes_its_separators() {
 #[test]
 fn an_item_view_draws_each_item() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       ContextMenu::new()
         .set_item_view(|content| {
           Text::new(format!(
@@ -410,7 +409,7 @@ fn an_item_view_draws_each_item() {
 fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
   with_platform(|| {
     let chosen = Signal::new(String::new());
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           ContextMenu::new()
@@ -473,7 +472,7 @@ fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
 fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
   with_platform(|| {
     let chosen = Signal::new(String::new());
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("heading"),
@@ -538,7 +537,7 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
 fn the_standard_menu_acts_on_the_entrys_selection() {
   with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicTextField::new(TextEntry::new().bind_value(value))
         .set_width(20)
         .into_any()

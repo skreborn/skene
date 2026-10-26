@@ -2,7 +2,13 @@
 //! graphics, then renders at its cells times the cell's pixels and is placed over
 //! them, cropped to the cells in view and left out under an open overlay.
 
-use skene_terminal::{self as terminal, behavior::Activate, kurbo::Rect, prelude::*, testing};
+use skene_terminal::{
+  behavior::Activate,
+  kurbo::Rect,
+  platform::terminal::mount,
+  prelude::*,
+  testing,
+};
 
 use crate::common::with_platform;
 
@@ -24,7 +30,7 @@ fn red_box(width: i32, height: i32) -> Painted {
 #[test]
 fn a_painted_box_falls_back_until_graphics_are_proven() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           red_box(4, 2).set_fallback_builder(|| Text::new("a red box")),
@@ -72,7 +78,7 @@ fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
     testing::trigger_graphics(true);
 
     let open = Signal::new(false);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new()

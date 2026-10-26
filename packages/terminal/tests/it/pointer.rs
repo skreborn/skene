@@ -10,7 +10,6 @@ use std::{
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   Handler,
   PointerButton,
   PointerButtons,
@@ -20,7 +19,7 @@ use skene_terminal::{
   Prevent,
   Scene,
   behavior::{Activate, TextEntry},
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing,
 };
@@ -36,7 +35,7 @@ fn pointer_events_carry_cell_coordinates() {
     let moved = Rc::new(Cell::new(None));
     let (pressed, hovered) = (Rc::clone(&down), Rc::clone(&moved));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Container::new().set_width(4).set_height(3),
@@ -80,7 +79,7 @@ fn the_terminals_pointer_is_the_primary_mouse() {
   with_platform(|| {
     let seen = Rc::new(RefCell::new(Vec::new()));
     let (down, moved, up) = (Rc::clone(&seen), Rc::clone(&seen), Rc::clone(&seen));
-    let node = terminal::mount(move || {
+    let node = mount(move || {
       Container::new()
         .set_width(6)
         .set_height(3)
@@ -163,7 +162,7 @@ fn only_a_dragging_box_keeps_a_press() {
     let (dragging_move, dragging_up) = (note("dragging move"), note("dragging up"));
     let (plain_move, plain_up) = (note("plain move"), note("plain up"));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Row::new()
         .set_children((
           Container::new()
@@ -207,7 +206,7 @@ fn two_quick_clicks_at_one_cell_are_a_double_click() {
     let log = Rc::new(RefCell::new(Vec::new()));
     let (clicked, doubled) = (Rc::clone(&log), Rc::clone(&log));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(4)
         .set_height(2)
@@ -247,14 +246,14 @@ fn a_drag_moves_between_boxes_and_drops_on_release() {
     let log = Rc::new(RefCell::new(Vec::new()));
     let (clicked, cancelled, dropped) = (Rc::clone(&log), Rc::clone(&log), Rc::clone(&log));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Row::new()
         .set_children((
           Container::new()
             .set_width(4)
             .set_height(2)
             .set_background(green().when(State::Dragged, blue()))
-            .set_drag_data(|| terminal::DragData::new(String::from("card")))
+            .set_drag_data(|| skene_terminal::DragData::new(String::from("card")))
             .handle_click(move || clicked.borrow_mut().push(String::from("click")))
             .handle_pointer_cancel(move |_| cancelled.borrow_mut().push(String::from("cancel")))
             .set_child(Container::new().set_width(2).set_height(1)),
@@ -327,7 +326,7 @@ fn hover_variant_and_pointer_handlers() {
     let leaves = Rc::new(Cell::new(0u32));
     let (entered, left) = (Rc::clone(&enters), Rc::clone(&leaves));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Container::new()
@@ -362,7 +361,7 @@ fn hover_variant_and_pointer_handlers() {
 #[test]
 fn hover_holds_on_the_ancestors_of_the_hovered_node() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(2)
@@ -399,7 +398,7 @@ fn hover_holds_on_the_ancestors_of_the_hovered_node() {
 #[test]
 fn hover_over_an_overlay_holds_on_its_ancestors() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(10)
         .set_height(3)
@@ -428,7 +427,7 @@ fn hover_over_an_overlay_holds_on_its_ancestors() {
 #[test]
 fn hover_cursor_defaults_follow_the_content() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new())
@@ -475,7 +474,7 @@ fn hover_cursor_defaults_follow_the_content() {
 #[test]
 fn link_click_opens_the_destination() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       RichText::new()
         .add_spans([
           Span::new("read the "),
@@ -512,7 +511,7 @@ fn a_click_stops_at_the_view_that_took_it() {
     let outer_runs = Rc::new(Cell::new(0u32));
     let (inner, outer) = (Rc::clone(&inner_runs), Rc::clone(&outer_runs));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .handle_click(move || outer.set(outer.get() + 1))
         .set_child(
@@ -545,7 +544,7 @@ fn clicks_complete_on_release_over_the_same_target() {
     let second = Rc::new(Cell::new(0u32));
     let (one, two) = (Rc::clone(&first), Rc::clone(&second));
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_spacing(2)
         .set_children((
@@ -581,7 +580,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       BasicButton::new(Activate::new())
         .set_label("go")
         .handle_activate(move || counted.set(counted.get() + 1))
@@ -607,7 +606,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
 #[test]
 fn a_hover_change_repaints_only_its_rows() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children(
           (0..3)
@@ -668,7 +667,7 @@ fn a_point_hits_the_topmost_node() {
       }
     };
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .handle_click(named("page"))
         .set_child(
@@ -721,7 +720,7 @@ fn a_clipping_box_hides_its_overflow_from_a_hit() {
       }
     };
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(20)
         .set_height(8)
@@ -758,7 +757,7 @@ fn a_clipping_box_hides_its_overflow_from_a_hit() {
 #[test]
 fn a_box_sized_by_its_hover_lays_out_as_it_moves() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Row::new()
         .set_children((
           Container::new()

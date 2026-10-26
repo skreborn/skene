@@ -255,7 +255,7 @@ where
 
   let _ = crate::dev::install(terminal.waker());
 
-  let _ = crate::mount(|| app().build());
+  let _ = crate::realize::mount(|| app().build());
   let waker = terminal.waker();
 
   skene_foundation::task::set_notifier(move || waker());
@@ -264,7 +264,7 @@ where
     crate::dev::adopt_restoration();
 
     if let Some(notice) = crate::dev::notice_signal() {
-      let _ = crate::mount(|| crate::dev::notice_view(notice).build());
+      let _ = crate::realize::mount(|| crate::dev::notice_view(notice).build());
     }
   }
 

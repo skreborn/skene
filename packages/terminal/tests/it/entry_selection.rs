@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use skene_terminal::{self as terminal, behavior::TextEntry, prelude::*, testing};
+use skene_terminal::{behavior::TextEntry, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{rgb, rows, white, with_launch, with_platform};
 
@@ -16,7 +16,7 @@ fn highlight() -> Color {
 /// Mounts a single-line field bound to `value` under a typography painting selections
 /// in white on the highlight, at `width` cells, and focuses it by keyboard.
 fn mount_field(value: Signal<String>, width: i32) {
-  let _ = terminal::mount(move || {
+  let _ = mount(move || {
     Theme::new(
       Typography::default()
         .set_selection_ink(white())
@@ -220,7 +220,7 @@ fn an_editor_pastes_line_breaks_and_breaks_over_a_selection() {
   with_platform(|| {
     let value = Signal::new(String::from("ab"));
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicTextEditor::new(TextEntry::new().set_lines(3).bind_value(value))
         .into_any()
         .build()
@@ -338,7 +338,7 @@ fn blur_escape_and_writes_collapse_the_selection() {
 /// Mounts `child` under the selection typography, at 20 x 4 cells, and focuses its
 /// entry by keyboard.
 fn mount_under_typography(child: impl FnOnce() -> AnyView + 'static) {
-  let _ = terminal::mount(move || {
+  let _ = mount(move || {
     Theme::new(
       Typography::default()
         .set_selection_ink(white())
@@ -520,7 +520,7 @@ fn a_drag_held_above_autoscrolls_the_editor() {
 #[test]
 fn an_unoffered_clipboard_key_does_nothing() {
   with_launch(
-    terminal::Launch::new().set_clipboard(Clipboard::NONE),
+    skene_terminal::Launch::new().set_clipboard(Clipboard::NONE),
     || {
       let value = Signal::new(String::from("alpha"));
 

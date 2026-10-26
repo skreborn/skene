@@ -8,14 +8,13 @@ use std::{any::TypeId, time::Duration};
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   Definition,
   Scene,
   StaticLeaf,
   Token,
   TokenName,
   TokenSet,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   testing::{self, locate, user, with_platform},
 };
@@ -72,7 +71,7 @@ fn ink_at(x: u16, y: u16) -> Option<(u8, u8, u8)> {
 fn mount_themed<V: View + 'static>(view: impl FnOnce() -> V + 'static) {
   testing::trigger_color_scheme(ColorScheme::Light);
 
-  let _ = terminal::mount(|| {
+  let _ = mount(|| {
     Theme::new(SimplePalette::default())
       .set_child_builder(view)
       .build()
@@ -83,7 +82,7 @@ fn mount_themed<V: View + 'static>(view: impl FnOnce() -> V + 'static) {
 fn mount_bare<V: View + 'static>(view: impl FnOnce() -> V + 'static) {
   testing::trigger_color_scheme(ColorScheme::Light);
 
-  let _ = terminal::mount(|| View::into_any(view()).build());
+  let _ = mount(|| View::into_any(view()).build());
 }
 
 /// Paints the frame a change starts its transitions on, then lets them settle.

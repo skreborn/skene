@@ -5,17 +5,21 @@
 
 #![cfg(skene_platform = "terminal")]
 
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{
+  platform::terminal::{install, mount, uninstall},
+  prelude::*,
+  testing,
+};
 
 #[test]
 fn the_gallery_paints_as_recorded() {
-  terminal::install();
+  install();
 
-  let _ = terminal::mount(|| terminal_gallery::app().build());
+  let _ = mount(|| terminal_gallery::app().build());
   let _ = testing::pump_tasks();
   let styled = testing::render_to_styled(60, 240);
 
-  terminal::uninstall();
+  uninstall();
 
   insta::assert_snapshot!("gallery", styled);
 }

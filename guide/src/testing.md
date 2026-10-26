@@ -9,7 +9,7 @@ name or by text, and acts as a user acts, through the gestures of the `user` mod
 # #[cfg(skene_platform = "terminal")] {
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  mount,
+  platform::terminal::mount,
   prelude::*,
   testing::{find_by_role, find_by_text, render_to_text, user, with_platform},
 };
@@ -38,7 +38,8 @@ with_platform(|| {
 ```
 
 `with_platform` installs a fresh terminal for the closure and removes it afterwards, and
-`mount` builds a view under its root. `user::click`, `user::type_text` and
+`mount`, the terminal's own seam in `platform::terminal` as the web's is in
+`platform::web`, builds a view under its root. `user::click`, `user::type_text` and
 `user::press_key` turn a gesture into the events a browser dispatches for it, so a test
 exercises focus, keys and the controls' own handling as a reader would. The
 `trigger_*` seams simulate what reaches the app from outside (a key, a resize, a

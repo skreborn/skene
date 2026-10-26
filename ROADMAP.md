@@ -24,9 +24,6 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - The leaves' own seams stand in one place on both facades: the web keeps
-    `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
-    keeps `install`, `mount` and `uninstall` at its root beside `launch`.
     - A library's facade crate names no realization even in its bodies: each facade
     gives a name of its own to what Simple still reaches through `Active` (the bound
     of `field_chrome` on `TextEntryBase` and `DecorationBase`, `Scene::<Active>` to

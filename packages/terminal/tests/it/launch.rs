@@ -2,9 +2,9 @@
 //! it takes the mouse.
 
 use skene_terminal::{
-  self as terminal,
   Label,
   behavior::{Activate, TextEntry},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -19,7 +19,7 @@ fn highlight() -> Color {
 /// Mounts a selectable run over a field bound to `value`, under a typography painting
 /// selections in white on the highlight, and focuses the field by keyboard.
 fn mount_document(value: Signal<String>) {
-  let _ = terminal::mount(move || {
+  let _ = mount(move || {
     Theme::new(
       Typography::default()
         .set_selection_ink(white())
@@ -46,7 +46,7 @@ fn mount_document(value: Signal<String>) {
 #[test]
 fn an_answering_clipboard_offers_every_operation() {
   with_launch(
-    terminal::Launch::new().set_clipboard(Clipboard::NONE),
+    skene_terminal::Launch::new().set_clipboard(Clipboard::NONE),
     || {
       let value = Signal::new(String::from("value"));
 
@@ -88,7 +88,7 @@ fn an_answering_clipboard_offers_every_operation() {
 #[test]
 fn no_clipboard_offers_no_selection_menu_or_key() {
   with_launch(
-    terminal::Launch::new().set_clipboard(Clipboard::NONE),
+    skene_terminal::Launch::new().set_clipboard(Clipboard::NONE),
     || {
       let value = Signal::new(String::from("value"));
 
@@ -167,7 +167,7 @@ fn no_clipboard_offers_no_selection_menu_or_key() {
 #[test]
 fn copy_alone_offers_cut_and_copy() {
   with_launch(
-    terminal::Launch::new().set_clipboard(Clipboard::COPY),
+    skene_terminal::Launch::new().set_clipboard(Clipboard::COPY),
     || {
       let value = Signal::new(String::from("value"));
 
@@ -203,7 +203,7 @@ fn copy_alone_offers_cut_and_copy() {
 #[test]
 fn paste_alone_offers_paste() {
   with_launch(
-    terminal::Launch::new().set_clipboard(Clipboard::PASTE),
+    skene_terminal::Launch::new().set_clipboard(Clipboard::PASTE),
     || {
       let value = Signal::new(String::from("value"));
 
@@ -241,9 +241,9 @@ fn paste_alone_offers_paste() {
 /// pointer shape, while the keyboard still operates the controls.
 #[test]
 fn mouse_off_ignores_every_mouse_event() {
-  with_launch(terminal::Launch::new().set_mouse(false), || {
+  with_launch(skene_terminal::Launch::new().set_mouse(false), || {
     let clicks = Signal::new(0);
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       BasicButton::new(Activate::new())
         .handle_activate(move || clicks.set(clicks.get() + 1))
         .set_label(Label::new(Text::new("Press")))
@@ -271,7 +271,7 @@ fn mouse_off_ignores_every_mouse_event() {
 fn mount_button() -> Signal<u32> {
   let clicks = Signal::new(0);
 
-  let _ = terminal::mount(move || {
+  let _ = mount(move || {
     BasicButton::new(Activate::new())
       .set_label(Label::new(Text::new("press")))
       .handle_activate(move || clicks.update(|count| *count += 1))
@@ -288,7 +288,7 @@ fn mount_button() -> Signal<u32> {
 /// which then acts as usual.
 #[test]
 fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
-  with_launch(terminal::Launch::new(), || {
+  with_launch(skene_terminal::Launch::new(), || {
     let clicks = mount_button();
 
     testing::trigger_mouse_move(2, 0);
@@ -327,10 +327,10 @@ fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
 /// cancel and holds `Pressed` no longer.
 #[test]
 fn the_mouse_key_cancels_a_press_in_progress() {
-  with_launch(terminal::Launch::new(), || {
+  with_launch(skene_terminal::Launch::new(), || {
     let cancels = Signal::new(0u32);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(4)
         .set_height(2)
@@ -359,8 +359,8 @@ fn the_mouse_key_cancels_a_press_in_progress() {
 #[test]
 fn the_mouse_key_is_the_launches_choice() {
   with_launch(
-    terminal::Launch::new().set_mouse_key(Some(terminal::Shortcut::new(
-      terminal::Modifiers::NONE,
+    skene_terminal::Launch::new().set_mouse_key(Some(skene_terminal::Shortcut::new(
+      skene_terminal::Modifiers::NONE,
       "F9",
     ))),
     || {
@@ -386,7 +386,7 @@ fn the_mouse_key_is_the_launches_choice() {
     },
   );
 
-  with_launch(terminal::Launch::new().set_mouse_key(None), || {
+  with_launch(skene_terminal::Launch::new().set_mouse_key(None), || {
     let clicks = mount_button();
 
     testing::trigger_key("Alt+m");
@@ -395,7 +395,7 @@ fn the_mouse_key_is_the_launches_choice() {
     assert_eq!(clicks.get_untracked(), 1, "no key releases the mouse");
   });
 
-  with_launch(terminal::Launch::new().set_mouse(false), || {
+  with_launch(skene_terminal::Launch::new().set_mouse(false), || {
     let clicks = mount_button();
 
     testing::trigger_key("Alt+m");
@@ -410,18 +410,18 @@ fn the_mouse_key_is_the_launches_choice() {
 /// types another script, and `Ctrl-Q` quits whatever the case.
 #[test]
 fn shortcuts_act_by_the_physical_key_under_any_layout() {
-  with_launch(terminal::Launch::new(), || {
+  with_launch(skene_terminal::Launch::new(), || {
     let value = Signal::new(String::from("value"));
 
     mount_document(value);
 
-    let cyrillic = |key: &str, code: terminal::Code| terminal::KeyEvent {
+    let cyrillic = |key: &str, code: skene_terminal::Code| skene_terminal::KeyEvent {
       code,
-      modifiers: terminal::Modifiers::CTRL,
-      ..terminal::KeyEvent::new(key)
+      modifiers: skene_terminal::Modifiers::CTRL,
+      ..skene_terminal::KeyEvent::new(key)
     };
 
-    testing::trigger_key_event(&cyrillic("\u{441}", terminal::Code::KeyC));
+    testing::trigger_key_event(&cyrillic("\u{441}", skene_terminal::Code::KeyC));
 
     assert_eq!(testing::take_copied().as_deref(), Some("value"));
     assert!(!testing::is_quit_requested());

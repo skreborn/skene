@@ -5,7 +5,7 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
-  self as terminal,
+  platform::terminal::mount,
   prelude::*,
   testing::{self, with_platform},
 };
@@ -13,7 +13,7 @@ use skene_terminal::{
 #[test]
 fn the_forms_the_terminal_carries_render() {
   let frame = with_platform(|| {
-    let _ = terminal::mount(|| terminal_enhance::app().build());
+    let _ = mount(|| terminal_enhance::app().build());
 
     testing::render_to_text(60, 30)
   });
@@ -32,7 +32,7 @@ fn the_forms_the_terminal_carries_render() {
   }
 
   let frame = with_platform(|| {
-    let _ = terminal::mount(|| terminal_enhance::app().build());
+    let _ = mount(|| terminal_enhance::app().build());
     let _ = testing::render_to_text(60, 30);
 
     testing::trigger_frame(std::time::Duration::from_secs(1));
@@ -47,7 +47,7 @@ fn the_forms_the_terminal_carries_render() {
 #[test]
 fn the_picture_paints_where_the_terminal_proves_graphics() {
   with_platform(|| {
-    let _ = terminal::mount(|| terminal_enhance::app().build());
+    let _ = mount(|| terminal_enhance::app().build());
 
     assert_eq!(testing::render_to_pictures(60, 30), []);
 

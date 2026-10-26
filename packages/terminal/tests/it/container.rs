@@ -8,7 +8,13 @@ use std::{
 };
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, PointerButton, behavior::Activate, prelude::*, testing};
+use skene_terminal::{
+  PointerButton,
+  behavior::Activate,
+  platform::terminal::mount,
+  prelude::*,
+  testing,
+};
 
 use crate::common::{colors_at, locate, mount_nodes, read, red, rgb, with_platform};
 
@@ -46,7 +52,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     let inner_wheel = note("inner wheel");
     let inner_scroll = note("inner scroll");
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Container::new()
@@ -365,7 +371,7 @@ fn the_controls_inside_a_row_own_their_presses() {
     let (rows, row_click) = counter();
     let (buttons, button_click) = counter();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .handle_click(row_click)
         .set_child(
@@ -441,7 +447,7 @@ fn an_activatable_row_is_a_tab_stop_in_child_order() {
 #[test]
 fn a_border_with_a_token_color_inks_through_the_theme() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(SimplePalette::default().set_card(red()))
         .set_child_builder(|| {
           Container::new()

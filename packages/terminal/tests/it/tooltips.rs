@@ -7,11 +7,11 @@
 use std::time::Duration;
 
 use skene_terminal::{
-  self as terminal,
   NodeId,
   TOOLTIP_DELAY,
   TOOLTIP_GRACE,
   behavior::Activate,
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -53,7 +53,7 @@ fn a_tooltip_describes_the_focus_holder_within_its_view() {
   with_platform(|| {
     let (outer, holder) = (NodeHandle::new(), NodeHandle::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Tooltip::new("Saves your work")
         .set_child(
           Container::new().bind_handle(outer).set_child(
@@ -93,7 +93,7 @@ fn a_tooltip_describes_the_focus_holder_within_its_view() {
 #[test]
 fn a_click_leaves_the_opening_to_the_delay() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Tooltip::new("Saves your work")
@@ -129,7 +129,7 @@ fn a_click_leaves_the_opening_to_the_delay() {
 #[test]
 fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Tooltip::new("Saves your work")
@@ -221,7 +221,7 @@ fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
 #[test]
 fn a_tooltip_stays_open_while_the_pointer_rests_on_its_bubble() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Tooltip::new("Saves your work")
@@ -279,7 +279,7 @@ fn a_tooltip_closes_on_blur_and_its_pending_rest_leaves_with_it() {
   with_platform(|| {
     let shown = Signal::new(true);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           derived(move || {
@@ -354,7 +354,7 @@ fn a_tooltip_around_a_reactive_view_hears_its_content() {
     let version = Signal::new(0);
     let content = NodeHandle::new();
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Text::new("top").into_any(),
@@ -425,7 +425,7 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
     let text = Signal::new("Saves".to_owned());
     let (button, plain) = (NodeHandle::new(), NodeHandle::new());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           Tooltip::derive(move || text.get())
@@ -500,7 +500,7 @@ fn a_controls_description_and_a_tooltips_fold_into_one_list() {
     let button = NodeHandle::new();
     let mut hint = None;
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       let required = Text::new("Required").build();
 
       hint = Some(required);

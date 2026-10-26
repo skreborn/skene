@@ -4,8 +4,8 @@
 #![cfg(skene_platform = "terminal")]
 
 use skene_terminal::{
-  self as terminal,
   CellScale,
+  platform::terminal::mount,
   prelude::*,
   testing::{self, with_platform},
 };
@@ -13,7 +13,7 @@ use skene_terminal::{
 #[test]
 fn the_sections_render_at_one_cell_and_size_up_when_proven() {
   with_platform(|| {
-    let _ = terminal::mount(|| terminal_text_sizing::app().build());
+    let _ = mount(|| terminal_text_sizing::app().build());
 
     let frame = testing::render_to_text(70, 40);
 

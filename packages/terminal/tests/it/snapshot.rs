@@ -5,7 +5,12 @@
 use std::{cell::RefCell, rc::Rc};
 
 use skene_simple_terminal::prelude::*;
-use skene_terminal::{self as terminal, HasChild, prelude::*, testing};
+use skene_terminal::{
+  HasChild,
+  platform::terminal::{adopt_restoration, dev_notice_view, mount},
+  prelude::*,
+  testing,
+};
 
 use crate::common::with_platform;
 
@@ -14,7 +19,7 @@ use crate::common::with_platform;
 #[test]
 fn scroll_offsets_survive_a_snapshot_roundtrip() {
   fn build() {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(4)
@@ -32,7 +37,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
   }
 
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
     build();
 
     let _ = testing::render_to_text(6, 4);
@@ -41,12 +46,12 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
 
     assert!(testing::render_to_text(6, 4).contains("r3"));
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
   let restored = with_platform(|| {
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
     build();
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     testing::render_to_text(6, 4)
   });
@@ -62,7 +67,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
 #[test]
 fn restored_scroll_rebuilds_a_lazy_column_window() {
   fn build() {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_height(4)
         .set_child(
@@ -81,7 +86,7 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
   }
 
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
     build();
 
     let _ = testing::render_to_text(12, 6);
@@ -90,12 +95,12 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
 
     assert!(testing::render_to_text(12, 6).contains("row 500"));
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
   let restored = with_platform(|| {
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
     build();
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     let _ = testing::render_to_text(12, 6);
 
@@ -114,8 +119,8 @@ fn dev_notice_modal_presents_and_dismisses() {
   with_platform(|| {
     let notice = Signal::new(None::<String>);
 
-    let _ = terminal::mount(|| Text::new("app content").build());
-    let _ = terminal::mount(|| terminal::dev_notice_view(notice).build());
+    let _ = mount(|| Text::new("app content").build());
+    let _ = mount(|| dev_notice_view(notice).build());
 
     notice.set(Some("expected `;`".to_owned()));
 
@@ -146,7 +151,7 @@ fn focus_survives_a_snapshot_roundtrip() {
   fn build(hits: &Rc<Cell<u32>>) {
     let hits = Rc::clone(hits);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .set_children((
           SimpleButton::new("first"),
@@ -159,7 +164,7 @@ fn focus_survives_a_snapshot_roundtrip() {
 
   let hits = Rc::new(Cell::new(0));
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
     build(&hits);
 
     let _ = testing::render_to_text(12, 2);
@@ -167,13 +172,13 @@ fn focus_survives_a_snapshot_roundtrip() {
     testing::trigger_key("Tab");
     testing::trigger_key("Tab");
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
 
   with_platform(|| {
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
     build(&hits);
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     let _ = testing::render_to_text(12, 2);
 
@@ -190,7 +195,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
   fn build(items: Vec<u8>, hits: &Rc<RefCell<Vec<u8>>>) {
     let hits = Rc::clone(hits);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .derive_children(
           move || items.clone(),
@@ -209,7 +214,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 
   let hits = Rc::new(RefCell::new(Vec::new()));
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
     build(vec![1, 2, 3], &hits);
 
     let _ = testing::render_to_text(12, 3);
@@ -217,13 +222,13 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
     testing::trigger_key("Tab");
     testing::trigger_key("Tab");
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
 
   with_platform(|| {
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
     build(vec![3, 1, 2], &hits);
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     let _ = testing::render_to_text(12, 3);
 
@@ -242,11 +247,11 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 #[test]
 fn a_caret_survives_a_snapshot_roundtrip() {
   fn build(value: Signal<String>) {
-    let _ = terminal::mount(move || SimpleTextField::new().bind_value(value).build());
+    let _ = mount(move || SimpleTextField::new().bind_value(value).build());
   }
 
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
     let value = Signal::new(String::from("ac"));
 
     build(value);
@@ -257,15 +262,15 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     testing::trigger_key("End");
     testing::trigger_key("ArrowLeft");
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
 
   with_platform(|| {
     let value = Signal::new(String::from("ac"));
 
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
     build(value);
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     let _ = testing::render_to_text(12, 1);
 
@@ -279,7 +284,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
   });
 
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
     let value = Signal::new(String::from("alpha beta"));
 
     build(value);
@@ -290,15 +295,15 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     testing::trigger_key("End");
     testing::trigger_key("Ctrl+Shift+ArrowLeft");
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
 
   with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
 
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
     build(value);
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     let _ = testing::render_to_text(12, 1);
 
@@ -338,7 +343,7 @@ fn mount_cards(order: [&'static str; 3], keyed: bool) -> (Vec<Signal<u32>>, usiz
   let signals = Rc::new(RefCell::new(Vec::new()));
   let cards = Rc::clone(&signals);
 
-  let _ = terminal::mount(move || {
+  let _ = mount(move || {
     Column::new()
       .set_children(order.map(|name| card(name, keyed, &cards)))
       .into_any()
@@ -358,7 +363,7 @@ fn mount_cards(order: [&'static str; 3], keyed: bool) -> (Vec<Signal<u32>>, usiz
 #[test]
 fn a_keyed_view_restores_by_key_among_its_siblings() {
   let (bytes, keyed) = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
 
     let (signals, size) = mount_cards(["a", "b", "c"], true);
 
@@ -366,14 +371,14 @@ fn a_keyed_view_restores_by_key_among_its_siblings() {
       signal.set(value);
     }
 
-    (terminal::reactive::snapshot(), size)
+    (skene_terminal::reactive::snapshot(), size)
   });
   let restored = with_platform(|| {
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
 
     let (signals, _) = mount_cards(["c", "a", "d"], true);
 
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     signals
       .into_iter()
@@ -397,7 +402,7 @@ fn a_keyed_list_item_restores_by_its_key() {
     let signals = Rc::new(RefCell::new(Vec::new()));
     let pushed = Rc::clone(&signals);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Column::new()
         .derive_children(
           move || items.clone(),
@@ -418,20 +423,20 @@ fn a_keyed_list_item_restores_by_its_key() {
   }
 
   let bytes = with_platform(|| {
-    terminal::reactive::record_snapshots();
+    skene_terminal::reactive::record_snapshots();
 
     for (signal, value) in build(vec![1, 2, 3]).into_iter().zip([10, 20, 30]) {
       signal.set(value);
     }
 
-    terminal::reactive::snapshot()
+    skene_terminal::reactive::snapshot()
   });
   let restored = with_platform(|| {
-    terminal::reactive::restore(&bytes);
+    skene_terminal::reactive::restore(&bytes);
 
     let signals = build(vec![3, 1, 4]);
 
-    terminal::adopt_restoration();
+    adopt_restoration();
 
     assert_eq!(testing::render_to_text(4, 3), "3\n1\n4\n");
 

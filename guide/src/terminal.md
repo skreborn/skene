@@ -39,7 +39,9 @@ fn consent(agreed: Signal<bool>) -> impl View {
 The terminal is its facade's one platform, so `Platform::CURRENT` is
 `Platform::Terminal` in every build an app's terminal shell compiles in. Its own
 vocabulary lives in `skene_terminal::platform::terminal`: `CellPainter`, the escape
-trait a low-level view paints the terminal's cells through.
+trait a low-level view paints the terminal's cells through, and `install`, `mount` and
+`uninstall`, the seams an in-process test builds its views through (see
+[Testing](testing.md)), while `launch` stays at the root.
 
 ## Behaving as a browser does
 

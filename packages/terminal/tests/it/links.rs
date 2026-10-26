@@ -5,7 +5,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_terminal::{self as terminal, behavior::Activate, prelude::*, testing};
+use skene_terminal::{behavior::Activate, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{colors_at, locate, red, rgb, white, with_platform};
 
@@ -31,7 +31,7 @@ fn tab_reaches_links_and_enter_opens_them() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           BasicButton::new(Activate::new()).set_label("first"),
@@ -97,7 +97,7 @@ fn a_typography_colors_the_focused_link() {
   let highlight = Color::srgb(0.2, 0.35, 0.53);
 
   with_platform(move || {
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::new(
         Typography::default()
           .set_link_focus_ink(white())
@@ -150,7 +150,7 @@ fn a_typography_colors_the_focused_link() {
 #[test]
 fn a_link_groups_spans_take_the_link_ink() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(Typography::default().set_ink(white()).set_link_ink(red()))
         .set_child_builder(|| {
           RichText::new().add_spans([
@@ -176,7 +176,7 @@ fn a_derived_link_opens_where_its_signal_says() {
   with_platform(|| {
     let destination = Signal::new("https://a.example".to_owned());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       RichText::new()
         .add_spans([
           Span::new("see the "),
@@ -215,7 +215,7 @@ fn click_focuses_a_link_and_enter_is_its_click() {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .handle_click(move || counted.set(counted.get() + 1))
         .set_child(RichText::new().add_spans([
@@ -257,7 +257,7 @@ fn click_focuses_a_link_and_enter_is_its_click() {
 #[test]
 fn a_click_finds_a_right_to_left_link_where_it_is_drawn() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       RichText::new()
         .add_spans([
           Span::new("x "),
@@ -291,7 +291,7 @@ fn a_click_finds_a_right_to_left_link_where_it_is_drawn() {
 #[test]
 fn focus_reveals_a_linked_paragraph() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(10)
         .set_height(2)
@@ -325,7 +325,7 @@ enum Page {
   About,
 }
 
-impl terminal::router::Route for Page {
+impl skene_terminal::router::Route for Page {
   fn parse(path: &str) -> Option<Self> {
     match path {
       "/" => Some(Self::Home),
@@ -350,7 +350,7 @@ fn a_route_link_follows_on_enter_and_a_click() {
     let router = Rc::new(Cell::new(None));
     let installed = Rc::clone(&router);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       installed.set(Some(install_router(Page::Home)));
 
       Column::new()

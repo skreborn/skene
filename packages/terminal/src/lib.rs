@@ -10,9 +10,11 @@
 //! for an in-process test. [`Platform`] is the build's platform as a const, and
 //! [`platform::terminal`] the terminal's own vocabulary: the escape trait a low-level
 //! view is written against ([`CellPainter`](platform::terminal::CellPainter), painting
-//! through [`Cells`](platform::terminal::Cells)). The [`behavior`] module holds what a
-//! [`Control`] runs over: the shipped behaviors, the trait a library's own implements and
-//! the handle it acts through.
+//! through [`Cells`](platform::terminal::Cells)) and the seams an in-process test
+//! installs and mounts through ([`install`](platform::terminal::install),
+//! [`mount`](platform::terminal::mount), [`uninstall`](platform::terminal::uninstall)).
+//! The [`behavior`] module holds what a [`Control`] runs over: the shipped behaviors,
+//! the trait a library's own implements and the handle it acts through.
 //!
 //! Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer. Interaction
 //! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors
@@ -285,12 +287,10 @@ pub use skene_reactive::{self as reactive, LoadState, Resource};
 
 #[cfg(skene_platform = "terminal")]
 pub use crate::{
-  dev::{adopt_restoration, notice_view as dev_notice_view},
   device::{Device, Note, WindowSize},
-  launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
+  launch::{Clipboard, Launch, MOUSE_KEY, launch},
   media::{chosen_scheme, derive_scheme, set_scheme},
   paint::{CellDecoration, Picture},
-  realize::{mount, uninstall},
   routing::install_router,
   text::CellScale,
   views::{

@@ -13,14 +13,14 @@
 #[cfg(skene_platform = "terminal")]
 mod frame {
   use criterion::Criterion;
-  use skene_terminal::{self as terminal, prelude::*, testing};
+  use skene_terminal::{platform::terminal::mount, prelude::*, testing};
 
   /// The rows the column holds.
   const ROWS: usize = 16_000;
 
   /// Mounts a screen-high scroll box over [`ROWS`] text rows.
   fn mount_rows() {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_height(24)
         .set_overflow(Overflow::ScrollIfNeeded)
@@ -37,7 +37,7 @@ mod frame {
 
   /// Mounts a screen-high scroll box over the keyed rows `rows` names.
   fn mount_keyed_rows(rows: Signal<Vec<usize>>) {
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_height(24)
         .set_overflow(Overflow::ScrollIfNeeded)

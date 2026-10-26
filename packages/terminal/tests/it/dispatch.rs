@@ -27,13 +27,12 @@ use skene_foundation::{
   report,
 };
 use skene_terminal::{
-  self as terminal,
   NativeElement,
   NodeId,
   Role,
   Scene,
   behavior::Behavior,
-  platform::terminal::Terminal,
+  platform::terminal::{Terminal, mount},
   prelude::*,
   reactive::{Owner, provide_context, use_context},
   testing,
@@ -265,7 +264,7 @@ fn a_task_a_handler_starts_counts_toward_no_boundary() {
 fn notifications_do_not_bubble() {
   with_platform(|| {
     let log = Log::default();
-    let column = terminal::mount({
+    let column = mount({
       let log = Rc::clone(&log);
 
       move || {
@@ -343,7 +342,7 @@ fn an_edit_is_answered_by_the_entrys_own_controller_alone() {
     let field = NodeHandle::new();
     let asked = Rc::new(RefCell::new(Vec::new()));
     let noted = Rc::clone(&asked);
-    let column = terminal::mount(move || {
+    let column = mount(move || {
       Column::new()
         .set_children((Control::new(Noted {
           truth: value,

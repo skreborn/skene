@@ -3,7 +3,7 @@
 //! uncolored and unbordered so it shows through, while a plain box and every glyph
 //! stay cells.
 
-use skene_terminal::{self as terminal, HasChild, prelude::*, testing};
+use skene_terminal::{HasChild, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{colors_at, red, with_platform};
 
@@ -36,7 +36,7 @@ fn card() -> AnyView {
 #[test]
 fn a_decorated_box_becomes_a_backdrop_where_graphics_show() {
   with_platform(|| {
-    let _ = terminal::mount(|| card().build());
+    let _ = mount(|| card().build());
 
     let frame = testing::render_to_text(12, 6);
 

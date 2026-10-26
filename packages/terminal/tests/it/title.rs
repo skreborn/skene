@@ -1,6 +1,6 @@
 //! The window title: set, and derived from state as it changes.
 
-use skene_terminal::{self as terminal, prelude::*, testing};
+use skene_terminal::{platform::terminal::mount, prelude::*, testing};
 
 use crate::common::with_platform;
 
@@ -11,7 +11,7 @@ fn title_follows_state() {
   with_platform(|| {
     let name = Signal::new("one".to_owned());
 
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       window::derive_title(move || format!("app: {}", name.get()));
 
       Text::new("body").build()

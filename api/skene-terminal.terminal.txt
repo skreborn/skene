@@ -491,6 +491,11 @@ pub trait skene_terminal::platform::terminal::CellPainter
 pub fn skene_terminal::platform::terminal::CellPainter::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 impl skene_terminal::platform::terminal::CellPainter for skene_terminal::platform::terminal::Terminal
 pub fn skene_terminal::platform::terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_terminal::platform::terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
+pub fn skene_terminal::platform::terminal::adopt_restoration()
+pub fn skene_terminal::platform::terminal::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_terminal::View
+pub fn skene_terminal::platform::terminal::install()
+pub fn skene_terminal::platform::terminal::mount(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId
+pub fn skene_terminal::platform::terminal::uninstall()
 pub type skene_terminal::platform::terminal::CellEngine = skene_foundation::text::mask::Substituted<skene_parley::engine::ParleyEngine, skene_terminal::platform::terminal::StandIns>
 pub mod skene_terminal::prelude
 pub use skene_terminal::prelude::AccessProp
@@ -2868,22 +2873,17 @@ impl<V: skene_foundation::spine::view::View<skene_terminal::Active>> skene_termi
 pub fn V::build(self) -> skene_foundation::spine::node::NodeId where Self: core::marker::Sized
 pub fn V::into_any(self) -> skene_terminal::AnyView where Self: core::marker::Sized
 pub fn V::set_key(self, impl core::hash::Hash) -> skene_terminal::Keyed<Self> where Self: core::marker::Sized
-pub fn skene_terminal::adopt_restoration()
 pub fn skene_terminal::cancel(skene_foundation::spine::realization::Timer)
 pub fn skene_terminal::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub fn skene_terminal::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme> + 'static)
 pub fn skene_terminal::derived(impl core::ops::function::Fn() -> skene_foundation::spine::node::NodeId + 'static) -> skene_foundation::spine::node::NodeId
-pub fn skene_terminal::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_terminal::View
 pub fn skene_terminal::empty() -> impl skene_terminal::View
-pub fn skene_terminal::install()
 pub fn skene_terminal::install_router<R: skene_foundation::routing::Route>(R) -> skene_foundation::routing::Router<R>
 pub fn skene_terminal::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_terminal::platform::terminal::Terminal>
-pub fn skene_terminal::mount(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId
 pub fn skene_terminal::reconcile<T, I, K>(skene_foundation::spine::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_foundation::spine::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
 pub fn skene_terminal::schedule(core::time::Duration, impl core::ops::function::FnOnce() + 'static) -> skene_foundation::spine::realization::Timer
 pub fn skene_terminal::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
 pub fn skene_terminal::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
-pub fn skene_terminal::uninstall()
 pub type skene_terminal::Active = skene_terminal::platform::terminal::Terminal
 pub type skene_terminal::AnyView = skene_foundation::spine::view::AnyView<skene_terminal::Active>
 pub type skene_terminal::BasicButton = skene_terminal::Control<skene_foundation::control::activate::Activate>

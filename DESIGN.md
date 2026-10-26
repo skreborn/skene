@@ -1847,11 +1847,15 @@ examples, each gated on the same cfg.
 
 Its `platform` module holds the terminal's own vocabulary as the web's holds each pixel
 platform's: `platform::terminal` is the terminal platform itself, `Terminal`, the
-`CellPainter` escape trait and the `Cells` it paints through. `Platform`, at the crate's
-root and in its prelude, is the build's platform as a const enum of one variant,
-`Terminal`, with `CURRENT` and `name` alone, since the pixel facade's leaves and Apple's
-grouping have no terminal counterpart. `Launch` and its options, `launch`, `install`,
-`mount` and `uninstall` stay at the root.
+`CellPainter` escape trait and the `Cells` it paints through, the `CellEngine`, and the
+terminal's entry points and seams, as `platform::web` holds each leaf's: `install`,
+`mount` and `uninstall` for an in-process test, and `adopt_restoration` and
+`dev_notice_view` for a dev reload. `Platform`, at the crate's root and in its prelude,
+is the build's platform as a const enum of one variant, `Terminal`, with `CURRENT` and
+`name` alone, since the pixel facade's leaves and Apple's grouping have no terminal
+counterpart. `launch`, `Launch` and its options (`Clipboard`, `MOUSE_KEY`, its own
+`install` for a test under a configuration) and the `Device` it runs on stay at the
+root.
 
 The loop runs on a `Device`: bytes in and out, the window's size, a wake, raw mode, and
 notes for what the device learns besides input (a request to end, a job control stop
@@ -2255,7 +2259,8 @@ matches on it, writing `#[cfg(skene_platform = "<p>")]` only around an arm that 
 a platform's own control. A platform's own vocabulary lives in its `platform::<p>`
 module, its data types in every build and its controls in its own: `platform::web`
 holds each leaf's realization and the web's native door, `platform::terminal` the
-terminal's realization and escape trait, and
+terminal's realization, its escape trait and its seams (`install`, `mount`,
+`uninstall`), the root keeping `launch` on both facades, and
 `platform::{android, apple, ios, linux, macos, windows}` are empty until their
 platforms land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a server
 build never emits the browser entry or splits a lazy body, the terminal's `#[main]`

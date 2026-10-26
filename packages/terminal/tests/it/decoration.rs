@@ -2,7 +2,7 @@
 //! a box's scrollbars in its own glyphs and colors, a paint mixing against the
 //! terminal's own colors, and a run's decoration lines.
 
-use skene_terminal::{self as terminal, CellDecoration, prelude::*, testing};
+use skene_terminal::{CellDecoration, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{black, blue, colors_at, red, rgb, with_platform};
 
@@ -10,7 +10,7 @@ use crate::common::{black, blue, colors_at, red, rgb, with_platform};
 #[test]
 fn shadow_mixes_into_the_cells_beneath() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_background(red())
         .set_child(
@@ -39,7 +39,7 @@ fn shadow_mixes_into_the_cells_beneath() {
 #[test]
 fn a_shadows_offset_moves_it() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_background(red())
         .set_child(
@@ -71,7 +71,7 @@ fn a_shadows_offset_moves_it() {
 #[test]
 fn a_boxs_scrollbars_draw_with_its_glyphs_and_colors() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_height(4)
         .set_overflow(Overflow::ScrollIfNeeded)
@@ -107,7 +107,7 @@ fn a_boxs_scrollbars_draw_with_its_glyphs_and_colors() {
 #[test]
 fn a_paint_mixes_against_the_terminals_own_colors() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(2)
         .set_height(1)
@@ -138,7 +138,7 @@ fn a_paint_mixes_against_the_terminals_own_colors() {
 #[test]
 fn a_runs_decoration_paints_its_lines_into_the_cells() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Column::new()
         .set_children((
           Text::new("wavy")

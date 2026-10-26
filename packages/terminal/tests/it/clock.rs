@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use skene_terminal::{self as terminal, testing};
+use skene_terminal::testing;
 
 use crate::common::with_platform;
 
@@ -17,12 +17,12 @@ fn due_actions_run_earliest_first() {
 
       move || ran.borrow_mut().push(label)
     };
-    let _ = terminal::schedule(Duration::from_secs(2), action("late"));
-    let _ = terminal::schedule(Duration::from_secs(1), action("early"));
-    let cancelled = terminal::schedule(Duration::from_secs(1), action("cancelled"));
-    let _ = terminal::schedule(Duration::from_secs(5), action("later"));
+    let _ = skene_terminal::schedule(Duration::from_secs(2), action("late"));
+    let _ = skene_terminal::schedule(Duration::from_secs(1), action("early"));
+    let cancelled = skene_terminal::schedule(Duration::from_secs(1), action("cancelled"));
+    let _ = skene_terminal::schedule(Duration::from_secs(5), action("later"));
 
-    terminal::cancel(cancelled);
+    skene_terminal::cancel(cancelled);
     testing::trigger_frame(Duration::from_secs(3));
 
     assert_eq!(*ran.borrow(), ["early", "late"]);

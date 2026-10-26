@@ -6,10 +6,10 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
-  self as terminal,
   ContainerName,
   ContainerQuery,
   StaticLeaf,
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -20,7 +20,7 @@ use crate::common::{blue, colors_at, green, red, rgb, white, with_launch, with_p
 #[test]
 fn media_variant_resolves_against_terminal_size() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(3)
@@ -39,7 +39,7 @@ fn media_variant_resolves_against_terminal_size() {
 #[test]
 fn composed_condition_resolves() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(3)
@@ -65,7 +65,7 @@ fn composed_condition_resolves() {
 #[test]
 fn color_scheme_conditions_follow_the_background() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(6)
         .set_height(3)
@@ -87,14 +87,14 @@ fn color_scheme_conditions_follow_the_background() {
 #[test]
 fn the_scheme_signal_and_a_watched_condition_follow_the_background() {
   with_platform(|| {
-    let dark = terminal::media::watch(&Media::Dark);
+    let dark = skene_terminal::media::watch(&Media::Dark);
 
-    assert_eq!(terminal::media::scheme().get(), ColorScheme::Dark);
+    assert_eq!(skene_terminal::media::scheme().get(), ColorScheme::Dark);
     assert!(dark.get());
 
     testing::trigger_color_scheme(ColorScheme::Light);
 
-    assert_eq!(terminal::media::scheme().get(), ColorScheme::Light);
+    assert_eq!(skene_terminal::media::scheme().get(), ColorScheme::Light);
     assert!(!dark.get());
   });
 }
@@ -104,7 +104,7 @@ fn the_scheme_signal_and_a_watched_condition_follow_the_background() {
 #[test]
 fn border_glyphs_select_the_character_set() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Container::new()
         .set_width(4)
         .set_height(3)
@@ -128,7 +128,7 @@ fn border_glyphs_select_the_character_set() {
 #[test]
 fn an_unconditional_token_ignores_the_terminals_background() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
+    let _ = mount(|| {
       Theme::new(SimplePalette::default().set_card(Color::srgb(0.2, 0.4, 0.8)))
         .set_child_builder(|| {
           Container::new()
@@ -155,7 +155,7 @@ fn a_derived_token_paints_through_the_theme() {
   with_platform(|| {
     let plain = Signal::new(false);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::new(SimplePalette::default().set_card(blue()))
         .set_child_builder(move || {
           Container::new()
@@ -191,7 +191,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
     let builds = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&builds);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Theme::new(SimplePalette::default())
         .set_child_builder(move || {
           derive_scheme(move || Some(scheme.get()));
@@ -208,7 +208,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
 
     let light = testing::render_to_colors(4, 1);
 
-    assert_eq!(terminal::chosen_scheme(), Some(ColorScheme::Light));
+    assert_eq!(skene_terminal::chosen_scheme(), Some(ColorScheme::Light));
 
     scheme.set(ColorScheme::Dark);
 
@@ -221,7 +221,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
 
     set_scheme(None);
 
-    assert_eq!(terminal::chosen_scheme(), None);
+    assert_eq!(skene_terminal::chosen_scheme(), None);
   });
 }
 
@@ -232,7 +232,7 @@ fn a_derived_slot_updates_and_a_hover_variant_still_wins() {
   with_platform(|| {
     let color = Signal::new(red());
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_width(4)
         .set_height(1)
@@ -283,7 +283,7 @@ fn a_container_condition_resolves_against_the_named_containers_size() {
   with_platform(|| {
     let width = Signal::new(20);
 
-    let _ = terminal::mount(move || {
+    let _ = mount(move || {
       Container::new()
         .set_container_name(SIDEBAR)
         .derive_width(move || width.get())
@@ -326,14 +326,14 @@ fn a_container_condition_resolves_against_the_named_containers_size() {
 /// condition answer alike.
 #[test]
 fn the_pointer_answers_whether_the_app_takes_the_mouse() {
-  fn mount() -> Memo<bool> {
+  fn mount_watching_hover() -> Memo<bool> {
     let hovers = Rc::new(Cell::new(None));
 
-    let _ = terminal::mount({
+    let _ = mount({
       let hovers = Rc::clone(&hovers);
 
       move || {
-        hovers.set(Some(terminal::media::watch(&Media::Hover)));
+        hovers.set(Some(skene_terminal::media::watch(&Media::Hover)));
 
         Container::new()
           .set_width(2)
@@ -348,19 +348,25 @@ fn the_pointer_answers_whether_the_app_takes_the_mouse() {
   }
 
   with_platform(|| {
-    let hovers = mount();
+    let hovers = mount_watching_hover();
 
-    assert_eq!(terminal::media::pointer().get(), PointerPrecision::Fine);
-    assert!(terminal::media::hover().get());
+    assert_eq!(
+      skene_terminal::media::pointer().get(),
+      PointerPrecision::Fine
+    );
+    assert!(skene_terminal::media::hover().get());
     assert!(hovers.get());
     assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(red())));
   });
 
-  with_launch(terminal::Launch::new().set_mouse(false), || {
-    let hovers = mount();
+  with_launch(skene_terminal::Launch::new().set_mouse(false), || {
+    let hovers = mount_watching_hover();
 
-    assert_eq!(terminal::media::pointer().get(), PointerPrecision::Absent);
-    assert!(!terminal::media::hover().get());
+    assert_eq!(
+      skene_terminal::media::pointer().get(),
+      PointerPrecision::Absent
+    );
+    assert!(!skene_terminal::media::hover().get());
     assert!(!hovers.get());
     assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(blue())));
   });

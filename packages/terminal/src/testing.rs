@@ -55,14 +55,14 @@ struct Installed;
 
 impl Drop for Installed {
   fn drop(&mut self) {
-    crate::uninstall();
+    crate::platform::terminal::uninstall();
   }
 }
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards, a panicking
 /// `body` included.
 pub fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  crate::install();
+  crate::platform::terminal::install();
 
   let _installed = Installed;
 

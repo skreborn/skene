@@ -1,6 +1,9 @@
 //! What a control's interaction is: the shipped behaviors, the trait a library's own
 //! implements with what its hooks name, the handle a behavior acts through and the
-//! contexts a collection's members join.
+//! contexts a behavior shares.
+//!
+//! A collection's members join its context, and a slider's parts read its
+//! [`SliderContext`].
 //!
 //! A [`Control`](crate::Control) runs over one [`Behavior`], and each `Basic*` view is
 //! a control over one of these (`BasicButton` over [`Activate`], `BasicCheckbox` over

@@ -525,9 +525,10 @@ realization. Each facade's `behavior` module (`skene_web::behavior`,
 `skene_terminal::behavior`, parallel member for member) re-exports the shipped
 behaviors (`Collection` and `Member` under a `CollectionPolicy` among them, with the
 collections' contexts `CollectionContext`, `RadioGroupContext`, `ListboxContext` and
-`MenuContext`, and the slider's `SliderContext`), `Behavior` with what its hooks name beyond the views' vocabulary
-(`EventKind`, `LabelPlacement`, `PopupKind`), `ControlHandle`, `ControlOps`, `Roster`
-and `TypeAhead`, so a library writes a behavior through its facade alone and the root
+`MenuContext`, and the slider's `SliderContext`), `Behavior` with what its hooks name
+beyond the views' vocabulary (`EventKind`, `LabelPlacement`, `PopupKind`),
+`ControlHandle`, `ControlOps`, `Roster` and `TypeAhead`, so a library writes a behavior
+through its facade alone and the root
 leaves a behavior's name free for the drawn view of the same name; `Control`, the
 `Basic*` views, `Choice`, `Chosen`, `TextSelection` and `Keyboard` with its kin stay at
 the root, beside the views they are used with. A

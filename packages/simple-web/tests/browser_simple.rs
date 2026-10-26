@@ -565,7 +565,7 @@ fn text_under_the_simple_theme_inks_in_the_palettes_foreground() {
 }
 
 /// With no theme above, reading the palette yields the default and defines it at the
-/// root, so a box referencing a token and a Simple view alike resolve it.
+/// root, so a box referencing a token and a Simple preset alike resolve it.
 #[wasm_bindgen_test]
 fn the_default_palette_stands_in_at_the_root_without_a_theme() {
   let _scheme = Scheme::choose(ColorScheme::Light);
@@ -626,7 +626,7 @@ impl TokenSet<WebTokenValue> for AcmePalette {
 
 /// A third-party palette nests under the Simple theme exactly as the Simple palette
 /// does: its theme defines it, `current` reads it, a box resolves it under both
-/// schemes, and the Simple views beneath still resolve the Simple palette.
+/// schemes, and the Simple presets beneath still resolve the Simple palette.
 #[wasm_bindgen_test]
 async fn a_third_party_palette_works_under_theme_like_the_simple_one() {
   let scheme = Scheme::choose(ColorScheme::Light);

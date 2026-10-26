@@ -24,11 +24,6 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - A library's facade crate names no realization even in its bodies: each facade
-    gives a name of its own to what Simple still reaches through `Active` (the bound
-    of `field_chrome` on `TextEntryBase` and `DecorationBase`, `Scene::<Active>` to
-    record a part, `IntoChildOf::<Active, FlexChild>` to erase the slider's flexible
-    track).
 2. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.
@@ -286,6 +281,11 @@ in a code comment.
     vocabulary is made parallel to `skene-gui`'s name for name, settled against
     `spikes/linux/DEFAULTS.md` and `spikes/linux/design/api.md` (a scheme's name, item
     and axis alignments, a viewport's size, `set_children` beside `add_child`).
+    - The surface traits without a parameter on both facades, as AGENTS states, so a
+    facade's impl line is `impl ContainerBase for Container {}` and a library bounds
+    on its facade's `DecorationBase` rather than the foundation's at `Active`; each
+    facade's trait keeps a member resolvable while the foundation's is in scope too,
+    which a same-named subtrait does not (`DECISIONS.md`, 2026-10-26).
     - The web: `EditContext` or a rendering of its own a progressive enhancement over
     its form elements, never a replacement.
 10. **The CLI for every platform.**

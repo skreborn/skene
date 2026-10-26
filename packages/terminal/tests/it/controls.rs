@@ -31,7 +31,7 @@ use skene_terminal::{
     TextEntry,
     Toggle,
   },
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing,
   testing::user,
@@ -2197,7 +2197,7 @@ fn a_checkbox_draws_its_mark_and_a_mark_of_its_users_replaces_it() {
     assert_eq!(rows(&frame), "[ ] Agree\n<> Mine\n", "{frame}");
     assert_eq!(read(checkbox).role(), Role::CheckBox);
     assert!(
-      Scene::<Terminal>::with(|scene| scene.find_part(checkbox, Part::Mark)).is_some(),
+      Scene::with(|scene| scene.find_part(checkbox, Part::Mark)).is_some(),
       "the default mark is the checkbox's mark"
     );
 
@@ -2234,7 +2234,7 @@ fn a_switch_is_reported_as_one_and_its_thumb_moves_as_it_turns_on() {
     assert_eq!(read(switch).role(), Role::Switch);
     assert!(!is_checked(switch));
 
-    let (track, thumb) = Scene::<Terminal>::with(|scene| {
+    let (track, thumb) = Scene::with(|scene| {
       (
         scene.find_part(switch, Part::Track),
         scene.find_part(switch, Part::Thumb),
@@ -2244,7 +2244,7 @@ fn a_switch_is_reported_as_one_and_its_thumb_moves_as_it_turns_on() {
     let thumb = thumb.expect("its thumb is the switch's thumb");
 
     assert!(
-      Scene::<Terminal>::with(|scene| {
+      Scene::with(|scene| {
         std::iter::successors(Some(thumb), |node| scene.parent(*node)).any(|node| node == track)
       }),
       "the track holds the thumb"
@@ -2297,7 +2297,7 @@ fn a_radio_group_lays_its_radios_in_a_column_and_marks_the_chosen_one() {
     let small = testing::find_by_role(Role::RadioButton, "Small").expect("a radio");
 
     assert!(
-      Scene::<Terminal>::with(|scene| scene.find_part(small, Part::Mark)).is_some(),
+      Scene::with(|scene| scene.find_part(small, Part::Mark)).is_some(),
       "the default mark is the radio's mark"
     );
     assert!(is_checked(small));
@@ -2361,7 +2361,7 @@ fn a_slider_draws_its_track_fill_and_thumb_in_cells() {
 
     assert_eq!(read(slider).role(), Role::Slider);
 
-    let (track, fill, thumb) = Scene::<Terminal>::with(|scene| {
+    let (track, fill, thumb) = Scene::with(|scene| {
       (
         scene.find_part(slider, Part::Track),
         scene.find_part(slider, Part::Fill),
@@ -2374,7 +2374,7 @@ fn a_slider_draws_its_track_fill_and_thumb_in_cells() {
       let part = part.unwrap_or_else(|| panic!("its {name} is the slider's {name}"));
 
       assert!(
-        Scene::<Terminal>::with(|scene| {
+        Scene::with(|scene| {
           std::iter::successors(Some(part), |node| scene.parent(*node)).any(|node| node == track)
         }),
         "the track holds the {name}"
@@ -2455,7 +2455,7 @@ fn a_sliders_width_and_track_of_its_users_replace_the_defaults() {
     assert_eq!(surface(10, 0), surface(23, 0), "and nothing past it");
     assert_eq!(rows(&testing::render_to_text(24, 2)), "\n----\n");
     assert!(
-      Scene::<Terminal>::with(|scene| scene.find_part(replaced, Part::Thumb)).is_none(),
+      Scene::with(|scene| scene.find_part(replaced, Part::Thumb)).is_none(),
       "a track its user sets brings no default thumb"
     );
   });

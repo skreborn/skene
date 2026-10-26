@@ -170,7 +170,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     }
   }
 
-  properties! { style_mut, P;
+  properties! { style_mut, crate::Condition<P::Scalar>;
     set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
@@ -200,7 +200,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       "the direction auto-placed children fill";
   }
 
-  crate::alignment_properties! { style_mut, P;
+  crate::alignment_properties! { style_mut, crate::Condition<P::Scalar>;
     set_alignment / derive_alignment, "the alignment of each child",
     "The horizontal component lands on the inline axis, the vertical one on the cross or \
      block axis."

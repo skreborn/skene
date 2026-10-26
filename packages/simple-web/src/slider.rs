@@ -7,13 +7,11 @@ use skene_foundation::{
   Dimension,
   FlexChild,
   Flexibility,
-  IntoChildOf,
   ItemAlignment,
   Scalar,
   SliderContext,
 };
 use skene_web::{
-  Active,
   AnyView,
   Container,
   ContainerBase,
@@ -25,6 +23,7 @@ use skene_web::{
   HasChild,
   HasChildren,
   Inset,
+  IntoChildOf,
   NodeHandle,
   NodeId,
   Part,
@@ -95,7 +94,7 @@ impl SimpleSlider {
   /// placed at the fraction the enclosing slider's [`SliderContext`] reads. It takes
   /// what the slider's caption leaves.
   pub fn track() -> AnyView {
-    IntoChildOf::<Active, FlexChild>::into_child(
+    IntoChildOf::<FlexChild>::into_child(
       Flexible::new()
         .set_flexibility(Flexibility::new(0, 1., 1.))
         .set_child(AnyView::new(Self::build_track)),
@@ -186,7 +185,7 @@ impl SimpleSlider {
       .build();
 
     if let Some(thumb) = untrack(|| thumb.node()) {
-      Scene::<Active>::with(|scene| scene.set_part(thumb, Part::Thumb));
+      Scene::with(|scene| scene.set_part(thumb, Part::Thumb));
     }
 
     node

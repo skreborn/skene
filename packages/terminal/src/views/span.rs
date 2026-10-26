@@ -33,7 +33,7 @@ impl SpanBase<Active> for Span {}
 impl RunBase<Active> for Span {}
 
 impl Span {
-  skene_foundation::properties! { run_style_mut, Active;
+  skene_foundation::properties! { run_style_mut, crate::Condition;
     set_bold / derive_bold (bold) => ext.bold: bool, "whether the text is bold";
   }
 }

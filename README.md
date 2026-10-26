@@ -263,7 +263,9 @@ A component library is a core and a crate per platform, as Simple is: the core d
 `skene-foundation` and holds the colors, the named sizes and the logic both media share,
 naming no realization, and each platform's crate writes presets returning its facade's
 built-ins styled from the core and, where a preset is not enough, concrete views of its
-own; `skene new lib` writes that shape. A low-level view goes
+own, naming no realization either, since the facade names what the foundation's surface
+asks for (`Scene`, `IntoChildOf<Kind>`, `DecoratedTextEntry`, `Condition`);
+`skene new lib` writes that shape. A low-level view goes
 through its facade's `platform::<p>` module, the web's native door
 (`skene_web::platform::web::NativeView`, a DOM element served as its markup and adopted in
 place) or the terminal's escape trait (`skene_terminal::platform::terminal::CellPainter`),

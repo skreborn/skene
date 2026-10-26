@@ -312,7 +312,7 @@ impl<P: Realization> ContextMenu<P> {
     &mut self.item_style
   }
 
-  properties! { item_style_mut, P;
+  properties! { item_style_mut, crate::Condition<P::Scalar>;
     set_item_padding / derive_item_padding (padding) => padding: crate::Inset<P::Scalar>,
       "the padding on each edge of every item";
     set_item_color / derive_item_color (color) => background: Color,

@@ -2,14 +2,7 @@
 //! build on, and the probes reading a frame, a reader's tree and the scene back.
 
 pub(crate) use skene_terminal::testing::{locate, with_launch, with_platform};
-use skene_terminal::{
-  Color,
-  NodeId,
-  Scene,
-  TokenRef,
-  platform::terminal::{Terminal, mount},
-  testing,
-};
+use skene_terminal::{Color, NodeId, Scene, TokenRef, platform::terminal::mount, testing};
 
 /// A row of boxes a cell square, each filled with the color of its token in `colors`'
 /// order: the swatches a frame shows what the tokens resolve to in.
@@ -101,7 +94,7 @@ pub(crate) fn read(node: NodeId) -> accesskit::Node {
 /// Whether the scene still holds `node`, attached or set aside: false once it is
 /// destroyed.
 pub(crate) fn is_live(node: NodeId) -> bool {
-  Scene::<Terminal>::read(|scene| scene.contains(node))
+  Scene::read(|scene| scene.contains(node))
 }
 
 /// Mounts what `views` builds, one beneath another, paints a frame 40 cells by 12

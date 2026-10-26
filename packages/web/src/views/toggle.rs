@@ -18,7 +18,6 @@ use skene_foundation::{
   NodeHandle,
   NodeId,
   Part,
-  Scene,
   State,
   SystemColors,
   ToggleBase,
@@ -28,7 +27,7 @@ use skene_foundation::{
 };
 use skene_reactive::untrack;
 
-use crate::Active;
+use crate::{Active, Scene};
 
 /// The platform's colors in logical pixels.
 type Colors = SystemColors<f32>;
@@ -133,7 +132,7 @@ impl View<Active> for Toggle {
     let node = self.0.over(defaults).build();
 
     if let Some(thumb) = untrack(|| thumb.node()) {
-      Scene::<Active>::with(|scene| scene.set_part(thumb, Part::Thumb));
+      Scene::with(|scene| scene.set_part(thumb, Part::Thumb));
     }
 
     node

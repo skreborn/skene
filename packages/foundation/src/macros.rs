@@ -4,9 +4,10 @@
 /// Generates a `set_`/`derive_` pair per property.
 ///
 /// The setter takes anything convertible into the property's
-/// [`Value`](skene_foundation::Value) under the platform's conditions, the deriver a closure
-/// over signals, and both write the field named on the style `$access` returns; a
-/// property's optional second literal is a paragraph its setter's documentation adds.
+/// [`Value`](skene_foundation::Value) under `$condition`, the facade's `Condition` on a
+/// view written on a facade, the deriver a closure over signals, and both write the field
+/// named on the style `$access` returns; a property's optional second literal is a
+/// paragraph its setter's documentation adds.
 ///
 /// A property line may start with `[cfg(<predicate>)]`, making it a platform's own
 /// property of a shared view (`set_linux_*`, `set_apple_*`): its setter and deriver exist
@@ -45,7 +46,7 @@
 ///     &mut self.style
 ///   }
 ///
-///   skene_foundation::properties! { style_mut, P;
+///   skene_foundation::properties! { style_mut, Condition<P::Scalar>;
 ///     set_face / derive_face (color) => face: Color, "the face's color";
 ///     [cfg(skene_platform = "linux")]
 ///     set_linux_tint / derive_linux_tint (tint) => linux_tint: Color, "the needle's tint";
@@ -62,7 +63,7 @@
 #[macro_export]
 macro_rules! properties {
   (
-    $access:ident, $platform:ty;
+    $access:ident, $condition:ty;
     $(
       $([cfg($predicate:meta)])?
       $set:ident / $derive:ident ($param:ident) => $($field:ident).+: $type:ty,
@@ -79,7 +80,7 @@ macro_rules! properties {
     pub fn $set(
       mut self,
       $param: impl Into<
-        $crate::Value<$type, $crate::Condition<<$platform as $crate::Realization>::Scalar>>,
+        $crate::Value<$type, $condition>,
       >,
     ) -> Self {
       self.$access().$($field).+ = Some($param.into());
@@ -114,7 +115,7 @@ macro_rules! properties {
     pub fn $set(
       self,
       $param: impl Into<
-        $crate::Value<$type, $crate::Condition<<$platform as $crate::Realization>::Scalar>>,
+        $crate::Value<$type, $condition>,
       >,
     ) -> Self {
       drop($param);
@@ -230,13 +231,13 @@ macro_rules! trait_properties {
 /// The optional second literal is a paragraph the setter's documentation adds.
 #[macro_export]
 macro_rules! alignment_properties {
-  ($access:ident, $platform:ty; $set:ident / $derive:ident, $doc:literal $(, $detail:literal)?) => {
+  ($access:ident, $condition:ty; $set:ident / $derive:ident, $doc:literal $(, $detail:literal)?) => {
     #[doc = concat!("Sets ", $doc, ", on both axes.")]
     $(#[doc = ""] #[doc = $detail])?
     pub fn $set(
       mut self,
       alignment: impl Into<
-        $crate::Value<$crate::Alignment, $crate::Condition<<$platform as $crate::Realization>::Scalar>>,
+        $crate::Value<$crate::Alignment, $condition>,
       >,
     ) -> Self {
       let (horizontal, vertical) = alignment.into().split_axes();
@@ -253,10 +254,7 @@ macro_rules! alignment_properties {
       self,
       alignment: impl Fn() -> R + 'static,
     ) -> Self {
-      self.$set($crate::Value::<
-        $crate::Alignment,
-        $crate::Condition<<$platform as $crate::Realization>::Scalar>,
-      >::new($crate::Leaf::derive(alignment)))
+      self.$set($crate::Value::<$crate::Alignment, $condition>::new($crate::Leaf::derive(alignment)))
     }
   };
 }

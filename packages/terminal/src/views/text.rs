@@ -25,7 +25,7 @@ impl TextBase<Active> for Text {}
 impl RunBase<Active> for Text {}
 
 impl Text {
-  skene_foundation::properties! { run_style_mut, Active;
+  skene_foundation::properties! { run_style_mut, crate::Condition;
     set_bold / derive_bold (bold) => ext.bold: bool, "whether the text is bold";
   }
 }

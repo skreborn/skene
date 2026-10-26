@@ -7,7 +7,7 @@ use std::{cell::RefCell, rc::Rc};
 use skene_terminal::{
   Scene,
   behavior::{Activate, TextEntry},
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -1514,16 +1514,16 @@ fn an_entrys_editing_state_lives_and_goes_with_its_node() {
     let _ = testing::render_to_text(10, 2);
     let node = testing::find_by_role(Role::TextInput, "name").expect("the field");
     let button = testing::find_by_role(Role::Button, "Send").expect("the button");
-    let entry = Scene::<Terminal>::entry_of(node).expect("the scene keeps the field's entry");
+    let entry = Scene::entry_of(node).expect("the scene keeps the field's entry");
 
     assert_eq!(entry.editor().borrow().text(), "hi");
     assert_eq!(entry.node(), node);
     assert!(
-      Scene::<Terminal>::entry_of(button).is_none(),
+      Scene::entry_of(button).is_none(),
       "a control that is no entry has no editing state"
     );
     assert!(
-      Scene::<Terminal>::with(|_| Scene::<Terminal>::entry_of(node)).is_none(),
+      Scene::with(|_| Scene::entry_of(node)).is_none(),
       "nothing is handed out while the scene is borrowed"
     );
 

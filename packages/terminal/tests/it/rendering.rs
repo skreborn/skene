@@ -82,7 +82,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
         .into_any()
         .build()
     });
-    let card = Scene::<Terminal>::with(|scene| scene.children(node).next()).unwrap();
+    let card = Scene::with(|scene| scene.children(node).next()).unwrap();
 
     let _ = testing::render_to_text(20, 7);
 
@@ -94,10 +94,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
     assert_eq!(colors_at(20, 7, 1, 1).1, Some((0, 0, 255)));
     assert_eq!(builds.get(), 1);
     assert_eq!(inner.get().unwrap().get(), 2);
-    assert_eq!(
-      Scene::<Terminal>::with(|scene| scene.children(node).next()),
-      Some(card)
-    );
+    assert_eq!(Scene::with(|scene| scene.children(node).next()), Some(card));
     assert!(testing::render_to_text(20, 7).contains('2'));
   });
 }

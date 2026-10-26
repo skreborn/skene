@@ -16,7 +16,6 @@ use skene_foundation::{
   HasChild,
   HasChildren,
   Inset,
-  IntoChildOf,
   ItemAlignment,
   MotionBase,
   MouseCursor,
@@ -24,7 +23,6 @@ use skene_foundation::{
   NodeId,
   Overflow,
   Part,
-  Scene,
   SliderBase,
   StackBase,
   State,
@@ -35,7 +33,7 @@ use skene_foundation::{
 };
 use skene_reactive::untrack;
 
-use crate::Active;
+use crate::{Active, IntoChildOf, Scene};
 
 /// The platform's colors in cells.
 type Colors = SystemColors<i32>;
@@ -158,7 +156,7 @@ impl Slider {
           .set_children((rail, lane)),
       );
 
-    IntoChildOf::<Active, FlexChild>::into_child(
+    IntoChildOf::<FlexChild>::into_child(
       skene_foundation::Flexible::new()
         .set_flexibility(Flexibility::new(0, 1., 1.))
         .set_child(track),
@@ -189,7 +187,7 @@ impl View<Active> for Slider {
     untrack(|| {
       for (handle, part) in [(fill, Part::Fill), (thumb, Part::Thumb)] {
         if let Some(node) = handle.node() {
-          Scene::<Active>::with(|scene| scene.set_part(node, part));
+          Scene::with(|scene| scene.set_part(node, part));
         }
       }
     });

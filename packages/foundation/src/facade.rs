@@ -3,10 +3,11 @@
 /// Declares a facade's shared surface over the platform `$platform`, measuring lengths
 /// in `$scalar`, which `$unit` names in the documentation.
 ///
-/// The traits a view and a token set of the platform meet, an alias for each building
-/// block that is no view of its own (the erased view, the layout box, a keyed view, a
-/// control's handle and label, a picker's face, a node handle and a child builder), the
-/// value vocabulary in the unit, and `derived`, `reconcile` and `empty`. A facade
+/// The traits a view, a child of a kind, a token set and a decorated text entry of the
+/// platform meet, an alias for each building block that is no view of its own (the
+/// erased view, the layout box, a keyed view, a control's label, a node handle and the
+/// scene), the value vocabulary in the unit, and `derived`, `reconcile` and `empty`, so a
+/// library written on the facade names no realization. A facade
 /// declares its views around it as newtypes the `impl_*!` macros implement, adds its
 /// platform selection, its medium and its entry points, and names `skene-foundation`
 /// and `skene-reactive` among its dependencies.
@@ -53,6 +54,49 @@ macro_rules! facade {
 
     impl<V: $crate::View<$platform>> View for V {}
 
+    /// A value accepted as one child of a container of kind `Kind` on the active
+    /// platform; see [`skene_foundation::IntoChildOf`].
+    #[diagnostic::on_unimplemented(
+      message = "`{Self}` is not a child this container accepts",
+      label = "not a child this container accepts",
+      note = "every container accepts any view",
+      note = "a wrapper is accepted only by a container that understands it: `Flexible` by a row or a column, `GridCell` by a grid, `Pinned` by a stack"
+    )]
+    pub trait IntoChildOf<Kind>: $crate::IntoChildOf<$platform, Kind> {
+      /// Converts this value into the child's view.
+      #[inline(always)]
+      fn into_child(self) -> AnyView
+      where
+        Self: Sized,
+      {
+        $crate::IntoChildOf::into_child(self)
+      }
+    }
+
+    #[diagnostic::do_not_recommend]
+    impl<Kind, V: $crate::IntoChildOf<$platform, Kind>> IntoChildOf<Kind> for V {}
+
+    /// A text entry with a decorated box of its own on the active platform: every text
+    /// field and text editor, styled through both [`TextEntryBase`] and
+    /// [`DecorationBase`].
+    ///
+    /// [`TextEntryBase`]: skene_foundation::TextEntryBase
+    /// [`DecorationBase`]: skene_foundation::DecorationBase
+    #[diagnostic::on_unimplemented(
+      message = "`{Self}` is not a decorated text entry",
+      label = "not a text field or a text editor"
+    )]
+    pub trait DecoratedTextEntry:
+      $crate::TextEntryBase<$platform> + $crate::DecorationBase<$platform>
+    {
+    }
+
+    #[diagnostic::do_not_recommend]
+    impl<E: $crate::TextEntryBase<$platform> + $crate::DecorationBase<$platform>>
+      DecoratedTextEntry for E
+    {
+    }
+
     /// A token set read from the theme in force on the active platform; see
     /// [`skene_foundation::ThemedIn`].
     ///
@@ -88,6 +132,9 @@ macro_rules! facade {
     pub type Label = $crate::Label<$platform>;
     /// A handle naming the node a view built; see [`skene_foundation::NodeHandle`].
     pub type NodeHandle = $crate::NodeHandle<$platform>;
+    /// The retained tree of the active platform's nodes; see
+    /// [`skene_foundation::Scene`].
+    pub type Scene = $crate::Scene<$platform>;
 
     #[doc = concat!("A condition on the environment, in ", $unit, "; see [`skene_foundation::Media`].")]
     pub type Media = $crate::Media<$scalar>;

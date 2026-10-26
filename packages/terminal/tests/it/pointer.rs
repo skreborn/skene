@@ -19,7 +19,7 @@ use skene_terminal::{
   Prevent,
   Scene,
   behavior::{Activate, TextEntry},
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -93,7 +93,7 @@ fn the_terminals_pointer_is_the_primary_mouse() {
     let requested = Rc::new(Cell::new(None));
     let menu = Rc::clone(&requested);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.handle(
         node,
         Handler::ContextMenu(Rc::new(move |event: &PointerEvent| {

@@ -22,7 +22,7 @@ use skene_terminal::{
   TokenName,
   TokenScope,
   TokenValue,
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -120,7 +120,7 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Accents {
 
 /// How many tokens the root defines.
 fn root_tokens() -> usize {
-  Scene::<Terminal>::read(|scene| scene.root_definitions().len())
+  Scene::read(|scene| scene.root_definitions().len())
 }
 
 /// A set read with no theme above lays its defaults at the root once, however often it
@@ -302,12 +302,12 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for SelfAliasing {
 
 /// Whether the root defines `reference`.
 fn root_defines(reference: TokenRef<Color>) -> bool {
-  Scene::<Terminal>::read(|scene| scene.root_definitions().get(reference.name()).is_some())
+  Scene::read(|scene| scene.root_definitions().get(reference.name()).is_some())
 }
 
 /// Whether the root's definitions of [`Linked`] are claimed, by a read or a reference.
 fn linked_claimed() -> bool {
-  Scene::<Terminal>::read(|scene| scene.defines_root_set(TypeId::of::<Linked>()))
+  Scene::read(|scene| scene.defines_root_set(TypeId::of::<Linked>()))
 }
 
 /// A box below no theme naming a linked token paints the palette's default, with no
@@ -533,7 +533,7 @@ fn a_theme_lays_only_the_palettes_it_leaves_undefined() {
     });
 
     assert_eq!(root_tokens(), before.get(), "nothing laid at the root");
-    assert!(!Scene::<Terminal>::read(
+    assert!(!Scene::read(
       |scene| scene.defines_root_set(TypeId::of::<SelfAliasing>())
     ));
     assert!(!root_defines(SelfAliasing::TINT));
@@ -614,7 +614,7 @@ fn a_theme_redefines_the_glyph_tokens() {
     });
     let _ = testing::render_to_text(8, 1);
 
-    let (checked, unchecked) = Scene::<Terminal>::with(|scene| {
+    let (checked, unchecked) = Scene::with(|scene| {
       let text = scene.children(node).next().expect("the themed text");
 
       (
@@ -700,7 +700,7 @@ fn a_token_resolves_to_its_nearest_definer_as_the_tree_stands() {
 
     let color = |color: Color| Some(TokenValue::Color(Definition::from(color)));
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       let column = scene.children(theme).next().expect("the themed column");
       let leaf = scene.children(column).next().expect("the box");
       let root = scene.root_definitions().get(CARD.name()).cloned();
@@ -866,7 +866,7 @@ struct Watchful {
 impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Watchful {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     assert!(
-      !Scene::<Terminal>::is_borrowed(),
+      !Scene::is_borrowed(),
       "a token set is read with the scene released"
     );
 
@@ -918,7 +918,7 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for OwnAccent {
 
 /// The color the root defines `reference` as.
 fn root_color(reference: TokenRef<Color>) -> (u8, u8, u8) {
-  Scene::<Terminal>::read(
+  Scene::read(
     |scene| match scene.root_definitions().get(reference.name()) {
       Some(TokenValue::Color(definition)) => match definition.base() {
         StaticLeaf::Fixed(color) => rgb(*color),

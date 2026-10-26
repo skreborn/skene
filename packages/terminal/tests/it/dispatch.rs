@@ -53,7 +53,7 @@ fn labelled(label: &'static str) -> NodeId {
 fn chain() -> (NodeId, NodeId, NodeId) {
   let (stage, [outer, middle, inner]) = stage(|| [column(), column(), labelled("i")]);
 
-  Scene::<Terminal>::with(|scene| {
+  Scene::with(|scene| {
     scene.attach(stage, outer, None);
     scene.attach(outer, middle, None);
     scene.attach(middle, inner, None);
@@ -88,11 +88,11 @@ fn the_path_is_fixed_before_any_handler_runs() {
     let (outer, middle, inner) = chain();
     let log = Log::default();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.handle(
         inner,
         Handler::Click(Rc::new(move |_: &ClickEvent| {
-          Scene::<Terminal>::with(|scene| scene.detach(outer, middle));
+          Scene::with(|scene| scene.detach(outer, middle));
 
           Prevent::None
         })),
@@ -118,11 +118,11 @@ fn the_path_is_fixed_before_any_handler_runs() {
 fn an_event_in_a_segment_climbs_through_its_start() {
   with_platform(|| {
     let (stage, [parent, leaf]) = stage(|| [column(), labelled("l")]);
-    let (outer, _) = Scene::<Terminal>::create_segment();
-    let (inner, _) = Scene::<Terminal>::create_segment();
+    let (outer, _) = Scene::create_segment();
+    let (inner, _) = Scene::create_segment();
     let log = Log::default();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.insert_in_segment(outer, inner, None);
       scene.insert_in_segment(inner, leaf, None);
       scene.attach(parent, outer, None);
@@ -139,7 +139,7 @@ fn an_event_in_a_segment_climbs_through_its_start() {
 
     assert_eq!(take(&log), ["leaf", "inner", "outer", "parent"]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.remove_from_segment(inner, leaf);
       scene.attach(parent, leaf, None);
     });
@@ -158,7 +158,7 @@ fn an_event_in_a_segment_climbs_through_its_start() {
 fn the_pointer_enters_a_segment_through_its_content() {
   with_platform(|| {
     let (stage, [leaf, outside]) = stage(|| [labelled("l"), labelled("o")]);
-    let (start, _) = Scene::<Terminal>::create_segment();
+    let (start, _) = Scene::create_segment();
     let log = Log::default();
     let note = |name: &'static str| -> Rc<dyn Fn()> {
       let log = Rc::clone(&log);
@@ -166,7 +166,7 @@ fn the_pointer_enters_a_segment_through_its_content() {
       Rc::new(move || log.borrow_mut().push(name))
     };
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, start, None);
       scene.insert_in_segment(start, leaf, None);
       scene.attach(stage, outside, None);
@@ -200,7 +200,7 @@ fn a_handler_runs_as_the_owner_that_registered_it() {
 
       let seen = Rc::clone(&seen);
 
-      Scene::<Terminal>::with(|scene| {
+      Scene::with(|scene| {
         scene.handle(
           inner,
           Handler::Click(Rc::new(move |_: &ClickEvent| {
@@ -239,7 +239,7 @@ fn a_task_a_handler_starts_counts_toward_no_boundary() {
 
       let tasks = Rc::clone(&tasks);
 
-      Scene::<Terminal>::with(|scene| {
+      Scene::with(|scene| {
         scene.handle(
           inner,
           Handler::Click(Rc::new(move |_: &ClickEvent| {
@@ -278,7 +278,7 @@ fn notifications_do_not_bubble() {
       }
     });
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       let log = Rc::clone(&log);
 
       scene.handle(
@@ -356,7 +356,7 @@ fn an_edit_is_answered_by_the_entrys_own_controller_alone() {
     let climbed = Rc::new(RefCell::new(0));
     let heard = Rc::clone(&climbed);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.handle(
         column,
         Handler::Report(

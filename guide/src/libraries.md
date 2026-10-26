@@ -307,14 +307,13 @@ an app calls it without a `cfg` of its own, and does nothing outside its platfor
 build, where its backing field does not exist:
 
 ```rust
-use skene_foundation::{Color, Condition, Value};
-use skene_web::Active;
+use skene_web::{Color, Condition, Value};
 
-/// A gauge's own style, in the web's unit.
+/// A gauge's own style, its values under the facade's conditions.
 pub struct GaugeStyle {
-  needle: Option<Value<Color, Condition<f32>>>,
+  needle: Option<Value<Color>>,
   #[cfg(skene_platform = "linux")]
-  linux_glow: Option<Value<Color, Condition<f32>>>,
+  linux_glow: Option<Value<Color>>,
 }
 
 /// Acme's gauge on the pixel platforms' facade.
@@ -327,7 +326,7 @@ impl Gauge {
     &mut self.style
   }
 
-  skene_foundation::properties! { style_mut, Active;
+  skene_foundation::properties! { style_mut, Condition;
     set_needle / derive_needle (color) => needle: Color, "the needle's color";
     [cfg(skene_platform = "linux")]
     set_linux_glow / derive_linux_glow (color) => linux_glow: Color,

@@ -14,7 +14,7 @@ use skene_terminal::{
   Token,
   TokenName,
   TokenSet,
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing::{self, locate, user, with_platform},
 };
@@ -515,7 +515,7 @@ fn a_derived_variant_below_no_theme_inks_the_variant_it_switches_to() {
 
 /// The number of root definitions.
 fn root_tokens() -> usize {
-  Scene::<Terminal>::read(|scene| scene.root_definitions().len())
+  Scene::read(|scene| scene.root_definitions().len())
 }
 
 /// However many presets are mounted, the palette's definitions are laid at the root
@@ -528,7 +528,7 @@ fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
     mount_bare(move || {
       let definitions: Vec<(TokenName, Definition<Color>)> = SimplePalette::default().definitions();
 
-      expected.set(Scene::<Terminal>::read(|scene| {
+      expected.set(Scene::read(|scene| {
         let root = scene.root_definitions();
         let new = definitions
           .iter()
@@ -554,7 +554,7 @@ fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
 
     let _ = testing::render_to_text(WIDTH, HEIGHT);
 
-    assert!(Scene::<Terminal>::read(
+    assert!(Scene::read(
       |scene| scene.defines_root_set(TypeId::of::<SimplePalette>())
     ));
     assert_eq!(root_tokens(), expected.get());

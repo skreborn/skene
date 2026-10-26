@@ -47,7 +47,6 @@ pub use skene_web::HasControl
 pub use skene_web::HasLayoutBox
 pub use skene_web::HasRun
 pub use skene_web::IntoBrush
-pub use skene_web::IntoChildOf
 pub use skene_web::IntoChildren
 pub use skene_web::IntoScalar
 pub use skene_web::ItemExtent
@@ -90,7 +89,6 @@ pub use skene_web::Role
 pub use skene_web::RowBase
 pub use skene_web::RunBase
 pub use skene_web::RunWithTypeMetrics
-pub use skene_web::Scene
 pub use skene_web::ScrollEvent
 pub use skene_web::Shortcut
 pub use skene_web::SliderBase
@@ -657,7 +655,6 @@ pub use skene_web::prelude::GridTrack
 pub use skene_web::prelude::HasChild
 pub use skene_web::prelude::HasChildren
 pub use skene_web::prelude::IndexedField
-pub use skene_web::prelude::IntoChildOf
 pub use skene_web::prelude::IntoChildren
 pub use skene_web::prelude::IntoScalar
 pub use skene_web::prelude::ItemAlignment
@@ -1476,6 +1473,10 @@ pub fn skene_web::Visibility::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Visibility::into_inner(self) -> Self::Inner
 pub fn skene_web::Visibility::wrap(Self::Inner) -> Self
 impl skene_foundation::visibility::VisibilityBase<skene_web::platform::web::Web> for skene_web::Visibility
+pub trait skene_web::prelude::IntoChildOf<Kind>: skene_foundation::spine::view::IntoChildOf<skene_web::Active, Kind>
+pub fn skene_web::prelude::IntoChildOf::into_child(self) -> skene_web::AnyView where Self: core::marker::Sized
+impl<Kind, V: skene_foundation::spine::view::IntoChildOf<skene_web::Active, Kind>> skene_web::IntoChildOf<Kind> for V
+pub fn V::into_child(self) -> skene_web::AnyView where Self: core::marker::Sized
 pub trait skene_web::prelude::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::Active>
 pub fn skene_web::prelude::ThemedIn::current() -> Self
 pub fn skene_web::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -2322,6 +2323,12 @@ pub fn skene_web::Visibility::inner_mut(&mut self) -> &mut Self::Inner
 pub fn skene_web::Visibility::into_inner(self) -> Self::Inner
 pub fn skene_web::Visibility::wrap(Self::Inner) -> Self
 impl skene_foundation::visibility::VisibilityBase<skene_web::platform::web::Web> for skene_web::Visibility
+pub trait skene_web::DecoratedTextEntry: skene_foundation::control::TextEntryBase<skene_web::Active> + skene_foundation::surface::DecorationBase<skene_web::Active>
+impl<E: skene_foundation::control::TextEntryBase<skene_web::Active> + skene_foundation::surface::DecorationBase<skene_web::Active>> skene_web::DecoratedTextEntry for E
+pub trait skene_web::IntoChildOf<Kind>: skene_foundation::spine::view::IntoChildOf<skene_web::Active, Kind>
+pub fn skene_web::IntoChildOf::into_child(self) -> skene_web::AnyView where Self: core::marker::Sized
+impl<Kind, V: skene_foundation::spine::view::IntoChildOf<skene_web::Active, Kind>> skene_web::IntoChildOf<Kind> for V
+pub fn V::into_child(self) -> skene_web::AnyView where Self: core::marker::Sized
 pub trait skene_web::ThemedIn: skene_foundation::theme::ThemedIn<skene_web::Active>
 pub fn skene_web::ThemedIn::current() -> Self
 pub fn skene_web::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
@@ -2373,6 +2380,7 @@ pub type skene_web::NodeHandle = skene_foundation::node_handle::NodeHandle<skene
 pub type skene_web::Point = skene_foundation::spine::values::point::Point<f32>
 pub type skene_web::Rect = skene_foundation::spine::values::rect::Rect<f32>
 pub type skene_web::Resource<T> = skene_foundation::web::resource::Resource<skene_web::Active, T>
+pub type skene_web::Scene = skene_foundation::spine::scene::Scene<skene_web::Active>
 pub type skene_web::Size = skene_foundation::spine::values::size::Size<f32>
 pub type skene_web::Spacing = skene_foundation::spine::values::flex::Spacing<f32>
 pub type skene_web::SystemColors = skene_foundation::system_colors::SystemColors<f32>

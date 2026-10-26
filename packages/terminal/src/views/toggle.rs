@@ -18,7 +18,6 @@ use skene_foundation::{
   NodeId,
   Part,
   RunBase,
-  Scene,
   State,
   SystemColors,
   Text,
@@ -29,7 +28,7 @@ use skene_foundation::{
 };
 use skene_reactive::untrack;
 
-use crate::Active;
+use crate::{Active, Scene};
 
 /// The platform's colors in cells.
 type Colors = SystemColors<i32>;
@@ -133,7 +132,7 @@ impl View<Active> for Toggle {
     let node = self.0.over(defaults).build();
 
     if let Some(thumb) = untrack(|| thumb.node()) {
-      Scene::<Active>::with(|scene| scene.set_part(thumb, Part::Thumb));
+      Scene::with(|scene| scene.set_part(thumb, Part::Thumb));
     }
 
     node

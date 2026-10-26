@@ -20,7 +20,7 @@ use skene_terminal::{
   NodeId,
   Scene,
   TOOLTIP_DELAY,
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -50,7 +50,7 @@ fn is_read(node: NodeId) -> bool {
 
 /// The kinds of the nodes attached under `node`, in order.
 fn child_kinds(node: NodeId) -> Vec<NodeKind> {
-  Scene::<Terminal>::read(|scene| {
+  Scene::read(|scene| {
     scene
       .children(node)
       .filter_map(|child| scene.record(child).map(NodeRecord::kind))
@@ -84,7 +84,7 @@ fn frame(height: u16) -> String {
 
 /// The nodes attached under `node`, in order.
 fn children(node: NodeId) -> Vec<NodeId> {
-  Scene::<Terminal>::read(|scene| scene.children(node).collect())
+  Scene::read(|scene| scene.children(node).collect())
 }
 
 /// A container with a derived child holds its run between the derived segment's anchors
@@ -625,7 +625,7 @@ fn a_destroyed_node_holds_no_focus() {
     let _ = testing::render_to_text(4, 1);
     let node = handle.node().expect("the box built");
 
-    let held = || Scene::<Terminal>::read(|scene| (scene.focused(), scene.pressed()));
+    let held = || Scene::read(|scene| (scene.focused(), scene.pressed()));
 
     handle.focus();
     testing::trigger_mouse_press(0, 0);
@@ -691,9 +691,9 @@ fn a_view_given_its_child_takes_its_setters() {
 fn attaching_a_waiting_node_takes_it_from_its_segment() {
   with_platform(|| {
     let (stage, [parent, node]) = stage(|| [column(), text("a")]);
-    let (start, _) = Scene::<Terminal>::create_segment();
+    let (start, _) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, parent, None);
       scene.insert_in_segment(start, node, None);
       scene.attach(parent, node, None);
@@ -712,21 +712,18 @@ fn attaching_a_waiting_node_takes_it_from_its_segment() {
 fn removing_from_another_segment_changes_nothing() {
   with_platform(|| {
     let (stage, [elsewhere, node]) = stage(|| [column(), text("a")]);
-    let (holding, _) = Scene::<Terminal>::create_segment();
-    let (other, _) = Scene::<Terminal>::create_segment();
+    let (holding, _) = Scene::create_segment();
+    let (other, _) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, elsewhere, None);
       scene.insert_in_segment(holding, node, None);
       scene.remove_from_segment(other, node);
     });
 
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.segment_nodes(holding)),
-      [node]
-    );
+    assert_eq!(Scene::read(|scene| scene.segment_nodes(holding)), [node]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(elsewhere, node, None);
       scene.destroy(holding);
     });
@@ -743,9 +740,9 @@ fn removing_from_another_segment_changes_nothing() {
 fn what_stands_between_the_anchors_is_the_segments() {
   with_platform(|| {
     let (stage, [parent, elsewhere, node]) = stage(|| [column(), column(), text("a")]);
-    let (start, end) = Scene::<Terminal>::create_segment();
+    let (start, end) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, parent, None);
       scene.attach(stage, elsewhere, None);
       scene.attach(parent, start, None);
@@ -754,16 +751,13 @@ fn what_stands_between_the_anchors_is_the_segments() {
 
     assert_eq!(frame(2), "a\n\n");
 
-    Scene::<Terminal>::with(|scene| scene.detach(parent, start));
+    Scene::with(|scene| scene.detach(parent, start));
 
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.segment_nodes(start)),
-      [node]
-    );
+    assert_eq!(Scene::read(|scene| scene.segment_nodes(start)), [node]);
     assert_eq!(frame(2), "\n\n", "hidden with its segment");
     assert!(!is_read(node));
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(elsewhere, node, None);
       scene.destroy(start);
     });
@@ -781,7 +775,7 @@ fn attach_needs_both_nodes_live() {
   with_platform(|| {
     let (stage, [parent, gone, child]) = stage(|| [column(), column(), text("a")]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, parent, None);
       scene.attach(parent, child, None);
       scene.destroy(gone);
@@ -790,15 +784,12 @@ fn attach_needs_both_nodes_live() {
     assert_eq!(frame(2), "a\n\n");
     assert!(!testing::is_frame_pending());
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(gone, child, None);
       scene.attach(parent, gone, None);
     });
 
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.parent(child)),
-      Some(parent)
-    );
+    assert_eq!(Scene::read(|scene| scene.parent(child)), Some(parent));
     assert_eq!(children(parent), [child]);
     assert!(!testing::is_frame_pending(), "nothing to draw anew");
   });
@@ -812,7 +803,7 @@ fn attach_unlinks_the_previous_parent() {
     let (stage, [first, second, one, two, child]) =
       stage(|| [column(), column(), text("1"), text("2"), text("c")]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, first, None);
       scene.attach(stage, second, None);
       scene.attach(first, one, None);
@@ -822,12 +813,9 @@ fn attach_unlinks_the_previous_parent() {
 
     assert_eq!(frame(3), "1\nc\n2\n");
 
-    Scene::<Terminal>::with(|scene| scene.attach(second, child, None));
+    Scene::with(|scene| scene.attach(second, child, None));
 
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.parent(child)),
-      Some(second)
-    );
+    assert_eq!(Scene::read(|scene| scene.parent(child)), Some(second));
     assert_eq!(children(first), [one]);
     assert_eq!(children(second), [two, child]);
     assert_eq!(frame(3), "1\n2\nc\n");
@@ -840,7 +828,7 @@ fn attach_before_orders_the_children() {
   with_platform(|| {
     let (stage, [first, second]) = stage(|| [text("a"), text("b")]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, second, None);
       scene.attach(stage, first, Some(second));
     });
@@ -857,21 +845,21 @@ fn attach_in_place_is_a_no_op() {
   with_platform(|| {
     let (stage, [first, second]) = stage(|| [text("a"), text("b")]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, first, None);
       scene.attach(stage, second, None);
     });
 
     assert_eq!(frame(2), "a\nb\n");
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, first, Some(second));
       scene.attach(stage, second, None);
     });
 
     assert!(!testing::is_frame_pending(), "nothing to draw anew");
 
-    Scene::<Terminal>::with(|scene| scene.attach(stage, first, None));
+    Scene::with(|scene| scene.attach(stage, first, None));
 
     assert!(testing::is_frame_pending());
     assert_eq!(children(stage), [second, first]);
@@ -886,20 +874,20 @@ fn detach_hides_and_attach_gives_back() {
   with_platform(|| {
     let (stage, [child]) = stage(|| [text("a")]);
 
-    Scene::<Terminal>::with(|scene| scene.attach(stage, child, None));
+    Scene::with(|scene| scene.attach(stage, child, None));
 
     assert_eq!(frame(1), "a\n");
 
-    Scene::<Terminal>::with(|scene| scene.detach(stage, child));
+    Scene::with(|scene| scene.detach(stage, child));
 
     assert_eq!(frame(1), "\n");
     assert!(is_live(child) && !is_read(child), "it waits aside");
     assert!(
-      !Scene::<Terminal>::read(|scene| scene.roots().any(|root| root == child)),
+      !Scene::read(|scene| scene.roots().any(|root| root == child)),
       "a hidden node is no root"
     );
 
-    Scene::<Terminal>::with(|scene| scene.attach(stage, child, None));
+    Scene::with(|scene| scene.attach(stage, child, None));
 
     assert_eq!(frame(1), "a\n");
     assert!(is_read(child));
@@ -913,9 +901,9 @@ fn moving_a_segment_relocates_its_run_in_order() {
   with_platform(|| {
     let (stage, [first, second, two, a, b]) =
       stage(|| [column(), column(), text("2"), text("a"), text("b")]);
-    let (start, end) = Scene::<Terminal>::create_segment();
+    let (start, end) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, first, None);
       scene.attach(stage, second, None);
       scene.attach(second, two, None);
@@ -926,7 +914,7 @@ fn moving_a_segment_relocates_its_run_in_order() {
 
     assert_eq!(frame(3), "a\nb\n2\n");
 
-    Scene::<Terminal>::with(|scene| scene.attach(second, start, None));
+    Scene::with(|scene| scene.attach(second, start, None));
 
     assert_eq!(children(first), []);
     assert_eq!(children(second), [two, start, a, b, end]);
@@ -947,9 +935,9 @@ fn a_hidden_subtree_keeps_its_focus_for_its_return() {
         focusable("o", other_handle),
       ]
     });
-    let focused = || Scene::<Terminal>::read(Scene::focused);
+    let focused = || Scene::read(Scene::focused);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, panel, None);
       scene.attach(panel, field, None);
       scene.attach(stage, other, None);
@@ -961,21 +949,21 @@ fn a_hidden_subtree_keeps_its_focus_for_its_return() {
 
     assert_eq!(testing::focused_node(), Some(field));
 
-    Scene::<Terminal>::with(|scene| scene.detach(stage, panel));
+    Scene::with(|scene| scene.detach(stage, panel));
 
     assert_eq!(frame(2), "o\n\n");
     assert_eq!(focused(), None);
     assert_eq!(testing::focused_node(), None);
 
-    Scene::<Terminal>::with(|scene| scene.attach(stage, panel, None));
+    Scene::with(|scene| scene.attach(stage, panel, None));
 
     assert_eq!(frame(2), "o\nf\n");
     assert_eq!(testing::focused_node(), Some(field), "focus comes back");
     assert_eq!(focused(), Some(field));
 
-    Scene::<Terminal>::with(|scene| scene.detach(stage, panel));
+    Scene::with(|scene| scene.detach(stage, panel));
     other_handle.focus();
-    Scene::<Terminal>::with(|scene| scene.attach(stage, panel, None));
+    Scene::with(|scene| scene.attach(stage, panel, None));
 
     assert_eq!(
       testing::focused_node(),
@@ -993,11 +981,10 @@ fn a_caption_kept_beside_is_placed_before_its_control() {
   with_platform(|| {
     let (stage, [inside, inside_caption, inside_track, beside, caption, track]) =
       stage(|| [row(), text("ci"), text("ti"), row(), text("cb"), text("tb")]);
-    let placed = |node: NodeId| {
-      Scene::<Terminal>::read(|scene| scene.placed_children(node).collect::<Vec<_>>())
-    };
+    let placed =
+      |node: NodeId| Scene::read(|scene| scene.placed_children(node).collect::<Vec<_>>());
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.keep_caption_beside(beside);
 
       for (control, label, rest) in [
@@ -1017,7 +1004,7 @@ fn a_caption_kept_beside_is_placed_before_its_control() {
     assert_eq!(placed(inside), [inside_caption, inside_track]);
     assert_eq!(placed(beside), [track]);
     assert_eq!(
-      Scene::<Terminal>::read(|scene| (scene.placed_parent(caption), scene.placed_parent(track))),
+      Scene::read(|scene| (scene.placed_parent(caption), scene.placed_parent(track))),
       (Some(stage), Some(beside))
     );
     assert_eq!(frame(3), "citi\ncb\ntb\n");
@@ -1031,7 +1018,7 @@ fn destroy_takes_the_subtree_and_releases_every_record() {
   with_platform(|| {
     let (stage, [parent, child, grandchild]) = stage(|| [column(), column(), text("g")]);
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, parent, None);
       scene.attach(parent, child, None);
       scene.attach(child, grandchild, None);
@@ -1041,7 +1028,7 @@ fn destroy_takes_the_subtree_and_releases_every_record() {
 
     let held = testing::record_count();
 
-    Scene::<Terminal>::with(|scene| scene.destroy(parent));
+    Scene::with(|scene| scene.destroy(parent));
 
     assert_eq!(testing::record_count(), held - 3);
     assert_eq!(frame(1), "\n");
@@ -1066,20 +1053,17 @@ fn destroy_takes_the_subtree_and_releases_every_record() {
 fn a_destroyed_node_leaves_the_detached_segment_it_waits_in() {
   with_platform(|| {
     let (stage, [first, second]) = stage(|| [text("a"), text("b")]);
-    let (start, _) = Scene::<Terminal>::create_segment();
+    let (start, _) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.insert_in_segment(start, first, None);
       scene.insert_in_segment(start, second, None);
       scene.destroy(first);
     });
 
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.segment_nodes(start)),
-      [second]
-    );
+    assert_eq!(Scene::read(|scene| scene.segment_nodes(start)), [second]);
 
-    Scene::<Terminal>::with(|scene| scene.attach(stage, start, None));
+    Scene::with(|scene| scene.attach(stage, start, None));
 
     assert_eq!(frame(2), "b\n\n");
   });
@@ -1091,47 +1075,41 @@ fn segments_travel_with_their_content() {
   with_platform(|| {
     let (stage, [parent, other, one, content]) =
       stage(|| [column(), column(), text("1"), text("c")]);
-    let (start, end) = Scene::<Terminal>::create_segment();
+    let (start, end) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, parent, None);
       scene.attach(stage, other, None);
       scene.attach(parent, one, None);
       scene.insert_in_segment(start, content, None);
     });
 
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.segment_nodes(start)),
-      [content]
-    );
-    assert_eq!(Scene::<Terminal>::read(|scene| scene.parent(content)), None);
+    assert_eq!(Scene::read(|scene| scene.segment_nodes(start)), [content]);
+    assert_eq!(Scene::read(|scene| scene.parent(content)), None);
     assert_eq!(frame(2), "1\n\n");
 
-    Scene::<Terminal>::with(|scene| scene.attach(other, start, None));
+    Scene::with(|scene| scene.attach(other, start, None));
 
     assert_eq!(children(other), [start, content, end]);
     assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.record(start).map(NodeRecord::kind)),
+      Scene::read(|scene| scene.record(start).map(NodeRecord::kind)),
       Some(NodeKind::Anchor)
     );
     assert_eq!(frame(2), "1\nc\n");
 
-    Scene::<Terminal>::with(|scene| scene.attach(parent, start, Some(one)));
+    Scene::with(|scene| scene.attach(parent, start, Some(one)));
 
     assert_eq!(children(other), []);
     assert_eq!(children(parent), [start, content, end, one]);
     assert_eq!(frame(2), "c\n1\n");
 
-    Scene::<Terminal>::with(|scene| scene.detach(parent, start));
+    Scene::with(|scene| scene.detach(parent, start));
 
     assert_eq!(children(parent), [one]);
-    assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.segment_nodes(start)),
-      [content]
-    );
+    assert_eq!(Scene::read(|scene| scene.segment_nodes(start)), [content]);
     assert_eq!(frame(2), "1\n\n");
 
-    Scene::<Terminal>::with(|scene| scene.destroy(start));
+    Scene::with(|scene| scene.destroy(start));
 
     assert!([start, content, end].into_iter().all(|node| !is_live(node)));
   });
@@ -1143,11 +1121,11 @@ fn segments_travel_with_their_content() {
 fn nested_segments_keep_their_own_content_while_detached() {
   with_platform(|| {
     let (stage, [before, inner_content]) = stage(|| [text("b"), text("i")]);
-    let (outer, outer_end) = Scene::<Terminal>::create_segment();
-    let (inner, inner_end) = Scene::<Terminal>::create_segment();
-    let segment_nodes = |start: NodeId| Scene::<Terminal>::read(|scene| scene.segment_nodes(start));
+    let (outer, outer_end) = Scene::create_segment();
+    let (inner, inner_end) = Scene::create_segment();
+    let segment_nodes = |start: NodeId| Scene::read(|scene| scene.segment_nodes(start));
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, outer, None);
       scene.insert_in_segment(outer, before, None);
       scene.insert_in_segment(outer, inner, None);
@@ -1161,13 +1139,13 @@ fn nested_segments_keep_their_own_content_while_detached() {
     assert_eq!(segment_nodes(outer), [before, inner]);
     assert_eq!(frame(2), "b\ni\n");
 
-    Scene::<Terminal>::with(|scene| scene.detach(stage, outer));
+    Scene::with(|scene| scene.detach(stage, outer));
 
     assert_eq!(segment_nodes(outer), [before, inner]);
     assert_eq!(segment_nodes(inner), [inner_content]);
     assert_eq!(frame(2), "\n\n");
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.remove_from_segment(inner, inner_content);
       scene.attach(stage, outer, None);
     });
@@ -1179,7 +1157,7 @@ fn nested_segments_keep_their_own_content_while_detached() {
     assert!(is_live(inner_content));
     assert_eq!(frame(2), "b\n\n");
 
-    Scene::<Terminal>::with(|scene| scene.insert_in_segment(inner, inner_content, None));
+    Scene::with(|scene| scene.insert_in_segment(inner, inner_content, None));
 
     assert_eq!(
       children(stage),
@@ -1206,9 +1184,9 @@ fn derived_mounts_only_its_content_between_the_anchors() {
       })]
     });
 
-    Scene::<Terminal>::with(|scene| scene.attach(parent, start, None));
+    Scene::with(|scene| scene.attach(parent, start, None));
 
-    let end = Scene::<Terminal>::read(|scene| scene.segment_end(start)).expect("its end");
+    let end = Scene::read(|scene| scene.segment_end(start)).expect("its end");
     let first = run("v0");
 
     assert_eq!(children(parent), [start, first, end]);
@@ -1284,7 +1262,7 @@ fn derived_forwards_the_pending_annotation_to_each_rebuild() {
     );
     assert_ne!(content.node(), first, "a rebuild");
     assert!(
-      Scene::<Terminal>::with(Scene::take_pending_annotation).is_none(),
+      Scene::with(Scene::take_pending_annotation).is_none(),
       "nothing is left pending"
     );
   });
@@ -1437,16 +1415,16 @@ fn the_focus_holder_of_a_segment_is_in_its_content() {
   with_platform(|| {
     let handle = NodeHandle::new();
     let (stage, [plain, holder]) = stage(|| [text("p"), focusable("f", handle)]);
-    let (start, _) = Scene::<Terminal>::create_segment();
+    let (start, _) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, start, None);
       scene.insert_in_segment(start, plain, None);
       scene.insert_in_segment(start, holder, None);
     });
 
     assert_eq!(
-      Scene::<Terminal>::read(|scene| (
+      Scene::read(|scene| (
         scene.focus_holder_within(start),
         scene.enclosing_segment(holder)
       )),
@@ -1477,10 +1455,10 @@ fn a_segment_is_placed_against_its_first_box() {
       ]
     });
     let inside = run("inside");
-    let (outer, _) = Scene::<Terminal>::create_segment();
-    let (empty, _) = Scene::<Terminal>::create_segment();
+    let (outer, _) = Scene::create_segment();
+    let (empty, _) = Scene::create_segment();
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, outer, None);
       scene.insert_in_segment(outer, empty, None);
       scene.insert_in_segment(outer, scope, None);
@@ -1488,13 +1466,11 @@ fn a_segment_is_placed_against_its_first_box() {
     });
 
     assert_eq!(
-      Scene::<Terminal>::read(|scene| scene.record(scope).map(NodeRecord::kind)),
+      Scene::read(|scene| scene.record(scope).map(NodeRecord::kind)),
       Some(NodeKind::Scope)
     );
     assert_eq!(
-      Scene::<Terminal>::read(
-        |scene| [outer, scope, empty, after].map(|node| scene.placement(node))
-      ),
+      Scene::read(|scene| [outer, scope, empty, after].map(|node| scene.placement(node))),
       [Some(inside), Some(inside), None, Some(after)]
     );
     assert_eq!(frame(2), "inside\nafter\n");
@@ -1523,17 +1499,17 @@ fn anchors_and_scopes_are_made_no_node() {
       "the stage and its two runs, the scope none"
     );
 
-    let (start, end) = Scene::<Terminal>::create_segment();
+    let (start, end) = Scene::create_segment();
 
     assert_eq!(testing::record_count(), held + 3, "the anchors none");
     assert_eq!(
-      Scene::<Terminal>::read(|scene| {
+      Scene::read(|scene| {
         [scope, start, end, after].map(|node| scene.record(node).map(NodeRecord::is_realized))
       }),
       [Some(false), Some(false), Some(false), Some(true)]
     );
 
-    Scene::<Terminal>::with(|scene| {
+    Scene::with(|scene| {
       scene.attach(stage, after, None);
       scene.attach(stage, start, Some(after));
       scene.insert_in_segment(start, scope, None);
@@ -1598,12 +1574,12 @@ enum Change {
 const WALK: usize = 64;
 
 /// The children of `node`, at most [`WALK`] of them.
-fn bounded_children(scene: &Scene<Terminal>, node: NodeId) -> Vec<NodeId> {
+fn bounded_children(scene: &Scene, node: NodeId) -> Vec<NodeId> {
   scene.children(node).take(WALK).collect()
 }
 
 /// Whether `ancestor` is `node` or stands above it, at most [`WALK`] links up.
-fn stands_above(scene: &Scene<Terminal>, ancestor: NodeId, node: NodeId) -> bool {
+fn stands_above(scene: &Scene, ancestor: NodeId, node: NodeId) -> bool {
   let mut current = Some(node);
 
   for _ in 0..WALK {
@@ -1625,7 +1601,7 @@ fn stands_above(scene: &Scene<Terminal>, ancestor: NodeId, node: NodeId) -> bool
 /// The nodes that move with `node`: a segment start's content and end anchor with it,
 /// and a pending content's nested ones, following at most `depth` pending segments
 /// down.
-fn moving(scene: &Scene<Terminal>, node: NodeId, depth: usize) -> Vec<NodeId> {
+fn moving(scene: &Scene, node: NodeId, depth: usize) -> Vec<NodeId> {
   let Some(end) = scene.segment_end(node).filter(|_| depth > 0)
   else {
     return vec![node];
@@ -1656,7 +1632,7 @@ fn moving(scene: &Scene<Terminal>, node: NodeId, depth: usize) -> Vec<NodeId> {
 /// among its parent's children, every child is live and names its parent, the sibling
 /// links run both ways and end, no node stands under itself, and an attached segment's
 /// end stands after its start under the same parent.
-fn assert_whole(scene: &Scene<Terminal>, nodes: &[NodeId]) {
+fn assert_whole(scene: &Scene, nodes: &[NodeId]) {
   for &node in nodes {
     if !scene.contains(node) {
       continue;
@@ -1731,7 +1707,7 @@ fn assert_whole(scene: &Scene<Terminal>, nodes: &[NodeId]) {
 }
 
 /// The labels of the runs placed beneath `node`, in document order.
-fn placed_labels(scene: &Scene<Terminal>, node: NodeId, labels: &[(NodeId, char)]) -> String {
+fn placed_labels(scene: &Scene, node: NodeId, labels: &[(NodeId, char)]) -> String {
   scene
     .placed_children(node)
     .map(|child| {
@@ -1796,14 +1772,14 @@ proptest! {
         .map(|(column, label)| {
           let run = Text::new(label.to_string()).build();
 
-          Scene::<Terminal>::with(|scene| scene.attach(*column, run, None));
+          Scene::with(|scene| scene.attach(*column, run, None));
 
           (run, label)
         })
         .collect();
       let segments = [
-        Scene::<Terminal>::create_segment(),
-        Scene::<Terminal>::create_segment(),
+        Scene::create_segment(),
+        Scene::create_segment(),
       ];
       let pool: Vec<NodeId> = boxes
         .iter()
@@ -1815,12 +1791,12 @@ proptest! {
 
       whole.extend(labels.iter().map(|(run, _)| *run));
       whole.push(stage);
-      Scene::<Terminal>::with(|scene| scene.attach(stage, boxes[0], None));
+      Scene::with(|scene| scene.attach(stage, boxes[0], None));
 
-      let root = Scene::<Terminal>::read(|scene| scene.parent(stage)).expect("the root");
+      let root = Scene::read(|scene| scene.parent(stage)).expect("the root");
 
       for change in changes {
-        Scene::<Terminal>::with(|scene| {
+        Scene::with(|scene| {
           let holds = |moved: NodeId, node: NodeId| {
             moving(scene, moved, WALK)
               .into_iter()
@@ -1863,7 +1839,7 @@ proptest! {
           assert_whole(scene, &whole);
         });
 
-        let placed = Scene::<Terminal>::read(|scene| placed_labels(scene, root, &labels));
+        let placed = Scene::read(|scene| placed_labels(scene, root, &labels));
         let drawn: String = testing::render_to_text(4, 6)
           .lines()
           .map(str::trim)

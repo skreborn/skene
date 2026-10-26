@@ -13,7 +13,7 @@ use skene_terminal::{
   Part,
   Scene,
   behavior::{Activate, ListboxOption},
-  platform::terminal::{Terminal, mount},
+  platform::terminal::mount,
   prelude::*,
   testing,
 };
@@ -889,7 +889,7 @@ fn styled_picker(size: Signal<u8>) -> Picker<u8> {
 
 /// Whether `node` sits inside a node recorded as `part`.
 fn inside_part(node: NodeId, part: Part) -> bool {
-  Scene::<Terminal>::with(|scene| {
+  Scene::with(|scene| {
     std::iter::successors(Some(node), |node| scene.parent(*node))
       .any(|node| scene.part(node) == Some(part))
   })

@@ -519,7 +519,7 @@ impl<P: Realization, B: Behavior + Default> Default for Control<P, B> {
 }
 
 impl<P: Realization, B: Behavior> Control<P, B> {
-  crate::properties! { box_style_mut, P;
+  crate::properties! { box_style_mut, crate::Condition<P::Scalar>;
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between the control's parts, body and label; half an em unless told otherwise";
     set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,

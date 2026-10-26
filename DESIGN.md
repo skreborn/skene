@@ -44,7 +44,19 @@ nothing: a control over any behavior builds a `ControlCore`, a theme of any pale
 `ThemeCore`, a switch over any key a `OneOfCore`, a link to any route a `LinkCore` and a
 picker of any value a `BasicPickerCore`, each compiled once, in the facade, the app
 compiling only the erasure into it. What a medium lacks is absent at compile time
-because the platform's associated types say so.
+because the platform's associated types say so. Beside its views, each facade declares
+the surface both share with one `skene_foundation::facade!` over its `Active`: the
+traits a view (`View`), a child of a container of a kind (`IntoChildOf<Kind>`), a token
+set read from the theme in force (`ThemedIn`) and a decorated text entry
+(`DecoratedTextEntry`, a text field or editor styled through both `TextEntryBase` and
+`DecorationBase`) meet, each without a parameter and blanket over the foundation's; an
+alias per building block that is no view of its own (`AnyView`, `LayoutBox<Kind>`,
+`Keyed<V>`, `Label`, `NodeHandle` and `Scene`); the value vocabulary in its unit
+(`Condition`, `Media`, `Value<T>`, `Token<T>`, `Inset`, `Spacing` and their kin); and
+`derived`, `reconcile` and `empty`. Code written on a facade therefore names no
+realization; only the surface traits a view's members come from (`ContainerBase`,
+`DecorationBase` and their kin) are still the foundation's, generic over it, so the
+facade's own impl lines name its `Active`.
 
 Dependency arrows only point down; a platform depends on the foundation, never on another
 platform; each facade names only its own platforms, and publishes the selected one as
@@ -2158,14 +2170,16 @@ Two guarantees, both properties of what is public rather than of any one API.
   with the pieces it composes public (`SimpleButton::styled`), and, where a preset is not
   enough, concrete views of its own, as each facade writes its built-ins; no public
   signature in it names the platform's realization, nothing in it is generic over one,
-  and where the facade's own surface still asks for the realization (a base trait's
-  bound, a part recorded in the scene, a wrapper erased into a flex child) it names it
-  as the facade's `Active` alone. Nothing on the path a
+  and its bodies name none either: where the foundation's surface asks for the
+  realization, the facade gives it a name of its own—a field's chrome is bounded on
+  `DecoratedTextEntry`, a part is recorded through the facade's `Scene`, and a wrapper
+  is erased into a flex child through `IntoChildOf<FlexChild>`. Nothing on the path a
   built-in takes is crate-private: the setter macros the
   built-ins generate their `set_`/`derive_` pairs with (`properties!`,
-  `trait_properties!`) and the surfaces they share (`DecorationBase`, `RunBase`) are
-  public, so a third-party layout view built on `LayoutBox` spells its surface the way
-  `Row` does. A line of either macro may start with `[cfg(<predicate>)]`, a platform's
+  `trait_properties!`, each taking the condition type its values vary under, the
+  facade's `Condition` on a view written on a facade) and the surfaces they share
+  (`DecorationBase`, `RunBase`) are public, so a third-party layout view built on
+  `LayoutBox` spells its surface the way `Row` does, naming no realization. A line of either macro may start with `[cfg(<predicate>)]`, a platform's
   own property of a shared view: its pair is generated in every build with one
   signature, writing its field where the predicate holds and dropping the value in every
   other build, so the field need exist only there. `extension_fields!` takes the same

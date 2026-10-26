@@ -8,6 +8,28 @@ supersedes.
 
 ## Decided against
 
+- **The surface traits re-declared without a parameter in each facade, now**
+  (2026-10-26), the shape AGENTS states (`impl ContainerBase for Container {}`): about
+  forty traits (`ContainerBase`, `DecorationBase`, `MotionBase` and their kin), each a
+  facade trait over the foundation's at `Active` that forwards every member, and every
+  impl line of both facades rewritten, to close a gap a library met in one bound alone,
+  which `DecoratedTextEntry` closes. Revisit with ROADMAP item 9, which makes the two
+  facades' surfaces parallel name for name.
+- **A same-named subtrait without members for a library's bound** (2026-10-26), the
+  facade's own `TextEntryBase` and `DecorationBase` over the foundation's at `Active`:
+  a named import of either hides the foundation's trait of that name, so its members
+  no longer resolve on a view (`entry.set_background(..)`) where the facade's was
+  imported. Replaced by one bound trait of a name of its own, `DecoratedTextEntry`,
+  which hides nothing. Revisit when the facade's surface traits forward every member
+  (item 9).
+- **A library's private function generic over the realization** (2026-10-26),
+  `field_chrome<P: Realization, E: TextEntryBase<P> + DecorationBase<P>>`: it names no
+  `Active`, but a crate on a facade is generic over no realization, its one build's
+  realization being the facade's. Revisit if a library's facade crate must serve more
+  than one realization in one build.
+- **The field chrome duplicated per type** (2026-10-26), one chain for `TextField` and
+  another for `TextEditor`: two copies of what one bound states. Revisit if the two
+  entries' chrome diverges.
 - **A preset inked only under a `Theme` of its palette or after a read of it**
   (2026-10-26), the interim after a library's view over `P: Realization` stopped
   defining its palette's default through `ThemedIn::define_root` as it built: a preset

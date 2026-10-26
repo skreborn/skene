@@ -26,10 +26,10 @@ mod tooltip;
 use skene_foundation::{Dimension, MouseCursor};
 pub use skene_simple::SimpleVariant;
 use skene_terminal::{
-  Active,
   AnyView,
   Container,
   ContainerBase,
+  DecoratedTextEntry,
   DecorationBase,
   DecorationWithCornerRadius,
   HasChild,
@@ -44,7 +44,6 @@ use skene_terminal::{
   State,
   Text,
   TextBase,
-  TextEntryBase,
   View,
   When,
 };
@@ -93,7 +92,7 @@ fn glyph_mark(glyph: fn(&SimpleGlyphs, bool) -> String) -> Stack {
 /// hairline in the border color that becomes the ring while focus shows, rounded, and on
 /// the disabled surface under the default cursor while disabled; its value selected in
 /// the background color on the foreground.
-fn field_chrome<E: TextEntryBase<Active> + DecorationBase<Active>>(entry: E) -> E {
+fn field_chrome<E: DecoratedTextEntry>(entry: E) -> E {
   let shape = shape();
 
   entry
@@ -113,7 +112,7 @@ fn as_part(part: Part, view: impl View + 'static) -> AnyView {
   AnyView::new(move || {
     let node: NodeId = skene_foundation::View::build(view);
 
-    Scene::<Active>::with(|scene| scene.set_part(node, part));
+    Scene::with(|scene| scene.set_part(node, part));
 
     node
   })

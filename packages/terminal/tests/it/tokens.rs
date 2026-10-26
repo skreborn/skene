@@ -4,10 +4,10 @@
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
 //! A linked palette's default is laid at the root once, the first time a node names one
 //! of its tokens, under the claim a read of the set makes, and a theme of it still wins
-//! beneath it. The nearest theme's palette answers, as the tree stands after a box
-//! moves, an expression or a derived leaf over a token resolves through it, and the
-//! token answers the scheme where it is read. The platform's colors at the root follow
-//! what the terminal reports and the app's scheme.
+//! beneath it, laying no palette whose tokens it defines itself. The nearest theme's palette
+//! answers, as the tree stands after a box moves, an expression or a derived leaf over a token
+//! resolves through it, and the token answers the scheme where it is read. The platform's colors at
+//! the root follow what the terminal reports and the app's scheme.
 
 use std::{any::TypeId, cell::Cell, rc::Rc};
 
@@ -271,6 +271,36 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for Aliasing {
   }
 }
 
+/// A linked palette whose one token aliases its own surface, as Simple's typography
+/// aliases its foreground.
+#[derive(Debug, Clone, PartialEq)]
+struct SelfAliasing {
+  /// The surface.
+  surface: Token<Color>,
+  /// The surface, by reference.
+  tint: Token<Color>,
+}
+
+impl SelfAliasing {
+  const SURFACE: TokenRef<Color> = TokenRef::of::<Self, i32>("self-aliasing-surface");
+  const TINT: TokenRef<Color> = TokenRef::of::<Self, i32>("self-aliasing-tint");
+}
+
+impl Default for SelfAliasing {
+  fn default() -> Self {
+    Self {
+      surface: Token::new(Self::SURFACE, green()),
+      tint: Token::new(Self::TINT, Self::SURFACE),
+    }
+  }
+}
+
+impl<V: From<Definition<Color>> + 'static> TokenSet<V> for SelfAliasing {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.surface.define(), self.tint.define()]
+  }
+}
+
 /// Whether the root defines `reference`.
 fn root_defines(reference: TokenRef<Color>) -> bool {
   Scene::<Terminal>::read(|scene| scene.root_definitions().get(reference.name()).is_some())
@@ -481,6 +511,50 @@ fn a_default_aliasing_another_palette_lays_both() {
     assert_eq!(root_tokens(), before.get() + 3, "the alias and the palette");
     assert!(root_defines(Linked::INK));
     assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(blue())), "the ink");
+  });
+}
+
+/// A theme of a linked palette aliasing its own tokens lays nothing at the root, so a
+/// text outside it keeps its ink, where a theme aliasing another palette's token lays
+/// that palette.
+#[test]
+fn a_theme_lays_only_the_palettes_it_leaves_undefined() {
+  with_platform(|| {
+    let before = Signal::new(0);
+    let _ = terminal::mount(move || {
+      before.set(root_tokens());
+
+      Column::new()
+        .set_children((
+          Text::new("x"),
+          Theme::new(SelfAliasing::default()).set_child_builder(|| Text::new("y")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(root_tokens(), before.get(), "nothing laid at the root");
+    assert!(!Scene::<Terminal>::read(
+      |scene| scene.defines_root_set(TypeId::of::<SelfAliasing>())
+    ));
+    assert!(!root_defines(SelfAliasing::TINT));
+  });
+
+  with_platform(|| {
+    let before = Signal::new(0);
+    let _ = terminal::mount(move || {
+      before.set(root_tokens());
+
+      Theme::new(Aliasing::default())
+        .set_child_builder(|| Text::new("x"))
+        .into_any()
+        .build()
+    });
+
+    assert!(linked_claimed(), "the aliased palette");
+    assert!(root_defines(Linked::INK));
+    assert!(!root_defines(Aliasing::TINT), "the theme's own scope alone");
+    assert_eq!(root_tokens(), before.get() + 2);
   });
 }
 

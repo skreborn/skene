@@ -1144,9 +1144,10 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
 }
 
 /// The facade's typography inks the runs: a text on a page naming no Simple token in the
-/// default ink, and a text under the Simple theme in the palette's foreground, the
-/// palette's default then reaching the root with its typography aliases, so a text
-/// under no theme follows it too.
+/// default ink, a text under the Simple theme in the palette's foreground while the text
+/// beside the theme keeps the default ink, and a text beside a Simple preset in the
+/// palette's foreground, the palette's default reaching the root with its typography
+/// aliases over the typography's own default.
 #[wasm_bindgen_test]
 fn typography_inks_the_runs() {
   let ink = fixed(Typography::default().ink.definition().base());
@@ -1168,30 +1169,53 @@ fn typography_inks_the_runs() {
     );
   }
 
+  {
+    let (_guard, root) = fresh_root();
+    let _scheme = Scheme::choose(ColorScheme::Light);
+
+    let _ = mount(|| {
+      assert_eq!(Typography::current(), Typography::default());
+
+      Column::new()
+        .set_children((
+          Text::new("bare"),
+          Theme::new(SimplePalette::default()).set_child_builder(|| Text::new("themed")),
+        ))
+        .build()
+    });
+
+    let content = elements(&only_child(&root));
+    let bare = &content[0];
+    let themed = only_child(&content[1]);
+
+    assert_eq!(
+      computed(&themed, "color"),
+      probe(&root, "color", foreground)
+    );
+    assert_eq!(
+      computed(bare, "color"),
+      probe(&root, "color", ink),
+      "a theme of the palette lays nothing at the root"
+    );
+  }
+
   let (_guard, root) = fresh_root();
   let _scheme = Scheme::choose(ColorScheme::Light);
 
   let _ = mount(|| {
+    assert_eq!(Typography::current(), Typography::default());
+
     Column::new()
-      .set_children((
-        Text::new("bare"),
-        Theme::new(SimplePalette::default()).set_child_builder(|| Text::new("themed")),
-      ))
+      .set_children((Text::new("bare"), SimpleButton::new("Go")))
       .build()
   });
 
-  let content = elements(&only_child(&root));
-  let bare = &content[0];
-  let themed = only_child(&content[1]);
+  let bare = &elements(&only_child(&root))[0];
 
-  assert_eq!(
-    computed(&themed, "color"),
-    probe(&root, "color", foreground)
-  );
   assert_eq!(
     computed(bare, "color"),
     probe(&root, "color", foreground),
-    "the palette's default at the root aliases the typography"
+    "a preset lays the palette's default at the root, aliasing the typography"
   );
 }
 

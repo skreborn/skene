@@ -1330,11 +1330,13 @@ through `ThemedIn` makes too, so a read and a reference lay a set once between t
 read still lays it on a miss. `Scene::define_tokens`, the one entry for every
 definition, lists the linked tokens its definitions name in turn, so a default or a
 theme aliasing another palette's token lays that palette as well, the claim ending the
-recursion. The default is laid whether or not a theme above defines the palette, since
-a style is applied before its node is attached and its ancestors are unknown; the
-nearer definition wins, the theme's scope over the root on every platform. An unlinked
-name costs one `Option` check, and the scene is borrowed only where a linked set is not
-laid yet. Once per root is once per render on the server, whose every render starts a
+recursion; on a node's scope it passes over a token the same definitions define, so a
+theme of a palette aliasing its own tokens (Simple's typography aliases) lays nothing at
+the root and the text outside it keeps its ink. The default is laid whether or not a
+theme above defines the palette, since a style is applied before its node is attached
+and its ancestors are unknown; the nearer definition wins, the theme's scope over the
+root on every platform. An unlinked name costs one `Option` check; a linked one costs a
+read of the scene, which is borrowed mutably only where its set is not laid yet. Once per root is once per render on the server, whose every render starts a
 fresh scene, so a palette first referenced in a streamed chunk carries its root rule in
 that chunk's style delta; on the browser leaf and the terminal it is once per
 installation of the platform, however many mounts it holds.

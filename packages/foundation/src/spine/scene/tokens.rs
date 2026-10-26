@@ -252,7 +252,8 @@ impl<P: Realization> Scene<P> {
   /// to those in force change nothing.
   ///
   /// The default of every palette a token the definitions name links to is laid over the
-  /// root next, as [`define_defaults`](Self::define_defaults) lays it.
+  /// root next, as [`define_defaults`](Self::define_defaults) lays it, except, on a node,
+  /// a token the definitions define themselves.
   ///
   /// # Panics
   ///
@@ -277,7 +278,10 @@ impl<P: Realization> Scene<P> {
     else {
       return;
     };
-    let linked = TokenName::linked_in(&definitions);
+    let linked = match scope {
+      TokenScope::Node(_) => definitions.linked_beyond(),
+      TokenScope::Root => TokenName::linked_in(&definitions),
+    };
 
     self
       .mirrors
@@ -302,7 +306,8 @@ impl<P: Realization> Scene<P> {
 
   /// Lays over the root of `P`'s scene the default of every palette a token `references`
   /// names links to, as [`define_defaults`](Self::define_defaults) does; the scene is
-  /// borrowed only where a linked token's palette is not laid yet.
+  /// read wherever a linked token is named, and borrowed mutably only where its palette
+  /// is not laid yet.
   pub fn define_referenced(references: &impl TokenReferences) {
     let linked = TokenName::linked_in(references);
 

@@ -596,8 +596,9 @@ in a code comment.
     variant's ink again.
 27. **A library's default at the root leaves the page's text alone.** Simple's palette
     defines the typography tokens as aliases of its own, and its default reaches the
-    root with them, so the first Simple token a page names (a preset's, or a theme of
-    the palette's) re-inks every plain text under no theme in Simple's foreground.
+    root with them, so the first Simple token a page names outside a theme of the
+    palette (a preset's) re-inks every plain text under no theme in Simple's
+    foreground.
     Decide whether a root default may define another set's tokens, or keeps such
     aliases to a theme's own scope, so a library inks its own views alone.
 28. **The slider's standard parts on the web.** The web slider is drawn, so nothing

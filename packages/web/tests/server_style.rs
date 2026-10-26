@@ -1309,6 +1309,56 @@ fn an_unreferenced_linked_palette_is_absent() {
   );
 }
 
+/// A linked palette of a color and a text, a kind the web holds no custom property of.
+#[derive(Debug, Clone, PartialEq)]
+struct Lettered {
+  /// The card's surface.
+  card: skene_web::Token<Color>,
+  /// A mark, as text.
+  mark: skene_web::Token<String>,
+}
+
+impl Lettered {
+  const CARD: skene_web::TokenRef<Color> = skene_web::TokenRef::of::<Self, f32>("lettered-card");
+  const MARK: skene_web::TokenRef<String> = skene_web::TokenRef::of::<Self, f32>("lettered-mark");
+}
+
+impl Default for Lettered {
+  fn default() -> Self {
+    Self {
+      card: skene_web::Token::new(Self::CARD, Linked::light()),
+      mark: skene_web::Token::new(Self::MARK, String::from("*")),
+    }
+  }
+}
+
+impl<V> skene_web::TokenSet<V> for Lettered
+where
+  V: From<skene_web::Definition<Color>> + From<skene_web::Definition<String>> + 'static,
+{
+  fn definitions(&self) -> Vec<(skene_web::TokenName, V)> {
+    vec![self.card.define(), self.mark.define()]
+  }
+}
+
+/// A linked palette's default on the root defines its color and leaves its text out,
+/// neither defined nor registered.
+#[test]
+fn a_linked_default_leaves_out_a_text_token() {
+  let rendered = render_to_string(|| Container::new().set_background(Lettered::CARD));
+  let styles = rendered.styles();
+
+  assert!(
+    rule(styles, ROOT).contains(&format!("--lettered-card:{};", css_color(Linked::light()))),
+    "{styles}"
+  );
+  assert!(
+    styles.contains("@property --lettered-card{"),
+    "the color is registered: {styles}"
+  );
+  assert!(!styles.contains("lettered-mark"), "{styles}");
+}
+
 /// Under a theme of a linked palette the scope's class carries the theme's value, which
 /// wins on its subtree over the root's default.
 #[test]

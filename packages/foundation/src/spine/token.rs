@@ -169,6 +169,18 @@ pub trait TokenReferences {
   fn for_each_token(&self, visit: &mut dyn FnMut(TokenName));
 }
 
+impl<V: TokenReferences> Definitions<V> {
+  /// Every token these definitions name that carries its palette's default and that they
+  /// do not define themselves, in order.
+  pub(in crate::spine) fn linked_beyond(&self) -> Vec<TokenName> {
+    let mut linked = TokenName::linked_in(self);
+
+    linked.retain(|name| self.get(*name).is_none());
+
+    linked
+  }
+}
+
 impl<V: TokenReferences> TokenReferences for Definitions<V> {
   fn for_each_token(&self, visit: &mut dyn FnMut(TokenName)) {
     for (_, value) in &self.0 {
@@ -639,6 +651,24 @@ mod tests {
       Some(Definitions::<TokenValue<f32>>::of(&Palette::default()))
     );
     assert_eq!(name.defaults::<i32>(), None);
+  }
+
+  /// A set's linked names beyond it leave out a token the set defines itself, so a
+  /// palette aliasing its own tokens names none, and one aliasing another's names it.
+  #[test]
+  fn a_set_defining_its_linked_tokens_names_none_beyond_it() {
+    let alias = Token::<Color, f32>::new(TokenRef::new("ink"), Palette::CARD).define();
+    let mut aliasing = Definitions::<TokenValue<f32>>::of(&Palette::default());
+
+    aliasing.overlay(Definitions::from(vec![alias.clone()]));
+
+    assert_eq!(TokenName::linked_in(&aliasing), [Palette::CARD.name()]);
+    assert_eq!(aliasing.linked_beyond(), []);
+    assert_eq!(
+      Definitions::<TokenValue<f32>>::from(vec![alias]).linked_beyond(),
+      [Palette::CARD.name()],
+      "an alias of a token the set leaves undefined"
+    );
   }
 
   /// An unlinked name carries no link.

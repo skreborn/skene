@@ -1440,6 +1440,7 @@ fn a_theme_of_simple_defines_the_typography_aliases_on_its_scope() {
     rule(styles, &format!(".{scope}")).contains("--typography-ink:var(--simple-foreground);"),
     "the scope's own alias: {styles}"
   );
+
   for selector in [ROOT, ROOT_DEFERRING, ROOT_CHOSEN] {
     assert!(
       rules(styles, selector)

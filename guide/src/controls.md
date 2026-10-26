@@ -287,7 +287,9 @@ controls come drawn and ready, in the platform's crate of the Simple library, ea
 inked from its palette. A preset references the palette's tokens, each carrying the
 palette's default, so it is inked with nothing above it, leaving the plain text beside
 it in the app's ink, and a `Theme` of the palette redefines them beneath it, inking the
-plain text there in the palette's foreground too:
+plain text there in the palette's foreground too. With nothing above them, the text a
+field or an editor holds and the text inside a card take the app's ink as well, on the
+card's surface; a `Theme` of the palette inks them in its foreground:
 
 ```rust
 use skene_gui::prelude::*;

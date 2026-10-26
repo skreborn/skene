@@ -661,7 +661,11 @@ its default reaches the root the first time a node references one and a preset i
 inked with no theme above it, a `Theme` of the palette above redefining them. The
 default at the root holds the palette's own tokens alone: its typography aliases take
 effect beneath a `Theme` of the palette, so a preset beside plain text leaves that text
-to the platform's typography or the app's theme. The palette defines every variant's
+to the platform's typography or the app's theme. So does the text on a preset's own
+surface that the preset does not ink: with no theme above them, the value of
+`SimpleTextField` and `SimpleTextEditor` and the runs inside `SimpleCard` take the
+typography in force, the platform's or the app's ink, and a `Theme` of the palette inks
+them in its foreground (`ROADMAP.md` item 26 inks them itself). The palette defines every variant's
 border token, transparent for a filled look, so a derived border needs the variant
 alone. Its checkbox, radio group and radio, and its picker with its option
 (`SimpleCheckbox::new()`, `SimpleRadioGroup::new()`, `SimpleRadio::new(value)`,

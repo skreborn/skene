@@ -158,11 +158,16 @@ impl<P: Realization> View<P> for ThemeCore<P> {
 /// and defined at the scene's root where no theme provides it.
 ///
 /// A theme provides `Memo<Self>` through context. On a miss the set's default is
-/// returned and its definitions are laid over the root definitions of `P`'s scene,
-/// once per set, so a consumer below no theme still resolves the tokens. The claim is
-/// the one a reference made by [`TokenRef::of`](crate::TokenRef::of) lays the set's
-/// default under, keyed by the set's type, so a read and a reference lay it once
-/// between them. Every [`TokenSet`] with a default has it.
+/// returned and its own tokens are laid over the root definitions of `P`'s scene, once
+/// per set, so a consumer below no theme still resolves them: the definitions whose
+/// names link to the set, or every one where no name links to it, as
+/// [`Scene::define_root_set`] lays them. A definition of another set's token, such as a
+/// palette's alias of the typography's ink, applies beneath a [`Theme`] of the set
+/// alone.
+///
+/// The claim is the one a reference made by [`TokenRef::of`](crate::TokenRef::of) lays
+/// the set's default under, keyed by the set's type, so a read and a reference lay it
+/// once between them. Every [`TokenSet`] with a default has it.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a token set with a default on this platform",
   label = "a palette read without a theme is a `TokenSet` for the platform's token value that implements `Default`"
@@ -174,9 +179,13 @@ pub trait ThemedIn<P: Realization>: TokenSet<P::TokenValue> + Default {
   /// The nearest theme's set as a memo, or a memo of the default without one.
   fn watch() -> Memo<Self>;
 
-  /// Lays the set's default definitions over the root of `P`'s scene, once per set, so
-  /// a node below no theme resolves its tokens; a set a reference to one of its tokens
+  /// Lays the set's own tokens from its default over the root of `P`'s scene, once per
+  /// set, so a node below no theme resolves them; a set a reference to one of its tokens
   /// laid there already is passed over.
+  ///
+  /// Only the definitions whose names link to the set reach the root, or every one where
+  /// no name links to it, as [`Scene::define_root_set`] lays them; a definition of
+  /// another set's token applies beneath a [`Theme`] of the set alone.
   fn define_root();
 }
 

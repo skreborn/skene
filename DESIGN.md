@@ -56,9 +56,9 @@ platforms' builds and compiles empty in the other's.
 **The spine owns the tree; a platform keeps a record per node it makes.**
 `Scene<P: Realization>` is a generational arena of node records—parent, children as a
 list of linked siblings (a move relinks a few records and shifts nothing), the token
-definitions a theme placed on the node, the query-container name, the handlers; beside them, the root's definitions every node falls back to, the platform's
-colors (`SystemColors`) among them, which the realization defines there as it is
-installed. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
+definitions a theme placed on the node, the query-container name, the handlers; beside
+them, the root's definitions every node falls back to, the platform's colors
+(`SystemColors`) among them, which the realization defines there as it is installed. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
 index and generation, as the layout engine's tests key their canned trees, and one no
 live node holds resolves to nothing in the scene), and the platform keys its own record of the
 node by that id (a `NodeMap`: an element, a string-tree index, a taffy leaf), realizing

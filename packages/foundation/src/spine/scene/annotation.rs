@@ -195,8 +195,8 @@ impl<P: Realization> Scene<P> {
     self.pending_annotation = Some(annotation);
   }
 
-  /// Takes the pending annotation, for the node about to be created: a box folds it
-  /// into its style and records it, any other node records it.
+  /// Takes the pending annotation, for the node about to be created to fold into its
+  /// style, emptying the slot.
   #[inline(always)]
   pub const fn take_pending_annotation(&mut self) -> Option<Annotation<P>> {
     self.pending_annotation.take()

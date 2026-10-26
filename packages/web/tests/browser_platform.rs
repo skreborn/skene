@@ -39,7 +39,6 @@ use skene_foundation::{
   StaticLeaf,
   Text,
   Theme,
-  ThemedIn,
   Toggle,
   ToggleBase,
   Token,
@@ -51,13 +50,7 @@ use skene_foundation::{
   View,
 };
 use skene_reactive::{Effect, Get, Set, Signal, hash::wide_of};
-use skene_simple_web::{
-  SimpleButton,
-  SimpleCheckbox,
-  SimpleListboxOption,
-  SimplePalette,
-  SimplePicker,
-};
+use skene_simple_web::{SimpleButton, SimpleCheckbox, SimpleListboxOption, SimplePicker};
 use skene_web::{
   Platform,
   platform::web::{self, NativeView, Web, WebTokenValue},
@@ -456,8 +449,7 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
 }
 
 /// A checkbox is a label over its native input; one click on the input flips the
-/// bound signal once, and the mark's color follows the control's state, the palette,
-/// read once, defining its tokens at the root.
+/// bound signal once, and the mark's color follows the control's state.
 #[wasm_bindgen_test]
 fn a_checkbox_flips_once_per_click() {
   let (_guard, root) = fresh_root();
@@ -468,8 +460,6 @@ fn a_checkbox_flips_once_per_click() {
     let flips = Rc::clone(&flips);
 
     move || {
-      let _ = <SimplePalette as ThemedIn<Web>>::current();
-
       SimpleCheckbox::new()
         .set_label("Agree")
         .derive_checked(move || checked.get())
@@ -602,17 +592,12 @@ fn a_button_click_does_not_reach_the_container() {
   assert_eq!(button_clicks.get(), 1);
 }
 
-/// A part's focus-visible variant anchors on the control's native input; the palette,
-/// read once, defines its tokens at the root.
+/// A part's focus-visible variant anchors on the control's native input.
 #[wasm_bindgen_test]
 fn a_focus_visible_variant_anchors_on_the_input() {
   let (_guard, root) = fresh_root();
 
-  let _ = web::mount(|| {
-    let _ = <SimplePalette as ThemedIn<Web>>::current();
-
-    SimpleCheckbox::new().set_label("Agree").build()
-  });
+  let _ = web::mount(|| SimpleCheckbox::new().set_label("Agree").build());
 
   let label = only_child(&root);
   let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");

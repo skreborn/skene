@@ -594,33 +594,39 @@ in a code comment.
     color reaches every run inside the button, as `color` inherits on the web, and a
     button drawn by its body alone has no label, so a Simple icon button is inked in its
     variant's ink again.
-27. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+27. **A library's default at the root leaves the page's text alone.** Simple's palette
+    defines the typography tokens as aliases of its own, and its default reaches the
+    root with them, so the first Simple token a page names (a preset's, or a theme of
+    the palette's) re-inks every plain text under no theme in Simple's foreground.
+    Decide whether a root default may define another set's tokens, or keeps such
+    aliases to a theme's own scope, so a library inks its own views alone.
+28. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-28. **A drawn slider stands upright.** The drawn `Slider`'s default track runs along
+29. **A drawn slider stands upright.** The drawn `Slider`'s default track runs along
     its row alone, so a vertical slider is a `BasicSlider` over the behavior set
     vertical (`behavior::Slider::set_axis`) with parts of its own. The drawn one takes
     the behavior's axis by a setter named apart from the control's own row axis
     (`ControlBase::set_axis`), its default fill growing from the bottom and its thumb
     travelling up, in pixels and in cells alike.
-29. **A terminal field centers its value in a taller box.** A browser draws a
+30. **A terminal field centers its value in a taller box.** A browser draws a
     single-line `<input>`'s value in the middle of a box taller than its line; the
     terminal draws it on the box's first row, now that a row stretching its items
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
-30. **A plain toggle draws its box on the web.** The reset's default chrome for an
+31. **A plain toggle draws its box on the web.** The reset's default chrome for an
     `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
-31. **The server's opening focus passes over a box it knows is hidden.** The
+32. **The server's opening focus passes over a box it knows is hidden.** The
     browser leaf passes over a control set to autofocus inside a box its computed style
     hides, as the terminal does; the server computes no style and marks the first that
     asks. A box whose `hidden` is fixed, or derived and so known as the render settles,
     can be passed over there too, only a `hidden` under a condition left to the engine.
-32. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+33. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-33. **Server rendering beyond the native binary.** The native server binary stays the
+34. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
@@ -638,7 +644,7 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-34. **Confirm docs.rs documents every platform's build.** `skene-web` and
+35. **Confirm docs.rs documents every platform's build.** `skene-web` and
     `skene-simple-web` name each target's leaf, and `skene-terminal` and
     `skene-simple-terminal` the terminal, through `cargo-args` setting
     `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over

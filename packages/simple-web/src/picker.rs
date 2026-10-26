@@ -41,16 +41,16 @@ use crate::{SimplePalette, as_part, shape};
 /// a list on the card surface.
 ///
 /// The face's hairline becomes the ring while focused or open, and it shows the chosen
-/// option's name and the indicator `▾`.
-/// [`new`](Self::new) returns the picker, so every member of a picker applies: its
-/// options, [`SimpleListboxOption`]s or any [`ListboxOption`], tagged with values of the
-/// app's own type `T`, come from its `set_options`, and the chosen value flows both
-/// ways. [`styled`](Self::styled) dresses a picker built otherwise from the pieces
-/// [`face`](Self::face) and [`list`](Self::list). The indicator is the face's
+/// option's name and the indicator `▾`. [`new`](Self::new) returns the picker, so every
+/// member of a picker applies: its options, [`SimpleListboxOption`]s or any
+/// [`ListboxOption`], tagged with values of the app's own type `T`, come from its
+/// `set_options`, and the chosen value flows both ways. [`styled`](Self::styled)
+/// dresses a picker built otherwise from the pieces [`face`](Self::face) and
+/// [`list`](Self::list). The indicator is the face's
 /// [`Part::Face`](skene_web::Part::Face) and the list surface the picker's
 /// [`Part::List`](skene_web::Part::List), so both follow its state. Its colors are
-/// [`SimplePalette`]'s tokens, which a [`Theme`](skene_web::Theme) of the palette
-/// above it defines, or a read of the palette where no theme does.
+/// [`SimplePalette`]'s tokens, inked in the palette's default unless a
+/// [`Theme`](skene_web::Theme) of the palette above redefines them.
 ///
 /// ```
 /// use skene_simple_web::prelude::*;

@@ -10,9 +10,8 @@ use crate::field_chrome;
 /// [`new`](Self::new) returns the field, so every member of a text field applies, its
 /// value flowing both ways; [`styled`](Self::styled) dresses a field built otherwise.
 /// Its value is selected in the palette's background on its foreground. Its colors are
-/// [`SimplePalette`](crate::SimplePalette)'s tokens, which a
-/// [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the palette
-/// where no theme does.
+/// [`SimplePalette`](crate::SimplePalette)'s tokens, inked in the palette's default
+/// unless a [`Theme`](skene_terminal::Theme) of the palette above redefines them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

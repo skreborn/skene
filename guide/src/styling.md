@@ -68,9 +68,11 @@ fn card_title() -> impl View {
 }
 ```
 
-A palette is a set of tokens with their definitions, and `Theme` defines it over a
-subtree. Changing the palette rewrites the definitions in place: nothing beneath the
-theme rebuilds, and the cost is the number of tokens, never the number of views.
+A palette is a set of tokens with their definitions. A library's palette carries its
+default in each of its references, so the title above is inked in Simple's foreground
+with no theme above it, and `Theme` redefines the palette over a subtree. Changing the
+palette rewrites the definitions in place: nothing beneath the theme rebuilds, and the
+cost is the number of tokens, never the number of views.
 
 ```rust
 use skene_simple_web::prelude::*;

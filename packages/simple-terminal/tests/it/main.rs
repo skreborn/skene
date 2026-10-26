@@ -1,16 +1,21 @@
 //! The Simple library on the terminal: what the browser's scripted input cannot give,
 //! the pointer resting on a control and the keys walking a picker, read as the cells the
-//! terminal paints.
+//! terminal paints, and a preset inked in its palette's default with no theme above it.
 
 #![cfg(skene_platform = "terminal")]
 
-use std::time::Duration;
+use std::{any::TypeId, time::Duration};
 
 use skene_simple_terminal::prelude::*;
 use skene_terminal::{
   self as terminal,
+  Definition,
+  Scene,
   StaticLeaf,
   Token,
+  TokenName,
+  TokenSet,
+  platform::terminal::Terminal,
   prelude::*,
   testing::{self, locate, user, with_platform},
 };
@@ -72,6 +77,13 @@ fn mount_themed<V: View + 'static>(view: impl FnOnce() -> V + 'static) {
       .set_child_builder(view)
       .build()
   });
+}
+
+/// Mounts `view` under no theme in the light scheme.
+fn mount_bare<V: View + 'static>(view: impl FnOnce() -> V + 'static) {
+  testing::trigger_color_scheme(ColorScheme::Light);
+
+  let _ = terminal::mount(|| View::into_any(view()).build());
 }
 
 /// Paints the frame a change starts its transitions on, then lets them settle.
@@ -386,5 +398,166 @@ fn a_disabled_button_takes_the_disabled_surface_and_ink() {
       ),
       "enabled again, the hovered look"
     );
+  });
+}
+
+/// A preset below no theme is inked in its palette's default: a filled button on its
+/// look's surface in its ink, and an outlined one in its ink on the ambient background.
+#[test]
+fn a_preset_below_no_theme_is_inked_in_the_palettes_default() {
+  with_platform(|| {
+    let palette = SimplePalette::default();
+
+    mount_bare(|| {
+      Column::new().set_children((SimpleButton::new("OK"), SimpleButton::outline("Back")))
+    });
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (ok_x, ok_y) = locate(&frame, "OK");
+    let (back_x, back_y) = locate(&frame, "Back");
+
+    assert_eq!(
+      colors_at(ok_x, ok_y),
+      (
+        Some(light(&palette.primary.ink)),
+        Some(light(&palette.primary.surface))
+      ),
+      "{frame}"
+    );
+    assert_eq!(
+      ink_at(back_x, back_y),
+      Some(light(&palette.outline.ink)),
+      "{frame}"
+    );
+    assert_ne!(
+      background_at(back_x, back_y),
+      Some(light(&palette.primary.surface)),
+      "the outline's surface is transparent"
+    );
+  });
+}
+
+/// A theme of the palette nested below no theme repaints its own subtree alone, the
+/// default answering outside it.
+#[test]
+fn a_nested_theme_repaints_only_its_subtree() {
+  with_platform(|| {
+    let palette = SimplePalette::default();
+    let red = Color::srgb(1., 0., 0.);
+    let white = Color::srgb(1., 1., 1.);
+
+    mount_bare(move || {
+      Column::new().set_children((
+        SimpleButton::new("Out"),
+        Theme::new(SimplePalette::default().set_primary(SimpleLook::new(
+          SimpleVariant::Primary,
+          red,
+          white,
+        )))
+        .set_child_builder(|| SimpleButton::new("In")),
+      ))
+    });
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (out_x, out_y) = locate(&frame, "Out");
+    let (in_x, in_y) = locate(&frame, "In");
+
+    assert_eq!(
+      colors_at(out_x, out_y),
+      (
+        Some(light(&palette.primary.ink)),
+        Some(light(&palette.primary.surface))
+      ),
+      "the default outside: {frame}"
+    );
+    assert_eq!(
+      colors_at(in_x, in_y),
+      (Some(rgb(white)), Some(rgb(red))),
+      "the theme's inside: {frame}"
+    );
+  });
+}
+
+/// A derived variant below no theme inks the variant it switches to, the tokens its
+/// derived slots name resolving to the palette's default as its fixed ones do.
+#[test]
+fn a_derived_variant_below_no_theme_inks_the_variant_it_switches_to() {
+  with_platform(|| {
+    let palette = SimplePalette::default();
+    let variant = Signal::new(SimpleVariant::Secondary);
+
+    mount_bare(move || SimpleButton::derive_variant("Go", move || variant.get()));
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (x, y) = locate(&frame, "Go");
+
+    assert_eq!(
+      colors_at(x, y),
+      (
+        Some(light(&palette.secondary.ink)),
+        Some(light(&palette.secondary.surface))
+      ),
+      "{frame}"
+    );
+
+    variant.set(SimpleVariant::Destructive);
+    settle();
+
+    assert_eq!(
+      colors_at(x, y),
+      (
+        Some(light(&palette.destructive.ink)),
+        Some(light(&palette.destructive.surface))
+      ),
+      "re-inked in the destructive look"
+    );
+  });
+}
+
+/// The number of root definitions.
+fn root_tokens() -> usize {
+  Scene::<Terminal>::read(|scene| scene.root_definitions().len())
+}
+
+/// However many presets are mounted, the palette's definitions are laid at the root
+/// once: the root gains exactly the names it did not define already.
+#[test]
+fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
+  with_platform(|| {
+    let expected = Signal::new(0);
+
+    mount_bare(move || {
+      let definitions: Vec<(TokenName, Definition<Color>)> = SimplePalette::default().definitions();
+
+      expected.set(Scene::<Terminal>::read(|scene| {
+        let root = scene.root_definitions();
+        let new = definitions
+          .iter()
+          .filter(|(name, _)| root.get(*name).is_none())
+          .count();
+
+        root.len() + new
+      }));
+
+      Column::new().set_children(
+        (0..6)
+          .map(|index| {
+            if index % 2 == 0 {
+              SimpleButton::new("Save").into_any()
+            }
+            else {
+              SimpleCard::new().set_child(Text::new("Card")).into_any()
+            }
+          })
+          .collect::<Vec<_>>(),
+      )
+    });
+
+    let _ = testing::render_to_text(WIDTH, HEIGHT);
+
+    assert!(Scene::<Terminal>::read(
+      |scene| scene.defines_root_set(TypeId::of::<SimplePalette>())
+    ));
+    assert_eq!(root_tokens(), expected.get());
   });
 }

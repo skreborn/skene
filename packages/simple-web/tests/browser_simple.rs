@@ -1,6 +1,7 @@
 //! The Simple library in a real browser: every view resolves the palette's tokens
-//! through the one theme mechanism, the controls' parts follow the control, and a
-//! third-party palette works under the same theme, read as the engine computes each
+//! through the one theme mechanism, a preset with no theme above it is inked in the
+//! palette's default, the controls' parts follow the control, and a third-party palette
+//! works under the same theme and inks with none, read as the engine computes each
 //! element's style.
 //!
 //! Run in a headless browser:
@@ -12,6 +13,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_simple_web::prelude::*;
 use skene_web::{
+  Definition,
   Media,
   StaticLeaf,
   Token,
@@ -19,7 +21,7 @@ use skene_web::{
   TokenRef,
   TokenSet,
   behavior::SliderRange,
-  platform::web::{self, WebTokenValue, mount},
+  platform::web::{self, mount},
   prelude::*,
   testing::{
     Installed,
@@ -802,7 +804,7 @@ struct AcmePalette {
 }
 
 impl AcmePalette {
-  const ACCENT: TokenRef<Color> = TokenRef::new("acme-accent");
+  const ACCENT: TokenRef<Color> = TokenRef::of::<Self, f32>("acme-accent");
 }
 
 impl Default for AcmePalette {
@@ -814,8 +816,8 @@ impl Default for AcmePalette {
   }
 }
 
-impl TokenSet<WebTokenValue> for AcmePalette {
-  fn definitions(&self) -> Vec<(TokenName, WebTokenValue)> {
+impl<V: From<Definition<Color>>> TokenSet<V> for AcmePalette {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![self.accent.define()]
   }
 }
@@ -870,6 +872,109 @@ async fn a_third_party_palette_works_under_theme_like_the_simple_one() {
     background(&card),
     probe("background-color", dark(&palette.card))
   );
+}
+
+/// A third-party palette whose references carry its default inks a box with no theme
+/// and no read, exactly as the Simple palette inks its presets.
+#[wasm_bindgen_test]
+fn a_third_party_palette_inks_with_no_theme() {
+  let _scheme = Scheme::choose(ColorScheme::Light);
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| Container::new().set_background(AcmePalette::ACCENT).build());
+
+  assert_eq!(
+    background(&only_child(&root)),
+    probe("background-color", Color::srgb(1., 0., 0.))
+  );
+}
+
+/// A preset below no theme is inked in the palette's default, and a theme of the palette
+/// nested beside it redefines its own subtree alone.
+#[wasm_bindgen_test]
+async fn a_preset_below_no_theme_is_inked_in_the_palettes_default() {
+  let _scheme = Scheme::choose(ColorScheme::Light);
+  let palette = SimplePalette::default();
+  let red = Color::srgb(1., 0., 0.);
+  let white = Color::srgb(1., 1., 1.);
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        SimpleButton::new("OK"),
+        Theme::new(SimplePalette::default().set_primary(SimpleLook::new(
+          SimpleVariant::Primary,
+          red,
+          white,
+        )))
+        .set_child_builder(|| SimpleButton::new("In")),
+      ))
+      .build()
+  });
+
+  let [outside, scope] = &elements(&only_child(&root))[..]
+  else {
+    panic!("the button and the theme's scope");
+  };
+  let inside = only_child(scope);
+  let surface = probe("background-color", light(&palette.primary.surface));
+  let themed = probe("background-color", red);
+
+  assert_eq!(settled(outside, &surface).await, surface, "the default");
+  assert_eq!(
+    ink(&only_child(outside)),
+    probe("color", light(&palette.primary.ink))
+  );
+  assert_eq!(settled(&inside, &themed).await, themed, "the theme's");
+  assert_eq!(ink(&only_child(&inside)), probe("color", white));
+}
+
+/// However many presets are mounted with no theme above, the root rule defines each of
+/// the palette's tokens once.
+#[wasm_bindgen_test]
+fn many_presets_define_each_simple_token_once_on_the_root() {
+  let _scheme = Scheme::choose(ColorScheme::Light);
+  let (_guard, _root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        SimpleButton::new("Save"),
+        SimpleButton::outline("Back"),
+        SimpleCard::new(),
+        SimpleCheckbox::new(),
+        SimpleButton::destructive("Delete"),
+      ))
+      .build()
+  });
+
+  let sheet = sheet_text();
+  let roots: Vec<&str> = sheet
+    .match_indices(":root{")
+    .map(|(start, rule)| {
+      let body = &sheet[start + rule.len()..];
+
+      &body[..body.find('}').expect("the rule's end")]
+    })
+    .filter(|body| body.contains("--simple-"))
+    .collect();
+  let [root] = &roots[..]
+  else {
+    panic!("one root rule defines the palette: {sheet}");
+  };
+  let declarations = format!(";{root}");
+  let definitions: Vec<(TokenName, Definition<Color>)> = SimplePalette::default().definitions();
+
+  for (name, _) in definitions {
+    let defined = format!(";--{}:", name.as_str());
+
+    assert_eq!(
+      declarations.matches(&defined).count(),
+      1,
+      "{defined} in {root}"
+    );
+  }
 }
 
 /// A picker wears the field chrome and rings while focused; its indicator follows the

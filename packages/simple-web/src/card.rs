@@ -10,9 +10,9 @@ use crate::{SimplePalette, shape};
 /// [`new`](Self::new) returns the container, so every member of a container applies; a
 /// card holds exactly one child, a [`Column`](skene_web::Column) spaced
 /// [`spacing`](Self::spacing) apart where it groups several. [`styled`](Self::styled)
-/// dresses a container built otherwise. Its colors are [`SimplePalette`]'s tokens, which
-/// a [`Theme`](skene_web::Theme) of the palette above it defines, or a read of the
-/// palette where no theme does.
+/// dresses a container built otherwise. Its colors are [`SimplePalette`]'s tokens,
+/// inked in the palette's default unless a [`Theme`](skene_web::Theme) of the palette
+/// above redefines them.
 ///
 /// ```
 /// use skene_simple_web::prelude::*;

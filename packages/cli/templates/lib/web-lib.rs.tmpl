@@ -10,18 +10,16 @@ use skene_web::prelude::*;
 /// A badge: a short label on a rounded, tinted surface, a preset of [`Container`].
 ///
 /// Each constructor returns the container, so every member of a container applies to the
-/// badge. Its colors are [`{Type}Palette`]'s tokens, which a [`Theme`] of the palette
-/// above it defines, or a read of the palette where no theme does.
+/// badge. Its colors are [`{Type}Palette`]'s tokens, inked in the palette's default
+/// unless a [`Theme`] of the palette above redefines them.
 ///
 /// ```
 /// use {crate}_web::prelude::*;
 /// use skene_web::prelude::*;
 ///
-/// let badges = Theme::new({Type}Palette::default()).set_child_builder(|| {
-///   Row::new()
-///     .set_spacing(8)
-///     .set_children(({Type}Badge::new("New"), {Type}Badge::new("Beta")))
-/// });
+/// let badges = Row::new()
+///   .set_spacing(8)
+///   .set_children(({Type}Badge::new("New"), {Type}Badge::new("Beta")));
 /// ```
 pub enum {Type}Badge {}
 

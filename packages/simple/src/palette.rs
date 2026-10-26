@@ -30,71 +30,13 @@ pub enum SimpleVariant {
   Destructive,
 }
 
-impl SimpleVariant {
-  /// The variant's surface token.
-  pub const fn surface(self) -> TokenRef<Color> {
-    TokenRef::new(match self {
-      Self::Primary => "simple-primary-surface",
-      Self::Secondary => "simple-secondary-surface",
-      Self::Outline => "simple-outline-surface",
-      Self::Ghost => "simple-ghost-surface",
-      Self::Destructive => "simple-destructive-surface",
-    })
-  }
-
-  /// The variant's ink token.
-  pub const fn ink(self) -> TokenRef<Color> {
-    TokenRef::new(match self {
-      Self::Primary => "simple-primary-ink",
-      Self::Secondary => "simple-secondary-ink",
-      Self::Outline => "simple-outline-ink",
-      Self::Ghost => "simple-ghost-ink",
-      Self::Destructive => "simple-destructive-ink",
-    })
-  }
-
-  /// The variant's border token: a bordered look's hairline, and transparent for a
-  /// filled one.
-  pub const fn border(self) -> TokenRef<Color> {
-    TokenRef::new(match self {
-      Self::Primary => "simple-primary-border",
-      Self::Secondary => "simple-secondary-border",
-      Self::Outline => "simple-outline-border",
-      Self::Ghost => "simple-ghost-border",
-      Self::Destructive => "simple-destructive-border",
-    })
-  }
-
-  /// The variant's hover surface token.
-  pub const fn hover(self) -> TokenRef<Color> {
-    TokenRef::new(match self {
-      Self::Primary => "simple-primary-hover",
-      Self::Secondary => "simple-secondary-hover",
-      Self::Outline => "simple-outline-hover",
-      Self::Ghost => "simple-ghost-hover",
-      Self::Destructive => "simple-destructive-hover",
-    })
-  }
-
-  /// The variant's focus surface token.
-  pub const fn focus(self) -> TokenRef<Color> {
-    TokenRef::new(match self {
-      Self::Primary => "simple-primary-focus",
-      Self::Secondary => "simple-secondary-focus",
-      Self::Outline => "simple-outline-focus",
-      Self::Ghost => "simple-ghost-focus",
-      Self::Destructive => "simple-destructive-focus",
-    })
-  }
-}
-
 /// One emphasis variant's colors: the surface it paints, the ink on that surface, and
 /// the surfaces its interaction states paint instead.
 ///
 /// Each color is a token named for the variant, so a consumer emits the name and the
-/// theme in force supplies the value. A `None` border says the variant is filled
-/// rather than bordered: the palette then defines the variant's border token as
-/// transparent, so a Simple preset draws a transparent hairline and switching variants
+/// palette's default, or a theme of the palette above it, supplies the value. A `None` border says
+/// the variant is filled rather than bordered: the palette then defines the variant's border token
+/// as transparent, so a Simple preset draws a transparent hairline and switching variants
 /// shifts nothing.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
@@ -123,11 +65,11 @@ impl<N: Scalar> SimpleLook<N> {
     let surface = surface.into();
 
     Self {
-      surface: Token::new(variant.surface(), surface.clone()),
-      ink: Token::new(variant.ink(), ink),
+      surface: Token::new(SimplePalette::<N>::surface_of(variant), surface.clone()),
+      ink: Token::new(SimplePalette::<N>::ink_of(variant), ink),
       border: None,
-      hover: Token::new(variant.hover(), surface.clone()),
-      focus: Token::new(variant.focus(), surface),
+      hover: Token::new(SimplePalette::<N>::hover_of(variant), surface.clone()),
+      focus: Token::new(SimplePalette::<N>::focus_of(variant), surface),
       variant,
     }
   }
@@ -154,7 +96,10 @@ impl<N: Scalar> SimpleLook<N> {
 
   /// Gives the action a hairline border, making it a bordered variant.
   pub fn set_border(mut self, border: impl Into<Definition<Color, N>>) -> Self {
-    self.border = Some(Token::new(self.variant.border(), border));
+    self.border = Some(Token::new(
+      SimplePalette::<N>::border_of(self.variant),
+      border,
+    ));
 
     self
   }
@@ -179,14 +124,14 @@ impl<N: Scalar> SimpleLook<N> {
       |token: &Token<Color, N>, name: TokenRef<Color>| Token::new(name, token.definition().clone());
 
     Self {
-      surface: rename(&self.surface, variant.surface()),
-      ink: rename(&self.ink, variant.ink()),
+      surface: rename(&self.surface, SimplePalette::<N>::surface_of(variant)),
+      ink: rename(&self.ink, SimplePalette::<N>::ink_of(variant)),
       border: self
         .border
         .as_ref()
-        .map(|border| rename(border, variant.border())),
-      hover: rename(&self.hover, variant.hover()),
-      focus: rename(&self.focus, variant.focus()),
+        .map(|border| rename(border, SimplePalette::<N>::border_of(variant))),
+      hover: rename(&self.hover, SimplePalette::<N>::hover_of(variant)),
+      focus: rename(&self.focus, SimplePalette::<N>::focus_of(variant)),
       variant,
     }
   }
@@ -199,7 +144,7 @@ impl<N: Scalar> SimpleLook<N> {
     definitions.push(self.border.as_ref().map_or_else(
       || {
         (
-          self.variant.border().name(),
+          SimplePalette::<N>::border_of(self.variant).name(),
           V::from(Definition::from(Color::TRANSPARENT)),
         )
       },
@@ -221,8 +166,8 @@ impl<N: Scalar> SimpleLook<N> {
 ///
 /// The palette also defines the [`typography`] tokens as aliases—the ink is the
 /// foreground, the link ink the link color, selected text the background on the
-/// foreground—so a plain text under a Simple theme reads as one design with the
-/// controls. Use the tokens for the chrome around the components too.
+/// foreground—so a plain text wherever the palette is defined reads as one design with
+/// the controls. Use the tokens for the chrome around the components too.
 ///
 /// This type is the Simple library's, not the framework's: a third-party component
 /// library defines its own struct of [`Token`]s.
@@ -261,73 +206,129 @@ pub struct SimplePalette<N: Scalar> {
 
 impl<N: Scalar> SimplePalette<N> {
   /// The page background.
-  pub const BACKGROUND: TokenRef<Color> = TokenRef::new("simple-background");
+  pub const BACKGROUND: TokenRef<Color> = TokenRef::of::<Self, N>("simple-background");
   /// Hairline borders and separators.
-  pub const BORDER: TokenRef<Color> = TokenRef::new("simple-border");
+  pub const BORDER: TokenRef<Color> = TokenRef::of::<Self, N>("simple-border");
   /// A raised surface.
-  pub const CARD: TokenRef<Color> = TokenRef::new("simple-card");
+  pub const CARD: TokenRef<Color> = TokenRef::of::<Self, N>("simple-card");
   /// The dangerous action's border.
-  pub const DESTRUCTIVE_BORDER: TokenRef<Color> = SimpleVariant::Destructive.border();
+  pub const DESTRUCTIVE_BORDER: TokenRef<Color> = Self::border_of(SimpleVariant::Destructive);
   /// The dangerous action's focus surface.
-  pub const DESTRUCTIVE_FOCUS: TokenRef<Color> = SimpleVariant::Destructive.focus();
+  pub const DESTRUCTIVE_FOCUS: TokenRef<Color> = Self::focus_of(SimpleVariant::Destructive);
   /// The dangerous action's hover surface.
-  pub const DESTRUCTIVE_HOVER: TokenRef<Color> = SimpleVariant::Destructive.hover();
+  pub const DESTRUCTIVE_HOVER: TokenRef<Color> = Self::hover_of(SimpleVariant::Destructive);
   /// The dangerous action's ink.
-  pub const DESTRUCTIVE_INK: TokenRef<Color> = SimpleVariant::Destructive.ink();
+  pub const DESTRUCTIVE_INK: TokenRef<Color> = Self::ink_of(SimpleVariant::Destructive);
   /// The dangerous action's surface.
-  pub const DESTRUCTIVE_SURFACE: TokenRef<Color> = SimpleVariant::Destructive.surface();
+  pub const DESTRUCTIVE_SURFACE: TokenRef<Color> = Self::surface_of(SimpleVariant::Destructive);
   /// The ink of a control that cannot be operated.
-  pub const DISABLED_INK: TokenRef<Color> = TokenRef::new("simple-disabled-ink");
+  pub const DISABLED_INK: TokenRef<Color> = TokenRef::of::<Self, N>("simple-disabled-ink");
   /// The surface of a control that cannot be operated.
-  pub const DISABLED_SURFACE: TokenRef<Color> = TokenRef::new("simple-disabled-surface");
+  pub const DISABLED_SURFACE: TokenRef<Color> = TokenRef::of::<Self, N>("simple-disabled-surface");
   /// The default text ink.
-  pub const FOREGROUND: TokenRef<Color> = TokenRef::new("simple-foreground");
+  pub const FOREGROUND: TokenRef<Color> = TokenRef::of::<Self, N>("simple-foreground");
   /// The bare action's border.
-  pub const GHOST_BORDER: TokenRef<Color> = SimpleVariant::Ghost.border();
+  pub const GHOST_BORDER: TokenRef<Color> = Self::border_of(SimpleVariant::Ghost);
   /// The bare action's focus surface.
-  pub const GHOST_FOCUS: TokenRef<Color> = SimpleVariant::Ghost.focus();
+  pub const GHOST_FOCUS: TokenRef<Color> = Self::focus_of(SimpleVariant::Ghost);
   /// The bare action's hover surface.
-  pub const GHOST_HOVER: TokenRef<Color> = SimpleVariant::Ghost.hover();
+  pub const GHOST_HOVER: TokenRef<Color> = Self::hover_of(SimpleVariant::Ghost);
   /// The bare action's ink.
-  pub const GHOST_INK: TokenRef<Color> = SimpleVariant::Ghost.ink();
+  pub const GHOST_INK: TokenRef<Color> = Self::ink_of(SimpleVariant::Ghost);
   /// The bare action's surface.
-  pub const GHOST_SURFACE: TokenRef<Color> = SimpleVariant::Ghost.surface();
+  pub const GHOST_SURFACE: TokenRef<Color> = Self::surface_of(SimpleVariant::Ghost);
   /// The ink of a link.
-  pub const LINK: TokenRef<Color> = TokenRef::new("simple-link");
+  pub const LINK: TokenRef<Color> = TokenRef::of::<Self, N>("simple-link");
   /// De-emphasized text.
-  pub const MUTED_FOREGROUND: TokenRef<Color> = TokenRef::new("simple-muted-foreground");
+  pub const MUTED_FOREGROUND: TokenRef<Color> = TokenRef::of::<Self, N>("simple-muted-foreground");
   /// The hairline-bordered action's border.
-  pub const OUTLINE_BORDER: TokenRef<Color> = SimpleVariant::Outline.border();
+  pub const OUTLINE_BORDER: TokenRef<Color> = Self::border_of(SimpleVariant::Outline);
   /// The hairline-bordered action's focus surface.
-  pub const OUTLINE_FOCUS: TokenRef<Color> = SimpleVariant::Outline.focus();
+  pub const OUTLINE_FOCUS: TokenRef<Color> = Self::focus_of(SimpleVariant::Outline);
   /// The hairline-bordered action's hover surface.
-  pub const OUTLINE_HOVER: TokenRef<Color> = SimpleVariant::Outline.hover();
+  pub const OUTLINE_HOVER: TokenRef<Color> = Self::hover_of(SimpleVariant::Outline);
   /// The hairline-bordered action's ink.
-  pub const OUTLINE_INK: TokenRef<Color> = SimpleVariant::Outline.ink();
+  pub const OUTLINE_INK: TokenRef<Color> = Self::ink_of(SimpleVariant::Outline);
   /// The hairline-bordered action's surface.
-  pub const OUTLINE_SURFACE: TokenRef<Color> = SimpleVariant::Outline.surface();
+  pub const OUTLINE_SURFACE: TokenRef<Color> = Self::surface_of(SimpleVariant::Outline);
   /// The main action's border.
-  pub const PRIMARY_BORDER: TokenRef<Color> = SimpleVariant::Primary.border();
+  pub const PRIMARY_BORDER: TokenRef<Color> = Self::border_of(SimpleVariant::Primary);
   /// The main action's focus surface.
-  pub const PRIMARY_FOCUS: TokenRef<Color> = SimpleVariant::Primary.focus();
+  pub const PRIMARY_FOCUS: TokenRef<Color> = Self::focus_of(SimpleVariant::Primary);
   /// The main action's hover surface.
-  pub const PRIMARY_HOVER: TokenRef<Color> = SimpleVariant::Primary.hover();
+  pub const PRIMARY_HOVER: TokenRef<Color> = Self::hover_of(SimpleVariant::Primary);
   /// The main action's ink.
-  pub const PRIMARY_INK: TokenRef<Color> = SimpleVariant::Primary.ink();
+  pub const PRIMARY_INK: TokenRef<Color> = Self::ink_of(SimpleVariant::Primary);
   /// The main action's surface.
-  pub const PRIMARY_SURFACE: TokenRef<Color> = SimpleVariant::Primary.surface();
+  pub const PRIMARY_SURFACE: TokenRef<Color> = Self::surface_of(SimpleVariant::Primary);
   /// The focused control's border ink.
-  pub const RING: TokenRef<Color> = TokenRef::new("simple-ring");
+  pub const RING: TokenRef<Color> = TokenRef::of::<Self, N>("simple-ring");
   /// The supporting action's border.
-  pub const SECONDARY_BORDER: TokenRef<Color> = SimpleVariant::Secondary.border();
+  pub const SECONDARY_BORDER: TokenRef<Color> = Self::border_of(SimpleVariant::Secondary);
   /// The supporting action's focus surface.
-  pub const SECONDARY_FOCUS: TokenRef<Color> = SimpleVariant::Secondary.focus();
+  pub const SECONDARY_FOCUS: TokenRef<Color> = Self::focus_of(SimpleVariant::Secondary);
   /// The supporting action's hover surface.
-  pub const SECONDARY_HOVER: TokenRef<Color> = SimpleVariant::Secondary.hover();
+  pub const SECONDARY_HOVER: TokenRef<Color> = Self::hover_of(SimpleVariant::Secondary);
   /// The supporting action's ink.
-  pub const SECONDARY_INK: TokenRef<Color> = SimpleVariant::Secondary.ink();
+  pub const SECONDARY_INK: TokenRef<Color> = Self::ink_of(SimpleVariant::Secondary);
   /// The supporting action's surface.
-  pub const SECONDARY_SURFACE: TokenRef<Color> = SimpleVariant::Secondary.surface();
+  pub const SECONDARY_SURFACE: TokenRef<Color> = Self::surface_of(SimpleVariant::Secondary);
+
+  /// The surface token of `variant`.
+  pub const fn surface_of(variant: SimpleVariant) -> TokenRef<Color> {
+    TokenRef::of::<Self, N>(match variant {
+      SimpleVariant::Primary => "simple-primary-surface",
+      SimpleVariant::Secondary => "simple-secondary-surface",
+      SimpleVariant::Outline => "simple-outline-surface",
+      SimpleVariant::Ghost => "simple-ghost-surface",
+      SimpleVariant::Destructive => "simple-destructive-surface",
+    })
+  }
+
+  /// The ink token of `variant`.
+  pub const fn ink_of(variant: SimpleVariant) -> TokenRef<Color> {
+    TokenRef::of::<Self, N>(match variant {
+      SimpleVariant::Primary => "simple-primary-ink",
+      SimpleVariant::Secondary => "simple-secondary-ink",
+      SimpleVariant::Outline => "simple-outline-ink",
+      SimpleVariant::Ghost => "simple-ghost-ink",
+      SimpleVariant::Destructive => "simple-destructive-ink",
+    })
+  }
+
+  /// The border token of `variant`: a bordered look's hairline, and transparent for a
+  /// filled one.
+  pub const fn border_of(variant: SimpleVariant) -> TokenRef<Color> {
+    TokenRef::of::<Self, N>(match variant {
+      SimpleVariant::Primary => "simple-primary-border",
+      SimpleVariant::Secondary => "simple-secondary-border",
+      SimpleVariant::Outline => "simple-outline-border",
+      SimpleVariant::Ghost => "simple-ghost-border",
+      SimpleVariant::Destructive => "simple-destructive-border",
+    })
+  }
+
+  /// The hover surface token of `variant`.
+  pub const fn hover_of(variant: SimpleVariant) -> TokenRef<Color> {
+    TokenRef::of::<Self, N>(match variant {
+      SimpleVariant::Primary => "simple-primary-hover",
+      SimpleVariant::Secondary => "simple-secondary-hover",
+      SimpleVariant::Outline => "simple-outline-hover",
+      SimpleVariant::Ghost => "simple-ghost-hover",
+      SimpleVariant::Destructive => "simple-destructive-hover",
+    })
+  }
+
+  /// The focus surface token of `variant`.
+  pub const fn focus_of(variant: SimpleVariant) -> TokenRef<Color> {
+    TokenRef::of::<Self, N>(match variant {
+      SimpleVariant::Primary => "simple-primary-focus",
+      SimpleVariant::Secondary => "simple-secondary-focus",
+      SimpleVariant::Outline => "simple-outline-focus",
+      SimpleVariant::Ghost => "simple-ghost-focus",
+      SimpleVariant::Destructive => "simple-destructive-focus",
+    })
+  }
 
   /// The look of `variant`.
   #[must_use]
@@ -617,7 +618,7 @@ mod tests {
     ] {
       let borders: Vec<_> = definitions
         .iter()
-        .filter(|(name, _)| *name == variant.border().name())
+        .filter(|(name, _)| *name == SimplePalette::<f32>::border_of(variant).name())
         .map(|(_, definition)| definition)
         .collect();
       let expected = palette.look(variant).border.as_ref().map_or_else(

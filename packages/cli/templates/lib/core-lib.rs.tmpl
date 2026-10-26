@@ -15,8 +15,8 @@ use skene_foundation::{
   TokenSet,
 };
 
-/// The library's colors: a token set a `Theme` defines beneath it; where no theme does, a
-/// read of the set defines its default at the root.
+/// The library's colors: a token set whose references carry its default, so a preset is
+/// inked in it with no theme above, and a `Theme` of the set redefines it beneath.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct {Type}Palette<N: Scalar> {
@@ -28,9 +28,9 @@ pub struct {Type}Palette<N: Scalar> {
 
 impl<N: Scalar> {Type}Palette<N> {
   /// A badge's surface.
-  pub const BADGE: TokenRef<Color> = TokenRef::new("{name}-badge");
+  pub const BADGE: TokenRef<Color> = TokenRef::of::<Self, N>("{name}-badge");
   /// The ink on a badge.
-  pub const BADGE_INK: TokenRef<Color> = TokenRef::new("{name}-badge-ink");
+  pub const BADGE_INK: TokenRef<Color> = TokenRef::of::<Self, N>("{name}-badge-ink");
 
   /// Sets a badge's surface.
   pub fn set_badge(mut self, badge: impl Into<Definition<Color, N>>) -> Self {

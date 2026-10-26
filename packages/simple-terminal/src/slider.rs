@@ -47,16 +47,16 @@ use crate::{SimplePalette, as_part, shape};
 /// color while focused.
 ///
 /// [`new`](Self::new) returns the slider, full width, so every member of a slider
-/// applies, its value flowing both ways; [`styled`](Self::styled) dresses a slider built
-/// otherwise from the pieces [`track`](Self::track) and [`thumb`](Self::thumb). The
-/// track is the control's [`Part::Track`](skene_terminal::Part::Track), holding the fill,
-/// its [`Part::Fill`](skene_terminal::Part::Fill), and the thumb, its
-/// [`Part::Thumb`](skene_terminal::Part::Thumb); the fill runs to the thumb's leading edge
-/// and the thumb travels the track less its own size, so both stay inside the track at
-/// either end. Nothing visible names it unless its `set_label` sets a caption, so its
-/// `set_accessible_name` names it otherwise. Its colors are [`SimplePalette`]'s tokens,
-/// which a [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the
-/// palette where no theme does.
+/// applies, its value flowing both ways; [`styled`](Self::styled) dresses a slider
+/// built otherwise from the pieces [`track`](Self::track) and [`thumb`](Self::thumb).
+/// The track is the control's [`Part::Track`](skene_terminal::Part::Track), holding the
+/// fill, its [`Part::Fill`](skene_terminal::Part::Fill), and the thumb, its
+/// [`Part::Thumb`](skene_terminal::Part::Thumb); the fill runs to the thumb's leading
+/// edge and the thumb travels the track less its own size, so both stay inside the
+/// track at either end. Nothing visible names it unless its `set_label` sets a caption,
+/// so its `set_accessible_name` names it otherwise. Its colors are [`SimplePalette`]'s
+/// tokens, inked in the palette's default unless a [`Theme`](skene_terminal::Theme) of
+/// the palette above redefines them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

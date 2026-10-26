@@ -167,9 +167,11 @@ SimpleButton::new("Save").handle_activate(save),
 SimpleButton::destructive("Delete").handle_activate(delete),
 ```
 
-`Theme::new(palette)` defines a token set beneath it and `Theme::derive(|| palette.get())`
-follows a signal, redefining the tokens in place so nothing rebuilds; `SimplePalette`
-is one such set, and a third party's palette is on identical footing. Light and dark
+A Simple preset is inked in its palette's default with no theme above it.
+`Theme::new(palette)` redefines a token set beneath it and
+`Theme::derive(|| palette.get())` follows a signal, redefining the tokens in place so
+nothing rebuilds; `SimplePalette` is one such set, and a third party's palette is on
+identical footing, its references carrying its default as Simple's do. Light and dark
 are one condition, `Media::Dark`, answered per token; `media::set_scheme` puts a scheme
 in force for the whole document.
 

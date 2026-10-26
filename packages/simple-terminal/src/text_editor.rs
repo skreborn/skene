@@ -10,9 +10,9 @@ use crate::field_chrome;
 ///
 /// [`new`](Self::new) returns the editor, so every member of a text editor applies, its
 /// value flowing both ways; [`styled`](Self::styled) dresses an editor built otherwise.
-/// Its colors are [`SimplePalette`](crate::SimplePalette)'s tokens, which a
-/// [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the palette
-/// where no theme does.
+/// Its colors are [`SimplePalette`](crate::SimplePalette)'s tokens, inked in the
+/// palette's default unless a [`Theme`](skene_terminal::Theme) of the palette above
+/// redefines them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

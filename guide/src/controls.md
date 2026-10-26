@@ -284,8 +284,9 @@ fn bare() -> impl View {
 
 A component library dresses the controls in a design language of its own. Simple's
 controls come drawn and ready, in the platform's crate of the Simple library, each
-inked from its palette. A preset references the palette's tokens, which a `Theme` of the
-palette above it defines, so an app puts one at its root:
+inked from its palette. A preset references the palette's tokens, each carrying the
+palette's default, so it is inked with nothing above it, and a `Theme` of the palette
+redefines them beneath it:
 
 ```rust
 use skene_simple_web::prelude::*;
@@ -299,30 +300,28 @@ enum Size {
 }
 
 fn order(name: Signal<String>, size: Signal<Size>) -> impl View {
-  Theme::new(SimplePalette::default()).set_child_builder(move || {
-    Column::new().set_spacing(12).set_children((
-      SimpleTextField::new()
-        .set_label("Name")
-        .set_placeholder("Your name")
-        .bind_value(name),
-      SimpleRadioGroup::new().set_label("Size").bind_chosen(size).set_child(
-        Row::new().set_spacing(16).set_children((
-          SimpleRadio::new(Size::Small).set_label("Small"),
-          SimpleRadio::new(Size::Medium).set_label("Medium"),
-          SimpleRadio::new(Size::Large).set_label("Large"),
-        )),
-      ),
-      SimplePicker::new()
-        .set_label("Size")
-        .bind_chosen(size)
-        .set_options((
-          SimpleListboxOption::new(Size::Small, "Small"),
-          SimpleListboxOption::new(Size::Medium, "Medium"),
-          SimpleListboxOption::new(Size::Large, "Large"),
-        )),
-      SimpleButton::new("Order").handle_activate(move || println!("ordered {}", name.get())),
-    ))
-  })
+  Column::new().set_spacing(12).set_children((
+    SimpleTextField::new()
+      .set_label("Name")
+      .set_placeholder("Your name")
+      .bind_value(name),
+    SimpleRadioGroup::new().set_label("Size").bind_chosen(size).set_child(
+      Row::new().set_spacing(16).set_children((
+        SimpleRadio::new(Size::Small).set_label("Small"),
+        SimpleRadio::new(Size::Medium).set_label("Medium"),
+        SimpleRadio::new(Size::Large).set_label("Large"),
+      )),
+    ),
+    SimplePicker::new()
+      .set_label("Size")
+      .bind_chosen(size)
+      .set_options((
+        SimpleListboxOption::new(Size::Small, "Small"),
+        SimpleListboxOption::new(Size::Medium, "Medium"),
+        SimpleListboxOption::new(Size::Large, "Large"),
+      )),
+    SimpleButton::new("Order").handle_activate(move || println!("ordered {}", name.get())),
+  ))
 }
 ```
 
@@ -341,20 +340,18 @@ use skene_simple_web::prelude::*;
 use skene_web::prelude::*;
 
 fn actions(dirty: Signal<bool>) -> impl View {
-  Theme::new(SimplePalette::default()).set_child_builder(move || {
-    Row::new().set_spacing(8).set_children((
-      SimpleButton::outline("Cancel"),
-      SimpleButton::derive_variant("Save", move || {
-        if dirty.get() {
-          SimpleVariant::Primary
-        }
-        else {
-          SimpleVariant::Secondary
-        }
-      }),
-      SimpleButton::destructive("Delete").set_disabled(true),
-    ))
-  })
+  Row::new().set_spacing(8).set_children((
+    SimpleButton::outline("Cancel"),
+    SimpleButton::derive_variant("Save", move || {
+      if dirty.get() {
+        SimpleVariant::Primary
+      }
+      else {
+        SimpleVariant::Secondary
+      }
+    }),
+    SimpleButton::destructive("Delete").set_disabled(true),
+  ))
 }
 ```
 

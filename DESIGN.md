@@ -643,8 +643,11 @@ are derived leaves naming the variant's tokens, so a variant change re-inks it i
 gives it, and `SimpleTooltip::new` a `Tooltip` whose bubble is in the foreground color.
 Each preset's pieces are public (`SimpleButton::styled`, `derive_styled`,
 `SimpleCard::styled`, `SimpleTooltip::styled`), and a preset references the palette's
-tokens without defining them: a `Theme` of the palette above it defines them, or a read
-of the palette defines its default at the root. The palette defines every variant's
+tokens without defining them. The palette links its references with `TokenRef::of`, so
+its default reaches the root the first time a node references one and a preset is
+inked with no theme above it, a `Theme` of the palette above redefining them. The
+default carries the palette's typography aliases, so once a page names a Simple token its
+plain text under no theme takes Simple's foreground. The palette defines every variant's
 border token, transparent for a filled look, so a derived border needs the variant
 alone. Its checkbox, radio group and radio, and its picker with its option
 (`SimpleCheckbox::new()`, `SimpleRadioGroup::new()`, `SimpleRadio::new(value)`,
@@ -2140,7 +2143,10 @@ Two guarantees, both properties of what is public rather than of any one API.
 
 - **A component library: one core, a crate per platform.** Its core depends on
   `skene-foundation` and holds what both media share—its colors as a token set, its
-  named sizes per unit, its logic—and names no realization. Each platform's crate writes
+  named sizes per unit, its logic—and names no realization. Its palette links its
+  references with `TokenRef::of`, so its default reaches the root the first time a node
+  references one of them and its presets are inked with no theme above them, with no
+  code of its own. Each platform's crate writes
   its presets on its facade's vocabulary, each a function returning the facade's
   built-in styled from the core (`SimpleButton::outline(label)` returns a `Button`),
   with the pieces it composes public (`SimpleButton::styled`), and, where a preset is not
@@ -2166,7 +2172,8 @@ Two guarantees, both properties of what is public rather than of any one API.
   creates the core-plus-presets shape: a core holding a palette and a unit trait and
   naming no realization, and a crate per platform named whose badge is a preset, an
   uninhabited namespace whose constructors return the facade's `Container` styled from
-  the core's tokens and its unit's sizes, defining no default at the root.
+  the core's tokens and its unit's sizes, inked in the palette's default with no theme
+  above it.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait or through its native door and realized through the same scene
   and node ids as a `Container`, so it composes with wrappers, themes, conditions and

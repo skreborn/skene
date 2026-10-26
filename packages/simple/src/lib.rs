@@ -7,13 +7,13 @@
 //! each returning the facade's built-in view styled from this palette and the
 //! [`SimpleShape`] of its unit, exactly as a third party's library writes its own.
 //!
-//! [`SimplePalette`] is a token set: `Theme::new(SimplePalette::default())` defines it
-//! beneath the theme, and every Simple preset references its tokens by name, leaving the
-//! definition to a theme or a read of the palette, which defines the default at the root
-//! where no theme provides one. The palette also defines the typography tokens, so a
-//! plain text under a Simple theme is inked in the palette's foreground. Corners round
-//! where the medium has a [`CornerRadius`](skene_foundation::CornerRadius) and stay
-//! square where it has none.
+//! [`SimplePalette`] is a token set, and every Simple preset references its tokens by
+//! name. Each reference carries the palette's default, so a preset is inked in it with
+//! no theme above it and nothing to read: the default reaches the root the first time a
+//! node references one of the tokens, and `Theme::new(palette)` redefines them beneath
+//! the theme. The palette also defines the typography tokens, so a plain text wherever
+//! the palette is defined is inked in its foreground. Corners round where the medium has
+//! a [`CornerRadius`](skene_foundation::CornerRadius) and stay square where it has none.
 
 mod palette;
 mod shape;

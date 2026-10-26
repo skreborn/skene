@@ -103,6 +103,20 @@ fn rule<'a>(styles: &'a str, selector: &str) -> &'a str {
   &rest[..rest.find('}').expect("rule end")]
 }
 
+/// The body of every rule `selector` opens in `styles`, in order.
+fn rules<'a>(styles: &'a str, selector: &str) -> Vec<&'a str> {
+  let opening = format!("{selector}{{");
+
+  styles
+    .match_indices(&opening)
+    .map(|(start, _)| {
+      let rest = &styles[start + opening.len()..];
+
+      &rest[..rest.find('}').expect("rule end")]
+    })
+    .collect()
+}
+
 /// The root selector under which the platform's preference still decides.
 const DEFERRING: &str = ":where(:root:not([data-skene-scheme=\"light\"]))";
 /// The root selector under which the app has chosen the dark scheme outright.
@@ -1317,5 +1331,50 @@ fn a_theme_of_a_linked_palette_defines_its_scope_over_the_default() {
   assert!(
     rule(styles, ROOT).contains(&format!("--linked-card:{};", css_color(Linked::light()))),
     "the default stands at the root beneath it: {styles}"
+  );
+}
+
+/// A Simple preset below no theme renders the Simple palette's default on the root: the
+/// light values on `:root` and the dark ones under both scheme guards, the preset naming
+/// the tokens alone.
+#[test]
+fn a_simple_preset_below_no_theme_defines_its_palette_at_the_root() {
+  let rendered = render_to_string(|| SimpleButton::new("OK"));
+  let surface = SimplePalette::default().primary.surface;
+  let light = css_color(fixed(surface.definition().base()));
+  let dark = css_color(fixed(&surface.definition().variants()[0].1));
+  let styles = rendered.styles();
+
+  assert!(
+    styles.contains("background-color:var(--simple-primary-surface)"),
+    "the preset names the token: {styles}"
+  );
+  assert!(
+    rule(styles, ROOT).contains(&format!("--simple-primary-surface:{light};")),
+    "{styles}"
+  );
+  assert!(
+    rules(styles, ROOT_DEFERRING)
+      .iter()
+      .any(|rule| rule.contains(&format!("--simple-primary-surface:{dark};"))),
+    "{styles}"
+  );
+  assert!(
+    rules(styles, ROOT_CHOSEN)
+      .iter()
+      .any(|rule| rule.contains(&format!("--simple-primary-surface:{dark};"))),
+    "{styles}"
+  );
+}
+
+/// A render with no Simple preset defines none of the Simple palette's tokens.
+#[test]
+fn a_page_with_no_simple_preset_defines_no_simple_token() {
+  let rendered = render_to_string(|| Container::new().set_child(Text::new("plain")));
+
+  assert!(
+    !rendered.styles().contains("--simple-"),
+    "{}",
+    rendered.styles()
   );
 }

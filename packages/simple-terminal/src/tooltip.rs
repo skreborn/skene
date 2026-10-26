@@ -7,14 +7,14 @@ use crate::{SimplePalette, shape};
 /// A ready-made tooltip, a preset of [`Tooltip`]: a bubble in the foreground color
 /// carrying its text in the background color.
 ///
-/// The bubble sits above the view it describes, opening after the standard delay on hover
-/// and at once on focus. [`new`](Self::new) shows text, [`derive`](Self::derive) text
-/// that follows a signal, and [`view`](Self::view) any view; each returns the tooltip, so
-/// every member of a tooltip applies, and the described view comes last through its
-/// `set_child`, so any view takes a tooltip by wrapping. [`styled`](Self::styled) dresses
-/// a tooltip built otherwise. Its colors are [`SimplePalette`]'s tokens, which a
-/// [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the
-/// palette where no theme does.
+/// The bubble sits above the view it describes, opening after the standard delay on
+/// hover and at once on focus. [`new`](Self::new) shows text, [`derive`](Self::derive)
+/// text that follows a signal, and [`view`](Self::view) any view; each returns the
+/// tooltip, so every member of a tooltip applies, and the described view comes last
+/// through its `set_child`, so any view takes a tooltip by wrapping.
+/// [`styled`](Self::styled) dresses a tooltip built otherwise. Its colors are
+/// [`SimplePalette`]'s tokens, inked in the palette's default unless a
+/// [`Theme`](skene_terminal::Theme) of the palette above redefines them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

@@ -1143,16 +1143,35 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
   owner.dispose();
 }
 
-/// The facade's typography inks the runs: a text under no theme in the default ink,
-/// and a text under the Simple theme in the palette's foreground.
+/// The facade's typography inks the runs: a text on a page naming no Simple token in the
+/// default ink, and a text under the Simple theme in the palette's foreground, the
+/// palette's default then reaching the root with its typography aliases, so a text
+/// under no theme follows it too.
 #[wasm_bindgen_test]
 fn typography_inks_the_runs() {
+  let ink = fixed(Typography::default().ink.definition().base());
+  let foreground = fixed(SimplePalette::default().foreground.definition().base());
+
+  {
+    let (_guard, root) = fresh_root();
+    let _scheme = Scheme::choose(ColorScheme::Light);
+
+    let _ = mount(|| {
+      assert_eq!(Typography::current(), Typography::default());
+
+      Text::new("bare").build()
+    });
+
+    assert_eq!(
+      computed(&only_child(&root), "color"),
+      probe(&root, "color", ink)
+    );
+  }
+
   let (_guard, root) = fresh_root();
   let _scheme = Scheme::choose(ColorScheme::Light);
 
   let _ = mount(|| {
-    assert_eq!(Typography::current(), Typography::default());
-
     Column::new()
       .set_children((
         Text::new("bare"),
@@ -1164,13 +1183,15 @@ fn typography_inks_the_runs() {
   let content = elements(&only_child(&root));
   let bare = &content[0];
   let themed = only_child(&content[1]);
-  let ink = fixed(Typography::default().ink.definition().base());
-  let foreground = fixed(SimplePalette::default().foreground.definition().base());
 
-  assert_eq!(computed(bare, "color"), probe(&root, "color", ink));
   assert_eq!(
     computed(&themed, "color"),
     probe(&root, "color", foreground)
+  );
+  assert_eq!(
+    computed(bare, "color"),
+    probe(&root, "color", foreground),
+    "the palette's default at the root aliases the typography"
   );
 }
 

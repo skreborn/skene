@@ -4,19 +4,24 @@ use skene_foundation::{Definition, StaticLeaf, Token, TokenName, TokenRef, Token
 use skene_terminal::reactive::{Get, Memo, use_context};
 
 /// A checkbox's checked mark.
-pub const CHECKBOX_CHECKED: TokenRef<String> = TokenRef::new("simple-glyph-checkbox-checked");
+pub const CHECKBOX_CHECKED: TokenRef<String> =
+  TokenRef::of::<SimpleGlyphs, i32>("simple-glyph-checkbox-checked");
 
 /// A checkbox's unchecked mark.
-pub const CHECKBOX_UNCHECKED: TokenRef<String> = TokenRef::new("simple-glyph-checkbox-unchecked");
+pub const CHECKBOX_UNCHECKED: TokenRef<String> =
+  TokenRef::of::<SimpleGlyphs, i32>("simple-glyph-checkbox-unchecked");
 
 /// A radio's checked mark.
-pub const RADIO_CHECKED: TokenRef<String> = TokenRef::new("simple-glyph-radio-checked");
+pub const RADIO_CHECKED: TokenRef<String> =
+  TokenRef::of::<SimpleGlyphs, i32>("simple-glyph-radio-checked");
 
 /// A radio's unchecked mark.
-pub const RADIO_UNCHECKED: TokenRef<String> = TokenRef::new("simple-glyph-radio-unchecked");
+pub const RADIO_UNCHECKED: TokenRef<String> =
+  TokenRef::of::<SimpleGlyphs, i32>("simple-glyph-radio-unchecked");
 
 /// The indicator after a picker's chosen label.
-pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("simple-glyph-picker-indicator");
+pub const PICKER_INDICATOR: TokenRef<String> =
+  TokenRef::of::<SimpleGlyphs, i32>("simple-glyph-picker-indicator");
 
 /// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with in
 /// the terminal: a token set a theme defines beneath it, in cells.

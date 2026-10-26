@@ -46,16 +46,16 @@ use crate::{SimplePalette, as_part, shape};
 /// run filled to the value in the primary surface, and a thumb that rings while focused.
 ///
 /// [`new`](Self::new) returns the slider, full width, so every member of a slider
-/// applies, its value flowing both ways; [`styled`](Self::styled) dresses a slider built
-/// otherwise from the pieces [`track`](Self::track) and [`thumb`](Self::thumb). The
-/// track is the control's [`Part::Track`](skene_web::Part::Track), holding the fill,
-/// its [`Part::Fill`](skene_web::Part::Fill), and the thumb, its
+/// applies, its value flowing both ways; [`styled`](Self::styled) dresses a slider
+/// built otherwise from the pieces [`track`](Self::track) and [`thumb`](Self::thumb).
+/// The track is the control's [`Part::Track`](skene_web::Part::Track), holding the
+/// fill, its [`Part::Fill`](skene_web::Part::Fill), and the thumb, its
 /// [`Part::Thumb`](skene_web::Part::Thumb); the fill runs to the thumb's leading edge
 /// and the thumb travels the track less its own size, so both stay inside the track at
 /// either end. Nothing visible names it unless its `set_label` sets a caption, so its
 /// `set_accessible_name` names it otherwise. Its colors are [`SimplePalette`]'s tokens,
-/// which a [`Theme`](skene_web::Theme) of the palette above it defines, or a read of the
-/// palette where no theme does.
+/// inked in the palette's default unless a [`Theme`](skene_web::Theme) of the palette
+/// above redefines them.
 ///
 /// ```
 /// use skene_simple_web::prelude::*;

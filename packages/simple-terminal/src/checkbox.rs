@@ -7,14 +7,14 @@ use crate::{SimpleGlyphs, glyph_mark};
 /// A ready-made checkbox, a preset of [`Checkbox`]: a glyph mark beside its caption.
 ///
 /// Its mark is the glyphs of [`SimpleGlyphs`], `[x]` while checked and `[ ]` otherwise
-/// unless a theme redefines them, inked in the foreground and the ring while focus shows.
-/// [`new`](Self::new) returns the checkbox, so every member of a checkbox applies, its
-/// checked state flowing both ways; [`styled`](Self::styled) dresses a checkbox built
-/// otherwise, and [`mark`](Self::mark) is the mark it shows, its
-/// [`Part::Mark`](skene_terminal::Part::Mark), which follows the control's checked state.
-/// Its colors are [`SimplePalette`](crate::SimplePalette)'s tokens, which a
-/// [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the
-/// palette where no theme does.
+/// unless a theme redefines them, inked in the foreground and the ring while focus
+/// shows. [`new`](Self::new) returns the checkbox, so every member of a checkbox
+/// applies, its checked state flowing both ways; [`styled`](Self::styled) dresses a
+/// checkbox built otherwise, and [`mark`](Self::mark) is the mark it shows, its
+/// [`Part::Mark`](skene_terminal::Part::Mark), which follows the control's checked
+/// state. Its colors are [`SimplePalette`](crate::SimplePalette)'s tokens, inked in the
+/// palette's default unless a [`Theme`](skene_terminal::Theme) of the palette above
+/// redefines them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

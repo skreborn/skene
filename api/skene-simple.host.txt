@@ -5,12 +5,6 @@ pub skene_simple::SimpleVariant::Ghost
 pub skene_simple::SimpleVariant::Outline
 pub skene_simple::SimpleVariant::Primary
 pub skene_simple::SimpleVariant::Secondary
-impl skene_simple::SimpleVariant
-pub const fn skene_simple::SimpleVariant::border(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
-pub const fn skene_simple::SimpleVariant::focus(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
-pub const fn skene_simple::SimpleVariant::hover(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
-pub const fn skene_simple::SimpleVariant::ink(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
-pub const fn skene_simple::SimpleVariant::surface(self) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 impl core::clone::Clone for skene_simple::SimpleVariant
 pub fn skene_simple::SimpleVariant::clone(&self) -> skene_simple::SimpleVariant
 impl core::cmp::Eq for skene_simple::SimpleVariant
@@ -93,6 +87,10 @@ pub const skene_simple::SimplePalette<N>::SECONDARY_FOCUS: skene_foundation::spi
 pub const skene_simple::SimplePalette<N>::SECONDARY_HOVER: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 pub const skene_simple::SimplePalette<N>::SECONDARY_INK: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 pub const skene_simple::SimplePalette<N>::SECONDARY_SURFACE: skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimplePalette<N>::border_of(skene_simple::SimpleVariant) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimplePalette<N>::focus_of(skene_simple::SimpleVariant) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimplePalette<N>::hover_of(skene_simple::SimpleVariant) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
+pub const fn skene_simple::SimplePalette<N>::ink_of(skene_simple::SimpleVariant) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 pub const fn skene_simple::SimplePalette<N>::look(&self, skene_simple::SimpleVariant) -> &skene_simple::SimpleLook<N>
 pub fn skene_simple::SimplePalette<N>::set_background(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_border(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
@@ -108,6 +106,7 @@ pub fn skene_simple::SimplePalette<N>::set_outline(self, skene_simple::SimpleLoo
 pub fn skene_simple::SimplePalette<N>::set_primary(self, skene_simple::SimpleLook<N>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_ring(self, impl core::convert::Into<skene_foundation::spine::leaf::Definition<skene_foundation::spine::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_secondary(self, skene_simple::SimpleLook<N>) -> Self
+pub const fn skene_simple::SimplePalette<N>::surface_of(skene_simple::SimpleVariant) -> skene_foundation::spine::token::TokenRef<skene_foundation::spine::values::color::Color>
 impl<N: core::clone::Clone + skene_foundation::spine::scalar::Scalar> core::clone::Clone for skene_simple::SimplePalette<N>
 pub fn skene_simple::SimplePalette<N>::clone(&self) -> skene_simple::SimplePalette<N>
 impl<N: core::cmp::PartialEq + skene_foundation::spine::scalar::Scalar> core::cmp::PartialEq for skene_simple::SimplePalette<N>

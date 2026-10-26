@@ -20,12 +20,12 @@ use crate::{SimplePalette, shape};
 ///
 /// A card-colored list with a hairline border, its items padded like a picker's rows
 /// and lit in the secondary surface under the pointer or focus, a disabled item in the
-/// muted foreground, and a separator in the border color. [`new`](Self::new) returns the
-/// menu, so every member of a context menu applies: its `set_items` lists the items, and
-/// the view served comes last through its `set_child`, so any view takes a menu by
-/// wrapping. [`styled`](Self::styled) dresses a menu built otherwise. Its colors are
-/// [`SimplePalette`]'s tokens, which a [`Theme`](skene_terminal::Theme) of the palette above
-/// it defines, or a read of the palette where no theme does.
+/// muted foreground, and a separator in the border color. [`new`](Self::new) returns
+/// the menu, so every member of a context menu applies: its `set_items` lists the
+/// items, and the view served comes last through its `set_child`, so any view takes a
+/// menu by wrapping. [`styled`](Self::styled) dresses a menu built otherwise. Its
+/// colors are [`SimplePalette`]'s tokens, inked in the palette's default unless a
+/// [`Theme`](skene_terminal::Theme) of the palette above redefines them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;

@@ -31,9 +31,9 @@ use crate::{SimplePalette, shape};
 /// place as it changes. A disabled button takes the palette's disabled surface and ink
 /// whatever its variant. [`styled`](Self::styled) and
 /// [`derive_styled`](Self::derive_styled) dress a button built otherwise, a derived
-/// label's or an icon's. Its colors are [`SimplePalette`]'s tokens, which a
-/// [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the palette
-/// where no theme does.
+/// label's or an icon's. Its colors are [`SimplePalette`]'s tokens, inked in the
+/// palette's default unless a [`Theme`](skene_terminal::Theme) of the palette above redefines
+/// them.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;
@@ -107,23 +107,23 @@ impl SimpleButton {
     button
       .set_padding(shape.control_inset)
       .set_background(
-        Value::new(Self::leaf(variant, SimpleVariant::surface))
+        Value::new(Self::leaf(variant, SimplePalette::surface_of))
           .when(
             State::Hovered.into(),
-            Self::leaf(variant, SimpleVariant::hover),
+            Self::leaf(variant, SimplePalette::hover_of),
           )
           .when(
             State::FocusVisible.into(),
-            Self::leaf(variant, SimpleVariant::focus),
+            Self::leaf(variant, SimplePalette::focus_of),
           )
           .when(State::Disabled.into(), SimplePalette::DISABLED_SURFACE),
       )
       .set_text_color(
-        Value::new(Self::leaf(variant, SimpleVariant::ink))
+        Value::new(Self::leaf(variant, SimplePalette::ink_of))
           .when(State::Disabled.into(), SimplePalette::DISABLED_INK),
       )
       .set_border_width(Inset::all(shape.control_ring))
-      .set_border_color(Value::new(Self::leaf(variant, SimpleVariant::border)))
+      .set_border_color(Value::new(Self::leaf(variant, SimplePalette::border_of)))
       .set_corner_radius(shape.control_radius)
       .add_transition(Transition::new(Property::Background, Self::SURFACE_SETTLE))
       .map_layout_box(|layout| layout.set_arrangement(Arrangement::Start))

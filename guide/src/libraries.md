@@ -22,9 +22,9 @@ acme-ui
 
 ## The palette
 
-A palette is a token set: a struct of tokens a `Theme` defines over a subtree. Each
-token is a name with a definition, and a definition may answer conditions, the dark
-scheme among them:
+A palette is a token set: a struct of tokens, inked in its default wherever a view
+references them and redefined by a `Theme` over a subtree. Each token is a name with a
+definition, and a definition may answer conditions, the dark scheme among them:
 
 ```rust
 use skene_foundation::{Color, Definition, Media, Scalar, Token, TokenName, TokenRef, TokenSet};
@@ -38,7 +38,7 @@ pub struct AcmeUiPalette<N: Scalar> {
 
 impl<N: Scalar> AcmeUiPalette<N> {
   /// A badge's surface.
-  pub const BADGE: TokenRef<Color> = TokenRef::new("acme-ui-badge");
+  pub const BADGE: TokenRef<Color> = TokenRef::of::<Self, N>("acme-ui-badge");
 }
 
 impl<N: Scalar> Default for AcmeUiPalette<N> {
@@ -59,11 +59,12 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmeUiPalette<N> 
 }
 ```
 
-A preset references a token by its `TokenRef` and emits only its name; the theme in
-force supplies the value. A `Theme` of the palette defines it beneath, and where no
-theme does, a read of it (`AcmeUiPalette::current()` or `AcmeUiPalette::watch()`)
-defines its default at the root. A preset is a plain function that may run before any
-platform is installed, so it defines nothing itself.
+A preset references a token by its `TokenRef` and emits only its name. A reference made
+by `TokenRef::of::<Self, N>` carries the palette's default with it: the first time a
+node references one of the palette's tokens, its default definitions reach the root, so
+a preset is inked with no theme above it and no code of the library's own, and a `Theme`
+of the palette redefines them beneath it. `TokenRef::new` names a token carrying no
+default, for a set something else always defines.
 
 ## The sizes
 
@@ -125,8 +126,8 @@ the sizes in its unit. The scaffold's web crate writes its badge this way:
 #   }
 #
 #   impl<N: Scalar> AcmeUiPalette<N> {
-#     pub const BADGE: TokenRef<Color> = TokenRef::new("acme-ui-badge");
-#     pub const BADGE_INK: TokenRef<Color> = TokenRef::new("acme-ui-badge-ink");
+#     pub const BADGE: TokenRef<Color> = TokenRef::of::<Self, N>("acme-ui-badge");
+#     pub const BADGE_INK: TokenRef<Color> = TokenRef::of::<Self, N>("acme-ui-badge-ink");
 #   }
 #
 #   impl<N: Scalar> Default for AcmeUiPalette<N> {
@@ -193,11 +194,9 @@ impl AcmeUiBadge {
 /// The palette in the web's unit.
 pub type AcmeUiPalette = acme_ui::AcmeUiPalette<f32>;
 
-let badges = Theme::new(AcmeUiPalette::default()).set_child_builder(|| {
-  Row::new()
-    .set_spacing(8)
-    .set_children((AcmeUiBadge::new("New"), AcmeUiBadge::new("Beta")))
-});
+let badges = Row::new()
+  .set_spacing(8)
+  .set_children((AcmeUiBadge::new("New"), AcmeUiBadge::new("Beta")));
 ```
 
 The terminal's crate writes the same preset line for line over the terminal's views, in

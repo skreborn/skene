@@ -27,19 +27,19 @@ scheme among them:
 ```rust
 use skene_foundation::{Color, Definition, Media, Scalar, Token, TokenName, TokenRef, TokenSet};
 
-/// Acme's colors.
+/// Acme UI's colors.
 #[derive(Debug, Clone, PartialEq)]
-pub struct AcmePalette<N: Scalar> {
+pub struct AcmeUiPalette<N: Scalar> {
   /// A badge's surface.
   pub badge: Token<Color, N>,
 }
 
-impl<N: Scalar> AcmePalette<N> {
+impl<N: Scalar> AcmeUiPalette<N> {
   /// A badge's surface.
-  pub const BADGE: TokenRef<Color> = TokenRef::new("acme-badge");
+  pub const BADGE: TokenRef<Color> = TokenRef::new("acme-ui-badge");
 }
 
-impl<N: Scalar> Default for AcmePalette<N> {
+impl<N: Scalar> Default for AcmeUiPalette<N> {
   fn default() -> Self {
     Self {
       badge: Token::new(
@@ -50,7 +50,7 @@ impl<N: Scalar> Default for AcmePalette<N> {
   }
 }
 
-impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmePalette<N> {
+impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmeUiPalette<N> {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![self.badge.define()]
   }
@@ -58,10 +58,10 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmePalette<N> {
 ```
 
 A preset references a token by its `TokenRef` and emits only its name; the theme in
-force supplies the value. A `Theme` of the palette defines it beneath, and where no theme
-does, a read of it (`AcmePalette::current()` or `AcmePalette::watch()`) defines its
-default at the root. A preset is a plain function, called before any platform is
-running, so it defines nothing itself.
+force supplies the value. A `Theme` of the palette defines it beneath, and where no
+theme does, a read of it (`AcmeUiPalette::current()` or `AcmeUiPalette::watch()`)
+defines its default at the root. A preset is a plain function that may run before any
+platform is installed, so it defines nothing itself.
 
 ## The sizes
 
@@ -72,15 +72,19 @@ them, so the core keeps both media's sizes side by side:
 ```rust
 use skene_foundation::{Inset, Length, Scalar};
 
-/// A length unit Acme's presets know their sizes in.
-pub trait AcmeUnit: Scalar {
+/// A length unit Acme UI's presets know their sizes in.
+#[diagnostic::on_unimplemented(
+  message = "the Acme UI presets have no sizes in `{Self}`",
+  label = "an Acme UI preset is drawn in logical pixels (`f32`) or cells (`i32`)"
+)]
+pub trait AcmeUiUnit: Scalar {
   /// The inset between a badge's edge and its label.
   fn badge_inset() -> Inset<Self>;
   /// The corner radius of a badge.
   fn badge_radius() -> Length;
 }
 
-impl AcmeUnit for f32 {
+impl AcmeUiUnit for f32 {
   fn badge_inset() -> Inset<Self> {
     Inset::symmetric(8, 2)
   }
@@ -90,7 +94,7 @@ impl AcmeUnit for f32 {
   }
 }
 
-impl AcmeUnit for i32 {
+impl AcmeUiUnit for i32 {
   fn badge_inset() -> Inset<Self> {
     Inset::symmetric(1, 0)
   }
@@ -113,17 +117,17 @@ the sizes in its unit. The scaffold's web crate writes its badge this way:
 #   use skene_foundation::{Color, Definition, Inset, Length, Scalar, Token, TokenName, TokenRef, TokenSet};
 #
 #   #[derive(Debug, Clone, PartialEq)]
-#   pub struct AcmePalette<N: Scalar> {
+#   pub struct AcmeUiPalette<N: Scalar> {
 #     pub badge: Token<Color, N>,
 #     pub badge_ink: Token<Color, N>,
 #   }
 #
-#   impl<N: Scalar> AcmePalette<N> {
-#     pub const BADGE: TokenRef<Color> = TokenRef::new("acme-badge");
-#     pub const BADGE_INK: TokenRef<Color> = TokenRef::new("acme-badge-ink");
+#   impl<N: Scalar> AcmeUiPalette<N> {
+#     pub const BADGE: TokenRef<Color> = TokenRef::new("acme-ui-badge");
+#     pub const BADGE_INK: TokenRef<Color> = TokenRef::new("acme-ui-badge-ink");
 #   }
 #
-#   impl<N: Scalar> Default for AcmePalette<N> {
+#   impl<N: Scalar> Default for AcmeUiPalette<N> {
 #     fn default() -> Self {
 #       Self {
 #         badge: Token::new(Self::BADGE.name().as_str(), Definition::from(Color::srgb(0.88, 0.91, 1.))),
@@ -132,18 +136,18 @@ the sizes in its unit. The scaffold's web crate writes its badge this way:
 #     }
 #   }
 #
-#   impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmePalette<N> {
+#   impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmeUiPalette<N> {
 #     fn definitions(&self) -> Vec<(TokenName, V)> {
 #       vec![self.badge.define(), self.badge_ink.define()]
 #     }
 #   }
 #
-#   pub trait AcmeUnit: Scalar {
+#   pub trait AcmeUiUnit: Scalar {
 #     fn badge_inset() -> Inset<Self>;
 #     fn badge_radius() -> Length;
 #   }
 #
-#   impl AcmeUnit for f32 {
+#   impl AcmeUiUnit for f32 {
 #     fn badge_inset() -> Inset<Self> {
 #       Inset::symmetric(8, 2)
 #     }
@@ -153,13 +157,13 @@ the sizes in its unit. The scaffold's web crate writes its badge this way:
 #     }
 #   }
 # }
-use acme_ui::AcmeUnit;
+use acme_ui::AcmeUiUnit;
 use skene_web::prelude::*;
 
 /// A badge: a short label on a rounded, tinted surface, a preset of [`Container`].
-pub enum AcmeBadge {}
+pub enum AcmeUiBadge {}
 
-impl AcmeBadge {
+impl AcmeUiBadge {
   /// A badge reading `label`.
   #[expect(
     clippy::new_ret_no_self,
@@ -177,30 +181,31 @@ impl AcmeBadge {
   /// `label` on a badge's surface, inked as a badge's label.
   pub fn styled(label: Text) -> Container {
     Container::new()
-      .set_padding(<f32 as AcmeUnit>::badge_inset())
-      .set_background(AcmePalette::BADGE)
-      .set_corner_radius(<f32 as AcmeUnit>::badge_radius())
-      .set_child(label.set_color(AcmePalette::BADGE_INK))
+      .set_padding(<f32 as AcmeUiUnit>::badge_inset())
+      .set_background(AcmeUiPalette::BADGE)
+      .set_corner_radius(<f32 as AcmeUiUnit>::badge_radius())
+      .set_child(label.set_color(AcmeUiPalette::BADGE_INK))
   }
 }
 
 /// The palette in the web's unit.
-pub type AcmePalette = acme_ui::AcmePalette<f32>;
+pub type AcmeUiPalette = acme_ui::AcmeUiPalette<f32>;
 
-let badges = Theme::new(AcmePalette::default()).set_child_builder(|| {
+let badges = Theme::new(AcmeUiPalette::default()).set_child_builder(|| {
   Row::new()
     .set_spacing(8)
-    .set_children((AcmeBadge::new("New"), AcmeBadge::new("Beta")))
+    .set_children((AcmeUiBadge::new("New"), AcmeUiBadge::new("Beta")))
 });
 ```
 
 The terminal's crate writes the same preset line for line over the terminal's views, in
-cells (`<i32 as AcmeUnit>`). The type is a namespace no value inhabits: `AcmeBadge::new`
-returns the container, never a badge. The pieces a preset composes are public
-(`AcmeBadge::styled`), so another library composes them differently. A preset with
-variants has a constructor per variant (`AcmeBadge::warning`), and a variant the app
-changes at run time is a `derive_variant` whose built-in takes its colors through
-`derive_` values, so a change re-inks it in place rather than rebuilding it.
+cells (`<i32 as AcmeUiUnit>`). The type is a namespace no value inhabits:
+`AcmeUiBadge::new` returns the container, never a badge. The pieces a preset composes
+are public (`AcmeUiBadge::styled`), so another library composes them differently. A
+preset with variants has a constructor per variant (`AcmeUiBadge::warning`), and a
+variant the app changes at run time is a `derive_variant` whose built-in takes its
+colors through `derive_` values, so a change re-inks it in place rather than rebuilding
+it.
 
 Where a preset is not enough, because the view's structure is the library's own rather
 than one built-in's, the facade's crate writes a concrete view of its own: a function

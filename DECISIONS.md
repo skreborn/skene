@@ -10,9 +10,9 @@ supersedes.
 
 - **A preset defining its palette's default at the root** (2026-10-26), as a library's
   view over `P: Realization` did through `ThemedIn::define_root` when it built: a preset
-  is a plain function returning a built-in, called before any platform is installed
-  (a doctest calls it with none), and defining a token reaches the realization, so it
-  cannot be done at construction. A preset references its palette's tokens, and a
+  is a plain function returning a built-in, which may run before any platform is
+  installed (a doctest calls it with none), and defining a token reaches the
+  realization, so it cannot be done at construction. A preset references its palette's tokens, and a
   `Theme` of the palette above it defines them, or a read of the palette (`current()`,
   `watch()`) where no theme does. Revisit when a built-in offers a mount hook a preset
   can attach without a view of its own.

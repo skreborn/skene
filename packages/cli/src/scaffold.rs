@@ -658,6 +658,13 @@ mod tests {
     );
     assert_eq!(file(&files, ".gitignore"), "/target\n");
     assert!(file(&files, "core/Cargo.toml").contains("name = \"acme-ui\""));
+    assert!(
+      ["skene-terminal", "skene-web"]
+        .iter()
+        .all(|facade| !file(&files, "core/Cargo.toml").contains(facade)),
+      "the core names no facade"
+    );
+
     let core = file(&files, "core/src/lib.rs");
 
     assert!(
@@ -665,7 +672,10 @@ mod tests {
       "{core}"
     );
     assert!(core.contains("pub trait AcmeUiUnit: Scalar"), "{core}");
-    assert!(!core.contains("Realization"), "{core}");
+    assert!(
+      !core.contains("Realization") && !core.contains("View"),
+      "{core}"
+    );
 
     for (directory, platform) in [("terminal", "terminal"), ("web", "web")] {
       let library = file(&files, &format!("{directory}/src/lib.rs"));
@@ -681,6 +691,14 @@ mod tests {
       assert!(library.contains("pub enum AcmeUiBadge {}"), "{library}");
       assert!(
         library.contains("pub fn new(label: impl Into<String>) -> Container"),
+        "{library}"
+      );
+      assert!(
+        library.contains("pub fn derive(label: impl Fn() -> String + 'static) -> Container"),
+        "{library}"
+      );
+      assert!(
+        library.contains("pub fn styled(label: Text) -> Container"),
         "{library}"
       );
       assert!(

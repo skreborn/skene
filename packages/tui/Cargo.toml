@@ -17,7 +17,7 @@ tracing.workspace = true
 
 [target.'cfg(skene_platform = "terminal")'.dev-dependencies]
 accesskit.workspace = true
-criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.7" }
+criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.8" }
 proptest.workspace = true
 skene-conformance = { path = "../conformance" }
 skene-simple-tui = { path = "../simple-tui" }

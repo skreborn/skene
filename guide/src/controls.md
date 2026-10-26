@@ -323,11 +323,14 @@ fn order(name: Signal<String>, size: Signal<Size>) -> impl View {
 }
 ```
 
-Simple's button, card, tooltip, checkbox, radio group and radio, and its picker and the
-options it lists, are presets: each constructor returns the facade's own built-in,
-styled, so every member of the built-in applies. `SimpleRadioGroup::new()` is a
-`RadioGroup`, `SimplePicker::new()` a `Picker`, and `SimpleListboxOption::new(value,
-caption)` a `ListboxOption` whose caption names it for the face and for type-ahead. A
+Every Simple component is a preset: each constructor returns the facade's own built-in,
+styled, so every member of the built-in applies. `SimpleTextField::new()` is a
+`TextField`, `SimpleSlider::new()` a `Slider`, `SimpleContextMenu::new()` a
+`ContextMenu`, `SimpleRadioGroup::new()` a `RadioGroup`, `SimplePicker::new()` a
+`Picker`, and `SimpleListboxOption::new(value, caption)` a `ListboxOption` whose caption
+names it for the face and for type-ahead. A slider's `set_label` is the built-in's
+visible caption, so a Simple slider nothing visible names takes its name from
+`set_accessible_name`. A
 button takes a constructor per variant, and `derive_variant` follows a signal, re-inking
 the button in place:
 
@@ -356,6 +359,7 @@ label's (`Button::derive`) or one drawn by an icon, and `SimpleCard::new()` is a
 `Container` around the one child it is given, a `Column` spaced `SimpleCard::spacing()`
 apart where it groups several. Every preset has its `styled` beside it, and the pieces it
 composes, a checkbox's or a radio's `mark`, a picker's `face` and `list`, an option's
-`check` and `label`, are public, so a library composes them differently. A mark follows
+`check` and `label`, a slider's `track` and `thumb`, are public, so a library composes
+them differently. A mark follows
 the control's state rather than a value it reads, so the checked state may be bound
 after the preset is made.

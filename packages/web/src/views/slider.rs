@@ -55,14 +55,16 @@ type Colors = SystemColors<f32>;
 /// the [`Part::Thumb`], its caption trailing it ([`set_label`](ControlBase::set_label)).
 /// Its defaults: 160 pixels wide, the track taking what its caption leaves. Its default
 /// track, which [`set_part(Part::Track, ..)`](ControlBase::set_part) replaces with its
-/// fill and its thumb (the replacement's thumb [as wide](SliderBase::set_thumb_extent) as the
-/// pointer is to measure it): a rail 4 pixels tall in [`SystemColors::TRACK`], rounded,
-/// clipping its fill, in [`SystemColors::ACCENT`], to the thumb's leading edge; its thumb
-/// a disc of 18 in [`SystemColors::KNOB`] in a border of 2 in the accent,
-/// [`SystemColors::INK`] while focus shows, travelling the track less its own width. The
-/// fill and the thumb follow the value by offset rather than layout. Its default cursor
-/// is the click cursor, the default one while disabled; every other default is the
-/// control's.
+/// fill and its thumb (the replacement's thumb [as
+/// wide](SliderBase::set_thumb_extent) as the pointer is to measure it, both placed by
+/// the fraction the slider shares with its parts, its
+/// [`SliderContext`](crate::behavior::SliderContext)): a rail 4 pixels tall in
+/// [`SystemColors::TRACK`], rounded, clipping its fill, in [`SystemColors::ACCENT`], to
+/// the thumb's leading edge; its thumb a disc of 18 in [`SystemColors::KNOB`] in a
+/// border of 2 in the accent, [`SystemColors::INK`] while focus shows, travelling the
+/// track less its own width. The fill and the thumb follow the value by offset rather
+/// than layout. Its default cursor is the click cursor, the default one while disabled;
+/// every other default is the control's.
 ///
 /// ```
 /// use skene_web::{behavior::SliderRange, prelude::*};

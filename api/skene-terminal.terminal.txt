@@ -162,6 +162,7 @@ pub use skene_terminal::behavior::RadioGroup
 pub use skene_terminal::behavior::RadioGroupContext
 pub use skene_terminal::behavior::Roster
 pub use skene_terminal::behavior::Slider
+pub use skene_terminal::behavior::SliderContext
 pub use skene_terminal::behavior::SliderRange
 pub use skene_terminal::behavior::TextEntry
 pub use skene_terminal::behavior::Toggle

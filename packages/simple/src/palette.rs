@@ -99,7 +99,7 @@ impl SimpleVariant {
 /// Each color is a token named for the variant, so a consumer emits the name and the
 /// theme in force supplies the value. A `None` border says the variant is filled
 /// rather than bordered: the palette then defines the variant's border token as
-/// transparent, so a Simple view draws a transparent hairline and switching variants
+/// transparent, so a Simple preset draws a transparent hairline and switching variants
 /// shifts nothing.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
@@ -225,7 +225,7 @@ impl<N: Scalar> SimpleLook<N> {
 /// conditions: `set_card(Definition::from(white).when(Media::Dark, ink))`. The color
 /// scheme is one such condition and nothing more.
 ///
-/// The palette also defines the views' [`typography`] tokens as aliases—the ink is the
+/// The palette also defines the [`typography`] tokens as aliases—the ink is the
 /// foreground, the link ink the link color, selected text the background on the
 /// foreground—so a plain text under a Simple theme reads as one design with the
 /// controls. Use the tokens for the chrome around the components too.

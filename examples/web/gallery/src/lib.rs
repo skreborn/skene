@@ -391,7 +391,7 @@ fn inputs() -> impl View {
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
           SimpleSlider::new()
-            .set_label("Volume")
+            .set_accessible_name("Volume")
             .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
           Text::derive(move || format!("{:.0}%", volume.get()))

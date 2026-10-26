@@ -1,35 +1,11 @@
-//! The Simple shape language: the lengths, radii and chrome every Simple view is drawn
-//! with, spelled once per medium in the medium's own unit.
+//! The Simple shape language: the lengths, radii and surfaces every Simple preset is
+//! drawn with, spelled once per medium in the medium's own unit.
 
-use skene_foundation::{
-  Behavior,
-  Color,
-  Condition,
-  Control,
-  CornerRadius,
-  DecorationBase,
-  DecorationWithCornerRadius,
-  Dimension,
-  Inset,
-  Length,
-  MouseCursor,
-  NodeId,
-  Part,
-  Realization,
-  Scalar,
-  Scene,
-  State,
-  ThemedIn,
-  TokenRef,
-  Value,
-  View,
-  When,
-};
-use skene_reactive::Memo;
+use skene_foundation::{Color, Inset, Length, Scalar, TokenRef};
 
 use super::SimplePalette;
 
-/// The lengths the Simple views are drawn with, in one medium's unit.
+/// The lengths the Simple presets are drawn with, in one medium's unit.
 ///
 /// [`SimpleUnit`] gives each unit its shape: logical pixels keep the language's pixel
 /// metrics, and cells take whole-cell insets and glyph-sized marks.
@@ -84,10 +60,10 @@ pub struct SimpleShape<N> {
   pub thumb_focus: TokenRef<Color>,
 }
 
-/// A length unit the Simple views know their shape in.
+/// A length unit the Simple presets know their shape in.
 #[diagnostic::on_unimplemented(
-  message = "the Simple views have no shape in `{Self}`",
-  label = "a Simple view is drawn in logical pixels (`f32`) or cells (`i32`)"
+  message = "the Simple presets have no shape in `{Self}`",
+  label = "a Simple preset is drawn in logical pixels (`f32`) or cells (`i32`)"
 )]
 pub trait SimpleUnit: Scalar {
   /// The shape in this unit.
@@ -150,70 +126,4 @@ impl SimpleUnit for i32 {
       thumb_focus: SimplePalette::<Self>::RING,
     }
   }
-}
-
-/// The shape of the platform's unit.
-pub(crate) fn shape<P: Realization>() -> SimpleShape<P::Scalar>
-where
-  P::Scalar: SimpleUnit,
-{
-  <P::Scalar as SimpleUnit>::shape()
-}
-
-/// The cursor over a control a click operates: the click cursor, and the default one
-/// while the control is disabled.
-pub(crate) fn click_cursor<N: Scalar>() -> Value<MouseCursor, Condition<N>> {
-  MouseCursor::Click.when(Condition::from(State::Disabled), MouseCursor::Default)
-}
-
-/// A border's width of one unit on every edge.
-pub(crate) fn hairline<N: Scalar>() -> Inset<N> {
-  Inset::all(1)
-}
-
-/// The palette in force as a memo, its default defined at the root where no theme
-/// provides one.
-pub(crate) fn palette<P: Realization>() -> Memo<SimplePalette<P::Scalar>> {
-  <SimplePalette<P::Scalar> as ThemedIn<P>>::watch()
-}
-
-/// Defines the default palette at the root where no theme provides one, so a view
-/// referencing the tokens resolves them.
-pub(crate) fn define_defaults<P: Realization>() {
-  let _ = palette::<P>();
-}
-
-/// Builds `view` and records it as `part` of the control it is mounted under.
-pub(crate) fn as_part<P: Realization>(part: Part, view: impl View<P>) -> NodeId {
-  let node = view.build();
-
-  Scene::<P>::with(|scene| scene.set_part(node, part));
-
-  node
-}
-
-/// The chrome of a text entry: full width, padded, on the card surface, a hairline in
-/// the border color that becomes the ring while focused, rounded; on the disabled
-/// surface under the default cursor while disabled.
-pub(crate) fn field_chrome<P: Realization, B: Behavior>(control: Control<P, B>) -> Control<P, B>
-where
-  P::Scalar: SimpleUnit,
-  P::StyleExt: CornerRadius,
-{
-  let shape = shape::<P>();
-
-  control
-    .set_width(Dimension::Fraction(1.))
-    .set_padding(shape.control_inset)
-    .set_background(SimplePalette::<P::Scalar>::CARD.when(
-      State::Disabled,
-      SimplePalette::<P::Scalar>::DISABLED_SURFACE,
-    ))
-    .set_border_width(Inset::all(shape.field_ring))
-    .set_border_color(
-      SimplePalette::<P::Scalar>::BORDER
-        .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
-    )
-    .set_corner_radius(shape.control_radius)
-    .set_cursor(MouseCursor::Text.when(State::Disabled, MouseCursor::Default))
 }

@@ -1,14 +1,18 @@
 //! A ready-made multi-line text editor in the Simple design language.
 
-use skene_foundation::{View, Wraps};
-use skene_simple::SimpleTextEditorBase;
-use skene_terminal::Active;
+use skene_terminal::TextEditor;
 
-/// A ready-made multi-line text editor: full-width field chrome whose hairline border
-/// becomes the ring while focused, showing several lines at once.
+use crate::field_chrome;
+
+/// A ready-made multi-line text editor, a preset of [`TextEditor`]: the field chrome of
+/// a [`SimpleTextField`](crate::SimpleTextField) over several lines at once, three
+/// unless its `set_lines` says otherwise.
 ///
-/// The value flows both ways, exactly as on [`BasicTextEditor`](skene_terminal::BasicTextEditor);
-/// for custom chrome, compose the raw control directly.
+/// [`new`](Self::new) returns the editor, so every member of a text editor applies, its
+/// value flowing both ways; [`styled`](Self::styled) dresses an editor built otherwise.
+/// Its colors are [`SimplePalette`](crate::SimplePalette)'s tokens, which a
+/// [`Theme`](skene_terminal::Theme) of the palette above it defines, or a read of the palette
+/// where no theme does.
 ///
 /// ```
 /// use skene_simple_terminal::prelude::*;
@@ -20,8 +24,24 @@ use skene_terminal::Active;
 ///   .set_placeholder("Notes")
 ///   .bind_value(notes);
 /// ```
-#[derive(Debug, Default, View, Wraps)]
-#[must_use]
-pub struct SimpleTextEditor(skene_simple::SimpleTextEditor<Active>);
+#[derive(Debug)]
+pub enum SimpleTextEditor {}
 
-impl SimpleTextEditorBase<Active> for SimpleTextEditor {}
+impl SimpleTextEditor {
+  /// An empty editor showing three lines.
+  #[expect(
+    clippy::new_ret_no_self,
+    reason = "a preset of a built-in view, so every member of the built-in applies"
+  )]
+  pub fn new() -> TextEditor {
+    Self::styled(TextEditor::new())
+  }
+
+  /// `editor` in the Simple field chrome, as [`SimpleTextField::styled`] dresses a
+  /// field.
+  ///
+  /// [`SimpleTextField::styled`]: crate::SimpleTextField::styled
+  pub fn styled(editor: TextEditor) -> TextEditor {
+    field_chrome(editor)
+  }
+}

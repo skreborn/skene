@@ -7994,6 +7994,14 @@ pub fn skene_foundation::Slider::on_pointer(&self, skene_foundation::PointerPhas
 pub fn skene_foundation::Slider::on_wheel(&self, &skene_foundation::WheelEvent, &skene_foundation::ControlHandle) -> skene_foundation::Prevent
 pub fn skene_foundation::Slider::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_foundation::Slider::state(&self) -> skene_foundation::ControlState
+pub struct skene_foundation::SliderContext
+impl skene_foundation::SliderContext
+pub fn skene_foundation::SliderContext::fraction(&self) -> f32
+pub fn skene_foundation::SliderContext::reads_fraction(&self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> f32>
+impl core::clone::Clone for skene_foundation::SliderContext
+pub fn skene_foundation::SliderContext::clone(&self) -> skene_foundation::SliderContext
+impl core::fmt::Debug for skene_foundation::SliderContext
+pub fn skene_foundation::SliderContext::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_foundation::SliderRange
 impl skene_foundation::SliderRange
 pub fn skene_foundation::SliderRange::fraction_of(&self, f32) -> f32

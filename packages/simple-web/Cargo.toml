@@ -3,7 +3,7 @@ name = "skene-simple-web"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Simple's views on skene's web facade"
+description = "Simple's presets of the built-in views of skene's web facade"
 license.workspace = true
 repository.workspace = true
 

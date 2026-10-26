@@ -60,6 +60,7 @@ use skene_foundation::{
   RowBase,
   RunBase,
   RunWithTypeMetrics,
+  SliderBase,
   SpanBase,
   StackBase,
   SuspenseBase,

@@ -3,11 +3,11 @@
 //! The Simple component library on the terminal: its presets of the terminal's built-in
 //! views ([`SimpleButton`], [`SimpleCard`], [`SimpleTooltip`], [`SimpleCheckbox`],
 //! [`SimpleRadioGroup`] and [`SimpleRadio`], [`SimplePicker`] and
-//! [`SimpleListboxOption`]), each returning the built-in styled from [`skene_simple`]'s
+//! [`SimpleListboxOption`], [`SimpleSlider`], [`SimpleTextField`], [`SimpleTextEditor`]
+//! and [`SimpleContextMenu`]), each returning the built-in styled from [`skene_simple`]'s
 //! palette and shape in the terminal's unit; [`SimpleGlyphs`], the token set of the
-//! glyphs its marks are drawn with; every other `Simple*` view of [`skene_simple`] as a
-//! view of the terminal's own over its `Active`; the palette in the terminal's unit; and
-//! a [`prelude`] an app imports beside the facade's own.
+//! glyphs its marks are drawn with; the palette in the terminal's unit; and a
+//! [`prelude`] an app imports beside the facade's own.
 
 #![cfg(skene_platform = "terminal")]
 
@@ -23,21 +23,18 @@ mod text_editor;
 mod text_field;
 mod tooltip;
 
-pub use skene_simple::{
-  SimpleContextMenuBase,
-  SimpleSliderBase,
-  SimpleTextEditorBase,
-  SimpleTextFieldBase,
-  SimpleVariant,
-};
+use skene_foundation::{Dimension, MouseCursor};
+pub use skene_simple::SimpleVariant;
 use skene_terminal::{
   Active,
   AnyView,
   Container,
   ContainerBase,
   DecorationBase,
+  DecorationWithCornerRadius,
   HasChild,
   HasChildren,
+  Inset,
   NodeId,
   Part,
   RunBase,
@@ -47,6 +44,7 @@ use skene_terminal::{
   State,
   Text,
   TextBase,
+  TextEntryBase,
   View,
   When,
 };
@@ -89,6 +87,25 @@ fn glyph_mark(glyph: fn(&SimpleGlyphs, bool) -> String) -> Stack {
   };
 
   Stack::new().set_children((shown(true), shown(false)))
+}
+
+/// `entry` in the Simple field chrome: full width, padded, on the card surface inside a
+/// hairline in the border color that becomes the ring while focus shows, rounded, and on
+/// the disabled surface under the default cursor while disabled; its value selected in
+/// the background color on the foreground.
+fn field_chrome<E: TextEntryBase<Active> + DecorationBase<Active>>(entry: E) -> E {
+  let shape = shape();
+
+  entry
+    .set_width(Dimension::Fraction(1.))
+    .set_padding(shape.control_inset)
+    .set_background(SimplePalette::CARD.when(State::Disabled, SimplePalette::DISABLED_SURFACE))
+    .set_border_width(Inset::all(shape.field_ring))
+    .set_border_color(SimplePalette::BORDER.when(State::FocusVisible, SimplePalette::RING))
+    .set_corner_radius(shape.control_radius)
+    .set_cursor(MouseCursor::Text.when(State::Disabled, MouseCursor::Default))
+    .set_selection_color(SimplePalette::BACKGROUND)
+    .set_selection_background(SimplePalette::FOREGROUND)
 }
 
 /// `view`, recorded once built as `part` of the control it is mounted under.

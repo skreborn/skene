@@ -24,11 +24,6 @@ in a code comment.
     `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
     Linux joins `skene-gui` as its next realization (item 4), and no app or library
     signature carries a type parameter (the author's order, 2026-10-23).
-    - Libraries: a core with a crate per facade (`skene-simple-gui`,
-    `skene-simple-tui`), and a preset a constructor per variant and a `derive_variant`
-    re-inking its built-in. The core holds colors, named sizes and logic and no view, so
-    Simple's core loses its views over `P: Realization`, the last signatures above the
-    realizations to name one.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.

@@ -701,6 +701,15 @@ supersedes.
 
 ## Superseded
 
+- **A component library's views generic over the realization** (2026-10-26): Simple's
+  core wrote its views over `P: Realization`, stating what it needed from a medium as a
+  bound on the platform's associated types, their members in a `Simple*Base` trait each
+  platform's crate implemented for a newtype of its own, so the core was the last code
+  above the realizations to name one. A library's core now holds its colors, named
+  sizes and logic, and each facade's crate writes presets returning the facade's
+  built-ins styled from them and, where a preset is not enough, concrete views of its
+  own. Not revisited, unless a library view's semantics are shared by both facades and
+  can be hosted once in the foundation.
 - **The conformance suite's pages generic over the realization** (2026-10-25):
   `skene-conformance` built every page itself as a `Page<P>` over the foundation's
   views, and each platform's driver built them for its own realization, so the one UI

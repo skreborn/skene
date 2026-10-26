@@ -3,7 +3,7 @@ name = "skene-simple-terminal"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Simple's views on skene's terminal facade"
+description = "Simple's presets of the built-in views of skene's terminal facade"
 license.workspace = true
 repository.workspace = true
 

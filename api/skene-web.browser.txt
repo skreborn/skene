@@ -158,6 +158,7 @@ pub use skene_web::behavior::RadioGroup
 pub use skene_web::behavior::RadioGroupContext
 pub use skene_web::behavior::Roster
 pub use skene_web::behavior::Slider
+pub use skene_web::behavior::SliderContext
 pub use skene_web::behavior::SliderRange
 pub use skene_web::behavior::TextEntry
 pub use skene_web::behavior::Toggle

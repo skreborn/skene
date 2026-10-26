@@ -2,8 +2,10 @@
 
 A component library is a core of colors, sizes and logic, naming no platform, with a
 crate per facade holding its presets: functions returning the facade's built-in views,
-styled from the core. Simple is built from the public API alone, and a library of your
-own stands on the same footing.
+styled from the core. Simple is written this way from the public API alone—its core,
+`skene-simple`, is the palette, the looks, the variants and the sizes, and
+`skene-simple-web` and `skene-simple-terminal` are its presets—and a library of your own
+stands on the same footing.
 
 ```sh
 skene new lib acme-ui web terminal
@@ -306,26 +308,27 @@ an app calls it without a `cfg` of its own, and does nothing outside its platfor
 build, where its backing field does not exist:
 
 ```rust
-use skene_foundation::{Color, Condition, Realization, Value};
+use skene_foundation::{Color, Condition, Value};
+use skene_web::Active;
 
-/// A gauge's own style.
-pub struct GaugeStyle<N> {
-  needle: Option<Value<Color, Condition<N>>>,
+/// A gauge's own style, in the web's unit.
+pub struct GaugeStyle {
+  needle: Option<Value<Color, Condition<f32>>>,
   #[cfg(skene_platform = "linux")]
-  linux_glow: Option<Value<Color, Condition<N>>>,
+  linux_glow: Option<Value<Color, Condition<f32>>>,
 }
 
-/// Acme's gauge, over any platform.
-pub struct Gauge<P: Realization> {
-  style: GaugeStyle<P::Scalar>,
+/// Acme's gauge on the pixel platforms' facade.
+pub struct Gauge {
+  style: GaugeStyle,
 }
 
-impl<P: Realization> Gauge<P> {
-  const fn style_mut(&mut self) -> &mut GaugeStyle<P::Scalar> {
+impl Gauge {
+  const fn style_mut(&mut self) -> &mut GaugeStyle {
     &mut self.style
   }
 
-  skene_foundation::properties! { style_mut, P;
+  skene_foundation::properties! { style_mut, Active;
     set_needle / derive_needle (color) => needle: Color, "the needle's color";
     [cfg(skene_platform = "linux")]
     set_linux_glow / derive_linux_glow (color) => linux_glow: Color,

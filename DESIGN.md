@@ -21,8 +21,9 @@ What each crate holds is the README's crate table. They stack: `skene-reactive` 
 bottom, `skene-foundation` on it, the layout every platform but the web computes
 (`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
 platforms (`skene-web`, `skene-terminal`) on the foundation and, where
-they draw, on those two, the Simple core on the foundation, each platform's Simple crate
-on its facade, and the macros, the transport and the CLI beside them.
+they draw, on those two, the Simple core (its palette, variants and sizes, naming no
+realization) on the foundation, each platform's Simple crate (its presets) on its
+facade, and the macros, the transport and the CLI beside them.
 
 **A facade per platform, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
@@ -524,7 +525,7 @@ realization. Each facade's `behavior` module (`skene_web::behavior`,
 `skene_terminal::behavior`, parallel member for member) re-exports the shipped
 behaviors (`Collection` and `Member` under a `CollectionPolicy` among them, with the
 collections' contexts `CollectionContext`, `RadioGroupContext`, `ListboxContext` and
-`MenuContext`), `Behavior` with what its hooks name beyond the views' vocabulary
+`MenuContext`, and the slider's `SliderContext`), `Behavior` with what its hooks name beyond the views' vocabulary
 (`EventKind`, `LabelPlacement`, `PopupKind`), `ControlHandle`, `ControlOps`, `Roster`
 and `TypeAhead`, so a library writes a behavior through its facade alone and the root
 leaves a behavior's name free for the drawn view of the same name; `Control`, the
@@ -611,7 +612,7 @@ property like every control—the list's box properties, `set_item_padding`,
 `set_item_color`, `set_item_corner_radius`, `set_item_cursor`, `set_item_text_color`,
 `set_shortcut_color`, `set_separator_color`, the `Part::List`/`Part::Item` targets; the
 terminal's standard menu is the raw view decorated with the platform's own values, and
-`SimpleContextMenu` (`skene-simple`) is the palette-decorated one on both facades. In
+`SimpleContextMenu`, a preset in each facade's Simple crate, the palette-decorated one. In
 the terminal focus moves into the open list while the entry beneath keeps its
 selection, so the standard items act on it, and closing returns focus without
 reselecting the value; `Escape` closes an open menu before it clears a selection. The
@@ -649,8 +650,16 @@ stacks the checked and the unchecked glyph of `SimpleGlyphs` in one place, each 
 unless the state matches. The picker's face reads the chosen option's name from the
 roster (`Roster::name_of`), its indicator the face's `Part::Face`, its list surface the
 `Part::List`, and an option's caption, which the preset takes so it inks in the primary
-ink while chosen, also names it for type-ahead. Simple's other views are still written
-once in `skene-simple` over the realization and wrapped per facade.
+ink while chosen, also names it for type-ahead. Its slider, text field, text editor and
+context menu (`SimpleSlider::new()`, `SimpleTextField::new()`,
+`SimpleTextEditor::new()`, `SimpleContextMenu::new()`) are presets as well: the slider's
+`Part::Track` holds its rail, its fill (`Part::Fill`) and its thumb (`Part::Thumb`),
+placed by the value's fraction of the range the slider shares with its parts through
+context (`SliderContext`), so the track follows a value bound after the preset is made;
+the field and the editor take the field chrome and select their value in the palette's
+colors through the entry's selection setters; the menu is styled through its list's
+properties and its `set_item_*` setters. No Simple view remains: `skene-simple` holds
+the palette, the looks, the variants and the sizes per unit, naming no realization.
 
 - **A control decides its verdict.** The behavior runs first and its verdict is the
   whole verdict; a user's handler observes. A button's click never reaches the row it
@@ -1003,9 +1012,11 @@ once in `skene-simple` over the realization and wrapped per facade.
   an 8-pixel accent dot showing at its center while chosen, or the glyphs `○` and `◉` in
   cells, read from the group's context. `Slider` is drawn over the `Slider` behavior,
   which reports where its value sits along its range (`Slider::reads_fraction`) for the
-  defaults to follow: 160 pixels or 20 cells wide, its `Part::Track` a flexible child
-  taking what its caption leaves and holding its `Part::Fill` and its `Part::Thumb`
-  (marked after build, as the switch's thumb is), a rail in `TRACK` clipping a fill in
+  defaults to follow, and shares it with the parts it holds as a `SliderContext` it
+  provides as it attaches, so a track set in the default's place reads it there: 160
+  pixels or 20 cells wide, its `Part::Track` a flexible child taking what its caption
+  leaves and holding its `Part::Fill` and its `Part::Thumb` (marked after build, as the
+  switch's thumb is), a rail in `TRACK` clipping a fill in
   the accent that runs to the thumb, beneath a lane the thumb travels less its own width,
   the fill offset back by the unfilled fraction and the thumb forward by the filled one,
   so the value moves them by offset rather than layout; the thumb is an 18-pixel `KNOB`
@@ -2088,11 +2099,14 @@ apps never cross-compile into the web.
 Two guarantees, both properties of what is public rather than of any one API.
 
 - **A component library: one core, a crate per platform.** Its core depends on
-  `skene-foundation`, writes its views generic over `P: Realization` exactly as the built-ins
-  are written, states what it needs from a medium as a bound on the platform's associated
-  types (`P::StyleExt: CornerRadius`), and keeps each view's members in a trait; each
-  platform's crate makes them concrete as views of its own, as each facade does the
-  built-ins. Nothing on the path a built-in takes is crate-private: the setter macros the
+  `skene-foundation` and holds what both media share—its colors as a token set, its
+  named sizes per unit, its logic—and names no realization. Each platform's crate writes
+  its presets on its facade's vocabulary, each a function returning the facade's
+  built-in styled from the core (`SimpleButton::outline(label)` returns a `Button`),
+  with the pieces it composes public (`SimpleButton::styled`), and, where a preset is not
+  enough, concrete views of its own, as each facade writes its built-ins; nothing in it
+  names the platform's realization or is generic over one. Nothing on the path a
+  built-in takes is crate-private: the setter macros the
   built-ins generate their `set_`/`derive_` pairs with (`properties!`,
   `trait_properties!`) and the surfaces they share (`DecorationBase`, `RunBase`) are
   public, so a third-party layout view built on `LayoutBox` spells its surface the way
@@ -2103,8 +2117,9 @@ Two guarantees, both properties of what is public rather than of any one API.
   `[cfg(..)]` on a property of a medium's extension, gating its field type and its
   visit, so with the field and the property's variant gated alike the record entry
   exists in that build alone. The macros' text names no platform; the predicate is the
-  declaring crate's. Simple is the standing proof, `skene-simple` its core and
-  `skene-simple-web` and `skene-simple-terminal` its platforms' crates. `skene new lib`
+  declaring crate's. Simple is the standing proof: `skene-simple` its core, naming no
+  realization, and `skene-simple-web` and `skene-simple-terminal` its platforms' crates of
+  presets, written exactly as a third party's. `skene new lib`
   creates the core-plus-presets shape: a core holding a palette and a unit trait and
   naming no realization, and a crate per platform named whose badge is a preset, an
   uninhabited namespace whose constructors return the facade's `Container` styled from

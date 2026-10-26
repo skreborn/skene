@@ -1,8 +1,4 @@
 pub mod skene_simple_web
-pub use skene_simple_web::SimpleContextMenuBase
-pub use skene_simple_web::SimpleSliderBase
-pub use skene_simple_web::SimpleTextEditorBase
-pub use skene_simple_web::SimpleTextFieldBase
 pub use skene_simple_web::SimpleVariant
 pub mod skene_simple_web::prelude
 pub use skene_simple_web::prelude::<<super::*>>
@@ -32,6 +28,12 @@ pub fn skene_simple_web::SimpleCheckbox::new() -> skene_web::views::checkbox::Ch
 pub fn skene_simple_web::SimpleCheckbox::styled(skene_web::views::checkbox::Checkbox) -> skene_web::views::checkbox::Checkbox
 impl core::fmt::Debug for skene_simple_web::SimpleCheckbox
 pub fn skene_simple_web::SimpleCheckbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleContextMenu
+impl skene_simple_web::SimpleContextMenu
+pub fn skene_simple_web::SimpleContextMenu::new() -> skene_web::views::context_menu::ContextMenu
+pub fn skene_simple_web::SimpleContextMenu::styled(skene_web::views::context_menu::ContextMenu) -> skene_web::views::context_menu::ContextMenu
+impl core::fmt::Debug for skene_simple_web::SimpleContextMenu
+pub fn skene_simple_web::SimpleContextMenu::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_simple_web::SimpleListboxOption
 impl skene_simple_web::SimpleListboxOption
 pub fn skene_simple_web::SimpleListboxOption::check() -> skene_web::views::container::Container
@@ -61,6 +63,26 @@ pub fn skene_simple_web::SimpleRadioGroup::new<T: skene_foundation::control::cho
 pub fn skene_simple_web::SimpleRadioGroup::styled<T: skene_foundation::control::choice::Choice>(skene_web::views::radio::RadioGroup<T>) -> skene_web::views::radio::RadioGroup<T>
 impl core::fmt::Debug for skene_simple_web::SimpleRadioGroup
 pub fn skene_simple_web::SimpleRadioGroup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleSlider
+impl skene_simple_web::SimpleSlider
+pub fn skene_simple_web::SimpleSlider::new() -> skene_web::views::slider::Slider
+pub fn skene_simple_web::SimpleSlider::styled(skene_web::views::slider::Slider) -> skene_web::views::slider::Slider
+pub fn skene_simple_web::SimpleSlider::thumb() -> skene_web::views::container::Container
+pub fn skene_simple_web::SimpleSlider::track() -> skene_web::AnyView
+impl core::fmt::Debug for skene_simple_web::SimpleSlider
+pub fn skene_simple_web::SimpleSlider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleTextEditor
+impl skene_simple_web::SimpleTextEditor
+pub fn skene_simple_web::SimpleTextEditor::new() -> skene_web::views::text_field::TextEditor
+pub fn skene_simple_web::SimpleTextEditor::styled(skene_web::views::text_field::TextEditor) -> skene_web::views::text_field::TextEditor
+impl core::fmt::Debug for skene_simple_web::SimpleTextEditor
+pub fn skene_simple_web::SimpleTextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_simple_web::SimpleTextField
+impl skene_simple_web::SimpleTextField
+pub fn skene_simple_web::SimpleTextField::new() -> skene_web::views::text_field::TextField
+pub fn skene_simple_web::SimpleTextField::styled(skene_web::views::text_field::TextField) -> skene_web::views::text_field::TextField
+impl core::fmt::Debug for skene_simple_web::SimpleTextField
+pub fn skene_simple_web::SimpleTextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_simple_web::SimpleTooltip
 impl skene_simple_web::SimpleTooltip
 pub fn skene_simple_web::SimpleTooltip::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_web::views::tooltip::Tooltip
@@ -69,65 +91,5 @@ pub fn skene_simple_web::SimpleTooltip::styled(skene_web::views::tooltip::Toolti
 pub fn skene_simple_web::SimpleTooltip::view(impl skene_web::View) -> skene_web::views::tooltip::Tooltip
 impl core::fmt::Debug for skene_simple_web::SimpleTooltip
 pub fn skene_simple_web::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_simple_web::SimpleContextMenu(_)
-impl core::default::Default for skene_simple_web::SimpleContextMenu
-pub fn skene_simple_web::SimpleContextMenu::default() -> Self
-impl core::fmt::Debug for skene_simple_web::SimpleContextMenu
-pub fn skene_simple_web::SimpleContextMenu::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleContextMenu
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleContextMenu
-pub fn skene_simple_web::SimpleContextMenu::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleContextMenu
-pub type skene_simple_web::SimpleContextMenu::Inner = skene_simple::context_menu::SimpleContextMenu<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleContextMenu::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleContextMenu::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleContextMenu::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleContextMenu::wrap(Self::Inner) -> Self
-impl skene_simple::context_menu::SimpleContextMenuBase<skene_web::platform::web::Web> for skene_simple_web::SimpleContextMenu
-pub struct skene_simple_web::SimpleSlider(_)
-impl core::default::Default for skene_simple_web::SimpleSlider
-pub fn skene_simple_web::SimpleSlider::default() -> skene_simple_web::SimpleSlider
-impl core::fmt::Debug for skene_simple_web::SimpleSlider
-pub fn skene_simple_web::SimpleSlider::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleSlider
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleSlider
-pub fn skene_simple_web::SimpleSlider::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleSlider
-pub type skene_simple_web::SimpleSlider::Inner = skene_simple::slider::SimpleSlider<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleSlider::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleSlider::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleSlider::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleSlider::wrap(Self::Inner) -> Self
-impl skene_simple::slider::SimpleSliderBase<skene_web::platform::web::Web> for skene_simple_web::SimpleSlider
-pub struct skene_simple_web::SimpleTextEditor(_)
-impl core::default::Default for skene_simple_web::SimpleTextEditor
-pub fn skene_simple_web::SimpleTextEditor::default() -> skene_simple_web::SimpleTextEditor
-impl core::fmt::Debug for skene_simple_web::SimpleTextEditor
-pub fn skene_simple_web::SimpleTextEditor::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleTextEditor
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleTextEditor
-pub fn skene_simple_web::SimpleTextEditor::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleTextEditor
-pub type skene_simple_web::SimpleTextEditor::Inner = skene_simple::text_editor::SimpleTextEditor<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleTextEditor::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleTextEditor::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleTextEditor::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleTextEditor::wrap(Self::Inner) -> Self
-impl skene_simple::text_editor::SimpleTextEditorBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTextEditor
-pub struct skene_simple_web::SimpleTextField(_)
-impl core::default::Default for skene_simple_web::SimpleTextField
-pub fn skene_simple_web::SimpleTextField::default() -> skene_simple_web::SimpleTextField
-impl core::fmt::Debug for skene_simple_web::SimpleTextField
-pub fn skene_simple_web::SimpleTextField::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleTextField
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleTextField
-pub fn skene_simple_web::SimpleTextField::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleTextField
-pub type skene_simple_web::SimpleTextField::Inner = skene_simple::text_field::SimpleTextField<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleTextField::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleTextField::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleTextField::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleTextField::wrap(Self::Inner) -> Self
-impl skene_simple::text_field::SimpleTextFieldBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTextField
 pub type skene_simple_web::SimpleLook = skene_simple::palette::SimpleLook<f32>
 pub type skene_simple_web::SimplePalette = skene_simple::palette::SimplePalette<f32>

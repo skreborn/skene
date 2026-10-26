@@ -44,7 +44,7 @@ pub use self::{
   ops::ControlOps,
   popup::Popup,
   roster::Roster,
-  slider::{Slider, SliderRange},
+  slider::{Slider, SliderContext, SliderRange},
   text_entry::TextEntry,
   toggle::Toggle,
   type_ahead::{TYPE_AHEAD_RESET, TypeAhead},

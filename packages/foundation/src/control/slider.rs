@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::Signal;
+use skene_reactive::{Signal, provide_context};
 
 use super::{Behavior, ControlHandle, ControlOps, Controlled, PointerPhase};
 use crate::{
@@ -258,6 +258,10 @@ impl Behavior for Slider {
   }
 
   fn attach(&self, control: &ControlHandle) {
+    provide_context(SliderContext {
+      fraction: self.reads_fraction(),
+    });
+
     let range = self.range.clone();
     let (value, asks) = (self.value.clone(), self.value.clone());
 
@@ -359,6 +363,41 @@ impl Behavior for Slider {
       AccessProp::ValueStep(range.step()),
       AccessProp::Orientation(self.axis),
     ]
+  }
+}
+
+/// What a [`Slider`] shares with the parts it holds, through context: the value's
+/// fraction of the range, which a drawn fill and thumb place themselves by.
+///
+/// A part reads it at any depth under the control, so a [`Part::Track`] set in place of
+/// a facade's default places its fill and thumb whatever the value is bound to after it
+/// is set.
+#[derive(Clone)]
+#[must_use]
+pub struct SliderContext {
+  fraction: Rc<dyn Fn() -> f32>,
+}
+
+impl std::fmt::Debug for SliderContext {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("SliderContext")
+      .finish_non_exhaustive()
+  }
+}
+
+impl SliderContext {
+  /// The value's fraction of the range, `0..=1`, the minimum's with no value set; read
+  /// in a derived value, it follows the value.
+  #[must_use]
+  pub fn fraction(&self) -> f32 {
+    (self.fraction)()
+  }
+
+  /// The closure [`fraction`](Self::fraction) reads through.
+  #[must_use]
+  pub fn reads_fraction(&self) -> Rc<dyn Fn() -> f32> {
+    Rc::clone(&self.fraction)
   }
 }
 

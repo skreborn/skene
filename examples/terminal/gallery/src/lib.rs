@@ -363,7 +363,7 @@ fn inputs() -> impl View {
       Row::new().set_spacing(2).set_children((
         Container::new().set_width(20).set_child(
           SimpleSlider::new()
-            .set_label("Volume")
+            .set_accessible_name("Volume")
             .set_range(SliderRange::new(0., 100., 1.))
             .bind_value(volume),
         ),

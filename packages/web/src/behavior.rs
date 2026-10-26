@@ -42,6 +42,7 @@ pub use skene_foundation::{
   RadioGroupContext,
   Roster,
   Slider,
+  SliderContext,
   SliderRange,
   TextEntry,
   Toggle,

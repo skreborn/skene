@@ -566,13 +566,14 @@ fn a_slider_fills_to_a_thumb_of_its_own_color() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Container::new()
-        .set_width(20)
-        .set_child(
-          SimpleSlider::new()
-            .set_range(SliderRange::new(0., 100., 1.))
-            .bind_value(volume),
-        )
+      Theme::new(SimplePalette::default())
+        .set_child_builder(move || {
+          Container::new().set_width(20).set_child(
+            SimpleSlider::new()
+              .set_range(SliderRange::new(0., 100., 1.))
+              .bind_value(volume),
+          )
+        })
         .into_any()
         .build()
     });
@@ -637,15 +638,18 @@ fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Column::new()
-        .set_item_alignment(ItemAlignment::Center)
-        .add_child(
-          Container::new().set_width(21).set_child(
-            SimpleSlider::new()
-              .set_range(SliderRange::new(0., 100., 1.))
-              .bind_value(volume),
-          ),
-        )
+      Theme::new(SimplePalette::default())
+        .set_child_builder(move || {
+          Column::new()
+            .set_item_alignment(ItemAlignment::Center)
+            .add_child(
+              Container::new().set_width(21).set_child(
+                SimpleSlider::new()
+                  .set_range(SliderRange::new(0., 100., 1.))
+                  .bind_value(volume),
+              ),
+            )
+        })
         .into_any()
         .build()
     });
@@ -684,13 +688,14 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Container::new()
-        .set_width(25)
-        .set_child(
-          SimpleSlider::new()
-            .set_range(SliderRange::new(0., 100., 1.))
-            .bind_value(volume),
-        )
+      Theme::new(SimplePalette::default())
+        .set_child_builder(move || {
+          Container::new().set_width(25).set_child(
+            SimpleSlider::new()
+              .set_range(SliderRange::new(0., 100., 1.))
+              .bind_value(volume),
+          )
+        })
         .into_any()
         .build()
     });
@@ -715,21 +720,23 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
 }
 
 /// A press on the first cell of a slider reaches its minimum and one on its last cell
-/// its maximum, where the thumb sits at either end, and no caption takes cells from it.
+/// its maximum, where the thumb sits at either end, and its accessible name takes no
+/// cells from it.
 #[test]
 fn a_sliders_end_cells_reach_its_ends() {
   with_platform(|| {
     let volume = Signal::new(50.0f32);
 
     let _ = terminal::mount(|| {
-      Container::new()
-        .set_width(20)
-        .set_child(
-          SimpleSlider::new()
-            .set_label("Volume")
-            .set_range(SliderRange::new(0., 100., 1.))
-            .bind_value(volume),
-        )
+      Theme::new(SimplePalette::default())
+        .set_child_builder(move || {
+          Container::new().set_width(20).set_child(
+            SimpleSlider::new()
+              .set_accessible_name("Volume")
+              .set_range(SliderRange::new(0., 100., 1.))
+              .bind_value(volume),
+          )
+        })
         .into_any()
         .build()
     });
@@ -754,15 +761,17 @@ fn a_slider_released_off_itself_stops_sliding() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Column::new()
-        .set_children((
-          Container::new().set_width(20).set_child(
-            SimpleSlider::new()
-              .set_range(SliderRange::new(0., 100., 1.))
-              .bind_value(volume),
-          ),
-          Text::new("below"),
-        ))
+      Theme::new(SimplePalette::default())
+        .set_child_builder(move || {
+          Column::new().set_children((
+            Container::new().set_width(20).set_child(
+              SimpleSlider::new()
+                .set_range(SliderRange::new(0., 100., 1.))
+                .bind_value(volume),
+            ),
+            Text::new("below"),
+          ))
+        })
         .into_any()
         .build()
     });

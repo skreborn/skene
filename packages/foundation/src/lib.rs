@@ -183,6 +183,7 @@ pub use crate::{
     Roster,
     Slider,
     SliderBase,
+    SliderContext,
     SliderRange,
     TYPE_AHEAD_RESET,
     TextEntry,

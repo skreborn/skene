@@ -171,7 +171,7 @@ impl<N: Scalar> Tokenable for Dimension<N> {}
 
 impl Tokenable for String {}
 
-/// A typed reference to a token: the name a property emits, without any definition.
+/// A typed reference to a token: the name a property emits, without a definition of its own.
 ///
 /// A `const` in a component library's palette module, so `set_background(Palette::CARD)`
 /// names the slot whatever theme is in force. A reference made by [`TokenRef::of`]

@@ -80,6 +80,7 @@ struct Palette {
 
 impl Palette {
   const CARD: TokenRef<Color> = TokenRef::new("test-card");
+  const GUTTER: TokenRef<Length> = TokenRef::new("test-gutter");
 
   fn with_card(card: Color) -> Self {
     Self {
@@ -93,7 +94,7 @@ impl Default for Palette {
   fn default() -> Self {
     Self {
       card: Token::new(Self::CARD, white()).define_when(Media::Dark, black()),
-      gutter: Token::new(TokenRef::new("test-gutter"), 8),
+      gutter: Token::new(Self::GUTTER, 8),
     }
   }
 }

@@ -1294,16 +1294,17 @@ Condition     = Media | State | And | Or
 A design token is a named, inherited slot. `TokenRef<T>` names it (a `const`; the name is
 an implementation detail on every platform), `Token<T>` pairs the name with the
 definition a palette gives it (`Token::new` takes the reference whole), and a consumer
-emits only the name, so two boxes under two
-palettes intern one class and a theme change never touches a consumer. A token's own
-conditions live in its definition, once. A length token serves every property measured
-in lengths, a box's sizes, padding, spacing and margins, its corner radius and a run's
-font size and letter spacing alike, and a property that is a plain number reads a
-number token alone. A reference made by `TokenRef::of::<S, N>` carries a link to its
-palette's default: one plain function per palette, naming the set's `TypeId` and yielding
+emits only the name, so two boxes under two palettes intern one class and a theme change
+never touches a consumer. A token's own conditions live in its definition, once. A
+length token serves every property measured in lengths, a box's sizes, padding, spacing
+and margins, its corner radius and a run's font size and letter spacing alike, and a
+property that is a plain number reads a number token alone.
+
+A reference made by `TokenRef::of::<S, N>` carries a link to its palette's default: one
+plain function per palette, naming the set's `TypeId` and yielding
 `Definitions::of(&S::default())` in the foundation's `TokenValue<N>`, so a const in a
-library core links without naming any realization's token value. `TokenRef::new` names
-a slot with no link, for a set something always defines itself (`Typography`,
+library core links without naming any realization's token value. `TokenRef::new` names a
+slot with no link, for a set something always defines itself (`Typography`,
 `SystemColors`). The link rides the `TokenName` a leaf holds, and equality, hashing,
 ordering and formatting read the name alone, so a linked name interns the class an
 unlinked one does.

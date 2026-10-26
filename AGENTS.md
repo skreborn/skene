@@ -1,7 +1,8 @@
 # Agent & Contributor Guide
 
-This guide states the doctrine. Where the code still follows the design it replaces, the
-migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as it stands.
+This guide states the doctrine. Where the code still follows the design it replaces,
+`ROADMAP.md` orders the rest of the redesign, and `DESIGN.md` describes the code as it
+stands.
 
 ## Hard constraints
 

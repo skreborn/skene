@@ -1,6 +1,6 @@
 # Skene
 
-A client-side Rust UI framework: one spine, a facade per platform. A web app depends on
+A client-side Rust UI framework: one spine, a facade per medium. A web app depends on
 `skene-gui` and runs wherever the build targets it—the browser, client-rendered; a
 server, rendering or statically generating pages from the same app crate built natively.
 A terminal app depends on `skene-tui`, a facade of equal standing with its own
@@ -182,8 +182,8 @@ in force for the whole document.
 ```sh
 rustup target add wasm32-unknown-unknown
 
-skene new app counter web terminal                         # a shared crate and a shell per platform
-skene new lib acme-ui web terminal                         # a library's core and a crate per platform
+skene new app counter web terminal                         # a shared crate and a shell per facade
+skene new lib acme-ui web terminal                         # a library's core and a crate per facade
 cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
 cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
 cargo skene --dir examples/tui/counter run terminal        # build, rebuild on change, print the attach command
@@ -262,9 +262,9 @@ build takes at the root, the editor settings rust-analyzer reads and the gate's 
 
 ## Extending
 
-A component library is a core and a crate per platform, as Simple is: the core depends on
+A component library is a core and a crate per facade, as Simple is: the core depends on
 `skene-foundation` and holds the colors, the named sizes and the logic both media share,
-naming no realization, and each platform's crate writes presets returning its facade's
+naming no realization, and each facade's crate writes presets returning that facade's
 built-ins styled from the core and, where a preset is not enough, concrete views of its
 own, naming no realization either, since the facade names what the foundation's surface
 asks for (`Scene`, `IntoChildOf<Kind>`, `DecoratedTextEntry`, `Condition`);

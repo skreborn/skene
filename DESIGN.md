@@ -26,7 +26,7 @@ over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants and s
 naming no realization) on the foundation, each facade's Simple crate (its presets) on
 its facade, and the macros, the transport and the CLI beside them.
 
-**A facade per platform, one spine.** The web and the terminal are different media, not
+**A facade per medium, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
 cross-compiles into the other. Each facade therefore owns its builder vocabulary outright, typed to
 exactly its capabilities—and everything beneath it is written once in the spine. The
@@ -2181,13 +2181,13 @@ apps never cross-compile into the web.
 
 Two guarantees, both properties of what is public rather than of any one API.
 
-- **A component library: one core, a crate per platform.** Its core depends on
+- **A component library: one core, a crate per facade.** Its core depends on
   `skene-foundation` and holds what both media share—its colors as a token set, its
   named sizes per unit, its logic—and names no realization. Its palette links its
   references with `TokenRef::of`, so its default reaches the root the first time a node
   references one of them and its presets are inked with no theme above them, with no
-  code of its own. Each platform's crate writes
-  its presets on its facade's vocabulary, each a function returning the facade's
+  code of its own. Each facade's crate writes
+  its presets on that facade's vocabulary, each a function returning the facade's
   built-in styled from the core (`SimpleButton::outline(label)` returns a `Button`),
   with the pieces it composes public (`SimpleButton::styled`), and, where a preset is not
   enough, concrete views of its own, as each facade writes its built-ins; no public
@@ -2210,13 +2210,13 @@ Two guarantees, both properties of what is public rather than of any one API.
   visit, so with the field and the property's variant gated alike the record entry
   exists in that build alone. The macros' text names no platform; the predicate is the
   declaring crate's. Simple is the standing proof: `skene-simple` its core, naming no
-  realization, and `skene-simple-gui` and `skene-simple-tui` its platforms' crates of
+  realization, and `skene-simple-gui` and `skene-simple-tui` its facades' crates of
   presets, written exactly as a third party's. `skene new lib`
   creates the core-plus-presets shape: a core holding a palette and a unit trait and
-  naming no realization, and a crate per platform named whose badge is a preset, an
-  uninhabited namespace whose constructors return the facade's `Container` styled from
-  the core's tokens and its unit's sizes, inked in the palette's default with no theme
-  above it.
+  naming no realization, and a crate per facade of the platforms named, whose badge is
+  a preset, an uninhabited namespace whose constructors return the facade's `Container`
+  styled from the core's tokens and its unit's sizes, inked in the palette's default
+  with no theme above it.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait or through its native door and realized through the same scene
   and node ids as a `Container`, so it composes with wrappers, themes, conditions and

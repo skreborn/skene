@@ -236,8 +236,8 @@ async fn a_buttons_surface_and_focus_resolve_the_primary_look_on_the_control() {
   assert_eq!(settled(button, &focus).await, focus);
 }
 
-/// A derived variant re-inks the button's own element: the surface and the border
-/// follow the signal and the element is never rebuilt.
+/// A derived variant re-inks the button's own element: the surface, the border and the
+/// label's ink follow the signal and the element is never rebuilt.
 #[wasm_bindgen_test]
 async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   let _scheme = Scheme::choose(ColorScheme::Light);
@@ -266,6 +266,10 @@ async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
 
   assert_eq!(settled(&button, &destructive).await, destructive);
   assert_eq!(border(&button), drawn(1, Color::TRANSPARENT));
+  assert_eq!(
+    ink(&only_child(&button)),
+    probe("color", light(&palette.destructive.ink))
+  );
   assert!(button.is_connected(), "re-inked, not rebuilt");
 }
 

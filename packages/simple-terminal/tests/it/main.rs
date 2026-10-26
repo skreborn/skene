@@ -258,6 +258,48 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   });
 }
 
+/// A derived variant re-inks the button in place: its surface and its label's ink follow
+/// the signal, and the control is never rebuilt.
+#[test]
+fn a_derived_variant_reinks_the_button_without_a_rebuild() {
+  with_platform(|| {
+    let palette = SimplePalette::default();
+    let variant = Signal::new(SimpleVariant::Primary);
+
+    mount_themed(move || SimpleButton::derive_variant("Go", move || variant.get()));
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (x, y) = locate(&frame, "Go");
+    let button = testing::find_by_role(Role::Button, "Go").expect("the button");
+
+    assert_eq!(
+      colors_at(x, y),
+      (
+        Some(light(&palette.primary.ink)),
+        Some(light(&palette.primary.surface))
+      ),
+      "{frame}"
+    );
+
+    variant.set(SimpleVariant::Destructive);
+    settle();
+
+    assert_eq!(
+      colors_at(x, y),
+      (
+        Some(light(&palette.destructive.ink)),
+        Some(light(&palette.destructive.surface))
+      ),
+      "re-inked in the destructive look"
+    );
+    assert_eq!(
+      testing::find_by_role(Role::Button, "Go"),
+      Some(button),
+      "re-inked, not rebuilt"
+    );
+  });
+}
+
 /// A disabled button takes the palette's disabled surface and ink whatever its variant,
 /// hover changing nothing; enabled again, it returns to its look.
 #[test]

@@ -21,11 +21,10 @@ What each crate holds is the README's crate table. They stack: `skene-reactive` 
 bottom, `skene-foundation` on it, the layout every platform but the web computes
 (`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
 platforms on the foundation and, where they draw, on those two, each platform's
-realization a crate of its own (`skene-gui-web`) with its facade over it (`skene-gui`,
-and `skene-tui`, which holds its realization itself), the Simple core (its palette,
-variants and sizes, naming no realization) on the foundation, each platform's Simple
-crate (its presets) on its facade, and the macros, the transport and the CLI beside
-them.
+realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with its facade
+over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants and sizes,
+naming no realization) on the foundation, each facade's Simple crate (its presets) on
+its facade, and the macros, the transport and the CLI beside them.
 
 **A facade per platform, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
@@ -1848,7 +1847,19 @@ Off-thread work uses the engine's scheduler wired to the event-loop proxy, and a
 loop-integrated timer is fair game there, the loop being the shell's. The plan, its
 prerequisites and its order are in `ROADMAP.md`.
 
-### The terminal (`skene-tui`)
+### The terminal (`skene-tui` over `skene-tui-terminal`)
+
+The terminal's realization is `skene-tui-terminal`, beneath the facade `skene-tui`,
+which names its `Terminal` as `Active`, re-exports its surface as `platform::terminal`
+and its launch (`launch`, `Launch`, `Clipboard`, `MOUSE_KEY`, `Device` and its `Note`
+and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) and its
+`testing` at the root. The realization holds everything down to the device: the records,
+layout, the cell engine, painting, the frame writer, the event loop and its interaction,
+the editing state of its drawn entries, the dev reload's restore and rebuild notice, and
+the `device`, `tty`, `parse` and `escape` modules. It names no facade: what it builds of
+its own, the rebuild notice, it builds from the foundation's views at `Terminal`, and
+the values it defines it spells in the foundation's generics at cells
+(`SystemColors<i32>`). Its build script generates the typeface its text is measured in.
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
@@ -1861,9 +1872,10 @@ are cells and its own background. Nothing the medium lacks exists to call, so a
 terminal app is first-class at compile time rather than best-effort at run time.
 
 The terminal's build names it, `--cfg skene_platform="terminal"` on the host's target:
-the crate, its dependencies and `#[main]`'s `main` exist there alone, a build naming no
-platform fails with the crate's `compile_error!`, and every other platform's build
-compiles it empty, as it does `skene-simple-tui`, `acme-sparkline` and the terminal
+the facade, its realization, their dependencies and `#[main]`'s `main` exist there
+alone, a build naming no platform fails with the facade's `compile_error!` and nothing
+else, the realization compiling empty beneath it, and every other platform's build
+compiles both empty, as it does `skene-simple-tui`, `acme-sparkline` and the terminal
 examples, each gated on the same cfg.
 
 Its `platform` module holds the terminal's own vocabulary as the web's holds each pixel
@@ -2073,9 +2085,11 @@ by whole cells), and the shadow's offset and softening (`set_shadow_offset`,
 `set_shadow_softening`, half a cell each where unset): the cells take the shadow at its
 offset rounded up, and the pixels place it exactly and soften its edge.
 
-The terminal itself is spoken to through three modules of `skene-tui`, with no
-terminal crate beneath them: `tty` opens the device (standard input and output, or
-`/dev/tty` where those are not terminals), puts it in raw mode with `rustix`, polls
+The terminal itself is spoken to through four modules of `skene-tui-terminal`, with no
+terminal crate beneath them: `device` is the `Device` the loop runs on, which carries
+bytes and the window's size; `tty` opens the process's own terminal (standard input
+and output, or `/dev/tty` where those are not terminals), puts it in raw mode with
+`rustix`, polls
 it with a timeout, reads what arrived and restores its mode on drop and in a panic
 hook; the window's size is read by `ioctl` after every wait and a change is a resize
 event, beside the in-band notification; `parse` decodes the bytes incrementally into
@@ -2250,50 +2264,51 @@ extension traits.
 
 ## Selection and entry
 
-**A build names its platform by a cfg**, `--cfg skene_platform="<p>"` with `<p>` one
-of `web`, `ios`, `android`, `macos`, `windows`, `linux` and `terminal`: a build fact
-like the triple, chosen once and unifying nothing, as `getrandom` names its backend. No
-build script infers a platform or a leaf and no cargo feature selects one. The web's
-two leaves are one platform: the browser leaf is the `web` build on
+**A build names its platform by a cfg**, `--cfg skene_platform="<p>"` with `<p>` one of
+`web`, `ios`, `android`, `macos`, `windows`, `linux` and `terminal`: a build fact like
+the triple, chosen once and unifying nothing, as `getrandom` names its backend. No build
+script infers a platform or a leaf and no cargo feature selects one. The web's two
+leaves are one platform: the browser leaf is the `web` build on
 `wasm32-unknown-unknown`, and the server leaf the `web` build with `--cfg skene_server`
 beside it, on any target. Selection is by facade dependency first, a web app depending
-on `skene-gui` and a terminal app on `skene-tui`, and the cfg selects within the
-facade. `skene-gui` compiles under `web`, compiles empty in a terminal build, and
-refuses every other build with a `compile_error!` of its own: one naming no platform,
-the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
-does not realize yet, named. Its realization, `skene-gui-web`, refuses nothing: it
-compiles under `web` alone, empty in every other build, and the facade depends on it in
-the web's build alone, so the refusals are the facade's. `skene-tui` compiles under
-`terminal` on the host's target, refuses a build naming no platform, and compiles empty
-in every other platform's. Every root item that reaches a leaf is gated on its leaf's
-cfgs, so each refusal is its build's one error, which the gate's `selection` step
-holds. A crate
-reaching a facade (its Simple crate, a low-level view's, an example) is gated on that
-facade's platform, so a build of a whole workspace for one platform compiles the other
-facade's crates empty, and one naming no platform fails with both facades' messages.
-Target-gating stays the enforcement layer where it applies: each leaf's dependencies
-are keyed on its cfgs, so the server leaf cannot reach the DOM. A cargo feature is an
-opt-in upgrade that enables optional dependencies alone, never a bound, a type, a
-variant or a platform, and none is on by default: `skene-gui-web`'s `gpu` is the one
-there is, which `skene-gui`'s `gpu` forwards to, a member's feature held to the same
+on `skene-gui` and a terminal app on `skene-tui`, and the cfg selects within the facade.
+`skene-gui` compiles under `web`, compiles empty in a terminal build, and refuses every
+other build with a `compile_error!` of its own: one naming no platform, the web without
+`skene_server` off `wasm32-unknown-unknown`, and each pixel platform it does not realize
+yet, named. Its realization, `skene-gui-web`, refuses nothing: it compiles under `web`
+alone, empty in every other build, and the facade depends on it in the web's build
+alone, so the refusals are the facade's. `skene-tui` compiles under `terminal` on the
+host's target, refuses a build naming no platform, and compiles empty in every other
+platform's; its realization, `skene-tui-terminal`, refuses nothing, compiling under
+`terminal` alone and empty in every other build, beneath a facade that depends on it in
+the terminal's build alone. Every root item that reaches a leaf is gated on its leaf's
+cfgs, so each refusal is its build's one error, which the gate's `selection` step holds.
+A crate reaching a facade (its Simple crate, a low-level view's, an example) is gated on
+that facade's platform, so a build of a whole workspace for one platform compiles the
+other facade's crates empty, and one naming no platform fails with both facades'
+messages. Target-gating stays the enforcement layer where it applies: each leaf's
+dependencies are keyed on its cfgs, so the server leaf cannot reach the DOM. A cargo
+feature is an opt-in upgrade that enables optional dependencies alone, never a bound, a
+type, a variant or a platform, and none is on by default: `skene-gui-web`'s `gpu` is the
+one there is, which `skene-gui`'s `gpu` forwards to, a member's feature held to the same
 rule.
 
-**`Platform` answers the build's platform as a const.** Each facade's `Platform`, at
-its root and in its prelude, has `Platform::CURRENT`. The web's lists the pixel
-platforms (`Web`, `Ios`, `Android`, `Macos`, `Windows`, `Linux`), `CURRENT` answering
-`Web` on both leaves, `Platform::IS_SERVER` the server leaf and `Platform::IS_APPLE`
-Apple's two; the terminal's is `Terminal` alone. An app that diverges per platform
-matches on it, writing `#[cfg(skene_platform = "<p>")]` only around an arm that names
-a platform's own control. A platform's own vocabulary lives in its `platform::<p>`
-module, its data types in every build and its controls in its own: `platform::web`
-re-exports `skene-gui-web`'s surface, each leaf's realization and the web's native
-door, `platform::terminal` the terminal's realization, its escape trait and its seams
+**`Platform` answers the build's platform as a const.** Each facade's `Platform`, at its
+root and in its prelude, has `Platform::CURRENT`. The web's lists the pixel platforms
+(`Web`, `Ios`, `Android`, `Macos`, `Windows`, `Linux`), `CURRENT` answering `Web` on
+both leaves, `Platform::IS_SERVER` the server leaf and `Platform::IS_APPLE` Apple's two;
+the terminal's is `Terminal` alone. An app that diverges per platform matches on it,
+writing `#[cfg(skene_platform = "<p>")]` only around an arm that names a platform's own
+control. A platform's own vocabulary lives in its `platform::<p>` module, its data types
+in every build and its controls in its own: `platform::web` re-exports `skene-gui-web`'s
+surface, each leaf's realization and the web's native door, `platform::terminal`
+`skene-tui-terminal`'s, the terminal's realization, its escape trait and its seams
 (`install`, `mount`, `uninstall`), the root keeping `launch` on both facades, and
-`platform::{android, apple, ios, linux, macos, windows}` are empty until their
-platforms land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a server
-build never emits the browser entry or splits a lazy body, the terminal's `#[main]`
-emits its `main` in the terminal's build alone, and an entry taking arguments,
-parameters or generics is refused.
+`platform::{android, apple, ios, linux, macos, windows}` are empty until their platforms
+land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a server build never
+emits the browser entry or splits a lazy body, the terminal's `#[main]` emits its `main`
+in the terminal's build alone, and an entry taking arguments, parameters or generics is
+refused.
 
 **A platform's own property of a shared view is a prefixed setter.** Its pair
 (`set_linux_*` with `derive_linux_*`, `set_ios_*`, `set_web_*`, and `set_apple_*` for
@@ -2363,8 +2378,8 @@ the checked-in rust-analyzer settings (`.zed/settings.json`) name the browser le
 teaches them. docs.rs documents each leaf of `skene-gui`, `skene-gui-web` and
 `skene-simple-gui` from their metadata's `cargo-args`, which name the browser in
 `wasm32-unknown-unknown`'s rustflags and rustdocflags and the server leaf in
-`x86_64-unknown-linux-gnu`'s, and `skene-tui` and `skene-simple-tui` from theirs, naming
-the terminal in `x86_64-unknown-linux-gnu`'s.
+`x86_64-unknown-linux-gnu`'s, and `skene-tui`, `skene-tui-terminal` and
+`skene-simple-tui` from theirs, naming the terminal in `x86_64-unknown-linux-gnu`'s.
 
 A facade is the one place allowed to name its platforms, which is why the shared
 platform-adjacent surface lives there: `launch`, `#[main]` (per-platform entry glue),

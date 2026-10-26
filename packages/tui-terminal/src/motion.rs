@@ -13,13 +13,10 @@ use skene_foundation::{
   RunValue,
   Transition,
   interpolate::Motion,
+  terminal::{TerminalProperty, TerminalStyle},
 };
 
-use crate::{
-  TerminalProperty,
-  TerminalStyle,
-  records::{PlainBox, PlainRun},
-};
+use crate::records::{PlainBox, PlainRun};
 
 /// What a box-like node runs: its properties' motion.
 #[derive(Default)]

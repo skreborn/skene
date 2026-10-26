@@ -1,5 +1,6 @@
 //! The terminal platform: [`Terminal`], its escape trait and its seams beyond the
-//! [`Realization`](skene_foundation::Realization) trait.
+//! [`Realization`](skene_foundation::Realization) trait, realized by
+//! `skene-tui-terminal`.
 //!
 //! For a library author writing a view directly against the terminal's cells. A
 //! low-level view, a `View<Active>` like any other, paints through [`CellPainter`] with
@@ -16,20 +17,16 @@
 //! root keeps [`launch`](crate::launch) and its [`Launch`](crate::Launch), which install
 //! and mount for a running app.
 
-pub use crate::{
-  cells::{CellPainter, Cells},
-  dev::{adopt_restoration, notice_view as dev_notice_view},
-  engine::{CellEngine, StandIns},
-  launch::install,
-  realize::{mount, uninstall},
+pub use skene_tui_terminal::{
+  CellEngine,
+  CellPainter,
+  Cells,
+  StandIns,
+  Terminal,
+  Unadoptable,
+  adopt_restoration,
+  dev_notice_view,
+  install,
+  mount,
+  uninstall,
 };
-
-/// The terminal platform: a zero-sized
-/// [`Realization`](skene_foundation::Realization).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-#[must_use]
-pub struct Terminal;
-
-/// The terminal's native view: none, so the native door cannot be reached.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Unadoptable {}

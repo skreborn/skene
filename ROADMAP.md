@@ -7,10 +7,12 @@ the code, `DESIGN.md` and the tests describe it.
 
 `AGENTS.md` states the doctrine of the redesign (two facades, `skene-gui` and
 `skene-tui`, over one foundation; one platform per build; Skene's drawn controls and the
-platform's own text on every platform; testing on the real platforms alone), while the
-code and `DESIGN.md` still describe the design it replaces until the migration at the
-top of this list lands: where they disagree, `AGENTS.md` says where the code is going
-and `DESIGN.md` where it is.
+platform's own text on every platform; testing on the real platforms alone). Its first
+part has landed: the web and the terminal stand on the reshaped foundation, one platform
+per build, as the two facades over realization crates of their own, and app code names
+no platform. The rest of the redesign follows this list, and until an item lands the
+code and `DESIGN.md` still describe the design it replaces: where they disagree,
+`AGENTS.md` says where the code is going and `DESIGN.md` where it is.
 
 ## Open
 
@@ -18,15 +20,7 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it in `DECISIONS.md`; it is never left half-done
 in a code comment.
 
-1. **One platform per build, and app code concrete.** The web and the terminal move
-    onto the reshaped foundation in place, then split into the two facades over
-    realization crates of their own, `skene-gui` with the web as its first platform and
-    `skene-tui` with the terminal, `skene-simple-gui` and `skene-simple-tui` beside them;
-    Linux joins `skene-gui` as its next realization (item 4), and no app or library
-    signature carries a type parameter (the author's order, 2026-10-23).
-    - The terminal's realization moves into a crate of its own, `skene-tui-terminal`
-      beneath `skene-tui`, as the web's did into `skene-gui-web` beneath `skene-gui`.
-2. **One runtime beneath every platform but the web.** What the terminal keeps for
+1. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window, and the
     compositor platforms need its layout and its motion; each mechanism is written once.
     - The terminal's retained runtime beyond its layout tree and its restyle's schedule
@@ -63,7 +57,7 @@ in a code comment.
     and interpolating named pairs; and a native counterpart to "mimic the web",
     following each platform's conventions (macOS Tab, iPad focus groups, Android Back,
     long-press menus).
-3. **Lists and overlays, designed for both kinds of platform.** Every realization below
+2. **Lists and overlays, designed for both kinds of platform.** Every realization below
     needs both, each shaped once for the compositor platforms, which place views among
     native ones, and for the window platforms, which draw everything. Lists are designed
     (`spikes/linux/design/lists.md`: `LazyColumn`, `LazyRow`, the lazy grids and
@@ -91,7 +85,7 @@ in a code comment.
     anchored or pinned opening writes stays once it is neither; the design writes the
     margins per placement, as a rule of their own or inline, so every change of the
     content shows.
-4. **Linux, drawn on its own protocols.** A window platform: Skene owns the whole
+3. **Linux, drawn on its own protocols.** A window platform: Skene owns the whole
     window, draws everything and speaks Linux's text, input and accessibility protocols
     itself, the GTK prototype remaining a reference whose transcripts are the bar. The
     drawn prototype (`spikes/linux`) realizes the whole on X11, mutter, sway, weston and
@@ -152,8 +146,8 @@ in a code comment.
     `accesskit_atspi_common` (the editable-text interface and the edit calls, caret and
     selection writes taking effect at once, the text methods AT-SPI asks for) carried
     under `vendor/` with this realization, their first client, and the Android and iOS
-    adapter changes (a field's own view in the virtual tree, text ranges) with items 6
-    and 7; the core already reports text runs, character geometry and selection.
+    adapter changes (a field's own view in the virtual tree, text ranges) with items 5
+    and 6; the core already reports text runs, character geometry and selection.
     - Naming and invariants: how justification is named, `TextAlignment` having no variant
     for it while the gate bans the word, and the layout engine's debug assertion that a
     container laid out at its natural height keeps it fires on some random layouts.
@@ -172,7 +166,7 @@ in a code comment.
     - Upstream: the reports in `spikes/linux/upstream` (Parley, its engine, taffy,
     vello_cpu, vello_gpu, AccessKit, mutter, cargo-public-api, criterion) wait for the
     author's decision to file them.
-5. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
+4. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
     (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and
     passed: TextKit 2 under taffy draws what `UILabel` and `NSTextField` draw, taffy
     measures through JNI at one crossing per leaf per pass once warm and within
@@ -200,7 +194,7 @@ in a code comment.
     consumer Windows 11 build.
     - Every engine: one selection test driven through Parley and DirectWrite alike, so
     the engine trait the core runs over is proven engine-agnostic.
-6. **Android.** A compositor platform: Skene's views are Android `View`s interleaved
+5. **Android.** A compositor platform: Skene's views are Android `View`s interleaved
     with native ones, written through a Kotlin shim in batches, one JNI call per frame
     carrying a byte buffer of operations and frames applied in `onLayout`, snapped to
     device pixels, the scene handing each changed parent's real children to the platform
@@ -229,7 +223,7 @@ in a code comment.
     restoring it at launch, under the header's build id, secure entries excluded.
     - Its own controls in `platform::android`, beside a library's through the native
     door.
-7. **iOS and macOS.** Compositor platforms: Skene's views are layer-backed `UIView`s and
+6. **iOS and macOS.** Compositor platforms: Skene's views are layer-backed `UIView`s and
     `NSView`s interleaved with native ones, reached through objc2. iOS 17 and macOS 14
     are the floors, and Writing Tools, Genmoji and phrase breaking upgrades a signal
     proves.
@@ -260,7 +254,7 @@ in a code comment.
     navigation is on; a Mac is needed.
     - Their own controls in `platform::ios`, `platform::macos` and `platform::apple`,
     beside a library's through the native door.
-8. **Windows.** A window platform, Skene owning the window as on Linux, its
+7. **Windows.** A window platform, Skene owning the window as on Linux, its
     accessibility UI Automation through AccessKit; Windows hardware is needed.
     - Text: DirectWrite's layout, its glyph runs collected by a custom text renderer
     into Skene's renderer, vello's outlines the floor and a grayscale atlas DirectWrite
@@ -279,10 +273,10 @@ in a code comment.
     the platform's input methods, selection, autofill, dictation and handwriting.
     - Contrast themes swap an app's colors for system colors, which literal palettes
     break; the floor is unsettled.
-9. **The two facades name for name.** Once item 1 has split them, `skene-tui`'s
-    vocabulary is made parallel to `skene-gui`'s name for name, settled against
-    `spikes/linux/DEFAULTS.md` and `spikes/linux/design/api.md` (a scheme's name, item
-    and axis alignments, a viewport's size, `set_children` beside `add_child`).
+8. **The two facades name for name.** `skene-tui`'s vocabulary is made parallel to
+    `skene-gui`'s name for name, settled against `spikes/linux/DEFAULTS.md` and
+    `spikes/linux/design/api.md` (a scheme's name, item and axis alignments, a
+    viewport's size, `set_children` beside `add_child`).
     - The surface traits without a parameter on both facades, as AGENTS states, so a
     facade's impl line is `impl ContainerBase for Container {}` and a library bounds
     on its facade's own traits (`E: TextEntryBase + DecorationBase`), retiring
@@ -291,7 +285,7 @@ in a code comment.
     (`DECISIONS.md`, 2026-10-26).
     - The web: `EditContext` or a rendering of its own a progressive enhancement over
     its form elements, never a replacement.
-10. **The CLI for every platform.**
+9. **The CLI for every platform.**
     - Configuration: `skene check` fails when a declared platform is not realized, and a
     command passing arguments on to cargo (`skene test`) refuses a `--config` among
     them that may change the flags it substitutes the platform's cfg in.
@@ -322,19 +316,19 @@ in a code comment.
     Android connects over `adb reverse`, writes its snapshot to app storage on `swap`,
     reinstalls with `adb install -r` and restores at boot; iOS does the same through
     `simctl` and `devicectl`; a reload takes seconds.
-11. **Testing on the real platforms.** No headless platform and no test double: each
+10. **Testing on the real platforms.** No headless platform and no test double: each
     platform is tested on itself, through what its readers read and by the input its
-    users give, Linux's harness (item 4) the model.
+    users give, Linux's harness (item 3) the model.
     - Conformance: one suite of scenarios, a page per facade in its own vocabulary, run
     through a `Driver` per platform over its accessibility layer and its real input, on
     the emulators, simulators and runners the gate reaches; goldens per platform, since
     each lays its text out its own way.
     - The browser tier and the server's byte-exact snapshot stay, and the terminal keeps
     its tier.
-12. **The border's constructor.** Whether a border is a `Border::new(width)` value with
+11. **The border's constructor.** Whether a border is a `Border::new(width)` value with
     its color a property of its own, `set_border_color`, as the GTK prototype's fixes
     split it, or the split is reverted: unanswered.
-13. **One owner for style and interaction semantics.** The web compiler and the spine's
+12. **One owner for style and interaction semantics.** The web compiler and the spine's
     `Resolver` implement one meaning twice, and the terminal and the web each implement
     focus, press, hover and overlays; each mechanism gets one owner, and the browser is
     the oracle.
@@ -374,7 +368,7 @@ in a code comment.
     their server markup; where `appearance: base-select` is supported, the picker is a
     styled native `<select>` and the hydration swap goes, the drawn face remaining
     elsewhere.
-14. **The quadratic hot paths.**
+13. **The quadratic hot paths.**
     - The terminal: a structure change, a token's redefinition and a container's resize
     still restyle every node, and a structure change hands every node its layout
     children afresh, where each should reach only the subtree it touched (per-scope
@@ -409,8 +403,8 @@ in a code comment.
     rest brought it back. Callgrind's instruction counts on builds that keep their
     symbols settle it against its parent, and a gain shown from one forced inline
     reopens the `#[inline(always)]` entry in `DECISIONS.md`.
-15. **The dev reload costs production nothing.** The saved tier is no second API:
-    Android's process death writes the same snapshot of the state an app saves (item 6),
+14. **The dev reload costs production nothing.** The saved tier is no second API:
+    Android's process death writes the same snapshot of the state an app saves (item 5),
     and the web and the desktops keep none beyond the dev reload.
     - Identity: typed owner steps aligned per parent, so a `Visibility` inserted before a
     component stops resetting everything after it; keyed roots for detached owners and `root_owner`; a
@@ -438,7 +432,7 @@ in a code comment.
     - The web: a staged snapshot boots a client render instead of a hydration; storage
     is keyed per app and tab; the `pagehide` session-storage copy restores on reloads
     alone and is cleared at boot.
-16. **The app layer before 1.0.** Every surveyed framework treats these as table stakes.
+15. **The app layer before 1.0.** Every surveyed framework treats these as table stakes.
     - Forms: an entry's `Secure` and `Keyboard` contents carried by every further
     platform's input protocol as it lands, the one field masked under the platform's
     secure-entry flag and its keyboard, autofill and hints in the protocol's own terms
@@ -484,7 +478,7 @@ in a code comment.
     `#[derive(Store)]` on defaulted generics; a bounded, keyed state holder that
     records a disposed keyed owner's snapshot entries and stages them when the key
     returns, so scrolled-out items and navigated-away pages keep their state.
-17. **Names and structure while the API is unstable.** One rename wave brings the names
+16. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
     - Manifests: wgpu 30 once vello_hybrid moves past the 29 it pins; the duplicate syn
@@ -510,19 +504,19 @@ in a code comment.
     - `OneOf`'s `set_key` shares its name with `View::set_key`, so where a facade's
     prelude is in scope `OneOf::new().set_key(key)` is ambiguous and only `derive_key`
     compiles; the key of the case shown takes a name of its own.
-18. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
+17. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-19. **Internationalization**: message catalogs, locale-aware formatting, reactive
+18. **Internationalization**: message catalogs, locale-aware formatting, reactive
     locale switching. Catalogs are provided as a context memo, the `Theme` pattern, so
     switching locale is one write; formatting follows ICU4X and MessageFormat 2; a
     direction signal lays right-to-left out through taffy over the logical edges; rich
     text becomes an annotated string, one run per paragraph with attribute ranges as
     Compose's `AnnotatedString`, fewer nodes and a natural target for translations.
-20. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
+19. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
     table stakes.
     - Views and controls: switch, progress and tabs first, then a spinner, a combobox,
     date and time, a number field, a tree, a table, a sheet, an alert dialog, a toast,
@@ -536,14 +530,14 @@ in a code comment.
     - Style: opacity and transforms as compositor-friendly properties of their own,
     gradients, box shadows, italic, text alignment, ellipsis and a maximum line count,
     shared with stated terminal degradations and the web-only ones in `WebStyle`.
-21. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
+20. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
     alternate screen the app always takes today; printing above the app; `exec` and
     `suspend`; log capture, to a file or over the attach pipe, since the terminal
     installs no `tracing` subscriber; a screen-reader launch mode mapping the roles
     controls already report to a linear output, as Ink does; and further `Device`s the
     loop runs on through `Launch::run_on`: an SSH session's channel, and xterm.js in a
     page over a socket.
-22. **Devtools on a tee of the seam.** A tee on the seam's records, a platform being no
+21. **Devtools on a tee of the seam.** A tee on the seam's records, a platform being no
     type to wrap now that one is chosen per build, streams every create, attach, update
     and token definition, with owners, handlers, snapshot positions and the cause of
     each effect re-run, over one protocol from any platform; the inspector is written in
@@ -567,7 +561,7 @@ in a code comment.
     cfg the CLI sets, so a production build carries none of it. Open: the key (`F12`, as
     browsers use), whether `attach` stays as the two-terminal form, and whether the
     first cut is the logs, the build and the last crash alone.
-23. **Themes split by facade, and design tokens in the DTCG format.** A theme's core is
+22. **Themes split by facade, and design tokens in the DTCG format.** A theme's core is
     plain constants shared by its crate for each facade (its colors, and its sizes named
     rather than measured, since cells and pixels share no unit), and each facade's theme
     crate gives the named sizes their values and builds its own themes from the core.
@@ -575,11 +569,11 @@ in a code comment.
     variant for each scheme is revisited later. A
     core imports from and exports to the W3C Design Tokens Community Group format,
     stable since October 2025, so a palette travels to and from design tools.
-24. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+23. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-25. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+24. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one. `skene
@@ -587,47 +581,47 @@ in a code comment.
     Unix alone, and where a process cannot be replaced the app exits with status 75
     for the launcher to spawn it. The console is a `Device` beside the tty, the loop
     unchanged: its input as bytes, its resize and end requests as notes.
-26. **A button inks its body as it inks its label.** `Button::set_text_color` colors the
+25. **A button inks its body as it inks its label.** `Button::set_text_color` colors the
     button's own label alone, so a body `set_child` adds, an icon, keeps the ink it
     inherits, where the core's Simple button inked an icon in its variant's ink; and an
     icon button is `Button::new("")`, its empty label laid out beside the icon. The text
     color reaches every run inside the button, as `color` inherits on the web, and a
     button drawn by its body alone has no label, so a Simple icon button is inked in its
     variant's ink again.
-27. **A library's default at the root leaves the page's text alone.** Simple's palette
+26. **A library's default at the root leaves the page's text alone.** Simple's palette
     defines the typography tokens as aliases of its own, and its default reaches the
     root with them, so the first Simple token a page names outside a theme of the
     palette (a preset's) re-inks every plain text under no theme in Simple's
     foreground.
     Decide whether a root default may define another set's tokens, or keeps such
     aliases to a theme's own scope, so a library inks its own views alone.
-28. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+27. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-29. **A drawn slider stands upright.** The drawn `Slider`'s default track runs along
+28. **A drawn slider stands upright.** The drawn `Slider`'s default track runs along
     its row alone, so a vertical slider is a `BasicSlider` over the behavior set
     vertical (`behavior::Slider::set_axis`) with parts of its own. The drawn one takes
     the behavior's axis by a setter named apart from the control's own row axis
     (`ControlBase::set_axis`), its default fill growing from the bottom and its thumb
     travelling up, in pixels and in cells alike.
-30. **A terminal field centers its value in a taller box.** A browser draws a
+29. **A terminal field centers its value in a taller box.** A browser draws a
     single-line `<input>`'s value in the middle of a box taller than its line; the
     terminal draws it on the box's first row, now that a row stretching its items
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
-31. **A plain toggle draws its box on the web.** The reset's default chrome for an
+30. **A plain toggle draws its box on the web.** The reset's default chrome for an
     `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
-32. **The server's opening focus passes over a box it knows is hidden.** The
+31. **The server's opening focus passes over a box it knows is hidden.** The
     browser leaf passes over a control set to autofocus inside a box its computed style
     hides, as the terminal does; the server computes no style and marks the first that
     asks. A box whose `hidden` is fixed, or derived and so known as the render settles,
     can be passed over there too, only a `hidden` under a condition left to the engine.
-33. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+32. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-34. **Server rendering beyond the native binary.** The native server binary stays the
+33. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
@@ -645,13 +639,14 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-35. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
-    and `skene-simple-gui` name each target's leaf, and `skene-tui` and
-    `skene-simple-tui` the terminal, through `cargo-args` setting
-    `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's flags over
-    `build.*` and an environment variable over both, so on the first publish either
-    docs.rs's own rustdoc flags or these may be dropped: check every target's pages, and
-    move the cfgs to wherever docs.rs's flags merge with them if any is missing.
+34. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
+    and `skene-simple-gui` name each target's leaf, and `skene-tui`,
+    `skene-tui-terminal` and `skene-simple-tui` the terminal, through `cargo-args`
+    setting `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's
+    flags over `build.*` and an environment variable over both, so on the first publish
+    either docs.rs's own rustdoc flags or these may be dropped: check every target's
+    pages, and move the cfgs to wherever docs.rs's flags merge with them if any is
+    missing.
 
 Watched, not scheduled:
 

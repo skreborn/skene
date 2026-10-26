@@ -15,12 +15,11 @@ use skene_foundation::{
   Scene,
   TextDecoration,
   TextDecorationStyle,
+  terminal::{BorderGlyphs, ScrollbarGlyphs},
   text::TextIndex,
 };
 
 use crate::{
-  BorderGlyphs,
-  ScrollbarGlyphs,
   Terminal,
   cells::Cells,
   engine::{Drawn, drawn},

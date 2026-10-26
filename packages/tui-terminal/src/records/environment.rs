@@ -13,11 +13,14 @@ use skene_foundation::{
   ResolutionSource,
   Size,
   Slot,
+  Token,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use super::{Records, record::SlotLeaf};
-use crate::{SystemColors, Terminal, Token, detect};
+use crate::{Terminal, detect};
+
+type SystemColors = skene_foundation::SystemColors<i32>;
 
 /// The colors an unset cell shows: the ink and the base a paint mixes against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

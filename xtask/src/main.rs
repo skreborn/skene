@@ -176,7 +176,7 @@ const APPLE: &str = "aarch64-apple-darwin";
 
 /// The crates with code of their own for Apple's platforms, none of which compiles C,
 /// which would need Apple's SDK.
-const APPLE_PACKAGES: &[&str] = &["skene-tui"];
+const APPLE_PACKAGES: &[&str] = &["skene-tui-terminal"];
 
 /// The flag that names the web in a build: on [`WASM`], its browser leaf.
 const WEB_CFG: &str = r#"--cfg skene_platform="web""#;

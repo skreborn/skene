@@ -383,8 +383,9 @@ fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
 /// reaching it is built for the web's leaves alone.
 pub(crate) const WEB: &str = "skene-gui-web";
 
-/// The terminal's facade: a package reaching it is built for the terminal alone.
-pub(crate) const TERMINAL: &str = "skene-tui";
+/// The terminal's realization, which every terminal member reaches, its facade included:
+/// a package reaching it is built for the terminal alone.
+pub(crate) const TERMINAL: &str = "skene-tui-terminal";
 
 /// The workspace's packages and what each depends on among them, from which every step
 /// reads the packages it builds.
@@ -861,7 +862,12 @@ mod tests {
       manifest("[package]\nname = \"tool\"\n[build-dependencies]\nbase = { path = \"..\" }\n"),
       manifest("[package]\nname = \"probe\"\n[dev-dependencies]\nskene-gui = { path = \"..\" }\n"),
       manifest("[package]\nname = \"user\"\n[dependencies]\nprobe = { path = \"..\" }\n"),
-      manifest("[package]\nname = \"skene-tui\"\n[dependencies]\nbase = { path = \"..\" }\n"),
+      manifest(
+        "[package]\nname = \"skene-tui-terminal\"\n[dependencies]\nbase = { path = \"..\" }\n",
+      ),
+      manifest(
+        "[package]\nname = \"skene-tui\"\n[target.'cfg(skene_platform = \"terminal\")'.dependencies]\nskene-tui-terminal = { path = \"..\" }\n",
+      ),
       manifest(
         "[package]\nname = \"shell\"\n[target.'cfg(skene_platform = \"terminal\")'.dependencies]\nskene-tui = { path = \"..\" }\n",
       ),
@@ -871,7 +877,10 @@ mod tests {
       workspace.web(),
       ["skene-gui-web", "skene-gui", "lib", "app", "docs", "probe"]
     );
-    assert_eq!(workspace.terminal(), ["docs", "skene-tui", "shell"]);
+    assert_eq!(
+      workspace.terminal(),
+      ["docs", "skene-tui-terminal", "skene-tui", "shell"]
+    );
     assert_eq!(workspace.host(), ["base", "tool", "user"]);
     assert_eq!(
       workspace.web_build(),

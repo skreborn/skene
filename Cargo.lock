@@ -2707,8 +2707,23 @@ name = "skene-tui"
 version = "0.1.0"
 dependencies = [
  "accesskit",
- "base64 0.23.1",
  "criterion",
+ "proptest",
+ "skene-conformance",
+ "skene-foundation",
+ "skene-macros",
+ "skene-reactive",
+ "skene-simple-tui",
+ "skene-tui-terminal",
+ "tracing",
+ "vt100",
+]
+
+[[package]]
+name = "skene-tui-terminal"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
  "libc",
  "memchr",
  "miniz_oxide 0.9.1",
@@ -2716,19 +2731,14 @@ dependencies = [
  "proptest",
  "rustc-hash 2.1.3",
  "rustix",
- "skene-conformance",
  "skene-dev",
  "skene-foundation",
  "skene-layout",
- "skene-macros",
  "skene-parley",
  "skene-reactive",
- "skene-simple-tui",
  "smallvec",
- "tracing",
  "unicode-segmentation",
  "unicode-width",
- "vt100",
 ]
 
 [[package]]

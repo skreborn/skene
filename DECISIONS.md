@@ -2,12 +2,23 @@
 
 The alternatives set aside and the designs replaced, each with the date it was recorded
 and the condition that reopens it. A reopened decision becomes an item in `ROADMAP.md`.
-The redesign recorded on 2026-10-15 is decided but not yet landed: until its
-migration in `ROADMAP.md` lands, the code and `DESIGN.md` still describe the designs it
-supersedes.
+The redesign recorded on 2026-10-15 is decided, and its first part has landed: the web
+and the terminal stand on the reshaped foundation, one platform per build, as two
+facades over realization crates of their own. The rest of it lands as `ROADMAP.md`
+orders it, and until it does the code and `DESIGN.md` still describe the designs it
+supersedes there.
 
 ## Decided against
 
+- **A crate of the terminal's conformance pages** (2026-10-26), beside
+  `skene-conformance-web`, so the terminal's pages would stand as the web's do: the
+  pages are written in `skene-tui`'s vocabulary, so the crate would depend on
+  `skene-tui` and be the dev-dependency of the tests in `skene-tui` that run them, a
+  cycle in the crate graph that the realization's own crate, `skene-tui-terminal`,
+  does not break, since a page names the facade's views and not the realization's. The
+  terminal's pages stay a module beside its driver in `skene-tui`'s tests, shaped as
+  the web's file. Revisit when the terminal's tests leave `skene-tui`, or when item 10
+  gives each facade a crate of its pages.
 - **The link policy's realization public on `LinkPolicy`** (2026-10-26),
   `LinkPolicy::realize(node)` made public once `Text` and `Span` call it from the
   facade's crate: a method an app reaches on a value of its own vocabulary, in the
@@ -37,15 +48,15 @@ supersedes.
   traits (`ContainerBase`, `DecorationBase`, `MotionBase` and their kin), each a facade
   trait over the foundation's at `Active` that forwards every member, and the 120 impl
   lines of both facades that name them rewritten, to close a gap a library met in one
-  bound alone, which `DecoratedTextEntry` closes. Revisit with ROADMAP item 9, which makes the two
-  facades' surfaces parallel name for name.
+  bound alone, which `DecoratedTextEntry` closes. Revisit with ROADMAP item 8, which
+  makes the two facades' surfaces parallel name for name.
 - **A same-named subtrait without members for a library's bound** (2026-10-26), the
   facade's own `TextEntryBase` and `DecorationBase` over the foundation's at `Active`:
   a named import of either hides the foundation's trait of that name, so its members
   no longer resolve on a view (`entry.set_background(..)`) where the facade's was
   imported. Replaced by one bound trait of a name of its own, `DecoratedTextEntry`,
   which hides nothing. Revisit when the facade's surface traits forward every member
-  (item 9).
+  (item 8).
 - **A library's private function generic over the realization** (2026-10-26),
   `field_chrome<P: Realization, E: TextEntryBase<P> + DecorationBase<P>>`: it names no
   `Active`, but a crate on a facade is generic over no realization, its one build's
@@ -165,13 +176,6 @@ supersedes.
   `Listbox`), as the Linux spike's facade did, so the behaviors move into each facade's
   `behavior` module and the root carries the views. Revisit if a facade's root must
   carry a behavior and a view of one name.
-- **A crate of the terminal's conformance pages** (2026-10-25), beside
-  `skene-conformance-web`, so the terminal's pages would stand as the web's do: the
-  crate would depend on `skene-tui` and be its dev-dependency, a cycle in the
-  crate graph that a module of the terminal's own tests does not need, so the
-  terminal's pages are a module beside its driver there, shaped as the web's file.
-  Revisit when the terminal's realization moves into a crate of its own (item 1's
-  split and rename), which the pages can depend on instead.
 - **A `NativeView` built under `Enhance`** (2026-10-25), the server's placeholder its
   fallback and the adopted element its child, built once the page has hydrated: the
   native door takes the next hydration marker as any element does, so a hydrating
@@ -187,7 +191,7 @@ supersedes.
   the loop a timer runs in: the server leaf's executor keeps its `sleep`
   (`platform::web::sleep`), bounding a render, and a platform owning its event loop may
   ship a loop-integrated timer. Revisit with the loop-integrated timer of the event loop
-  item (item 2).
+  item (item 1).
 - **Refusing a derived view in a crate reaching both facades** (2026-10-25), as a
   crate reaching neither is refused: the documents' example crates (`guide`,
   `readme`) depend on both facades, and the guide's libraries chapter derives `View`
@@ -329,6 +333,24 @@ supersedes.
   platform given, each shell is gated on its platform, and the CLI substitutes the cfg
   for the others. Revisit with a multi-root workspace, an editor opening each shell as a
   project of its own.
+- **The facades' split and renames left to their name-for-name item** (2026-10-23),
+  the web and the terminal ported onto the reshaped seam in place under the names they
+  had, and split into `skene-gui` and `skene-tui` over realization crates of their own
+  by the item that makes the two facades parallel: the doctrine's two facades over one
+  foundation would have stood in no crate's name through every item between, each of
+  them written against names it would then lose. The migration ported both in place,
+  then split and renamed them, and the facades' item keeps only their vocabulary's
+  parallelism and `EditContext`. Revisit if making the facades parallel name for name
+  (item 8) needs an item of the split undone, a facade and its realization joined.
+- **`skene-gui` born Linux-first beside a second seam** (2026-10-23), the pixel facade
+  started on the Linux realization the spike prototypes, over the reshaped seam, while
+  the web and the terminal kept the seam they stood on until a later port: two seams
+  side by side, every mechanism written for both or for one, and the web, the pixel
+  facade's most constrained platform, joining a vocabulary settled without it. The web
+  and the terminal moved onto the reshaped seam first, and Linux joins `skene-gui` as
+  its next realization (item 3). Revisit if Linux's realization (item 3) finds the seam
+  unable to carry a window platform without a reshaping the web and the terminal would
+  not survive.
 - **A default platform at this repository's root** (2026-10-23), the root's
   `.cargo/config.toml` naming one platform so plain cargo and an editor work there
   unconfigured: plain cargo would build that platform alone while looking like the
@@ -606,7 +628,7 @@ supersedes.
   engine through it, and the web's an uninhabited type rather than an uninhabited
   engine with an uninhabited paragraph and layout. Revisit when code generic over the
   realization needs its engine to lay text out, which the drawn platforms' shared
-  runtime (item 2) may.
+  runtime (item 1) may.
 - **Content-addressed token tags on display-wide colors** (2026-10-14), a toolkit's
   named colors tagged by their definition's content: a palette switch changed every tag
   and so restyled every node naming one. A palette switch touches no node: named

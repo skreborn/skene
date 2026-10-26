@@ -1,0 +1,335 @@
+pub mod skene_tui_terminal
+pub mod skene_tui_terminal::testing
+pub mod skene_tui_terminal::testing::user
+pub fn skene_tui_terminal::testing::user::click(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::testing::user::double_click(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::testing::user::hold(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::testing::user::hover(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::testing::user::press_key(&skene_foundation::spine::events::KeyEvent)
+pub fn skene_tui_terminal::testing::user::release(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::testing::user::type_text(skene_foundation::spine::node::NodeId, &str)
+pub struct skene_tui_terminal::testing::Pty
+impl skene_tui_terminal::testing::Pty
+pub fn skene_tui_terminal::testing::Pty::open(skene_tui_terminal::WindowSize) -> core::io::error::Result<(Self, skene_tui_terminal::testing::PtyHost)>
+impl core::fmt::Debug for skene_tui_terminal::testing::Pty
+pub fn skene_tui_terminal::testing::Pty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::io::write::Write for skene_tui_terminal::testing::Pty
+pub fn skene_tui_terminal::testing::Pty::flush(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::testing::Pty::write(&mut self, &[u8]) -> core::io::error::Result<usize>
+impl core::ops::drop::Drop for skene_tui_terminal::testing::Pty
+pub fn skene_tui_terminal::testing::Pty::drop(&mut self)
+impl skene_tui_terminal::Device for skene_tui_terminal::testing::Pty
+pub fn skene_tui_terminal::testing::Pty::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::testing::Pty::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::testing::Pty::size(&self) -> core::option::Option<skene_tui_terminal::WindowSize>
+pub fn skene_tui_terminal::testing::Pty::stop(&mut self)
+pub fn skene_tui_terminal::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui_terminal::Note>>
+pub fn skene_tui_terminal::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+pub struct skene_tui_terminal::testing::PtyHost
+impl skene_tui_terminal::testing::PtyHost
+pub fn skene_tui_terminal::testing::PtyHost::drawn(&mut self, core::time::Duration) -> core::io::error::Result<alloc::vec::Vec<u8>>
+pub fn skene_tui_terminal::testing::PtyHost::resize(&self, skene_tui_terminal::WindowSize) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::testing::PtyHost::type_bytes(&mut self, &[u8]) -> core::io::error::Result<()>
+impl core::fmt::Debug for skene_tui_terminal::testing::PtyHost
+pub fn skene_tui_terminal::testing::PtyHost::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn skene_tui_terminal::testing::access_outline() -> alloc::string::String
+pub fn skene_tui_terminal::testing::access_tree() -> accesskit::TreeUpdate
+pub fn skene_tui_terminal::testing::accessible_name(skene_foundation::spine::node::NodeId) -> core::option::Option<alloc::string::String>
+pub fn skene_tui_terminal::testing::find_all_by_role(accesskit::Role) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_tui_terminal::testing::find_all_unnamed() -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_tui_terminal::testing::find_by_role(accesskit::Role, &str) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_tui_terminal::testing::find_by_text(&str) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_tui_terminal::testing::focused_node() -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_tui_terminal::testing::is_frame_pending() -> bool
+pub fn skene_tui_terminal::testing::is_quit_requested() -> bool
+pub fn skene_tui_terminal::testing::layout_generation() -> u64
+pub fn skene_tui_terminal::testing::locate(&str, &str) -> (u16, u16)
+pub fn skene_tui_terminal::testing::mouse_cursor() -> core::option::Option<skene_foundation::spine::values::mouse_cursor::MouseCursor>
+pub fn skene_tui_terminal::testing::pending_timers() -> usize
+pub fn skene_tui_terminal::testing::pump_tasks() -> bool
+pub fn skene_tui_terminal::testing::record_count() -> usize
+pub fn skene_tui_terminal::testing::render_to_bold(u16, u16) -> alloc::vec::Vec<bool>
+pub fn skene_tui_terminal::testing::render_to_caret(u16, u16) -> core::option::Option<(u16, u16)>
+pub fn skene_tui_terminal::testing::render_to_colors(u16, u16) -> alloc::vec::Vec<(core::option::Option<(u8, u8, u8)>, core::option::Option<(u8, u8, u8)>)>
+pub fn skene_tui_terminal::testing::render_to_decorations(u16, u16) -> alloc::vec::Vec<skene_tui_terminal::CellDecoration>
+pub fn skene_tui_terminal::testing::render_to_pictures(u16, u16) -> alloc::vec::Vec<skene_tui_terminal::Picture>
+pub fn skene_tui_terminal::testing::render_to_reverse(u16, u16) -> alloc::vec::Vec<bool>
+pub fn skene_tui_terminal::testing::render_to_scales(u16, u16) -> alloc::vec::Vec<skene_tui_terminal::CellScale>
+pub fn skene_tui_terminal::testing::render_to_styled(u16, u16) -> alloc::string::String
+pub fn skene_tui_terminal::testing::render_to_text(u16, u16) -> alloc::string::String
+pub fn skene_tui_terminal::testing::repainted_rows() -> alloc::vec::Vec<usize>
+pub fn skene_tui_terminal::testing::style_resolutions() -> u64
+pub fn skene_tui_terminal::testing::style_writes() -> u64
+pub fn skene_tui_terminal::testing::take_copied() -> core::option::Option<alloc::string::String>
+pub fn skene_tui_terminal::testing::take_opened() -> core::option::Option<alloc::string::String>
+pub fn skene_tui_terminal::testing::take_paste_requested() -> bool
+pub fn skene_tui_terminal::testing::trigger_answering_clipboard(bool)
+pub fn skene_tui_terminal::testing::trigger_clipboard_reply(&str)
+pub fn skene_tui_terminal::testing::trigger_color_scheme(skene_foundation::spine::values::color::ColorScheme)
+pub fn skene_tui_terminal::testing::trigger_frame(core::time::Duration)
+pub fn skene_tui_terminal::testing::trigger_grapheme_clustering(bool)
+pub fn skene_tui_terminal::testing::trigger_graphics(bool)
+pub fn skene_tui_terminal::testing::trigger_key(&str)
+pub fn skene_tui_terminal::testing::trigger_key_event(&skene_foundation::spine::events::KeyEvent)
+pub fn skene_tui_terminal::testing::trigger_key_releases(bool)
+pub fn skene_tui_terminal::testing::trigger_key_up(&str)
+pub fn skene_tui_terminal::testing::trigger_mouse_click(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_mouse_drag(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_mouse_drag_within(u16, u16, (f32, f32))
+pub fn skene_tui_terminal::testing::trigger_mouse_move(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_mouse_press(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_mouse_release(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_mouse_right_click(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_mouse_scroll(u16, u16, i64, i64)
+pub fn skene_tui_terminal::testing::trigger_paste(&str)
+pub fn skene_tui_terminal::testing::trigger_reduced_motion(bool)
+pub fn skene_tui_terminal::testing::trigger_resize(u16, u16)
+pub fn skene_tui_terminal::testing::trigger_terminal_colors((u8, u8, u8), (u8, u8, u8))
+pub fn skene_tui_terminal::testing::trigger_text_sizing(bool)
+pub fn skene_tui_terminal::testing::window_title() -> core::option::Option<alloc::string::String>
+pub fn skene_tui_terminal::testing::with_launch<R>(skene_tui_terminal::Launch, impl core::ops::function::FnOnce() -> R) -> R
+pub fn skene_tui_terminal::testing::with_platform<R>(impl core::ops::function::FnOnce() -> R) -> R
+pub enum skene_tui_terminal::CellScale
+pub skene_tui_terminal::CellScale::Fraction(u8, u8)
+pub skene_tui_terminal::CellScale::Whole(u8)
+impl skene_tui_terminal::CellScale
+pub const skene_tui_terminal::CellScale::ONE: Self
+pub fn skene_tui_terminal::CellScale::of(f32) -> Self
+pub const fn skene_tui_terminal::CellScale::rows(self) -> usize
+impl core::clone::Clone for skene_tui_terminal::CellScale
+pub fn skene_tui_terminal::CellScale::clone(&self) -> skene_tui_terminal::CellScale
+impl core::cmp::Eq for skene_tui_terminal::CellScale
+impl core::cmp::PartialEq for skene_tui_terminal::CellScale
+pub fn skene_tui_terminal::CellScale::eq(&self, &skene_tui_terminal::CellScale) -> bool
+impl core::default::Default for skene_tui_terminal::CellScale
+pub fn skene_tui_terminal::CellScale::default() -> Self
+impl core::fmt::Debug for skene_tui_terminal::CellScale
+pub fn skene_tui_terminal::CellScale::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_tui_terminal::CellScale
+pub fn skene_tui_terminal::CellScale::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_tui_terminal::CellScale
+impl core::marker::StructuralPartialEq for skene_tui_terminal::CellScale
+pub enum skene_tui_terminal::Note
+pub skene_tui_terminal::Note::Continued
+pub skene_tui_terminal::Note::EndRequested(i32)
+pub skene_tui_terminal::Note::StopRequested
+impl core::clone::Clone for skene_tui_terminal::Note
+pub fn skene_tui_terminal::Note::clone(&self) -> skene_tui_terminal::Note
+impl core::cmp::Eq for skene_tui_terminal::Note
+impl core::cmp::PartialEq for skene_tui_terminal::Note
+pub fn skene_tui_terminal::Note::eq(&self, &skene_tui_terminal::Note) -> bool
+impl core::fmt::Debug for skene_tui_terminal::Note
+pub fn skene_tui_terminal::Note::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_tui_terminal::Note
+impl core::marker::StructuralPartialEq for skene_tui_terminal::Note
+pub enum skene_tui_terminal::Unadoptable
+impl core::clone::Clone for skene_tui_terminal::Unadoptable
+pub fn skene_tui_terminal::Unadoptable::clone(&self) -> skene_tui_terminal::Unadoptable
+impl core::cmp::Eq for skene_tui_terminal::Unadoptable
+impl core::cmp::PartialEq for skene_tui_terminal::Unadoptable
+pub fn skene_tui_terminal::Unadoptable::eq(&self, &skene_tui_terminal::Unadoptable) -> bool
+impl core::fmt::Debug for skene_tui_terminal::Unadoptable
+pub fn skene_tui_terminal::Unadoptable::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_tui_terminal::Unadoptable
+pub fn skene_tui_terminal::Unadoptable::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_tui_terminal::Unadoptable
+impl core::marker::StructuralPartialEq for skene_tui_terminal::Unadoptable
+pub struct skene_tui_terminal::CellDecoration
+pub skene_tui_terminal::CellDecoration::line_through: bool
+pub skene_tui_terminal::CellDecoration::overline: bool
+pub skene_tui_terminal::CellDecoration::underline: core::option::Option<skene_foundation::spine::values::text_decoration::TextDecorationStyle>
+pub skene_tui_terminal::CellDecoration::underline_color: core::option::Option<(u8, u8, u8)>
+impl skene_tui_terminal::CellDecoration
+pub const skene_tui_terminal::CellDecoration::NONE: Self
+impl core::clone::Clone for skene_tui_terminal::CellDecoration
+pub fn skene_tui_terminal::CellDecoration::clone(&self) -> skene_tui_terminal::CellDecoration
+impl core::cmp::Eq for skene_tui_terminal::CellDecoration
+impl core::cmp::PartialEq for skene_tui_terminal::CellDecoration
+pub fn skene_tui_terminal::CellDecoration::eq(&self, &skene_tui_terminal::CellDecoration) -> bool
+impl core::default::Default for skene_tui_terminal::CellDecoration
+pub fn skene_tui_terminal::CellDecoration::default() -> skene_tui_terminal::CellDecoration
+impl core::fmt::Debug for skene_tui_terminal::CellDecoration
+pub fn skene_tui_terminal::CellDecoration::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_tui_terminal::CellDecoration
+impl core::marker::StructuralPartialEq for skene_tui_terminal::CellDecoration
+pub struct skene_tui_terminal::Cells<'a>
+impl<'a> skene_tui_terminal::Cells<'a>
+pub fn skene_tui_terminal::Cells<'a>::put(&mut self, u32, u32, char)
+pub fn skene_tui_terminal::Cells<'a>::rect(&self) -> skene_foundation::spine::values::rect::Rect<u32>
+pub fn skene_tui_terminal::Cells<'a>::set_background(&mut self, u32, u32, skene_foundation::spine::values::color::Color)
+pub fn skene_tui_terminal::Cells<'a>::set_foreground(&mut self, u32, u32, skene_foundation::spine::values::color::Color)
+pub const fn skene_tui_terminal::Cells<'a>::size(&self) -> skene_foundation::spine::values::size::Size<u32>
+impl core::fmt::Debug for skene_tui_terminal::Cells<'_>
+pub fn skene_tui_terminal::Cells<'_>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_tui_terminal::Clipboard
+pub skene_tui_terminal::Clipboard::copy: bool
+pub skene_tui_terminal::Clipboard::paste: bool
+impl skene_tui_terminal::Clipboard
+pub const skene_tui_terminal::Clipboard::ALL: Self
+pub const skene_tui_terminal::Clipboard::COPY: Self
+pub const skene_tui_terminal::Clipboard::NONE: Self
+pub const skene_tui_terminal::Clipboard::PASTE: Self
+impl core::clone::Clone for skene_tui_terminal::Clipboard
+pub fn skene_tui_terminal::Clipboard::clone(&self) -> skene_tui_terminal::Clipboard
+impl core::cmp::Eq for skene_tui_terminal::Clipboard
+impl core::cmp::PartialEq for skene_tui_terminal::Clipboard
+pub fn skene_tui_terminal::Clipboard::eq(&self, &skene_tui_terminal::Clipboard) -> bool
+impl core::default::Default for skene_tui_terminal::Clipboard
+pub fn skene_tui_terminal::Clipboard::default() -> Self
+impl core::fmt::Debug for skene_tui_terminal::Clipboard
+pub fn skene_tui_terminal::Clipboard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_tui_terminal::Clipboard
+pub fn skene_tui_terminal::Clipboard::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_tui_terminal::Clipboard
+impl core::marker::StructuralPartialEq for skene_tui_terminal::Clipboard
+pub struct skene_tui_terminal::Launch
+impl skene_tui_terminal::Launch
+pub fn skene_tui_terminal::Launch::install(self)
+pub const fn skene_tui_terminal::Launch::new() -> Self
+pub fn skene_tui_terminal::Launch::run<V, F>(self, F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_tui_terminal::Terminal>
+pub fn skene_tui_terminal::Launch::run_on<D, V, F>(self, D, F) -> D where D: skene_tui_terminal::Device, F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_tui_terminal::Terminal>
+pub const fn skene_tui_terminal::Launch::set_clipboard(self, skene_tui_terminal::Clipboard) -> Self
+pub const fn skene_tui_terminal::Launch::set_mouse(self, bool) -> Self
+pub const fn skene_tui_terminal::Launch::set_mouse_key(self, core::option::Option<skene_foundation::spine::events::Shortcut>) -> Self
+impl core::clone::Clone for skene_tui_terminal::Launch
+pub fn skene_tui_terminal::Launch::clone(&self) -> skene_tui_terminal::Launch
+impl core::cmp::Eq for skene_tui_terminal::Launch
+impl core::cmp::PartialEq for skene_tui_terminal::Launch
+pub fn skene_tui_terminal::Launch::eq(&self, &skene_tui_terminal::Launch) -> bool
+impl core::default::Default for skene_tui_terminal::Launch
+pub fn skene_tui_terminal::Launch::default() -> Self
+impl core::fmt::Debug for skene_tui_terminal::Launch
+pub fn skene_tui_terminal::Launch::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_tui_terminal::Launch
+pub fn skene_tui_terminal::Launch::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_tui_terminal::Launch
+impl core::marker::StructuralPartialEq for skene_tui_terminal::Launch
+pub struct skene_tui_terminal::Picture
+pub skene_tui_terminal::Picture::column: u16
+pub skene_tui_terminal::Picture::columns: u16
+pub skene_tui_terminal::Picture::crop: (u16, u16, u16, u16)
+pub skene_tui_terminal::Picture::height: u16
+pub skene_tui_terminal::Picture::layer: i32
+pub skene_tui_terminal::Picture::pixels: alloc::vec::Vec<u8>
+pub skene_tui_terminal::Picture::row: u16
+pub skene_tui_terminal::Picture::rows: u16
+pub skene_tui_terminal::Picture::width: u16
+impl core::clone::Clone for skene_tui_terminal::Picture
+pub fn skene_tui_terminal::Picture::clone(&self) -> skene_tui_terminal::Picture
+impl core::cmp::Eq for skene_tui_terminal::Picture
+impl core::cmp::PartialEq for skene_tui_terminal::Picture
+pub fn skene_tui_terminal::Picture::eq(&self, &skene_tui_terminal::Picture) -> bool
+impl core::fmt::Debug for skene_tui_terminal::Picture
+pub fn skene_tui_terminal::Picture::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_tui_terminal::Picture
+pub struct skene_tui_terminal::StandIns
+impl core::clone::Clone for skene_tui_terminal::StandIns
+pub fn skene_tui_terminal::StandIns::clone(&self) -> skene_tui_terminal::StandIns
+impl core::default::Default for skene_tui_terminal::StandIns
+pub fn skene_tui_terminal::StandIns::default() -> skene_tui_terminal::StandIns
+impl core::fmt::Debug for skene_tui_terminal::StandIns
+pub fn skene_tui_terminal::StandIns::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_tui_terminal::StandIns
+impl skene_foundation::text::mask::Substitute for skene_tui_terminal::StandIns
+pub fn skene_tui_terminal::StandIns::substitute(&self, &str, usize) -> core::option::Option<char>
+pub struct skene_tui_terminal::Terminal
+impl core::clone::Clone for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::clone(&self) -> skene_tui_terminal::Terminal
+impl core::cmp::Eq for skene_tui_terminal::Terminal
+impl core::cmp::PartialEq for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::eq(&self, &skene_tui_terminal::Terminal) -> bool
+impl core::default::Default for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::default() -> skene_tui_terminal::Terminal
+impl core::fmt::Debug for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_tui_terminal::Terminal
+impl core::marker::StructuralPartialEq for skene_tui_terminal::Terminal
+impl skene_foundation::painting::Painting for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::available() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<skene_foundation::painting::Painter>)
+impl skene_foundation::spine::realization::Realization for skene_tui_terminal::Terminal
+pub type skene_tui_terminal::Terminal::Entry = skene_foundation::text::editing::entry::Entry<skene_foundation::text::mask::Substituted<skene_parley::engine::ParleyEngine, skene_tui_terminal::StandIns>>
+pub type skene_tui_terminal::Terminal::Native = skene_tui_terminal::Unadoptable
+pub type skene_tui_terminal::Terminal::Scalar = i32
+pub type skene_tui_terminal::Terminal::StyleExt = skene_foundation::terminal::ext::TerminalStyle
+pub type skene_tui_terminal::Terminal::TokenValue = skene_foundation::spine::resolve::TokenValue<i32>
+pub const skene_tui_terminal::Terminal::FONT_SIZE: f32
+pub const skene_tui_terminal::Terminal::KEEP: skene_foundation::spine::record::Keep
+pub fn skene_tui_terminal::Terminal::adopt(skene_foundation::spine::node::NodeId, skene_tui_terminal::Unadoptable, &skene_foundation::spine::props::NodeSpec) -> bool
+pub fn skene_tui_terminal::Terminal::apply_slot(skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_foundation::spine::resolve::SlotLeaf<i32, skene_foundation::terminal::ext::TerminalStyle>)
+pub fn skene_tui_terminal::Terminal::apply_style(skene_foundation::spine::node::NodeId, skene_foundation::spine::record::CompiledStyle<i32, skene_foundation::terminal::ext::TerminalStyle>)
+pub fn skene_tui_terminal::Terminal::attach(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
+pub fn skene_tui_terminal::Terminal::blur(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::Terminal::cancel(skene_foundation::spine::realization::Timer)
+pub fn skene_tui_terminal::Terminal::chosen_scheme() -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
+pub fn skene_tui_terminal::Terminal::clipboard(skene_foundation::spine::values::clipboard::ClipboardAction)
+pub fn skene_tui_terminal::Terminal::clipboard_availability(skene_foundation::spine::values::clipboard::ClipboardAction) -> skene_foundation::spine::values::clipboard::Availability
+pub fn skene_tui_terminal::Terminal::commit_navigation(alloc::boxed::Box<dyn core::ops::function::FnOnce()>)
+pub fn skene_tui_terminal::Terminal::create(skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec) -> bool
+pub fn skene_tui_terminal::Terminal::define_tokens(skene_foundation::spine::scene::tokens::TokenScope, &skene_foundation::spine::token::Definitions<Self::TokenValue>)
+pub fn skene_tui_terminal::Terminal::destroy(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::Terminal::entry(skene_foundation::spine::node::NodeId, bool) -> core::option::Option<skene_foundation::text::editing::entry::Entry<skene_tui_terminal::CellEngine>>
+pub fn skene_tui_terminal::Terminal::focus(skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::Terminal::focus_visible() -> bool
+pub fn skene_tui_terminal::Terminal::hide(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::Terminal::lay_out()
+pub fn skene_tui_terminal::Terminal::localize_pointer(skene_foundation::spine::node::NodeId, &skene_foundation::spine::events::PointerEvent) -> skene_foundation::spine::events::PointerEvent
+pub fn skene_tui_terminal::Terminal::media() -> skene_foundation::spine::props::MediaSignals<i32>
+pub fn skene_tui_terminal::Terminal::observe_size(skene_foundation::spine::node::NodeId, alloc::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<i32>)>) -> skene_foundation::spine::realization::Observation
+pub fn skene_tui_terminal::Terminal::read<R>(skene_foundation::spine::node::NodeId, skene_foundation::spine::content::Content, impl core::ops::function::FnOnce(skene_foundation::spine::content::ContentValue<'_>) -> R) -> core::option::Option<R>
+pub fn skene_tui_terminal::Terminal::relocate(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId, core::option::Option<skene_foundation::spine::node::NodeId>)
+pub fn skene_tui_terminal::Terminal::remove(skene_foundation::spine::node::NodeId, skene_foundation::spine::node::NodeId)
+pub fn skene_tui_terminal::Terminal::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_foundation::spine::scene::Scene<Self>>>
+pub fn skene_tui_terminal::Terminal::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_foundation::spine::realization::Timer
+pub fn skene_tui_terminal::Terminal::set_control_state(skene_foundation::spine::node::NodeId, &skene_foundation::spine::control::ControlState)
+pub fn skene_tui_terminal::Terminal::set_overlay_open(skene_foundation::spine::node::NodeId, bool, core::option::Option<skene_foundation::spine::node::NodeId>)
+pub fn skene_tui_terminal::Terminal::set_scheme(core::option::Option<skene_foundation::spine::values::color::ColorScheme>)
+pub fn skene_tui_terminal::Terminal::set_window_title(core::option::Option<&str>)
+pub fn skene_tui_terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<i32>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_tui_terminal::Terminal::write(skene_foundation::spine::node::NodeId, skene_foundation::spine::content::ContentValue<'_>)
+impl skene_tui_terminal::CellPainter for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui_terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
+pub struct skene_tui_terminal::WindowSize
+pub skene_tui_terminal::WindowSize::columns: u16
+pub skene_tui_terminal::WindowSize::pixel_height: core::option::Option<u16>
+pub skene_tui_terminal::WindowSize::pixel_width: core::option::Option<u16>
+pub skene_tui_terminal::WindowSize::rows: u16
+impl skene_tui_terminal::WindowSize
+pub const fn skene_tui_terminal::WindowSize::cells(u16, u16) -> Self
+impl core::clone::Clone for skene_tui_terminal::WindowSize
+pub fn skene_tui_terminal::WindowSize::clone(&self) -> skene_tui_terminal::WindowSize
+impl core::cmp::Eq for skene_tui_terminal::WindowSize
+impl core::cmp::PartialEq for skene_tui_terminal::WindowSize
+pub fn skene_tui_terminal::WindowSize::eq(&self, &skene_tui_terminal::WindowSize) -> bool
+impl core::fmt::Debug for skene_tui_terminal::WindowSize
+pub fn skene_tui_terminal::WindowSize::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_tui_terminal::WindowSize
+impl core::marker::StructuralPartialEq for skene_tui_terminal::WindowSize
+pub const skene_tui_terminal::MOUSE_KEY: skene_foundation::spine::events::Shortcut
+pub trait skene_tui_terminal::CellPainter
+pub fn skene_tui_terminal::CellPainter::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui_terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
+impl skene_tui_terminal::CellPainter for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui_terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
+pub trait skene_tui_terminal::Device: core::io::write::Write
+pub fn skene_tui_terminal::Device::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::Device::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::Device::size(&self) -> core::option::Option<skene_tui_terminal::WindowSize>
+pub fn skene_tui_terminal::Device::stop(&mut self)
+pub fn skene_tui_terminal::Device::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui_terminal::Note>>
+pub fn skene_tui_terminal::Device::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+impl skene_tui_terminal::Device for skene_tui_terminal::testing::Pty
+pub fn skene_tui_terminal::testing::Pty::enter_raw_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::testing::Pty::restore_mode(&mut self) -> core::io::error::Result<()>
+pub fn skene_tui_terminal::testing::Pty::size(&self) -> core::option::Option<skene_tui_terminal::WindowSize>
+pub fn skene_tui_terminal::testing::Pty::stop(&mut self)
+pub fn skene_tui_terminal::testing::Pty::wait(&mut self, core::time::Duration, &mut alloc::vec::Vec<u8>) -> core::io::error::Result<alloc::vec::Vec<skene_tui_terminal::Note>>
+pub fn skene_tui_terminal::testing::Pty::waker(&self) -> alloc::sync::Arc<(dyn core::ops::function::Fn() + core::marker::Send + core::marker::Sync)>
+pub fn skene_tui_terminal::adopt_restoration()
+pub fn skene_tui_terminal::dev_notice_view(skene_reactive::signal::Signal<core::option::Option<alloc::string::String>>) -> impl skene_foundation::spine::view::View<skene_tui_terminal::Terminal>
+pub fn skene_tui_terminal::install()
+pub fn skene_tui_terminal::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_foundation::spine::view::View<skene_tui_terminal::Terminal>
+pub fn skene_tui_terminal::mount(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId
+pub fn skene_tui_terminal::uninstall()
+pub type skene_tui_terminal::CellEngine = skene_foundation::text::mask::Substituted<skene_parley::engine::ParleyEngine, skene_tui_terminal::StandIns>

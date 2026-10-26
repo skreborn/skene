@@ -25,11 +25,11 @@ use skene_foundation::{
   RunStyle,
   Size,
   Slot,
+  terminal::TerminalStyle,
 };
 
 use super::{CellRect, field::Field};
 use crate::{
-  TerminalStyle,
   motion::{BoxMotion, RunMotion},
   paint::Image,
 };

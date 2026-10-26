@@ -11,14 +11,12 @@ use skene_foundation::{
   ResolvedStyle,
   Resolver,
   StaticLeaf,
+  terminal::{BOLD_WEIGHT, BorderGlyphs, TerminalStyle},
   typography,
 };
 
 use crate::{
-  BOLD_WEIGHT,
-  BorderGlyphs,
   Terminal,
-  TerminalStyle,
   records::{Handle, Kind, PlainBox, PlainRun, Records},
 };
 

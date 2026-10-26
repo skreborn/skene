@@ -3,29 +3,17 @@ name = "skene-tui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "skene's terminal facade and platform: views typed to the terminal, down to the device"
+description = "skene's terminal facade: views typed to the terminal, realized by skene-tui-terminal"
 license.workspace = true
 repository.workspace = true
 
 # The terminal's build alone: every other build compiles the crate empty.
 [target.'cfg(skene_platform = "terminal")'.dependencies]
-base64 = "0.23"
-libc = "0.2"
-memchr = "2"
-miniz_oxide = "0.9"
-parley.workspace = true
-rustc-hash.workspace = true
-rustix = { default-features = false, features = ["event", "pty", "std", "stdio", "termios"], version = "1" }
-skene-dev.workspace = true
 skene-foundation.workspace = true
-skene-layout.workspace = true
 skene-macros.workspace = true
-skene-parley.workspace = true
 skene-reactive.workspace = true
-smallvec.workspace = true
+skene-tui-terminal.workspace = true
 tracing.workspace = true
-unicode-segmentation.workspace = true
-unicode-width = "0.2"
 
 [target.'cfg(skene_platform = "terminal")'.dev-dependencies]
 accesskit.workspace = true
@@ -38,9 +26,6 @@ vt100 = "0.18"
 [[bench]]
 name = "frame"
 harness = false
-
-[build-dependencies]
-unicode-width = "0.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

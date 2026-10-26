@@ -52,6 +52,7 @@ skene-simple-gui = { path = "packages/simple-gui", version = "0.1.0" }
 skene-simple-tui = { path = "packages/simple-tui", version = "0.1.0" }
 skene-transport = { path = "packages/transport", version = "0.1.0" }
 skene-tui = { path = "packages/tui", version = "0.1.0" }
+skene-tui-terminal = { path = "packages/tui-terminal", version = "0.1.0" }
 smallvec = "1.15"
 syn = { version = "3", features = ["full"] }
 tracing = "0.1"

@@ -31,20 +31,20 @@ use skene_foundation::{
   Size,
   Slot,
   SlotLeaf,
+  SystemColors,
   Timer,
   TokenScope,
+  terminal::{TerminalStyle, Typography},
   text::editing::Entry,
 };
 use skene_reactive::{Memo, ReadSignal, Set};
 
 use crate::{
-  SystemColors,
-  TerminalStyle,
-  TokenValue,
-  Typography,
+  CellEngine,
+  Terminal,
+  Unadoptable,
   cells::{CellPainter, Painter},
   interaction,
-  platform::terminal::{CellEngine, Terminal, Unadoptable},
   records::{BoxRecord, Field, Kind, PictureRecord, Records},
 };
 
@@ -305,7 +305,7 @@ impl Realization for Terminal {
     with_records(|records| records.destroy(node));
   }
 
-  fn define_tokens(_scope: TokenScope, _definitions: &Definitions<TokenValue>) {
+  fn define_tokens(_scope: TokenScope, _definitions: &Definitions<Self::TokenValue>) {
     with_records(Records::invalidate_styles);
   }
 
@@ -541,7 +541,7 @@ pub(crate) fn define_system_colors() {
   let definitions = Definitions::of(&with_records(|records| records.system_colors()));
 
   Scene::<Terminal>::with(|scene| {
-    if scene.define_root_set(TypeId::of::<SystemColors>(), definitions.clone()) {
+    if scene.define_root_set(TypeId::of::<SystemColors<i32>>(), definitions.clone()) {
       return;
     }
 

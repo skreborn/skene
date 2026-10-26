@@ -1,14 +1,15 @@
 //! # skene-tui
 //!
-//! The terminal facade and its platform: a terminal app's single dependency, equal in
-//! standing to `skene-gui`. It fixes the scalar (cells, `i32`), names the platform
-//! ([`Active`]: [`Terminal`]) and aliases every built-in view to it, so app code names
-//! no platform. The medium's own contribution is [`Typography`], the [`media`] module,
-//! the terminal's decoration on its decorated views (the border's glyphs, a shadow,
-//! scrollbars) and the entry points: [`launch`] in a terminal—[`Launch`] configuring
-//! what the app takes from it, the clipboard operations and the mouse—and [`testing`]
-//! for an in-process test. [`Platform`] is the build's platform as a const, and
-//! [`platform::terminal`] the terminal's own vocabulary: the escape trait a low-level
+//! The terminal facade: a terminal app's single dependency, equal in standing to
+//! `skene-gui`. It fixes the scalar (cells, `i32`), names the platform it realizes
+//! ([`Active`], the terminal's realization from `skene-tui-terminal`, down to the
+//! device) and aliases every built-in view to it, so app code names no platform. The
+//! medium's own contribution is [`Typography`], the [`media`] module, the terminal's
+//! decoration on its decorated views (the border's glyphs, a shadow, scrollbars) and the
+//! entry points: [`launch`] in a terminal—[`Launch`] configuring what the app takes from
+//! it, the clipboard operations and the mouse—and [`testing`] for an in-process test.
+//! [`Platform`] is the build's platform as a const, and [`platform::terminal`] the
+//! terminal's own vocabulary, its realization's surface: the escape trait a low-level
 //! view is written against ([`CellPainter`](platform::terminal::CellPainter), painting
 //! through [`Cells`](platform::terminal::Cells)) and the seams an in-process test
 //! installs and mounts through ([`install`](platform::terminal::install),
@@ -86,54 +87,10 @@ pub mod platform;
 #[cfg(skene_platform = "terminal")]
 pub mod prelude;
 #[cfg(skene_platform = "terminal")]
-pub mod testing;
-#[cfg(skene_platform = "terminal")]
 pub mod window;
 
 #[cfg(skene_platform = "terminal")]
-mod cells;
-#[cfg(skene_platform = "terminal")]
-mod detect;
-#[cfg(skene_platform = "terminal")]
-mod dev;
-#[cfg(skene_platform = "terminal")]
-mod device;
-#[cfg(skene_platform = "terminal")]
-mod engine;
-#[cfg(skene_platform = "terminal")]
-mod escape;
-#[cfg(skene_platform = "terminal")]
-mod event_loop;
-#[cfg(skene_platform = "terminal")]
-mod field;
-#[cfg(skene_platform = "terminal")]
-mod frame;
-#[cfg(skene_platform = "terminal")]
-mod interaction;
-#[cfg(skene_platform = "terminal")]
-mod launch;
-#[cfg(skene_platform = "terminal")]
-mod layout;
-#[cfg(skene_platform = "terminal")]
-mod motion;
-#[cfg(skene_platform = "terminal")]
-mod paint;
-#[cfg(skene_platform = "terminal")]
-mod parse;
-#[cfg(skene_platform = "terminal")]
-mod realize;
-#[cfg(skene_platform = "terminal")]
-mod records;
-#[cfg(skene_platform = "terminal")]
-mod resolve;
-#[cfg(skene_platform = "terminal")]
 mod routing;
-#[cfg(skene_platform = "terminal")]
-mod selection;
-#[cfg(skene_platform = "terminal")]
-mod text;
-#[cfg(skene_platform = "terminal")]
-mod tty;
 #[cfg(skene_platform = "terminal")]
 mod views;
 
@@ -282,15 +239,25 @@ pub use skene_foundation::{
 pub use skene_macros::tui_main as main;
 #[cfg(skene_platform = "terminal")]
 pub use skene_reactive::{self as reactive, LoadState, Resource};
+#[cfg(skene_platform = "terminal")]
+pub use skene_tui_terminal::{
+  CellDecoration,
+  CellScale,
+  Clipboard,
+  Device,
+  Launch,
+  MOUSE_KEY,
+  Note,
+  Picture,
+  WindowSize,
+  launch,
+  testing,
+};
 
 #[cfg(skene_platform = "terminal")]
 pub use crate::{
-  device::{Device, Note, WindowSize},
-  launch::{Clipboard, Launch, MOUSE_KEY, launch},
   media::{chosen_scheme, derive_scheme, set_scheme},
-  paint::{CellDecoration, Picture},
   routing::install_router,
-  text::CellScale,
   views::{
     BasicButton,
     BasicCheckbox,
@@ -343,15 +310,9 @@ pub use crate::{
     Visibility,
   },
 };
-#[cfg(skene_platform = "terminal")]
-pub(crate) use crate::{
-  platform::terminal::Terminal,
-  realize::{try_with_records, with_records},
-};
-
 /// The realization the build names: the terminal's.
 #[cfg(skene_platform = "terminal")]
-pub type Active = Terminal;
+pub type Active = skene_tui_terminal::Terminal;
 
 #[cfg(skene_platform = "terminal")]
 skene_foundation::facade!(Active, i32, "cells");

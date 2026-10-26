@@ -17,10 +17,10 @@ pub(crate) type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
 /// A terminal platform that runs a painter inside a box.
 ///
 /// The escape trait a low-level terminal view is written against: the view builds an
-/// ordinary [`Container`](crate::Container) for its sizing and hands the platform a
-/// painter for it (`<Active as CellPainter>::paint`), which the platform runs with the
-/// box's laid-out rectangle whenever the box repaints, after the box's own background
-/// and border and before its children.
+/// ordinary [`Container`](skene_foundation::Container) for its sizing and hands the
+/// platform a painter for it (`<Active as CellPainter>::paint`), which the platform runs
+/// with the box's laid-out rectangle whenever the box repaints, after the box's own
+/// background and border and before its children.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not paint cells",
   label = "a cell painter exists on the terminal platform alone"

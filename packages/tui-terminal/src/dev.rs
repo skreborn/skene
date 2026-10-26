@@ -25,19 +25,22 @@ use std::{
 use skene_dev::{CONTROL_VARIABLE, Control, STATE_VARIABLE, SWAP_EXIT};
 use skene_foundation::{
   Color,
-  ColumnBase,
+  Column,
   DecorationBase,
   FlexBase,
   HasChildren,
-  OverlayBase,
+  HasRun,
+  Inset,
+  Overlay,
   RunBase,
   Scene,
-  TextBase,
+  Text,
   TextSelection,
+  View,
 };
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
-use crate::{Column, Overlay, Terminal, Text, View as _, records::Handle};
+use crate::{Terminal, records::Handle};
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
@@ -346,7 +349,7 @@ pub(crate) fn notice_signal() -> Option<Signal<Option<String>>> {
 /// The dev overlay presenting the launcher's rebuild failures: a modal over the app
 /// while `notice` holds one, dismissed back to `None` by Escape or a press outside.
 #[must_use]
-pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
+pub fn notice_view(notice: Signal<Option<String>>) -> impl View<Terminal> {
   let dark = crate::with_records(|records| records.dark());
   let fill = if dark {
     Color::srgb(0., 0., 0.)
@@ -354,14 +357,17 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
   else {
     Color::srgb(1., 1., 1.)
   };
+  let mut title = Text::<Terminal>::new("Rebuild failed").set_color(Color::srgb(0.8, 0.2, 0.2));
 
-  Overlay::modal()
+  title.run_style_mut().ext.bold = Some(true.into());
+
+  Overlay::<Terminal>::modal()
     .derive_open(move || notice.get().is_some())
     .handle_dismiss(move || notice.set(None))
     .set_background(fill)
-    .set_border_width(skene_foundation::Inset::all(1))
+    .set_border_width(Inset::all(1))
     .set_border_color(Color::srgb(0.8, 0.2, 0.2))
-    .set_padding(crate::Inset {
+    .set_padding(Inset {
       top: 1,
       end: 2,
       bottom: 1,
@@ -369,15 +375,12 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
     })
     .set_max_width(76)
     .set_child(
-      Column::new().set_spacing(1).set_children((
-        Text::new("Rebuild failed")
-          .set_bold(true)
-          .set_color(Color::srgb(0.8, 0.2, 0.2))
-          .into_any(),
-        Text::derive(move || notice.get().unwrap_or_default())
+      Column::<Terminal>::new().set_spacing(1).set_children((
+        title.into_any(),
+        Text::<Terminal>::derive(move || notice.get().unwrap_or_default())
           .set_selectable(true)
           .into_any(),
-        Text::new("Esc to dismiss")
+        Text::<Terminal>::new("Esc to dismiss")
           .set_color(Color::srgb(0.5, 0.5, 0.5))
           .into_any(),
       )),

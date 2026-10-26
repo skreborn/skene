@@ -103,7 +103,7 @@ mod tests {
   /// A delay past what a duration holds waits the longest a duration can.
   #[test]
   fn a_huge_delay_waits_the_longest() {
-    crate::platform::terminal::install();
+    crate::install();
 
     let _ = Terminal::schedule(Duration::MAX, Box::new(|| {}));
 
@@ -112,6 +112,6 @@ mod tests {
       Some(Duration::MAX)
     );
 
-    crate::platform::terminal::uninstall();
+    crate::uninstall();
   }
 }

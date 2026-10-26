@@ -692,6 +692,7 @@ mod tests {
         ),
       )
       .when(Media::min_width(900), Color::srgb(0., 0., 0.));
+
     assert_eq!(names(&definition), ["card", "ink", "accent"]);
     assert_eq!(
       names(&TokenValue::Color(definition.clone())),

@@ -644,16 +644,18 @@ mod tests {
     assert!(resolved.under((1, 2)).font_sizes.is_empty());
   }
 
-  /// A palette of two linked tokens.
+  /// A palette of three linked tokens: two colors and a number.
   #[derive(Debug, Clone, PartialEq)]
   struct Linked {
     card: Token<Color, f32>,
     ink: Token<Color, f32>,
+    weight: Token<f32, f32>,
   }
 
   impl Linked {
     const CARD: TokenRef<Color> = TokenRef::of::<Self, f32>("linked-card");
     const INK: TokenRef<Color> = TokenRef::of::<Self, f32>("linked-ink");
+    const WEIGHT: TokenRef<f32> = TokenRef::of::<Self, f32>("linked-weight");
   }
 
   impl Default for Linked {
@@ -661,13 +663,14 @@ mod tests {
       Self {
         card: Token::new(Self::CARD, Color::srgb(1., 1., 1.)),
         ink: Token::new(Self::INK, Color::srgb(0., 0., 0.)),
+        weight: Token::new(Self::WEIGHT, 2.),
       }
     }
   }
 
-  impl<V: From<Definition<Color, f32>>> TokenSet<V> for Linked {
+  impl<V: From<Definition<Color, f32>> + From<Definition<f32, f32>>> TokenSet<V> for Linked {
     fn definitions(&self) -> Vec<(TokenName, V)> {
-      vec![self.card.define(), self.ink.define()]
+      vec![self.card.define(), self.ink.define(), self.weight.define()]
     }
   }
 
@@ -708,7 +711,11 @@ mod tests {
     let tokens = TokenState::<Value>::new();
     let (_, defaults) = tokens.unlaid_defaults::<f32>(Linked::CARD.name()).unwrap();
 
-    assert_eq!(defaults.len(), 0, "a platform holding no color keeps none");
+    assert_eq!(
+      defaults,
+      Definitions::from(vec![(Linked::WEIGHT.name(), Value::Number(2.))]),
+      "a platform holding no color keeps the number alone"
+    );
   }
 
   /// Redefining tokens as the ones in force changes nothing: nothing to mirror, and the

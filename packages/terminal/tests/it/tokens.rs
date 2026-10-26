@@ -3,13 +3,13 @@
 //! beneath that redefines it changes nothing above. A token set read with no theme
 //! above lays its defaults at the root once, and one read under a theme lays nothing.
 //! A linked palette's default is laid at the root once, the first time a node names one
-//! of its tokens, and a theme of it still wins beneath it. The nearest theme's palette
-//! answers, as the tree stands after a box moves, an
-//! expression or a derived leaf over a token resolves through it, and the token answers
-//! the scheme where it is read. The platform's colors at the root follow what the
-//! terminal reports and the app's scheme.
+//! of its tokens, under the claim a read of the set makes, and a theme of it still wins
+//! beneath it. The nearest theme's palette answers, as the tree stands after a box
+//! moves, an expression or a derived leaf over a token resolves through it, and the
+//! token answers the scheme where it is read. The platform's colors at the root follow
+//! what the terminal reports and the app's scheme.
 
-use std::{cell::Cell, rc::Rc};
+use std::{any::TypeId, cell::Cell, rc::Rc};
 
 use skene_simple_terminal::{glyph, *};
 use skene_terminal::{
@@ -276,6 +276,11 @@ fn root_defines(reference: TokenRef<Color>) -> bool {
   Scene::<Terminal>::read(|scene| scene.root_definitions().get(reference.name()).is_some())
 }
 
+/// Whether the root's definitions of [`Linked`] are claimed, by a read or a reference.
+fn linked_claimed() -> bool {
+  Scene::<Terminal>::read(|scene| scene.defines_root_set(TypeId::of::<Linked>()))
+}
+
 /// A box below no theme naming a linked token paints the palette's default, with no
 /// read of the palette.
 #[test]
@@ -355,6 +360,56 @@ fn many_references_lay_a_palette_once() {
 
     assert_eq!(root_tokens(), before.get() + 2, "the palette's two, once");
     assert_eq!(colors_at(2, 8, 0, 1).1, Some(rgb(blue())));
+  });
+}
+
+/// A read of a linked palette and a reference to one of its tokens lay its default under
+/// one claim, whichever comes first.
+#[test]
+fn a_read_and_a_reference_lay_a_linked_palette_once() {
+  with_platform(|| {
+    let before = Signal::new(0);
+    let _ = terminal::mount(move || {
+      before.set(root_tokens());
+
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_background(Linked::SURFACE)
+        .into_any()
+        .build()
+    });
+
+    assert!(
+      linked_claimed(),
+      "the reference claims the set a read claims"
+    );
+    assert_eq!(Linked::current(), Linked::default());
+    assert_eq!(
+      root_tokens(),
+      before.get() + 2,
+      "the read lays nothing more"
+    );
+  });
+
+  with_platform(|| {
+    let before = root_tokens();
+
+    assert_eq!(Linked::current(), Linked::default());
+    assert!(linked_claimed());
+    assert_eq!(root_tokens(), before + 2, "the read lays the default");
+
+    let _ = terminal::mount(|| {
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_background(Linked::INK)
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(root_tokens(), before + 2, "the reference lays nothing more");
+    assert_eq!(colors_at(2, 1, 0, 0).1, Some(rgb(blue())));
   });
 }
 

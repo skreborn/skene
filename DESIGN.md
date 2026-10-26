@@ -146,12 +146,11 @@ each facade's views: `Scalar` (`f32` or `i32`), `StyleExt` (the medium's own
 properties), `TokenValue` (the erased definition the medium accepts, which converts
 from the foundation's `TokenValue<Scalar>` by `TryFrom`, refusing a kind it holds none
 of, and lists the tokens its definitions name through `TokenReferences`, so a palette's
-default reaches it through a reference's link), `Native` (the
-platform's own view the native door adopts), `Entry` (the editing state the scene keeps
-for each text entry the platform draws), with the constants
-`FONT_SIZE` (the size in force where no typography defines one) and `KEEP` (the `Keep`
-level of a style its toolkit keeps unresolved). Its methods are the portable vocabulary
-over node ids:
+default reaches it through a reference's link), `Native` (the platform's own view the
+native door adopts), `Entry` (the editing state the scene keeps for each text entry the
+platform draws), with the constants `FONT_SIZE` (the size in force where no typography
+defines one) and `KEEP` (the `Keep` level of a style its toolkit keeps unresolved). Its
+methods are the portable vocabulary over node ids:
 
 - **Create** every node, a box, a control, an overlay, a run, an anchor or a scope, from
   one `NodeSpec` (`create`: what fixes its element, its role, its heading level, its
@@ -187,9 +186,9 @@ over node ids:
   reached through the shared half alone (the foundation's `apply_style` and `bind_slot`),
   which first lays over the root the default of every palette a token of the style or
   the leaf links to, so the root's definitions reach `define_tokens` before the style
-  naming them. A node's
-  focus order and accessibility are not part of its spec: the shared half writes them
-  once its style is applied (`update_focus_order`, `update_access`).
+  naming them. A node's focus order and accessibility are not part of its spec: the
+  shared half writes them once its style is applied (`update_focus_order`,
+  `update_access`).
 - **Define tokens** on a `TokenScope` (`define_tokens`, one call, a node's or the root's,
   the root a scope like any other), which reaches the realization for a scope it did not
   make as well.
@@ -1334,7 +1333,8 @@ nearer definition wins, the theme's scope over the root on every platform. An un
 name costs one `Option` check, and the scene is borrowed only where a linked set is not
 laid yet. Once per root is once per render on the server, whose every render starts a
 fresh scene, so a palette first referenced in a streamed chunk carries its root rule in
-that chunk's style delta, and once per mount on the terminal.
+that chunk's style delta; on the browser leaf and the terminal it is once per
+installation of the platform, however many mounts it holds.
 
 `Theme<P, S: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web; the terminal makes no node for it, keeping no record,

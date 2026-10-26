@@ -231,10 +231,10 @@ pub trait Realization: Copy + Default + 'static {
   type StyleExt: StyleExtension;
   /// The erased token definition this medium accepts.
   ///
-  /// It converts from the foundation's [`TokenValue`], refusing a
-  /// kind it holds none of, so a palette's default reaches it through its references'
-  /// link, and lists the tokens its definitions name, so a definition aliasing another
-  /// palette's token lays that palette's default too.
+  /// It converts from the foundation's [`TokenValue`], refusing a kind it holds none of,
+  /// so a palette's default reaches it through its references' link, and lists the
+  /// tokens its definitions name, so a definition aliasing another palette's token lays
+  /// that palette's default too.
   type TokenValue: Clone
     + PartialEq
     + Debug

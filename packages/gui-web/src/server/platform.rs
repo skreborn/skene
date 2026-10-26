@@ -250,8 +250,9 @@ impl WebHydration for Web {
 }
 
 impl Web {
-  /// Opens the link run `node` as `policy` says.
-  pub(crate) fn set_link_policy(node: NodeId, policy: LinkPolicy) {
+  /// Opens the link run `node` as `policy` says, its destination's attributes rewritten
+  /// now and at every later write.
+  pub fn set_link_policy(node: NodeId, policy: LinkPolicy) {
     with_realizer(|realizer| realizer.set_link_policy(node, policy));
   }
 }

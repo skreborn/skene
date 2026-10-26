@@ -8,6 +8,12 @@ supersedes.
 
 ## Decided against
 
+- **The link policy's realization public on `LinkPolicy`** (2026-10-26),
+  `LinkPolicy::realize(node)` made public once `Text` and `Span` call it from the
+  facade's crate: a method an app reaches on a value of its own vocabulary, in the
+  prelude, that writes into the realization. The seam is the leaf's own,
+  `Web::set_link_policy`, which `Text` and `Span` call through `Active`. Revisit if a
+  second realization implements link policies, which then takes a seam method.
 - **The web's `gpu` feature declared on the facade** (2026-10-26), `skene-gui`'s
   `gpu = ["dep:vello_gpu", "dep:wgpu"]` over dependencies the facade's code never
   reaches: the GPU path is the realization's, so the feature and its dependencies live

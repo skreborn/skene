@@ -230,8 +230,9 @@ each facade refusing with its own message a build that names no platform and
 `skene-gui` one it does not realize, clippy on the terminal's macOS paths, manifests
 whose features enable optional dependencies alone, the minimum Rust version in the
 host's, the server's, the terminal's and the browser's builds, and four test tiers. A
-crate reaching a facade's realization is built for that facade's platform alone, and the host tier runs the tests of every crate
-reaching neither, which name no platform and which plain cargo at the root builds: the
+crate reaching a facade's realization is built for that facade's platform alone, and
+the host tier runs the tests of every crate reaching neither, which name no platform
+and which plain cargo at the root builds: the
 foundation's and the layout engine's unit tests among them. The terminal tier builds
 every crate reaching `skene-tui` in the terminal's build and runs their tests and
 doctests, the terminal's in-process tests, which act through real input and read what a
@@ -275,11 +276,12 @@ re-exports none, and is realized through the same scene as a built-in, a concret
 its facade's `Active` (`acme_map::Map`, `acme_sparkline::Sparkline`); `Painted` is the
 portable one for pixels, a vello scene the platform renders, the web on the CPU or, with
 `skene-gui`'s `gpu` feature (forwarded to `skene-gui-web`'s), on the GPU where the page
-has WebGPU, and the terminal through the kitty graphics protocol where it proves one. `examples/third-party` shows
-both paths: `acme-map` (a canvas through the web's door, its markup served as the
-placeholder the browser adopts and paints) and `acme-sparkline` (bars painted into the terminal's cells, and as pixels over them
-where the terminal proves its graphics), each used by its platform's gallery and tested
-on its platform.
+has WebGPU, and the terminal through the kitty graphics protocol where it proves one.
+`examples/third-party` shows both paths: `acme-map` (a canvas through the web's door,
+its markup served as the placeholder the browser adopts and paints) and
+`acme-sparkline` (bars painted into the terminal's cells, and as pixels over them where
+the terminal proves its graphics), each used by its platform's gallery and tested on its
+platform.
 
 ## License
 

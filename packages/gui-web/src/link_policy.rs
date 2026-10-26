@@ -1,7 +1,5 @@
 //! How a link opens and what it discloses to its destination.
 
-use skene_foundation::NodeId;
-
 /// How a link opens and what it discloses to its destination.
 ///
 /// The default is the most private behavior: an external destination (an absolute URL,
@@ -96,12 +94,6 @@ impl LinkPolicy {
     }
 
     attributes
-  }
-
-  /// Opens the link run `node` as this policy says, its destination's attributes
-  /// rewritten now and at every later write.
-  pub fn realize(self, node: NodeId) {
-    crate::Web::set_link_policy(node, self);
   }
 }
 

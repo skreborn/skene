@@ -22,9 +22,10 @@ bottom, `skene-foundation` on it, the layout every platform but the web computes
 (`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
 platforms on the foundation and, where they draw, on those two, each platform's
 realization a crate of its own (`skene-gui-web`) with its facade over it (`skene-gui`,
-and `skene-tui`, whose realization is still its own), the Simple core (its palette, variants and sizes, naming no
-realization) on the foundation, each platform's Simple crate (its presets) on its
-facade, and the macros, the transport and the CLI beside them.
+and `skene-tui`, which holds its realization itself), the Simple core (its palette,
+variants and sizes, naming no realization) on the foundation, each platform's Simple
+crate (its presets) on its facade, and the macros, the transport and the CLI beside
+them.
 
 **A facade per platform, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
@@ -1428,10 +1429,10 @@ order, so the server's stylesheet is byte-compatible with the client's and the c
 order is identical, which hydration relies on. A class cache keyed by the kept style's
 address and a hash of the construction facts its template reads renders the template
 text on a miss only. The interner, the cache and the token and slot registrations are
-one `StyleBook` in the web's realization, `skene-gui-web`, both web leaves share, telling each leaf's `StyleSink` what to add and
-remove (the browser: one `<style>` element per class; the server: each rule collected as
-it is interned and emitted with the next flush, the document's `<style>` or a streamed
-chunk's delta).
+one `StyleBook` in the web's realization, `skene-gui-web`, which both web leaves share,
+telling each leaf's `StyleSink` what to add and remove (the browser: one `<style>`
+element per class; the server: each rule collected as it is interned and emitted with
+the next flush, the document's `<style>` or a streamed chunk's delta).
 
 ## Text
 
@@ -1714,8 +1715,10 @@ into a layer and interpolate named pairs.
 ### Web (`skene-gui` over `skene-gui-web`)
 
 The web's realization is `skene-gui-web`, beneath the facade `skene-gui`, which names
-its `Web` as `Active` and re-exports its surface as `platform::web`: both leaves, the
-style compiler and the interner they share, the native door and each leaf's own seams.
+its `Web` as `Active`, re-exports its surface as `platform::web` and its `LinkPolicy` at
+the root. The realization holds both leaves, the style compiler and the interner they
+share, the native door and each leaf's own seams (`Web::set_link_policy`, through which
+the facade's `Text` and `Span` open a link as its policy says, among them).
 Two leaves of one platform over one node record, selected by the build's cfg alone and
 enforced by it: a build naming the web (`--cfg skene_platform="web"`) compiles the
 browser leaf (`not(skene_server)`), on `wasm32-unknown-unknown` alone, and the server
@@ -1724,9 +1727,10 @@ compiles under the web alone and is empty in every other build; the facade depen
 in the web's build alone and gates every item reaching a leaf on the web, so a build
 naming no platform, the web without `skene_server` on another target, or a pixel
 platform the facade does not realize fails with one `compile_error!` of the facade's and
-nothing else, and a terminal build compiles both empty. The DOM's handles (`document`, `element`, the element a `NativeView` hands its
-adopt handler) exist on the browser leaf alone, so the server leaf *cannot* touch the
-DOM; each leaf's dependencies are keyed on the same cfgs.
+nothing else, and a terminal build compiles both empty. The DOM's handles (`document`,
+`element`, the element a `NativeView` hands its adopt handler) exist on the browser leaf
+alone, so the server leaf *cannot* touch the DOM; each leaf's dependencies are keyed on
+the same cfgs.
 What both realize is written once, in a `Realizer` over the `Sink` the DOM and the
 string tree implement: the records, the element choices, attributes, classes, slots,
 token definitions, control state and accessibility, so the two cannot drift; each leaf
@@ -2259,10 +2263,11 @@ refuses every other build with a `compile_error!` of its own: one naming no plat
 the web without `skene_server` off `wasm32-unknown-unknown`, and each pixel platform it
 does not realize yet, named. Its realization, `skene-gui-web`, refuses nothing: it
 compiles under `web` alone, empty in every other build, and the facade depends on it in
-the web's build alone, so the refusals are the facade's. `skene-tui` compiles under `terminal` on the host's
-target, refuses a build naming no platform, and compiles empty in every other
-platform's. Every root item that reaches a leaf is gated on its leaf's cfgs, so each
-refusal is its build's one error, which the gate's `selection` step holds. A crate
+the web's build alone, so the refusals are the facade's. `skene-tui` compiles under
+`terminal` on the host's target, refuses a build naming no platform, and compiles empty
+in every other platform's. Every root item that reaches a leaf is gated on its leaf's
+cfgs, so each refusal is its build's one error, which the gate's `selection` step
+holds. A crate
 reaching a facade (its Simple crate, a low-level view's, an example) is gated on that
 facade's platform, so a build of a whole workspace for one platform compiles the other
 facade's crates empty, and one naming no platform fails with both facades' messages.
@@ -2281,9 +2286,9 @@ Apple's two; the terminal's is `Terminal` alone. An app that diverges per platfo
 matches on it, writing `#[cfg(skene_platform = "<p>")]` only around an arm that names
 a platform's own control. A platform's own vocabulary lives in its `platform::<p>`
 module, its data types in every build and its controls in its own: `platform::web`
-re-exports `skene-gui-web`'s surface, each leaf's realization and the web's native door, `platform::terminal` the
-terminal's realization, its escape trait and its seams (`install`, `mount`,
-`uninstall`), the root keeping `launch` on both facades, and
+re-exports `skene-gui-web`'s surface, each leaf's realization and the web's native
+door, `platform::terminal` the terminal's realization, its escape trait and its seams
+(`install`, `mount`, `uninstall`), the root keeping `launch` on both facades, and
 `platform::{android, apple, ios, linux, macos, windows}` are empty until their
 platforms land. `#[main]` and `#[lazy]` expand per leaf on the same cfgs, so a server
 build never emits the browser entry or splits a lazy body, the terminal's `#[main]`

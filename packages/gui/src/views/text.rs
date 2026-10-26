@@ -24,7 +24,7 @@ impl Text {
   /// Sets how the link opens and what it discloses; a link left without one follows the
   /// default [`LinkPolicy`].
   pub fn set_link_policy(self, policy: LinkPolicy) -> Self {
-    self.map_run(|run| run.add_realization(move |node, _, _| policy.realize(node)))
+    self.map_run(|run| run.add_realization(move |node, _, _| Active::set_link_policy(node, policy)))
   }
 }
 

@@ -4,8 +4,8 @@
 //! the [`Realization`](skene_foundation::Realization) trait, in the browser and on a
 //! server render.
 //!
-//! An app names no item here: `skene-gui` is its dependency, naming [`Web`] as its
-//! `Active` and re-exporting this crate's surface as `skene_gui::platform::web`, where a
+//! An app names no item here: it depends on `skene-gui`, which names [`Web`] as its
+//! `Active` and re-exports this crate's surface as `skene_gui::platform::web`, where a
 //! library author writing a view against the browser DOM or the server's markup reaches
 //! it. The browser leaf (`skene_platform = "web"` on `wasm32-unknown-unknown`) realizes
 //! against a live DOM and the server leaf (`--cfg skene_server` beside it, on any

@@ -69,7 +69,6 @@ pub skene_gui_web::LinkPolicy::new_page: core::option::Option<bool>
 pub skene_gui_web::LinkPolicy::send_referrer: bool
 impl skene_gui_web::LinkPolicy
 pub fn skene_gui_web::LinkPolicy::new() -> Self
-pub fn skene_gui_web::LinkPolicy::realize(self, skene_foundation::spine::node::NodeId)
 pub const fn skene_gui_web::LinkPolicy::set_annotation(self, skene_gui_web::LinkAnnotation) -> Self
 pub const fn skene_gui_web::LinkPolicy::set_expose_opener(self, bool) -> Self
 pub const fn skene_gui_web::LinkPolicy::set_new_page(self, bool) -> Self
@@ -142,6 +141,8 @@ pub fn skene_gui_web::Rendered::styles(&self) -> &str
 impl core::fmt::Debug for skene_gui_web::Rendered
 pub fn skene_gui_web::Rendered::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_gui_web::Web
+impl skene_gui_web::Web
+pub fn skene_gui_web::Web::set_link_policy(skene_foundation::spine::node::NodeId, skene_gui_web::LinkPolicy)
 impl core::clone::Clone for skene_gui_web::Web
 pub fn skene_gui_web::Web::clone(&self) -> skene_gui_web::Web
 impl core::cmp::Eq for skene_gui_web::Web

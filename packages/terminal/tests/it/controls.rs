@@ -566,14 +566,13 @@ fn a_slider_fills_to_a_thumb_of_its_own_color() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(move || {
-          Container::new().set_width(20).set_child(
-            SimpleSlider::new()
-              .set_range(SliderRange::new(0., 100., 1.))
-              .bind_value(volume),
-          )
-        })
+      Container::new()
+        .set_width(20)
+        .set_child(
+          SimpleSlider::new()
+            .set_range(SliderRange::new(0., 100., 1.))
+            .bind_value(volume),
+        )
         .into_any()
         .build()
     });
@@ -638,18 +637,15 @@ fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(move || {
-          Column::new()
-            .set_item_alignment(ItemAlignment::Center)
-            .add_child(
-              Container::new().set_width(21).set_child(
-                SimpleSlider::new()
-                  .set_range(SliderRange::new(0., 100., 1.))
-                  .bind_value(volume),
-              ),
-            )
-        })
+      Column::new()
+        .set_item_alignment(ItemAlignment::Center)
+        .add_child(
+          Container::new().set_width(21).set_child(
+            SimpleSlider::new()
+              .set_range(SliderRange::new(0., 100., 1.))
+              .bind_value(volume),
+          ),
+        )
         .into_any()
         .build()
     });
@@ -688,14 +684,13 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(move || {
-          Container::new().set_width(25).set_child(
-            SimpleSlider::new()
-              .set_range(SliderRange::new(0., 100., 1.))
-              .bind_value(volume),
-          )
-        })
+      Container::new()
+        .set_width(25)
+        .set_child(
+          SimpleSlider::new()
+            .set_range(SliderRange::new(0., 100., 1.))
+            .bind_value(volume),
+        )
         .into_any()
         .build()
     });
@@ -728,15 +723,14 @@ fn a_sliders_end_cells_reach_its_ends() {
     let volume = Signal::new(50.0f32);
 
     let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(move || {
-          Container::new().set_width(20).set_child(
-            SimpleSlider::new()
-              .set_accessible_name("Volume")
-              .set_range(SliderRange::new(0., 100., 1.))
-              .bind_value(volume),
-          )
-        })
+      Container::new()
+        .set_width(20)
+        .set_child(
+          SimpleSlider::new()
+            .set_accessible_name("Volume")
+            .set_range(SliderRange::new(0., 100., 1.))
+            .bind_value(volume),
+        )
         .into_any()
         .build()
     });
@@ -762,15 +756,14 @@ fn a_captioned_simple_sliders_track_takes_what_its_caption_leaves() {
     let volume = Signal::new(50.0f32);
 
     let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(move || {
-          Container::new().set_width(20).set_child(
-            SimpleSlider::new()
-              .set_label("Volume")
-              .set_range(SliderRange::new(0., 100., 1.))
-              .bind_value(volume),
-          )
-        })
+      Container::new()
+        .set_width(20)
+        .set_child(
+          SimpleSlider::new()
+            .set_label("Volume")
+            .set_range(SliderRange::new(0., 100., 1.))
+            .bind_value(volume),
+        )
         .into_any()
         .build()
     });
@@ -817,17 +810,15 @@ fn a_slider_released_off_itself_stops_sliding() {
     let volume = Signal::new(0.0f32);
 
     let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(move || {
-          Column::new().set_children((
-            Container::new().set_width(20).set_child(
-              SimpleSlider::new()
-                .set_range(SliderRange::new(0., 100., 1.))
-                .bind_value(volume),
-            ),
-            Text::new("below"),
-          ))
-        })
+      Column::new()
+        .set_children((
+          Container::new().set_width(20).set_child(
+            SimpleSlider::new()
+              .set_range(SliderRange::new(0., 100., 1.))
+              .bind_value(volume),
+          ),
+          Text::new("below"),
+        ))
         .into_any()
         .build()
     });
@@ -1085,11 +1076,7 @@ fn a_themed_glyph_set_draws_the_marks() {
 #[test]
 fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
   with_platform(|| {
-    let _ = terminal::mount(|| {
-      Theme::new(SimplePalette::default())
-        .set_child_builder(|| SimpleButton::new("Save"))
-        .build()
-    });
+    let _ = terminal::mount(|| SimpleButton::new("Save").build());
 
     testing::trigger_graphics(true);
 

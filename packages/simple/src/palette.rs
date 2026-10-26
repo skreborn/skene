@@ -34,10 +34,10 @@ pub enum SimpleVariant {
 /// the surfaces its interaction states paint instead.
 ///
 /// Each color is a token named for the variant, so a consumer emits the name and the
-/// palette's default, or a theme of the palette above it, supplies the value. A `None` border says
-/// the variant is filled rather than bordered: the palette then defines the variant's border token
-/// as transparent, so a Simple preset draws a transparent hairline and switching variants
-/// shifts nothing.
+/// palette's default, or a theme of the palette above it, supplies the value. A `None`
+/// border says the variant is filled rather than bordered: the palette then defines the
+/// variant's border token as transparent, so a Simple preset draws a transparent hairline
+/// and switching variants shifts nothing.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct SimpleLook<N: Scalar> {

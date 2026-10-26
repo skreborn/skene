@@ -31,13 +31,9 @@ fn picker(unit: Signal<&'static str>) -> Picker<&'static str> {
     .bind_chosen(unit)
 }
 
-/// Mounts a picker bound to `unit` at the top of the frame, under the Simple theme.
+/// Mounts a picker bound to `unit` at the top of the frame.
 fn mount_picker(unit: Signal<&'static str>) {
-  let _ = terminal::mount(|| {
-    Theme::new(SimplePalette::default())
-      .set_child_builder(move || Column::new().add_child(picker(unit)))
-      .build()
-  });
+  let _ = terminal::mount(|| Column::new().add_child(picker(unit)).build());
 }
 
 /// The row of the last line containing `needle`: the popup's row, beneath the face

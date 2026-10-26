@@ -561,3 +561,33 @@ fn many_presets_lay_the_palettes_definitions_at_the_root_once() {
     assert_eq!(root_tokens(), expected.get());
   });
 }
+
+/// A plain text is inked in the terminal's own foreground on a page naming no Simple
+/// token, and in the palette's foreground beside a preset, the palette's default reaching
+/// the root with its typography aliases.
+#[test]
+fn a_presets_default_inks_the_plain_text_beside_it() {
+  with_platform(|| {
+    mount_bare(|| Text::new("plain"));
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (x, y) = locate(&frame, "plain");
+
+    assert_eq!(ink_at(x, y), None, "the terminal's own foreground: {frame}");
+  });
+
+  with_platform(|| {
+    let palette = SimplePalette::default();
+
+    mount_bare(|| Column::new().set_children((SimpleButton::new("OK"), Text::new("plain"))));
+
+    let frame = testing::render_to_text(WIDTH, HEIGHT);
+    let (x, y) = locate(&frame, "plain");
+
+    assert_eq!(
+      ink_at(x, y),
+      Some(light(&palette.foreground)),
+      "the palette's foreground: {frame}"
+    );
+  });
+}

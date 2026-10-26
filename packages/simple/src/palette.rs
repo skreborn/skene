@@ -55,7 +55,8 @@ impl SimpleVariant {
     })
   }
 
-  /// The variant's border token, defined only by a bordered look.
+  /// The variant's border token: a bordered look's hairline, and transparent for a
+  /// filled one.
   #[inline(always)]
   pub const fn border(self) -> TokenRef<Color> {
     TokenRef::new(match self {
@@ -97,8 +98,9 @@ impl SimpleVariant {
 ///
 /// Each color is a token named for the variant, so a consumer emits the name and the
 /// theme in force supplies the value. A `None` border says the variant is filled
-/// rather than bordered; a Simple view then draws a transparent hairline, so switching
-/// variants shifts nothing.
+/// rather than bordered: the palette then defines the variant's border token as
+/// transparent, so a Simple view draws a transparent hairline and switching variants
+/// shifts nothing.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct SimpleLook<N: Scalar> {
@@ -200,9 +202,15 @@ impl<N: Scalar> SimpleLook<N> {
     definitions.push(self.surface.define());
     definitions.push(self.ink.define());
 
-    if let Some(border) = &self.border {
-      definitions.push(border.define());
-    }
+    definitions.push(self.border.as_ref().map_or_else(
+      || {
+        (
+          self.variant.border().name(),
+          V::from(Definition::from(Color::TRANSPARENT)),
+        )
+      },
+      Token::define,
+    ));
 
     definitions.push(self.hover.define());
     definitions.push(self.focus.define());
@@ -604,5 +612,33 @@ mod tests {
     );
     assert_eq!(defined(SimplePalette::<f32>::PRIMARY_SURFACE.name()), 1);
     assert_eq!(defined(SimplePalette::<f32>::GHOST_SURFACE.name()), 1);
+  }
+
+  /// Every variant's border token is defined once: a bordered look's as its hairline,
+  /// and a filled look's as transparent.
+  #[test]
+  fn every_variant_defines_its_border() {
+    let palette = SimplePalette::<f32>::default();
+    let definitions: Vec<(TokenName, Definition<Color, f32>)> = palette.definitions();
+
+    for variant in [
+      SimpleVariant::Primary,
+      SimpleVariant::Secondary,
+      SimpleVariant::Outline,
+      SimpleVariant::Ghost,
+      SimpleVariant::Destructive,
+    ] {
+      let borders: Vec<_> = definitions
+        .iter()
+        .filter(|(name, _)| *name == variant.border().name())
+        .map(|(_, definition)| definition)
+        .collect();
+      let expected = palette.look(variant).border.as_ref().map_or_else(
+        || Definition::from(Color::TRANSPARENT),
+        |border| border.definition().clone(),
+      );
+
+      assert_eq!(borders, [&expected], "{variant:?}");
+    }
   }
 }

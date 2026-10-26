@@ -1,22 +1,23 @@
 //! # skene-simple
 //!
 //! The core of the Simple component library, built once over [`skene_foundation`]: one
-//! palette, one shape language, the marks a medium drawing with characters shows, and
-//! the logic of every `Simple*` view, generic over the
-//! [`Realization`](skene_foundation::Realization), its members reached through the
-//! `Simple*Base` trait a platform's crate implements for a view of its own
-//! (`skene-simple-web`, `skene-simple-terminal`).
+//! palette with a look per emphasis variant, one shape language, the marks a medium
+//! drawing with characters shows, and the logic of the other `Simple*` views, generic
+//! over the [`Realization`](skene_foundation::Realization), their members reached
+//! through the `Simple*Base` trait a platform's crate implements for a view of its own.
+//! Each platform's crate (`skene-simple-web`, `skene-simple-terminal`) also writes its
+//! presets, a button, a card and a tooltip returning the facade's built-in styled from
+//! the palette and the shape of its unit.
 //!
 //! [`SimplePalette`] is a token set: `Theme::new(SimplePalette::default())` defines it
-//! beneath the theme, every Simple view references its tokens by name, and a Simple
-//! view with no theme above defines the default at the root. The palette also defines
-//! the views' typography tokens, so a plain text under a Simple theme is inked in the
-//! palette's foreground. Corners round where the medium has a
+//! beneath the theme, and every Simple view and preset references its tokens by name. A
+//! Simple view with no theme above defines the default at the root; a preset leaves it
+//! to a theme or a read of the palette. The palette also defines the views' typography
+//! tokens, so a plain text under a Simple theme is inked in the palette's foreground.
+//! Corners round where the medium has a
 //! [`CornerRadius`](skene_foundation::CornerRadius) and stay square where it has none, and
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 
-mod button;
-mod card;
 mod checkbox;
 mod context_menu;
 pub mod glyphs;
@@ -27,11 +28,8 @@ mod shape;
 mod slider;
 mod text_editor;
 mod text_field;
-mod tooltip;
 
 pub use self::{
-  button::{SimpleButton, SimpleButtonBase},
-  card::{SimpleCard, SimpleCardBase},
   checkbox::{SimpleCheckbox, SimpleCheckboxBase},
   context_menu::{SimpleContextMenu, SimpleContextMenuBase},
   glyphs::SimpleGlyphs,
@@ -42,5 +40,4 @@ pub use self::{
   slider::{SimpleSlider, SimpleSliderBase},
   text_editor::{SimpleTextEditor, SimpleTextEditorBase},
   text_field::{SimpleTextField, SimpleTextFieldBase},
-  tooltip::{SimpleTooltip, SimpleTooltipBase},
 };

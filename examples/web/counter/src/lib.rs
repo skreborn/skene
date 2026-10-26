@@ -28,29 +28,27 @@ fn app() -> impl View {
 fn card(count: Signal<u64>) -> impl View {
   let palette = SimplePalette::current();
 
-  SimpleCard::new()
-    .set_spacing(24)
-    .set_item_alignment(ItemAlignment::Center)
-    .set_children((
-      Text::new("COUNTER")
-        .set_font_size(13.)
-        .set_font_weight(500.)
-        .set_color(palette.muted_foreground),
-      Text::derive(move || count.get().to_string())
-        .set_font_size(56.)
-        .set_font_weight(700.)
-        .set_color(palette.foreground),
-      Row::new().set_spacing(12).set_children((
-        SimpleButton::new("−")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || {
+  SimpleCard::new().set_child(
+    Column::new()
+      .set_spacing(24)
+      .set_item_alignment(ItemAlignment::Center)
+      .set_children((
+        Text::new("COUNTER")
+          .set_font_size(13.)
+          .set_font_weight(500.)
+          .set_color(palette.muted_foreground),
+        Text::derive(move || count.get().to_string())
+          .set_font_size(56.)
+          .set_font_weight(700.)
+          .set_color(palette.foreground),
+        Row::new().set_spacing(12).set_children((
+          SimpleButton::outline("−").handle_activate(move || {
             count.update(|value| *value = value.saturating_sub(1));
           }),
-        SimpleButton::new("+")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || {
+          SimpleButton::outline("+").handle_activate(move || {
             count.update(|value| *value = value.saturating_add(1));
           }),
+        )),
       )),
-    ))
+  )
 }

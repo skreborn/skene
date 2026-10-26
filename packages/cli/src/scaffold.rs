@@ -551,6 +551,14 @@ mod tests {
         "{library}"
       );
       assert!(library.contains("#[main]"), "{library}");
+      assert!(
+        library.contains("SimpleCard::new().set_child(Column::new()"),
+        "a card holds one child: {library}"
+      );
+      assert!(
+        library.contains("SimpleButton::new(\"+\").handle_activate("),
+        "{library}"
+      );
       assert!(file(&files, &format!("{shell}/skene.toml")).starts_with('#'));
     }
 

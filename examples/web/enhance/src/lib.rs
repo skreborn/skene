@@ -47,21 +47,23 @@ fn heading() -> impl View {
 
 /// A clock the bundle keeps, over a caption the server carries.
 fn clock_card() -> impl View {
-  SimpleCard::new().set_spacing(12).set_children((
-    Text::new("Clock").set_font_weight(600.),
-    Text::new("The server renders the caption; the bundle counts from its arrival.")
-      .set_font_size(13.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Enhance::new(skene_web::media::hydrated())
-      .set_fallback_builder(|| Text::new("Waiting for the bundle."))
-      .set_child_builder(|| {
-        let seconds = Signal::new(0u32);
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(12).set_children((
+      Text::new("Clock").set_font_weight(600.),
+      Text::new("The server renders the caption; the bundle counts from its arrival.")
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Enhance::new(skene_web::media::hydrated())
+        .set_fallback_builder(|| Text::new("Waiting for the bundle."))
+        .set_child_builder(|| {
+          let seconds = Signal::new(0u32);
 
-        tick(seconds);
+          tick(seconds);
 
-        Text::derive(move || format!("{} s since the bundle arrived.", seconds.get()))
-      }),
-  ))
+          Text::derive(move || format!("{} s since the bundle arrived.", seconds.get()))
+        }),
+    )),
+  )
 }
 
 /// Advances `seconds` once a second on the platform's clock.
@@ -74,26 +76,28 @@ fn tick(seconds: Signal<u32>) {
 
 /// A painted stripe, over a description the server carries.
 fn picture_card() -> impl View {
-  SimpleCard::new().set_spacing(12).set_children((
-    Text::new("Picture").set_font_weight(600.),
-    Text::new("The server renders the description; the bundle paints the stripes.")
-      .set_font_size(13.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Painted::new(|canvas, size| {
-      let width = f64::from(size.width);
-      let height = f64::from(size.height);
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(12).set_children((
+      Text::new("Picture").set_font_weight(600.),
+      Text::new("The server renders the description; the bundle paints the stripes.")
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Painted::new(|canvas, size| {
+        let width = f64::from(size.width);
+        let height = f64::from(size.height);
 
-      for stripe in 0..8u8 {
-        let shade = 0.35 + 0.08 * f32::from(stripe);
-        let left = width * f64::from(stripe) / 8.;
+        for stripe in 0..8u8 {
+          let shade = 0.35 + 0.08 * f32::from(stripe);
+          let left = width * f64::from(stripe) / 8.;
 
-        canvas.fill(
-          &Rect::new(left, 0., left + width / 8., height),
-          Color::srgb(0.2, shade, 0.9),
-        );
-      }
-    })
-    .set_height(48)
-    .set_fallback_builder(|| Text::new("Eight blue stripes, lightening from left to right.")),
-  ))
+          canvas.fill(
+            &Rect::new(left, 0., left + width / 8., height),
+            Color::srgb(0.2, shade, 0.9),
+          );
+        }
+      })
+      .set_height(48)
+      .set_fallback_builder(|| Text::new("Eight blue stripes, lightening from left to right.")),
+    )),
+  )
 }

@@ -74,7 +74,11 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
 
           kept.set(Some(count));
 
-          SimpleCard::new().add_child(Text::derive(move || count.get().to_string()))
+          SimpleCard::new().set_child(
+            Column::new()
+              .set_spacing(SimpleCard::spacing())
+              .add_child(Text::derive(move || count.get().to_string())),
+          )
         })
         .into_any()
         .build()

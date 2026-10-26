@@ -174,10 +174,10 @@ fn buttons() -> impl View {
           SimpleButton::new("Primary").handle_activate(move || {
             count.update(|value| *value += 1);
           }),
-          SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
-          SimpleButton::new("Outline").set_variant(SimpleVariant::Outline),
-          SimpleButton::new("Ghost").set_variant(SimpleVariant::Ghost),
-          SimpleButton::new("Destructive").set_variant(SimpleVariant::Destructive),
+          SimpleButton::secondary("Secondary"),
+          SimpleButton::outline("Outline"),
+          SimpleButton::ghost("Ghost"),
+          SimpleButton::destructive("Destructive"),
           SimpleButton::new("Disabled").set_disabled(true),
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
@@ -279,11 +279,10 @@ fn tooltips() -> impl View {
   section(
     "Tooltip",
     Row::new().set_spacing(2).set_children((
-      SimpleTooltip::new("Saves your work")
-        .set_child(SimpleButton::new("Save").set_variant(SimpleVariant::Secondary)),
+      SimpleTooltip::new("Saves your work").set_child(SimpleButton::secondary("Save")),
       SimpleTooltip::view(Text::new("a view, too").set_color(SimplePalette::BACKGROUND))
         .set_placement(Placement::Bottom)
-        .set_child(SimpleButton::new("Hover me").set_variant(SimpleVariant::Outline)),
+        .set_child(SimpleButton::outline("Hover me")),
     )),
   )
 }
@@ -447,9 +446,7 @@ fn layouts() -> impl View {
           ),
         ),
       Row::new().set_children((
-        SimpleButton::new("Open a modal")
-          .set_variant(SimpleVariant::Secondary)
-          .handle_activate(move || open.set(true)),
+        SimpleButton::secondary("Open a modal").handle_activate(move || open.set(true)),
         // The overlay is layering and dismissal alone: the surface is a card inside it,
         // which is what dresses a popup in the Simple design language. Only the shadow
         // stays on the overlay itself, since a cast shadow is no palette's token.
@@ -457,14 +454,17 @@ fn layouts() -> impl View {
           .bind_open(open)
           .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5))
           .set_child(
-            SimpleCard::new().set_children((
-              Text::new("A modal overlay; Escape dismisses.").set_color(SimplePalette::FOREGROUND),
-              Row::new().set_arrangement(Arrangement::End).add_child(
-                SimpleButton::new("Close")
-                  .set_variant(SimpleVariant::Secondary)
-                  .handle_activate(move || open.set(false)),
-              ),
-            )),
+            SimpleCard::new().set_child(
+              Column::new()
+                .set_spacing(SimpleCard::spacing())
+                .set_children((
+                  Text::new("A modal overlay; Escape dismisses.")
+                    .set_color(SimplePalette::FOREGROUND),
+                  Row::new().set_arrangement(Arrangement::End).add_child(
+                    SimpleButton::secondary("Close").handle_activate(move || open.set(false)),
+                  ),
+                )),
+            ),
           ),
       )),
     )),
@@ -526,8 +526,7 @@ fn rows() -> impl View {
             .set_item_alignment(ItemAlignment::Center)
             .set_children((
               Text::new("Inbox: a click or Enter opens it"),
-              SimpleButton::new("Star")
-                .set_variant(SimpleVariant::Outline)
+              SimpleButton::outline("Star")
                 .handle_activate(move || starred.update(|value| *value += 1)),
             )),
         ),
@@ -591,12 +590,8 @@ fn visibility_and_one_of() -> impl View {
             .set_color(SimplePalette::MUTED_FOREGROUND),
         ),
       Row::new().set_spacing(2).set_children((
-        SimpleButton::new("Summary")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || pane.set(String::from("summary"))),
-        SimpleButton::new("History")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || pane.set(String::from("history"))),
+        SimpleButton::outline("Summary").handle_activate(move || pane.set(String::from("summary"))),
+        SimpleButton::outline("History").handle_activate(move || pane.set(String::from("history"))),
       )),
       OneOf::new()
         .derive_key(move || pane.get())
@@ -643,21 +638,17 @@ fn boundaries() -> impl View {
                 errors.with(|failed| failed.first().map_or_else(String::new, ToString::to_string))
               })
               .set_color(SimplePalette::DESTRUCTIVE_SURFACE),
-              SimpleButton::new("Recover")
-                .set_variant(SimpleVariant::Outline)
-                .handle_activate(move || errors.clear()),
+              SimpleButton::outline("Recover").handle_activate(move || errors.clear()),
             ))
         })
         .set_child_builder(|| {
           let errors = Errors::current();
 
-          SimpleButton::new("Fail")
-            .set_variant(SimpleVariant::Destructive)
-            .handle_activate(move || {
-              if let Some(errors) = &errors {
-                errors.report(Failed);
-              }
-            })
+          SimpleButton::destructive("Fail").handle_activate(move || {
+            if let Some(errors) = &errors {
+              errors.report(Failed);
+            }
+          })
         }),
     )),
   )
@@ -680,12 +671,16 @@ fn third_party() -> impl View {
 /// whole-cell tracks.
 fn section(title: &'static str, content: impl View) -> impl View {
   Container::new().set_min_width(53).set_child(
-    SimpleCard::new().set_children((
-      Text::new(title)
-        .set_bold(true)
-        .set_color(SimplePalette::MUTED_FOREGROUND),
-      content,
-    )),
+    SimpleCard::new().set_child(
+      Column::new()
+        .set_spacing(SimpleCard::spacing())
+        .set_children((
+          Text::new(title)
+            .set_bold(true)
+            .set_color(SimplePalette::MUTED_FOREGROUND),
+          content,
+        )),
+    ),
   )
 }
 

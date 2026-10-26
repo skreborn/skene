@@ -79,10 +79,10 @@ use skene_web::prelude::*;
 fn themed(accent: Signal<Color>) -> impl View {
   Theme::derive(move || SimplePalette::default().set_ring(accent.get())).set_child_builder(
     || {
-      SimpleCard::new().set_children((
+      SimpleCard::new().set_child(Column::new().set_spacing(12).set_children((
         Text::new("Themed").set_color(SimplePalette::FOREGROUND),
         SimpleButton::new("Go"),
-      ))
+      )))
     },
   )
 }

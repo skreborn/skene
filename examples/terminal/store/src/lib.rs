@@ -64,24 +64,26 @@ fn card(todos: Store<Todos>) -> impl View {
     draft.set(String::new());
   };
 
-  SimpleCard::new().set_spacing(1).set_children((
-    Text::new("TODOS")
-      .set_bold(true)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Row::new().set_spacing(2).set_children((
-      Container::new().set_width(30).set_child(
-        SimpleTextField::new()
-          .set_placeholder("What needs doing?")
-          .bind_value(draft),
-      ),
-      SimpleButton::new("Add").handle_activate(add),
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(1).set_children((
+      Text::new("TODOS")
+        .set_bold(true)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Row::new().set_spacing(2).set_children((
+        Container::new().set_width(30).set_child(
+          SimpleTextField::new()
+            .set_placeholder("What needs doing?")
+            .bind_value(draft),
+        ),
+        SimpleButton::new("Add").handle_activate(add),
+      )),
+      Column::new().derive_entries(todos.items().keyed_by(|todo| todo.id), move |todo| {
+        row(todos, todo)
+      }),
+      Text::derive(move || format!("{} left", remaining.get()))
+        .set_color(SimplePalette::MUTED_FOREGROUND),
     )),
-    Column::new().derive_entries(todos.items().keyed_by(|todo| todo.id), move |todo| {
-      row(todos, todo)
-    }),
-    Text::derive(move || format!("{} left", remaining.get()))
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-  ))
+  )
 }
 
 /// One todo's row, following its own entry of `todos`.
@@ -100,18 +102,16 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
         }
       }),
     ),
-    SimpleButton::new("x")
-      .set_variant(SimpleVariant::Outline)
-      .handle_activate(move || {
-        let id = todo.id().get();
+    SimpleButton::outline("x").handle_activate(move || {
+      let id = todo.id().get();
 
-        let index = todos
-          .items()
-          .with(|items| items.iter().position(|todo| todo.id == id));
+      let index = todos
+        .items()
+        .with(|items| items.iter().position(|todo| todo.id == id));
 
-        if let Some(index) = index {
-          let _ = todos.items().remove(index);
-        }
-      }),
+      if let Some(index) = index {
+        let _ = todos.items().remove(index);
+      }
+    }),
   ))
 }

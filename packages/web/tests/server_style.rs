@@ -40,6 +40,7 @@ use skene_foundation::{
   StaticLeaf,
   TextBase,
   ThemeBase,
+  TooltipBase,
   TrackLimit,
   Transition,
   Wrap,

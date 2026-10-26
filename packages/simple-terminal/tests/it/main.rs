@@ -266,11 +266,7 @@ fn a_disabled_button_takes_the_disabled_surface_and_ink() {
     let palette = SimplePalette::default();
     let disabled = Signal::new(true);
 
-    mount_themed(move || {
-      SimpleButton::new("Save")
-        .set_variant(SimpleVariant::Outline)
-        .derive_disabled(move || disabled.get())
-    });
+    mount_themed(move || SimpleButton::outline("Save").derive_disabled(move || disabled.get()));
 
     let frame = testing::render_to_text(WIDTH, HEIGHT);
     let (x, y) = locate(&frame, "Save");

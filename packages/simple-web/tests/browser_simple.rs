@@ -236,15 +236,14 @@ async fn a_buttons_surface_and_focus_resolve_the_primary_look_on_the_control() {
   assert_eq!(settled(button, &focus).await, focus);
 }
 
-/// A derived variant redefines the look on the button's own element: the surface and
-/// the border follow the signal and the element is never rebuilt.
+/// A derived variant re-inks the button's own element: the surface and the border
+/// follow the signal and the element is never rebuilt.
 #[wasm_bindgen_test]
 async fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   let _scheme = Scheme::choose(ColorScheme::Light);
   let palette = SimplePalette::default();
   let variant = Signal::new(SimpleVariant::Primary);
-  let (_guard, button) =
-    themed(move || SimpleButton::new("Go").derive_variant(move || variant.get()));
+  let (_guard, button) = themed(move || SimpleButton::derive_variant("Go", move || variant.get()));
   let primary = probe("background-color", light(&palette.primary.surface));
 
   assert_eq!(settled(&button, &primary).await, primary);
@@ -502,10 +501,14 @@ async fn the_default_palette_answers_the_dark_scheme() {
   let scheme = Scheme::choose(ColorScheme::Light);
   let palette = SimplePalette::default();
   let (_guard, card) = themed(|| {
-    SimpleCard::new().set_children((
-      Container::new().set_background(SimplePalette::BACKGROUND),
-      SimpleButton::new("Save"),
-    ))
+    SimpleCard::new().set_child(
+      Column::new()
+        .set_spacing(SimpleCard::spacing())
+        .set_children((
+          Container::new().set_background(SimplePalette::BACKGROUND),
+          SimpleButton::new("Save"),
+        )),
+    )
   });
   let [plain, button] = &elements(&only_child(&card))[..]
   else {
@@ -627,10 +630,14 @@ async fn a_third_party_palette_works_under_theme_like_the_simple_one() {
     Theme::new(AcmePalette::default()).set_child_builder(|| {
       assert_eq!(AcmePalette::current(), AcmePalette::default());
 
-      SimpleCard::new().set_children((
-        Container::new().set_background(AcmePalette::ACCENT),
-        SimpleButton::new("Save"),
-      ))
+      SimpleCard::new().set_child(
+        Column::new()
+          .set_spacing(SimpleCard::spacing())
+          .set_children((
+            Container::new().set_background(AcmePalette::ACCENT),
+            SimpleButton::new("Save"),
+          )),
+      )
     })
   });
   let card = only_child(&acme);
@@ -776,11 +783,8 @@ async fn a_disabled_button_takes_the_disabled_surface_and_ink() {
   let _scheme = Scheme::choose(ColorScheme::Light);
   let palette = SimplePalette::default();
   let disabled = Signal::new(true);
-  let (_guard, button) = themed(move || {
-    SimpleButton::new("Save")
-      .set_variant(SimpleVariant::Outline)
-      .derive_disabled(move || disabled.get())
-  });
+  let (_guard, button) =
+    themed(move || SimpleButton::outline("Save").derive_disabled(move || disabled.get()));
   let label = only_child(&button);
   let surface = probe("background-color", light(&palette.disabled_surface));
 

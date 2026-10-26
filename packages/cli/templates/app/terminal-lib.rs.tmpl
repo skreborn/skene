@@ -11,12 +11,12 @@ fn app() -> impl View {
   let counter = Counter::new();
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
-    SimpleCard::new().set_children((
+    SimpleCard::new().set_child(Column::new().set_spacing(SimpleCard::spacing()).set_children((
       Text::derive(move || counter.count().to_string()).set_color(SimplePalette::FOREGROUND),
       Row::new().set_spacing(2).set_children((
         SimpleButton::new("-").handle_activate(move || counter.decrement()),
         SimpleButton::new("+").handle_activate(move || counter.increment()),
       )),
-    ))
+    )))
   })
 }

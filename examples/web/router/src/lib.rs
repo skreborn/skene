@@ -95,15 +95,17 @@ async fn about() -> AnyView {
 
 fn page(title: &'static str, body: &'static str) -> impl View {
   Container::new().set_max_width(420).set_child(
-    SimpleCard::new().set_spacing(12).set_children((
-      Text::new(title)
-        .set_font_size(13.)
-        .set_font_weight(500.)
-        .set_color(SimplePalette::MUTED_FOREGROUND),
-      Text::new(body)
-        .set_font_size(16.)
-        .set_color(SimplePalette::FOREGROUND),
-    )),
+    SimpleCard::new().set_child(
+      Column::new().set_spacing(12).set_children((
+        Text::new(title)
+          .set_font_size(13.)
+          .set_font_weight(500.)
+          .set_color(SimplePalette::MUTED_FOREGROUND),
+        Text::new(body)
+          .set_font_size(16.)
+          .set_color(SimplePalette::FOREGROUND),
+      )),
+    ),
   )
 }
 

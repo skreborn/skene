@@ -65,33 +65,35 @@ fn card(todos: Store<Todos>) -> impl View {
     draft.set(String::new());
   };
 
-  SimpleCard::new().set_spacing(16).set_children((
-    Text::new("TODOS")
-      .set_font_size(13.)
-      .set_font_weight(500.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Row::new()
-      .set_spacing(8)
-      .set_item_alignment(ItemAlignment::Center)
-      .set_children((
-        Flexible::new()
-          .set_flexibility(Flexibility::grow(1.))
-          .set_child(
-            SimpleTextField::new()
-              .set_placeholder("What needs doing?")
-              .bind_value(draft),
-          ),
-        SimpleButton::new("Add").handle_activate(add),
-      )),
-    Column::new()
-      .set_spacing(8)
-      .derive_entries(todos.items().keyed_by(|todo| todo.id), move |todo| {
-        row(todos, todo)
-      }),
-    Text::derive(move || format!("{} left", remaining.get()))
-      .set_font_size(13.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-  ))
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(16).set_children((
+      Text::new("TODOS")
+        .set_font_size(13.)
+        .set_font_weight(500.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Row::new()
+        .set_spacing(8)
+        .set_item_alignment(ItemAlignment::Center)
+        .set_children((
+          Flexible::new()
+            .set_flexibility(Flexibility::grow(1.))
+            .set_child(
+              SimpleTextField::new()
+                .set_placeholder("What needs doing?")
+                .bind_value(draft),
+            ),
+          SimpleButton::new("Add").handle_activate(add),
+        )),
+      Column::new()
+        .set_spacing(8)
+        .derive_entries(todos.items().keyed_by(|todo| todo.id), move |todo| {
+          row(todos, todo)
+        }),
+      Text::derive(move || format!("{} left", remaining.get()))
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
 }
 
 /// One todo's row, following its own entry of `todos`.
@@ -115,18 +117,16 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
             }
           }),
         ),
-      SimpleButton::new("×")
-        .set_variant(SimpleVariant::Outline)
-        .handle_activate(move || {
-          let id = todo.id().get();
+      SimpleButton::outline("×").handle_activate(move || {
+        let id = todo.id().get();
 
-          let index = todos
-            .items()
-            .with(|items| items.iter().position(|todo| todo.id == id));
+        let index = todos
+          .items()
+          .with(|items| items.iter().position(|todo| todo.id == id));
 
-          if let Some(index) = index {
-            let _ = todos.items().remove(index);
-          }
-        }),
+        if let Some(index) = index {
+          let _ = todos.items().remove(index);
+        }
+      }),
     ))
 }

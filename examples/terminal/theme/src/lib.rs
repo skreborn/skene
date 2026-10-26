@@ -141,9 +141,7 @@ fn heading() -> impl View {
 /// palette is what nests.
 fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl View {
   let choice = move |label: &'static str, wanted: Option<ColorScheme>| {
-    SimpleButton::new(label)
-      .set_variant(SimpleVariant::Outline)
-      .handle_activate(move || scheme.set(wanted))
+    SimpleButton::outline(label).handle_activate(move || scheme.set(wanted))
   };
 
   Row::new().set_spacing(2).set_children((
@@ -177,43 +175,47 @@ fn swatches() -> impl View {
     ))
   };
 
-  SimpleCard::new().set_spacing(1).set_children((
-    Text::new("Tokens")
-      .set_bold(true)
-      .set_color(SimplePalette::FOREGROUND),
-    Grid::new()
-      .set_columns(vec![
-        GridTrack::Flex(1.),
-        GridTrack::Flex(1.),
-        GridTrack::Flex(1.),
-      ])
-      .set_spacing(1)
-      .set_children((
-        swatch(SimplePalette::CARD, "card"),
-        swatch(SimplePalette::PRIMARY_SURFACE, "primary"),
-        swatch(SimplePalette::DESTRUCTIVE_SURFACE, "destructive"),
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(1).set_children((
+      Text::new("Tokens")
+        .set_bold(true)
+        .set_color(SimplePalette::FOREGROUND),
+      Grid::new()
+        .set_columns(vec![
+          GridTrack::Flex(1.),
+          GridTrack::Flex(1.),
+          GridTrack::Flex(1.),
+        ])
+        .set_spacing(1)
+        .set_children((
+          swatch(SimplePalette::CARD, "card"),
+          swatch(SimplePalette::PRIMARY_SURFACE, "primary"),
+          swatch(SimplePalette::DESTRUCTIVE_SURFACE, "destructive"),
+        )),
+      Row::new().set_spacing(2).set_children((
+        SimpleButton::new("Primary"),
+        SimpleButton::destructive("Delete"),
       )),
-    Row::new().set_spacing(2).set_children((
-      SimpleButton::new("Primary"),
-      SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive),
     )),
-  ))
+  )
 }
 
 /// A nested theme follows the same accent, warmed over: it derives its palette from the
 /// signal too, and replaces the palette for its subtree only.
 fn nested(accent: Signal<AccentName>) -> impl View {
   Theme::derive(move || warm(accent.get())).set_child_builder(|| {
-    SimpleCard::new().set_spacing(1).set_children((
-      Text::new("Nested theme")
-        .set_bold(true)
-        .set_color(SimplePalette::FOREGROUND),
-      Text::new("A theme inside a theme replaces the palette for its subtree only.")
-        .set_color(SimplePalette::current().muted_foreground),
-      Row::new().set_spacing(2).set_children((
-        SimpleButton::new("Primary"),
-        SimpleButton::new("Cancel").set_variant(SimpleVariant::Outline),
+    SimpleCard::new().set_child(
+      Column::new().set_spacing(1).set_children((
+        Text::new("Nested theme")
+          .set_bold(true)
+          .set_color(SimplePalette::FOREGROUND),
+        Text::new("A theme inside a theme replaces the palette for its subtree only.")
+          .set_color(SimplePalette::current().muted_foreground),
+        Row::new().set_spacing(2).set_children((
+          SimpleButton::new("Primary"),
+          SimpleButton::outline("Cancel"),
+        )),
       )),
-    ))
+    )
   })
 }

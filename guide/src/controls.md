@@ -322,3 +322,32 @@ fn order(name: Signal<String>, size: Signal<Size>) -> impl View {
   ))
 }
 ```
+
+Simple's button, card and tooltip are presets: each constructor returns the facade's own
+built-in, styled, so every member of the built-in applies. A button takes a constructor
+per variant, and `derive_variant` follows a signal, re-inking the button in place:
+
+```rust
+use skene_simple_web::prelude::*;
+use skene_web::prelude::*;
+
+fn actions(dirty: Signal<bool>) -> impl View {
+  Row::new().set_spacing(8).set_children((
+    SimpleButton::outline("Cancel"),
+    SimpleButton::derive_variant("Save", move || {
+      if dirty.get() {
+        SimpleVariant::Primary
+      }
+      else {
+        SimpleVariant::Secondary
+      }
+    }),
+    SimpleButton::destructive("Delete").set_disabled(true),
+  ))
+}
+```
+
+`SimpleButton::styled(button, variant)` dresses a button built otherwise, a derived
+label's (`Button::derive`) or one drawn by an icon, and `SimpleCard::new()` is a
+`Container` around the one child it is given, a `Column` spaced `SimpleCard::spacing()`
+apart where it groups several.

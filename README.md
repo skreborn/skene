@@ -48,15 +48,15 @@ fn app() -> impl View {
         Column::new()
           .set_arrangement(Arrangement::Center)
           .set_item_alignment(ItemAlignment::Center)
-          .add_child(
-            SimpleCard::new().set_spacing(24).set_children((
+          .add_child(SimpleCard::new().set_child(
+            Column::new().set_spacing(24).set_children((
               Text::derive(move || count.get().to_string()).set_font_size(56.),
               Row::new().set_spacing(12).set_children((
                 SimpleButton::new("−").handle_activate(move || count.update(|n| *n = n.saturating_sub(1))),
                 SimpleButton::new("+").handle_activate(move || count.update(|n| *n = n.saturating_add(1))),
               )),
             )),
-          ),
+          )),
       )
   })
 }
@@ -87,13 +87,15 @@ fn app() -> impl View {
   let count = Signal::tagged("count", 0u64);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {
-    SimpleCard::new().set_children((
-      Text::derive(move || count.get().to_string()).set_color(SimplePalette::FOREGROUND),
-      Row::new().set_spacing(2).set_children((
-        SimpleButton::new("-").handle_activate(move || count.update(|n| *n = n.saturating_sub(1))),
-        SimpleButton::new("+").handle_activate(move || count.update(|n| *n = n.saturating_add(1))),
+    SimpleCard::new().set_child(
+      Column::new().set_spacing(SimpleCard::spacing()).set_children((
+        Text::derive(move || count.get().to_string()).set_color(SimplePalette::FOREGROUND),
+        Row::new().set_spacing(2).set_children((
+          SimpleButton::new("-").handle_activate(move || count.update(|n| *n = n.saturating_sub(1))),
+          SimpleButton::new("+").handle_activate(move || count.update(|n| *n = n.saturating_add(1))),
+        )),
       )),
-    ))
+    )
   })
 }
 # }
@@ -128,8 +130,8 @@ with the mouse off a plain drag is the terminal's.
 | `skene-conformance` | `packages/conformance` | One suite of behaviors every platform shows alike, run through the `Driver` a platform implements over its test seams, on the pages each facade writes in its own vocabulary under the names `PAGES` lists. |
 | `skene-conformance-web` | `packages/conformance-web` | The conformance suite in real browsers: its pages, written in the web's vocabulary, served as one web app, acted on over WebDriver by trusted input. |
 | `skene-simple` | `packages/simple` | The Simple core: `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and the views, generic over the platform and hidden, their members in a `Simple*Base` trait each. |
-| `skene-simple-terminal` | `packages/simple-terminal` | The Simple views on the terminal: `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, the palette in cells, and a `prelude` an app imports beside the facade's own. |
-| `skene-simple-web` | `packages/simple-web` | The Simple views on the web, as on the terminal, the palette in pixels. |
+| `skene-simple-terminal` | `packages/simple-terminal` | The Simple presets on the terminal, `SimpleButton`, `SimpleCard` and `SimpleTooltip`, each returning the built-in it styles; its views `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor` and `SimpleContextMenu`; the palette in cells, and a `prelude` an app imports beside the facade's own. |
+| `skene-simple-web` | `packages/simple-web` | The Simple presets and views on the web, as on the terminal, the palette in pixels. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`, `#[derive(Snapshot)]`, and `#[derive(View)]` and `#[derive(Wraps)]` for a view over another. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-dev` | `packages/dev` | The dev loop's protocol between the `skene` command and the app it runs, and the `Document` a web page is served as, the server leaf's pages and the command's client-rendered shell alike. |
@@ -157,11 +159,12 @@ their `ListboxOption`s are the facade's own drawn controls in the platform's col
 every default a value their setters replace, `Button::set_prominent` marking a screen's
 primary action; on the web the field, the editor and the picker before its page is live
 are the page's own form elements, styled by CSS. The `Simple*` components dress the
-controls:
+controls, a Simple button being a preset that returns the `Button` it styles, a
+constructor per variant:
 
 ```rust,ignore
 SimpleButton::new("Save").handle_activate(save),
-SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive).handle_activate(delete),
+SimpleButton::destructive("Delete").handle_activate(delete),
 ```
 
 `Theme::new(palette)` defines a token set beneath it and `Theme::derive(|| palette.get())`

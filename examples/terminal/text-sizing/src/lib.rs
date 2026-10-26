@@ -49,53 +49,57 @@ fn title() -> impl View {
 
 /// One run per whole scale, and one at a fraction.
 fn scales_card() -> impl View {
-  SimpleCard::new().set_spacing(1).set_children((
-    Text::new("Scales")
-      .set_font_size(2.)
-      .set_bold(true)
-      .set_color(SimplePalette::FOREGROUND),
-    Text::new("Two to seven cells; below one, a fraction of a cell at its foot.")
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Row::new().set_spacing(2).set_children((
-      Text::new("2")
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(1).set_children((
+      Text::new("Scales")
         .set_font_size(2.)
+        .set_bold(true)
         .set_color(SimplePalette::FOREGROUND),
-      Text::new("3")
-        .set_font_size(3.)
-        .set_color(SimplePalette::FOREGROUND),
-      Text::new("4")
-        .set_font_size(4.)
-        .set_color(SimplePalette::FOREGROUND),
-      Text::new("half")
-        .set_font_size(0.5)
-        .set_color(SimplePalette::FOREGROUND),
+      Text::new("Two to seven cells; below one, a fraction of a cell at its foot.")
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Row::new().set_spacing(2).set_children((
+        Text::new("2")
+          .set_font_size(2.)
+          .set_color(SimplePalette::FOREGROUND),
+        Text::new("3")
+          .set_font_size(3.)
+          .set_color(SimplePalette::FOREGROUND),
+        Text::new("4")
+          .set_font_size(4.)
+          .set_color(SimplePalette::FOREGROUND),
+        Text::new("half")
+          .set_font_size(0.5)
+          .set_color(SimplePalette::FOREGROUND),
+      )),
     )),
-  ))
+  )
 }
 
 /// A paragraph mixing sizes: the smaller spans sit on the tallest span's baseline.
 fn baseline_card() -> impl View {
-  SimpleCard::new().set_spacing(1).set_children((
-    Text::new("Baseline")
-      .set_font_size(2.)
-      .set_bold(true)
-      .set_color(SimplePalette::FOREGROUND),
-    Text::new("A paragraph's line is as tall as its tallest span.")
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    RichText::new().add_spans([
-      Span::new("Big ")
-        .set_font_size(3.)
-        .set_color(SimplePalette::FOREGROUND),
-      Span::new("mid ")
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(1).set_children((
+      Text::new("Baseline")
         .set_font_size(2.)
+        .set_bold(true)
         .set_color(SimplePalette::FOREGROUND),
-      Span::new("and small, ").set_color(SimplePalette::FOREGROUND),
-      Span::new("selectable")
-        .set_selectable(true)
-        .set_color(SimplePalette::FOREGROUND),
-      Span::new(" as one flow.").set_color(SimplePalette::FOREGROUND),
-    ]),
-  ))
+      Text::new("A paragraph's line is as tall as its tallest span.")
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      RichText::new().add_spans([
+        Span::new("Big ")
+          .set_font_size(3.)
+          .set_color(SimplePalette::FOREGROUND),
+        Span::new("mid ")
+          .set_font_size(2.)
+          .set_color(SimplePalette::FOREGROUND),
+        Span::new("and small, ").set_color(SimplePalette::FOREGROUND),
+        Span::new("selectable")
+          .set_selectable(true)
+          .set_color(SimplePalette::FOREGROUND),
+        Span::new(" as one flow.").set_color(SimplePalette::FOREGROUND),
+      ]),
+    )),
+  )
 }
 
 /// A theme whose typography sizes everything beneath it.

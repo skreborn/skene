@@ -1,6 +1,4 @@
 pub mod skene_simple_web
-pub use skene_simple_web::SimpleButtonBase
-pub use skene_simple_web::SimpleCardBase
 pub use skene_simple_web::SimpleCheckboxBase
 pub use skene_simple_web::SimpleContextMenuBase
 pub use skene_simple_web::SimplePickerBase
@@ -9,38 +7,36 @@ pub use skene_simple_web::SimpleRadioGroupBase
 pub use skene_simple_web::SimpleSliderBase
 pub use skene_simple_web::SimpleTextEditorBase
 pub use skene_simple_web::SimpleTextFieldBase
-pub use skene_simple_web::SimpleTooltipBase
 pub use skene_simple_web::SimpleVariant
 pub mod skene_simple_web::prelude
 pub use skene_simple_web::prelude::<<super::*>>
-pub struct skene_simple_web::SimpleButton(_)
+pub enum skene_simple_web::SimpleButton
+impl skene_simple_web::SimpleButton
+pub fn skene_simple_web::SimpleButton::derive_styled(skene_web::views::button::Button, impl core::ops::function::Fn() -> skene_simple::palette::SimpleVariant + 'static) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::derive_variant(impl core::convert::Into<alloc::string::String>, impl core::ops::function::Fn() -> skene_simple::palette::SimpleVariant + 'static) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::destructive(impl core::convert::Into<alloc::string::String>) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::ghost(impl core::convert::Into<alloc::string::String>) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::new(impl core::convert::Into<alloc::string::String>) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::outline(impl core::convert::Into<alloc::string::String>) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::secondary(impl core::convert::Into<alloc::string::String>) -> skene_web::views::button::Button
+pub fn skene_simple_web::SimpleButton::styled(skene_web::views::button::Button, skene_simple::palette::SimpleVariant) -> skene_web::views::button::Button
 impl core::fmt::Debug for skene_simple_web::SimpleButton
 pub fn skene_simple_web::SimpleButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleButton
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleButton
-pub fn skene_simple_web::SimpleButton::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleButton
-pub type skene_simple_web::SimpleButton::Inner = skene_simple::button::SimpleButton<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleButton::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleButton::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleButton::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleButton::wrap(Self::Inner) -> Self
-impl skene_simple::button::SimpleButtonBase<skene_web::platform::web::Web> for skene_simple_web::SimpleButton
-pub struct skene_simple_web::SimpleCard(_)
-impl core::default::Default for skene_simple_web::SimpleCard
-pub fn skene_simple_web::SimpleCard::default() -> skene_simple_web::SimpleCard
+pub enum skene_simple_web::SimpleCard
+impl skene_simple_web::SimpleCard
+pub fn skene_simple_web::SimpleCard::new() -> skene_web::views::container::Container
+pub fn skene_simple_web::SimpleCard::spacing() -> f32
+pub fn skene_simple_web::SimpleCard::styled(skene_web::views::container::Container) -> skene_web::views::container::Container
 impl core::fmt::Debug for skene_simple_web::SimpleCard
 pub fn skene_simple_web::SimpleCard::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleCard
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleCard
-pub fn skene_simple_web::SimpleCard::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleCard
-pub type skene_simple_web::SimpleCard::Inner = skene_simple::card::SimpleCard<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleCard::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleCard::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleCard::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleCard::wrap(Self::Inner) -> Self
-impl skene_simple::card::SimpleCardBase<skene_web::platform::web::Web> for skene_simple_web::SimpleCard
+pub enum skene_simple_web::SimpleTooltip
+impl skene_simple_web::SimpleTooltip
+pub fn skene_simple_web::SimpleTooltip::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> skene_web::views::tooltip::Tooltip
+pub fn skene_simple_web::SimpleTooltip::new(impl core::convert::Into<alloc::string::String>) -> skene_web::views::tooltip::Tooltip
+pub fn skene_simple_web::SimpleTooltip::styled(skene_web::views::tooltip::Tooltip) -> skene_web::views::tooltip::Tooltip
+pub fn skene_simple_web::SimpleTooltip::view(impl skene_web::View) -> skene_web::views::tooltip::Tooltip
+impl core::fmt::Debug for skene_simple_web::SimpleTooltip
+pub fn skene_simple_web::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_simple_web::SimpleCheckbox(_)
 impl core::default::Default for skene_simple_web::SimpleCheckbox
 pub fn skene_simple_web::SimpleCheckbox::default() -> skene_simple_web::SimpleCheckbox
@@ -159,18 +155,5 @@ pub fn skene_simple_web::SimpleTextField::inner_mut(&mut self) -> &mut Self::Inn
 pub fn skene_simple_web::SimpleTextField::into_inner(self) -> Self::Inner
 pub fn skene_simple_web::SimpleTextField::wrap(Self::Inner) -> Self
 impl skene_simple::text_field::SimpleTextFieldBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTextField
-pub struct skene_simple_web::SimpleTooltip(_)
-impl core::fmt::Debug for skene_simple_web::SimpleTooltip
-pub fn skene_simple_web::SimpleTooltip::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl skene_foundation::spine::view::AnyKind for skene_simple_web::SimpleTooltip
-impl skene_foundation::spine::view::View<skene_web::platform::web::Web> for skene_simple_web::SimpleTooltip
-pub fn skene_simple_web::SimpleTooltip::build(self) -> skene_foundation::spine::node::NodeId
-impl skene_foundation::spine::wraps::Wraps for skene_simple_web::SimpleTooltip
-pub type skene_simple_web::SimpleTooltip::Inner = skene_simple::tooltip::SimpleTooltip<skene_web::platform::web::Web>
-pub fn skene_simple_web::SimpleTooltip::inner(&self) -> &Self::Inner
-pub fn skene_simple_web::SimpleTooltip::inner_mut(&mut self) -> &mut Self::Inner
-pub fn skene_simple_web::SimpleTooltip::into_inner(self) -> Self::Inner
-pub fn skene_simple_web::SimpleTooltip::wrap(Self::Inner) -> Self
-impl skene_simple::tooltip::SimpleTooltipBase<skene_web::platform::web::Web> for skene_simple_web::SimpleTooltip
 pub type skene_simple_web::SimpleLook = skene_simple::palette::SimpleLook<f32>
 pub type skene_simple_web::SimplePalette = skene_simple::palette::SimplePalette<f32>

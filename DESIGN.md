@@ -622,11 +622,24 @@ popover fixed at the pointer and shifts it back into the viewport, and
 the server leaf renders nothing for the menu: with no script the browser's menu is the
 menu, as progressive enhancement asks.
 The
-`Simple*` components (`skene-simple`) are the ready-made library over the same builder:
-one palette, one shape language, shared across the web and the terminal wherever the
-medium allows, and deliberately nothing a third-party library could not build on the
-same footing—including how an app reaches it: an explicit dependency, never a facade
-re-export.
+`Simple*` components are the ready-made library over the same builder: one palette, one
+shape language, shared across the web and the terminal wherever the medium allows, and
+deliberately nothing a third-party library could not build on the same footing—including
+how an app reaches it: an explicit dependency, never a facade re-export. Its button,
+card and tooltip are presets of the facade's built-ins in each facade's Simple crate:
+`SimpleButton::new(label)` is the facade's `Button` styled in the primary look,
+`secondary`, `outline`, `ghost` and `destructive` its siblings, and
+`SimpleButton::derive_variant(label, || variant)` the button whose fill, ink and border
+are derived leaves naming the variant's tokens, so a variant change re-inks it in place;
+`SimpleCard::new()` is a `Container` on the card surface around the one child the app
+gives it, and `SimpleTooltip::new` a `Tooltip` whose bubble is in the foreground color.
+Each preset's pieces are public (`SimpleButton::styled`, `derive_styled`,
+`SimpleCard::styled`, `SimpleTooltip::styled`), and a preset references the palette's
+tokens without defining them: a `Theme` of the palette above it defines them, or a read
+of the palette defines its default at the root. The palette defines every variant's
+border token, transparent for a filled look, so a derived border needs the variant
+alone. Simple's other views are still written once in `skene-simple` over the
+realization and wrapped per facade.
 
 - **A control decides its verdict.** The behavior runs first and its verdict is the
   whole verdict; a user's handler observes. A button's click never reaches the row it
@@ -1275,10 +1288,9 @@ are an interned class on the scope element (with `@media` blocks and the scheme 
 emission where a definition conditions on the scheme) and each token kind registers its
 custom property with `@property`, so it interpolates and inherits as a typed value; a
 token set used with no theme above registers its default under `:root` once
-(`ThemedIn::current`/`watch`). Any node defining tokens, a scope or a control defining
-its own look as a Simple button does, takes them as such a class, and a redefinition
-whose every token is unconditional writes them inline over it; a node adopted from the
-server's markup gives up the definitions the server wrote inline on it at its first
+(`ThemedIn::current`/`watch`). Any node defining tokens takes them as such a class,
+and a redefinition whose every token is unconditional writes them inline over it; a
+node adopted from the server's markup gives up the definitions the server wrote inline on it at its first
 definition. The root's definitions are defined in the scene and reach the realization
 through the same `define_tokens` call as a scope's (`Scene::define_tokens` and the
 seam's alike), their scope `TokenScope::Root`: the web writes them as

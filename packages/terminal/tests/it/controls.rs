@@ -1020,7 +1020,11 @@ fn a_themed_glyph_set_draws_the_marks() {
 #[test]
 fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
   with_platform(|| {
-    let _ = terminal::mount(|| SimpleButton::new("Save").build());
+    let _ = terminal::mount(|| {
+      Theme::new(SimplePalette::default())
+        .set_child_builder(|| SimpleButton::new("Save"))
+        .build()
+    });
 
     testing::trigger_graphics(true);
 

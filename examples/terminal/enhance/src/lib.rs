@@ -54,21 +54,23 @@ fn clock_card() -> impl View {
 
   tick(ticked, seconds);
 
-  SimpleCard::new().set_spacing(1).set_children((
-    Text::new("Clock")
-      .set_bold(true)
-      .set_color(SimplePalette::FOREGROUND),
-    Text::new("The caption stands until the clock's first tick.")
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Enhance::new(ticked.read_only())
-      .set_fallback_builder(|| {
-        Text::new("Waiting for the first tick.").set_color(SimplePalette::FOREGROUND)
-      })
-      .set_child_builder(move || {
-        Text::derive(move || format!("{} s since the first tick.", seconds.get()))
-          .set_color(SimplePalette::FOREGROUND)
-      }),
-  ))
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(1).set_children((
+      Text::new("Clock")
+        .set_bold(true)
+        .set_color(SimplePalette::FOREGROUND),
+      Text::new("The caption stands until the clock's first tick.")
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Enhance::new(ticked.read_only())
+        .set_fallback_builder(|| {
+          Text::new("Waiting for the first tick.").set_color(SimplePalette::FOREGROUND)
+        })
+        .set_child_builder(move || {
+          Text::derive(move || format!("{} s since the first tick.", seconds.get()))
+            .set_color(SimplePalette::FOREGROUND)
+        }),
+    )),
+  )
 }
 
 /// Marks the first tick, then advances `seconds` once a second on the loop's clock.
@@ -88,30 +90,32 @@ fn tick(ticked: Signal<bool>, seconds: Signal<u32>) {
 /// A picture painted where the terminal draws pixels, over the description standing
 /// elsewhere.
 fn picture_card() -> impl View {
-  SimpleCard::new().set_spacing(1).set_children((
-    Text::new("Picture")
-      .set_bold(true)
-      .set_color(SimplePalette::FOREGROUND),
-    Text::new("The description stands until the terminal proves it draws pixels.")
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    Painted::new(|canvas, size| {
-      let width = f64::from(size.width);
-      let height = f64::from(size.height);
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(1).set_children((
+      Text::new("Picture")
+        .set_bold(true)
+        .set_color(SimplePalette::FOREGROUND),
+      Text::new("The description stands until the terminal proves it draws pixels.")
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      Painted::new(|canvas, size| {
+        let width = f64::from(size.width);
+        let height = f64::from(size.height);
 
-      for stripe in 0..8u8 {
-        let shade = 0.35 + 0.08 * f32::from(stripe);
-        let left = width * f64::from(stripe) / 8.;
+        for stripe in 0..8u8 {
+          let shade = 0.35 + 0.08 * f32::from(stripe);
+          let left = width * f64::from(stripe) / 8.;
 
-        canvas.fill(
-          &Rect::new(left, 0., left + width / 8., height),
-          Color::srgb(0.2, shade, 0.9),
-        );
-      }
-    })
-    .set_height(3)
-    .set_fallback_builder(|| {
-      Text::new("Eight blue stripes, lightening from left to right.")
-        .set_color(SimplePalette::FOREGROUND)
-    }),
-  ))
+          canvas.fill(
+            &Rect::new(left, 0., left + width / 8., height),
+            Color::srgb(0.2, shade, 0.9),
+          );
+        }
+      })
+      .set_height(3)
+      .set_fallback_builder(|| {
+        Text::new("Eight blue stripes, lightening from left to right.")
+          .set_color(SimplePalette::FOREGROUND)
+      }),
+    )),
+  )
 }

@@ -96,26 +96,28 @@ fn echo_card() -> impl View {
     (None, Some(Ok(()))) => "Connected; the service echoes what is sent.".to_owned(),
   };
 
-  SimpleCard::new().set_spacing(12).set_children((
-    Text::new("Echo").set_font_weight(600.),
-    Text::derive(state)
-      .set_font_size(13.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    SimpleTextField::new()
-      .set_placeholder("A message")
-      .bind_value(draft),
-    SimpleButton::new("Send").handle_activate(send),
-    derived(move || {
-      Column::new()
-        .set_spacing(4)
-        .set_children(
-          received
-            .get()
-            .into_iter()
-            .map(|line| Text::new(line).set_font_size(14.))
-            .collect::<Vec<_>>(),
-        )
-        .build()
-    }),
-  ))
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(12).set_children((
+      Text::new("Echo").set_font_weight(600.),
+      Text::derive(state)
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      SimpleTextField::new()
+        .set_placeholder("A message")
+        .bind_value(draft),
+      SimpleButton::new("Send").handle_activate(send),
+      derived(move || {
+        Column::new()
+          .set_spacing(4)
+          .set_children(
+            received
+              .get()
+              .into_iter()
+              .map(|line| Text::new(line).set_font_size(14.))
+              .collect::<Vec<_>>(),
+          )
+          .build()
+      }),
+    )),
+  )
 }

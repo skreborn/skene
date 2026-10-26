@@ -175,10 +175,10 @@ fn buttons() -> impl View {
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
           SimpleButton::new("Primary").handle_activate(move || count.update(|value| *value += 1)),
-          SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
-          SimpleButton::new("Outline").set_variant(SimpleVariant::Outline),
-          SimpleButton::new("Ghost").set_variant(SimpleVariant::Ghost),
-          SimpleButton::new("Destructive").set_variant(SimpleVariant::Destructive),
+          SimpleButton::secondary("Secondary"),
+          SimpleButton::outline("Outline"),
+          SimpleButton::ghost("Ghost"),
+          SimpleButton::destructive("Destructive"),
           SimpleButton::new("Disabled").set_disabled(true),
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
@@ -288,8 +288,7 @@ fn tooltips() -> impl View {
       .set_wrap(Wrap::Forward)
       .set_item_alignment(ItemAlignment::Center)
       .set_children((
-        SimpleTooltip::new("Saves your work")
-          .set_child(SimpleButton::new("Save").set_variant(SimpleVariant::Secondary)),
+        SimpleTooltip::new("Saves your work").set_child(SimpleButton::secondary("Save")),
         SimpleTooltip::view(
           Row::new()
             .set_spacing(6)
@@ -300,7 +299,7 @@ fn tooltips() -> impl View {
             )),
         )
         .set_placement(Placement::Bottom)
-        .set_child(SimpleButton::new("Hover me").set_variant(SimpleVariant::Outline)),
+        .set_child(SimpleButton::outline("Hover me")),
         SimpleTooltip::new("Plain text takes one as well").set_child(
           Text::new("or a run of text")
             .set_font_size(14.)
@@ -445,21 +444,19 @@ fn layouts() -> impl View {
           ),
         ),
       Row::new().set_children((
-        SimpleButton::new("Open a modal")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || open.set(true)),
+        SimpleButton::outline("Open a modal").handle_activate(move || open.set(true)),
         // The overlay is layering and dismissal alone; the surface is a card inside it,
         // which is what dresses a popup in the Simple design language.
-        Overlay::modal().bind_open(open).set_child(
-          SimpleCard::new().set_spacing(20).set_children((
-            Text::new("A modal overlay; Escape or the backdrop dismisses.").set_font_size(14.),
-            Row::new().set_arrangement(Arrangement::End).add_child(
-              SimpleButton::new("Close")
-                .set_variant(SimpleVariant::Secondary)
-                .handle_activate(move || open.set(false)),
-            ),
-          )),
-        ),
+        Overlay::modal()
+          .bind_open(open)
+          .set_child(
+            SimpleCard::new().set_child(Column::new().set_spacing(20).set_children((
+              Text::new("A modal overlay; Escape or the backdrop dismisses.").set_font_size(14.),
+              Row::new().set_arrangement(Arrangement::End).add_child(
+                SimpleButton::secondary("Close").handle_activate(move || open.set(false)),
+              ),
+            ))),
+          ),
       )),
     )),
   )
@@ -533,8 +530,7 @@ fn rows() -> impl View {
             .set_item_alignment(ItemAlignment::Center)
             .set_children((
               Text::new("Inbox: a click or Enter opens it"),
-              SimpleButton::new("Star")
-                .set_variant(SimpleVariant::Outline)
+              SimpleButton::outline("Star")
                 .handle_activate(move || starred.update(|value| *value += 1)),
             )),
         ),
@@ -630,12 +626,8 @@ fn visibility_and_one_of() -> impl View {
             .set_color(SimplePalette::MUTED_FOREGROUND),
         ),
       Row::new().set_spacing(8).set_children((
-        SimpleButton::new("Summary")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || pane.set(String::from("summary"))),
-        SimpleButton::new("History")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || pane.set(String::from("history"))),
+        SimpleButton::outline("Summary").handle_activate(move || pane.set(String::from("summary"))),
+        SimpleButton::outline("History").handle_activate(move || pane.set(String::from("history"))),
       )),
       OneOf::new()
         .derive_key(move || pane.get())
@@ -683,21 +675,17 @@ fn boundaries() -> impl View {
               })
               .set_font_size(14.)
               .set_color(SimplePalette::DESTRUCTIVE_SURFACE),
-              SimpleButton::new("Recover")
-                .set_variant(SimpleVariant::Outline)
-                .handle_activate(move || errors.clear()),
+              SimpleButton::outline("Recover").handle_activate(move || errors.clear()),
             ))
         })
         .set_child_builder(|| {
           let errors = Errors::current();
 
-          SimpleButton::new("Fail")
-            .set_variant(SimpleVariant::Destructive)
-            .handle_activate(move || {
-              if let Some(errors) = &errors {
-                errors.report(Failed);
-              }
-            })
+          SimpleButton::destructive("Fail").handle_activate(move || {
+            if let Some(errors) = &errors {
+              errors.report(Failed);
+            }
+          })
         }),
     )),
   )
@@ -743,13 +731,17 @@ fn third_party() -> impl View {
 
 /// A titled card around one section's content.
 fn section(title: &'static str, content: impl View) -> impl View {
-  SimpleCard::new().set_children((
-    Text::new(title)
-      .set_font_size(12.)
-      .set_font_weight(600.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    content,
-  ))
+  SimpleCard::new().set_child(
+    Column::new()
+      .set_spacing(SimpleCard::spacing())
+      .set_children((
+        Text::new(title)
+          .set_font_size(12.)
+          .set_font_weight(600.)
+          .set_color(SimplePalette::MUTED_FOREGROUND),
+        content,
+      )),
+  )
 }
 
 fn plain(text: &'static str) -> Span {

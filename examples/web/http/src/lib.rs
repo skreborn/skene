@@ -63,26 +63,28 @@ fn quotes_card() -> impl View {
     Ok(text.lines().map(str::to_owned).collect())
   });
 
-  SimpleCard::new().set_spacing(12).set_children((
-    Text::new("Quotes").set_font_weight(600.),
-    Text::new("Fetched from the app's own asset through skene_transport::http.")
-      .set_font_size(13.)
-      .set_color(SimplePalette::MUTED_FOREGROUND),
-    derived(move || match quotes.get() {
-      None => Text::new("Fetching…")
-        .set_color(SimplePalette::MUTED_FOREGROUND)
-        .build(),
-      Some(Err(error)) => Text::new(format!("Failed: {error}")).build(),
-      Some(Ok(lines)) => Column::new()
-        .set_spacing(8)
-        .set_children(
-          lines
-            .into_iter()
-            .map(|line| Text::new(line).set_font_size(14.))
-            .collect::<Vec<_>>(),
-        )
-        .build(),
-    }),
-    SimpleButton::new("Fetch again").handle_activate(move || quotes.reload()),
-  ))
+  SimpleCard::new().set_child(
+    Column::new().set_spacing(12).set_children((
+      Text::new("Quotes").set_font_weight(600.),
+      Text::new("Fetched from the app's own asset through skene_transport::http.")
+        .set_font_size(13.)
+        .set_color(SimplePalette::MUTED_FOREGROUND),
+      derived(move || match quotes.get() {
+        None => Text::new("Fetching…")
+          .set_color(SimplePalette::MUTED_FOREGROUND)
+          .build(),
+        Some(Err(error)) => Text::new(format!("Failed: {error}")).build(),
+        Some(Ok(lines)) => Column::new()
+          .set_spacing(8)
+          .set_children(
+            lines
+              .into_iter()
+              .map(|line| Text::new(line).set_font_size(14.))
+              .collect::<Vec<_>>(),
+          )
+          .build(),
+      }),
+      SimpleButton::new("Fetch again").handle_activate(move || quotes.reload()),
+    )),
+  )
 }

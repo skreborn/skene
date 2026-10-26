@@ -24,25 +24,24 @@ fn app() -> impl View {
 }
 
 fn card(count: Signal<u64>) -> impl View {
-  SimpleCard::new()
-    .set_item_alignment(ItemAlignment::Center)
-    .set_children((
-      Text::new("COUNTER")
-        .set_bold(true)
-        .set_selectable(true)
-        .set_color(SimplePalette::MUTED_FOREGROUND),
-      Text::derive(move || count.get().to_string()).set_color(SimplePalette::FOREGROUND),
-      Row::new().set_spacing(2).set_children((
-        SimpleButton::new("-")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || {
+  SimpleCard::new().set_child(
+    Column::new()
+      .set_spacing(SimpleCard::spacing())
+      .set_item_alignment(ItemAlignment::Center)
+      .set_children((
+        Text::new("COUNTER")
+          .set_bold(true)
+          .set_selectable(true)
+          .set_color(SimplePalette::MUTED_FOREGROUND),
+        Text::derive(move || count.get().to_string()).set_color(SimplePalette::FOREGROUND),
+        Row::new().set_spacing(2).set_children((
+          SimpleButton::outline("-").handle_activate(move || {
             count.update(|value| *value = value.saturating_sub(1));
           }),
-        SimpleButton::new("+")
-          .set_variant(SimpleVariant::Outline)
-          .handle_activate(move || {
+          SimpleButton::outline("+").handle_activate(move || {
             count.update(|value| *value = value.saturating_add(1));
           }),
+        )),
       )),
-    ))
+  )
 }

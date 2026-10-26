@@ -10,13 +10,19 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_foundation::{
+  Activate,
+  AnyKind,
+  BasicButton,
   BasicCheckbox,
   Color,
   ColorScheme,
   Condition,
   Container,
   ContainerBase,
+  ControlBase,
   DecorationBase,
+  Definition,
+  Definitions,
   Flexibility,
   Flexible,
   HasChild,
@@ -24,8 +30,10 @@ use skene_foundation::{
   Leaf,
   Length,
   Media,
+  NodeId,
   Realization,
   Row,
+  Scene,
   State,
   StaticLeaf,
   Text,
@@ -34,19 +42,18 @@ use skene_foundation::{
   Token,
   TokenName,
   TokenRef,
+  TokenScope,
   TokenSet,
   Value,
   View,
 };
-use skene_reactive::{Get, Set, Signal, hash::wide_of};
+use skene_reactive::{Effect, Get, Set, Signal, hash::wide_of};
 use skene_simple_web::{
   SimpleButton,
-  SimpleButtonBase,
   SimpleCheckbox,
   SimpleCheckboxBase,
   SimplePicker,
   SimplePickerBase,
-  SimpleVariant,
 };
 use skene_web::{
   Platform,
@@ -814,26 +821,58 @@ fn a_hydrated_scope_drops_its_served_inline_definitions() {
   );
 }
 
+/// A control defining its own look's surface on its own node, as the token `surface`
+/// holds, kept current with it.
+struct Looked {
+  surface: Signal<Color>,
+}
+
+impl Looked {
+  /// The surface token the control defines on its own node.
+  const SURFACE: TokenRef<Color> = TokenRef::new("test-look-surface");
+}
+
+impl AnyKind for Looked {}
+
+impl View<Web> for Looked {
+  fn build(self) -> NodeId {
+    let node = BasicButton::<Web>::new(Activate::new())
+      .set_background(Self::SURFACE)
+      .set_label("Go")
+      .build();
+    let surface = self.surface;
+
+    Effect::render(move |_: Option<()>| {
+      let definitions = Definitions::from(vec![(
+        Self::SURFACE.name(),
+        WebTokenValue::from(Definition::<Color, f32>::from(surface.get())),
+      )]);
+
+      Scene::<Web>::with(|scene| scene.define_tokens(TokenScope::Node(node), definitions));
+    });
+
+    node
+  }
+}
+
 /// A served control that redefined its own look inline gives those definitions up to
 /// the class the client assigns on adoption, so it shows the client's look.
 #[wasm_bindgen_test]
 fn a_hydrated_control_drops_its_served_inline_definitions() {
-  let app = |variant: Signal<SimpleVariant>| {
-    move || SimpleButton::new("Go").derive_variant(move || variant.get())
-  };
+  let app = |surface: Signal<Color>| move || Looked { surface };
   let (markup, styles) = {
     let (_guard, root) = fresh_root();
-    let variant = Signal::new(SimpleVariant::Primary);
+    let surface = Signal::new(white());
 
-    let _ = web::mount(move || app(variant)().build());
+    let _ = web::mount(move || app(surface)().build());
 
-    variant.set(SimpleVariant::Destructive);
+    surface.set(black());
     web::end_turn();
 
     (as_served(&root), sheet_text())
   };
 
-  assert!(markup.contains("--simple-look-surface"), "{markup}");
+  assert!(markup.contains("--test-look-surface"), "{markup}");
 
   let _block = serve_styles(&styles);
   let root = connected_root();
@@ -842,7 +881,7 @@ fn a_hydrated_control_drops_its_served_inline_definitions() {
 
   let served_button = only_child(&root);
 
-  web::hydrate(root.clone(), "", app(Signal::new(SimpleVariant::Primary)));
+  web::hydrate(root.clone(), "", app(Signal::new(white())));
 
   let _guard = Installed::on(root.clone());
   let button = html(&only_child(&root));
@@ -855,10 +894,14 @@ fn a_hydrated_control_drops_its_served_inline_definitions() {
   assert_eq!(
     button
       .style()
-      .get_property_value("--simple-look-surface")
+      .get_property_value("--test-look-surface")
       .ok()
       .as_deref(),
     Some("")
+  );
+  assert_eq!(
+    computed(&button, "background-color"),
+    probe(&root, &css(white()))
   );
 }
 

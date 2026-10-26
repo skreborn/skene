@@ -218,23 +218,6 @@ impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_simple
 impl<N: core::fmt::Debug> core::fmt::Debug for skene_simple::SimpleShape<N>
 pub fn skene_simple::SimpleShape<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: core::marker::Copy> core::marker::Copy for skene_simple::SimpleShape<N>
-pub trait skene_simple::SimpleButtonBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleButton<P>>
-pub fn skene_simple::SimpleButtonBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_simple::SimpleButtonBase::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_simple::SimpleButtonBase::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
-pub fn skene_simple::SimpleButtonBase::derive_variant(self, impl core::ops::function::Fn() -> skene_simple::SimpleVariant + 'static) -> Self
-pub fn skene_simple::SimpleButtonBase::handle_activate(self, impl core::ops::function::Fn() + 'static) -> Self
-pub fn skene_simple::SimpleButtonBase::new(impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleButtonBase::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleButtonBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
-pub fn skene_simple::SimpleButtonBase::set_disabled(self, bool) -> Self
-pub fn skene_simple::SimpleButtonBase::set_variant(self, skene_simple::SimpleVariant) -> Self
-pub trait skene_simple::SimpleCardBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleCard<P>>
-pub fn skene_simple::SimpleCardBase::derive_item_alignment<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_simple::SimpleCardBase::derive_spacing<R: core::convert::Into<skene_foundation::spine::leaf::StaticLeaf<skene_foundation::spine::values::flex::Spacing<<P as skene_foundation::spine::realization::Realization>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_simple::SimpleCardBase::new() -> Self where <P as skene_foundation::spine::realization::Realization>::Scalar: skene_simple::SimpleUnit
-pub fn skene_simple::SimpleCardBase::set_item_alignment(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::ItemAlignment, skene_foundation::spine::condition::Condition<<P as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
-pub fn skene_simple::SimpleCardBase::set_spacing(self, impl core::convert::Into<skene_foundation::spine::leaf::Value<skene_foundation::spine::values::flex::Spacing<<P as skene_foundation::spine::realization::Realization>::Scalar>, skene_foundation::spine::condition::Condition<<P as skene_foundation::spine::realization::Realization>::Scalar>>>) -> Self
 pub trait skene_simple::SimpleCheckboxBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleCheckbox<P>>
 pub fn skene_simple::SimpleCheckboxBase::bind_checked(self, skene_reactive::signal::Signal<bool>) -> Self
 pub fn skene_simple::SimpleCheckboxBase::derive_checked(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
@@ -302,13 +285,6 @@ pub fn skene_simple::SimpleTextFieldBase::set_label(self, impl core::convert::In
 pub fn skene_simple::SimpleTextFieldBase::set_placeholder(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleTextFieldBase::set_secure(self, bool) -> Self
 pub fn skene_simple::SimpleTextFieldBase::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub trait skene_simple::SimpleTooltipBase<P: skene_foundation::spine::realization::Realization>: skene_foundation::spine::wraps::Wraps<Inner = SimpleTooltip<P>>
-pub fn skene_simple::SimpleTooltipBase::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
-pub fn skene_simple::SimpleTooltipBase::new(impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_simple::SimpleTooltipBase::set_child(self, impl skene_foundation::spine::view::View<P>) -> Self
-pub fn skene_simple::SimpleTooltipBase::set_delay(self, core::time::Duration) -> Self
-pub fn skene_simple::SimpleTooltipBase::set_placement(self, skene_foundation::spine::values::placement::Placement) -> Self
-pub fn skene_simple::SimpleTooltipBase::view(impl skene_foundation::spine::view::View<P>) -> Self
 pub trait skene_simple::SimpleUnit: skene_foundation::spine::scalar::Scalar
 pub const skene_simple::SimpleUnit::MARKS: skene_simple::SimpleMarks
 pub fn skene_simple::SimpleUnit::shape() -> skene_simple::SimpleShape<Self>

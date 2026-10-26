@@ -251,7 +251,7 @@ fn begin_render() -> (NodeId, Owner) {
   forget_static_routes();
   task::install_executor();
 
-  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, None));
+  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box));
 
   WebTokenValue::claim_system_colors();
   with_realizer(|realizer| realizer.insert(root, ROOT, "", Realized::Box, false));

@@ -7045,7 +7045,6 @@ impl<T> core::default::Default for skene_foundation::NodeMap<T>
 pub fn skene_foundation::NodeMap<T>::default() -> Self
 pub struct skene_foundation::NodeRecord<P: skene_foundation::Realization>
 impl<P: skene_foundation::Realization> skene_foundation::NodeRecord<P>
-pub fn skene_foundation::NodeRecord<P>::annotation(&self) -> core::option::Option<&skene_foundation::Annotation<P>>
 pub const fn skene_foundation::NodeRecord<P>::container(&self) -> core::option::Option<skene_foundation::ContainerName>
 pub const fn skene_foundation::NodeRecord<P>::control_state(&self) -> core::option::Option<skene_foundation::ControlState>
 pub fn skene_foundation::NodeRecord<P>::definitions(&self) -> core::option::Option<&skene_foundation::Definitions<<P as skene_foundation::Realization>::TokenValue>>
@@ -7760,16 +7759,16 @@ pub fn skene_foundation::Scene<P>::find_all_unnamed(impl core::ops::function::Fn
 pub fn skene_foundation::Scene<P>::find_by_role(accesskit::Role, &str, impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Scene<P>::find_by_text(&str, impl core::ops::function::Fn(skene_foundation::NodeId) -> skene_foundation::NameFacts) -> core::option::Option<skene_foundation::NodeId>
 impl<P: skene_foundation::Realization> skene_foundation::Scene<P>
-pub fn skene_foundation::Scene<P>::adopt(&skene_foundation::NodeSpec, <P as skene_foundation::Realization>::Native, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::adopt(&skene_foundation::NodeSpec, <P as skene_foundation::Realization>::Native) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::contains(&self, skene_foundation::NodeId) -> bool
-pub fn skene_foundation::Scene<P>::create(&mut self, skene_foundation::NodeKind, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::create(&mut self, skene_foundation::NodeKind) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::entry(&self, skene_foundation::NodeId) -> core::option::Option<alloc::rc::Rc<<P as skene_foundation::Realization>::Entry>>
 pub fn skene_foundation::Scene<P>::entry_of(skene_foundation::NodeId) -> core::option::Option<alloc::rc::Rc<<P as skene_foundation::Realization>::Entry>>
 pub fn skene_foundation::Scene<P>::is_borrowed() -> bool
 pub fn skene_foundation::Scene<P>::new() -> Self
 pub fn skene_foundation::Scene<P>::node_at(&self, &skene_reactive::path::SnapshotPlace) -> core::option::Option<skene_foundation::NodeId>
 pub fn skene_foundation::Scene<P>::read<R>(impl core::ops::function::FnOnce(&Self) -> R) -> R
-pub fn skene_foundation::Scene<P>::realize(&skene_foundation::NodeSpec, core::option::Option<skene_foundation::Annotation<P>>) -> skene_foundation::NodeId
+pub fn skene_foundation::Scene<P>::realize(&skene_foundation::NodeSpec) -> skene_foundation::NodeId
 pub fn skene_foundation::Scene<P>::record(&self, skene_foundation::NodeId) -> core::option::Option<&skene_foundation::NodeRecord<P>>
 pub fn skene_foundation::Scene<P>::record_mut(&mut self, skene_foundation::NodeId) -> core::option::Option<&mut skene_foundation::NodeRecord<P>>
 pub fn skene_foundation::Scene<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R

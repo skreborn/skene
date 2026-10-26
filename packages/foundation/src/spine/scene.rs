@@ -82,7 +82,6 @@ pub struct NodeRecord<P: Realization> {
   next_sibling: Option<NodeId>,
   kind: NodeKind,
   realized: bool,
-  annotation: Option<Box<Annotation<P>>>,
   definitions: Option<Box<Definitions<P::TokenValue>>>,
   container: Option<ContainerName>,
   handlers: Option<Box<HandlerSet>>,
@@ -144,13 +143,6 @@ impl<P: Realization> NodeRecord<P> {
   #[must_use]
   pub const fn is_acting(&self) -> bool {
     self.acting
-  }
-
-  /// The per-child properties a wrapper asked for this box.
-  #[inline(always)]
-  #[must_use]
-  pub fn annotation(&self) -> Option<&Annotation<P>> {
-    self.annotation.as_deref()
   }
 
   /// The token definitions placed on this node.
@@ -368,8 +360,8 @@ impl<P: Realization> Scene<P> {
     self.record(node).is_some()
   }
 
-  /// Mints a detached node of `kind`, recording the `annotation` a wrapper gave it; a
-  /// control starts in the default [`ControlState`].
+  /// Mints a detached node of `kind`; a control starts in the default
+  /// [`ControlState`].
   ///
   /// The platform realizes the node, keyed by the id this returns, once the scene is
   /// released and before the node takes part in any other operation, and the node
@@ -379,7 +371,7 @@ impl<P: Realization> Scene<P> {
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
-  pub fn create(&mut self, kind: NodeKind, annotation: Option<Annotation<P>>) -> NodeId {
+  pub fn create(&mut self, kind: NodeKind) -> NodeId {
     let is_control = kind == NodeKind::Control;
     let position = SnapshotPlace::next();
     let record = NodeRecord {
@@ -391,7 +383,6 @@ impl<P: Realization> Scene<P> {
       next_sibling: None,
       kind,
       realized: true,
-      annotation: annotation.map(Box::new),
       definitions: None,
       container: None,
       handlers: None,
@@ -414,15 +405,14 @@ impl<P: Realization> Scene<P> {
     self.nodes.insert(record)
   }
 
-  /// Mints a detached node as `spec` describes it, recording the `annotation` a wrapper
-  /// gave it, and has the platform create it, recording whether it made a node; see
-  /// [`Realization::create`].
+  /// Mints a detached node as `spec` describes it and has the platform create it,
+  /// recording whether it made a node; see [`Realization::create`].
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes, or if the scene is borrowed.
-  pub fn realize(spec: &NodeSpec, annotation: Option<Annotation<P>>) -> NodeId {
-    let node = Self::with(|scene| scene.mint(spec, annotation));
+  pub fn realize(spec: &NodeSpec) -> NodeId {
+    let node = Self::with(|scene| scene.mint(spec));
 
     if let NodeFacts::Control(control) = &spec.facts
       && control.native.is_some_and(NativeElement::is_text_entry)
@@ -446,15 +436,15 @@ impl<P: Realization> Scene<P> {
     node
   }
 
-  /// Mints a detached node as `spec` describes it, recording the `annotation` a wrapper
-  /// gave it, and has the platform adopt `native`, its own view, as the node, recording
-  /// whether it made a node; see [`Realization::adopt`].
+  /// Mints a detached node as `spec` describes it and has the platform adopt `native`,
+  /// its own view, as the node, recording whether it made a node; see
+  /// [`Realization::adopt`].
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes, or if the scene is borrowed.
-  pub fn adopt(spec: &NodeSpec, native: P::Native, annotation: Option<Annotation<P>>) -> NodeId {
-    let node = Self::with(|scene| scene.mint(spec, annotation));
+  pub fn adopt(spec: &NodeSpec, native: P::Native) -> NodeId {
+    let node = Self::with(|scene| scene.mint(spec));
 
     if !P::adopt(node, native, spec) {
       Self::with(|scene| {
@@ -467,10 +457,10 @@ impl<P: Realization> Scene<P> {
     node
   }
 
-  /// Mints a detached node as `spec` describes it, recording the `annotation` a wrapper
-  /// gave it and whether it acts on a click of its own.
-  fn mint(&mut self, spec: &NodeSpec, annotation: Option<Annotation<P>>) -> NodeId {
-    let node = self.create(spec.kind(), annotation);
+  /// Mints a detached node as `spec` describes it, recording whether it acts on a click
+  /// of its own.
+  fn mint(&mut self, spec: &NodeSpec) -> NodeId {
+    let node = self.create(spec.kind());
 
     if let Some(record) = self.record_mut(node) {
       record.acting = spec.acting();

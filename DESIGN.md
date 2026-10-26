@@ -54,10 +54,9 @@ platforms' builds and compiles empty in the other's.
 ## The scene and the platform
 
 **The spine owns the tree; a platform keeps a record per node it makes.**
-`Scene<P: Realization>` is a generational arena of node records—parent, children as a list of linked siblings (a move
-relinks a few records and shifts nothing), the annotation a wrapper asked for the child,
-the token definitions a theme placed on the node, the query-container name, the
-handlers; beside them, the root's definitions every node falls back to, the platform's
+`Scene<P: Realization>` is a generational arena of node records—parent, children as a
+list of linked siblings (a move relinks a few records and shifts nothing), the token
+definitions a theme placed on the node, the query-container name, the handlers; beside them, the root's definitions every node falls back to, the platform's
 colors (`SystemColors`) among them, which the realization defines there as it is
 installed. The scene mints every `NodeId` a node holds (`NodeId::new` builds one from its
 index and generation, as the layout engine's tests key their canned trees, and one no
@@ -474,6 +473,8 @@ and its cost unjustified.
   annotation into the scene slot the next box, control, run or low-level node built
   under them consumes, so per-child layout is an ordinary property of the child's
   style: in the class on the web, conditional, token-valued or derived like any other.
+  Taking it empties the slot, and the scene records nothing of it per node: the
+  layout crosses in the child's style alone.
   A run's record carries it after the run's own properties, its derived leaves slots
   numbered after the run's own, and a low-level node hands it to its platform as a
   style holding that layout alone, through `Realization::apply_style`, which the web

@@ -217,7 +217,7 @@ impl<P: Realization> Run<P> {
 
     record.add_run(&style);
 
-    let layout_slots = annotation.clone().map_or_else(Vec::new, |annotation| {
+    let layout_slots = annotation.map_or_else(Vec::new, |annotation| {
       let (layout, layout_slots) = annotation.into_style().split_after(slots.len());
 
       record.add_box(&layout);
@@ -239,7 +239,7 @@ impl<P: Realization> Run<P> {
         link: links,
       }),
     );
-    let node = Scene::<P>::realize(&spec, annotation);
+    let node = Scene::<P>::realize(&spec);
 
     if let Some(destination) = self.link {
       destination.bind(node, |node, path| {

@@ -131,7 +131,7 @@ impl<P: Realization> View<P> for ThemeCore<P> {
       return empty::<P>().build();
     };
     let spec = NodeSpec::scope();
-    let scope = Scene::<P>::realize(&spec, None);
+    let scope = Scene::<P>::realize(&spec);
 
     let owner = Owner::current().child();
     let provide = self.provide;

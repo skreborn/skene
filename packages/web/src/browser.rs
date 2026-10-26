@@ -520,7 +520,7 @@ fn install_at(root: Element, hydrating: bool) {
     *dom = Some(Dom::new(
       document,
       root,
-      Scene::<Web>::with(|scene| scene.create(NodeKind::Box, None)),
+      Scene::<Web>::with(|scene| scene.create(NodeKind::Box)),
       hydration,
     ));
   });

@@ -519,7 +519,7 @@ pub(crate) fn install() {
     );
 
     *records = Some(Records::new(Scene::<Terminal>::with(|scene| {
-      scene.create(NodeKind::Box, None)
+      scene.create(NodeKind::Box)
     })));
   });
 

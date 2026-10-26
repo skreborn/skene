@@ -171,14 +171,14 @@ pub struct LowLevel<P: Realization>(PhantomData<fn() -> P>);
 
 impl<P: Realization> LowLevel<P> {
   /// Mints a detached node of `kind`, has `make` realize it against a platform's
-  /// escape trait, and returns its id, recording the annotation a wrapper around the
-  /// view gave it and applying it to the node as a style holding that layout alone; see
+  /// escape trait, and returns its id, applying the annotation a wrapper around the
+  /// view gave it to the node as a style holding that layout alone; see
   /// [`Realization::apply_style`].
   pub fn realize(kind: NodeKind, make: impl FnOnce(NodeId)) -> NodeId {
     let (node, annotation) = Scene::<P>::with(|scene| {
       let annotation = scene.take_pending_annotation();
 
-      (scene.create(kind, annotation.clone()), annotation)
+      (scene.create(kind), annotation)
     });
 
     make(node);
@@ -188,12 +188,12 @@ impl<P: Realization> LowLevel<P> {
   }
 
   /// Mints a detached node as `spec` describes it, has the platform adopt `native`, its
-  /// own view, as the node through the native door, and returns its id, recording the
-  /// annotation a wrapper around the view gave it and applying it as
-  /// [`realize`](Self::realize) does; see [`Realization::adopt`].
+  /// own view, as the node through the native door, and returns its id, applying the
+  /// annotation a wrapper around the view gave it as [`realize`](Self::realize) does;
+  /// see [`Realization::adopt`].
   pub fn adopt(spec: &NodeSpec, native: P::Native) -> NodeId {
     let annotation = Scene::<P>::with(Scene::take_pending_annotation);
-    let node = Scene::<P>::adopt(spec, native, annotation.clone());
+    let node = Scene::<P>::adopt(spec, native);
 
     Self::apply_annotation(node, annotation);
 

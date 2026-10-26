@@ -656,7 +656,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
     let tab_stop = focus_order.or_else(|| spec.acting().then_some(FocusOrder::Auto));
     let shortcut = self.shortcut.filter(|_| acting);
     let container = self.container;
-    let node = Scene::<P>::realize(&spec, None);
+    let node = Scene::<P>::realize(&spec);
 
     if let Some(destination) = self.destination {
       destination.bind(node, |node, path| {

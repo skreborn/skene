@@ -1195,7 +1195,7 @@ mod properties {
 
   /// The flow of a run holding `text` at `scale`.
   fn flow(text: &str, scale: CellScale) -> CellFlow {
-    let node = Scene::<Terminal>::with(|scene| scene.create(NodeKind::Run, None));
+    let node = Scene::<Terminal>::with(|scene| scene.create(NodeKind::Run));
     let mut flow = CellFlow::new();
 
     flow.add_run(node, text, scale);

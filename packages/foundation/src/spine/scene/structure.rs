@@ -33,8 +33,8 @@ impl<P: Realization> Scene<P> {
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment() -> (NodeId, NodeId) {
     let spec = NodeSpec::anchor();
-    let start = Self::realize(&spec, None);
-    let end = Self::realize(&spec, None);
+    let start = Self::realize(&spec);
+    let end = Self::realize(&spec);
 
     Self::with(|scene| {
       if let Some(record) = scene.record_mut(start) {

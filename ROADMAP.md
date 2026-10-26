@@ -32,9 +32,6 @@ in a code comment.
     `skene new`'s app and library scaffolds take that shape, and the gate compiles what
     they write on every platform they name, so a scaffold cannot fall behind the surface
     it teaches.
-    - The scene drops the copy of a wrapper's annotation it records per node
-    (`Scene::create`'s argument, `NodeRecord::annotation`): a node's per-child layout
-    crosses in its style alone, and nothing reads the copy.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.

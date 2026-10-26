@@ -29,9 +29,7 @@ in a code comment.
     re-inking its built-in. The core holds colors, named sizes and logic and no view, so
     Simple's core and the library scaffold's core lose their views over
     `P: Realization`, the last signatures above the realizations to name one.
-    `skene new`'s app and library scaffolds take that shape, and the gate compiles what
-    they write on every platform they name, so a scaffold cannot fall behind the surface
-    it teaches.
+    `skene new`'s app and library scaffolds take that shape.
     - The leaves' own seams stand in one place on both facades: the web keeps
     `install`, `mount`, `uninstall` and their kin in `platform::web`, where the terminal
     keeps `install`, `mount` and `uninstall` at its root beside `launch`.

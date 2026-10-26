@@ -2196,7 +2196,15 @@ Each shell's crate root is gated on its platform, so the whole project builds un
 each platform, and the project's workspace declares both cfgs in its `check-cfg`, which
 every crate of it inherits, so an app's code and its entry's expansion name them
 without a warning. A project made from a checkout patches the crates the checkout
-patches and starts from the checkout's lock.
+patches and starts from the checkout's lock. The gate's `scaffolds` step writes the app
+and the library scaffolds from this checkout, both naming the terminal and the web, and
+holds each clippy-clean with warnings denied in every build of the platforms they name,
+the browser leaf, the server leaf and the terminal, their doctests passing in the two on
+the host, so a scaffold cannot fall behind the surface it teaches. It names each build's
+platform in `RUSTFLAGS` and `RUSTDOCFLAGS`, which outrank the project's configuration,
+since a target's flags would join the project's and name two platforms. Each build has
+a target directory of its own, and once a project's lock has taken its own crates every
+build runs locked and offline.
 
 **The CLI builds any platform by substituting the cfg where cargo reads it**
 (`packages/cli/src/flags.rs`). It reads the flags cargo would use for the build's

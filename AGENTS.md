@@ -829,8 +829,10 @@ migration is at the top of `ROADMAP.md`, and `DESIGN.md` describes the code as i
   the host in release as well, where code built for debug assertions alone drops out,
   each library crate's public API against its snapshot under `api/`, read by a pinned
   nightly and `cargo public-api`, clippy on the code written for Apple's platforms (the
-  terminal's, on `aarch64-apple-darwin`), every platform's tests the gate's machine runs
-  and the workspace on its declared `rust-version`. A realization crate enables only the
+  terminal's, on `aarch64-apple-darwin`), the app and the library `skene new` writes
+  from the checkout, clippy-clean and their doctests passing in every build of the
+  platforms they name, every platform's tests the gate's machine runs and the workspace
+  on its declared `rust-version`. A realization crate enables only the
   binding features it uses and keeps target-side C build scripts out, so a pixel target
   cross-checks from any host. Everything but formatting, the API snapshots and that last
   check runs on the stable `rust-toolchain.toml` pins, so a Rust release changes nothing

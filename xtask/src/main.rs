@@ -112,6 +112,11 @@ const STEPS: &[Step] = &[
     stamped: true,
   },
   Step {
+    name: "scaffolds",
+    run: scaffolds,
+    stamped: true,
+  },
+  Step {
     name: "doc:host",
     run: doc_host,
     stamped: true,
@@ -561,22 +566,38 @@ impl Gate {
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
   {
-    let mut arguments: Vec<OsString> = arguments
-      .into_iter()
-      .map(|argument| argument.as_ref().to_owned())
-      .collect();
-    let end = arguments
-      .iter()
-      .position(|argument| argument == "--")
-      .unwrap_or(arguments.len());
-
-    arguments.splice(end..end, ["--target".into(), target.into()]);
-
-    let mut command = self.cargo(arguments);
+    let mut command = self.cargo(targeted(target, arguments));
 
     command
       .env(Self::target_flags(target, "RUSTFLAGS"), flags)
       .env(Self::target_flags(target, "RUSTDOCFLAGS"), flags);
+
+    command
+  }
+
+  /// A cargo command run in the scaffolded `project`, building for `build`: its flags in
+  /// `RUSTFLAGS` and `RUSTDOCFLAGS`, which outrank the project's own configuration, in
+  /// the build's target directory under [`SCAFFOLDS`].
+  fn scaffold_cargo<I, S>(&self, project: &Path, build: &ScaffoldBuild, arguments: I) -> Command
+  where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+  {
+    let target = build.target.unwrap_or(&self.host);
+    let mut command = Command::new("cargo");
+
+    command
+      .current_dir(project)
+      .env("CARGO_TERM_COLOR", "never")
+      .env_remove("CARGO_ENCODED_RUSTFLAGS")
+      .env_remove("CARGO_ENCODED_RUSTDOCFLAGS")
+      .env("RUSTFLAGS", build.flags)
+      .env("RUSTDOCFLAGS", build.flags)
+      .env(
+        "CARGO_TARGET_DIR",
+        self.target.join(SCAFFOLDS).join(build.name),
+      )
+      .args(targeted(target, arguments));
 
     command
   }
@@ -655,6 +676,26 @@ impl Log {
       .map(|line| (*line).to_owned())
       .collect()
   }
+}
+
+/// `arguments` with `--target target` before any `--`.
+fn targeted<I, S>(target: &str, arguments: I) -> Vec<OsString>
+where
+  I: IntoIterator<Item = S>,
+  S: AsRef<OsStr>,
+{
+  let mut arguments: Vec<OsString> = arguments
+    .into_iter()
+    .map(|argument| argument.as_ref().to_owned())
+    .collect();
+  let end = arguments
+    .iter()
+    .position(|argument| argument == "--")
+    .unwrap_or(arguments.len());
+
+  arguments.splice(end..end, ["--target".into(), target.into()]);
+
+  arguments
 }
 
 /// `command` as a shell would read it, with the variables the gate set on it.
@@ -866,6 +907,140 @@ fn clippy_apple(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(command)
 }
 
+/// The directory under the target directory the scaffolds and their builds are in.
+const SCAFFOLDS: &str = "scaffolds";
+
+/// The kinds of project `skene new` scaffolds, each written to the directory of its name
+/// under [`SCAFFOLDS`].
+const SCAFFOLD_PROJECTS: &[&str] = &["app", "lib"];
+
+/// The platforms each scaffold is given, the terminal first, so the build plain cargo
+/// runs needs no test runner.
+const SCAFFOLD_PLATFORMS: &[&str] = &["terminal", "web"];
+
+/// A build a scaffold is linted in.
+struct ScaffoldBuild {
+  /// The build's name, which names its target directory under [`SCAFFOLDS`].
+  name: &'static str,
+  /// What the build is, as a failure names it.
+  description: &'static str,
+  /// The build's target, the host's where none is named.
+  target: Option<&'static str>,
+  /// The flags naming the build's platform.
+  flags: &'static str,
+}
+
+/// Every build of the platforms the scaffolds name; the doctests run in those on the
+/// host.
+const SCAFFOLD_BUILDS: &[ScaffoldBuild] = &[
+  ScaffoldBuild {
+    name: "browser",
+    description: "the web's browser leaf",
+    target: Some(WASM),
+    flags: WEB_CFG,
+  },
+  ScaffoldBuild {
+    name: "server",
+    description: "the web's server leaf",
+    target: None,
+    flags: SERVER_CFG,
+  },
+  ScaffoldBuild {
+    name: "terminal",
+    description: "the terminal",
+    target: None,
+    flags: TERMINAL_CFG,
+  },
+];
+
+/// The arguments of the `skene` command scaffolding `project` at `path` from the checkout
+/// at `root`.
+fn scaffold_arguments(project: &str, path: &Path, root: &Path) -> Vec<OsString> {
+  ["new", project]
+    .into_iter()
+    .map(OsString::from)
+    .chain([path.as_os_str().to_owned()])
+    .chain(SCAFFOLD_PLATFORMS.iter().map(OsString::from))
+    .chain(["--skene".into(), root.as_os_str().to_owned()])
+    .collect()
+}
+
+/// Writes the app and the library `skene new` scaffolds from the checkout, and holds each
+/// clippy-clean in every build of the platforms they name, their doctests passing in the
+/// builds on the host.
+fn scaffolds(gate: &Gate, log: &mut Log) -> Outcome {
+  let directory = gate.target.join(SCAFFOLDS);
+
+  for project in SCAFFOLD_PROJECTS {
+    let path = directory.join(project);
+
+    if path.exists() {
+      fs::remove_dir_all(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+    }
+  }
+
+  fs::create_dir_all(&directory).map_err(|error| format!("{}: {error}", directory.display()))?;
+
+  for project in SCAFFOLD_PROJECTS {
+    let path = directory.join(project);
+
+    log.note(&format!("# the {project} scaffold, at {}", path.display()));
+
+    let mut new = gate.cargo(["run", "--locked", "-p", "skene-cli", "--"]);
+
+    new.args(scaffold_arguments(project, &path, &gate.root));
+    log
+      .check(new)
+      .map_err(|reason| format!("{reason}: `skene new {project}` writes no scaffold"))?;
+
+    let mut lock = Command::new("cargo");
+
+    lock
+      .current_dir(&path)
+      .env("CARGO_TERM_COLOR", "never")
+      .args(["update", "--workspace", "--offline"]);
+    log
+      .check(lock)
+      .map_err(|reason| format!("{reason}: the {project} scaffold's lock takes its own crates"))?;
+
+    for build in SCAFFOLD_BUILDS {
+      log
+        .check(gate.scaffold_cargo(
+          &path,
+          build,
+          [
+            "clippy",
+            "--all-targets",
+            "--locked",
+            "--offline",
+            "--",
+            "-D",
+            "warnings",
+          ],
+        ))
+        .map_err(|reason| {
+          format!(
+            "{reason}: the {project} scaffold fails clippy in {}'s build",
+            build.description
+          )
+        })?;
+
+      if build.target.is_none() {
+        log
+          .check(gate.scaffold_cargo(&path, build, ["test", "--doc", "--locked", "--offline"]))
+          .map_err(|reason| {
+            format!(
+              "{reason}: the {project} scaffold's doctests fail in {}'s build",
+              build.description
+            )
+          })?;
+      }
+    }
+  }
+
+  Ok(())
+}
+
 fn doc_host(gate: &Gate, log: &mut Log) -> Outcome {
   let workspace = Workspace::read(&gate.root)?;
   let mut command = gate.cargo(["doc", "--no-deps", "--locked"]);
@@ -1016,4 +1191,138 @@ fn installed_toolchain(version: &str) -> Option<String> {
   .iter()
   .find_map(|prefix| names.iter().find(|name| name.starts_with(prefix.as_str())))
   .map(|name| (*name).to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+  use std::{
+    ffi::{OsStr, OsString},
+    path::{Path, PathBuf},
+  };
+
+  use super::{
+    Gate,
+    SCAFFOLD_BUILDS,
+    SERVER_CFG,
+    TERMINAL_CFG,
+    WASM,
+    WEB_CFG,
+    scaffold_arguments,
+    targeted,
+  };
+
+  fn gate() -> Gate {
+    Gate {
+      root: PathBuf::from("/src/skene"),
+      target: PathBuf::from("/src/skene/target"),
+      toolchain: String::new(),
+      host: "x86_64-unknown-linux-gnu".to_owned(),
+    }
+  }
+
+  fn words(arguments: &[OsString]) -> Vec<&str> {
+    arguments
+      .iter()
+      .map(|argument| argument.to_str().expect("the argument is UTF-8"))
+      .collect()
+  }
+
+  #[test]
+  fn the_target_goes_before_the_tools_arguments() {
+    assert_eq!(
+      words(&targeted(
+        WASM,
+        ["clippy", "--locked", "--", "-D", "warnings"]
+      )),
+      [
+        "clippy", "--locked", "--target", WASM, "--", "-D", "warnings"
+      ]
+    );
+    assert_eq!(
+      words(&targeted(WASM, ["check"])),
+      ["check", "--target", WASM]
+    );
+  }
+
+  #[test]
+  fn a_scaffold_names_the_terminal_first_and_the_checkout() {
+    assert_eq!(
+      words(&scaffold_arguments(
+        "lib",
+        Path::new("/src/skene/target/scaffolds/lib"),
+        Path::new("/src/skene")
+      )),
+      [
+        "new",
+        "lib",
+        "/src/skene/target/scaffolds/lib",
+        "terminal",
+        "web",
+        "--skene",
+        "/src/skene"
+      ]
+    );
+  }
+
+  /// A scaffold's build names its platform in the flags that outrank the project's own
+  /// configuration, never in the target's, which cargo would join to the project's.
+  #[test]
+  fn a_scaffold_build_outranks_the_projects_platform() {
+    let gate = gate();
+    let project = Path::new("/src/skene/target/scaffolds/app");
+    let server = SCAFFOLD_BUILDS
+      .iter()
+      .find(|build| build.name == "server")
+      .expect("the server leaf is a build");
+    let command = gate.scaffold_cargo(project, server, ["clippy", "--", "-D", "warnings"]);
+    let variable = |name: &str| {
+      command
+        .get_envs()
+        .find(|(key, _)| *key == name)
+        .and_then(|(_, value)| value)
+    };
+
+    assert_eq!(command.get_current_dir(), Some(project));
+    assert_eq!(variable("RUSTFLAGS"), Some(OsStr::new(SERVER_CFG)));
+    assert_eq!(variable("RUSTDOCFLAGS"), Some(OsStr::new(SERVER_CFG)));
+    assert_eq!(
+      variable("CARGO_TARGET_DIR"),
+      Some(OsStr::new("/src/skene/target/scaffolds/server"))
+    );
+    assert!(
+      command
+        .get_envs()
+        .all(|(key, _)| !key.to_string_lossy().starts_with("CARGO_TARGET_X86")),
+      "{:?}",
+      command.get_envs().collect::<Vec<_>>()
+    );
+    assert_eq!(
+      command.get_args().collect::<Vec<_>>(),
+      [
+        "clippy",
+        "--target",
+        "x86_64-unknown-linux-gnu",
+        "--",
+        "-D",
+        "warnings"
+      ]
+    );
+  }
+
+  #[test]
+  fn every_platform_a_scaffold_names_is_built() {
+    let builds: Vec<(&str, Option<&str>, &str)> = SCAFFOLD_BUILDS
+      .iter()
+      .map(|build| (build.name, build.target, build.flags))
+      .collect();
+
+    assert_eq!(
+      builds,
+      [
+        ("browser", Some(WASM), WEB_CFG),
+        ("server", None, SERVER_CFG),
+        ("terminal", None, TERMINAL_CFG),
+      ]
+    );
+  }
 }

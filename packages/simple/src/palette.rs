@@ -123,11 +123,11 @@ impl<N: Scalar> SimpleLook<N> {
     let surface = surface.into();
 
     Self {
-      surface: Token::new(variant.surface().name().as_str(), surface.clone()),
-      ink: Token::new(variant.ink().name().as_str(), ink),
+      surface: Token::new(variant.surface(), surface.clone()),
+      ink: Token::new(variant.ink(), ink),
       border: None,
-      hover: Token::new(variant.hover().name().as_str(), surface.clone()),
-      focus: Token::new(variant.focus().name().as_str(), surface),
+      hover: Token::new(variant.hover(), surface.clone()),
+      focus: Token::new(variant.focus(), surface),
       variant,
     }
   }
@@ -154,7 +154,7 @@ impl<N: Scalar> SimpleLook<N> {
 
   /// Gives the action a hairline border, making it a bordered variant.
   pub fn set_border(mut self, border: impl Into<Definition<Color, N>>) -> Self {
-    self.border = Some(Token::new(self.variant.border().name().as_str(), border));
+    self.border = Some(Token::new(self.variant.border(), border));
 
     self
   }
@@ -175,9 +175,8 @@ impl<N: Scalar> SimpleLook<N> {
 
   /// The look with its tokens named for `variant`, its definitions kept.
   fn named_for(self, variant: SimpleVariant) -> Self {
-    let rename = |token: &Token<Color, N>, name: TokenRef<Color>| {
-      Token::new(name.name().as_str(), token.definition().clone())
-    };
+    let rename =
+      |token: &Token<Color, N>, name: TokenRef<Color>| Token::new(name, token.definition().clone());
 
     Self {
       surface: rename(&self.surface, variant.surface()),
@@ -472,21 +471,15 @@ impl<N: Scalar> Default for SimplePalette<N> {
     let anchor_dark = Color::srgb(0.376, 0.647, 0.98);
 
     Self {
-      background: Token::new(Self::BACKGROUND.name().as_str(), pair(page, page_dark)),
-      foreground: Token::new(Self::FOREGROUND.name().as_str(), pair(ink, ink_dark)),
-      muted_foreground: Token::new(
-        Self::MUTED_FOREGROUND.name().as_str(),
-        pair(muted, muted_dark),
-      ),
-      card: Token::new(Self::CARD.name().as_str(), pair(raised, raised_dark)),
-      border: Token::new(Self::BORDER.name().as_str(), pair(edge, edge_dark)),
-      ring: Token::new(Self::RING.name().as_str(), pair(muted, muted_dark)),
-      link: Token::new(Self::LINK.name().as_str(), pair(anchor, anchor_dark)),
-      disabled_surface: Token::new(
-        Self::DISABLED_SURFACE.name().as_str(),
-        pair(subdued, subdued_dark),
-      ),
-      disabled_ink: Token::new(Self::DISABLED_INK.name().as_str(), pair(muted, muted_dark)),
+      background: Token::new(Self::BACKGROUND, pair(page, page_dark)),
+      foreground: Token::new(Self::FOREGROUND, pair(ink, ink_dark)),
+      muted_foreground: Token::new(Self::MUTED_FOREGROUND, pair(muted, muted_dark)),
+      card: Token::new(Self::CARD, pair(raised, raised_dark)),
+      border: Token::new(Self::BORDER, pair(edge, edge_dark)),
+      ring: Token::new(Self::RING, pair(muted, muted_dark)),
+      link: Token::new(Self::LINK, pair(anchor, anchor_dark)),
+      disabled_surface: Token::new(Self::DISABLED_SURFACE, pair(subdued, subdued_dark)),
+      disabled_ink: Token::new(Self::DISABLED_INK, pair(muted, muted_dark)),
       primary: SimpleLook::new(
         SimpleVariant::Primary,
         pair(raised_dark, ink_dark),

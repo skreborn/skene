@@ -55,11 +55,11 @@ impl<N: Scalar> Default for {Type}Palette<N> {
 
     Self {
       badge: Token::new(
-        Self::BADGE.name().as_str(),
+        Self::BADGE,
         Definition::from(pale).when(Media::Dark, deep),
       ),
       badge_ink: Token::new(
-        Self::BADGE_INK.name().as_str(),
+        Self::BADGE_INK,
         Definition::from(deep).when(Media::Dark, pale),
       ),
     }

@@ -317,22 +317,16 @@ impl ParityPalette {
 impl Default for ParityPalette {
   fn default() -> Self {
     Self {
-      surface: Token::new(
-        Self::SURFACE.name().as_str(),
-        Definition::from(Color::srgb(0.2, 0.4, 0.6)),
-      ),
+      surface: Token::new(Self::SURFACE, Definition::from(Color::srgb(0.2, 0.4, 0.6))),
       shifted: Token::new(
-        Self::SHIFTED.name().as_str(),
+        Self::SHIFTED,
         Definition::from(Color::srgb(0.9, 0.1, 0.1))
           .when(Media::min_width(1), Color::srgb(0.1, 0.7, 0.3)),
       ),
-      wide: Token::new(Self::WIDE.name().as_str(), 90),
-      gap: Token::new(Self::GAP.name().as_str(), 14),
-      shade: Token::new(
-        Self::SHADE.name().as_str(),
-        Expr::from(Self::SURFACE).lighter(0.2),
-      ),
-      indent: Token::new(Self::INDENT.name().as_str(), Expr::<Length>::font_size(2.)),
+      wide: Token::new(Self::WIDE, 90),
+      gap: Token::new(Self::GAP, 14),
+      shade: Token::new(Self::SHADE, Expr::from(Self::SURFACE).lighter(0.2)),
+      indent: Token::new(Self::INDENT, Expr::<Length>::font_size(2.)),
     }
   }
 }
@@ -558,7 +552,7 @@ impl Case {
   fn view(self) -> AnyView<Web> {
     match self {
       Self::LexicalToken => Theme::<Web, InnerPalette>::new(InnerPalette {
-        surface: Token::new(ParityPalette::SURFACE.name().as_str(), orange()),
+        surface: Token::new(ParityPalette::SURFACE, orange()),
       })
       .set_child_builder(|| ReadBox::new().set_background(ParityPalette::SHADE))
       .into_any(),

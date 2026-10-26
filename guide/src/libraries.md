@@ -45,7 +45,7 @@ impl<N: Scalar> Default for AcmeUiPalette<N> {
   fn default() -> Self {
     Self {
       badge: Token::new(
-        Self::BADGE.name().as_str(),
+        Self::BADGE,
         Definition::from(Color::srgb(0.88, 0.91, 1.)).when(Media::Dark, Color::srgb(0.19, 0.18, 0.5)),
       ),
     }
@@ -132,8 +132,8 @@ the sizes in its unit. The scaffold's web crate writes its badge this way:
 #   impl<N: Scalar> Default for AcmeUiPalette<N> {
 #     fn default() -> Self {
 #       Self {
-#         badge: Token::new(Self::BADGE.name().as_str(), Definition::from(Color::srgb(0.88, 0.91, 1.))),
-#         badge_ink: Token::new(Self::BADGE_INK.name().as_str(), Definition::from(Color::srgb(0.19, 0.18, 0.5))),
+#         badge: Token::new(Self::BADGE, Definition::from(Color::srgb(0.88, 0.91, 1.))),
+#         badge_ink: Token::new(Self::BADGE_INK, Definition::from(Color::srgb(0.19, 0.18, 0.5))),
 #       }
 #     }
 #   }

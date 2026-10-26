@@ -67,7 +67,7 @@ impl Palette {
 
   fn with_card(card: Color) -> Self {
     Self {
-      card: Token::new("simple-card", card),
+      card: Token::new(Self::CARD, card),
       ..Self::default()
     }
   }
@@ -76,8 +76,8 @@ impl Palette {
 impl Default for Palette {
   fn default() -> Self {
     Self {
-      card: Token::new("simple-card", white()).define_when(Media::Dark, black()),
-      gutter: Token::new("simple-gutter", 8),
+      card: Token::new(Self::CARD, white()).define_when(Media::Dark, black()),
+      gutter: Token::new(Self::GUTTER, 8),
     }
   }
 }

@@ -113,9 +113,7 @@ impl Default for SimpleGlyphs {
   /// `[x]`/`[ ]` for a checkbox, `(x)`/`( )` for a radio and `▾` for the picker
   /// indicator.
   fn default() -> Self {
-    let define = |reference: TokenRef<String>, glyph: &str| {
-      Token::new(reference.name().as_str(), glyph.to_owned())
-    };
+    let define = |reference: TokenRef<String>, glyph: &str| Token::new(reference, glyph.to_owned());
 
     Self {
       checkbox_checked: define(CHECKBOX_CHECKED, "[x]"),

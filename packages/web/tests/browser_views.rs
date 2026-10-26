@@ -612,7 +612,7 @@ fn layout_properties_reach_the_box_and_a_token_spacing_resolves() {
 
   let _ = mount(|| {
     Theme::new(Gutters {
-      gutter: skene_web::Token::new(GUTTER.name().as_str(), 8.),
+      gutter: skene_web::Token::new(GUTTER, 8.),
     })
     .set_child_builder(|| {
       Column::new().set_children((

@@ -8427,7 +8427,7 @@ pub fn skene_foundation::Token<T, N>::define_when(self, skene_foundation::Media<
 pub fn skene_foundation::Token<T, N>::definition(&self) -> &skene_foundation::Definition<T, N>
 pub fn skene_foundation::Token<T, N>::derive_when<C, R: core::convert::Into<skene_foundation::StaticLeaf<T>>>(&self, C, impl core::ops::function::Fn() -> R + 'static) -> skene_foundation::Value<T, C>
 pub const fn skene_foundation::Token<T, N>::name(&self) -> skene_foundation::TokenName
-pub fn skene_foundation::Token<T, N>::new(&'static str, impl core::convert::Into<skene_foundation::Definition<T, N>>) -> Self
+pub fn skene_foundation::Token<T, N>::new(skene_foundation::TokenRef<T>, impl core::convert::Into<skene_foundation::Definition<T, N>>) -> Self
 pub fn skene_foundation::Token<T, N>::redefine(self, impl core::convert::Into<skene_foundation::Definition<T, N>>) -> Self
 pub const fn skene_foundation::Token<T, N>::reference(&self) -> skene_foundation::TokenRef<T>
 pub fn skene_foundation::Token<T, N>::when<C>(&self, C, impl core::convert::Into<skene_foundation::Leaf<T>>) -> skene_foundation::Value<T, C>
@@ -8454,7 +8454,7 @@ impl<T: skene_foundation::Tokenable, N: skene_foundation::Scalar> core::convert:
 pub fn skene_foundation::Leaf<T>::from(skene_foundation::Token<T, N>) -> Self
 impl<T: skene_foundation::Tokenable, N: skene_foundation::Scalar> core::convert::From<skene_foundation::Token<T, N>> for skene_foundation::StaticLeaf<T>
 pub fn skene_foundation::StaticLeaf<T>::from(skene_foundation::Token<T, N>) -> Self
-pub struct skene_foundation::TokenName(_)
+pub struct skene_foundation::TokenName
 impl skene_foundation::TokenName
 pub const fn skene_foundation::TokenName::as_str(self) -> &'static str
 pub const fn skene_foundation::TokenName::new(&'static str) -> Self
@@ -8462,24 +8462,24 @@ impl core::clone::Clone for skene_foundation::TokenName
 pub fn skene_foundation::TokenName::clone(&self) -> skene_foundation::TokenName
 impl core::cmp::Eq for skene_foundation::TokenName
 impl core::cmp::Ord for skene_foundation::TokenName
-pub fn skene_foundation::TokenName::cmp(&self, &skene_foundation::TokenName) -> core::cmp::Ordering
+pub fn skene_foundation::TokenName::cmp(&self, &Self) -> core::cmp::Ordering
 impl core::cmp::PartialEq for skene_foundation::TokenName
-pub fn skene_foundation::TokenName::eq(&self, &skene_foundation::TokenName) -> bool
+pub fn skene_foundation::TokenName::eq(&self, &Self) -> bool
 impl core::cmp::PartialOrd for skene_foundation::TokenName
-pub fn skene_foundation::TokenName::partial_cmp(&self, &skene_foundation::TokenName) -> core::option::Option<core::cmp::Ordering>
+pub fn skene_foundation::TokenName::partial_cmp(&self, &Self) -> core::option::Option<core::cmp::Ordering>
 impl core::fmt::Debug for skene_foundation::TokenName
 pub fn skene_foundation::TokenName::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Display for skene_foundation::TokenName
 pub fn skene_foundation::TokenName::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_foundation::TokenName
-pub fn skene_foundation::TokenName::hash<__H: core::hash::Hasher>(&self, &mut __H)
+pub fn skene_foundation::TokenName::hash<H: core::hash::Hasher>(&self, &mut H)
 impl core::marker::Copy for skene_foundation::TokenName
-impl core::marker::StructuralPartialEq for skene_foundation::TokenName
 pub struct skene_foundation::TokenRef<T: skene_foundation::Tokenable>
 impl<T: skene_foundation::Tokenable> skene_foundation::TokenRef<T>
 pub fn skene_foundation::TokenRef<T>::derive_when<C, R: core::convert::Into<skene_foundation::StaticLeaf<T>>>(self, C, impl core::ops::function::Fn() -> R + 'static) -> skene_foundation::Value<T, C>
 pub const fn skene_foundation::TokenRef<T>::name(self) -> skene_foundation::TokenName
 pub const fn skene_foundation::TokenRef<T>::new(&'static str) -> Self
+pub const fn skene_foundation::TokenRef<T>::of<S: skene_foundation::TokenSet<skene_foundation::TokenValue<N>> + core::default::Default, N: skene_foundation::Scalar>(&'static str) -> Self
 pub fn skene_foundation::TokenRef<T>::when<C>(self, C, impl core::convert::Into<skene_foundation::Leaf<T>>) -> skene_foundation::Value<T, C>
 impl core::convert::From<skene_foundation::TokenRef<f32>> for skene_foundation::Expr<skene_foundation::Number>
 pub fn skene_foundation::Expr<skene_foundation::Number>::from(skene_foundation::TokenRef<f32>) -> Self

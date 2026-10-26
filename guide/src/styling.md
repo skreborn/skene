@@ -121,10 +121,7 @@ impl<V: From<Definition<Color>> + 'static> TokenSet<V> for BrandAccent {
 }
 
 fn branded() -> impl View {
-  let accent = Token::new(
-    SystemColors::ACCENT.name().as_str(),
-    Color::srgb(1., 0.58, 0.),
-  );
+  let accent = Token::new(SystemColors::ACCENT, Color::srgb(1., 0.58, 0.));
 
   Theme::new(BrandAccent { accent }).set_child_builder(|| {
     Container::new()

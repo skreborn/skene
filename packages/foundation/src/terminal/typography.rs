@@ -103,29 +103,17 @@ impl Default for Typography {
   /// selection and focused link, size 1, weight 400.
   fn default() -> Self {
     Self {
-      ink: Token::new(typography::INK.name().as_str(), Color::TRANSPARENT),
+      ink: Token::new(typography::INK, Color::TRANSPARENT),
       link_ink: Token::new(
-        typography::LINK_INK.name().as_str(),
+        typography::LINK_INK,
         Definition::from(Color::srgb(0., 0.4, 0.8)).when(Media::Dark, Color::srgb(0.4, 0.6, 1.)),
       ),
-      selection_ink: Token::new(
-        typography::SELECTION_INK.name().as_str(),
-        Color::TRANSPARENT,
-      ),
-      selection_surface: Token::new(
-        typography::SELECTION_SURFACE.name().as_str(),
-        Color::TRANSPARENT,
-      ),
-      link_focus_ink: Token::new(
-        typography::LINK_FOCUS_INK.name().as_str(),
-        Color::TRANSPARENT,
-      ),
-      link_focus_surface: Token::new(
-        typography::LINK_FOCUS_SURFACE.name().as_str(),
-        Color::TRANSPARENT,
-      ),
-      size: Token::new(typography::SIZE.name().as_str(), 1.),
-      weight: Token::new(typography::WEIGHT.name().as_str(), 400.),
+      selection_ink: Token::new(typography::SELECTION_INK, Color::TRANSPARENT),
+      selection_surface: Token::new(typography::SELECTION_SURFACE, Color::TRANSPARENT),
+      link_focus_ink: Token::new(typography::LINK_FOCUS_INK, Color::TRANSPARENT),
+      link_focus_surface: Token::new(typography::LINK_FOCUS_SURFACE, Color::TRANSPARENT),
+      size: Token::new(typography::SIZE, 1.),
+      weight: Token::new(typography::WEIGHT, 400.),
     }
   }
 }

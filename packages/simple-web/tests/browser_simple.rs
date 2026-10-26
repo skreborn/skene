@@ -808,7 +808,7 @@ impl AcmePalette {
 impl Default for AcmePalette {
   fn default() -> Self {
     Self {
-      accent: Token::new(Self::ACCENT.name().as_str(), Color::srgb(1., 0., 0.))
+      accent: Token::new(Self::ACCENT, Color::srgb(1., 0., 0.))
         .define_when(Media::Dark, Color::srgb(0., 0., 1.)),
     }
   }

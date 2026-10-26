@@ -128,7 +128,7 @@ impl<N: Scalar> Default for SystemColors<N> {
     let black = Color::srgb(0., 0., 0.);
     let white = Color::srgb(1., 1., 1.);
     let token = |reference: TokenRef<Color>, definition: Definition<Color, N>| {
-      Token::new(reference.name().as_str(), definition)
+      Token::new(reference, definition)
     };
 
     Self {

@@ -3209,7 +3209,7 @@ fn the_root_defines_the_platforms_colors_and_a_theme_redefines_them() {
           .set_height(4)
           .set_background(SystemColors::ACCENT),
         Theme::new(OwnAccent {
-          accent: Token::new(SystemColors::ACCENT.name().as_str(), red),
+          accent: Token::new(SystemColors::ACCENT, red),
         })
         .set_child_builder(|| {
           Container::new()

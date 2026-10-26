@@ -1012,7 +1012,7 @@ fn layout_properties_reach_the_layout_and_a_token_spacing_resolves() {
   with_platform(|| {
     let _ = terminal::mount(|| {
       Theme::new(Gutters {
-        gutter: Token::new(GUTTER.name().as_str(), 2.),
+        gutter: Token::new(GUTTER, 2.),
       })
       .set_child_builder(|| {
         Column::new().set_children((

@@ -1,13 +1,15 @@
 //! Design tokens: named, typed slots a palette defines and a property references.
 
 use std::{
+  any::{Any, TypeId},
+  cmp::Ordering,
   fmt::{self, Debug, Display},
   hash::{Hash, Hasher},
   marker::PhantomData,
   rc::Rc,
 };
 
-use super::{Definition, Leaf, Media, Scalar, StaticLeaf, Value};
+use super::{Definition, Leaf, Media, Scalar, StaticLeaf, TokenValue, Value};
 use crate::spine::{Color, Dimension, Length, values::is_identifier};
 
 /// A token's name: what a consumer emits, and the key a theme defines.
@@ -15,9 +17,15 @@ use crate::spine::{Color, Dimension, Length, values::is_identifier};
 /// An implementation detail on every platform, never a public hook; it is limited to
 /// ASCII letters, digits, `_` and `-`, and does not start with a digit, so it is an
 /// identifier wherever a platform spells it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+///
+/// A name made through [`TokenRef::of`] carries its palette's default definitions;
+/// equality, hashing, ordering and formatting read the name alone.
+#[derive(Clone, Copy)]
 #[must_use]
-pub struct TokenName(&'static str);
+pub struct TokenName {
+  name: &'static str,
+  defaults: Option<TokenDefaults>,
+}
 
 impl TokenName {
   /// Names a token; debug builds check the name is identifier-safe.
@@ -28,21 +36,117 @@ impl TokenName {
       "a token name is ASCII letters, digits, `_` and `-`, and does not start with a digit",
     );
 
-    Self(name)
+    Self {
+      name,
+      defaults: None,
+    }
   }
 
   /// The name.
   #[inline(always)]
   #[must_use]
   pub const fn as_str(self) -> &'static str {
-    self.0
+    self.name
+  }
+
+  /// The token set whose default this name carries, if it carries one.
+  #[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "read by the scene's root defaults")
+  )]
+  #[inline(always)]
+  #[must_use]
+  pub(in crate::spine) fn default_set(self) -> Option<TypeId> {
+    self.defaults.map(|defaults| (defaults.0)(None))
+  }
+
+  /// The default definitions of the token set this name carries, in the foundation's
+  /// token value over `N`; `None` when it carries none, or its set is not over `N`.
+  #[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "read by the scene's root defaults")
+  )]
+  #[must_use]
+  pub(in crate::spine) fn defaults<N: Scalar>(self) -> Option<Definitions<TokenValue<N>>> {
+    let mut sink = None::<Definitions<TokenValue<N>>>;
+
+    (self.defaults?.0)(Some(&mut sink));
+
+    sink
+  }
+}
+
+impl PartialEq for TokenName {
+  #[inline(always)]
+  fn eq(&self, other: &Self) -> bool {
+    self.name == other.name
+  }
+}
+
+impl Eq for TokenName {}
+
+impl Hash for TokenName {
+  #[inline(always)]
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.name.hash(state);
+  }
+}
+
+impl PartialOrd for TokenName {
+  #[inline(always)]
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Ord for TokenName {
+  #[inline(always)]
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.name.cmp(other.name)
+  }
+}
+
+impl Debug for TokenName {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_tuple("TokenName")
+      .field(&self.name)
+      .finish()
   }
 }
 
 impl Display for TokenName {
   #[inline(always)]
   fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-    formatter.write_str(self.0)
+    formatter.write_str(self.name)
+  }
+}
+
+/// The link from a token's name to its palette's default definitions.
+///
+/// One plain function per palette: it returns the palette's `TypeId` and, given a sink
+/// that is an `Option<Definitions<TokenValue<N>>>` of the palette's own scalar `N`, fills
+/// it with the palette's default definitions; a sink of another type stays empty.
+#[derive(Clone, Copy)]
+#[must_use]
+pub(in crate::spine) struct TokenDefaults(fn(Option<&mut dyn Any>) -> TypeId);
+
+impl TokenDefaults {
+  /// The link to `S`'s default, over the scalar `N`.
+  #[inline(always)]
+  const fn of<S: TokenSet<TokenValue<N>> + Default, N: Scalar>() -> Self {
+    Self(Self::link::<S, N>)
+  }
+
+  /// Fills `sink` with `S`'s default definitions where it is of `N`, and names `S`.
+  fn link<S: TokenSet<TokenValue<N>> + Default, N: Scalar>(sink: Option<&mut dyn Any>) -> TypeId {
+    if let Some(sink) =
+      sink.and_then(|sink| sink.downcast_mut::<Option<Definitions<TokenValue<N>>>>())
+    {
+      *sink = Some(Definitions::of(&S::default()));
+    }
+
+    TypeId::of::<S>()
   }
 }
 
@@ -70,7 +174,8 @@ impl Tokenable for String {}
 /// A typed reference to a token: the name a property emits, without any definition.
 ///
 /// A `const` in a component library's palette module, so `set_background(Palette::CARD)`
-/// names the slot whatever theme is in force.
+/// names the slot whatever theme is in force. A reference made by [`TokenRef::of`]
+/// carries its palette's default; one made by [`TokenRef::new`] names a slot alone.
 #[must_use]
 pub struct TokenRef<T: Tokenable> {
   name: TokenName,
@@ -78,11 +183,31 @@ pub struct TokenRef<T: Tokenable> {
 }
 
 impl<T: Tokenable> TokenRef<T> {
-  /// A reference to the token named `name`.
+  /// A reference to the token named `name`, carrying no default.
+  ///
+  /// For a token of a set something always defines itself: a realization's typography or
+  /// system colors, or an app's own set it always puts a theme of.
   #[inline(always)]
   pub const fn new(name: &'static str) -> Self {
     Self {
       name: TokenName::new(name),
+      ty: PhantomData,
+    }
+  }
+
+  /// A reference to the token named `name` of the palette `S` over the scalar `N`,
+  /// carrying the palette's default.
+  ///
+  /// How a component library names its palette's tokens: the palette's default
+  /// definitions reach the scene's root the first time a node references one of them,
+  /// and a theme of the palette redefines them beneath it.
+  #[inline(always)]
+  pub const fn of<S: TokenSet<TokenValue<N>> + Default, N: Scalar>(name: &'static str) -> Self {
+    Self {
+      name: TokenName {
+        defaults: Some(TokenDefaults::of::<S, N>()),
+        ..TokenName::new(name)
+      },
       ty: PhantomData,
     }
   }
@@ -152,10 +277,10 @@ pub struct Token<T: Tokenable, N: Scalar> {
 }
 
 impl<T: Tokenable, N: Scalar> Token<T, N> {
-  /// A token named `name`, defined as `definition`.
-  pub fn new(name: &'static str, definition: impl Into<Definition<T, N>>) -> Self {
+  /// The token `reference` names, defined as `definition`.
+  pub fn new(reference: TokenRef<T>, definition: impl Into<Definition<T, N>>) -> Self {
     Self {
-      reference: TokenRef::new(name),
+      reference,
       definition: Rc::new(definition.into()),
     }
   }
@@ -325,8 +450,14 @@ impl<V> FromIterator<(TokenName, V)> for Definitions<V> {
 
 #[cfg(test)]
 mod tests {
+  use std::{
+    any::TypeId,
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+  };
+
   use super::{Definitions, Token, TokenName, TokenRef, TokenSet};
-  use crate::spine::{Color, Definition, Expr, Media, StaticLeaf};
+  use crate::spine::{Color, Definition, Expr, Media, StaticLeaf, TokenValue};
 
   /// The erased value a facade would keep per token.
   #[derive(Debug, Clone, PartialEq)]
@@ -353,20 +484,36 @@ mod tests {
     gutter: Token<f32, f32>,
   }
 
+  impl Palette {
+    /// The card's color, linked to the palette's default.
+    const CARD: TokenRef<Color> = TokenRef::of::<Self, f32>("card");
+    /// The gutter, linked to the palette's default.
+    const GUTTER: TokenRef<f32> = TokenRef::of::<Self, f32>("gutter");
+  }
+
   impl Default for Palette {
     fn default() -> Self {
       Self {
-        card: Token::new("card", Color::srgb(1., 1., 1.))
+        card: Token::new(Self::CARD, Color::srgb(1., 1., 1.))
           .define_when(Media::Dark, Color::srgb(0., 0., 0.)),
-        gutter: Token::new("gutter", 8.),
+        gutter: Token::new(Self::GUTTER, 8.),
       }
     }
   }
 
-  impl TokenSet<Erased> for Palette {
-    fn definitions(&self) -> Vec<(TokenName, Erased)> {
+  impl<V: From<Definition<Color, f32>> + From<Definition<f32, f32>>> TokenSet<V> for Palette {
+    fn definitions(&self) -> Vec<(TokenName, V)> {
       vec![self.card.define(), self.gutter.define()]
     }
+  }
+
+  /// The hash `value` feeds a hasher.
+  fn hash_of(value: impl Hash) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    value.hash(&mut hasher);
+
+    hasher.finish()
   }
 
   /// Redefining keeps the name, conditioning layers a variant over the definition, and
@@ -394,7 +541,7 @@ mod tests {
   #[test]
   fn definitions_erase_and_look_up_by_name() {
     let palette = Palette::default();
-    let definitions = Definitions::of(&palette);
+    let definitions = Definitions::<Erased>::of(&palette);
 
     assert_eq!(definitions.len(), 2);
     assert_eq!(
@@ -406,6 +553,79 @@ mod tests {
       Some(&Erased::Color(palette.card.definition().clone()))
     );
     assert_eq!(definitions.get(TokenName::new("missing")), None);
+  }
+
+  /// A linked and an unlinked name of one token are one name: equal, hashed, ordered
+  /// and formatted alike, and hashed as the bare name.
+  #[test]
+  fn a_link_leaves_the_name_alone() {
+    let linked = Palette::CARD.name();
+    let unlinked = TokenName::new("card");
+
+    assert_eq!(linked, unlinked);
+    assert_eq!(hash_of(linked), hash_of(unlinked));
+    assert_eq!(hash_of(linked), hash_of("card"));
+    assert_eq!(linked.cmp(&unlinked), std::cmp::Ordering::Equal);
+    assert!(linked < TokenName::new("ink"));
+    assert_eq!(format!("{linked:?}"), "TokenName(\"card\")");
+    assert_eq!(linked.to_string(), "card");
+    assert_eq!(Palette::CARD, TokenRef::new("card"));
+    assert_eq!(
+      hash_of(Palette::CARD),
+      hash_of(TokenRef::<Color>::new("card"))
+    );
+  }
+
+  /// A lookup by an unlinked name finds the definition a linked name keys.
+  #[test]
+  fn an_unlinked_name_finds_a_linked_definition() {
+    let definitions = Definitions::<Erased>::of(&Palette::default());
+
+    assert_eq!(
+      definitions.get(TokenName::new("gutter")),
+      Some(&Erased::Length(Definition::from(8.)))
+    );
+  }
+
+  /// A linked name names its palette and yields the palette's default in the
+  /// foundation's token value over the palette's scalar, and nothing over another.
+  #[test]
+  fn a_linked_name_yields_its_palettes_default() {
+    let name = Palette::GUTTER.name();
+
+    assert_eq!(name.default_set(), Some(TypeId::of::<Palette>()));
+    assert_eq!(
+      name.defaults::<f32>(),
+      Some(Definitions::<TokenValue<f32>>::of(&Palette::default()))
+    );
+    assert_eq!(name.defaults::<i32>(), None);
+  }
+
+  /// An unlinked name carries no link.
+  #[test]
+  fn an_unlinked_name_yields_no_link() {
+    let name = TokenRef::<Color>::new("card").name();
+
+    assert_eq!(name.default_set(), None);
+    assert_eq!(name.defaults::<f32>(), None);
+  }
+
+  /// A token keeps the link of the reference it is made from.
+  #[test]
+  fn a_token_keeps_its_references_link() {
+    let card = Palette::default().card;
+
+    assert_eq!(
+      card.reference().name().default_set(),
+      Some(TypeId::of::<Palette>())
+    );
+    assert_eq!(card.name().default_set(), Some(TypeId::of::<Palette>()));
+    assert_eq!(
+      Token::<Color, f32>::new(TokenRef::new("card"), Color::srgb(1., 1., 1.))
+        .name()
+        .default_set(),
+      None
+    );
   }
 
   /// A name that is not an identifier is rejected in debug builds.

@@ -105,25 +105,25 @@ impl Default for Typography {
   fn default() -> Self {
     Self {
       ink: Token::new(
-        typography::INK.name().as_str(),
+        typography::INK,
         pair(Color::srgb(0.09, 0.09, 0.11), Color::srgb(0.93, 0.93, 0.95)),
       ),
       link_ink: Token::new(
-        typography::LINK_INK.name().as_str(),
+        typography::LINK_INK,
         pair(Color::srgb(0.15, 0.39, 0.92), Color::srgb(0.55, 0.7, 1.)),
       ),
       selection_ink: Token::new(
-        typography::SELECTION_INK.name().as_str(),
+        typography::SELECTION_INK,
         pair(Color::srgb(1., 1., 1.), Color::srgb(0.06, 0.06, 0.08)),
       ),
       selection_surface: Token::new(
-        typography::SELECTION_SURFACE.name().as_str(),
+        typography::SELECTION_SURFACE,
         pair(Color::srgb(0.22, 0.47, 0.95), Color::srgb(0.45, 0.62, 0.98)),
       ),
-      size: Token::new(typography::SIZE.name().as_str(), 16.),
-      weight: Token::new(typography::WEIGHT.name().as_str(), 400.),
-      line_height: Token::new(typography::LINE_HEIGHT.name().as_str(), 1.5),
-      letter_spacing: Token::new(typography::LETTER_SPACING.name().as_str(), 0.),
+      size: Token::new(typography::SIZE, 16.),
+      weight: Token::new(typography::WEIGHT, 400.),
+      line_height: Token::new(typography::LINE_HEIGHT, 1.5),
+      letter_spacing: Token::new(typography::LETTER_SPACING, 0.),
     }
   }
 }

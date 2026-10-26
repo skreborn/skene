@@ -1102,7 +1102,7 @@ fn the_root_defines_the_platforms_colors_as_system_colors() {
     assert_eq!(SystemColors::current(), SystemColors::default());
 
     Theme::new(OwnAccent {
-      accent: skene_web::Token::new(SystemColors::ACCENT.name().as_str(), red),
+      accent: skene_web::Token::new(SystemColors::ACCENT, red),
     })
     .set_child_builder(|| Container::new().set_background(SystemColors::ACCENT))
   });

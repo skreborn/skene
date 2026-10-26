@@ -75,7 +75,7 @@ struct Cards {
 impl Cards {
   fn with_card(card: Color) -> Self {
     Self {
-      card: Token::new(CARD.name().as_str(), card),
+      card: Token::new(CARD, card),
       ..Self::default()
     }
   }
@@ -84,8 +84,8 @@ impl Cards {
 impl Default for Cards {
   fn default() -> Self {
     Self {
-      card: Token::new(CARD.name().as_str(), green()),
-      gutter: Token::new(GUTTER.name().as_str(), 1.),
+      card: Token::new(CARD, green()),
+      gutter: Token::new(GUTTER, 1.),
     }
   }
 }
@@ -106,7 +106,7 @@ struct Accents {
 impl Default for Accents {
   fn default() -> Self {
     Self {
-      accent: Token::new(ACCENT.name().as_str(), blue()),
+      accent: Token::new(ACCENT, blue()),
     }
   }
 }
@@ -216,13 +216,13 @@ fn a_definition_reads_its_tokens_where_it_is_defined() {
     let orange = Color::srgb(0.9, 0.5, 0.1);
     let _ = terminal::mount(move || {
       Theme::new(Outer {
-        surface: Token::new(SURFACE.name().as_str(), blue),
-        shade: Token::new(SHADE.name().as_str(), Expr::from(SURFACE).lighter(0.2)),
+        surface: Token::new(SURFACE, blue),
+        shade: Token::new(SHADE, Expr::from(SURFACE).lighter(0.2)),
       })
       .set_child_builder(move || {
         Row::new().set_children((
           Theme::new(Inner {
-            surface: Token::new(SURFACE.name().as_str(), orange),
+            surface: Token::new(SURFACE, orange),
           })
           .set_child_builder(|| {
             Container::new()
@@ -448,7 +448,7 @@ fn a_derived_leaf_names_a_token_or_an_expression_through_the_theme() {
       Column::new()
         .set_children((
           Theme::new(Cards {
-            card: Token::new(CARD.name().as_str(), green()).define_when(Media::Dark, red()),
+            card: Token::new(CARD, green()).define_when(Media::Dark, red()),
             ..Cards::default()
           })
           .set_child_builder(move || {
@@ -533,7 +533,7 @@ fn a_theme_reads_its_definitions_with_the_scene_released() {
 
     let _ = terminal::mount(move || {
       Theme::derive(move || Watchful {
-        card: Token::new(CARD.name().as_str(), card.get()),
+        card: Token::new(CARD, card.get()),
       })
       .set_child_builder(|| {
         Container::new()
@@ -595,7 +595,7 @@ fn the_system_colors_at_the_root_follow_the_reported_colors_and_the_scheme_choic
             .set_height(1)
             .set_background(SystemColors::WINDOW),
           Theme::new(OwnAccent {
-            accent: Token::new(SystemColors::ACCENT.name().as_str(), red()),
+            accent: Token::new(SystemColors::ACCENT, red()),
           })
           .set_child_builder(|| {
             Container::new()

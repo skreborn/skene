@@ -28,7 +28,8 @@
 //! ```
 //! use skene_terminal::{Length, prelude::*};
 //!
-//! let gutter = Token::<Length>::new("gutter", 8).define_when(Media::min_width(90), 16);
+//! let gutter =
+//!   Token::<Length>::new(TokenRef::new("gutter"), 8).define_when(Media::min_width(90), 16);
 //! let _ = Column::new()
 //!   .set_spacing(Spacing::from(8).when(Media::min_width(90), 16))
 //!   .set_padding(Inset::new(0, 8, 0, 8))

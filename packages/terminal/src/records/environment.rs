@@ -167,9 +167,8 @@ impl Records {
     let on_accent = if detect::is_dark(accent) { light } else { dark };
     let (ink, window, accent) = (color(ink), color(base), color(accent));
     let tint = |amount: f32| window.mix(ink, amount);
-    let token = |reference: skene_foundation::TokenRef<Color>, value: Color| {
-      Token::new(reference.name().as_str(), value)
-    };
+    let token =
+      |reference: skene_foundation::TokenRef<Color>, value: Color| Token::new(reference, value);
 
     SystemColors {
       ink: token(SystemColors::INK, ink),

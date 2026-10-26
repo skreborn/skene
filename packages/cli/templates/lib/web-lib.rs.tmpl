@@ -1,30 +1,60 @@
-//! {name} on the web: every view of [`{crate}`] as a view of the web's own, the palette
-//! in the web's unit, and a [`prelude`] an app imports beside the facade's own.
+//! {name} on the web: its presets of the web's built-in views, styled from
+//! [`{crate}`]'s palette and sizes in the web's unit, and a [`prelude`] an app imports
+//! beside the facade's own.
 
 #![cfg(skene_platform = "web")]
 
-use skene_foundation::{View, Wraps};
-use skene_web::Active;
+use {crate}::{Type}Unit;
+use skene_web::prelude::*;
 
-pub use {crate}::{Type}BadgeBase;
-
-/// A badge: a short label on a rounded, tinted surface.
+/// A badge: a short label on a rounded, tinted surface, a preset of [`Container`].
+///
+/// Each constructor returns the container, so every member of a container applies to the
+/// badge. Its colors are [`{Type}Palette`]'s tokens, which a [`Theme`] of the palette
+/// above it defines, or a read of the palette where no theme does.
 ///
 /// ```
 /// use {crate}_web::prelude::*;
+/// use skene_web::prelude::*;
 ///
-/// let badge = {Type}Badge::new("New");
+/// let badges = Theme::new({Type}Palette::default()).set_child_builder(|| {
+///   Row::new()
+///     .set_spacing(8)
+///     .set_children(({Type}Badge::new("New"), {Type}Badge::new("Beta")))
+/// });
 /// ```
-#[derive(Debug, View, Wraps)]
-#[must_use]
-pub struct {Type}Badge({crate}::{Type}Badge<Active>);
+pub enum {Type}Badge {}
 
-impl {Type}BadgeBase<Active> for {Type}Badge {}
+impl {Type}Badge {
+  /// A badge reading `label`.
+  #[expect(
+    clippy::new_ret_no_self,
+    reason = "a preset of a built-in view, so every member of the built-in applies"
+  )]
+  pub fn new(label: impl Into<String>) -> Container {
+    Self::styled(Text::new(label))
+  }
+
+  /// A badge reading what `label` returns, kept current with the signals it reads.
+  pub fn derive(label: impl Fn() -> String + 'static) -> Container {
+    Self::styled(Text::derive(label))
+  }
+
+  /// `label` on a badge's surface, inked as a badge's label.
+  pub fn styled(label: Text) -> Container {
+    Container::new()
+      .set_padding(<f32 as {Type}Unit>::badge_inset())
+      .set_background({Type}Palette::BADGE)
+      .set_corner_radius(<f32 as {Type}Unit>::badge_radius())
+      .set_child(label.set_color({Type}Palette::BADGE_INK))
+  }
+}
 
 /// The palette in the web's unit; see [`{crate}::{Type}Palette`].
 pub type {Type}Palette = {crate}::{Type}Palette<f32>;
 
-/// Everything above, for `use {crate}_web::prelude::*` beside the facade's own prelude.
+/// Everything above, for `use {crate}_web::prelude::*` beside the facade's own
+/// prelude.
 pub mod prelude {
   pub use super::*;
 }

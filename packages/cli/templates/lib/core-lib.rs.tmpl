@@ -1,36 +1,22 @@
-//! The core of {name}, a skene component library: its palette, the sizes its views are
-//! drawn at in each medium's unit, and its views, written once over the
-//! [`Realization`]. A platform's crate exposes each view as a view of its own and reaches
-//! its members through the view's `*Base` trait.
+//! The core of {name}, a skene component library: its palette and the sizes its presets
+//! are drawn at in each medium's unit, plain data and logic naming no platform. Each
+//! facade's crate writes its presets from them.
 
 use skene_foundation::{
-  AnyKind,
   Color,
-  Container,
-  CornerRadius,
-  DecorationBase,
-  DecorationWithCornerRadius,
   Definition,
-  HasChild,
   Inset,
   Length,
   Media,
-  NodeId,
-  Realization,
-  RunBase,
   Scalar,
-  Text,
-  ThemedIn,
   Token,
   TokenName,
   TokenRef,
   TokenSet,
-  View,
-  Wraps,
 };
 
-/// The library's colors: a token set a `Theme` defines beneath it, its default defined
-/// at the root where no theme provides one.
+/// The library's colors: a token set a `Theme` defines beneath it; where no theme does, a
+/// read of the set defines its default at the root.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct {Type}Palette<N: Scalar> {
@@ -86,10 +72,10 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for {Type}Palette<N> 
   }
 }
 
-/// A length unit the {name} views know their sizes in.
+/// A length unit the {name} presets know their sizes in.
 #[diagnostic::on_unimplemented(
-  message = "the {name} views have no sizes in `{Self}`",
-  label = "a {name} view is drawn in logical pixels (`f32`) or cells (`i32`)"
+  message = "the {name} presets have no sizes in `{Self}`",
+  label = "a {name} preset is drawn in logical pixels (`f32`) or cells (`i32`)"
 )]
 pub trait {Type}Unit: Scalar {
   /// The inset between a badge's edge and its label.
@@ -115,67 +101,5 @@ impl {Type}Unit for i32 {
 
   fn badge_radius() -> Length {
     Length(0.5)
-  }
-}
-
-/// A badge: a short label on a rounded, tinted surface.
-#[doc(hidden)]
-#[derive(Debug)]
-#[must_use]
-pub struct {Type}Badge<P: Realization> {
-  label: Text<P>,
-}
-
-impl<P: Realization> {Type}Badge<P> {
-  /// A badge reading `label`.
-  pub fn new(label: impl Into<String>) -> Self {
-    Self {
-      label: Text::new(label),
-    }
-  }
-
-  /// A badge reading what `label` returns, kept current with the signals it reads.
-  pub fn derive(label: impl Fn() -> String + 'static) -> Self {
-    Self {
-      label: Text::derive(label),
-    }
-  }
-}
-
-impl<P: Realization> AnyKind for {Type}Badge<P> {}
-
-impl<P: Realization> View<P> for {Type}Badge<P>
-where
-  P::Scalar: {Type}Unit,
-  P::StyleExt: CornerRadius,
-{
-  fn build(self) -> NodeId {
-    <{Type}Palette<P::Scalar> as ThemedIn<P>>::define_root();
-
-    Container::new()
-      .set_padding(<P::Scalar as {Type}Unit>::badge_inset())
-      .set_background({Type}Palette::<P::Scalar>::BADGE)
-      .set_corner_radius(<P::Scalar as {Type}Unit>::badge_radius())
-      .set_child(
-        self
-          .label
-          .set_color({Type}Palette::<P::Scalar>::BADGE_INK),
-      )
-      .build()
-  }
-}
-
-/// What a platform's badge carries.
-pub trait {Type}BadgeBase<P: Realization>: Wraps<Inner = {Type}Badge<P>> {
-  /// A badge reading `label`.
-  #[must_use]
-  fn new(label: impl Into<String>) -> Self {
-    Self::wrap({Type}Badge::new(label))
-  }
-
-  /// A badge reading what `label` returns, kept current with the signals it reads.
-  #[must_use]
-  fn derive(label: impl Fn() -> String + 'static) -> Self {
-    Self::wrap({Type}Badge::derive(label))
   }
 }

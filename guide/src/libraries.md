@@ -1,9 +1,9 @@
 # Component libraries
 
-A component library is a core of colors, sizes and logic, written once over the
-platform, with a crate per platform that exposes its views as that platform's own.
-Simple is built this way, from the public API alone, and a library of your own stands
-on the same footing.
+A component library is a core of colors, sizes and logic, naming no platform, with a
+crate per facade holding its presets: functions returning the facade's built-in views,
+styled from the core. Simple is built from the public API alone, and a library of your
+own stands on the same footing.
 
 ```sh
 skene new lib acme-ui web terminal
@@ -13,9 +13,9 @@ skene new lib acme-ui web terminal
 acme-ui
 ├── .cargo         config.toml: the platform plain cargo builds, the web
 ├── Cargo.toml     the workspace
-├── core           acme-ui: the palette, the sizes and the views over any platform
-├── terminal       acme-ui-terminal: the views as the terminal's own
-└── web            acme-ui-web: the views as the web's own
+├── core           acme-ui: the palette and the sizes
+├── terminal       acme-ui-terminal: the presets of the terminal's views
+└── web            acme-ui-web: the presets of the web's views
 ```
 
 ## The palette
@@ -57,32 +57,166 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmePalette<N> {
 }
 ```
 
-A view references a token by its `TokenRef` and emits only its name; the theme in force
-supplies the value. Where no theme defines the palette, a view defines its default at
-the root through `ThemedIn::define_root`.
+A preset references a token by its `TokenRef` and emits only its name; the theme in
+force supplies the value. A `Theme` of the palette defines it beneath, and where no theme
+does, a read of it (`AcmePalette::current()` or `AcmePalette::watch()`) defines its
+default at the root. A preset is a plain function, called before any platform is
+running, so it defines nothing itself.
 
-## Views over any platform
+## The sizes
 
-A view in the core is generic over the platform `P`, and states what it needs of a
-medium as a bound: `P::StyleExt: CornerRadius` rounds where the medium can, and a
-library's own unit trait gives each medium's unit its sizes. The core's view is built
-from the foundation's views, exactly as the built-ins are.
-
-Each platform's crate wraps the core's view in a type of its own, and implements the
-view's `*Base` trait, whose default methods carry every setter. Simple's web crate
-wraps its core's card this way:
+A library's own unit trait gives each medium's unit its sizes: logical pixels (`f32`) on
+the web and whole cells (`i32`) on the terminal. A preset asks its facade's unit for
+them, so the core keeps both media's sizes side by side:
 
 ```rust
-use skene_foundation::{View, Wraps};
-use skene_simple::SimpleCardBase;
-use skene_web::Active;
+use skene_foundation::{Inset, Length, Scalar};
 
-/// A ready-made card.
-#[derive(Debug, Default, View, Wraps)]
-#[must_use]
-pub struct SimpleCard(skene_simple::SimpleCard<Active>);
+/// A length unit Acme's presets know their sizes in.
+pub trait AcmeUnit: Scalar {
+  /// The inset between a badge's edge and its label.
+  fn badge_inset() -> Inset<Self>;
+  /// The corner radius of a badge.
+  fn badge_radius() -> Length;
+}
 
-impl SimpleCardBase<Active> for SimpleCard {}
+impl AcmeUnit for f32 {
+  fn badge_inset() -> Inset<Self> {
+    Inset::symmetric(8, 2)
+  }
+
+  fn badge_radius() -> Length {
+    Length::from(6)
+  }
+}
+
+impl AcmeUnit for i32 {
+  fn badge_inset() -> Inset<Self> {
+    Inset::symmetric(1, 0)
+  }
+
+  fn badge_radius() -> Length {
+    Length(0.5)
+  }
+}
+```
+
+## Presets per facade
+
+A preset is a function returning a styled built-in of its facade, so every member of the
+built-in applies to it and an app styles or wraps it further as it would the built-in.
+Each facade's crate writes its presets over its own views, from the core's palette and
+the sizes in its unit. The scaffold's web crate writes its badge this way:
+
+```rust
+# mod acme_ui {
+#   use skene_foundation::{Color, Definition, Inset, Length, Scalar, Token, TokenName, TokenRef, TokenSet};
+#
+#   #[derive(Debug, Clone, PartialEq)]
+#   pub struct AcmePalette<N: Scalar> {
+#     pub badge: Token<Color, N>,
+#     pub badge_ink: Token<Color, N>,
+#   }
+#
+#   impl<N: Scalar> AcmePalette<N> {
+#     pub const BADGE: TokenRef<Color> = TokenRef::new("acme-badge");
+#     pub const BADGE_INK: TokenRef<Color> = TokenRef::new("acme-badge-ink");
+#   }
+#
+#   impl<N: Scalar> Default for AcmePalette<N> {
+#     fn default() -> Self {
+#       Self {
+#         badge: Token::new(Self::BADGE.name().as_str(), Definition::from(Color::srgb(0.88, 0.91, 1.))),
+#         badge_ink: Token::new(Self::BADGE_INK.name().as_str(), Definition::from(Color::srgb(0.19, 0.18, 0.5))),
+#       }
+#     }
+#   }
+#
+#   impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmePalette<N> {
+#     fn definitions(&self) -> Vec<(TokenName, V)> {
+#       vec![self.badge.define(), self.badge_ink.define()]
+#     }
+#   }
+#
+#   pub trait AcmeUnit: Scalar {
+#     fn badge_inset() -> Inset<Self>;
+#     fn badge_radius() -> Length;
+#   }
+#
+#   impl AcmeUnit for f32 {
+#     fn badge_inset() -> Inset<Self> {
+#       Inset::symmetric(8, 2)
+#     }
+#
+#     fn badge_radius() -> Length {
+#       Length::from(6)
+#     }
+#   }
+# }
+use acme_ui::AcmeUnit;
+use skene_web::prelude::*;
+
+/// A badge: a short label on a rounded, tinted surface, a preset of [`Container`].
+pub enum AcmeBadge {}
+
+impl AcmeBadge {
+  /// A badge reading `label`.
+  #[expect(
+    clippy::new_ret_no_self,
+    reason = "a preset of a built-in view, so every member of the built-in applies"
+  )]
+  pub fn new(label: impl Into<String>) -> Container {
+    Self::styled(Text::new(label))
+  }
+
+  /// A badge reading what `label` returns, kept current with the signals it reads.
+  pub fn derive(label: impl Fn() -> String + 'static) -> Container {
+    Self::styled(Text::derive(label))
+  }
+
+  /// `label` on a badge's surface, inked as a badge's label.
+  pub fn styled(label: Text) -> Container {
+    Container::new()
+      .set_padding(<f32 as AcmeUnit>::badge_inset())
+      .set_background(AcmePalette::BADGE)
+      .set_corner_radius(<f32 as AcmeUnit>::badge_radius())
+      .set_child(label.set_color(AcmePalette::BADGE_INK))
+  }
+}
+
+/// The palette in the web's unit.
+pub type AcmePalette = acme_ui::AcmePalette<f32>;
+
+let badges = Theme::new(AcmePalette::default()).set_child_builder(|| {
+  Row::new()
+    .set_spacing(8)
+    .set_children((AcmeBadge::new("New"), AcmeBadge::new("Beta")))
+});
+```
+
+The terminal's crate writes the same preset line for line over the terminal's views, in
+cells (`<i32 as AcmeUnit>`). The type is a namespace no value inhabits: `AcmeBadge::new`
+returns the container, never a badge. The pieces a preset composes are public
+(`AcmeBadge::styled`), so another library composes them differently. A preset with
+variants has a constructor per variant (`AcmeBadge::warning`), and a variant the app
+changes at run time is a `derive_variant` whose built-in takes its colors through
+`derive_` values, so a change re-inks it in place rather than rebuilding it.
+
+Where a preset is not enough, because the view's structure is the library's own rather
+than one built-in's, the facade's crate writes a concrete view of its own: a function
+returning `impl View`, composed from the facade's views as an app's are, its options its
+parameters:
+
+```rust
+use skene_web::prelude::*;
+
+/// A figure under its caption, the figure kept current with the signals `value` reads.
+pub fn stat(caption: &str, value: impl Fn() -> String + 'static) -> impl View {
+  Column::new().set_spacing(4).set_children((
+    Text::new(caption).set_font_size(12.),
+    Text::derive(value).set_font_size(28.),
+  ))
+}
 ```
 
 An app depends on the platform crates it shells for, and imports each one's prelude

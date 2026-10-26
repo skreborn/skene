@@ -56,8 +56,8 @@ enum NewKind {
     #[arg(long)]
     skene: Option<PathBuf>,
   },
-  /// A component library: a core of colors, sizes and views, and a crate per platform
-  /// exposing the views as its own.
+  /// A component library: a core of colors, sizes and logic, and a crate per platform
+  /// with its presets.
   Lib {
     /// The directory to create; its last component names the library.
     path: PathBuf,

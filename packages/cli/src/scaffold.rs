@@ -12,8 +12,8 @@ use std::{
 pub(crate) enum Kind {
   /// An app: a crate of logic and state the shells share, and a shell per platform.
   App,
-  /// A component library: a core of colors, sizes and views, and a crate per platform
-  /// exposing the views as its own.
+  /// A component library: a core of colors, sizes and logic, and a crate per platform
+  /// with its presets.
   Library,
 }
 
@@ -610,7 +610,8 @@ mod tests {
   }
 
   /// A library holds its core and a crate per platform named, its types named for the
-  /// library, each platform's crate gated on its platform.
+  /// library: the core plain data naming no realization, and each platform's crate gated
+  /// on its platform, with its presets.
   #[test]
   fn a_library_has_a_crate_per_platform() {
     let files = Kind::Library.files(
@@ -657,7 +658,14 @@ mod tests {
     );
     assert_eq!(file(&files, ".gitignore"), "/target\n");
     assert!(file(&files, "core/Cargo.toml").contains("name = \"acme-ui\""));
-    assert!(file(&files, "core/src/lib.rs").contains("pub struct AcmeUiBadge<P: Realization>"));
+    let core = file(&files, "core/src/lib.rs");
+
+    assert!(
+      core.contains("pub struct AcmeUiPalette<N: Scalar>"),
+      "{core}"
+    );
+    assert!(core.contains("pub trait AcmeUiUnit: Scalar"), "{core}");
+    assert!(!core.contains("Realization"), "{core}");
 
     for (directory, platform) in [("terminal", "terminal"), ("web", "web")] {
       let library = file(&files, &format!("{directory}/src/lib.rs"));
@@ -670,9 +678,21 @@ mod tests {
         library.contains(&format!("#![cfg(skene_platform = \"{platform}\")]")),
         "{library}"
       );
+      assert!(library.contains("pub enum AcmeUiBadge {}"), "{library}");
       assert!(
-        library.contains("pub struct AcmeUiBadge(acme_ui::AcmeUiBadge<Active>);"),
+        library.contains("pub fn new(label: impl Into<String>) -> Container"),
         "{library}"
+      );
+      assert!(
+        library.contains(&format!(
+          "pub type AcmeUiPalette = acme_ui::AcmeUiPalette<{}>;",
+          if platform == "web" { "f32" } else { "i32" }
+        )),
+        "{library}"
+      );
+      assert!(
+        !file(&files, &format!("{directory}/Cargo.toml")).contains("skene-foundation"),
+        "a preset names its facade alone"
       );
     }
 

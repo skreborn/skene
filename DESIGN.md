@@ -2080,9 +2080,11 @@ Two guarantees, both properties of what is public rather than of any one API.
   visit, so with the field and the property's variant gated alike the record entry
   exists in that build alone. The macros' text names no platform; the predicate is the
   declaring crate's. Simple is the standing proof, `skene-simple` its core and
-  `skene-simple-web` and `skene-simple-terminal` its platforms' crates, and
-  `skene new lib` creates the same shape: a core holding a palette, a unit trait and a
-  view, and a crate per platform named.
+  `skene-simple-web` and `skene-simple-terminal` its platforms' crates. `skene new lib`
+  creates the core-plus-presets shape: a core holding a palette and a unit trait and
+  naming no realization, and a crate per platform named whose badge is a preset, an
+  uninhabited namespace whose constructors return the facade's `Container` styled from
+  the core's tokens and its unit's sizes, defining no default at the root.
 - **A low-level view, against the platform, like a built-in.** It is written against a
   platform's escape trait or through its native door and realized through the same scene
   and node ids as a `Container`, so it composes with wrappers, themes, conditions and

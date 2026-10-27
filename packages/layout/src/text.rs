@@ -1050,12 +1050,9 @@ mod tests {
     );
 
     assert!(
-      rects.rect(view).is_some_and(|view| {
-        view.origin.x <= on_view.x
-          && on_view.x < view.origin.x + view.size.width
-          && view.origin.y <= on_view.y
-          && on_view.y < view.origin.y + view.size.height
-      }),
+      rects
+        .rect(view)
+        .is_some_and(|view| TextFlow::<ParleyEngine>::holds(view, on_view)),
       "the view inside it holds the point"
     );
   }

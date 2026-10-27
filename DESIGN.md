@@ -1185,52 +1185,48 @@ Condition     = Media | State | And | Or
   each node's style, text and children written where they changed, revisiting the nodes
   the shared `Restyle` says moved (those queued, in motion or reading an interaction
   that moved, each with the leaf its text flows in, or every node once the definitions,
-  the environment or the structure moved): by the terminal's records as they change, or
-  by a walk of the scene where the structure moved or a node's part changed its shape
-  and of the revisited nodes alone otherwise (`Tree::lay_out_revisited`), at the values
-  its motion presents. There a box whose children are all inline runs lays them out as
-  one text, a `TextFlow` of their runs and inline boxes over the platform's text engine
-  (Text, below), keeping their blanks and newlines as the reset's `white-space:
-  pre-wrap` does and wrapping where the Unicode line breaking algorithm allows across
-  them and around an inline box, laid out at its content's size first, a word too wide
-  for a line of its own broken where the line fills as `overflow-wrap: break-word`
-  breaks it, the blanks a line ends in hanging where it wraps and taking room up to its
-  limit before a newline or at the end, each run's line box on its line's baseline, a
-  box's bottom on it, a run placed in a rectangle per line it is on, clipped off any box
-  beside it and off the blanks hanging past the line's end, and, where its platform
-  trims it (`TextFlow::trimmed`), the text trimmed to its first line's cap height and
-  its last line's baseline as the reset's `text-box-trim` trims a text box. The layout's
-  own tests lay their text out through `skene-parley` in the pinned face the conformance
-  suite draws in, Inter's regular, kept in `packages/parley/fonts`, its metrics
-  unrounded (kerned, its letter spacing past each cluster, a line its font size times
-  its line height tall, each as the typography in force sets them), and where Parley
-  reads text as an editor does its reading stands: a tab advances to the next stop
-  eight blanks apart, as a browser's `tab-size` sets them, and a newline ending the
-  text opens a line. `Dimension` is a fixed length, a `Fraction` of the
-  parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
-  overflow setting both) and computed as CSS computes it, an axis left visible beside
-  one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,
-  only along an axis that scrolls. An adaptive track (`GridTrack::Adaptive`,
-  `Grid::adaptive`) fits as many tracks as the container holds, as SwiftUI's adaptive
-  grid item does, compiled to CSS's auto-filled repetition. A grid names areas over its
-  cells (`GridAreas`, a row of cell names per grid row) and the lines between its
-  tracks (`GridTemplate`, a track list with names added where lines stand, a plain
-  list naming none), and a child is placed by an area's or a line's name (`GridName`,
-  `Line::area`), a template breaking CSS's rules dropped whole on every platform as CSS
-  drops it. A length below zero is laid out as CSS takes it: a size (a width, a height,
-  a limit, a flexible basis) as auto, the declaration dropped, a track list holding one
-  dropped whole, a padding, a border or a spacing as none, and a margin or an inset
-  with its sign. A variant is no exception: a negative length under a condition that
-  holds lays out as the same length in the base, whatever its leaf, so the web renders
-  a negative literal as the drawing platforms lay it out (`initial` for a size and a
-  rejected track list, none for a padding's, a border's or a spacing's edge, `auto` for
-  a basis) rather than as a declaration CSS drops for the base's, a divergence from
-  CSS's parsing recorded in `DECISIONS.md`. An expression and a motion sample are held
-  to the property's range where they are evaluated instead (`Property::is_non_negative`,
-  `BoxValue::in_range_of`), as CSS holds a `calc()` and an interpolated value: a size,
-  a padding, a spacing, a flexibility or a track list below zero is zero there, never
-  dropped. The framework invents no layout
-  system.
+  the environment or the structure moved), written by the terminal's records as they
+  change at the values its motion presents. There a box whose children are all inline
+  runs lays them out as one text, a `TextFlow` of their runs and inline boxes over the
+  platform's text engine (Text, below), keeping their blanks and newlines as the reset's
+  `white-space: pre-wrap` does and wrapping where the Unicode line breaking algorithm
+  allows across them and around an inline box, laid out at its content's size first, a
+  word too wide for a line of its own broken where the line fills as `overflow-wrap:
+  break-word` breaks it, the blanks a line ends in hanging where it wraps and taking
+  room up to its limit before a newline or at the end, each run's line box on its line's
+  baseline, a box's bottom on it, a run placed in a rectangle per line it is on, clipped
+  off any box beside it and off the blanks hanging past the line's end, and, where its
+  platform trims it (`TextFlow::trimmed`), the text trimmed to its first line's cap
+  height and its last line's baseline as the reset's `text-box-trim` trims a text box.
+  The layout's own tests lay their text out through `skene-parley` in the pinned face
+  the conformance suite draws in, Inter's regular, kept in `packages/parley/fonts`, its
+  metrics unrounded (kerned, its letter spacing past each cluster, a line its font size
+  times its line height tall, each as the typography in force sets them), and where
+  Parley reads text as an editor does its reading stands: a tab advances to the next
+  stop eight blanks apart, as a browser's `tab-size` sets them, and a newline ending the
+  text opens a line. `Dimension` is a fixed length, a `Fraction` of the parent, or auto.
+  Overflow is per axis (`Axes<Overflow>`, one overflow setting both) and computed as CSS
+  computes it, an axis left visible beside one that is not scrolling where needed; the
+  terminal scrolls, and draws a scrollbar, only along an axis that scrolls. An adaptive
+  track (`GridTrack::Adaptive`, `Grid::adaptive`) fits as many tracks as the container
+  holds, as SwiftUI's adaptive grid item does, compiled to CSS's auto-filled repetition.
+  A grid names areas over its cells (`GridAreas`, a row of cell names per grid row) and
+  the lines between its tracks (`GridTemplate`, a track list with names added where
+  lines stand, a plain list naming none), and a child is placed by an area's or a line's
+  name (`GridName`, `Line::area`), a template breaking CSS's rules dropped whole on
+  every platform as CSS drops it. A length below zero is laid out as CSS takes it: a
+  size (a width, a height, a limit, a flexible basis) as auto, the declaration dropped,
+  a track list holding one dropped whole, a padding, a border or a spacing as none, and
+  a margin or an inset with its sign. A variant is no exception: a negative length under
+  a condition that holds lays out as the same length in the base, whatever its leaf, so
+  the web renders a negative literal as the drawing platforms lay it out (`initial` for
+  a size and a rejected track list, none for a padding's, a border's or a spacing's
+  edge, `auto` for a basis) rather than as a declaration CSS drops for the base's, a
+  divergence from CSS's parsing recorded in `DECISIONS.md`. An expression and a motion
+  sample are held to the property's range where they are evaluated instead
+  (`Property::is_non_negative`, `BoxValue::in_range_of`), as CSS holds a `calc()` and an
+  interpolated value: a size, a padding, a spacing, a flexibility or a track list below
+  zero is zero there, never dropped. The framework invents no layout system.
 - **The record** (`Record<N, X>`) is a node's style as one list: every property its box
   and run styles set, keyed by its `PropertyKey` (each naming one box or run property)
   in the order written, each style's in the order its visitor gives (a run's own before

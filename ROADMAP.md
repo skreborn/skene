@@ -44,8 +44,7 @@ in a code comment.
     leaves and fractional rectangles kept beside the rounded ones; a paragraph lays its
     inline boxes out within its own measure; layout settles before a frame commits, the
     terminal's settle loop becoming the frame contract, and `Painted` resizes land with
-    the layout commit. `Tree::lay_out_revisited` and `TextFlow::trimmed` leave. The
-    whole-scene tree it replaces is recorded in `DECISIONS.md` with the 1,000-row
+    the layout commit. `TextFlow::trimmed` leaves. The whole-scene tree it replaces is recorded in `DECISIONS.md` with the 1,000-row
     probe's numbers, and the per-container engine's counts on the same probe join the
     2026-10-15 entry beside them.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color

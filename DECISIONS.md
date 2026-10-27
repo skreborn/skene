@@ -10,6 +10,18 @@ supersedes there.
 
 ## Decided against
 
+- **A scene walk in `skene-layout` beside the terminal's (`Tree::lay_out`, `Part`,
+  `Frames`)** (2026-10-27), a second walk bringing the layout tree in line with the
+  scene from each node's part as its platform classified it, and indexing every node's
+  rectangle, clip and paint order for hit testing: no platform called it, and the
+  terminal's walks, held by its integration tests, become the runtime's. Revisit if a
+  realization needs a layout of the scene without the runtime.
+- **A scene walk revisiting the moved nodes alone (`Tree::lay_out_revisited`)**
+  (2026-10-27), rewriting the revisited nodes and the leaves their text flows in on the
+  tree the last walk left, and falling back to a whole walk where a node's part changed
+  its shape: the per-container engine, one persistent taffy tree per decorated
+  `Container` with its layout-only boxes folded in, and the shared `Restyle`'s revisit
+  set do its work. Revisit when a structure change's relayout dominates a frame.
 - **The spine's `Window`, an `Environment` per window and a scene per root waiting for a
   second window** (2026-10-27), one runtime per thread until item 3's popup surfaces or
   item 5's embedding gave a window or a root its second reader: the media API every new

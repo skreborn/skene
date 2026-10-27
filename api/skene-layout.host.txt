@@ -14,15 +14,6 @@ impl core::fmt::Debug for skene_layout::Borders
 pub fn skene_layout::Borders::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::Borders
 impl core::marker::StructuralPartialEq for skene_layout::Borders
-pub enum skene_layout::Part<C>
-pub skene_layout::Part::Absent
-pub skene_layout::Part::Box(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
-pub skene_layout::Part::Hidden(alloc::boxed::Box<Self>)
-pub skene_layout::Part::Leaf(taffy::style::Style, C)
-pub skene_layout::Part::Overlay(taffy::style::Style, skene_foundation::spine::values::point::Point<f32>)
-pub skene_layout::Part::Transparent
-impl<C: core::fmt::Debug> core::fmt::Debug for skene_layout::Part<C>
-pub fn skene_layout::Part<C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_layout::Revisit
 pub skene_layout::Revisit::Every
 pub skene_layout::Revisit::Nodes(alloc::vec::Vec<skene_foundation::spine::node::NodeId>, bool)
@@ -32,19 +23,6 @@ pub fn skene_layout::Revisit::eq(&self, &Self) -> bool
 impl core::fmt::Debug for skene_layout::Revisit
 pub fn skene_layout::Revisit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_layout::Revisit
-pub struct skene_layout::Frames
-impl skene_layout::Frames
-pub fn skene_layout::Frames::extend(&mut self, Self)
-pub fn skene_layout::Frames::hit(&self, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_foundation::spine::node::NodeId>
-pub fn skene_layout::Frames::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)> + '_
-pub fn skene_layout::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
-pub fn skene_layout::Frames::visible(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
-impl core::clone::Clone for skene_layout::Frames
-pub fn skene_layout::Frames::clone(&self) -> Self
-impl core::default::Default for skene_layout::Frames
-pub fn skene_layout::Frames::default() -> Self
-impl core::fmt::Debug for skene_layout::Frames
-pub fn skene_layout::Frames::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::Place
 pub skene_layout::Place::borders: skene_layout::Borders
 pub skene_layout::Place::in_stack: bool
@@ -118,10 +96,7 @@ pub fn skene_layout::Tree<C>::compute(&mut self, skene_foundation::spine::node::
 pub fn skene_layout::Tree<C>::contains(&self, skene_foundation::spine::node::NodeId) -> bool
 pub fn skene_layout::Tree<C>::context(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&C>
 pub fn skene_layout::Tree<C>::context_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut C>
-pub fn skene_layout::Tree<C>::frames(&self, skene_foundation::spine::node::NodeId) -> skene_layout::Frames
 pub fn skene_layout::Tree<C>::insert(&mut self, skene_foundation::spine::node::NodeId)
-pub fn skene_layout::Tree<C>::lay_out<P: skene_foundation::spine::realization::Realization>(&mut self, &[skene_foundation::spine::node::NodeId], skene_foundation::spine::values::size::Size<f32>, taffy::style::flex::FlexDirection, impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId) -> skene_layout::Part<C>) -> skene_layout::Frames where C: core::cmp::PartialEq
-pub fn skene_layout::Tree<C>::lay_out_revisited<P: skene_foundation::spine::realization::Realization>(&mut self, &[skene_foundation::spine::node::NodeId], skene_foundation::spine::values::size::Size<f32>, taffy::style::flex::FlexDirection, &[skene_foundation::spine::node::NodeId], impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId) -> skene_layout::Part<C>) -> core::option::Option<skene_layout::Frames> where C: core::cmp::PartialEq
 pub fn skene_layout::Tree<C>::layout(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&taffy::tree::layout::Layout>
 pub fn skene_layout::Tree<C>::mark_dirty(&mut self, skene_foundation::spine::node::NodeId)
 pub fn skene_layout::Tree<C>::new(bool) -> Self

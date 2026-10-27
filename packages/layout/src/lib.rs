@@ -3,9 +3,8 @@
 //! The layout every platform but the web computes, on taffy: the shared style model
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
 //! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
-//! across layouts and written node by node or by a walk of the scene, each node's part
-//! classified by its platform ([`Tree`]), what moved since a platform last restyled its
-//! tree and so the nodes it revisits next ([`Restyle`]), and a paragraph's runs and inline
+//! across layouts and written node by node ([`Tree`]), what moved since a platform last restyled
+//! its tree and so the nodes it revisits next ([`Restyle`]), and a paragraph's runs and inline
 //! boxes laid out as one text through a realization's text engine ([`TextFlow`]). The web
 //! lays out through CSS and needs none of it.
 
@@ -41,7 +40,7 @@ use taffy::{
 pub use self::{
   restyle::{Restyle, Revisit},
   text::{RunHit, TextFlow},
-  tree::{Frames, Leaf, Part, Tree},
+  tree::{Leaf, Tree},
 };
 
 /// How a box's border takes room in its layout.
@@ -527,7 +526,10 @@ const fn item(value: ItemAlignment) -> taffy::style::AlignItems {
 
 #[cfg(test)]
 mod tests {
-  use std::sync::atomic::{AtomicU32, Ordering};
+  use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicU32, Ordering},
+  };
 
   use skene_foundation::{
     Axis,
@@ -550,7 +552,7 @@ mod tests {
     style::{Display, FlexDirection},
   };
 
-  use super::{Borders, BoxLayout, Frames, Leaf, Place, Tree};
+  use super::{Borders, BoxLayout, Leaf, Place, Tree};
 
   /// A leaf measuring to nothing, the boxes of these tests sizing themselves.
   #[derive(PartialEq)]
@@ -591,10 +593,11 @@ mod tests {
   }
 
   /// A tree of boxes laid out in a viewport 1024 by 768 that lays its items out down
-  /// it, as a page's column fills it.
+  /// it, as a page's column fills it, with each box's parent.
   struct Page {
     tree: Tree<Empty>,
     viewport: NodeId,
+    parents: HashMap<NodeId, NodeId>,
   }
 
   impl Page {
@@ -618,7 +621,11 @@ mod tests {
         },
       );
 
-      Self { tree, viewport }
+      Self {
+        tree,
+        viewport,
+        parents: HashMap::new(),
+      }
     }
 
     /// Adds a box styled `style`, laid out as `layout`, in a stack's cell where
@@ -647,12 +654,17 @@ mod tests {
 
       self.tree.set_children(added, children.iter().copied());
 
+      for child in children {
+        self.parents.insert(*child, added);
+      }
+
       added
     }
 
-    /// Lays the page out, `top` its one item, and returns every node's rectangle.
-    fn lay_out(&mut self, top: NodeId) -> Frames {
+    /// Lays the page out, `top` its one item.
+    fn lay_out(&mut self, top: NodeId) {
       self.tree.set_children(self.viewport, [top]);
+      self.parents.insert(top, self.viewport);
 
       self.tree.compute(
         self.viewport,
@@ -661,8 +673,26 @@ mod tests {
           height: AvailableSpace::Definite(768.),
         },
       );
+    }
 
-      self.tree.frames(self.viewport)
+    /// `node`'s rectangle in the viewport as the last layout left it, its location
+    /// summed through its parents.
+    fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
+      let size = self.tree.layout(node)?.size;
+      let mut origin = Point::new(0., 0.);
+      let mut current = Some(node);
+
+      while let Some(laid_out) = current.filter(|laid_out| *laid_out != self.viewport) {
+        let location = self.tree.layout(laid_out)?.location;
+
+        origin = Point::new(origin.x + location.x, origin.y + location.y);
+        current = self.parents.get(&laid_out).copied();
+      }
+
+      Some(Rect {
+        origin,
+        size: skene_foundation::Size::new(size.width, size.height),
+      })
     }
   }
 
@@ -686,13 +716,13 @@ mod tests {
       &[first, second],
     );
 
-    let frames = page.lay_out(column);
+    page.lay_out(column);
 
-    assert_eq!(frames.rect(first), Some(rect(0., 0., 100., 20.)));
-    assert_eq!(frames.rect(second), Some(rect(0., 30., 50., 30.)));
+    assert_eq!(page.rect(first), Some(rect(0., 0., 100., 20.)));
+    assert_eq!(page.rect(second), Some(rect(0., 30., 50., 30.)));
 
     assert_eq!(
-      frames.rect(column).map(|rect| rect.size.width),
+      page.rect(column).map(|rect| rect.size.width),
       Some(1024.),
       "the column stretches across the page"
     );
@@ -747,17 +777,17 @@ mod tests {
       &[narrow, stack],
     );
 
-    let frames = page.lay_out(column);
+    page.lay_out(column);
 
-    assert_eq!(frames.rect(grown).map(|rect| rect.size.width), Some(200.));
+    assert_eq!(page.rect(grown).map(|rect| rect.size.width), Some(200.));
 
     assert_eq!(
-      frames.rect(fixed).map(|rect| rect.origin),
+      page.rect(fixed).map(|rect| rect.origin),
       Some(Point::new(200., 0.))
     );
 
     assert_eq!(
-      [under, over].map(|layer| frames.rect(layer).map(|rect| rect.origin)),
+      [under, over].map(|layer| page.rect(layer).map(|rect| rect.origin)),
       [Some(Point::new(0., 10.)), Some(Point::new(0., 10.))]
     );
   }

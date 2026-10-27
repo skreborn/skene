@@ -628,7 +628,10 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
 
 #[cfg(test)]
 mod tests {
-  use std::sync::atomic::{AtomicU32, Ordering};
+  use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicU32, Ordering},
+  };
 
   use skene_foundation::{
     NodeId,
@@ -644,7 +647,7 @@ mod tests {
   };
 
   use super::{RunHit, TextFlow};
-  use crate::{Frames, Tree};
+  use crate::Tree;
 
   /// The face the tests lay text out in.
   const INTER: Typeface = Typeface::new(
@@ -747,13 +750,47 @@ mod tests {
     flow
   }
 
+  /// Each node's rectangle from one layout of a page, a node laid out in several
+  /// spanning them all.
+  #[derive(Default)]
+  struct Rects(HashMap<NodeId, Rect<f32>>);
+
+  impl Rects {
+    /// The rectangle `node` spans; `None` for a node the layout never reached.
+    fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
+      self.0.get(&node).copied()
+    }
+
+    /// Records that `node` covers `rect`, spanning everything it covered before.
+    fn add(&mut self, node: NodeId, rect: Rect<f32>) {
+      let spanned = self.0.get(&node).map_or(rect, |held| {
+        let min = Point::new(
+          held.origin.x.min(rect.origin.x),
+          held.origin.y.min(rect.origin.y),
+        );
+        let max = Point::new(
+          (held.origin.x + held.size.width).max(rect.origin.x + rect.size.width),
+          (held.origin.y + held.size.height).max(rect.origin.y + rect.size.height),
+        );
+
+        Rect {
+          origin: min,
+          size: Size::new(max.x - min.x, max.y - min.y),
+        }
+      });
+
+      self.0.insert(node, spanned);
+    }
+  }
+
   /// A page `width` wide and 768 tall laying its items out down it, each a text leaf or
-  /// a row holding one.
+  /// a row holding one, with the view each inline box holds.
   struct Page {
     tree: Tree<TextFlow<ParleyEngine>>,
     viewport: NodeId,
     width: f32,
-    items: Vec<NodeId>,
+    items: Vec<(NodeId, NodeId)>,
+    views: HashMap<NodeId, NodeId>,
   }
 
   impl Page {
@@ -782,6 +819,7 @@ mod tests {
         viewport,
         width,
         items: Vec::new(),
+        views: HashMap::new(),
       }
     }
 
@@ -805,11 +843,11 @@ mod tests {
         self.tree.set_children(row, [leaf]);
       }
 
-      self.items.push(row.unwrap_or(leaf));
+      self.items.push((row.unwrap_or(leaf), leaf));
     }
 
     /// Adds the inline box `inline` flowing in `leaf`, holding `view`, a box of `size`,
-    /// and gives the leaf the size it lays out at, as a walk of the scene does.
+    /// and gives the leaf the size it lays out at, as its host does.
     fn add_box(&mut self, leaf: NodeId, inline: NodeId, view: NodeId, size: Size<f32>) {
       self.tree.insert(inline);
 
@@ -835,6 +873,7 @@ mod tests {
       );
 
       self.tree.set_children(inline, [view]);
+      self.views.insert(inline, view);
 
       self.tree.compute(
         inline,
@@ -856,11 +895,12 @@ mod tests {
       self.tree.mark_dirty(leaf);
     }
 
-    /// Lays the page out and returns every node's rectangle.
-    fn lay_out(&mut self) -> Frames {
+    /// Lays the page out and returns every node's rectangle: each item's and leaf's
+    /// own, and each run's, group's and inline box's where its leaf places it.
+    fn lay_out(&mut self) -> Rects {
       self
         .tree
-        .set_children(self.viewport, self.items.iter().copied());
+        .set_children(self.viewport, self.items.iter().map(|(item, _)| *item));
 
       self.tree.compute(
         self.viewport,
@@ -870,7 +910,79 @@ mod tests {
         },
       );
 
-      self.tree.frames(self.viewport)
+      let mut rects = Rects::default();
+
+      for (item, leaf) in self.items.clone() {
+        let content = self.content(leaf);
+
+        rects.add(item, self.laid_out(item, Point::ZERO));
+        rects.add(leaf, content);
+
+        let flow = self.tree.context(leaf).expect("the leaf's flow");
+
+        for (node, rect) in crate::Leaf::place(flow, content) {
+          if node == leaf {
+            continue;
+          }
+
+          if !self.tree.contains(node) {
+            rects.add(node, rect);
+
+            continue;
+          }
+
+          let size = self.laid_out(node, Point::ZERO).size;
+
+          rects.add(
+            node,
+            Rect {
+              origin: rect.origin,
+              size,
+            },
+          );
+
+          if let Some(view) = self.views.get(&node) {
+            rects.add(*view, self.laid_out(*view, rect.origin));
+          }
+        }
+      }
+
+      rects
+    }
+
+    /// The rectangle `node` lays out at in its parent, its parent's origin at `origin`.
+    fn laid_out(&self, node: NodeId, origin: Point<f32>) -> Rect<f32> {
+      let layout = self.tree.layout(node).expect("laid out");
+
+      Rect {
+        origin: Point::new(origin.x + layout.location.x, origin.y + layout.location.y),
+        size: Size::new(layout.size.width, layout.size.height),
+      }
+    }
+
+    /// The rectangle the leaf `leaf` lays out at on the page, its location summed through
+    /// the row holding it where there is one.
+    fn content(&self, leaf: NodeId) -> Rect<f32> {
+      let item = self
+        .items
+        .iter()
+        .find_map(|(item, held)| (*held == leaf).then_some(*item))
+        .expect("the page's leaf");
+      let origin = if item == leaf {
+        Point::ZERO
+      }
+      else {
+        self.laid_out(item, Point::ZERO).origin
+      };
+
+      self.laid_out(leaf, origin)
+    }
+
+    /// The run of the leaf `leaf` drawn at `point`; `None` beside every run.
+    fn run_at(&self, leaf: NodeId, point: Point<f32>) -> Option<NodeId> {
+      let flow = self.tree.context(leaf).expect("the leaf's flow");
+
+      flow.run_at(self.content(leaf), point).map(|hit| hit.node)
     }
   }
 
@@ -891,22 +1003,22 @@ mod tests {
       None,
     );
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
     let start = width("Hello ");
     let end = start + width("world");
     let middle = end - width("ld");
     let top = cap(16.) - baseline(24., 16.);
 
-    assert_near(frames.rect(text), rect(0., 0., 1024., cap(16.)));
-    assert_near(frames.rect(hello), rect(0., top, start, 24.));
-    assert_near(frames.rect(group), rect(start, top, end - start, 24.));
-    assert_near(frames.rect(wor), rect(start, top, middle - start, 24.));
-    assert_near(frames.rect(ld), rect(middle, top, width("ld"), 24.));
-    assert_eq!(frames.hit(Point::new(start + 2., 10.)), Some(wor));
+    assert_near(rects.rect(text), rect(0., 0., 1024., cap(16.)));
+    assert_near(rects.rect(hello), rect(0., top, start, 24.));
+    assert_near(rects.rect(group), rect(start, top, end - start, 24.));
+    assert_near(rects.rect(wor), rect(start, top, middle - start, 24.));
+    assert_near(rects.rect(ld), rect(middle, top, width("ld"), 24.));
+    assert_eq!(page.run_at(text, Point::new(start + 2., 10.)), Some(wor));
 
     assert_eq!(
-      frames.hit(Point::new(200., 10.)),
-      Some(text),
+      page.run_at(text, Point::new(200., 10.)),
+      None,
       "beyond the text"
     );
   }
@@ -925,29 +1037,29 @@ mod tests {
       None,
     );
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
     let start = width("c ");
     let top = cap(16.) - baseline(24., 16.);
 
-    assert_near(frames.rect(text), rect(0., 0., narrow, 24. + cap(16.)));
-    assert_near(frames.rect(before), rect(0., top, start, 24.));
-    assert_near(frames.rect(broken), rect(0., top, narrow, 48.));
+    assert_near(rects.rect(text), rect(0., 0., narrow, 24. + cap(16.)));
+    assert_near(rects.rect(before), rect(0., top, start, 24.));
+    assert_near(rects.rect(broken), rect(0., top, narrow, 48.));
 
     assert_eq!(
-      frames.hit(Point::new(start + 2., 10.)),
+      page.run_at(text, Point::new(start + 2., 10.)),
       Some(broken),
       "its first piece"
     );
 
     assert_eq!(
-      frames.hit(Point::new(2., 30.)),
+      page.run_at(text, Point::new(2., 30.)),
       Some(broken),
       "its second piece"
     );
 
     assert_eq!(
-      frames.hit(Point::new(width("bb") + 4., 30.)),
-      Some(text),
+      page.run_at(text, Point::new(width("bb") + 4., 30.)),
+      None,
       "beside its second piece"
     );
   }
@@ -964,24 +1076,24 @@ mod tests {
       None,
     );
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
     let start = width_at("big ", 32.);
 
-    assert_near(frames.rect(text), rect(0., 0., 1024., cap(32.)));
+    assert_near(rects.rect(text), rect(0., 0., 1024., cap(32.)));
 
     assert_near(
-      frames.rect(big),
+      rects.rect(big),
       rect(0., cap(32.) - baseline(48., 32.), start, 48.),
     );
 
     assert_near(
-      frames.rect(small),
+      rects.rect(small),
       rect(start, cap(32.) - baseline(24., 16.), width("small"), 24.),
     );
   }
 
   /// An inline box lays out at its content's size among its paragraph's text, its line
-  /// as tall as the box, and a point finds the view inside it.
+  /// as tall as the box, and a point on it finds no run but lies in the view inside it.
   #[test]
   fn an_inline_box_flows_among_its_paragraphs_text() {
     let (text, before, inline, view, after) = (node(), node(), node(), node(), node());
@@ -995,21 +1107,34 @@ mod tests {
       .expect("the leaf's flow")
       .add_run(after, &[], " cd", style());
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
     let start = width("ab ");
     let top = 30. - baseline(24., 16.);
 
-    assert_near(frames.rect(text), rect(0., 0., 1024., 30.));
-    assert_near(frames.rect(before), rect(0., top, start, 24.));
-    assert_near(frames.rect(inline), rect(start, 0., 20., 30.));
-    assert_near(frames.rect(view), rect(start, 0., 20., 30.));
+    assert_near(rects.rect(text), rect(0., 0., 1024., 30.));
+    assert_near(rects.rect(before), rect(0., top, start, 24.));
+    assert_near(rects.rect(inline), rect(start, 0., 20., 30.));
+    assert_near(rects.rect(view), rect(start, 0., 20., 30.));
 
-    assert_near(
-      frames.rect(after),
-      rect(start + 20., top, width(" cd"), 24.),
+    assert_near(rects.rect(after), rect(start + 20., top, width(" cd"), 24.));
+
+    let on_view = Point::new(start + 6., 10.);
+
+    assert_eq!(
+      page.run_at(text, on_view),
+      None,
+      "no run is drawn on the box"
     );
 
-    assert_eq!(frames.hit(Point::new(start + 6., 10.)), Some(view));
+    assert!(
+      rects.rect(view).is_some_and(|view| {
+        view.origin.x <= on_view.x
+          && on_view.x < view.origin.x + view.size.width
+          && view.origin.y <= on_view.y
+          && on_view.y < view.origin.y + view.size.height
+      }),
+      "the view inside it holds the point"
+    );
   }
 
   /// A line may end before an inline box with no blank between them.
@@ -1021,11 +1146,11 @@ mod tests {
     page.add(text, paragraph(&[(run, &[], "abc", 16.)]), None);
     page.add_box(text, inline, view, Size::new(20., 30.));
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
     let second = 24. - baseline(24., 16.) + cap(16.);
 
-    assert_near(frames.rect(text), rect(0., 0., 30., second + 30.));
-    assert_near(frames.rect(inline), rect(0., second, 20., 30.));
+    assert_near(rects.rect(text), rect(0., 0., 30., second + 30.));
+    assert_near(rects.rect(inline), rect(0., second, 20., 30.));
   }
 
   /// A paragraph breaks where the Unicode line breaking algorithm allows, after a
@@ -1037,12 +1162,12 @@ mod tests {
 
     page.add(text, paragraph(&[(span, &[], "well-known", 16.)]), None);
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
 
-    assert_near(frames.rect(text), rect(0., 0., 56., 24. + cap(16.)));
+    assert_near(rects.rect(text), rect(0., 0., 56., 24. + cap(16.)));
 
     assert_near(
-      frames.rect(span),
+      rects.rect(span),
       rect(0., cap(16.) - baseline(24., 16.), width("known"), 48.),
     );
   }
@@ -1057,10 +1182,10 @@ mod tests {
     flow.add_run(text, &[], "abc", style().with_letter_spacing(2.));
     page.add(text, flow, Some(row));
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
 
     assert_eq!(
-      frames.rect(text).map(|rect| rect.size.width),
+      rects.rect(text).map(|rect| rect.size.width),
       Some(width("abc") + 6.)
     );
   }
@@ -1084,16 +1209,16 @@ mod tests {
       Some(node()),
     );
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
     let kept = width("ab") + 3. * width(" ");
 
     for run in [trailing, leading] {
       assert!(
-        frames
+        rects
           .rect(run)
           .is_some_and(|rect| (rect.size.width - kept).abs() < 1e-3),
         "{:?} takes its three blanks' room",
-        frames.rect(run)
+        rects.rect(run)
       );
     }
   }
@@ -1110,10 +1235,10 @@ mod tests {
 
       run
     });
-    let frames = page.lay_out();
+    let rects = page.lay_out();
 
     assert_eq!(
-      runs.map(|run| frames.rect(run).map(|rect| rect.size.height)),
+      runs.map(|run| rects.rect(run).map(|rect| rect.size.height)),
       [
         Some(cap(16.)),
         Some(24. + cap(16.)),
@@ -1131,10 +1256,10 @@ mod tests {
 
     page.add(hung, paragraph(&[(hung, &[], "aaa     bbb", 16.)]), None);
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
 
     assert_eq!(
-      frames.rect(hung).map(|rect| rect.size.height),
+      rects.rect(hung).map(|rect| rect.size.height),
       Some(24. + cap(16.))
     );
   }
@@ -1158,17 +1283,17 @@ mod tests {
       Some(node()),
     );
 
-    let frames = page.lay_out();
+    let rects = page.lay_out();
 
     assert!(
-      frames
+      rects
         .rect(broken)
         .is_some_and(|rect| (rect.size.height - 4. * 24. - cap(16.)).abs() < 1e-4),
       "five lines of four letters each"
     );
 
     assert_eq!(
-      frames.rect(kept).map(|rect| rect.size.width),
+      rects.rect(kept).map(|rect| rect.size.width),
       Some(width("aaaaaaaaaa"))
     );
   }

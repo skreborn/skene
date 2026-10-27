@@ -889,8 +889,9 @@ stands.
   number there. It holds every nextest binary and doctest set of `test:host`,
   `test:server` and `test:terminal` to the least number of tests it lists for it as
   well, failing one that passes tests unlisted, so a test that moves between crates
-  lowers one number and raises the other in the same change. By hand, read each binary's `test result:` line rather than cargo's exit
-  code, and run Firefox's snap-bundled geckodriver
+  lowers one number and raises the other in the same change. By hand, read each
+  binary's `test result:` line rather than cargo's exit code, and run Firefox's
+  snap-bundled geckodriver
   (`GECKODRIVER=/snap/firefox/current/usr/lib/firefox/geckodriver`) with `TMPDIR` on a
   path the snap can read, as the gate does: the snap's own `geckodriver` cannot be
   stopped by the runner, which panics with `PermissionDenied` after reporting. A browser

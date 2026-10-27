@@ -4,6 +4,7 @@
 use skene_foundation::{NodeId, NodeMap, Rect, Size};
 use taffy::{
   TaffyTree,
+  TraversePartialTree,
   prelude::AvailableSpace,
   style::{Position, Style},
   tree::{Layout, LayoutOutput},
@@ -66,13 +67,7 @@ pub trait Leaf {
 #[must_use]
 pub struct Tree<C> {
   taffy: TaffyTree<C>,
-  nodes: NodeMap<Slot>,
-}
-
-/// A node's place in the taffy tree: its taffy node and the taffy children last set.
-struct Slot {
-  taffy: taffy::NodeId,
-  children: Vec<taffy::NodeId>,
+  nodes: NodeMap<taffy::NodeId>,
 }
 
 impl<C> std::fmt::Debug for Tree<C> {
@@ -115,19 +110,13 @@ impl<C: Leaf> Tree<C> {
       .new_leaf(Self::containing(Style::default()))
       .expect("allocate a layout node");
 
-    self.nodes.insert(
-      node,
-      Slot {
-        taffy,
-        children: Vec::new(),
-      },
-    );
+    self.nodes.insert(node, taffy);
   }
 
   /// Takes `node` out of the tree, and out of its parent's children.
   pub fn remove(&mut self, node: NodeId) {
-    if let Some(slot) = self.nodes.remove(node) {
-      let _ = self.taffy.remove(slot.taffy);
+    if let Some(taffy) = self.nodes.remove(node) {
+      let _ = self.taffy.remove(taffy);
     }
   }
 
@@ -140,21 +129,17 @@ impl<C: Leaf> Tree<C> {
   /// Gives `node` the taffy style `style`; `true` where it differs from the one it
   /// held, `false` where it is the same or `node` is outside the tree.
   pub fn set_style(&mut self, node: NodeId, style: Style) -> bool {
-    let Some(slot) = self.nodes.get(node)
+    let Some(&taffy) = self.nodes.get(node)
     else {
       return false;
     };
     let style = Self::containing(style);
 
-    if self
-      .taffy
-      .style(slot.taffy)
-      .is_ok_and(|held| *held == style)
-    {
+    if self.taffy.style(taffy).is_ok_and(|held| *held == style) {
       return false;
     }
 
-    self.taffy.set_style(slot.taffy, style).is_ok()
+    self.taffy.set_style(taffy, style).is_ok()
   }
 
   /// Gives `node` the context its measure reads, or none; `true` where it differs from
@@ -165,22 +150,22 @@ impl<C: Leaf> Tree<C> {
   where
     C: PartialEq,
   {
-    let Some(slot) = self.nodes.get(node)
+    let Some(&taffy) = self.nodes.get(node)
     else {
       return false;
     };
 
-    if self.taffy.get_node_context(slot.taffy) == context.as_ref() {
+    if self.taffy.get_node_context(taffy) == context.as_ref() {
       return false;
     }
 
-    if let (Some(held), Some(next)) = (self.taffy.get_node_context_mut(slot.taffy), &context)
+    if let (Some(held), Some(next)) = (self.taffy.get_node_context_mut(taffy), &context)
       && held.repaint_as(next)
     {
       return false;
     }
 
-    self.taffy.set_node_context(slot.taffy, context).is_ok()
+    self.taffy.set_node_context(taffy, context).is_ok()
   }
 
   /// Whether `node` is marked for the next [`compute`](Self::compute) to measure and lay
@@ -190,64 +175,55 @@ impl<C: Leaf> Tree<C> {
     self
       .nodes
       .get(node)
-      .is_some_and(|slot| self.taffy.dirty(slot.taffy).unwrap_or(true))
+      .is_some_and(|taffy| self.taffy.dirty(*taffy).unwrap_or(true))
   }
 
   /// The context `node`'s measure reads; `None` for a node outside the tree or without
   /// one.
   #[must_use]
   pub fn context(&self, node: NodeId) -> Option<&C> {
-    let slot = self.nodes.get(node)?;
-
-    self.taffy.get_node_context(slot.taffy)
+    self.taffy.get_node_context(*self.nodes.get(node)?)
   }
 
   /// The context `node`'s measure reads, to change in place; a change to what it
   /// measures to takes [`mark_dirty`](Self::mark_dirty) as well.
   pub fn context_mut(&mut self, node: NodeId) -> Option<&mut C> {
-    let slot = self.nodes.get(node)?;
-
-    self.taffy.get_node_context_mut(slot.taffy)
+    self.taffy.get_node_context_mut(*self.nodes.get(node)?)
   }
 
   /// Marks `node` for the next [`compute`](Self::compute) to measure and lay out
   /// again, with every ancestor.
   pub fn mark_dirty(&mut self, node: NodeId) {
-    if let Some(slot) = self.nodes.get(node) {
-      let _ = self.taffy.mark_dirty(slot.taffy);
+    if let Some(&taffy) = self.nodes.get(node) {
+      let _ = self.taffy.mark_dirty(taffy);
     }
   }
 
-  /// Gives `node` the children `children`, in order, leaving out each outside the tree;
-  /// `true` where they differ from the ones it held.
+  /// Gives `node` the children `children`, in order, leaving out each outside the tree,
+  /// each taken from the parent it had; `true` where they differ from the ones it holds,
+  /// which a child set elsewhere or removed since has left.
   pub fn set_children(&mut self, node: NodeId, children: impl IntoIterator<Item = NodeId>) -> bool {
     let children: Vec<taffy::NodeId> = children
       .into_iter()
-      .filter_map(|child| self.nodes.get(child).map(|slot| slot.taffy))
+      .filter_map(|child| self.nodes.get(child).copied())
       .collect();
-    let Some(slot) = self.nodes.get_mut(node)
+    let Some(&taffy) = self.nodes.get(node)
     else {
       return false;
     };
 
-    if slot.children == children {
+    if self.taffy.child_ids(taffy).eq(children.iter().copied()) {
       return false;
     }
 
-    if self.taffy.set_children(slot.taffy, &children).is_err() {
-      return false;
-    }
-
-    slot.children = children;
-
-    true
+    self.taffy.set_children(taffy, &children).is_ok()
   }
 
   /// Lays out the tree under `root` in the space `available`, each leaf with a context
   /// measured by it and each without one sized to its known dimensions or nothing.
   pub fn compute(&mut self, root: NodeId, available: taffy::geometry::Size<AvailableSpace>) {
-    if let Some(slot) = self.nodes.get(root) {
-      let _ = self.compute_at(slot.taffy, available);
+    if let Some(&taffy) = self.nodes.get(root) {
+      let _ = self.compute_at(taffy, available);
     }
   }
 
@@ -255,14 +231,14 @@ impl<C: Leaf> Tree<C> {
   /// rounded where the tree rounds; `None` for a node outside the tree.
   #[must_use]
   pub fn layout(&self, node: NodeId) -> Option<&Layout> {
-    self.taffy.layout(self.nodes.get(node)?.taffy).ok()
+    self.taffy.layout(*self.nodes.get(node)?).ok()
   }
 
   /// `node`'s layout in its parent, as the last [`compute`](Self::compute) left it
   /// before any rounding; `None` for a node outside the tree.
   #[must_use]
   pub fn unrounded_layout(&self, node: NodeId) -> Option<&Layout> {
-    Some(self.taffy.unrounded_layout(self.nodes.get(node)?.taffy))
+    Some(self.taffy.unrounded_layout(*self.nodes.get(node)?))
   }
 
   /// `style`, laid out relative where it leaves its position static, so its node

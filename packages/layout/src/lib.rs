@@ -792,6 +792,41 @@ mod tests {
     );
   }
 
+  /// A parent given back the children it held takes back a child set under another
+  /// parent since, and children are compared with the ones a parent holds, a child set
+  /// elsewhere or removed having left it.
+  #[test]
+  fn a_parent_given_its_children_back_takes_them_back() {
+    let mut page = Page::new();
+    let child = page.add(&sized(10., 7.), Layout::Single, false, &[]);
+    let gone = page.add(&sized(10., 3.), Layout::Single, false, &[]);
+    let first = page.add(&BoxStyle::default(), Layout::Single, false, &[child, gone]);
+    let second = page.add(&BoxStyle::default(), Layout::Single, false, &[]);
+    let column = Layout::Flex {
+      axis: Axis::Vertical,
+      reversed: false,
+    };
+    let both = page.add(&BoxStyle::default(), column, false, &[first, second]);
+
+    assert!(page.tree.set_children(second, [child]), "the child moves");
+    assert!(page.tree.set_children(first, [child, gone]), "and back");
+    assert!(!page.tree.set_children(second, []), "leaving the other");
+
+    page.tree.remove(gone);
+
+    assert!(
+      !page.tree.set_children(first, [child]),
+      "a removed child has left its parent"
+    );
+
+    page.lay_out(both);
+
+    assert_eq!(
+      [first, second].map(|parent| page.rect(parent).map(|rect| rect.size.height)),
+      [Some(7.), Some(0.)]
+    );
+  }
+
   /// A border takes one unit on each edge drawn where it is cells, and its width where
   /// it is lengths.
   #[test]

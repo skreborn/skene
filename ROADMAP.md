@@ -21,8 +21,8 @@ proving it unnecessary, or by recording it in `DECISIONS.md`; it is never left h
 in a code comment.
 
 1. **One runtime beneath every platform but the web.** What the terminal keeps for
-    itself, Linux and Windows need as well, since they too own their window, and the
-    compositor platforms need its layout and its motion; each mechanism is written once.
+    itself, Linux and Windows need as well, since they too own their window; each
+    mechanism is written once, in `skene-layout`, the terminal its first client.
     - The terminal's retained runtime beyond its layout tree and its restyle's schedule
     (the restyle's resolution caches and presentation, the damage and the measured
     rectangles, hit testing, focus, capture, wheel latching, selection, motion) moves
@@ -36,27 +36,27 @@ in a code comment.
     the app's key handlers as a browser's `<input>` default runs (so never as a
     `TextEntry::on_key`, which would run before them), the terminal's own key default
     consulting the table until then.
-    - Layout: taffy owns it on every platform but the web, one tree per container, the
-    platform's measure as its leaves, a minimum as a floor and fractional rectangles;
-    layout-only nodes flatten by type, since only `Container` is decorated; layout
-    settles before a frame commits, the terminal's settle loop becoming the frame
-    contract; taffy nodes persist, and `Painted` resizes land with the layout commit.
-    `Tree::lay_out_revisited` (a walk of the scene revisiting the moved nodes alone) and
-    `TextFlow::trimmed` (a text trimmed as `text-box-trim` trims it), which no platform
-    calls, become that runtime's or leave.
-    - Beside it: vello paint for `Painted`; the frame clock running
-    `skene_foundation::interpolate`, with opacity, transform and color transitions on
-    the platform's compositor where it has one and the frame clock their floor;
-    `Condition` resolution against window and pointer signals through the one resolution
-    point; the `Environment` per window, a scene per root and a `Window` beside them,
-    the web and the terminal having one window each, so embedding into an existing
-    native screen falls out; typed events, a platform's Back request routed to overlays
-    and the router; the executor's wake hook and off-thread delivery through the event
-    loop's proxy; a loop-integrated timer, the one sanctioned exception to
-    timers-are-userland; view transitions snapshotting the outgoing tree into a layer
-    and interpolating named pairs; and a native counterpart to "mimic the web",
-    following each platform's conventions (macOS Tab, iPad focus groups, Android Back,
-    long-press menus).
+    - Layout: taffy owns it on every platform but the web, one persistent tree per
+    decorated `Container`, the layout-only boxes beneath it (`Row`, `Column`, `Grid`,
+    `Stack`) folded into that tree by a creation fact telling a decorated box from a
+    layout-only one, which the compositor platforms reuse; the platform's measure as its
+    leaves and fractional rectangles kept beside the rounded ones; a paragraph lays its
+    inline boxes out within its own measure; layout settles before a frame commits, the
+    terminal's settle loop becoming the frame contract, and `Painted` resizes land with
+    the layout commit. `Tree::lay_out_revisited` and `TextFlow::trimmed` leave.
+    - Beside it: the frame clock running `skene_foundation::interpolate`, color
+    transitions on it; `Condition` resolution against the runtime's environment and
+    pointer through the one resolution point; the spine's `Window` owning its
+    `Environment`, `media::*` reading the window's, and the scene's held state (open
+    overlays, kept focus, autofocus, shortcuts, a drag) partitioned by root, each root
+    read by one window, the web and the terminal having one window each and the
+    runtime's state kept per window; one typed input enum in the foundation beside the
+    spine's events (a pointer, a wheel with its delta's unit, a key, a paste), which
+    every platform produces before dispatch, the web's DOM listeners included, each
+    platform's conventions its policy (when two presses fall on the same spot, its
+    intervals and steps); the executor's wake through the event loop's waker, another
+    thread's work arriving as a task the owning executor wakes; and the runtime's timers
+    folded into the loop's wait, the loop-integrated timer.
 2. **Lists and overlays, designed for both kinds of platform.** Every realization below
     needs both, each shaped once for the compositor platforms, which place views among
     native ones, and for the window platforms, which draw everything. Lists are designed
@@ -128,6 +128,33 @@ in a code comment.
     flings, touch with GTK 4's selection handles and magnifier, drag and drop with its
     icon, and fractional scale per popup. The handles and the magnifier have fixed looks,
     against "presentation is never hardcoded", so they take tokens or setters.
+    - The shared runtime (item 1) carries its first pixel platform: rectangles kept
+    fractional and snapped to device pixels at report and paint under the window's
+    scale, the scale and a layout direction joining the environment and a size report
+    carrying the device size; the whole window painted through one vello pipeline
+    walking the runtime's frames, the CPU its floor; damage collapsed to a region (a
+    tile band on the GPU); an overlay on a surface of its own, placed by the window
+    system and reported back, beside the in-frame host the terminal uses, the window's
+    runtime state holding a surface per popup; the frame clock paced by frame callbacks,
+    Present or a 60 Hz timer; the desktop's settings (double-click time, drag threshold,
+    wheel step) and its reduced-motion source as the runtime's policy and environment,
+    `same_spot` comparing distance within the threshold; pointer motion collapsed before
+    a frame where the window system queues more than one, as the terminal's device loop
+    collapses it; the accessibility adapter's bounds per node and per text line read
+    from the frames; and the portal's, the input methods' and AT-SPI's replies and a
+    lost device reaching the loop as tasks its executor wakes.
+    - Opacity and a transform in the style model, their vocabulary (shared properties or
+    the pixel facade's extension, and the terminal's floor if shared) settled here with
+    their first reader, painted as vello layers on the frame clock, the web compiling
+    them in the same change; view transitions keeping the outgoing frame as a vello
+    layer at `commit_navigation`, named pairs (`set_transition_name`) matched through
+    the runtime's rectangles and interpolated on the frame clock, the rest cross-fading,
+    the terminal remaining a cut; and `Painted` replayed inside the window's frame, its
+    canvas in device pixels with a per-axis scale, an ink from a token and its opacity,
+    re-recorded when a signal it read changes, the browser and the terminal taking the
+    same API in the same change, the terminal's painter (handed device pixels with no
+    scale today, where the contract says the medium's logical units) brought to the
+    contract there.
     - Text: a decision on the lines that differ from Pango (Khmer, Lao, Burmese, Thai at
     narrow widths, hyphenation, ellipsis); the word cache shared across threads and split
     at more than U+0020; mark stacking proven beyond Latin, Greek and Cyrillic; the
@@ -221,6 +248,15 @@ in a code comment.
     focus-visible; `configChanges` including `uiMode`; edge-to-edge from API 35; process
     death writing the snapshot of the state an app opted into on backgrounding and
     restoring it at launch, under the header's build id, secure entries excluded.
+    - From the shared runtime (item 1): the shared engine hosted by the toolkit through
+    a min/natural measuring protocol, a container laid out in `onLayout` over its
+    children's measures, a native view's minimum its floor; a layout-only box realized
+    as no `View`, its children placed in the nearest `Container`'s view by the creation
+    fact the drawn runtime folds them by (item 1); opacity, transform and color
+    transitions run by the RenderThread where a property has an animator, the runtime's
+    frame clock on Choreographer their floor and the runner of everything else; a Skene
+    root embedded in an existing `Activity` or `Fragment`, with a `Window` and
+    `Environment` of its own (item 1); and a long press opening the context menu.
     - Its own controls in `platform::android`, beside a library's through the native
     door.
 6. **iOS and macOS.** Compositor platforms: Skene's views are layer-backed `UIView`s and
@@ -252,6 +288,13 @@ in a code comment.
     window, context menus as data, a generated default Edit menu; text tooltips are
     impossible on touch, and Tab on macOS reaches text boxes alone unless keyboard
     navigation is on; a Mac is needed.
+    - From the shared runtime (item 1): a native view's minimum (`intrinsicContentSize`,
+    `fittingSize`) as the shared engine's floor; a layout-only box realized as no view,
+    as on Android; opacity, transform and color transitions on Core Animation, the frame
+    clock on `CADisplayLink` their floor; view transitions through the platform's
+    snapshot views; a root embedded in an existing view controller or `NSView`, with a
+    `Window` and `Environment` of its own (item 1); and iPad focus groups and a long
+    press opening the context menu as the runtime's policy.
     - Their own controls in `platform::ios`, `platform::macos` and `platform::apple`,
     beside a library's through the native door.
 7. **Windows.** A window platform, Skene owning the window as on Linux, its
@@ -273,6 +316,11 @@ in a code comment.
     the platform's input methods, selection, autofill, dictation and handwriting.
     - Contrast themes swap an app's colors for system colors, which literal palettes
     break; the floor is unsettled.
+    - From the shared runtime (item 1): the runtime as on Linux, its vello pipeline and
+    region damage reused, paced by DXGI's frame statistics or DirectComposition; opacity
+    and transform transitions through DirectComposition once hardware proves it
+    (item 4), the frame clock their floor; and the double-click time, the drag rectangle
+    and the wheel lines from `SystemParametersInfo` as its policy.
 8. **The two facades name for name.** `skene-tui`'s vocabulary is made parallel to
     `skene-gui`'s name for name, settled against `spikes/linux/DEFAULTS.md` and
     `spikes/linux/design/api.md` (a scheme's name, item and axis alignments, a
@@ -353,8 +401,18 @@ in a code comment.
     width lets a word too wide for it push past it on every platform, its one track's
     automatic minimum being the word, where a `minmax(0, 1fr)` track (and taffy's like)
     would break the word inside it as the text core asks, which is to be decided.
-    - Typed events: a gesture arena before touch lands, its exception to "a view that
-    handles an interaction owns it" written down.
+    - Layout: a `Document` box is a block formatting context, as the web's `flow-root`
+    is, where taffy's `Display::Block` lets a child's margins collapse through it unless
+    it scrolls or is contained, which a `Document` directly inside another reaches: in
+    a `Link` inside a `Link`, the inner link's box loses its child's margin, whose rows
+    then hit the outer link alone. No frame of the terminal's tests depends on it.
+    - Interaction: a press on a `Link` inside a `Link` follows both in the terminal, the
+    inner route and then the outer one, where a browser follows the innermost anchor
+    alone and the press is the inner link's; the web's leaves are unchecked, the server
+    rendering an `<a>` inside an `<a>`, which HTML's parser does not nest. Whether a
+    link may hold a link is settled with it.
+    - Typed events: a gesture arena over item 1's input enum before touch lands, its
+    exception to "a view that handles an interaction owns it" written down.
     - Controls: `AccessProp` moves onto AccessKit's schema, beside its open `Role`: its
     properties in place of the closed report, so a third party builds switches, tabs,
     comboboxes and trees; parts become styling targets or go.
@@ -389,13 +447,14 @@ in a code comment.
     index) through a Fenwick tree, and evicting measured extents; the terminal's text
     leaves, each a paragraph of the cell engine, costing a 16k-row mount a quarter more
     than the wrap they replaced (about 500 ms against 390) and a keyed row's relayout a
-    fifth more (72 ms against 60), taffy asking each leaf eleven measures a relayout; one
-    constructable stylesheet with deferred collection and a set of adopted names; release
-    web output precompressed, fingerprinted and preloaded, a split build's modules
-    through wasm-opt as an unsplit bundle is, with one cached stylesheet shared by static
-    pages instead of inlined into each; a bundle budget the gate holds, a release
-    `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15
-    and 2026-10-02, `skene-web` and `skene-foundation` most of it.
+    fifth more (72 ms against 60), taffy measuring each leaf once a relayout, three
+    times at a new width and seven at its mount (2026-10-27); one constructable
+    stylesheet with deferred collection and a set of adopted names; release web output
+    precompressed, fingerprinted and preloaded, a split build's modules through wasm-opt
+    as an unsplit bundle is, with one cached stylesheet shared by static pages instead
+    of inlined into each; a bundle budget the gate holds, a release `counter` after
+    `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15 and
+    2026-10-02, `skene-web` and `skene-foundation` most of it.
     - The terminal's resized 16k-row frame measured between a twentieth and a twelfth
     slower (54 ms against 50 over eleven alternating runs, 47.5 against 45.0 over five
     more) once the forced inlines on bodies that are not tiny went (2026-10-26), under
@@ -461,12 +520,17 @@ in a code comment.
     declare.
     - Routing: `#[derive(Route)]` with params and a query, guaranteeing
     `parse(to_path(r)) == r`; paths decoded alike on every leaf; a stack with push, pop
-    and `replace`, and a `Back` event dispatched like `ContextMenu`; an unparseable
-    `popstate` handled; per-entry scroll and state on the snapshot's positions; a
-    pending signal, the commit waiting until code and data settle; preloading and
-    `aria-current`; `not_found()` and `redirect()` setting a status on `Rendered`, and
-    a `404.html` from static generation; a keep-alive policy for `OneOf` that pauses
-    detached pages and bounds them LRU.
+    and `replace`, and a `Back` event dispatched like `ContextMenu`, the request of
+    every platform that has one (the back mouse button and Alt+Left on Linux and Windows
+    and in the terminal, as Chromium takes them, Android's `OnBackInvokedCallback`, and
+    the edge swipe and Command-[ on Apple's), its default dismissing the root's topmost
+    overlay where the platform's convention does (Android's) and otherwise popping the
+    stack, a can-go-back signal arming predictive Back; an unparseable `popstate`
+    handled; per-entry scroll and state on the snapshot's positions; a pending signal,
+    the commit waiting until code and data settle; preloading and `aria-current`;
+    `not_found()` and `redirect()` setting a status on `Rendered`, and a `404.html` from
+    static generation; a keep-alive policy for `OneOf` that pauses detached pages and
+    bounds them LRU.
     - Async that holds: `Suspense` shows its fallback until the first settle alone,
     later work raising `Boundary::is_pending()` while the content stays, with a
     fallback delay and a minimum duration; a client-only load started while hydrating
@@ -610,19 +674,27 @@ in a code comment.
     terminal draws it on the box's first row, now that a row stretching its items
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
-30. **A plain toggle draws its box on the web.** The reset's default chrome for an
+30. **A launched terminal app follows a reduced-motion preference.** Only
+    `testing::trigger_reduced_motion` writes the terminal's flag, so a launched app
+    respects none, where reduced motion is respected by default; its source (a launch
+    setting, the host desktop's settings portal where one answers) is settled here.
+31. **The terminal scrolls a box by keys as Chromium does.** The arrow keys, Space and
+    Shift-Space, and Home and End scroll the focused scroll box, or the nearest one
+    holding focus, where no control takes them; the terminal scrolls by the page keys
+    alone.
+32. **A plain toggle draws its box on the web.** The reset's default chrome for an
     `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
-31. **The server's opening focus passes over a box it knows is hidden.** The
+33. **The server's opening focus passes over a box it knows is hidden.** The
     browser leaf passes over a control set to autofocus inside a box its computed style
     hides, as the terminal does; the server computes no style and marks the first that
     asks. A box whose `hidden` is fixed, or derived and so known as the render settles,
     can be passed over there too, only a `hidden` under a condition left to the engine.
-32. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+34. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-33. **Server rendering beyond the native binary.** The native server binary stays the
+35. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
@@ -640,7 +712,7 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-34. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
+36. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
     and `skene-simple-gui` name each target's leaf, and `skene-tui`,
     `skene-tui-terminal` and `skene-simple-tui` the terminal, through `cargo-args`
     setting `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's
@@ -648,7 +720,7 @@ in a code comment.
     either docs.rs's own rustdoc flags or these may be dropped: check every target's
     pages, and move the cfgs to wherever docs.rs's flags merge with them if any is
     missing.
-35. **skrifa moves with Parley.** `skene-parley` draws glyph outlines through skrifa
+37. **skrifa moves with Parley.** `skene-parley` draws glyph outlines through skrifa
     0.44, the version the vendored Parley 0.12 (its newest release and tag) reads the
     same fonts through, and the one vello_cpu 0.3's `text` feature (glifo, which Skene
     leaves off) pins too; skrifa 0.49 is out and compiles against `skene-parley` as it

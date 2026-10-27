@@ -10,6 +10,28 @@ supersedes there.
 
 ## Decided against
 
+- **The spine's `Window`, an `Environment` per window and a scene per root waiting for a
+  second window** (2026-10-27), one runtime per thread until item 3's popup surfaces or
+  item 5's embedding gave a window or a root its second reader: the media API every new
+  realization is written against would change under each of them. The spine's `Window`
+  owning its `Environment`, `media::*` reading the window's and the scene's held state
+  partitioned by root land with item 1, the web and the terminal having one window
+  each. Revisit if the per-window lookup costs a shipped platform measurably while none
+  has a second window.
+- **Layout-only boxes as containers of their own in the drawn runtime** (2026-10-27),
+  flattening only a compositor platform's view tree, a layout-only box realizing no
+  platform view there while the drawn runtime keeps a taffy tree per layout box: one
+  creation fact tells a decorated box from a layout-only one, and every platform but the
+  web folds the layout-only boxes (`Row`, `Column`, `Grid`, `Stack`) into their nearest
+  decorated `Container`'s tree by it. Revisit when the fold makes a relayout slower than
+  per-box trees on the same case.
+- **Typed input for the drawn runtime alone** (2026-10-27), entry points on the runtime
+  taking the foundation's event types, which the compositor platforms and the web would
+  bypass by dispatching from their own views into the spine, or no input type beyond the
+  events the handlers take: one typed input enum in the foundation beside the spine's
+  events, which every platform produces before dispatch, the web's DOM listeners
+  included, so dispatch has one input vocabulary and item 12's gesture arena one source.
+  Revisit if translating the web's events into it delays a pointer move measurably.
 - **A palette's root default defining another set's tokens** (2026-10-26), the default a
   reference or a read lays at the root carrying every definition of the palette, its
   aliases of the typography's tokens included: with Simple's typography aliases riding

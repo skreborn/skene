@@ -16,6 +16,7 @@ mod api;
 mod browser;
 mod lint;
 mod manifests;
+mod results;
 
 use std::{
   env,
@@ -28,7 +29,7 @@ use std::{
   time::Instant,
 };
 
-use crate::manifests::Workspace;
+use crate::{manifests::Workspace, results::Minimums};
 
 /// What a step reports: nothing when it passes, why when it fails.
 type Outcome = Result<(), String>;
@@ -663,10 +664,16 @@ impl Log {
 
   /// Runs `command`, failing when it does.
   fn check(&mut self, command: Command) -> Outcome {
-    let described = describe(&command);
+    self.output(command).map(drop)
+  }
 
-    if self.run(command)?.success {
-      Ok(())
+  /// Runs `command`, failing when it does, and returns what it printed.
+  fn output(&mut self, command: Command) -> Result<String, String> {
+    let described = describe(&command);
+    let ran = self.run(command)?;
+
+    if ran.success {
+      Ok(ran.output)
     }
     else {
       Err(format!("`{described}` failed"))
@@ -1110,49 +1117,146 @@ fn doc_wasm(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(command)
 }
 
+/// The nextest run of a test step, every passed test's status printed whatever the
+/// environment asks.
+const NEXTEST: [&str; 6] = [
+  "nextest",
+  "run",
+  "--locked",
+  "--no-fail-fast",
+  "--status-level",
+  "pass",
+];
+
+/// The host run's least counts. A binary or doctest set passing fewer than listed fails
+/// the gate, as does one passing tests unlisted, so a new test raises its count here and
+/// a moved one lowers one count and raises another.
+const HOST: Minimums = Minimums {
+  binaries: &[
+    ("skene-cli::bin/skene", 31),
+    ("skene-conformance", 1),
+    ("skene-dev", 6),
+    ("skene-foundation", 268),
+    ("skene-layout", 20),
+    ("skene-macros", 7),
+    ("skene-parley::it", 42),
+    ("skene-reactive", 6),
+    ("skene-reactive::it", 123),
+    ("skene-simple", 2),
+    ("skene-transport", 1),
+    ("skene-transport::http", 4),
+    ("skene-transport::ws", 4),
+    ("xtask::bin/xtask", 38),
+  ],
+  doctests: &[("skene_foundation", 10)],
+};
+
+/// The server leaf's run's least counts. A binary or doctest set passing fewer than
+/// listed fails the gate, as does one passing tests unlisted, so a new test raises its
+/// count here and a moved one lowers one count and raises another.
+const SERVER: Minimums = Minimums {
+  binaries: &[
+    ("skene-gui-web", 21),
+    ("skene-gui::compile_fail", 1),
+    ("skene-gui::server_head", 5),
+    ("skene-gui::server_lazy_column", 2),
+    ("skene-gui::server_overlay", 4),
+    ("skene-gui::server_platform", 16),
+    ("skene-gui::server_render", 66),
+    ("skene-gui::server_router", 4),
+    ("skene-gui::server_snapshot", 1),
+    ("skene-gui::server_style", 37),
+    ("skene-gui::server_suspense", 6),
+    ("skene-gui::server_text_field", 8),
+  ],
+  doctests: &[
+    ("guide", 45),
+    ("readme", 2),
+    ("skene_gui", 46),
+    ("skene_gui_web", 1),
+    ("skene_simple_gui", 12),
+  ],
+};
+
+/// The terminal run's least counts. A binary or doctest set passing fewer than listed
+/// fails the gate, as does one passing tests unlisted, so a new test raises its count
+/// here and a moved one lowers one count and raises another.
+const TERMINAL: Minimums = Minimums {
+  binaries: &[
+    ("acme-sparkline::render", 2),
+    ("skene-simple-tui::it", 9),
+    ("skene-tui-terminal", 76),
+    ("skene-tui::it", 453),
+    ("tui-context-menu::render", 1),
+    ("tui-enhance::render", 2),
+    ("tui-gallery::named", 1),
+    ("tui-gallery::render", 1),
+    ("tui-gallery::styled", 1),
+    ("tui-http::render", 1),
+    ("tui-text-sizing::render", 1),
+    ("tui-theme::render", 1),
+    ("tui-ws::render", 1),
+  ],
+  doctests: &[
+    ("guide", 5),
+    ("readme", 2),
+    ("skene_simple_tui", 12),
+    ("skene_tui", 43),
+  ],
+};
+
 fn test_host(gate: &Gate, log: &mut Log) -> Outcome {
   gate.require("nextest", "cargo-nextest")?;
 
   let workspace = Workspace::read(&gate.root)?;
-  let mut tests = gate.cargo(["nextest", "run", "--locked", "--no-fail-fast"]);
+  let mut tests = gate.cargo(NEXTEST);
 
   tests.args(packages(&workspace.host()));
-  log.check(tests)?;
 
+  let tests = log.output(tests)?;
   let mut doctests = gate.cargo(["test", "--locked", "--no-fail-fast", "--doc"]);
 
   doctests.args(packages(&workspace.host()));
-  log.check(doctests)
+
+  let doctests = log.output(doctests)?;
+
+  HOST.check(&tests, &doctests)
 }
 
 fn test_server(gate: &Gate, log: &mut Log) -> Outcome {
   gate.require("nextest", "cargo-nextest")?;
 
   let workspace = Workspace::read(&gate.root)?;
-  let mut tests = gate.server_cargo(["nextest", "run", "--locked", "--no-fail-fast"]);
+  let mut tests = gate.server_cargo(NEXTEST);
 
   tests.args(packages(&workspace.web()));
-  log.check(tests)?;
 
+  let tests = log.output(tests)?;
   let mut doctests = gate.server_cargo(["test", "--locked", "--no-fail-fast", "--doc"]);
 
   doctests.args(packages(&workspace.web()));
-  log.check(doctests)
+
+  let doctests = log.output(doctests)?;
+
+  SERVER.check(&tests, &doctests)
 }
 
 fn test_terminal(gate: &Gate, log: &mut Log) -> Outcome {
   gate.require("nextest", "cargo-nextest")?;
 
   let workspace = Workspace::read(&gate.root)?;
-  let mut tests = gate.terminal_cargo(["nextest", "run", "--locked", "--no-fail-fast"]);
+  let mut tests = gate.terminal_cargo(NEXTEST);
 
   tests.args(packages(&workspace.terminal()));
-  log.check(tests)?;
 
+  let tests = log.output(tests)?;
   let mut doctests = gate.terminal_cargo(["test", "--locked", "--no-fail-fast", "--doc"]);
 
   doctests.args(packages(&workspace.terminal()));
-  log.check(doctests)
+
+  let doctests = log.output(doctests)?;
+
+  TERMINAL.check(&tests, &doctests)
 }
 
 fn msrv(gate: &Gate, log: &mut Log) -> Outcome {

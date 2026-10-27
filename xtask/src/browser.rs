@@ -11,7 +11,7 @@ use std::{
   thread,
 };
 
-use crate::{Gate, Log, Outcome, manifests};
+use crate::{Gate, Log, Outcome, manifests, results::Results};
 
 /// A `cargo test` run on the browser leaf.
 struct Run {
@@ -179,12 +179,6 @@ fn chromedriver() -> Option<PathBuf> {
     drivers.sort();
     drivers.pop()
   })
-}
-
-/// What one binary reported.
-struct Results {
-  passed: usize,
-  failed: usize,
 }
 
 /// A browser test binary cargo built, with the package it belongs to.
@@ -521,7 +515,7 @@ impl Job<'_> {
     };
     let mut problems = Vec::new();
 
-    match (results(output), expected) {
+    match (Results::read(output), expected) {
       (None, Some(_)) => problems.push(format!("{heading}: reported no results")),
       (None, None) if !success => problems.push(format!("{heading}: failed")),
       (None, None) => {}
@@ -659,31 +653,4 @@ fn check_runner(gate: &Gate) -> Outcome {
       "wasm-bindgen-test-runner {installed} doesn't match wasm-bindgen {locked}: {install}"
     ))
   }
-}
-
-/// What one binary's run reported in `output`, where it reported a summary.
-fn results(output: &str) -> Option<Results> {
-  output
-    .lines()
-    .rev()
-    .find_map(|line| line.trim().strip_prefix("test result: "))
-    .map(|summary| Results {
-      passed: count(summary, "passed"),
-      failed: count(summary, "failed"),
-    })
-}
-
-/// The number before `label` in a test summary such as `ok. 48 passed; 0 failed`.
-fn count(summary: &str, label: &str) -> usize {
-  summary
-    .split(';')
-    .find_map(|part| {
-      let words: Vec<&str> = part.split_whitespace().collect();
-
-      match words.as_slice() {
-        [.., number, last] if *last == label => number.parse().ok(),
-        _ => None,
-      }
-    })
-    .unwrap_or(0)
 }

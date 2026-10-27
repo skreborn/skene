@@ -22,7 +22,8 @@ in a code comment.
 
 1. **One runtime beneath every platform but the web.** What the terminal keeps for
     itself, Linux and Windows need as well, since they too own their window; each
-    mechanism is written once, in `skene-layout`, the terminal its first client.
+    mechanism is written once, in `skene-layout`, or in the foundation where the web
+    takes it too, the terminal its first client.
     - The terminal's retained runtime beyond its layout tree and its restyle's schedule
     (the restyle's resolution caches and presentation, the damage and the measured
     rectangles, hit testing, focus, capture, wheel latching, selection, motion) moves
@@ -448,13 +449,13 @@ in a code comment.
     leaves, each a paragraph of the cell engine, costing a 16k-row mount a quarter more
     than the wrap they replaced (about 500 ms against 390) and a keyed row's relayout a
     fifth more (72 ms against 60), taffy measuring each leaf once a relayout, three
-    times at a new width and seven at its mount (2026-10-27); one constructable
-    stylesheet with deferred collection and a set of adopted names; release web output
-    precompressed, fingerprinted and preloaded, a split build's modules through wasm-opt
-    as an unsplit bundle is, with one cached stylesheet shared by static pages instead
-    of inlined into each; a bundle budget the gate holds, a release `counter` after
-    `wasm-bindgen` having grown from 911 KB to 1.27 MB between 2026-09-15 and
-    2026-10-02, `skene-web` and `skene-foundation` most of it.
+    times at a width it has not laid out before and seven at its mount (2026-10-27); one
+    constructable stylesheet with deferred collection and a set of adopted names;
+    release web output precompressed, fingerprinted and preloaded, a split build's
+    modules through wasm-opt as an unsplit bundle is, with one cached stylesheet shared
+    by static pages instead of inlined into each; a bundle budget the gate holds, a
+    release `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between
+    2026-09-15 and 2026-10-02, `skene-web` and `skene-foundation` most of it.
     - The terminal's resized 16k-row frame measured between a twentieth and a twelfth
     slower (54 ms against 50 over eleven alternating runs, 47.5 against 45.0 over five
     more) once the forced inlines on bodies that are not tiny went (2026-10-26), under

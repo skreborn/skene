@@ -1194,10 +1194,8 @@ Condition     = Media | State | And | Or
   word too wide for a line of its own broken where the line fills as `overflow-wrap:
   break-word` breaks it, the blanks a line ends in hanging where it wraps and taking
   room up to its limit before a newline or at the end, each run's line box on its line's
-  baseline, a box's bottom on it, a run placed in a rectangle per line it is on, clipped
-  off any box beside it and off the blanks hanging past the line's end, and, where its
-  platform trims it (`TextFlow::trimmed`), the text trimmed to its first line's cap
-  height and its last line's baseline as the reset's `text-box-trim` trims a text box.
+  baseline, a box's bottom on it, and a run placed in a rectangle per line it is on,
+  clipped off any box beside it and off the blanks hanging past the line's end.
   The layout's own tests lay their text out through `skene-parley` in the pinned face
   the conformance suite draws in, Inter's regular, kept in `packages/parley/fonts`, its
   metrics unrounded (kerned, its letter spacing past each cluster, a line its font size

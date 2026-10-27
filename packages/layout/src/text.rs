@@ -99,16 +99,11 @@ pub struct RunHit<N> {
 /// line box there, its glyphs centered in it, short of the blanks hanging past the line's
 /// end; each group around a run lies where the run does, and each box where the engine
 /// places it. The text is made into a paragraph once, until a box it holds is sized afresh.
-///
-/// Trimmed, its first line is cut to the highest cap height on it and its last to its
-/// baseline, as CSS's `text-box-trim: trim-both` with `text-box-edge: cap alphabetic` trims a
-/// block's text.
 #[must_use]
 pub struct TextFlow<E: TextEngine, N = NodeId> {
   engine: E,
   base: TextStyle,
   style: ParagraphStyle,
-  cap: Option<f32>,
   text: String,
   items: Vec<Item<N>>,
   leaf: OnceCell<Box<TextLeaf<E::Paragraph>>>,
@@ -120,7 +115,6 @@ impl<E: TextEngine, N: std::fmt::Debug> std::fmt::Debug for TextFlow<E, N> {
       .debug_struct("TextFlow")
       .field("base", &self.base)
       .field("style", &self.style)
-      .field("cap", &self.cap)
       .field("text", &self.text)
       .field("items", &self.items)
       .finish_non_exhaustive()
@@ -131,7 +125,6 @@ impl<E: TextEngine, N: PartialEq> PartialEq for TextFlow<E, N> {
   fn eq(&self, other: &Self) -> bool {
     self.base == other.base
       && self.style == other.style
-      && self.cap.map(f32::to_bits) == other.cap.map(f32::to_bits)
       && self.text == other.text
       && self.items == other.items
   }
@@ -165,21 +158,9 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
       engine,
       base,
       style,
-      cap: None,
       text: String::new(),
       items: Vec::new(),
       leaf: OnceCell::new(),
-    }
-  }
-
-  /// The flow trimmed: its first line cut to the highest cap height on it, each run's
-  /// `cap` times its font size and each box's its height, the base style's where it holds
-  /// neither, and its last line to its baseline.
-  pub fn trimmed(self, cap: f32) -> Self {
-    Self {
-      cap: Some(cap),
-      leaf: OnceCell::new(),
-      ..self
     }
   }
 
@@ -244,21 +225,12 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
   }
 
   /// The flow laid out in a content box at `content`, and where the layout's top left lies,
-  /// its trim taken off above the content box's top.
+  /// its first line's top at the content box's top.
   pub fn layout_in(&self, content: Rect<f32>) -> (<E::Paragraph as Paragraph>::Laid, Point<f32>) {
     let laid = self.leaf().laid(Some(content.size.width));
-    let lines = laid.lines();
-    let shift = lines.first().map_or(0., |first| first.top) + self.trims(&laid, &lines).0;
+    let shift = laid.lines().first().map_or(0., |first| first.top);
 
     (laid, Point::new(content.origin.x, content.origin.y - shift))
-  }
-
-  /// The run whose text holds byte `at` of the flow's text.
-  #[must_use]
-  pub fn node_at(&self, at: usize) -> Option<&N> {
-    self
-      .runs()
-      .find_map(|(run, _)| run.range.contains(&at).then_some(&run.node))
   }
 
   /// The run drawn at `point` in the flow laid out in a content box at `content`, and the
@@ -335,30 +307,6 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
       && point.x < rect.origin.x + rect.size.width
       && point.y >= rect.origin.y
       && point.y < rect.origin.y + rect.size.height
-  }
-
-  /// How far `laid`'s first line is trimmed at its top and its last at its bottom, its
-  /// lines `lines`.
-  fn trims(&self, laid: &<E::Paragraph as Paragraph>::Laid, lines: &[LineInfo]) -> (f32, f32) {
-    let (Some(cap), Some(first), Some(last)) = (self.cap, lines.first(), lines.last())
-    else {
-      return (0., 0.);
-    };
-    let highest = self
-      .pieces(laid)
-      .into_iter()
-      .filter(|(_, rect)| Self::line_of(lines, *rect) == Some(0))
-      .map(|(item, rect)| match &self.items[item] {
-        Item::Run(run) => cap * run.style.size,
-        Item::Box(_) => rect.size.height,
-      })
-      .reduce(f32::max)
-      .unwrap_or(cap * self.base.size);
-
-    (
-      (first.baseline - first.top - highest).max(0.),
-      last.top + last.height - last.baseline,
-    )
   }
 
   /// The line of `lines` holding the middle of `rect`.
@@ -518,27 +466,12 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
       AvailableSpace::MinContent => Space::MinContent,
       AvailableSpace::MaxContent => Space::MaxContent,
     };
-    let leaf = self.leaf();
-    let measured = leaf.measure(
+    let measured = self.leaf().measure(
       (known.width, known.height),
       (space(available.width), space(available.height)),
     );
-    let height = match (known.height, self.cap) {
-      (None, Some(_)) => {
-        let within = match (known.width, available.width) {
-          (Some(width), _) | (None, AvailableSpace::Definite(width)) => Some(width),
-          (None, AvailableSpace::MinContent) => Some(leaf.intrinsic().min),
-          (None, AvailableSpace::MaxContent) => None,
-        };
-        let laid = leaf.sized(within);
-        let (top, bottom) = self.trims(&laid, &laid.lines());
 
-        laid.size().height - top - bottom
-      }
-      _ => measured.height,
-    };
-
-    Size::new(measured.width, height)
+    Size::new(measured.width, measured.height)
   }
 
   fn place(&self, content: Rect<f32>) -> Vec<(NodeId, Rect<f32>)> {
@@ -585,7 +518,6 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
   fn repaint_as(&mut self, next: &Self) -> bool {
     let alike = self.base == next.base
       && self.style == next.style
-      && self.cap.map(f32::to_bits) == next.cap.map(f32::to_bits)
       && self.text == next.text
       && self.items.len() == next.items.len()
       && self.items.iter().zip(&next.items).all(|pair| match pair {
@@ -683,10 +615,6 @@ mod tests {
     flow((), text).leaf().laid(None).size().width
   }
 
-  /// How far above the baseline the face's capital letters reach, a fraction of the
-  /// font size: what a trimmed flow cuts its first line to.
-  const CAP: f32 = 1490. / 2048.;
-
   /// The style of the tests' text at `size`, its lines one and a half times it tall.
   fn style_at(size: f32) -> TextStyle {
     TextStyle::new(size).with_line_height(skene_foundation::text::LineHeight::Factor(1.5))
@@ -698,11 +626,6 @@ mod tests {
 
     flow.add_run((), &[], text, style_at(size));
     flow.leaf().laid(None).size().width
-  }
-
-  /// How far above the baseline the face's capital letters reach at `size`.
-  fn cap(size: f32) -> f32 {
-    CAP * size
   }
 
   /// How far below the top of a line box `height` tall the face's baseline lies at
@@ -738,10 +661,10 @@ mod tests {
     assert!(near, "{actual:?} is not {expected:?}");
   }
 
-  /// A trimmed paragraph of the tests' text holding `runs`, each a node, the groups
+  /// A paragraph of the tests' text holding `runs`, each a node, the groups
   /// around it, its text and its font size.
   fn paragraph(runs: &[(NodeId, &[NodeId], &str, f32)]) -> TextFlow<ParleyEngine> {
-    let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default()).trimmed(CAP);
+    let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default());
 
     for (node, groups, text, size) in runs {
       flow.add_run(*node, groups, text, style_at(*size));
@@ -1007,13 +930,12 @@ mod tests {
     let start = width("Hello ");
     let end = start + width("world");
     let middle = end - width("ld");
-    let top = cap(16.) - baseline(24., 16.);
 
-    assert_near(rects.rect(text), rect(0., 0., 1024., cap(16.)));
-    assert_near(rects.rect(hello), rect(0., top, start, 24.));
-    assert_near(rects.rect(group), rect(start, top, end - start, 24.));
-    assert_near(rects.rect(wor), rect(start, top, middle - start, 24.));
-    assert_near(rects.rect(ld), rect(middle, top, width("ld"), 24.));
+    assert_near(rects.rect(text), rect(0., 0., 1024., 24.));
+    assert_near(rects.rect(hello), rect(0., 0., start, 24.));
+    assert_near(rects.rect(group), rect(start, 0., end - start, 24.));
+    assert_near(rects.rect(wor), rect(start, 0., middle - start, 24.));
+    assert_near(rects.rect(ld), rect(middle, 0., width("ld"), 24.));
     assert_eq!(page.run_at(text, Point::new(start + 2., 10.)), Some(wor));
 
     assert_eq!(
@@ -1039,11 +961,10 @@ mod tests {
 
     let rects = page.lay_out();
     let start = width("c ");
-    let top = cap(16.) - baseline(24., 16.);
 
-    assert_near(rects.rect(text), rect(0., 0., narrow, 24. + cap(16.)));
-    assert_near(rects.rect(before), rect(0., top, start, 24.));
-    assert_near(rects.rect(broken), rect(0., top, narrow, 48.));
+    assert_near(rects.rect(text), rect(0., 0., narrow, 48.));
+    assert_near(rects.rect(before), rect(0., 0., start, 24.));
+    assert_near(rects.rect(broken), rect(0., 0., narrow, 48.));
 
     assert_eq!(
       page.run_at(text, Point::new(start + 2., 10.)),
@@ -1079,16 +1000,17 @@ mod tests {
     let rects = page.lay_out();
     let start = width_at("big ", 32.);
 
-    assert_near(rects.rect(text), rect(0., 0., 1024., cap(32.)));
-
-    assert_near(
-      rects.rect(big),
-      rect(0., cap(32.) - baseline(48., 32.), start, 48.),
-    );
+    assert_near(rects.rect(text), rect(0., 0., 1024., 48.));
+    assert_near(rects.rect(big), rect(0., 0., start, 48.));
 
     assert_near(
       rects.rect(small),
-      rect(start, cap(32.) - baseline(24., 16.), width("small"), 24.),
+      rect(
+        start,
+        baseline(48., 32.) - baseline(24., 16.),
+        width("small"),
+        24.,
+      ),
     );
   }
 
@@ -1110,8 +1032,9 @@ mod tests {
     let rects = page.lay_out();
     let start = width("ab ");
     let top = 30. - baseline(24., 16.);
+    let descent = 24. - baseline(24., 16.);
 
-    assert_near(rects.rect(text), rect(0., 0., 1024., 30.));
+    assert_near(rects.rect(text), rect(0., 0., 1024., 30. + descent));
     assert_near(rects.rect(before), rect(0., top, start, 24.));
     assert_near(rects.rect(inline), rect(start, 0., 20., 30.));
     assert_near(rects.rect(view), rect(start, 0., 20., 30.));
@@ -1147,10 +1070,10 @@ mod tests {
     page.add_box(text, inline, view, Size::new(20., 30.));
 
     let rects = page.lay_out();
-    let second = 24. - baseline(24., 16.) + cap(16.);
+    let descent = 24. - baseline(24., 16.);
 
-    assert_near(rects.rect(text), rect(0., 0., 30., second + 30.));
-    assert_near(rects.rect(inline), rect(0., second, 20., 30.));
+    assert_near(rects.rect(text), rect(0., 0., 30., 24. + 30. + descent));
+    assert_near(rects.rect(inline), rect(0., 24., 20., 30.));
   }
 
   /// A paragraph breaks where the Unicode line breaking algorithm allows, after a
@@ -1164,12 +1087,8 @@ mod tests {
 
     let rects = page.lay_out();
 
-    assert_near(rects.rect(text), rect(0., 0., 56., 24. + cap(16.)));
-
-    assert_near(
-      rects.rect(span),
-      rect(0., cap(16.) - baseline(24., 16.), width("known"), 48.),
-    );
+    assert_near(rects.rect(text), rect(0., 0., 56., 48.));
+    assert_near(rects.rect(span), rect(0., 0., width("known"), 48.));
   }
 
   /// A run's letter spacing widens each of its clusters by it.
@@ -1177,7 +1096,7 @@ mod tests {
   fn letter_spacing_widens_each_cluster() {
     let (text, row) = (node(), node());
     let mut page = Page::new(1024.);
-    let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default()).trimmed(CAP);
+    let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default());
 
     flow.add_run(text, &[], "abc", style().with_letter_spacing(2.));
     page.add(text, flow, Some(row));
@@ -1239,12 +1158,7 @@ mod tests {
 
     assert_eq!(
       runs.map(|run| rects.rect(run).map(|rect| rect.size.height)),
-      [
-        Some(cap(16.)),
-        Some(24. + cap(16.)),
-        Some(48. + cap(16.)),
-        Some(cap(16.))
-      ]
+      [Some(24.), Some(48.), Some(72.), Some(24.)]
     );
   }
 
@@ -1258,10 +1172,7 @@ mod tests {
 
     let rects = page.lay_out();
 
-    assert_eq!(
-      rects.rect(hung).map(|rect| rect.size.height),
-      Some(24. + cap(16.))
-    );
+    assert_eq!(rects.rect(hung).map(|rect| rect.size.height), Some(48.));
   }
 
   /// A word too wide for a line of its own breaks where the line fills, though its
@@ -1288,7 +1199,7 @@ mod tests {
     assert!(
       rects
         .rect(broken)
-        .is_some_and(|rect| (rect.size.height - 4. * 24. - cap(16.)).abs() < 1e-4),
+        .is_some_and(|rect| (rect.size.height - 5. * 24.).abs() < 1e-4),
       "five lines of four letters each"
     );
 
@@ -1529,8 +1440,6 @@ mod tests {
       flow.nearest(content, Point::new(0., 0.)),
       Some(RunHit { node: 1, offset: 0 })
     );
-
-    assert_eq!(flow.node_at(7), Some(&3));
 
     let mut wrapped = TextFlow::new(engine(), style(), ParagraphStyle::default());
 

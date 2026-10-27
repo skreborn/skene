@@ -76,10 +76,8 @@ pub fn skene_layout::TextFlow<E, N>::layout_in(&self, skene_foundation::spine::v
 pub fn skene_layout::TextFlow<E, N>::leaf(&self) -> &skene_foundation::text::leaf::TextLeaf<<E as skene_foundation::text::engine::TextEngine>::Paragraph>
 pub fn skene_layout::TextFlow<E, N>::nearest(&self, skene_foundation::spine::values::rect::Rect<f32>, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_layout::RunHit<N>>
 pub const fn skene_layout::TextFlow<E, N>::new(E, skene_foundation::text::model::TextStyle, skene_foundation::text::model::ParagraphStyle) -> Self
-pub fn skene_layout::TextFlow<E, N>::node_at(&self, usize) -> core::option::Option<&N>
 pub fn skene_layout::TextFlow<E, N>::run_at(&self, skene_foundation::spine::values::rect::Rect<f32>, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_layout::RunHit<N>>
 pub fn skene_layout::TextFlow<E, N>::text(&self) -> &str
-pub fn skene_layout::TextFlow<E, N>::trimmed(self, f32) -> Self
 impl<E: skene_foundation::text::engine::TextEngine, N: core::cmp::PartialEq> core::cmp::PartialEq for skene_layout::TextFlow<E, N>
 pub fn skene_layout::TextFlow<E, N>::eq(&self, &Self) -> bool
 impl<E: skene_foundation::text::engine::TextEngine, N: core::fmt::Debug> core::fmt::Debug for skene_layout::TextFlow<E, N>

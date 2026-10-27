@@ -22,6 +22,13 @@ supersedes there.
   its shape: the per-container engine, one persistent taffy tree per decorated
   `Container` with its layout-only boxes folded in, and the shared `Restyle`'s revisit
   set do its work. Revisit when a structure change's relayout dominates a frame.
+- **A text trimmed as `text-box-trim` trims it (`TextFlow::trimmed`)** (2026-10-27), a
+  flow's first line cut to its highest cap height and its last to its baseline: beyond
+  the guaranteed core a text reads as its platform's engine reads it, the web trims only
+  under `@supports (text-box-trim)` and never in a control
+  (`packages/gui-web/src/reset.css`), the prototype matched GTK, which does not trim,
+  and no drawn platform called it. Revisit when item 3 decides whether a drawn pixel
+  label trims its line box.
 - **The spine's `Window`, an `Environment` per window and a scene per root waiting for a
   second window** (2026-10-27), one runtime per thread until item 3's popup surfaces or
   item 5's embedding gave a window or a root its second reader: the media API every new

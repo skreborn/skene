@@ -1186,7 +1186,7 @@ Condition     = Media | State | And | Or
   the shared `Restyle` says moved (those queued, in motion or reading an interaction
   that moved, each with the leaf its text flows in, or every node once the definitions,
   the environment or the structure moved), written by the terminal's records as they
-  change at the values its motion presents. There a box whose children are all inline
+  change, at the values its motion presents. There a box whose children are all inline
   runs lays them out as one text, a `TextFlow` of their runs and inline boxes over the
   platform's text engine (Text, below), keeping their blanks and newlines as the reset's
   `white-space: pre-wrap` does and wrapping where the Unicode line breaking algorithm

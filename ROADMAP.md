@@ -546,14 +546,16 @@ in a code comment.
 16. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
-    - Manifests: wgpu 30 once vello_hybrid moves past the 29 it pins; the duplicate syn
-    (serde's and clap's derives on 2, thiserror's on 3) and hashbrown versions
-    (wasm-split-cli's walrus 0.23 beside wasm-bindgen's 0.26) gone as their dependents
-    converge. Criterion stays at 0.5 while 0.8 builds alloca's C on every unix target,
-    which the Apple clippy check cannot cross-compile on Linux; base64 stays doubled
-    while sfv 0.15 holds 0.22. Parley from its release once that carries the changes
-    `vendor/parley` and `vendor/parley_engine` hold, since `[patch.crates-io]` stays in
-    the workspace and a published crate takes Parley unpatched.
+    - Manifests: the duplicates `cargo tree -d` lists gone as their dependents move:
+    syn 2 under derive_more-impl, the jni macros, logos-codegen, tracing-attributes,
+    walrus-macro, wesl-macros and zerocopy-derive, beside syn 3; walrus 0.26 under
+    wasm-split-cli and wasm-used, beside wasm-bindgen-cli-support's 0.27; hashbrown 0.16
+    under wasmparser, beside 0.17; base64 0.22 under sfv 0.16 and
+    wasm-bindgen-cli-support, beside 0.23; and the smaller pairs beside them
+    (rustc-hash, itertools, digest, getrandom, miniz_oxide, bit-set, windows-sys and
+    their kin). Parley from its release once that carries the changes `vendor/parley`
+    and `vendor/parley_engine` hold, since `[patch.crates-io]` stays in the workspace
+    and a published crate takes Parley unpatched.
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered one-to-three-sentence
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` rewritten as each step
     of the migration lands, one chapter per mechanism, each with its contract, mechanism

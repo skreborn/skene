@@ -44,7 +44,10 @@ in a code comment.
     leaves and fractional rectangles kept beside the rounded ones; a paragraph lays its
     inline boxes out within its own measure; layout settles before a frame commits, the
     terminal's settle loop becoming the frame contract, and `Painted` resizes land with
-    the layout commit. `Tree::lay_out_revisited` and `TextFlow::trimmed` leave.
+    the layout commit. `Tree::lay_out_revisited` and `TextFlow::trimmed` leave. The
+    whole-scene tree it replaces is recorded in `DECISIONS.md` with the 1,000-row
+    probe's numbers, and the per-container engine's counts on the same probe join the
+    2026-10-15 entry beside them.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color
     transitions on it; `Condition` resolution against the runtime's environment and
     pointer through the one resolution point; the spine's `Window` owning its
@@ -257,7 +260,9 @@ in a code comment.
     transitions run by the RenderThread where a property has an animator, the runtime's
     frame clock on Choreographer their floor and the runner of everything else; a Skene
     root embedded in an existing `Activity` or `Fragment`, with a `Window` and
-    `Environment` of its own (item 1); and a long press opening the context menu.
+    `Environment` of its own (item 1); view transitions through the platform's own
+    snapshot of the outgoing views, named pairs (`set_transition_name`) interpolated on
+    the frame clock, a cut their floor; and a long press opening the context menu.
     - Its own controls in `platform::android`, beside a library's through the native
     door.
 6. **iOS and macOS.** Compositor platforms: Skene's views are layer-backed `UIView`s and
@@ -294,8 +299,9 @@ in a code comment.
     as on Android; opacity, transform and color transitions on Core Animation, the frame
     clock on `CADisplayLink` their floor; view transitions through the platform's
     snapshot views; a root embedded in an existing view controller or `NSView`, with a
-    `Window` and `Environment` of its own (item 1); and iPad focus groups and a long
-    press opening the context menu as the runtime's policy.
+    `Window` and `Environment` of its own (item 1); and macOS's Tab convention (Tab
+    reaching text boxes alone unless keyboard navigation is on), iPad focus groups and a
+    long press opening the context menu as the runtime's policy.
     - Their own controls in `platform::ios`, `platform::macos` and `platform::apple`,
     beside a library's through the native door.
 7. **Windows.** A window platform, Skene owning the window as on Linux, its

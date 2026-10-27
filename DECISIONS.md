@@ -995,8 +995,16 @@ supersedes there.
   recomputed the whole window on any change, 200,000 toolkit measures for one label's
   change at 1,000 rows where one tree per container issued 32,120 and left the
   toolkit's measure cache to decide what recomputes. Taffy owns layout on every toolkit
-  but the web's, one small tree per container. Revisit when a whole-window tree
-  recomputes only what a change touches.
+  but the web's, one small tree per container. Reaffirmed 2026-10-27, its earlier
+  revisit condition having held: a whole-scene tree over the terminal's
+  realization recomputed only what a change touched, one label changed among 1,000
+  rows of three costing 34 measures on the changed row's 3 leaves, 12 flexbox runs and
+  1 grid run along its ancestors, 47 node layouts in all, and the author kept one tree
+  per container regardless, a container being a decorated `Container` whose
+  layout-only boxes fold into its tree, so the drawn runtime and a toolkit hosting the
+  engine lay out the same trees. Revisit when a relayout under the per-container engine
+  misses its frame budget where the whole-scene tree, measured on the same change,
+  meets it.
 - **AccessKit only where a painted layer needs it** (2026-10-15), native views carrying
   their own accessibility everywhere else: Skene's views are drawn on every platform
   but the web, so AccessKit reports for every one of them, Skene carrying its changes

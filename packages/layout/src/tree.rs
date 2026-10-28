@@ -349,9 +349,10 @@ impl<C: Leaf> Tree<C> {
   }
 }
 
-/// Where a node of a [`Tree`] lies in its parent and what it holds, as a layout left it:
-/// its rectangles in the layout's units, their horizontal edges laid out left to right, so
-/// an inset's start is its left.
+/// Where a node of a [`Tree`] lies in its parent and what it holds, as a layout left it.
+///
+/// Its rectangles are in the layout's units, their horizontal edges laid out left to
+/// right, so an inset's start is its left.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[must_use]
 pub struct Placed {

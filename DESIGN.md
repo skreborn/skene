@@ -399,9 +399,8 @@ toolkit's keeps the default, which does nothing.
   `Tree` held to one taffy tree by a proptest over random trees, random partitions of
   their nodes into containers and runs of writes, laid out, marked and measured alike,
   and each container of a random tree whose layout reads no definite height keeping its
-  size and every rectangle beneath it when laid out at
-  its natural height and then at that height as a definite space and as its own height,
-  and what needs a live platform (a hit, a frame's measured size, a change resolving
+  size and every rectangle beneath it when laid out at its natural height and then at
+  that height as a definite space and as its own height, and what needs a live platform (a hit, a frame's measured size, a change resolving
   only what it touched, a text entry's native size) is the terminal's, in cells; the
   drawing is held by the pinned browser's goldens and the
   cells the terminal paints. So do the rest: a derived child, text and list, nested and
@@ -1208,11 +1207,10 @@ Condition     = Media | State | And | Or
   moved (those queued, in motion or reading an interaction that moved, each with the
   leaf its text flows in, or every node once the definitions, the environment or the
   structure moved), written by the terminal's records as they change, at the values its
-  motion presents. There a box
-  whose children are all inline
-  runs lays them out as one text, a `TextFlow` of their runs and inline boxes over the
-  platform's text engine (Text, below), keeping their blanks and newlines as the reset's
-  `white-space: pre-wrap` does and wrapping where the Unicode line breaking algorithm
+  motion presents. There a box whose children are all inline runs lays them out as one
+  text, a `TextFlow` of their runs and inline boxes over the platform's text engine
+  (Text, below), keeping their blanks and newlines as the reset's `white-space:
+  pre-wrap` does and wrapping where the Unicode line breaking algorithm
   allows across them and around an inline box, laid out at its content's size first, a
   word too wide for a line of its own broken where the line fills as `overflow-wrap:
   break-word` breaks it, the blanks a line ends in hanging where it wraps and taking
@@ -2192,9 +2190,9 @@ everything on any change, so the backdrop is per box.
 Layout is taffy at `1.0 = 1 cell`, on `skene-layout`'s `Tree` with each box, control and
 overlay a container laid out by an engine of its own and each run by its box's, the
 effective style cached per node and `set_style` called only on change, so a keystroke
-relays out the changed subtree and a hover change repaints without relayout. A frame paints over the previous one, rewriting
-only the rows the changed nodes covered and cover—a node whose resolution, text, caret,
-scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
+relays out the changed subtree and a hover change repaints without relayout. A frame
+paints over the previous one, rewriting only the rows the changed nodes covered and
+cover—a node whose resolution, text, caret, scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
 then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
 text through its `TextFlow`, and a view inside it flows as an inline box: laid out on its own, standing in the
 text as a placeholder of its width, painted and hit at the cells it flowed into. An

@@ -251,7 +251,8 @@ fn round(value: f32) -> f32 {
 
 /// One container's engine: taffy's algorithms over its members, its root and the nodes
 /// beneath it up to the next container, each container beneath them laid out by its own
-/// engine from taffy's whole input.
+/// engine from taffy's whole input; and each box positioned fixed it places that is no
+/// container, with the nodes beneath it up to the next container.
 pub(super) struct Engine<'t, C> {
   nodes: &'t mut Nodes<C>,
   root: taffy::NodeId,
@@ -305,8 +306,9 @@ impl<'t, C: Leaf> Engine<'t, C> {
     block: Option<&mut BlockContext<'_>>,
   ) -> LayoutOutput {
     debug_assert!(
-      self.reaches(id) || self.nodes.slot(id).style.position == Position::Fixed,
-      "a node is laid out by its container's engine, or a fixed box by the root's"
+      self.reaches(id),
+      "a node is laid out by its container's engine, or within a box positioned fixed by \
+       the engine placing that box"
     );
 
     if inputs.run_mode == RunMode::PerformHiddenLayout {
@@ -375,30 +377,34 @@ impl<'t, C: Leaf> Engine<'t, C> {
     output
   }
 
-  /// Whether `id` is this engine's root or a member beneath it: every node between them
-  /// laid out by this engine.
+  /// Whether this engine lays `id` out: `id` is its root or a member beneath it, every
+  /// node between them laid out by it, or `id` is a box positioned fixed or lies beneath
+  /// one with no container between them, which the engine placing that box lays out.
   fn reaches(&self, id: taffy::NodeId) -> bool {
-    if id == self.root {
-      return true;
-    }
+    let mut at = id;
 
-    let mut parent = self.nodes.slot(id).parent;
-
-    while let Some(at) = parent {
+    loop {
       if at == self.root {
         return true;
       }
 
       let slot = self.nodes.slot(at);
 
-      if slot.decorated {
+      if at != id && slot.decorated {
         return false;
       }
 
-      parent = slot.parent;
-    }
+      if slot.style.position == Position::Fixed {
+        return true;
+      }
 
-    false
+      let Some(parent) = slot.parent
+      else {
+        return false;
+      };
+
+      at = parent;
+    }
   }
 }
 

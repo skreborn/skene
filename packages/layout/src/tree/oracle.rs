@@ -646,6 +646,7 @@ struct Pair {
   tree_tally: Tally,
   oracle_tally: Tally,
   borders: Borders,
+  fixed: bool,
   root: NodeId,
   roles: HashMap<NodeId, Role>,
   layouts: HashMap<NodeId, Layout>,
@@ -654,13 +655,16 @@ struct Pair {
 }
 
 impl Pair {
-  fn new(rounding: bool, borders: Borders) -> Self {
+  /// A pair rounding where `rounding` says so, its boxes' borders `borders`, now and then
+  /// positioning a box in a parent's flow fixed where `fixed` says so.
+  fn new(rounding: bool, borders: Borders, fixed: bool) -> Self {
     Self {
       tree: Tree::new(rounding),
       oracle: Oracle::new(rounding),
       tree_tally: Tally::default(),
       oracle_tally: Tally::default(),
       borders,
+      fixed,
       root: NodeId::new(0, 0),
       roles: HashMap::new(),
       layouts: HashMap::new(),
@@ -696,8 +700,9 @@ impl Pair {
   }
 
   /// Styles `node` from `gene` as the scene maps its role: placed in its parent's stack
-  /// cell where its parent is a stack, an overlay detached and absolute, a hidden one not
-  /// displayed.
+  /// cell where its parent is a stack, an overlay detached and absolute, a box in a parent's
+  /// flow now and then positioned fixed where the pair positions boxes fixed, a hidden one
+  /// not displayed.
   fn style(&mut self, node: NodeId, gene: &Gene, parent: Option<NodeId>) {
     let role = self.roles.get(&node).copied().unwrap_or(Role::Flow);
     let layout = layout(gene);
@@ -710,6 +715,9 @@ impl Pair {
 
     if role == Role::Overlay {
       style.position = Position::Absolute;
+    }
+    else if self.fixed && parent.is_some() && gene[28] >= 248 {
+      style.position = Position::Fixed;
     }
 
     if gene[26] < 24 {
@@ -1327,7 +1335,7 @@ proptest! {
     first in any::<u8>(),
     last in any::<u8>(),
   ) {
-    let mut pair = Pair::new(rounding, if unit { Borders::Unit } else { Borders::Width });
+    let mut pair = Pair::new(rounding, if unit { Borders::Unit } else { Borders::Width }, true);
 
     pair.build(&genes);
     pair.compute(pair.root, viewport(first));
@@ -1352,7 +1360,7 @@ proptest! {
     genes in proptest::collection::vec(gene(), 1..40),
     first in any::<u8>(),
   ) {
-    let mut pair = Pair::new(rounding, if unit { Borders::Unit } else { Borders::Width });
+    let mut pair = Pair::new(rounding, if unit { Borders::Unit } else { Borders::Width }, false);
 
     pair.build(&genes);
     pair.tree.compute(pair.root, viewport(first));

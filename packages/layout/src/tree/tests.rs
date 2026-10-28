@@ -150,6 +150,40 @@ impl Scene {
     );
   }
 
+  /// Adds a box 5 by 5 positioned absolutely 1 from its container's top and left, laid
+  /// out in a stack's cell.
+  fn pinned(&mut self) -> NodeId {
+    self.add(
+      true,
+      &BoxStyle {
+        pinned: Some(Inset::new(
+          Dimension::Length(1.),
+          Dimension::Length(1.),
+          Dimension::Auto,
+          Dimension::Auto,
+        )),
+        ..sized(5., 5.)
+      },
+      Layout::Single,
+      true,
+      &[],
+    )
+  }
+
+  /// The boxes positioned absolutely that `node`'s last layout placed inside it.
+  fn hoisted(&self, node: NodeId) -> Vec<NodeId> {
+    self
+      .tree
+      .nodes
+      .map()
+      .get(node)
+      .expect("a node of the tree")
+      .hoisted
+      .iter()
+      .map(|id| super::engine::node(*id))
+      .collect()
+  }
+
   /// `node`'s rectangle in its root as the last layout left it.
   fn at(&self, node: NodeId) -> Placed {
     let layout = self.tree.layout(node).expect("a node of the tree");
@@ -759,75 +793,31 @@ fn an_orphan_lays_out_as_a_root() {
 #[test]
 fn a_box_whose_absolute_child_is_removed_lays_out_as_a_leaf() {
   let mut scene = Scene::new(true);
-  let pinned = scene.add(
-    true,
-    &BoxStyle {
-      pinned: Some(Inset::new(
-        Dimension::Length(1.),
-        Dimension::Length(1.),
-        Dimension::Auto,
-        Dimension::Auto,
-      )),
-      ..sized(5., 5.)
-    },
-    Layout::Single,
-    true,
-    &[],
-  );
+  let pinned = scene.pinned();
   let stack = scene.add(false, &sized(20., 20.), Layout::Stack, false, &[pinned]);
   let root = scene.add(true, &BoxStyle::default(), Layout::Single, false, &[stack]);
 
   scene.lay_out(root, 50., 50.);
 
   assert_eq!(scene.at(pinned), (1., 1., 5., 5.));
+  assert_eq!(scene.hoisted(stack), [pinned]);
 
   scene.tree.remove(pinned);
   scene.parents.remove(&pinned);
   scene.lay_out(root, 50., 50.);
 
   assert_eq!(scene.at(stack), (0., 0., 20., 20.));
+  assert_eq!(scene.hoisted(stack), [], "a leaf places nothing");
 }
 
-/// A box positioned absolutely inside a hidden subtree may be removed, and the subtree
+/// A box positioned absolutely inside a hidden subtree, the box holding it hidden by an
+/// ancestor or itself, is placed by none while hidden, may be removed, and the subtree
 /// shown again lays out without it.
 #[test]
 fn an_absolute_box_removed_while_hidden_leaves_its_container() {
-  let mut scene = Scene::new(true);
-  let pinned = scene.add(
-    true,
-    &BoxStyle {
-      pinned: Some(Inset::new(
-        Dimension::Length(1.),
-        Dimension::Length(1.),
-        Dimension::Auto,
-        Dimension::Auto,
-      )),
-      ..sized(5., 5.)
-    },
-    Layout::Single,
-    true,
-    &[],
-  );
-  let (run, _) = scene.run(10., 10.);
-  let stack = scene.add(
-    false,
-    &BoxStyle::default(),
-    Layout::Stack,
-    false,
-    &[run, pinned],
-  );
-  let overlay_style = |display| {
-    let mut style = BoxStyle::<f32, Plain> {
-      pinned: Some(Inset::new(
-        Dimension::Length(0.),
-        Dimension::Length(0.),
-        Dimension::Auto,
-        Dimension::Auto,
-      )),
-      ..BoxStyle::default()
-    }
-    .taffy_style(
-      Layout::Single,
+  let styled = |style: &BoxStyle<f32, Plain>, layout: Layout, display: Display| {
+    let mut style = style.taffy_style(
+      layout,
       Place {
         in_stack: false,
         borders: Borders::Width,
@@ -838,18 +828,120 @@ fn an_absolute_box_removed_while_hidden_leaves_its_container() {
 
     style
   };
-  let overlay = scene.add(true, &BoxStyle::default(), Layout::Single, false, &[stack]);
-  let root = scene.add(true, &sized(50., 50.), Layout::Single, false, &[overlay]);
+  let overlay_box = BoxStyle::<f32, Plain> {
+    pinned: Some(Inset::new(
+      Dimension::Length(0.),
+      Dimension::Length(0.),
+      Dimension::Auto,
+      Dimension::Auto,
+    )),
+    ..BoxStyle::default()
+  };
 
-  scene.tree.set_style(overlay, overlay_style(Display::Grid));
-  scene.lay_out(root, 50., 50.);
-  scene.tree.set_style(overlay, overlay_style(Display::None));
-  scene.lay_out(root, 50., 50.);
-  scene.tree.remove(pinned);
-  scene.parents.remove(&pinned);
-  scene.lay_out(root, 50., 50.);
-  scene.tree.set_style(overlay, overlay_style(Display::Grid));
-  scene.lay_out(root, 50., 50.);
+  for hide_stack in [false, true] {
+    let mut scene = Scene::new(true);
+    let pinned = scene.pinned();
+    let (run, _) = scene.run(10., 10.);
+    let stack = scene.add(
+      false,
+      &BoxStyle::default(),
+      Layout::Stack,
+      false,
+      &[run, pinned],
+    );
+    let overlay = scene.add(true, &overlay_box, Layout::Single, false, &[stack]);
+    let root = scene.add(true, &sized(50., 50.), Layout::Single, false, &[overlay]);
+    let (hidden, style, layout) = if hide_stack {
+      (stack, BoxStyle::default(), Layout::Stack)
+    }
+    else {
+      (overlay, overlay_box.clone(), Layout::Single)
+    };
+    let shown = styled(&style, layout, Display::Grid);
 
-  assert_eq!(scene.at(run), (0., 0., 10., 10.));
+    scene.tree.set_style(hidden, shown.clone());
+    scene.lay_out(root, 50., 50.);
+
+    assert_eq!(scene.hoisted(stack), [pinned], "hide_stack: {hide_stack}");
+
+    scene
+      .tree
+      .set_style(hidden, styled(&style, layout, Display::None));
+    scene.lay_out(root, 50., 50.);
+
+    assert_eq!(
+      scene.hoisted(stack),
+      [],
+      "a hidden box places nothing, hide_stack: {hide_stack}"
+    );
+
+    scene.tree.remove(pinned);
+    scene.parents.remove(&pinned);
+    scene.lay_out(root, 50., 50.);
+    scene.tree.set_style(hidden, shown);
+    scene.lay_out(root, 50., 50.);
+
+    assert_eq!(scene.at(run), (0., 0., 10., 10.));
+    assert_eq!(scene.hoisted(stack), []);
+  }
+}
+
+/// A box positioned fixed and laid out by its own container's engine is placed against
+/// the root, with the nodes beneath it laid out by the engine that places it.
+#[test]
+fn a_fixed_box_and_its_members_are_laid_out_by_the_engine_placing_it() {
+  for decorated in [false, true] {
+    let mut scene = Scene::new(true);
+    let (run, _) = scene.run(6., 4.);
+    let fixed = scene.add(
+      decorated,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[run],
+    );
+    let mut style = BoxStyle::<f32, Plain>::default().taffy_style(
+      Layout::Single,
+      Place {
+        in_stack: false,
+        borders: Borders::Width,
+      },
+    );
+
+    style.position = taffy::style::Position::Fixed;
+    style.inset = taffy::geometry::Rect {
+      left: taffy::style::LengthPercentageAuto::length(3.),
+      right: taffy::style::LengthPercentageAuto::auto(),
+      top: taffy::style::LengthPercentageAuto::length(2.),
+      bottom: taffy::style::LengthPercentageAuto::auto(),
+    };
+    scene.tree.set_style(fixed, style);
+
+    let panel = scene.add(
+      true,
+      &BoxStyle {
+        padding: Some(Inset::new(10., 10., 10., 10.)),
+        ..BoxStyle::default()
+      },
+      Layout::Single,
+      false,
+      &[fixed],
+    );
+    let root = scene.add(true, &sized(100., 100.), Layout::Single, false, &[panel]);
+
+    scene.lay_out(root, 100., 100.);
+
+    let layout = scene.tree.layout(fixed).expect("a node of the tree");
+
+    assert_eq!(
+      (
+        layout.location.x,
+        layout.location.y,
+        layout.size.width,
+        layout.size.height
+      ),
+      (3., 2., 6., 4.),
+      "decorated: {decorated}"
+    );
+  }
 }

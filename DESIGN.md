@@ -397,7 +397,9 @@ toolkit's keeps the default, which does nothing.
   and text flows (a paragraph's spans, its wrapping, an inline box, the guaranteed core)
   are `skene-layout`'s unit tests over canned trees and the real Parley engine, its
   `Tree` held to one taffy tree by a proptest over random trees and runs of writes, laid
-  out, marked and measured alike, and what needs a live platform (a hit, a frame's
+  out, marked and measured alike, and each container of a random tree whose layout reads
+  no definite height keeping its size and every rectangle beneath it when laid out at
+  its natural height and then at that height as a definite space, and what needs a live platform (a hit, a frame's
   measured size, a change resolving only what it touched, a text entry's native size) is
   the terminal's, in cells; the drawing is held by the pinned browser's goldens and the
   cells the terminal paints. So do the rest: a derived child, text and list, nested and
@@ -1183,9 +1185,13 @@ Condition     = Media | State | And | Or
   maps a resolved style onto taffy through `skene-layout` once (`BoxLayout`, generic
   over the scalar, a border taking a unit per edge drawn in cells and its width in
   pixels) and lays out on its `Tree`, over the taffy the workspace carries in
-  `vendor/taffy` (0.15.1, its one change marked `Skene:` and listed in its `SKENE.md`: a
+  `vendor/taffy` (0.15.1, its changes marked `Skene:` and listed in its `SKENE.md`: a
   hidden box and a box with no children clear the out-of-flow children hoisted onto
-  them, where taffy kept a removed child's id and panicked on the next layout), keyed by the scene's nodes and kept across frames,
+  them, where taffy kept a removed child's id and panicked on the next layout; and a box
+  lays out alike in any space it is given, as Chromium lays it out, laid out at its
+  natural height and then at that height as a definite space keeping its size and every
+  box beneath it keeping its place, which ten changes to flexbox, grid and the cache
+  bring about), keyed by the scene's nodes and kept across frames,
   each node's style, text and children written where they changed, revisiting the nodes
   the shared `Restyle` says moved (those queued, in motion or reading an interaction
   that moved, each with the leaf its text flows in, or every node once the definitions,

@@ -548,8 +548,22 @@ mod tests {
     TrackLimit,
   };
   use taffy::{
-    prelude::{AvailableSpace, TaffyAuto, TaffyGridLine, length, percent},
-    style::{Display, FlexDirection},
+    prelude::{
+      AvailableSpace,
+      TaffyAuto,
+      TaffyGridLine,
+      auto,
+      fit_content,
+      fr,
+      length,
+      line,
+      max_content,
+      min_content,
+      minmax,
+      percent,
+      span,
+    },
+    style::{AlignItems, Display, FlexDirection, FlexWrap, GridAutoFlow, Overflow},
   };
 
   use super::{Borders, BoxLayout, Leaf, Place, Tree};
@@ -1037,5 +1051,549 @@ mod tests {
     taffy.compute_layout(root, SPACE).unwrap();
 
     assert_eq!(taffy.layout(held).unwrap().size.width, 0.);
+  }
+
+  /// A taffy tree whose leaves hold words of the given widths a space apart, broken greedily at
+  /// the width they are given, each line one high; the reproductions of `vendor/taffy`'s changes
+  /// are laid out on it, each held to what Chromium lays the same page out as.
+  type Wording = taffy::TaffyTree<Vec<f32>>;
+
+  /// Lays `wording` out from `root` in `space`, each leaf with words measured by them and each
+  /// without sized to its known dimensions.
+  fn lay_out(
+    wording: &mut Wording,
+    root: taffy::NodeId,
+    space: taffy::geometry::Size<AvailableSpace>,
+  ) {
+    wording
+      .compute_layout_with_measure(root, space, |input, _, words, _| {
+        let known = input.known_dimensions;
+        let limit = known.width.unwrap_or(match input.available_space.width {
+          AvailableSpace::Definite(width) => width,
+          AvailableSpace::MinContent => 0.,
+          AvailableSpace::MaxContent => f32::INFINITY,
+        });
+        let (mut widest, mut lines, mut line) = (0_f32, 0_u8, None::<f32>);
+
+        for word in words.map_or(&[][..], |words| words.as_slice()) {
+          line = Some(match line {
+            Some(width) if width + 1. + word <= limit => width + 1. + word,
+            Some(width) => {
+              widest = widest.max(width);
+              lines += 1;
+
+              *word
+            }
+            None => *word,
+          });
+        }
+
+        if let Some(width) = line {
+          widest = widest.max(width);
+          lines += 1;
+        }
+
+        taffy::tree::LayoutOutput::from_outer_size(taffy::geometry::Size {
+          width: known.width.unwrap_or(widest),
+          height: known.height.unwrap_or(f32::from(lines)),
+        })
+      })
+      .unwrap();
+  }
+
+  /// A space of `width` and `height`, each definite where given and max-content where not.
+  fn space(width: Option<f32>, height: Option<f32>) -> taffy::geometry::Size<AvailableSpace> {
+    taffy::geometry::Size {
+      width: width.map_or(AvailableSpace::MaxContent, AvailableSpace::Definite),
+      height: height.map_or(AvailableSpace::MaxContent, AvailableSpace::Definite),
+    }
+  }
+
+  /// The style of a box laid out as one grid cell filling it, as every Skene box with one child
+  /// is.
+  fn single() -> taffy::style::Style {
+    taffy::style::Style {
+      display: Display::Grid,
+      grid_template_columns: vec![fr(1.)],
+      grid_template_rows: vec![fr(1.)],
+      ..taffy::style::Style::default()
+    }
+  }
+
+  /// The style of a rigid box `width` by `height`.
+  fn rigid(width: f32, height: f32) -> taffy::style::Style {
+    taffy::style::Style {
+      size: taffy::geometry::Size {
+        width: length(width),
+        height: length(height),
+      },
+      flex_shrink: 0.,
+      ..taffy::style::Style::default()
+    }
+  }
+
+  /// The style of a flex container along `direction`.
+  fn flex(direction: FlexDirection) -> taffy::style::Style {
+    taffy::style::Style {
+      display: Display::Flex,
+      flex_direction: direction,
+      ..taffy::style::Style::default()
+    }
+  }
+
+  /// `node`'s unrounded rectangle: its position in its parent, then its size.
+  fn rectangle(wording: &Wording, node: taffy::NodeId) -> [f32; 4] {
+    let layout = wording.unrounded_layout(node);
+
+    [
+      layout.location.x,
+      layout.location.y,
+      layout.size.width,
+      layout.size.height,
+    ]
+  }
+
+  /// A column whose item has a flex basis below its content is as tall as the item's content
+  /// in a definite space, its item's automatic minimum included, as at max-content.
+  #[test]
+  fn a_column_is_as_tall_as_its_item_shrunk_below_its_content() {
+    let mut wording = Wording::new();
+    let content = wording.new_leaf(rigid(5.5, 1.5)).unwrap();
+    let item = wording
+      .new_with_children(
+        taffy::style::Style {
+          flex_basis: length(1.),
+          ..flex(FlexDirection::Column)
+        },
+        &[content],
+      )
+      .unwrap();
+    let column = wording
+      .new_with_children(flex(FlexDirection::Column), &[item])
+      .unwrap();
+
+    lay_out(&mut wording, column, space(Some(10.), Some(10.)));
+
+    assert_eq!(rectangle(&wording, column)[3], 1.5);
+  }
+
+  /// A column measured at max-content takes its items' hypothetical sizes, as Chromium lays it
+  /// out, not an item's height above its flex basis.
+  #[test]
+  fn a_column_at_max_content_is_as_tall_as_it_lays_out() {
+    let mut wording = Wording::new();
+    let content = wording.new_leaf(rigid(1., 2.)).unwrap();
+    let item = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: auto(),
+            height: length(4.),
+          },
+          flex_grow: 2.,
+          flex_basis: length(0.),
+          ..flex(FlexDirection::Column)
+        },
+        &[content],
+      )
+      .unwrap();
+    let column = wording
+      .new_with_children(flex(FlexDirection::Column), &[item])
+      .unwrap();
+    let row = wording
+      .new_with_children(
+        taffy::style::Style {
+          align_items: AlignItems::START,
+          ..flex(FlexDirection::Row)
+        },
+        &[column],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, row, space(Some(10.), None));
+
+    assert_eq!(rectangle(&wording, column)[3], 2.);
+  }
+
+  /// A wrapping column's min-content height is its max-content height, so a min-content row
+  /// holding it is as tall as its items in one line.
+  #[test]
+  fn a_wrapping_column_is_as_tall_at_min_content() {
+    let mut wording = Wording::new();
+    let short = wording.new_leaf(rigid(1., 1.)).unwrap();
+    let tall = wording.new_leaf(rigid(1., 3.)).unwrap();
+    let column = wording
+      .new_with_children(
+        taffy::style::Style {
+          flex_wrap: FlexWrap::Wrap,
+          ..flex(FlexDirection::Column)
+        },
+        &[short, tall],
+      )
+      .unwrap();
+    let grid = wording
+      .new_with_children(
+        taffy::style::Style {
+          display: Display::Grid,
+          grid_template_rows: vec![min_content()],
+          ..taffy::style::Style::default()
+        },
+        &[column],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, grid, space(None, None));
+
+    assert_eq!(rectangle(&wording, grid)[3], 4.);
+  }
+
+  /// A grid whose rows are sized again once its columns resolve their percentages keeps its
+  /// height indefinite, so its flexible row takes a spanning item's contribution in full.
+  #[test]
+  fn a_grid_sized_again_keeps_its_height_indefinite() {
+    let mut wording = Wording::new();
+    let words = wording
+      .new_leaf_with_context(
+        taffy::style::Style::default(),
+        vec![1., 4.75, 3.25, 1.75, 5.5],
+      )
+      .unwrap();
+    let bordered = wording
+      .new_with_children(
+        taffy::style::Style {
+          border: taffy::geometry::Rect {
+            left: length(0.),
+            right: length(0.5),
+            top: length(0.),
+            bottom: length(0.),
+          },
+          ..single()
+        },
+        &[words],
+      )
+      .unwrap();
+    let spanning = wording
+      .new_with_children(
+        taffy::style::Style {
+          grid_row: taffy::geometry::Line {
+            start: auto(),
+            end: span(2),
+          },
+          ..single()
+        },
+        &[bordered],
+      )
+      .unwrap();
+    let below = wording
+      .new_leaf_with_context(taffy::style::Style::default(), vec![3.25, 1.75])
+      .unwrap();
+    let grid = wording
+      .new_with_children(
+        taffy::style::Style {
+          max_size: taffy::geometry::Size {
+            width: length(0.),
+            height: auto(),
+          },
+          grid_template_columns: vec![minmax(percent(0.1), max_content())],
+          ..single()
+        },
+        &[spanning, below],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, grid, space(Some(19.5), Some(7.)));
+
+    assert_eq!(rectangle(&wording, grid)[3], 7.);
+  }
+
+  /// A stretched item is measured for its flex base size at fit-content where its line's cross
+  /// size is indefinite, not at the available height.
+  #[test]
+  fn a_stretched_item_takes_no_size_from_the_available_height() {
+    let mut wording = Wording::new();
+    let ratio = wording
+      .new_leaf(taffy::style::Style {
+        aspect_ratio: Some(2.5),
+        ..single()
+      })
+      .unwrap();
+    let item = wording
+      .new_with_children(flex(FlexDirection::Row), &[ratio])
+      .unwrap();
+    let words = wording
+      .new_leaf_with_context(taffy::style::Style::default(), vec![1., 4.75, 3.25])
+      .unwrap();
+    let row = wording
+      .new_with_children(flex(FlexDirection::Row), &[item, words])
+      .unwrap();
+
+    lay_out(&mut wording, row, space(None, Some(10.)));
+
+    assert_eq!(rectangle(&wording, item)[2], 0.);
+  }
+
+  /// A stretched item is measured for a max-content width at fit-content where its line's cross
+  /// size is indefinite, so a row is as wide in any space as at max-content.
+  #[test]
+  fn a_row_is_as_wide_in_a_definite_height_as_at_max_content() {
+    let mut wording = Wording::new();
+    let ratio = wording
+      .new_leaf(taffy::style::Style {
+        aspect_ratio: Some(0.5),
+        border: taffy::geometry::Rect {
+          left: length(0.),
+          right: length(0.),
+          top: length(0.),
+          bottom: length(1.),
+        },
+        flex_grow: 1.,
+        flex_basis: length(0.),
+        ..single()
+      })
+      .unwrap();
+    let row = wording
+      .new_with_children(flex(FlexDirection::Row), &[ratio])
+      .unwrap();
+
+    lay_out(&mut wording, row, space(None, None));
+
+    let natural = rectangle(&wording, row);
+
+    lay_out(&mut wording, row, space(None, Some(50.)));
+
+    assert_eq!(rectangle(&wording, row), natural);
+  }
+
+  /// A `fit-content()` row sized at max-content grows no further than its limit.
+  #[test]
+  fn a_fit_content_row_keeps_its_limit_at_max_content() {
+    let mut wording = Wording::new();
+    let content = wording.new_leaf(rigid(1., 6.)).unwrap();
+    let item = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: length(5.25),
+            height: auto(),
+          },
+          min_size: taffy::geometry::Size {
+            width: auto(),
+            height: length(0.),
+          },
+          ..single()
+        },
+        &[content],
+      )
+      .unwrap();
+    let grid = wording
+      .new_with_children(
+        taffy::style::Style {
+          display: Display::Grid,
+          grid_auto_rows: vec![fit_content(length(4.)), auto()],
+          ..taffy::style::Style::default()
+        },
+        &[item],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, grid, space(None, None));
+
+    assert_eq!(rectangle(&wording, grid)[3], 4.);
+  }
+
+  /// A grid's rows are laid out, never sized under a max-content constraint, so an item
+  /// spanning two rows with no minimum of its own adds nothing to them at max-content.
+  #[test]
+  fn a_grid_lays_its_rows_out_at_max_content() {
+    let mut wording = Wording::new();
+    let margined = wording
+      .new_leaf(taffy::style::Style {
+        margin: taffy::geometry::Rect {
+          left: length(0.),
+          right: length(1.),
+          top: length(1.),
+          bottom: length(1.),
+        },
+        ..single()
+      })
+      .unwrap();
+    let scrolled = wording
+      .new_with_children(
+        taffy::style::Style {
+          overflow: taffy::geometry::Point {
+            x: Overflow::Visible,
+            y: Overflow::Scroll,
+          },
+          ..single()
+        },
+        &[margined],
+      )
+      .unwrap();
+    let empty = wording.new_leaf(single()).unwrap();
+    let padded = wording
+      .new_with_children(
+        taffy::style::Style {
+          padding: taffy::geometry::Rect {
+            left: length(0.),
+            right: length(0.),
+            top: length(2.),
+            bottom: length(0.),
+          },
+          ..single()
+        },
+        &[empty],
+      )
+      .unwrap();
+    let spanning = wording
+      .new_with_children(
+        taffy::style::Style {
+          min_size: taffy::geometry::Size {
+            width: auto(),
+            height: length(0.),
+          },
+          grid_row: taffy::geometry::Line {
+            start: span(2),
+            end: line(1),
+          },
+          ..single()
+        },
+        &[padded],
+      )
+      .unwrap();
+    let grid = wording
+      .new_with_children(
+        taffy::style::Style {
+          grid_auto_columns: vec![length(1.5)],
+          grid_auto_flow: GridAutoFlow::ColumnDense,
+          ..single()
+        },
+        &[scrolled, spanning],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, grid, space(None, None));
+
+    assert_eq!(rectangle(&wording, grid)[3], 2.);
+  }
+
+  /// A box laid out in full to read its baseline while its parent is only sized leaves no
+  /// layout behind once the parent lays it out again.
+  #[test]
+  fn a_baseline_read_while_sizing_leaves_no_layout_behind() {
+    let mut wording = Wording::new();
+    let content = wording.new_leaf(rigid(1., 1.5)).unwrap();
+    let stretched = wording
+      .new_with_children(flex(FlexDirection::Row), &[content])
+      .unwrap();
+    let zero = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: auto(),
+            height: percent(0.),
+          },
+          ..flex(FlexDirection::Row)
+        },
+        &[stretched],
+      )
+      .unwrap();
+    let sibling = wording.new_leaf(taffy::style::Style::default()).unwrap();
+    let baseline = wording
+      .new_with_children(
+        taffy::style::Style {
+          align_items: AlignItems::BASELINE,
+          ..flex(FlexDirection::Row)
+        },
+        &[zero, sibling],
+      )
+      .unwrap();
+    let row = wording
+      .new_with_children(flex(FlexDirection::Row), &[baseline])
+      .unwrap();
+
+    lay_out(&mut wording, row, space(None, None));
+    lay_out(&mut wording, row, space(None, Some(1.5)));
+
+    assert_eq!(rectangle(&wording, stretched)[3], 0.);
+  }
+
+  /// A box whose own min-height is a percentage is sized again for another parent height, not
+  /// served the size it took against one before.
+  #[test]
+  fn a_percentage_min_height_is_sized_per_parent_height() {
+    let mut wording = Wording::new();
+    let words = wording
+      .new_leaf_with_context(taffy::style::Style::default(), vec![1., 4.75])
+      .unwrap();
+    let full = wording
+      .new_with_children(
+        taffy::style::Style {
+          min_size: taffy::geometry::Size {
+            width: auto(),
+            height: percent(1.),
+          },
+          ..single()
+        },
+        &[words],
+      )
+      .unwrap();
+    let rigid = wording.new_leaf(rigid(1., 1.5)).unwrap();
+    let wrapping = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: length(2.),
+            height: auto(),
+          },
+          flex_wrap: FlexWrap::Wrap,
+          ..flex(FlexDirection::Row)
+        },
+        &[full, rigid],
+      )
+      .unwrap();
+    let row = wording
+      .new_with_children(flex(FlexDirection::Row), &[wrapping])
+      .unwrap();
+    let root = wording.new_with_children(single(), &[row]).unwrap();
+
+    lay_out(
+      &mut wording,
+      root,
+      taffy::geometry::Size {
+        width: AvailableSpace::MaxContent,
+        height: AvailableSpace::MinContent,
+      },
+    );
+    lay_out(&mut wording, row, space(None, None));
+    lay_out(&mut wording, row, space(None, Some(3.5)));
+
+    assert_eq!(rectangle(&wording, row)[3], 3.5);
+  }
+
+  /// A wrapping column wraps against its max height alone, not against a smaller space it is
+  /// laid out in.
+  #[test]
+  fn a_column_wraps_against_its_max_height_alone() {
+    let mut wording = Wording::new();
+    let items: Vec<taffy::NodeId> = (0..3)
+      .map(|_| wording.new_leaf(rigid(1., 3.)).unwrap())
+      .collect();
+    let column = wording
+      .new_with_children(
+        taffy::style::Style {
+          flex_wrap: FlexWrap::Wrap,
+          max_size: taffy::geometry::Size {
+            width: auto(),
+            height: length(10.),
+          },
+          ..flex(FlexDirection::Column)
+        },
+        &items,
+      )
+      .unwrap();
+
+    lay_out(&mut wording, column, space(Some(10.), Some(4.)));
+
+    assert_eq!(rectangle(&wording, column), [0., 0., 1., 9.]);
   }
 }

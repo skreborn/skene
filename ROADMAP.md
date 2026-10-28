@@ -178,9 +178,8 @@ in a code comment.
     under `vendor/` with this realization, their first client, and the Android and iOS
     adapter changes (a field's own view in the virtual tree, text ranges) with items 5
     and 6; the core already reports text runs, character geometry and selection.
-    - Naming and invariants: how justification is named, `TextAlignment` having no variant
-    for it while the gate bans the word, and the layout engine's debug assertion that a
-    container laid out at its natural height keeps it fires on some random layouts.
+    - Naming: how justification is named, `TextAlignment` having no variant for it while
+    the gate bans the word.
     - Testing: driver only (`DECISIONS.md`, 2026-10-16), through a display runner giving
     each test process a private display, session bus and AT-SPI bus, over ten legs (X11
     on Xorg with a touchscreen, mutter, sway, sway nested in Xorg for touch, weston,
@@ -412,6 +411,11 @@ in a code comment.
     it scrolls or is contained, which a `Document` directly inside another reaches: in
     a `Link` inside a `Link`, the inner link's box loses its child's margin, whose rows
     then hit the outer link alone. No frame of the terminal's tests depends on it.
+    - Layout: a box with an aspect ratio whose width and height are both automatic takes
+    its intrinsic width from its content's width in taffy, where Chromium takes it from
+    its content's height through the ratio, so an empty box at a ratio of one half with a
+    16px bottom border is 8px wide there and nothing in taffy; `vendor/taffy/UPSTREAM.md`
+    names it, and the change belongs in `vendor/taffy` beside its others.
     - Interaction: a press on a `Link` inside a `Link` follows both in the terminal, the
     inner route and then the outer one, where a browser follows the innermost anchor
     alone and the press is the inner link's; the web's leaves are unchecked, the server

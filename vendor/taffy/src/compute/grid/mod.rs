@@ -163,6 +163,18 @@ fn compute_container_constants<Tree: LayoutGridContainer>(
         .maybe_clamp(min_size, max_size)
         .maybe_max(padding_border_size);
 
+    // Skene: the block axis is laid out, as Chromium lays a grid's rows out, so a grid whose height
+    // is not given sizes its rows in an indefinite space, whatever space an ancestor hands down:
+    // a definite one does not cap them, and a min-content one is its max-content one. Upstream
+    // capped them by a definite available height, which sized the same grid's rows apart from
+    // how they sized at max-content.
+    let constrained_available_space = Size {
+        width: constrained_available_space.width,
+        height: match known_dimensions.height.or(preferred_size.height) {
+            Some(_) => constrained_available_space.height,
+            None => AvailableSpace::MaxContent,
+        },
+    };
     let available_grid_space = Size {
         width: constrained_available_space
             .width
@@ -249,6 +261,9 @@ pub fn compute_grid_layout<Tree: LayoutGridContainer>(
         inner_max_size,
         mut inner_node_size,
     } = constants;
+
+    // Skene: the content box size the container was given, before its tracks size it.
+    let given_inner_node_size = inner_node_size;
 
     // Note: we avoid accessing the grid rows/columns methods more than once as this can
     // cause an expensive-ish computation
@@ -565,6 +580,19 @@ pub fn compute_grid_layout<Tree: LayoutGridContainer>(
         });
     }
 
+    // Skene: a re-run that is not resolving percentage tracks sizes an axis whose size the
+    // container was not given as it was first sized: its tracks are summed into the container's
+    // size again below, so flexible and auto tracks expand into the free space of a container
+    // whose size is still indefinite, not into the size the first pass summed. Upstream used that
+    // size as definite, so the re-run's flexible tracks filled the first pass's sum.
+    let rerun_inner_node_size = |axis: AbstractAxis, has_percentage_track: bool| {
+        let mut size = inner_node_size;
+        if !has_percentage_track {
+            size.set(axis, given_inner_node_size.get(axis));
+        }
+        size
+    };
+
     if rerun_column_sizing {
         // Re-run track sizing algorithm for Inline axis
         track_sizing_algorithm(
@@ -575,7 +603,7 @@ pub fn compute_grid_layout<Tree: LayoutGridContainer>(
             justify_content,
             align_content,
             available_grid_space,
-            inner_node_size,
+            rerun_inner_node_size(AbstractAxis::Inline, has_percentage_column),
             &mut columns,
             &mut rows,
             &mut items,
@@ -624,7 +652,7 @@ pub fn compute_grid_layout<Tree: LayoutGridContainer>(
             align_content,
             justify_content,
             available_grid_space,
-            inner_node_size,
+            rerun_inner_node_size(AbstractAxis::Block, has_percentage_row),
             &mut rows,
             &mut columns,
             &mut items,

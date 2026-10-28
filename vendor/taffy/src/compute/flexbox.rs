@@ -910,6 +910,14 @@ fn determine_available_space(
         Some(node_height) => {
             AvailableSpace::Definite((node_height - constants.content_box_inset.vertical_axis_sum()).max(0.0))
         }
+        // Skene: a column's main axis is its block axis, whose min-content size is its max-content
+        // size (as for a grid container, and as Chromium lays a column out), so a min-content
+        // constraint there neither puts each item on a line of its own nor sizes the items under
+        // it. Upstream did both, so a wrapping column's min-content contribution was its tallest
+        // item, below its height at max-content or in a definite space.
+        None if !constants.is_row && outer_available_space.height == AvailableSpace::MinContent => {
+            AvailableSpace::MaxContent
+        }
         None => outer_available_space.height.maybe_sub(constants.content_box_inset.vertical_axis_sum()).maybe_max(0.0),
     };
 
@@ -996,16 +1004,23 @@ fn determine_flex_base_size(
                 dir,
                 ckd.cross(dir).maybe_clamp(transferred_min_size.cross(dir), transferred_max_size.cross(dir)),
             );
+            // Skene: a stretched item takes the line's cross size as its own only where that size
+            // is definite, the container being single-line with a definite cross size
+            // (https://www.w3.org/TR/css-flexbox-1/#definite-sizes); elsewhere its cross size is
+            // auto and not definite, so it is measured at fit-content in the available space (step
+            // E). Upstream took the available cross space as the item's size whenever it was
+            // stretched, so an item whose main size follows its cross size (an aspect ratio, a
+            // column of wrapped text) took a flex base size from a height it is never given.
             if child.align_self == AlignSelf::STRETCH
                 && !child.margin_is_auto.cross_start(constants.dir)
                 && !child.margin_is_auto.cross_end(constants.dir)
                 && ckd.cross(dir).is_none()
+                && !constants.is_wrap
+                && constants.has_definite_cross_size
+                && cross_axis_parent_size.is_some()
             {
                 ckd.set_cross(dir, cross_axis_available_space.into_option());
-                // The cross size of a stretched item is definite if the container has a definite
-                // cross size (https://www.w3.org/TR/css-flexbox-1/#definite-sizes)
-                child_cross_size_is_definite =
-                    !constants.is_wrap && constants.has_definite_cross_size && cross_axis_parent_size.is_some();
+                child_cross_size_is_definite = true;
             }
             ckd
         };
@@ -1247,7 +1262,17 @@ fn collect_flex_lines<'a>(
                 let available = available_space.main(constants.dir).into_option().unwrap_or(max_size);
                 // If the container's main size is not definite then it is at most the max main size,
                 // so the max size (and not the available space) is the limit that items wrap against.
-                let available = if constants.has_definite_main_size { available } else { available.min(max_size) };
+                // Skene: a column's lines wrap against its max main size alone, as where it has none
+                // (below) the available space an ancestor hands down does not constrain them.
+                // Upstream wrapped them against the smaller of the two, so a column with a max height
+                // wrapped in a definite space where it did not at max-content.
+                let available = if constants.has_definite_main_size {
+                    available
+                } else if !constants.dir.is_row() {
+                    max_size
+                } else {
+                    available.min(max_size)
+                };
                 available.maybe_max(constants.min_size.main(constants.dir))
             }),
             // A column container's automatic main size is content-based, so definite available space
@@ -1337,7 +1362,17 @@ fn collect_balanced_flex_lines<'a>(
                 let available = available_space.main(constants.dir).into_option().unwrap_or(max_size);
                 // If the container's main size is not definite then it is at most the max main size,
                 // so the max size (and not the available space) is the limit that items wrap against.
-                let available = if constants.has_definite_main_size { available } else { available.min(max_size) };
+                // Skene: a column's lines wrap against its max main size alone, as where it has none
+                // (below) the available space an ancestor hands down does not constrain them.
+                // Upstream wrapped them against the smaller of the two, so a column with a max height
+                // wrapped in a definite space where it did not at max-content.
+                let available = if constants.has_definite_main_size {
+                    available
+                } else if !constants.dir.is_row() {
+                    max_size
+                } else {
+                    available.min(max_size)
+                };
                 available.maybe_max(constants.min_size.main(constants.dir))
             }),
             // A column container's automatic main size is content-based, so definite available space
@@ -1426,26 +1461,32 @@ fn determine_container_main_size(
     let dir = constants.dir;
     let main_content_box_inset = constants.content_box_inset.main_axis_sum(constants.dir);
 
+    // Skene: an item takes its hypothetical main size, its flex base size clamped by its used
+    // min and max main sizes, the automatic minimum included. Upstream floors the flex base size
+    // by the min main size alone, so a column whose item's flex basis is below its content came
+    // out shorter than its content in a definite space (and than at max-content).
+    let main_axis_gap = constants.gap.main(constants.dir);
+    let item_main_length = |child: &FlexItem| {
+        let padding_border_sum = (child.padding + child.border).main_axis_sum(constants.dir);
+        (child.hypothetical_inner_size.main(constants.dir) + child.margin.main_axis_sum(constants.dir))
+            .max(padding_border_sum)
+    };
+    let longest_line_length = |lines: &[FlexLine<'_>]| -> f32 {
+        lines
+            .iter()
+            .map(|line| {
+                let line_main_axis_gap = sum_axis_gaps(main_axis_gap, line.items.len());
+                let total_target_size = line.items.iter().map(item_main_length).sum::<f32>();
+                total_target_size + line_main_axis_gap
+            })
+            .max_by(|a, b| a.total_cmp(b))
+            .unwrap_or(0.0)
+    };
+
     let outer_main_size: f32 = constants.node_outer_size.main(constants.dir).unwrap_or_else(|| {
         match available_space.main(dir) {
             AvailableSpace::Definite(main_axis_available_space) => {
-                let main_axis_gap = constants.gap.main(constants.dir);
-                let item_main_length = |child: &FlexItem| {
-                    let padding_border_sum = (child.padding + child.border).main_axis_sum(constants.dir);
-                    (child.flex_basis.maybe_max(child.min_size.main(constants.dir))
-                        + child.margin.main_axis_sum(constants.dir))
-                    .max(padding_border_sum)
-                };
-                let longest_line_length: f32 = lines
-                    .iter()
-                    .map(|line| {
-                        let line_main_axis_gap = sum_axis_gaps(main_axis_gap, line.items.len());
-                        let total_target_size = line.items.iter().map(item_main_length).sum::<f32>();
-                        total_target_size + line_main_axis_gap
-                    })
-                    .max_by(|a, b| a.total_cmp(b))
-                    .unwrap_or(0.0);
-                let size = longest_line_length + main_content_box_inset;
+                let size = longest_line_length(lines) + main_content_box_inset;
 
                 // A balanced container can produce multiple lines that all fit within the
                 // available space (via `flex-line-count`), in which case fit-content sizing
@@ -1508,6 +1549,14 @@ fn determine_container_main_size(
                     .max_by(|a, b| a.total_cmp(b))
                     .unwrap_or(0.0);
                 longest_line_length + main_content_box_inset
+            }
+            // Skene: a column's main axis is its block axis, whose intrinsic size is the size its
+            // layout gives it (as in Chromium): the items' hypothetical main sizes, as in a
+            // definite space. Upstream sums the items' max-content contributions, which count an
+            // item's preferred size above its flex basis, so a column laid out at its own
+            // max-content height came out shorter.
+            AvailableSpace::MinContent | AvailableSpace::MaxContent if !constants.is_row => {
+                longest_line_length(lines) + main_content_box_inset
             }
             AvailableSpace::MinContent | AvailableSpace::MaxContent => {
                 // Define a base main_size variable. This is mutated once for iteration over the outer
@@ -1609,7 +1658,14 @@ fn determine_container_main_size(
                                             transferred_max_size.cross(dir),
                                         ),
                                     );
-                                    if item.align_self == AlignSelf::STRETCH && ckd.cross(dir).is_none() {
+                                    // Skene: stretched to the line's cross size only where that size
+                                    // is definite, as in `determine_flex_base_size`.
+                                    if item.align_self == AlignSelf::STRETCH
+                                        && ckd.cross(dir).is_none()
+                                        && !constants.is_wrap
+                                        && constants.has_definite_cross_size
+                                        && cross_axis_parent_size.is_some()
+                                    {
                                         ckd.set_cross(dir, cross_axis_available_space.into_option());
                                     }
                                     ckd

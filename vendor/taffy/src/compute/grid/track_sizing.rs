@@ -318,6 +318,18 @@ pub(super) fn track_sizing_algorithm<Tree: LayoutPartialTree>(
         }
     }
 
+    // Skene: the block axis is laid out, never sized under a min- or max-content constraint (as
+    // in Chromium), so its auto minimums take the items' minimum contributions, not their limited
+    // content contributions; an indefinite space there still lets the tracks grow to their growth
+    // limits below. Upstream sized rows under a max-content constraint wherever the space was
+    // indefinite, so a grid's rows came out apart from how they lay out in a definite space.
+    let axis_intrinsic_space = match (axis, available_grid_space.get(axis)) {
+        (AbstractAxis::Block, AvailableSpace::MinContent | AvailableSpace::MaxContent) => {
+            AvailableSpace::Definite(f32::INFINITY)
+        }
+        (_, space) => space,
+    };
+
     // 11.5 Resolve Intrinsic Track Sizes
     resolve_intrinsic_track_sizes(
         tree,
@@ -325,7 +337,7 @@ pub(super) fn track_sizing_algorithm<Tree: LayoutPartialTree>(
         axis_tracks,
         other_axis_tracks,
         items,
-        available_grid_space.get(axis),
+        axis_intrinsic_space,
         inner_node_size,
         get_track_size_estimate,
     );
@@ -1218,7 +1230,13 @@ fn maximise_tracks(axis_tracks: &mut [GridTrack], axis_available_grid_space: Ava
     let used_space: f32 = axis_tracks.iter().map(|track| track.base_size).sum();
     let free_space = axis_available_grid_space.compute_free_space(used_space);
     if free_space == f32::INFINITY {
-        axis_tracks.iter_mut().for_each(|track| track.base_size = track.growth_limit);
+        // Skene: an infinite free space grows each track to its growth limit capped by its
+        // `fit-content()` limit, as a finite one does below. Upstream grew it to the uncapped growth
+        // limit, so a `fit-content()` track sized under a max-content constraint outgrew its limit
+        // (to its items' min-content contribution) and came out taller than in a definite space.
+        axis_tracks
+            .iter_mut()
+            .for_each(|track| track.base_size = f32_max(track.base_size, track.fit_content_limited_growth_limit()));
     } else if free_space > 0.0 {
         distribute_space_up_to_limits(
             free_space,

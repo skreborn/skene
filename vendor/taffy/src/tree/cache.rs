@@ -252,6 +252,16 @@ impl Cache {
     /// Try to retrieve a cached result from the cache
     #[inline]
     pub fn get(&mut self, input: &LayoutInput) -> Option<LayoutOutput> {
+        self.get_resolving(input, false)
+    }
+
+    /// Skene: try to retrieve a cached result from the cache for a node whose own size resolves
+    /// against its parent's height where `resolves_parent_height` (a percentage height, min-height
+    /// or max-height), so that a size is then reused only for the parent height it was computed
+    /// for. Upstream compared the parent's width alone, so a size computed against one parent
+    /// height was reused against another (or none).
+    #[inline]
+    pub fn get_resolving(&mut self, input: &LayoutInput, resolves_parent_height: bool) -> Option<LayoutOutput> {
         if self.mode != CacheMode::from(input) {
             return None;
         }
@@ -266,6 +276,7 @@ impl Cache {
                     if entry.key.kd_available_space == key.kd_available_space
                         && entry.key.known_dimensions_are_definite == key.known_dimensions_are_definite
                         && (entry.key.x_axis_parent_size() == key.x_axis_parent_size())
+                        && (!resolves_parent_height || entry.key.parent_size() == key.parent_size())
                         && entry.key.size_is_valid_for(&key)
                     {
                         self.recently_used_entries |= 1 << index;
@@ -335,6 +346,12 @@ impl Cache {
             }
             RunMode::PerformHiddenLayout => {}
         }
+    }
+
+    /// Skene: forgets the final layout entry alone, keeping the measure entries; the cache still
+    /// counts as holding entries, so marking a descendant dirty still clears every ancestor.
+    pub fn forget_final_layout(&mut self) {
+        self.final_layout_entry = None;
     }
 
     /// Clear all cache entries and reports clear operation outcome ([`ClearState`])

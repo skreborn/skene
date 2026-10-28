@@ -948,6 +948,14 @@ impl<S: CheapCloneStr> Style<S> {
         #[cfg(feature = "grid")]
         grid_column: Line { start: GridPlacement::<S>::Auto, end: GridPlacement::<S>::Auto },
     };
+
+    /// Skene: whether the box's own height, min-height or max-height is a percentage, which
+    /// resolves against its parent's height.
+    pub fn resolves_parent_height(&self) -> bool {
+        self.size.height.into_raw().uses_percentage()
+            || self.min_size.height.into_raw().uses_percentage()
+            || self.max_size.height.into_raw().uses_percentage()
+    }
 }
 
 impl<S: CheapCloneStr> Default for Style<S> {

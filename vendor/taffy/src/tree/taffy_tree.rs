@@ -214,7 +214,9 @@ impl<NodeContext> TraverseTree for TaffyTree<NodeContext> {}
 // CacheTree impl for TaffyTree
 impl<NodeContext> CacheTree for TaffyTree<NodeContext> {
     fn cache_get(&mut self, node_id: NodeId, input: &LayoutInput) -> Option<LayoutOutput> {
-        self.nodes[node_id.into()].cache.get(input)
+        let node = &mut self.nodes[node_id.into()];
+        let resolves_parent_height = node.style.resolves_parent_height();
+        node.cache.get_resolving(input, resolves_parent_height)
     }
 
     fn cache_store(&mut self, node_id: NodeId, input: &LayoutInput, layout_output: LayoutOutput) {
@@ -275,6 +277,8 @@ where
     pub(crate) taffy: &'t mut TaffyTree<NodeContext>,
     /// The context provided for passing to measure functions if layout is run over this struct
     pub(crate) measure_function: MeasureFunction,
+    /// Skene: how many size computations (`RunMode::ComputeSize`) are in progress on the stack
+    pub(crate) measuring: u32,
 }
 
 impl<NodeContext, MeasureFunction> TaffyView<'_, NodeContext, MeasureFunction>
@@ -309,7 +313,9 @@ where
         //   - Else call the passed closure (below) to compute the result
         //
         // If there was no cache match and a new result needs to be computed then that result will be added to the cache
-        compute_cached_layout(self, node_id, inputs, |tree, node_id, inputs| {
+        let measuring = inputs.run_mode == RunMode::ComputeSize;
+        self.measuring += u32::from(measuring);
+        let output = compute_cached_layout(self, node_id, inputs, |tree, node_id, inputs| {
             let display_mode = tree.taffy.nodes[node_id.into()].style.display;
             let has_children = tree.child_count(node_id) > 0;
 
@@ -353,8 +359,23 @@ where
                 compute_oof_layout(tree, node_id, &mut output);
             }
 
+            // Skene: a full layout run while an ancestor is only being sized (to read a baseline)
+            // rewrites this box's subtree out of band, so no ancestor's cached final layout still
+            // describes it: each is forgotten, and the ancestor's next full layout lays the subtree
+            // out again. Upstream kept them, so an ancestor's final layout served from the cache left
+            // the subtree as the sizing pass had laid it out.
+            if inputs.run_mode == RunMode::PerformLayout && tree.measuring > 0 {
+                let mut ancestor = tree.taffy.parents[node_id.into()];
+                while let Some(parent) = ancestor {
+                    tree.taffy.nodes[parent.into()].cache.forget_final_layout();
+                    ancestor = tree.taffy.parents[parent.into()];
+                }
+            }
+
             output
-        })
+        });
+        self.measuring -= u32::from(measuring);
+        output
     }
 }
 
@@ -463,7 +484,9 @@ where
     MeasureFunction: FnMut(LayoutInput, NodeId, Option<&mut NodeContext>, &Style) -> LayoutOutput,
 {
     fn cache_get(&mut self, node_id: NodeId, input: &LayoutInput) -> Option<LayoutOutput> {
-        self.taffy.nodes[node_id.into()].cache.get(input)
+        let node = &mut self.taffy.nodes[node_id.into()];
+        let resolves_parent_height = node.style.resolves_parent_height();
+        node.cache.get_resolving(input, resolves_parent_height)
     }
 
     fn cache_store(&mut self, node_id: NodeId, input: &LayoutInput, layout_output: LayoutOutput) {
@@ -989,7 +1012,7 @@ impl<NodeContext> TaffyTree<NodeContext> {
         MeasureFunction: FnMut(LayoutInput, NodeId, Option<&mut NodeContext>, &Style) -> LayoutOutput,
     {
         let use_rounding = self.config.use_rounding;
-        let mut taffy_view = TaffyView { taffy: self, measure_function };
+        let mut taffy_view = TaffyView { taffy: self, measure_function, measuring: 0 };
         compute_root_layout(&mut taffy_view, node_id, available_space);
         if use_rounding {
             round_layout(&mut taffy_view, node_id);
@@ -1016,6 +1039,7 @@ impl<NodeContext> TaffyTree<NodeContext> {
         TaffyView {
             taffy: self,
             measure_function: |inputs, _, _, style| compute_leaf_layout(inputs, style, |_, _| 0.0, |_, _| Size::ZERO),
+            measuring: 0,
         }
     }
 }

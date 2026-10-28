@@ -1,5 +1,7 @@
 //! [`Tree`] held to one `TaffyTree` receiving the same writes, over random trees shaped as
-//! a scene's boxes, controls, overlays and paragraphs lay out, and random runs of writes.
+//! a scene's boxes, controls, overlays and paragraphs lay out, and random runs of writes; and
+//! each box of those trees held to the size and placements it lays out at its natural height
+//! when that height is given to it as a definite space.
 
 use std::{
   cell::RefCell,
@@ -1065,6 +1067,146 @@ impl Pair {
       );
     }
   }
+
+  /// Whether `node` has children and lays out reading no definite height of the space it is
+  /// laid out in, laid out from itself in a space `width` wide.
+  fn height_free(&self, node: NodeId, width: AvailableSpace) -> bool {
+    let Some(&id) = self.oracle.nodes.get(&node)
+    else {
+      return false;
+    };
+    let taffy = &self.oracle.taffy;
+    let style = taffy.style(id).expect("an oracle node's style");
+    let children = taffy.children(id).expect("an oracle node's children");
+    let percent = |track: &taffy::style::TrackSizingFunction| {
+      track.min.uses_percentage() || track.max.uses_percentage()
+    };
+    let column = style.display == Display::Flex
+      && matches!(
+        style.flex_direction,
+        taffy::style::FlexDirection::Column | taffy::style::FlexDirection::ColumnReverse
+      );
+    // A height, least height or greatest height that is a fraction of a definite one.
+    let fraction = |style: &Style| {
+      style.size.height.into_raw().uses_percentage()
+        || style.min_size.height.into_raw().uses_percentage()
+        || style.max_size.height.into_raw().uses_percentage()
+    };
+    // Rows a fraction of the box's height.
+    let rows = style.grid_template_rows.iter().any(|row| match row {
+      taffy::style::GridTemplateComponent::Single(track) => percent(track),
+      taffy::style::GridTemplateComponent::Repeat(repeat) => repeat.tracks.iter().any(percent),
+    }) || style.grid_auto_rows.iter().any(percent);
+    // A least or greatest height of the box's own, which lays its children out at another
+    // height than their natural one.
+    let bounded = !style.min_size.height.is_auto() || !style.max_size.height.is_auto();
+    // An absolutely positioned box, which a space definite in both axes contains, placing and
+    // sizing it by its insets, and which lays out in flow in any other.
+    let placed =
+      style.position == Position::Absolute && matches!(width, AvailableSpace::Definite(_));
+
+    !children.is_empty()
+      && !rows
+      && !bounded
+      && !fraction(style)
+      && !placed
+      && !children.iter().any(|child| {
+        let style = taffy.style(*child).expect("an oracle node's style");
+
+        fraction(style) || column && style.flex_basis.into_raw().uses_percentage()
+      })
+  }
+
+  /// `node` and every node beneath it, depth first.
+  fn subtree(&self, node: NodeId) -> Vec<NodeId> {
+    let mut nodes = vec![node];
+    let mut index = 0;
+
+    while let Some(&at) = nodes.get(index) {
+      nodes.extend(self.oracle.children(at));
+      index += 1;
+    }
+
+    nodes
+  }
+
+  /// Lays `node` out from itself at its natural height in `width`, then at that height as
+  /// definite space, and holds its size and every rectangle beneath it to the first.
+  fn natural(&mut self, node: NodeId, width: AvailableSpace) {
+    let natural = taffy::geometry::Size {
+      width,
+      height: AvailableSpace::MaxContent,
+    };
+
+    self.tree.compute(node, natural);
+
+    let laid = *self.tree.unrounded_layout(node).expect("a laid out node");
+    let beneath: Vec<(NodeId, taffy::tree::Layout)> = self
+      .subtree(node)
+      .into_iter()
+      .skip(1)
+      .map(|below| {
+        (
+          below,
+          *self.tree.unrounded_layout(below).expect("a laid out node"),
+        )
+      })
+      .collect();
+    // The space holds the box's vertical margins, which a layout from the box takes off it
+    // again, the space's height nudged until that leaves the box's height exactly.
+    let margins = laid.margin.top + laid.margin.bottom;
+    let mut height = laid.size.height + margins;
+
+    for _ in 0..8 {
+      let inner = height - margins;
+
+      height = match inner.total_cmp(&laid.size.height) {
+        std::cmp::Ordering::Less => height.next_up(),
+        std::cmp::Ordering::Greater => height.next_down(),
+        std::cmp::Ordering::Equal => break,
+      };
+    }
+
+    self.tree.compute(
+      node,
+      taffy::geometry::Size {
+        width,
+        height: AvailableSpace::Definite(height),
+      },
+    );
+
+    let kept = self.tree.unrounded_layout(node).expect("a laid out node");
+
+    assert!(
+      close(kept.size.width, laid.size.width) && close(kept.size.height, laid.size.height),
+      "{node:?} laid out at its natural height keeps its size: {:?} against {:?}",
+      kept.size,
+      laid.size
+    );
+
+    for (below, held) in beneath {
+      let now = self.tree.unrounded_layout(below).expect("a laid out node");
+
+      assert!(
+        close(now.location.x, held.location.x)
+          && close(now.location.y, held.location.y)
+          && close(now.size.width, held.size.width)
+          && close(now.size.height, held.size.height),
+        "{below:?} beneath {node:?} laid out at its natural height stays where it was: \
+         {:?} {:?} against {:?} {:?}",
+        now.location,
+        now.size,
+        held.location,
+        held.size
+      );
+    }
+  }
+}
+
+/// Whether `a` and `b` are one length up to the rounding of the arithmetic that laid them out:
+/// a few units in the last place of the larger, or of one.
+fn close(a: f32, b: f32) -> bool {
+  a.to_bits() == b.to_bits() || (a - b).abs() <= 4. * f32::EPSILON * a.abs().max(b.abs()).max(1.)
 }
 
 /// A node's genes.
@@ -1111,5 +1253,29 @@ proptest! {
     }
 
     pair.compute(pair.root, viewport(last));
+  }
+
+  /// Any box with children a scene lays out whose layout reads no definite height, laid out
+  /// from itself at its natural height in any width and then at that height as definite
+  /// space, keeps its size, and every node beneath it keeps its rectangle.
+  #[test]
+  fn a_container_laid_out_at_its_natural_height_keeps_it(
+    rounding in any::<bool>(),
+    unit in any::<bool>(),
+    genes in proptest::collection::vec(gene(), 1..40),
+    first in any::<u8>(),
+  ) {
+    let mut pair = Pair::new(rounding, if unit { Borders::Unit } else { Borders::Width });
+
+    pair.build(&genes);
+    pair.tree.compute(pair.root, viewport(first));
+
+    for (node, gene) in pair.ids.clone().into_iter().zip(&genes) {
+      let width = viewport(gene[27]).width;
+
+      if pair.height_free(node, width) {
+        pair.natural(node, width);
+      }
+    }
   }
 }

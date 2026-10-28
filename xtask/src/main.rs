@@ -1185,7 +1185,7 @@ const TERMINAL: Minimums = Minimums {
   binaries: &[
     ("acme-sparkline::render", 2),
     ("skene-simple-tui::it", 9),
-    ("skene-tui-terminal", 76),
+    ("skene-tui-terminal", 77),
     ("skene-tui::it", 454),
     ("tui-context-menu::render", 1),
     ("tui-enhance::render", 2),

@@ -144,6 +144,7 @@ impl NativeView {
         transition_name: None,
         link: false,
         acting: false,
+        decorated: true,
       }),
     )
   }

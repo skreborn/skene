@@ -7,6 +7,7 @@ use skene_reactive::{Effect, Get, Set, Signal, untrack};
 use crate::{
   AnyKind,
   AnyView,
+  BoxFacts,
   Color,
   DeclaredBoxStyle,
   DecorationBase,
@@ -272,7 +273,10 @@ impl<P: Realization> View<P> for Overlay<P> {
     let node = inner.add_child(child).realize(
       |boxed| {
         NodeFacts::Overlay(OverlayFacts {
-          boxed,
+          boxed: BoxFacts {
+            decorated: true,
+            ..boxed
+          },
           modal,
           hint,
           backdrop,

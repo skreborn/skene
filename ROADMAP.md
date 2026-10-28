@@ -37,14 +37,11 @@ in a code comment.
     the app's key handlers as a browser's `<input>` default runs (so never as a
     `TextEntry::on_key`, which would run before them), the terminal's own key default
     consulting the table until then.
-    - Layout: one engine per decorated `Container`, the layout-only boxes beneath it
-    (`Row`, `Column`, `Grid`, `Stack`) folded into its engine by a creation fact telling
-    a decorated box from a layout-only one, which the compositor platforms reuse; a
-    paragraph lays its inline boxes out within its own measure; layout settles before a
-    frame commits, the terminal's settle loop becoming the frame contract, and `Painted`
-    resizes land with the layout commit. The per-container engine's counts on the
-    1,000-row probe join the 2026-10-15 entry in `DECISIONS.md` and the whole-scene
-    tree's entry beside its numbers.
+    - Layout: a paragraph lays its inline boxes out within its own measure; layout
+    settles before a frame commits, the terminal's settle loop becoming the frame
+    contract, and `Painted` resizes land with the layout commit. The per-container
+    engine's counts on the 1,000-row probe join the 2026-10-15 entry in `DECISIONS.md`
+    and the whole-scene tree's entry beside its numbers.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color
     transitions on it; `Condition` resolution against the runtime's environment and
     pointer through the one resolution point; the spine's `Window` owning its
@@ -251,14 +248,15 @@ in a code comment.
     - From the shared runtime (item 1): the shared engine hosted by the toolkit through
     a min/natural measuring protocol, a container laid out in `onLayout` over its
     children's measures, a native view's minimum its floor; a layout-only box realized
-    as no `View`, its children placed in the nearest `Container`'s view by the creation
-    fact the drawn runtime folds them by (item 1); opacity, transform and color
-    transitions run by the RenderThread where a property has an animator, the runtime's
-    frame clock on Choreographer their floor and the runner of everything else; a Skene
-    root embedded in an existing `Activity` or `Fragment`, with a `Window` and
-    `Environment` of its own (item 1); view transitions through the platform's own
-    snapshot of the outgoing views, named pairs (`set_transition_name`) interpolated on
-    the frame clock, a cut their floor; and a long press opening the context menu.
+    as no `View`, its children placed in the nearest `Container`'s view by
+    `BoxFacts::decorated`, the creation fact the drawn runtime folds them by (item 1);
+    opacity, transform and color transitions run by the RenderThread where a property
+    has an animator, the runtime's frame clock on Choreographer their floor and the
+    runner of everything else; a Skene root embedded in an existing `Activity` or
+    `Fragment`, with a `Window` and `Environment` of its own (item 1); view transitions
+    through the platform's own snapshot of the outgoing views, named pairs
+    (`set_transition_name`) interpolated on the frame clock, a cut their floor; and a
+    long press opening the context menu.
     - Its own controls in `platform::android`, beside a library's through the native
     door.
 6. **iOS and macOS.** Compositor platforms: Skene's views are layer-backed `UIView`s and
@@ -292,7 +290,8 @@ in a code comment.
     navigation is on; a Mac is needed.
     - From the shared runtime (item 1): a native view's minimum (`intrinsicContentSize`,
     `fittingSize`) as the shared engine's floor; a layout-only box realized as no view,
-    as on Android; opacity, transform and color transitions on Core Animation, the frame
+    as on Android, by `BoxFacts::decorated`, the creation fact the drawn runtime folds
+    them by; opacity, transform and color transitions on Core Animation, the frame
     clock on `CADisplayLink` their floor; view transitions through the platform's
     snapshot views; a root embedded in an existing view controller or `NSView`, with a
     `Window` and `Environment` of its own (item 1); and macOS's Tab convention (Tab

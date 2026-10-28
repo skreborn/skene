@@ -184,6 +184,10 @@ pub struct BoxFacts {
   /// Whether the box acts on a click of its own: it handles one and is no link, so it
   /// takes focus and `Enter` and `Space` activate it, an activatable row.
   pub acting: bool,
+  /// Whether a view taking decoration created the box (a `Container`, an overlay's box,
+  /// a control's), so a platform that draws lays it out with an engine of its own,
+  /// where a layout-only box joins its nearest decorated ancestor's.
+  pub decorated: bool,
 }
 
 /// What a platform creates an overlay from: its box, whether it is modal or a hint, and
@@ -464,6 +468,7 @@ mod tests {
       transition_name: None,
       link: false,
       acting: false,
+      decorated: false,
     }
   }
 

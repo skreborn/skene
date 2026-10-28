@@ -4,6 +4,7 @@ use crate::{
   AccessProp,
   Alignment,
   AnyKind,
+  BoxFacts,
   Bubbling,
   Children,
   Condition,
@@ -21,6 +22,7 @@ use crate::{
   Layout,
   LayoutBox,
   MotionBase,
+  NodeFacts,
   NodeHandle,
   NodeId,
   PlainChild,
@@ -81,7 +83,15 @@ impl<P: Realization> AnyKind for Container<P> {}
 impl<P: Realization> View<P> for Container<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
-    self.inner.build()
+    self.inner.realize(
+      |boxed| {
+        NodeFacts::Box(BoxFacts {
+          decorated: true,
+          ..boxed
+        })
+      },
+      |_, _, _| {},
+    )
   }
 }
 

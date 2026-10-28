@@ -603,8 +603,9 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
   /// binds every derived slot, a derived focus order and accessibility, and the
   /// handlers, mounts the children and returns the node.
   ///
-  /// A box builds through this with [`NodeFacts::Box`]; a view realized as another kind
-  /// makes its facts from the box's.
+  /// The box's facts call it layout-only ([`BoxFacts::decorated`] false); a box builds
+  /// through this with [`NodeFacts::Box`], and a view taking decoration, or realized as
+  /// another kind, makes its facts from the box's.
   pub fn realize(
     mut self,
     facts: impl FnOnce(BoxFacts) -> NodeFacts,
@@ -626,6 +627,7 @@ impl<P: Realization, Kind: 'static> LayoutBox<P, Kind> {
       transition_name: self.transition_name.take(),
       link: links,
       acting,
+      decorated: false,
     });
     let acting = matches!(&facts, NodeFacts::Box(facts) if facts.acting);
 

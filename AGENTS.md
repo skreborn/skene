@@ -158,10 +158,11 @@ changed, and its change lands with its evidence, in this file or `DECISIONS.md`.
   shared property once (typed properties, conditions riding the value, transitions,
   keyframes), and the medium's own properties come through its extension `X`. Layout
   **runs on taffy**—the framework invents no layout system and exposes taffy's full
-  capability: on every toolkit that is not CSS, taffy owns it, one tree per container,
-  the toolkit's measure (a text engine's, a native view's) as its leaves with the
-  toolkit's minimum as a floor, its rectangles fractional; the web's toolkit is CSS,
-  whose flexbox and grid are what taffy implements. The **public vocabulary is not
+  capability: on every toolkit that is not CSS, taffy owns it, one tree per decorated
+  `Container`, the layout-only boxes beneath it folded into it, the toolkit's measure (a
+  text engine's, a native view's) as its leaves with the toolkit's minimum as a floor,
+  its rectangles fractional; the web's toolkit is CSS, whose flexbox and grid are what
+  taffy implements. The **public vocabulary is not
   CSS's**: names and values follow the modern declarative frameworks (Flutter, SwiftUI,
   Jetpack Compose), mixed and matched for whichever is clearest—explicit and
   self-describing; CSS naming stays only where it is genuinely the best name in

@@ -211,6 +211,7 @@ impl Records {
       transition_name: None,
       link: false,
       acting: false,
+      decorated: true,
     };
     let mut records = Self {
       by_node: NodeMap::new(),
@@ -275,10 +276,11 @@ impl Records {
   }
 
   /// Stores a record of `kind` as the record of `node`, a fresh leaf of the layout
-  /// tree: a container of its own where it is a box, a control or an overlay, and laid
-  /// out by its container's engine where it is a run.
+  /// tree: a container of its own where a view taking decoration created its box, and
+  /// laid out by its nearest such ancestor's engine where it is a layout-only box or a
+  /// run.
   pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
-    let decorated = !matches!(kind, Kind::Run { .. });
+    let decorated = kind.box_record().is_some_and(|inner| inner.facts.decorated);
     let mut record = Record::new(kind);
 
     record.node = Some(node);
@@ -399,5 +401,71 @@ impl Records {
     self.invalidate_selection(handle);
     self.restyle.move_structure();
     self.paint_dirty = true;
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use skene_foundation::{
+    Activate,
+    Column,
+    Container,
+    Control,
+    Grid,
+    NodeId,
+    Overlay,
+    RichText,
+    Row,
+    Stack,
+    Text,
+    View,
+  };
+
+  use crate::{Terminal, install, mount, uninstall, with_records};
+
+  /// Whether the record of `node` is a box created by a view taking decoration, `None`
+  /// for a run.
+  fn decorated(node: NodeId) -> Option<bool> {
+    with_records(|records| {
+      records
+        .record(node)
+        .expect("a mounted node has a record")
+        .kind
+        .box_record()
+        .map(|inner| inner.facts.decorated)
+    })
+  }
+
+  /// A container, an overlay's box and a control's are decorated, and every layout view,
+  /// a paragraph's box and a run are not, so only the first take an engine of their own.
+  #[test]
+  fn a_box_is_decorated_where_a_view_taking_decoration_created_it() {
+    install();
+
+    let container = mount(|| Container::<Terminal>::new().build());
+    let overlay = mount(|| {
+      Overlay::<Terminal>::popup()
+        .set_child(Container::new())
+        .build()
+    });
+    let control = mount(|| Control::<Terminal, Activate>::new(Activate::new()).build());
+    let row = mount(|| Row::<Terminal>::new().build());
+    let column = mount(|| Column::<Terminal>::new().build());
+    let grid = mount(|| Grid::<Terminal>::new().build());
+    let stack = mount(|| Stack::<Terminal>::new().build());
+    let paragraph = mount(|| RichText::<Terminal>::new().build());
+    let run = mount(|| Text::<Terminal>::new("a").build());
+
+    for node in [container, overlay, control] {
+      assert_eq!(decorated(node), Some(true));
+    }
+
+    for node in [row, column, grid, stack, paragraph] {
+      assert_eq!(decorated(node), Some(false));
+    }
+
+    assert_eq!(decorated(run), None);
+
+    uninstall();
   }
 }

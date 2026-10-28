@@ -1643,6 +1643,7 @@ fn color_well(
       transition_name: None,
       link: false,
       acting: false,
+      decorated: true,
     }),
   );
   let node = LowLevel::<Web>::adopt(&spec, input.clone().into());

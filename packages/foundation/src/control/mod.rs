@@ -55,6 +55,7 @@ use crate::{
   AnyKind,
   AnyView,
   Axis,
+  BoxFacts,
   ClickEvent,
   Condition,
   ContainerName,
@@ -1016,7 +1017,10 @@ impl<P: Realization> View<P> for ControlCore<P> {
       let node = inner.realize(
         |boxed| {
           NodeFacts::Control(ControlFacts {
-            boxed,
+            boxed: BoxFacts {
+              decorated: true,
+              ..boxed
+            },
             native,
             label: name.as_ref().map(|name| untrack(|| name())),
             lines,

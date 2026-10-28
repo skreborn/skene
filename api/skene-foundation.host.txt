@@ -4992,6 +4992,7 @@ pub fn skene_foundation::BoxDynamics<N, X>::fingerprint<H: core::hash::Hasher>(&
 pub struct skene_foundation::BoxFacts
 pub skene_foundation::BoxFacts::acting: bool
 pub skene_foundation::BoxFacts::container: core::option::Option<skene_foundation::ContainerName>
+pub skene_foundation::BoxFacts::decorated: bool
 pub skene_foundation::BoxFacts::layout: skene_foundation::Layout
 pub skene_foundation::BoxFacts::link: bool
 pub skene_foundation::BoxFacts::transition_name: core::option::Option<alloc::string::String>

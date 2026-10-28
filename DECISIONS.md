@@ -56,10 +56,19 @@ supersedes there.
 - **Layout-only boxes as containers of their own in the drawn runtime** (2026-10-27),
   flattening only a compositor platform's view tree, a layout-only box realizing no
   platform view there while the drawn runtime keeps a taffy tree per layout box: one
-  creation fact tells a decorated box from a layout-only one, and every platform but the
-  web folds the layout-only boxes (`Row`, `Column`, `Grid`, `Stack`) into their nearest
-  decorated `Container`'s tree by it. Revisit when the fold makes a relayout slower than
-  per-box trees on the same case.
+  creation fact (`BoxFacts::decorated`) tells a decorated box from a layout-only one, and
+  every platform but the web folds the layout-only boxes (`Row`, `Column`, `Grid`,
+  `Stack`) into their nearest decorated `Container`'s tree by it. Revisit when the fold
+  makes a relayout slower than per-box trees on the same case. Measured at the fold
+  (2026-10-28) on the terminal's frame bench of 16,000 rows, Callgrind Ir per frame
+  against per-box engines, the same leaf measures and paragraph layouts in each case:
+  unchanged 525,292 to 524,954 (-0.064%), pointer_move 6,924,569 to 6,925,249
+  (+0.010%), resized 237,779,549 to 237,781,175 (+0.0007%), keyed_row_toggled
+  227,684,000 to 227,716,982 (+0.014%), mounted_first 1,919,324,389 to 1,919,453,321
+  (+0.0067%). An engine is a cursor over the one store, so the fold moves no layout
+  work: the layout pass costs the same, mount's record insertion about 7 Ir more a node
+  as the function is built, and the rest is the allocator's heap (a keyed reconcile's
+  vector copied as it grows in one frame of four where it grew in place).
 - **Typed input for the drawn runtime alone** (2026-10-27), entry points on the runtime
   taking the foundation's event types, which the compositor platforms and the web would
   bypass by dispatching from their own views into the spine, or no input type beyond the

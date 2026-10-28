@@ -1,7 +1,9 @@
 # Decisions
 
 The alternatives set aside and the designs replaced, each with the date it was recorded
-and the condition that reopens it. A reopened decision becomes an item in `ROADMAP.md`.
+and the condition that reopens it, beside which new evidence that the alternative is
+better reopens it too (`AGENTS.md`'s first rule). A reopened decision becomes an item in
+`ROADMAP.md`.
 The redesign recorded on 2026-10-15 is decided, and its first part has landed: the web
 and the terminal stand on the reshaped foundation, one platform per build, as two
 facades over realization crates of their own. The rest of it lands as `ROADMAP.md`

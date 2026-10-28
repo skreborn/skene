@@ -4,6 +4,19 @@ This guide states the doctrine. Where the code still follows the design it repla
 `ROADMAP.md` orders the rest of the redesign, and `DESIGN.md` describes the code as it
 stands.
 
+## The first rule
+
+Do everything the best way it can be done, in correctness, performance, maintainability,
+style or anything else, and question every rule that stands in the way: everything below,
+every house rule the gate holds and every decision `DECISIONS.md` records was a judgment
+made with what was known then, and none is followed because it is tradition. Where
+evidence (a measurement, a reproduction, a comparison, another framework's precedent)
+shows an alternative is better, bring it with that evidence: within a change, take the
+better way wherever the doctrine leaves room and say why; where it would change the
+doctrine or reopen a decision, put the alternative and its evidence to the author rather
+than following the rule silently or breaking it silently. A rule holds until it is
+changed, and its change lands with its evidence, in this file or `DECISIONS.md`.
+
 ## Hard constraints
 
 - Skene is a **client-side** framework. No server-side features, ever: no server
@@ -159,7 +172,8 @@ stands.
   not clamped, not a weight); weights are the wrappers' grow/shrink factors and
   `GridTrack::Flex`; `spacing`, not `gap`; `columns`/`implicit_columns`/`flow` on a
   grid, not templates and auto-flow. CSS nomenclature lives only inside the web
-  platform's mapping layer. This is settled—do not re-litigate it toward CSS naming.
+  platform's mapping layer. This is settled, reopened only by evidence that a CSS name
+  is clearer in its context.
   A run's decoration is three properties—`decoration` (`TextDecoration`),
   `decoration_style` (`TextDecorationStyle`) and `decoration_color`—Flutter's names;
   a link underlines unless its decoration says otherwise, and the terminal keeps the
@@ -303,7 +317,8 @@ stands.
       `:hover` rule that is more specific in intent.
     - Scoping the override to a subtree is **not wanted**: an app has one scheme, the
       way the platform does. It was investigated, the guard half is genuinely hard, and
-      the requirement was withdrawn rather than solved—do not reopen it as a bug.
+      the requirement was withdrawn rather than solved, so it is no bug; it reopens
+      only with evidence that apps need it.
     - A server-rendered page that offers a choice emits one inline **blocking** script in
       its head, applying the stored scheme before the first paint; deferred would run
       after the paint, which is the flash it exists to prevent. It carries the render's
@@ -939,9 +954,10 @@ stands.
   there at its priority in the same change, never in a code comment, a commit message
   or an agent's memory; an item a change resolves is removed in the same change.
 - **What was decided against lives in `DECISIONS.md`**, each alternative and each
-  replaced design dated with the condition that reopens it. A decision reopens only
-  when its condition holds, as an item in `ROADMAP.md`; a change that settles against
-  an alternative records it there in the same change.
+  replaced design dated with the condition that reopens it. A decision reopens when its
+  condition holds or when new evidence shows its alternative is better (the first rule),
+  as an item in `ROADMAP.md`; a change that settles against an alternative records it
+  there in the same change.
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different

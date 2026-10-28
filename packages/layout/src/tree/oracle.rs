@@ -43,7 +43,7 @@ use taffy::{
   tree::LayoutOutput,
 };
 
-use super::{Leaf, Tree};
+use super::{Leaf, Placed, Tree};
 use crate::{Borders, BoxLayout, Place};
 
 /// How many times each leaf was measured since the tally was last cleared, by node.
@@ -1047,15 +1047,24 @@ impl Pair {
       );
 
       assert_eq!(
-        self.tree.layout(*node).map(bits),
+        self.tree.taffy_layout(*node).map(bits),
         self.oracle.taffy.layout(*id).ok().map(bits),
         "{node:?}'s layout"
       );
 
       assert_eq!(
-        self.tree.unrounded_layout(*node).map(bits),
+        self.tree.taffy_unrounded_layout(*node).map(bits),
         Some(bits(self.oracle.taffy.unrounded_layout(*id))),
         "{node:?}'s unrounded layout"
+      );
+
+      assert_eq!(
+        (self.tree.layout(*node), self.tree.unrounded_layout(*node)),
+        (
+          self.oracle.taffy.layout(*id).ok().map(Placed::of),
+          Some(Placed::of(self.oracle.taffy.unrounded_layout(*id)))
+        ),
+        "{node:?}'s placement"
       );
 
       assert_eq!(
@@ -1171,7 +1180,10 @@ impl Pair {
 
     self.tree.compute(node, natural);
 
-    let laid = *self.tree.unrounded_layout(node).expect("a laid out node");
+    let laid = *self
+      .tree
+      .taffy_unrounded_layout(node)
+      .expect("a laid out node");
     let beneath: Vec<(NodeId, taffy::tree::Layout)> = self
       .subtree(node)
       .into_iter()
@@ -1179,7 +1191,10 @@ impl Pair {
       .map(|below| {
         (
           below,
-          *self.tree.unrounded_layout(below).expect("a laid out node"),
+          *self
+            .tree
+            .taffy_unrounded_layout(below)
+            .expect("a laid out node"),
         )
       })
       .collect();
@@ -1251,7 +1266,10 @@ impl Pair {
     scale: f32,
     how: &str,
   ) {
-    let kept = self.tree.unrounded_layout(node).expect("a laid out node");
+    let kept = self
+      .tree
+      .taffy_unrounded_layout(node)
+      .expect("a laid out node");
 
     assert!(
       close(kept.size.width, laid.size.width, scale)
@@ -1262,7 +1280,10 @@ impl Pair {
     );
 
     for (below, held) in beneath {
-      let now = self.tree.unrounded_layout(*below).expect("a laid out node");
+      let now = self
+        .tree
+        .taffy_unrounded_layout(*below)
+        .expect("a laid out node");
 
       assert!(
         close(now.location.x, held.location.x, scale)

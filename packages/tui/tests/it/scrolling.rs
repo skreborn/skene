@@ -868,3 +868,49 @@ fn overflowing_content_takes_a_click_where_it_is_drawn() {
     });
   }
 }
+
+/// Content overflowing a bordered box takes a click on every cell it is drawn on, its
+/// reach measured from inside the box's border, as in a browser.
+#[test]
+fn content_overflowing_a_bordered_box_takes_a_click_on_its_every_cell() {
+  with_platform(|| {
+    let clicked = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&clicked);
+
+    let _ = mount(move || {
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_height(3)
+            .set_border_width(Inset::all(1))
+            .set_child(Column::new().derive_children(
+              || 0..3,
+              |index| *index,
+              move |index| {
+                let log = Rc::clone(&log);
+
+                Container::new()
+                  .handle_click(move || log.borrow_mut().push(index))
+                  .set_child(Text::new(format!("item {index}")))
+              },
+            )),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(12, 5);
+
+    assert!(
+      frame
+        .lines()
+        .nth(3)
+        .is_some_and(|row| row.contains("item 2")),
+      "{frame}"
+    );
+
+    testing::trigger_mouse_click(3, 3);
+
+    assert_eq!(*clicked.borrow(), [2]);
+  });
+}

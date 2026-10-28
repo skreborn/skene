@@ -8,7 +8,7 @@ mod oracle;
 #[cfg(test)]
 mod tests;
 
-use skene_foundation::{NodeId, Rect, Size};
+use skene_foundation::{Inset, NodeId, Point, Rect, Size};
 use taffy::{
   compute_root_layout,
   prelude::AvailableSpace,
@@ -304,10 +304,24 @@ impl<C: Leaf> Tree<C> {
     }
   }
 
-  /// `node`'s layout in its parent, as the last [`compute`](Self::compute) left it,
-  /// rounded where the tree rounds; `None` for a node outside the tree.
+  /// Where `node` lies in its parent and what it holds, as the last
+  /// [`compute`](Self::compute) left it, rounded where the tree rounds; `None` for a node
+  /// outside the tree.
   #[must_use]
-  pub fn layout(&self, node: NodeId) -> Option<&Layout> {
+  pub fn layout(&self, node: NodeId) -> Option<Placed> {
+    self.taffy_layout(node).map(Placed::of)
+  }
+
+  /// Where `node` lies in its parent and what it holds, as the last
+  /// [`compute`](Self::compute) left it before any rounding; `None` for a node outside the
+  /// tree.
+  #[must_use]
+  pub fn unrounded_layout(&self, node: NodeId) -> Option<Placed> {
+    self.taffy_unrounded_layout(node).map(Placed::of)
+  }
+
+  /// `node`'s taffy layout, as [`layout`](Self::layout) reads it.
+  pub(crate) fn taffy_layout(&self, node: NodeId) -> Option<&Layout> {
     let slot = self.nodes.map().get(node)?;
 
     Some(if self.rounding {
@@ -318,10 +332,9 @@ impl<C: Leaf> Tree<C> {
     })
   }
 
-  /// `node`'s layout in its parent, as the last [`compute`](Self::compute) left it
-  /// before any rounding; `None` for a node outside the tree.
-  #[must_use]
-  pub fn unrounded_layout(&self, node: NodeId) -> Option<&Layout> {
+  /// `node`'s taffy layout before any rounding, as
+  /// [`unrounded_layout`](Self::unrounded_layout) reads it.
+  pub(crate) fn taffy_unrounded_layout(&self, node: NodeId) -> Option<&Layout> {
     Some(&self.nodes.map().get(node)?.unrounded)
   }
 
@@ -333,5 +346,56 @@ impl<C: Leaf> Tree<C> {
     }
 
     style
+  }
+}
+
+/// Where a node of a [`Tree`] lies in its parent and what it holds, as a layout left it:
+/// its rectangles in the layout's units, their horizontal edges laid out left to right, so
+/// an inset's start is its left.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[must_use]
+pub struct Placed {
+  /// Its border box, from the corner of its parent's.
+  pub rect: Rect<f32>,
+  /// The room its border takes on each edge.
+  pub border: Inset<f32>,
+  /// The room its padding takes on each edge, inside its border.
+  pub padding: Inset<f32>,
+  /// The rectangle its content reaches, its scrollable overflow, from the corner of its
+  /// padding box: it always holds that corner, so its origin is never right of it or
+  /// below it.
+  pub overflow: Rect<f32>,
+  /// How far it scrolls on each axis: how far its content reaches past its padding box,
+  /// what its scrollbars take counted in, and zero where it reaches no farther.
+  pub scroll_limit: Size<f32>,
+}
+
+impl Placed {
+  /// What taffy's `layout` says of its node.
+  fn of(layout: &Layout) -> Self {
+    let inset = |edges: taffy::geometry::Rect<f32>| Inset {
+      start: edges.left,
+      top: edges.top,
+      end: edges.right,
+      bottom: edges.bottom,
+    };
+    let overflow = layout.scrollable_overflow_rect;
+
+    Self {
+      rect: Rect::new(
+        Point::new(layout.location.x, layout.location.y),
+        Size::new(layout.size.width, layout.size.height),
+      ),
+      border: inset(layout.border),
+      padding: inset(layout.padding),
+      overflow: Rect::new(
+        Point::new(overflow.left, overflow.top),
+        Size::new(
+          overflow.right - overflow.left,
+          overflow.bottom - overflow.top,
+        ),
+      ),
+      scroll_limit: Size::new(layout.scroll_width(), layout.scroll_height()),
+    }
   }
 }

@@ -1208,21 +1208,23 @@ Condition     = Media | State | And | Or
   out its every box), each engine running taffy's algorithms and per-node cache over one
   store of the scene's nodes and carrying the vendored tree's cache changes, so a layout
   is that of one taffy tree of every node, rounded once over the hierarchy from where each
-  box lies in the root, its fractional rectangles kept beside the rounded ones; each
-  node's style, text and children written where they changed, revisiting the nodes the
-  shared `Restyle` says moved (those queued, in motion or reading an interaction that
-  moved, each with the leaf its text flows in, or every node once the definitions, the
-  environment or the structure moved), written by the terminal's records as they change,
-  at the values its motion presents. There a box whose children are all inline runs lays
-  them out as one text, a `TextFlow` of their runs and inline boxes over the platform's
-  text engine (Text, below), keeping their blanks and newlines as the reset's
-  `white-space: pre-wrap` does and wrapping where the Unicode line breaking algorithm
-  allows across them and around an inline box, laid out at its content's size first, a
-  word too wide for a line of its own broken where the line fills as `overflow-wrap:
-  break-word` breaks it, the blanks a line ends in hanging where it wraps and taking room
-  up to its limit before a newline or at the end, each run's line box on its line's
-  baseline, a box's bottom on it, and a run placed in a rectangle per line it is on,
-  clipped off any box beside it and off the blanks hanging past the line's end.
+  box lies in the root, its fractional rectangles kept beside the rounded ones and either
+  read as a `Placed` in the foundation's geometry (its border box, border, padding,
+  overflow and how far it scrolls); each node's style, text and children written where
+  they changed, revisiting the nodes the shared `Restyle` says moved (those queued, in
+  motion or reading an interaction that moved, each with the leaf its text flows in, or
+  every node once the definitions, the environment or the structure moved), written by the
+  terminal's records as they change, at the values its motion presents. There a box whose
+  children are all inline runs lays them out as one text, a `TextFlow` of their runs and
+  inline boxes over the platform's text engine (Text, below), keeping their blanks and
+  newlines as the reset's `white-space: pre-wrap` does and wrapping where the Unicode line
+  breaking algorithm allows across them and around an inline box, laid out at its
+  content's size first, a word too wide for a line of its own broken where the line fills
+  as `overflow-wrap: break-word` breaks it, the blanks a line ends in hanging where it
+  wraps and taking room up to its limit before a newline or at the end, each run's line
+  box on its line's baseline, a box's bottom on it, and a run placed in a rectangle per
+  line it is on, clipped off any box beside it and off the blanks hanging past the line's
+  end.
   The layout's own tests lay their text out through `skene-parley` in the pinned face
   the conformance suite draws in, Inter's regular, kept in `packages/parley/fonts`, its
   metrics unrounded (kerned, its letter spacing past each cluster, a line its font size

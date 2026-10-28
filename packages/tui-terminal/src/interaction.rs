@@ -645,13 +645,13 @@ impl Records {
       )]
       Some(layout) => (
         if overflow.horizontal.scrolls() {
-          layout.scroll_width().round().max(0.) as u32
+          layout.scroll_limit.width.round().max(0.) as u32
         }
         else {
           0
         },
         if overflow.vertical.scrolls() {
-          layout.scroll_height().round().max(0.) as u32
+          layout.scroll_limit.height.round().max(0.) as u32
         }
         else {
           0

@@ -1,6 +1,6 @@
 //! What the last layout measured of a node, in cells.
 
-use skene_foundation::Size;
+use skene_foundation::{Rect, Size};
 
 use super::{Handle, Record, Records};
 
@@ -13,53 +13,53 @@ pub(crate) struct CellFrame {
   pub(crate) height: i64,
 }
 
-impl Records {
-  /// `record`'s frame in its layout parent, as the last layout rounded it; empty for a
-  /// record outside the layout.
+impl CellFrame {
+  /// The frame of `rect`, a rectangle the last layout rounded to whole cells.
   #[expect(
     clippy::cast_possible_truncation,
     reason = "taffy rounds a layout to whole cells, far inside i64"
   )]
-  pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
-    let Some(layout) = record.node.and_then(|node| self.tree.layout(node))
-    else {
-      return CellFrame::default();
-    };
-
-    CellFrame {
-      x: layout.location.x as i64,
-      y: layout.location.y as i64,
-      width: layout.size.width.max(0.) as i64,
-      height: layout.size.height.max(0.) as i64,
+  const fn of(rect: Rect<f32>) -> Self {
+    Self {
+      x: rect.origin.x as i64,
+      y: rect.origin.y as i64,
+      width: rect.size.width.max(0.) as i64,
+      height: rect.size.height.max(0.) as i64,
     }
+  }
+}
+
+impl Records {
+  /// `record`'s frame in its layout parent, as the last layout rounded it; empty for a
+  /// record outside the layout.
+  pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
+    record
+      .node
+      .and_then(|node| self.tree.layout(node))
+      .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
 
   /// `record`'s frame in its layout parent, as [`frame_of`](Self::frame_of), and the
   /// cells its laid-out content reaches from the frame's origin, left, top, right and
   /// bottom: its own box, or farther where its content overflows it.
-  #[expect(
-    clippy::cast_possible_truncation,
-    reason = "taffy rounds a layout to whole cells, far inside i64"
-  )]
   pub(crate) fn reach_of(&self, record: &Record) -> (CellFrame, [f32; 4]) {
     let Some(layout) = record.node.and_then(|node| self.tree.layout(node))
     else {
       return (CellFrame::default(), [0.; 4]);
     };
-    let overflow = layout.scrollable_overflow_rect;
+    let size = layout.rect.size;
+    let (left, top) = (
+      layout.border.start + layout.overflow.origin.x,
+      layout.border.top + layout.overflow.origin.y,
+    );
 
     (
-      CellFrame {
-        x: layout.location.x as i64,
-        y: layout.location.y as i64,
-        width: layout.size.width.max(0.) as i64,
-        height: layout.size.height.max(0.) as i64,
-      },
+      CellFrame::of(layout.rect),
       [
-        overflow.left.min(0.),
-        overflow.top.min(0.),
-        overflow.right.max(layout.size.width),
-        overflow.bottom.max(layout.size.height),
+        left.min(0.),
+        top.min(0.),
+        (left + layout.overflow.size.width).max(size.width),
+        (top + layout.overflow.size.height).max(size.height),
       ],
     )
   }
@@ -94,17 +94,17 @@ impl Records {
       beneath.extend(self.children(child));
     }
 
-    let layout = self.tree.unrounded_layout(record.node?)?;
+    let rect = self.tree.unrounded_layout(record.node?)?.rect;
     #[expect(
       clippy::cast_possible_truncation,
       reason = "a position in eighth cells stays far inside isize"
     )]
-    let start = (layout.location.x * 8.).round() as isize;
+    let start = (rect.origin.x * 8.).round() as isize;
     #[expect(
       clippy::cast_possible_truncation,
       reason = "an extent in eighth cells stays far inside isize"
     )]
-    let extent = (layout.size.width.max(0.) * 8.).round() as isize;
+    let extent = (rect.size.width.max(0.) * 8.).round() as isize;
 
     (extent > 0).then_some((start, extent))
   }
@@ -126,12 +126,13 @@ impl Records {
     else {
       return (0, 0, 0, 0);
     };
+    let border = layout.border;
 
     (
-      layout.border.left as i64,
-      layout.border.top as i64,
-      layout.border.right as i64,
-      layout.border.bottom as i64,
+      border.start as i64,
+      border.top as i64,
+      border.end as i64,
+      border.bottom as i64,
     )
   }
 

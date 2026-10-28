@@ -15,6 +15,9 @@ use skene_foundation::{
   Layout,
   NodeId,
   Plain,
+  Point,
+  Rect,
+  Size,
   Spacing,
 };
 use taffy::{
@@ -22,7 +25,7 @@ use taffy::{
   style::{Display, Style},
 };
 
-use super::{Leaf, Tree};
+use super::{Leaf, Placed, Tree};
 use crate::{Borders, BoxLayout, Place};
 
 /// A run of a fixed size, counting its measures.
@@ -44,10 +47,10 @@ impl Leaf for Block {
     &self,
     known: taffy::geometry::Size<Option<f32>>,
     _available: taffy::geometry::Size<AvailableSpace>,
-  ) -> skene_foundation::Size<f32> {
+  ) -> Size<f32> {
     self.measures.set(self.measures.get() + 1);
 
-    skene_foundation::Size::new(
+    Size::new(
       known.width.unwrap_or(self.width),
       known.height.unwrap_or(self.height),
     )
@@ -55,7 +58,7 @@ impl Leaf for Block {
 }
 
 /// The rectangle a layout gives a node in the root: its left, top, width and height.
-type Placed = (f32, f32, f32, f32);
+type Bounds = (f32, f32, f32, f32);
 
 /// A tree of boxes and runs, with each node's parent.
 struct Scene {
@@ -185,24 +188,25 @@ impl Scene {
   }
 
   /// `node`'s rectangle in its root as the last layout left it.
-  fn at(&self, node: NodeId) -> Placed {
-    let layout = self.tree.layout(node).expect("a node of the tree");
-    let (mut x, mut y) = (layout.location.x, layout.location.y);
+  fn at(&self, node: NodeId) -> Bounds {
+    let rect = self.tree.layout(node).expect("a node of the tree").rect;
+    let (mut x, mut y) = (rect.origin.x, rect.origin.y);
     let mut current = node;
 
     while let Some(parent) = self.parents.get(&current) {
-      let location = self
+      let origin = self
         .tree
         .layout(*parent)
         .expect("a node of the tree")
-        .location;
+        .rect
+        .origin;
 
-      x += location.x;
-      y += location.y;
+      x += origin.x;
+      y += origin.y;
       current = *parent;
     }
 
-    (x, y, layout.size.width, layout.size.height)
+    (x, y, rect.size.width, rect.size.height)
   }
 }
 
@@ -499,7 +503,7 @@ fn a_nested_container_rounds_from_its_fractional_rectangle() {
 
   scene.lay_out(row, 100., 10.);
 
-  let placed: Vec<Placed> = boxes.iter().map(|third| scene.at(*third)).collect();
+  let placed: Vec<Bounds> = boxes.iter().map(|third| scene.at(*third)).collect();
 
   assert_eq!(
     placed,
@@ -517,9 +521,10 @@ fn a_nested_container_rounds_from_its_fractional_rectangle() {
   let fractional = scene
     .tree
     .unrounded_layout(boxes[1])
-    .expect("a node of the tree");
+    .expect("a node of the tree")
+    .rect;
 
-  assert!((fractional.location.x - 100. / 3.).abs() < 1e-4);
+  assert!((fractional.origin.x - 100. / 3.).abs() < 1e-4);
   assert!((fractional.size.width - 100. / 3.).abs() < 1e-4);
 }
 
@@ -652,7 +657,7 @@ fn a_hidden_subtree_across_engines_lays_out_at_nothing() {
 
     scene.lay_out(root, 100., 100.);
 
-    let open: Vec<Placed> = [overlay, panel, stack, run, pinned]
+    let open: Vec<Bounds> = [overlay, panel, stack, run, pinned]
       .map(|node| scene.at(node))
       .to_vec();
 
@@ -671,13 +676,9 @@ fn a_hidden_subtree_across_engines_lays_out_at_nothing() {
     scene.lay_out(root, 100., 100.);
 
     for node in [overlay, panel, stack, run, pinned] {
-      let layout = scene.tree.layout(node).expect("a node of the tree");
+      let rect = scene.tree.layout(node).expect("a node of the tree").rect;
 
-      assert_eq!(
-        (layout.location, layout.size),
-        (taffy::geometry::Point::ZERO, taffy::geometry::Size::ZERO),
-        "{node:?} hidden, rounding: {rounding}"
-      );
+      assert_eq!(rect, Rect::ZERO, "{node:?} hidden, rounding: {rounding}");
     }
 
     scene.tree.set_style(
@@ -931,16 +932,86 @@ fn a_fixed_box_and_its_members_are_laid_out_by_the_engine_placing_it() {
 
     scene.lay_out(root, 100., 100.);
 
-    let layout = scene.tree.layout(fixed).expect("a node of the tree");
+    let rect = scene.tree.layout(fixed).expect("a node of the tree").rect;
 
     assert_eq!(
       (
-        layout.location.x,
-        layout.location.y,
-        layout.size.width,
-        layout.size.height
+        rect.origin.x,
+        rect.origin.y,
+        rect.size.width,
+        rect.size.height
       ),
       (3., 2., 6., 4.),
+      "decorated: {decorated}"
+    );
+  }
+}
+
+/// A scrolling box's placement holds its rectangle, its border and padding, the rectangle
+/// its content reaches from its padding box's corner, and how far it scrolls, its
+/// scrollbars and the padding past its content counted in, as Chromium scrolls it.
+#[test]
+fn a_scrolling_box_is_placed_with_its_overflow_and_how_far_it_scrolls() {
+  for decorated in [false, true] {
+    let mut scene = Scene::new(true);
+    let (run, _) = scene.run(100., 80.);
+    let scroller = scene.add(
+      decorated,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[run],
+    );
+    let edges = |left: f32, top: f32, right: f32, bottom: f32| taffy::geometry::Rect {
+      left: taffy::style::LengthPercentage::length(left),
+      right: taffy::style::LengthPercentage::length(right),
+      top: taffy::style::LengthPercentage::length(top),
+      bottom: taffy::style::LengthPercentage::length(bottom),
+    };
+
+    scene.tree.set_style(
+      scroller,
+      Style {
+        display: Display::Flex,
+        flex_direction: taffy::style::FlexDirection::Column,
+        align_items: taffy::style::AlignItems::START,
+        size: taffy::geometry::Size {
+          width: taffy::style::Dimension::length(40.),
+          height: taffy::style::Dimension::length(30.),
+        },
+        border: edges(1., 2., 3., 4.),
+        padding: edges(5., 5., 5., 5.),
+        overflow: taffy::geometry::Point {
+          x: taffy::style::Overflow::Scroll,
+          y: taffy::style::Overflow::Scroll,
+        },
+        scrollbar_width: 2.,
+        ..Style::default()
+      },
+    );
+
+    let root = scene.add(true, &sized(100., 100.), Layout::Single, false, &[scroller]);
+
+    scene.lay_out(root, 100., 100.);
+
+    assert_eq!(
+      scene.tree.layout(scroller),
+      Some(Placed {
+        rect: Rect::new(Point::new(0., 0.), Size::new(40., 30.)),
+        border: Inset::new(1., 2., 3., 4.),
+        padding: Inset::new(5., 5., 5., 5.),
+        overflow: Rect::new(Point::new(0., 0.), Size::new(110., 90.)),
+        scroll_limit: Size::new(76., 68.),
+      }),
+      "decorated: {decorated}"
+    );
+
+    assert_eq!(
+      scene.tree.layout(run),
+      Some(Placed {
+        rect: Rect::new(Point::new(6., 7.), Size::new(100., 80.)),
+        ..Placed::default()
+      }),
       "decorated: {decorated}"
     );
   }

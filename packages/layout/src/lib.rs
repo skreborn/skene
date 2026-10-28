@@ -4,10 +4,11 @@
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
 //! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
 //! across layouts, written node by node and laid out by one taffy engine per container
-//! ([`Tree`]), what moved since a platform last restyled its tree and so the nodes it
-//! revisits next ([`Restyle`]), and a paragraph's runs and inline boxes laid out as one
-//! text through a realization's text engine ([`TextFlow`]). The web lays out through CSS
-//! and needs none of it.
+//! ([`Tree`]), each node's layout read in the foundation's geometry ([`Placed`]), what
+//! moved since a platform last restyled its tree and so the nodes it revisits next
+//! ([`Restyle`]), and a paragraph's runs and inline boxes laid out as one text through a
+//! realization's text engine ([`TextFlow`]). The web lays out through CSS and needs none
+//! of it.
 
 mod restyle;
 mod text;
@@ -41,7 +42,7 @@ use taffy::{
 pub use self::{
   restyle::{Restyle, Revisit},
   text::{RunHit, TextFlow},
-  tree::{Leaf, Tree},
+  tree::{Leaf, Placed, Tree},
 };
 
 /// How a box's border takes room in its layout.
@@ -693,21 +694,18 @@ mod tests {
     /// `node`'s rectangle in the viewport as the last layout left it, its location
     /// summed through its parents.
     fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
-      let size = self.tree.layout(node)?.size;
+      let size = self.tree.layout(node)?.rect.size;
       let mut origin = Point::new(0., 0.);
       let mut current = Some(node);
 
       while let Some(laid_out) = current.filter(|laid_out| *laid_out != self.viewport) {
-        let location = self.tree.layout(laid_out)?.location;
+        let at = self.tree.layout(laid_out)?.rect.origin;
 
-        origin = Point::new(origin.x + location.x, origin.y + location.y);
+        origin = Point::new(origin.x + at.x, origin.y + at.y);
         current = self.parents.get(&laid_out).copied();
       }
 
-      Some(Rect {
-        origin,
-        size: skene_foundation::Size::new(size.width, size.height),
-      })
+      Some(Rect { origin, size })
     }
   }
 

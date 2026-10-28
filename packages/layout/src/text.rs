@@ -809,8 +809,9 @@ mod tests {
       let laid = self
         .tree
         .layout(inline)
-        .map(|layout| Size::new(layout.size.width, layout.size.height))
-        .expect("the box laid out");
+        .expect("the box laid out")
+        .rect
+        .size;
       let flow = self.tree.context_mut(leaf).expect("the leaf's flow");
 
       flow.add_box(inline, &[], Size::new(0., 0.));
@@ -875,11 +876,11 @@ mod tests {
 
     /// The rectangle `node` lays out at in its parent, its parent's origin at `origin`.
     fn laid_out(&self, node: NodeId, origin: Point<f32>) -> Rect<f32> {
-      let layout = self.tree.layout(node).expect("laid out");
+      let rect = self.tree.layout(node).expect("laid out").rect;
 
       Rect {
-        origin: Point::new(origin.x + layout.location.x, origin.y + layout.location.y),
-        size: Size::new(layout.size.width, layout.size.height),
+        origin: Point::new(origin.x + rect.origin.x, origin.y + rect.origin.y),
+        size: rect.size,
       }
     }
 
@@ -1289,9 +1290,9 @@ mod tests {
     );
 
     let size = |tree: &Tree<_>, node| {
-      let layout: &taffy::tree::Layout = tree.layout(node).expect("laid out");
+      let rect = tree.layout(node).expect("laid out").rect;
 
-      (layout.location.x, layout.size.width, layout.size.height)
+      (rect.origin.x, rect.size.width, rect.size.height)
     };
 
     tree.compute(
@@ -1303,7 +1304,7 @@ mod tests {
     );
 
     assert_eq!(
-      tree.layout(row).map(|layout| layout.size.width),
+      tree.layout(row).map(|layout| layout.rect.size.width),
       Some(width("alpha").max(width("beta")) + width("gamma").max(width("delta")))
     );
 
@@ -1316,7 +1317,7 @@ mod tests {
     );
 
     assert_eq!(
-      tree.layout(row).map(|layout| layout.size.width),
+      tree.layout(row).map(|layout| layout.rect.size.width),
       Some(width("alpha beta") + width("gamma delta"))
     );
 
@@ -1391,14 +1392,14 @@ mod tests {
     );
 
     assert_eq!(
-      tree.layout(boxed).map(|layout| layout.size.height),
+      tree.layout(boxed).map(|layout| layout.rect.size.height),
       Some(58.)
     );
 
     assert_eq!(
       tree
         .layout(text)
-        .map(|layout| (layout.location.y, layout.size.height)),
+        .map(|layout| (layout.rect.origin.y, layout.rect.size.height)),
       Some((10., 48.)),
       "two lines under the padding"
     );

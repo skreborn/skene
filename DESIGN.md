@@ -395,37 +395,38 @@ toolkit's keeps the default, which does nothing.
   scheme-conditioned run in the styles the browser computes; a view's size on the stack is
   a compile-time assertion in each facade. So does the geometry: the layout engine's boxes
   and text flows (a paragraph's spans, its wrapping, an inline box, the guaranteed core)
-  are `skene-layout`'s unit tests over canned trees and the real Parley engine, and what
-  needs a live platform (a hit, a frame's measured size, a change resolving only what it
-  touched, a text entry's native size) is the terminal's, in cells; the drawing is held by
-  the pinned browser's goldens and the cells the terminal paints. So do the rest: a
-  derived child, text and list, nested and derived themes, expressions over tokens and the
-  environment, a container condition and a derived slot under a hover variant in the
-  terminal's cells; the environment's answers in the media signals and conditions the
-  browser reports through its own `matchMedia`, and in the terminal's pointer, which is
-  the mouse the launch takes; and the rule that a platform's call runs with the scene
-  released through the synchronous responses real platforms make (a scripted focus's
-  events, a focused element moved or removed, a handler destroying the entry it edits). A
-  facade's views test on their platform alone, against its real sinks: the web's in a
-  browser DOM via `wasm-bindgen-test` and on the server leaf natively under a byte-exact
-  snapshot; native ones against their toolkit. A component library tests each facade's
-  crate on its platform the same way: Simple's in the browser through the styles the
-  engine computes, and on the terminal through the cells it paints, where the pointer can
-  rest on a control. The spine's algorithms are functions over
-  plain data, unit-tested there with no scene: the tab order (`TabStop`), the open
-  overlays a press dismisses and a modal keeps reachable (`OverlayStack`), the nearest
-  definer of a token and its caches, the interaction held (`Held`), the keyed
+  are `skene-layout`'s unit tests over canned trees and the real Parley engine, its
+  `Tree` held to one taffy tree by a proptest over random trees and runs of writes, laid
+  out, marked and measured alike, and what needs a live platform (a hit, a frame's
+  measured size, a change resolving only what it touched, a text entry's native size) is
+  the terminal's, in cells; the drawing is held by the pinned browser's goldens and the
+  cells the terminal paints. So do the rest: a derived child, text and list, nested and
+  derived themes, expressions over tokens and the environment, a container condition and a
+  derived slot under a hover variant in the terminal's cells; the environment's answers in
+  the media signals and conditions the browser reports through its own `matchMedia`, and
+  in the terminal's pointer, which is the mouse the launch takes; and the rule that a
+  platform's call runs with the scene released through the synchronous responses real
+  platforms make (a scripted focus's events, a focused element moved or removed, a handler
+  destroying the entry it edits). A facade's views test on their platform alone, against
+  its real sinks: the web's in a browser DOM via `wasm-bindgen-test` and on the server
+  leaf natively under a byte-exact snapshot; native ones against their toolkit. A
+  component library tests each facade's crate on its platform the same way: Simple's in
+  the browser through the styles the engine computes, and on the terminal through the
+  cells it paints, where the pointer can rest on a control. The spine's algorithms are
+  functions over plain data, unit-tested there with no scene: the tab order (`TabStop`),
+  the open overlays a press dismisses and a modal keeps reachable (`OverlayStack`), the
+  nearest definer of a token and its caches, the interaction held (`Held`), the keyed
   reconcile's plan (`KeyedItems`), the climb that folds a dispatch's verdicts, the
   subtrees a move crosses (`Crossing`), the arena's slots and an entry's accessibility
   node. What needs a live scene runs over the terminal's, its effect read where a reader
   and the frame find it: attaching, detaching, relocating and destroying nodes and
-  segments (a property test holding the links whole and the cells and the reader's tree
-  to the order the scene places after every change), a hidden subtree's kept focus, a
-  caption kept beside, a segment's placement and focus holder, a derived subtree's anchors
-  and annotation, and dispatch from real input (the fixed path, the climb through a
-  segment's start, the pointer entering a segment, a handler's owner, a notification and
-  a reported edit reaching the node's own handlers alone). No realization double stands
-  in for a platform anywhere, the spine's own tests included.
+  segments (a property test holding the links whole and the cells and the reader's tree to
+  the order the scene places after every change), a hidden subtree's kept focus, a caption
+  kept beside, a segment's placement and focus holder, a derived subtree's anchors and
+  annotation, and dispatch from real input (the fixed path, the climb through a segment's
+  start, the pointer entering a segment, a handler's owner, a notification and a reported
+  edit reaching the node's own handlers alone). No realization double stands in for a
+  platform anywhere, the spine's own tests included.
 
 ## Composition
 

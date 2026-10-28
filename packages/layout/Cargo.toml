@@ -15,5 +15,8 @@ taffy = "0.15.1"
 [dev-dependencies]
 skene-parley = { path = "../parley" }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+proptest.workspace = true
+
 [lints]
 workspace = true

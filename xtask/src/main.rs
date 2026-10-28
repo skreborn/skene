@@ -1137,7 +1137,7 @@ const HOST: Minimums = Minimums {
     ("skene-conformance", 1),
     ("skene-dev", 6),
     ("skene-foundation", 268),
-    ("skene-layout", 23),
+    ("skene-layout", 24),
     ("skene-macros", 7),
     ("skene-parley::it", 42),
     ("skene-reactive", 6),

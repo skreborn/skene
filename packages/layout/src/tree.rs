@@ -1,6 +1,9 @@
 //! A layout tree keyed by the scene's nodes, retained across layouts: each node's style,
 //! context and children written where they changed.
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod oracle;
+
 use skene_foundation::{NodeId, NodeMap, Rect, Size};
 use taffy::{
   TaffyTree,

@@ -94,10 +94,10 @@ pub fn skene_layout::Tree<C>::compute(&mut self, skene_foundation::spine::node::
 pub fn skene_layout::Tree<C>::contains(&self, skene_foundation::spine::node::NodeId) -> bool
 pub fn skene_layout::Tree<C>::context(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&C>
 pub fn skene_layout::Tree<C>::context_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut C>
-pub fn skene_layout::Tree<C>::insert(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_layout::Tree<C>::insert(&mut self, skene_foundation::spine::node::NodeId, bool)
 pub fn skene_layout::Tree<C>::layout(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&taffy::tree::layout::Layout>
 pub fn skene_layout::Tree<C>::mark_dirty(&mut self, skene_foundation::spine::node::NodeId)
-pub fn skene_layout::Tree<C>::new(bool) -> Self
+pub const fn skene_layout::Tree<C>::new(bool) -> Self
 pub fn skene_layout::Tree<C>::remove(&mut self, skene_foundation::spine::node::NodeId)
 pub fn skene_layout::Tree<C>::set_children(&mut self, skene_foundation::spine::node::NodeId, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::spine::node::NodeId>) -> bool
 pub fn skene_layout::Tree<C>::set_context(&mut self, skene_foundation::spine::node::NodeId, core::option::Option<C>) -> bool where C: core::cmp::PartialEq

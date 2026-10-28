@@ -12,6 +12,20 @@ supersedes there.
 
 ## Decided against
 
+- **A small taffy tree owned by each container (the prototype's `ContainerLayout`) with
+  epochs** (2026-10-28), each container holding a tree of its own members and an epoch
+  telling a stale measure from a fresh one: `skene-layout`'s `Tree` keeps one store
+  keyed by the scene's nodes, each node's style, children, taffy cache and layouts in
+  its slot, and each container's engine lays its members out in place over that store
+  with taffy's own per-node cache, which does the epochs' work and lets a layout be
+  held to one taffy tree's bit for bit. Revisit when a toolkit hosting the engine (item
+  5) needs a container's tree apart from the store.
+- **The prototype's single-child fast path and natural-height skip** (2026-10-28), a
+  container of one child placed without taffy's grid and a container laid out at its
+  natural height skipping its second pass: a path beside taffy's grid cannot lay out and
+  measure each leaf as one taffy tree does, which the oracle holds `Tree` to, and taffy's
+  cache already answers an input it has seen. Revisit when Callgrind shows a
+  single-child box's grid or a repeated layout dominating a relayout.
 - **A scene walk in `skene-layout` beside the terminal's (`Tree::lay_out`, `Part`,
   `Frames`)** (2026-10-27), a second walk bringing the layout tree in line with the
   scene from each node's part as its platform classified it, and indexing every node's
@@ -843,6 +857,15 @@ supersedes there.
 
 ## Superseded
 
+- **One `TaffyTree` for the whole scene (the terminal's and `skene-layout`'s `Tree`, to
+  2026-10)** (2026-10-28), every node of the scene in one taffy tree keyed by its node,
+  laid out and rounded by taffy's own `compute_layout_with_measure`: one label changed
+  among 1,000 rows of three cost 34 measures on the changed row's 3 leaves, 12 flexbox
+  runs and 1 grid run along its ancestors, 47 node layouts in all. `Tree` now lays each
+  container out by a taffy engine of its own over one store of the scene's nodes, held
+  to that one tree's layouts, marks and measures by a proptest. Revisit when a relayout
+  under the per-container engine misses its frame budget where the whole-scene tree,
+  measured on the same change, meets it.
 - **A component library's views generic over the realization** (2026-10-26): Simple's
   core wrote its views over `P: Realization`, stating what it needed from a medium as a
   bound on the platform's associated types, their members in a `Simple*Base` trait each

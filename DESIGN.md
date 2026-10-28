@@ -396,9 +396,10 @@ toolkit's keeps the default, which does nothing.
   a compile-time assertion in each facade. So does the geometry: the layout engine's boxes
   and text flows (a paragraph's spans, its wrapping, an inline box, the guaranteed core)
   are `skene-layout`'s unit tests over canned trees and the real Parley engine, its
-  `Tree` held to one taffy tree by a proptest over random trees and runs of writes, laid
-  out, marked and measured alike, and each container of a random tree whose layout reads
-  no definite height keeping its size and every rectangle beneath it when laid out at
+  `Tree` held to one taffy tree by a proptest over random trees, random partitions of
+  their nodes into containers and runs of writes, laid out, marked and measured alike,
+  and each container of a random tree whose layout reads no definite height keeping its
+  size and every rectangle beneath it when laid out at
   its natural height and then at that height as a definite space and as its own height,
   and what needs a live platform (a hit, a frame's measured size, a change resolving
   only what it touched, a text entry's native size) is the terminal's, in cells; the
@@ -1195,11 +1196,19 @@ Condition     = Media | State | And | Or
   definite space or as its own height keeping its size and every box beneath it keeping
   its place, which thirteen changes to flexbox, grid and the cache bring about, a box
   holding a wrapping column given its own height aside), keyed by the scene's nodes and
-  kept across frames, each node's style, text and children written where they changed,
-  revisiting the nodes the shared `Restyle` says moved (those queued, in motion or
-  reading an interaction that moved, each with the leaf its text flows in, or every node
-  once the definitions, the environment or the structure moved), written by the
-  terminal's records as they change, at the values its motion presents. There a box
+  kept across frames: each container (a node the platform inserts as one: the
+  terminal's boxes, controls and overlays, a run laid out by its box's) is laid out by a
+  taffy engine of its own over itself and the nodes beneath it up to the next
+  containers, which their own engines lay out from taffy's whole input, each engine
+  running taffy's algorithms and per-node cache over one store of the scene's nodes and
+  carrying the vendored tree's cache changes, so a layout is that of one taffy tree of
+  every node, rounded once over the hierarchy from where each box lies in the root, its
+  fractional rectangles kept beside the rounded ones; each node's style, text and
+  children written where they changed, revisiting the nodes the shared `Restyle` says
+  moved (those queued, in motion or reading an interaction that moved, each with the
+  leaf its text flows in, or every node once the definitions, the environment or the
+  structure moved), written by the terminal's records as they change, at the values its
+  motion presents. There a box
   whose children are all inline
   runs lays them out as one text, a `TextFlow` of their runs and inline boxes over the
   platform's text engine (Text, below), keeping their blanks and newlines as the reset's
@@ -2180,9 +2189,10 @@ pixels in all, the largest 201,400, against 800,000 for one image of the frame; 
 change to one box re-sends that box alone, where a frame image would re-send
 everything on any change, so the backdrop is per box.
 
-Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
-`set_style` called only on change, so a keystroke relays out the changed subtree and a
-hover change repaints without relayout. A frame paints over the previous one, rewriting
+Layout is taffy at `1.0 = 1 cell`, on `skene-layout`'s `Tree` with each box, control and
+overlay a container laid out by an engine of its own and each run by its box's, the
+effective style cached per node and `set_style` called only on change, so a keystroke
+relays out the changed subtree and a hover change repaints without relayout. A frame paints over the previous one, rewriting
 only the rows the changed nodes covered and cover—a node whose resolution, text, caret,
 scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
 then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
@@ -2529,9 +2539,9 @@ sense apart where context does not.
   shaped under a paragraph style, laid out per width. A document's paragraph: a box
   whose children are all inline runs (`RichText`), laid out as one `TextFlow`, one
   engine paragraph.
-- **Layout.** The layout: taffy's placing of boxes (`skene-layout`'s `Tree`), or the
-  web's CSS. A text's layout (`text::Laid`): one paragraph laid out at one width, its
-  lines, carets and rectangles, immutable once made.
+- **Layout.** The layout: taffy's placing of boxes (`skene-layout`'s `Tree`, a taffy
+  engine per container), or the web's CSS. A text's layout (`text::Laid`): one
+  paragraph laid out at one width, its lines, carets and rectangles, immutable once made.
 - **Editing core.** Skene's one editor (`text::editing::Editor`) every drawn entry
   runs on, over its platform's engine; a platform's own text field, where one exists,
   is a platform control, and the web's entries are its `<input>` and `<textarea>`.
@@ -2548,8 +2558,8 @@ sense apart where context does not.
   styles and their motion as one erased list under Skene's property names (The style
   model).
 - **Realize.** A platform turning a scene node into its own representation: an element
-  in the browser, an entry in the server's string tree, a record and a taffy node in the
-  terminal. `LowLevel::realize` mints a node a view realizes itself.
+  in the browser, an entry in the server's string tree, a record and a node of its
+  layout tree in the terminal. `LowLevel::realize` mints a node a view realizes itself.
 - **Build.** `View::build`: a view creating its scene nodes and returning its root's
   id. Compiling is never building, and `skene build` is named in full.
 - **Floor and upgrade.** What a platform always has and what a signal proves it can

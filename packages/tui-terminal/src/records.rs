@@ -275,12 +275,14 @@ impl Records {
   }
 
   /// Stores a record of `kind` as the record of `node`, a fresh leaf of the layout
-  /// tree.
+  /// tree: a container of its own where it is a box, a control or an overlay, and laid
+  /// out by its container's engine where it is a run.
   pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
+    let decorated = !matches!(kind, Kind::Run { .. });
     let mut record = Record::new(kind);
 
     record.node = Some(node);
-    self.tree.insert(node);
+    self.tree.insert(node, decorated);
     self.restyle.move_structure();
 
     let _replaced = self.by_node.insert(node, record);

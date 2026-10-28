@@ -37,16 +37,14 @@ in a code comment.
     the app's key handlers as a browser's `<input>` default runs (so never as a
     `TextEntry::on_key`, which would run before them), the terminal's own key default
     consulting the table until then.
-    - Layout: taffy owns it on every platform but the web, one persistent tree per
-    decorated `Container`, the layout-only boxes beneath it (`Row`, `Column`, `Grid`,
-    `Stack`) folded into that tree by a creation fact telling a decorated box from a
-    layout-only one, which the compositor platforms reuse; the platform's measure as its
-    leaves and fractional rectangles kept beside the rounded ones; a paragraph lays its
-    inline boxes out within its own measure; layout settles before a frame commits, the
-    terminal's settle loop becoming the frame contract, and `Painted` resizes land with
-    the layout commit. The whole-scene tree it replaces is recorded in `DECISIONS.md`
-    with the 1,000-row probe's numbers, and the per-container engine's counts on the same
-    probe join the 2026-10-15 entry beside them.
+    - Layout: one engine per decorated `Container`, the layout-only boxes beneath it
+    (`Row`, `Column`, `Grid`, `Stack`) folded into its engine by a creation fact telling
+    a decorated box from a layout-only one, which the compositor platforms reuse; a
+    paragraph lays its inline boxes out within its own measure; layout settles before a
+    frame commits, the terminal's settle loop becoming the frame contract, and `Painted`
+    resizes land with the layout commit. The per-container engine's counts on the
+    1,000-row probe join the 2026-10-15 entry in `DECISIONS.md` and the whole-scene
+    tree's entry beside its numbers.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color
     transitions on it; `Condition` resolution against the runtime's environment and
     pointer through the one resolution point; the spine's `Window` owning its

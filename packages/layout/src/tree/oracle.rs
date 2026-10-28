@@ -686,9 +686,7 @@ impl Pair {
 
   /// Inserts `node` into both, created `decorated` or not.
   fn insert(&mut self, node: NodeId, decorated: bool) {
-    let _ = decorated;
-
-    self.tree.insert(node);
+    self.tree.insert(node, decorated);
     self.oracle.insert(node);
   }
 

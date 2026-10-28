@@ -3,10 +3,11 @@
 //! The layout every platform but the web computes, on taffy: the shared style model
 //! mapped onto taffy's styles, generic over the platform's scalar, a unit of which is
 //! one unit of the layout ([`BoxLayout`]), a tree keyed by the scene's nodes, retained
-//! across layouts and written node by node ([`Tree`]), what moved since a platform last restyled
-//! its tree and so the nodes it revisits next ([`Restyle`]), and a paragraph's runs and inline
-//! boxes laid out as one text through a realization's text engine ([`TextFlow`]). The web
-//! lays out through CSS and needs none of it.
+//! across layouts, written node by node and laid out by one taffy engine per container
+//! ([`Tree`]), what moved since a platform last restyled its tree and so the nodes it
+//! revisits next ([`Restyle`]), and a paragraph's runs and inline boxes laid out as one
+//! text through a realization's text engine ([`TextFlow`]). The web lays out through CSS
+//! and needs none of it.
 
 mod restyle;
 mod text;
@@ -620,7 +621,7 @@ mod tests {
       let mut tree = Tree::new(false);
       let viewport = node();
 
-      tree.insert(viewport);
+      tree.insert(viewport, true);
 
       tree.set_style(
         viewport,
@@ -653,7 +654,7 @@ mod tests {
     ) -> NodeId {
       let added = node();
 
-      self.tree.insert(added);
+      self.tree.insert(added, true);
 
       self.tree.set_style(
         added,

@@ -722,7 +722,7 @@ mod tests {
       let mut tree = Tree::new(false);
       let viewport = node();
 
-      tree.insert(viewport);
+      tree.insert(viewport, true);
 
       tree.set_style(
         viewport,
@@ -749,11 +749,11 @@ mod tests {
     /// Adds the leaf `leaf` holding `flow` as the page's next item, inside a row of its
     /// own where `row` is given.
     fn add(&mut self, leaf: NodeId, flow: TextFlow<ParleyEngine>, row: Option<NodeId>) {
-      self.tree.insert(leaf);
+      self.tree.insert(leaf, false);
       self.tree.set_context(leaf, Some(flow));
 
       if let Some(row) = row {
-        self.tree.insert(row);
+        self.tree.insert(row, true);
 
         self.tree.set_style(
           row,
@@ -772,7 +772,7 @@ mod tests {
     /// Adds the inline box `inline` flowing in `leaf`, holding `view`, a box of `size`,
     /// and gives the leaf the size it lays out at, as its host does.
     fn add_box(&mut self, leaf: NodeId, inline: NodeId, view: NodeId, size: Size<f32>) {
-      self.tree.insert(inline);
+      self.tree.insert(inline, true);
 
       self.tree.set_style(
         inline,
@@ -782,7 +782,7 @@ mod tests {
         },
       );
 
-      self.tree.insert(view);
+      self.tree.insert(view, true);
 
       self.tree.set_style(
         view,
@@ -1222,11 +1222,11 @@ mod tests {
   ) -> Tree<TextFlow<ParleyEngine>> {
     let mut tree = Tree::new(false);
 
-    tree.insert(parent);
+    tree.insert(parent, true);
     tree.set_style(parent, style);
 
     for (child, text) in children {
-      tree.insert(*child);
+      tree.insert(*child, false);
       tree.set_context(*child, Some(flow(*child, text)));
     }
 

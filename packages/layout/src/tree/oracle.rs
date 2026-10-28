@@ -1,7 +1,7 @@
 //! [`Tree`] held to one `TaffyTree` receiving the same writes, over random trees shaped as
 //! a scene's boxes, controls, overlays and paragraphs lay out, and random runs of writes; and
 //! each box of those trees held to the size and placements it lays out at its natural height
-//! when that height is given to it as a definite space.
+//! when that height is given to it as a definite space, and as its own height.
 
 use std::{
   cell::RefCell,
@@ -1081,17 +1081,7 @@ impl Pair {
     let percent = |track: &taffy::style::TrackSizingFunction| {
       track.min.uses_percentage() || track.max.uses_percentage()
     };
-    let column = style.display == Display::Flex
-      && matches!(
-        style.flex_direction,
-        taffy::style::FlexDirection::Column | taffy::style::FlexDirection::ColumnReverse
-      );
-    // A height, least height or greatest height that is a fraction of a definite one.
-    let fraction = |style: &Style| {
-      style.size.height.into_raw().uses_percentage()
-        || style.min_size.height.into_raw().uses_percentage()
-        || style.max_size.height.into_raw().uses_percentage()
-    };
+    let column = column(style);
     // Rows a fraction of the box's height.
     let rows = style.grid_template_rows.iter().any(|row| match row {
       taffy::style::GridTemplateComponent::Single(track) => percent(track),
@@ -1108,13 +1098,47 @@ impl Pair {
     !children.is_empty()
       && !rows
       && !bounded
-      && !fraction(style)
+      && !percent_height(style)
       && !placed
       && !children.iter().any(|child| {
         let style = taffy.style(*child).expect("an oracle node's style");
 
-        fraction(style) || column && style.flex_basis.into_raw().uses_percentage()
+        percent_height(style) || column && style.flex_basis.into_raw().uses_percentage()
       })
+  }
+
+  /// Whether `node`, given a definite height of its own, lays out reading it nowhere beneath it
+  /// that [`height_free`](Self::height_free) leaves unchecked: no aspect ratio on it or beneath
+  /// it, through which a definite height sets a width; nothing beneath its children that is a
+  /// fraction of a height (a height, a least or greatest height, a flex basis in a column); and
+  /// no top or bottom inset beneath it that is a fraction, which a definite height resolves, the
+  /// height of a box stretched or flexed in a container of definite height being definite too.
+  ///
+  /// Nor a wrapping column on it or beneath it: taffy breaks such a column into lines with its
+  /// items measured before it knows its width, and takes its width from those lines, so a
+  /// definite height can widen it as if it wrapped where Chromium, settling the width first,
+  /// keeps it.
+  fn given_height_free(&self, node: NodeId) -> bool {
+    let taffy = &self.oracle.taffy;
+    let children = self.oracle.children(node);
+
+    self.subtree(node).iter().all(|at| {
+      let id = self.oracle.nodes[at];
+      let style = taffy.style(id).expect("an oracle node's style");
+      let beneath = *at != node && !children.contains(at);
+      let in_column = taffy
+        .parent(id)
+        .and_then(|parent| taffy.style(parent).ok())
+        .is_some_and(column);
+
+      style.aspect_ratio.is_none()
+        && !(column(style) && style.flex_wrap != taffy::style::FlexWrap::NoWrap)
+        && !(beneath
+          && (percent_height(style) || in_column && style.flex_basis.into_raw().uses_percentage()))
+        && !(*at != node
+          && (style.inset.top.into_raw().uses_percentage()
+            || style.inset.bottom.into_raw().uses_percentage()))
+    })
   }
 
   /// `node` and every node beneath it, depth first.
@@ -1131,7 +1155,8 @@ impl Pair {
   }
 
   /// Lays `node` out from itself at its natural height in `width`, then at that height as
-  /// definite space, and holds its size and every rectangle beneath it to the first.
+  /// definite space, and, where [`given_height_free`](Self::given_height_free), as its own
+  /// height, and holds its size and every rectangle beneath it to the first each time.
   fn natural(&mut self, node: NodeId, width: AvailableSpace) {
     let natural = taffy::geometry::Size {
       width,
@@ -1167,32 +1192,78 @@ impl Pair {
       };
     }
 
-    self.tree.compute(
+    let space = taffy::geometry::Size {
+      width,
+      height: AvailableSpace::Definite(height),
+    };
+
+    self.tree.compute(node, space);
+    self.hold(node, &laid, &beneath, 1., "as a definite space");
+
+    if !self.given_height_free(node) {
+      return;
+    }
+
+    let style = self
+      .oracle
+      .taffy
+      .style(self.oracle.nodes[&node])
+      .expect("an oracle node's style")
+      .clone();
+
+    self.tree.set_style(
       node,
-      taffy::geometry::Size {
-        width,
-        height: AvailableSpace::Definite(height),
+      Style {
+        size: taffy::geometry::Size {
+          width: style.size.width,
+          height: taffy::style::Dimension::length(laid.size.height),
+        },
+        ..style.clone()
       },
     );
+    self.tree.compute(node, space);
+    // A height given as the box's own is shared out among the boxes beneath it from the top
+    // down, so their rectangles keep it up to the rounding of the box's own size.
+    self.hold(
+      node,
+      &laid,
+      &beneath,
+      laid.size.width.max(laid.size.height),
+      "as its own height",
+    );
+    self.tree.set_style(node, style);
+  }
 
+  /// Holds `node`'s size to `laid` and each node beneath it to its rectangle in `beneath`, up
+  /// to the rounding of lengths as large as `scale` ([`close`]); `how` says how the natural
+  /// height was given.
+  fn hold(
+    &self,
+    node: NodeId,
+    laid: &taffy::tree::Layout,
+    beneath: &[(NodeId, taffy::tree::Layout)],
+    scale: f32,
+    how: &str,
+  ) {
     let kept = self.tree.unrounded_layout(node).expect("a laid out node");
 
     assert!(
-      close(kept.size.width, laid.size.width) && close(kept.size.height, laid.size.height),
-      "{node:?} laid out at its natural height keeps its size: {:?} against {:?}",
+      close(kept.size.width, laid.size.width, scale)
+        && close(kept.size.height, laid.size.height, scale),
+      "{node:?} laid out at its natural height {how} keeps its size: {:?} against {:?}",
       kept.size,
       laid.size
     );
 
     for (below, held) in beneath {
-      let now = self.tree.unrounded_layout(below).expect("a laid out node");
+      let now = self.tree.unrounded_layout(*below).expect("a laid out node");
 
       assert!(
-        close(now.location.x, held.location.x)
-          && close(now.location.y, held.location.y)
-          && close(now.size.width, held.size.width)
-          && close(now.size.height, held.size.height),
-        "{below:?} beneath {node:?} laid out at its natural height stays where it was: \
+        close(now.location.x, held.location.x, scale)
+          && close(now.location.y, held.location.y, scale)
+          && close(now.size.width, held.size.width, scale)
+          && close(now.size.height, held.size.height, scale),
+        "{below:?} beneath {node:?} laid out at its natural height {how} stays where it was: \
          {:?} {:?} against {:?} {:?}",
         now.location,
         now.size,
@@ -1203,10 +1274,27 @@ impl Pair {
   }
 }
 
+/// Whether `style` lays its children out as a flex column, whose flex basis is a height.
+fn column(style: &Style) -> bool {
+  style.display == Display::Flex
+    && matches!(
+      style.flex_direction,
+      taffy::style::FlexDirection::Column | taffy::style::FlexDirection::ColumnReverse
+    )
+}
+
+/// Whether `style`'s height, least height or greatest height is a fraction of a definite one.
+fn percent_height(style: &Style) -> bool {
+  style.size.height.into_raw().uses_percentage()
+    || style.min_size.height.into_raw().uses_percentage()
+    || style.max_size.height.into_raw().uses_percentage()
+}
+
 /// Whether `a` and `b` are one length up to the rounding of the arithmetic that laid them out:
-/// a few units in the last place of the larger, or of one.
-fn close(a: f32, b: f32) -> bool {
-  a.to_bits() == b.to_bits() || (a - b).abs() <= 4. * f32::EPSILON * a.abs().max(b.abs()).max(1.)
+/// a few units in the last place of the largest of the two and `scale`, or of one.
+fn close(a: f32, b: f32, scale: f32) -> bool {
+  a.to_bits() == b.to_bits()
+    || (a - b).abs() <= 4. * f32::EPSILON * a.abs().max(b.abs()).max(scale).max(1.)
 }
 
 /// A node's genes.
@@ -1257,7 +1345,8 @@ proptest! {
 
   /// Any box with children a scene lays out whose layout reads no definite height, laid out
   /// from itself at its natural height in any width and then at that height as definite
-  /// space, keeps its size, and every node beneath it keeps its rectangle.
+  /// space, and as its own height where nothing it holds reads that, keeps its size, and every
+  /// node beneath it keeps its rectangle.
   #[test]
   fn a_container_laid_out_at_its_natural_height_keeps_it(
     rounding in any::<bool>(),

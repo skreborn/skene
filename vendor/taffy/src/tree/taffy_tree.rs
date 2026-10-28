@@ -305,7 +305,16 @@ where
             // Skene: a hidden box hoists nothing, so a list recorded by an earlier visible pass
             // is cleared rather than left for `round_layout` to walk.
             self.taffy.nodes[node_id.into()].hoisted_children.clear();
-            return compute_hidden_layout(self, node_id);
+            let output = compute_hidden_layout(self, node_id);
+            // Skene: the box's cache is left empty while the hidden ancestor above it holds the
+            // layout that hid it, so it counts as holding entries: a write to the box (a child
+            // moved into it, its style changed) then marks that ancestor dirty, and the hidden
+            // pass reaches the box again. Upstream left it empty, so `mark_dirty` stopped at the
+            // box, the ancestor's hidden layout was served from its cache, and a subtree moved
+            // into the box kept its visible layout (and its stale hoisted lists, which
+            // `round_layout` then walked into removed boxes).
+            self.taffy.nodes[node_id.into()].cache.hold_hidden();
+            return output;
         }
 
         // We run the following wrapped in "compute_cached_layout", which will check the cache for an entry matching the node and inputs and:

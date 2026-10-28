@@ -77,12 +77,37 @@ A box with no children and a box laid out hidden hoist nothing, so both paths cl
 An alternative is for `TaffyTree::remove` to drop the removed node from every hoisted list, which
 fixes the panic but keeps a hidden box's list of boxes it no longer lays out.
 
+# A box laid out hidden stops `mark_dirty`, so a subtree moved into it keeps its layout
+
+Ready to file at https://github.com/DioxusLabs/taffy/issues, by the author's choice.
+
+`mark_dirty` stops climbing at a node whose cache is already empty, on the ground that its
+ancestors are then dirty too. A box laid out hidden beneath a `Display::None` ancestor breaks that:
+`compute_hidden_layout` clears its cache and stores nothing (`Cache::store` skips
+`RunMode::PerformHiddenLayout`), while the ancestor's cache holds the hidden output. A write to the
+box, such as `set_children` moving a visible subtree into it, then marks the box alone, the
+ancestor's hidden layout is served from its cache, and the moved subtree is never laid out hidden:
+it keeps the layout it had where it was visible, and `round_layout`, which walks a hidden subtree,
+follows the hoisted lists it kept into boxes since removed and panics with `invalid SlotMap key
+used`. skene-layout's `a_subtree_moved_into_a_hidden_box_lays_out_hidden` holds it:
+
+```rust
+// root > [hidden (display: none) > inner, outer (2x2) > middle (relative) > placed (absolute)]
+taffy.compute_layout(root, space).unwrap();
+taffy.remove(placed).unwrap();
+taffy.set_children(inner, &[outer]).unwrap();
+taffy.compute_layout(root, space).unwrap(); // panics: invalid SlotMap key used
+```
+
+Fix: a box laid out hidden counts its cache as holding entries (`Cache::hold_hidden`), so marking
+it dirty goes on to clear the hidden ancestor, whose next layout lays the box out hidden again.
+
 # Layouts that change with the space they are given
 
 Ready to file at https://github.com/DioxusLabs/taffy/issues, by the author's choice, one issue
 per section or one issue for all. Each was found by laying a random tree out from a box at its
-natural (max-content) height and then at that height as a definite space, where the box should
-keep its size and every box beneath it its place; each section names where taffy 0.15.1 lets the
+natural (max-content) height and then at that height as a definite space, or as its own height,
+where the box should keep its size and every box beneath it its place; each section names where taffy 0.15.1 lets the
 space it is given leak into a layout, the HTML Chromium (156) lays out for it in px, the numbers
 taffy gives in units of 16px, and the change Skene carries for it (marked `Skene:` in its copy).
 skene-layout's tests hold each reproduction, named as here.
@@ -199,3 +224,51 @@ now indefinite): a `min-height:100%` box in a wrapping row of width 32px, measur
 definite height, is served that size later, and its row comes out 5 high where Chromium gives
 56px (3.5). Fix: for such a box (`Style::resolves_parent_height`), match the whole parent size
 (`Cache::get_resolving`).
+
+## A container stretched to its own max-content size wraps its last item
+
+`a_row_stretched_to_its_own_width_keeps_one_line`. A container stretched to (or given) its own
+max-content size takes its padding and border off a size they were added to, and in f32 the result
+can fall short of the sum of the items it was summed from by a unit in the last place, so
+`collect_flex_lines` wraps the last item onto a line of its own: `<div style="display:flex;
+flex-direction:column"><div style="display:flex;flex-wrap:wrap;border-left:16px solid"><div
+style="width:5.3333333px;height:16px;flex:none"></div><div style="width:12.8px;height:16px;
+flex:none"></div></div></div>` is one line 16px tall in Chromium, whose fixed-point lengths sum
+exactly; taffy puts the second item on a second line below a row 1 high. Fix: a line may reach its
+definite space widened by a few units in the last place (`line_limit`, in
+`collect_balanced_flex_lines` too).
+
+## A flexed item comes out smaller than its padding and border
+
+`a_flexed_item_keeps_its_border_above_its_max_height`. The min/max violation step of
+`resolve_flexible_lengths` floors a target main size, a border-box size, at zero rather than at
+the item's padding and border, as its flex base size and hypothetical main size are floored, so an
+item whose max main size is below its padding and border shrinks to that max once flexed: in
+`<div style="display:flex;flex-direction:column;width:16px;height:80px"><div
+style="display:grid;overflow-x:clip;overflow-y:scroll;max-height:32px;border-top:32px solid;
+border-bottom:32px solid"></div></div>` (border-box sizing) the item is 64px tall in Chromium;
+taffy gives 2 in place of 4. Fix: floor the clamped target size at the padding and border.
+
+## A wrapping column with a max height does not wrap inside a column of auto height
+
+`a_column_in_an_automatic_column_wraps_against_its_max_height`. `collect_flex_lines` collects
+every item into one line wherever the container's known main size is not definite, so a wrapping
+column with a max height, laid out by a column of auto height, does not wrap, although its
+intrinsic size (and Chromium) wraps it against the max height: in `<div style="display:flex;
+flex-direction:column"><div style="display:flex;flex-direction:column;flex-wrap:wrap;
+max-height:0"><div style="display:grid"></div><div style="display:grid;padding:25.6px 32px
+6.4px 0"></div></div></div>` Chromium puts the two boxes on two lines, the empty one 0px wide;
+taffy puts them on one, the empty box stretched 2 wide. Fix: a column with a definite max main
+size wraps against it whether or not its known main size is definite (in
+`collect_balanced_flex_lines` too).
+
+A wrapping column of auto width also differs from Chromium beyond this: taffy breaks its lines
+with its items measured before it knows its width, in the space it is given, and takes its width
+from those lines, where Chromium settles the width first and breaks the lines with the items
+measured at it. In `<div style="display:flex;width:0;height:64px"><div style="display:flex;
+flex-direction:column;flex-wrap:wrap">` holding two boxes of wrapping content (a row of 64px,
+40px and 16px words, and one of 16px and 76px words, 16px apart and 16px high), Chromium sizes the
+column 76px wide (its widest word) and lays it out as one line, as it does without the height;
+taffy measures the boxes at min-content (48px and 32px tall), which break into two lines, sizes
+the column 140px wide from those (8.75 in place of 4.75) and then lays the boxes out at that width
+in one line, where without the height it is 76px wide. That is not changed.

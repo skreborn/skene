@@ -5,9 +5,10 @@ house rules do not reach it.
 
 Skene's changes, each marked `Skene:` in the source. Each is held by a reproduction in
 skene-layout's tests, and `UPSTREAM.md` holds the reports to offer, one per change. All but the
-first make a box lay out alike whatever space it is given, as Chromium lays it out: laid out at
-its natural (max-content) height and then at that height as a definite space, a box keeps its size
-and every box beneath it keeps its place, which skene-layout's tests hold over random trees.
+first two make a box lay out alike whatever space it is given, as Chromium lays it out: laid out
+at its natural (max-content) height and then at that height as a definite space, or as its own
+height, a box keeps its size and every box beneath it keeps its place, which skene-layout's tests
+hold over random trees.
 
 - tree/taffy_tree.rs (`compute_child_layout`): a box laid out hidden, by its own
   `Display::None` or an ancestor's, and a box with no children clear the out-of-flow children
@@ -15,6 +16,12 @@ and every box beneath it keeps its place, which skene-layout's tests hold over r
   list recorded by an earlier pass outlived the boxes in it: a containing block whose last
   absolute child was removed, or one inside a hidden subtree, kept the removed child's id, and
   `round_layout` panicked on it (`invalid SlotMap key used`).
+- tree/taffy_tree.rs (`compute_child_layout`) and tree/cache.rs (`Cache::hold_hidden`): a box
+  laid out hidden beneath a `Display::None` ancestor counts its emptied cache as holding entries,
+  so a write to it (a subtree moved into it) marks the hidden ancestor dirty and the subtree is
+  laid out hidden. Taffy's `mark_dirty` stopped at the empty cache, so the ancestor's hidden
+  layout was served from its cache, the moved subtree kept its visible layout, and `round_layout`
+  followed the hoisted lists it kept into removed boxes and panicked.
 - compute/flexbox.rs (`determine_container_main_size`): a container whose main size is not
   given takes each item at its hypothetical main size, its flex base size clamped by its min
   and max main sizes, the automatic minimum included. Taffy floored the flex base size by the
@@ -27,6 +34,18 @@ and every box beneath it keeps its place, which skene-layout's tests hold over r
 - compute/flexbox.rs (`determine_available_space`): a min-content constraint on a column's main
   axis is a max-content one, as the min-content block size of a grid container is its
   max-content block size. Taffy put each item of a wrapping column on a line of its own there.
+- compute/flexbox.rs (`collect_flex_lines`, `collect_balanced_flex_lines`): a column with a
+  definite max main size wraps against it whether or not its known main size is definite. Taffy
+  collected its items into one line wherever its known main size was content-based, so a column
+  laid out by an auto-height parent did not wrap where its intrinsic size had wrapped.
+- compute/flexbox.rs (`line_limit`, used by `collect_flex_lines` and
+  `collect_balanced_flex_lines`): a line may reach its definite space widened by a few units in
+  the last place, so items that fill a container stretched to its own max-content size stay on one
+  line. Taffy compared with the space itself, which f32 rounding of the container's padding and
+  border taken off again left short of the items' sum, so the last item wrapped.
+- compute/flexbox.rs (`resolve_flexible_lengths`): a flexed item's target main size is floored at
+  its padding and border, as its flex base size and hypothetical main size are. Taffy floored it at
+  zero, so an item whose max main size is below its padding and border shrank to it once flexed.
 - compute/flexbox.rs (`collect_flex_lines`, `collect_balanced_flex_lines`): a column whose main
   size is not definite wraps against its max main size alone, as without one it does not wrap
   against the space an ancestor hands down. Taffy wrapped it against the smaller of the two.

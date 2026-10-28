@@ -15,7 +15,7 @@ use crate::tree::{
 };
 use crate::tree::{Baselines, Layout, LayoutInput, LayoutOutput, OofCandidate, OofCandidates, RunMode, SizingMode};
 use crate::util::debug::debug_log;
-use crate::util::sys::{f32_max, f32_min, new_vec_with_capacity, Vec};
+use crate::util::sys::{abs, f32_max, f32_min, new_vec_with_capacity, Vec};
 use crate::util::MaybeMath;
 use crate::util::{MaybeResolve, ResolveOrZero};
 use crate::{BoxGenerationMode, BoxSizing, Dimension, Direction, RequestedAxis};
@@ -1252,7 +1252,13 @@ fn collect_flex_lines<'a>(
     // Wrapping into multiple lines requires a definite main size. If the container's known main size
     // is derived from its own content (and is thus indefinite) then all items are collected into a
     // single flex line, matching how the container was sized under a min/max-content constraint.
-    if !constants.is_wrap || !constants.known_main_size_is_definite {
+    // Skene: a column with a definite max main size wraps against it whether or not its known main
+    // size is definite, as it does when sized under a min/max-content constraint (and as in
+    // Chromium). Upstream collected its items into a single line wherever its known main size was
+    // content-based, so a column laid out by an auto-height parent did not wrap where its own
+    // intrinsic size had wrapped.
+    let wraps_against_max = !constants.dir.is_row() && constants.max_size.main(constants.dir).is_some();
+    if !constants.is_wrap || (!constants.known_main_size_is_definite && !wraps_against_max) {
         let mut lines = new_vec_with_capacity(1);
         lines.push(FlexLine { items: flex_items.as_mut_slice(), cross_size: 0.0, offset_cross: 0.0 });
         lines
@@ -1324,7 +1330,7 @@ fn collect_flex_lines<'a>(
                             // So first item in the line does not contribute a gap to the line length
                             let gap_contribution = if idx == 0 { 0.0 } else { main_axis_gap };
                             line_length += child.hypothetical_outer_size.main(constants.dir) + gap_contribution;
-                            line_length > main_axis_available_space && idx != 0
+                            line_length > line_limit(main_axis_available_space) && idx != 0
                         })
                         .map(|(idx, _)| idx)
                         .unwrap_or(flex_items.len());
@@ -1337,6 +1343,16 @@ fn collect_flex_lines<'a>(
             }
         }
     }
+}
+
+/// Skene: the length a line of items may reach in a definite main space `space`: `space` widened by
+/// the rounding f32 arithmetic leaves in a size summed from the same items with insets added and
+/// taken off again (a container stretched to, or given, its own max-content size), so items that
+/// fill a line exactly stay on it, as in Chromium, whose fixed-point lengths sum exactly. Upstream
+/// compared with the space itself, so such a container wrapped its last item onto a line of its own.
+#[inline]
+fn line_limit(space: f32) -> f32 {
+    space + f32_max(abs(space), 1.0) * f32::EPSILON * 8.0
 }
 
 /// Collect flex items into balanced flex lines (`flex-wrap: balance`), such that the largest
@@ -1356,7 +1372,10 @@ fn collect_balanced_flex_lines<'a>(
     // If the container's known main size is derived from its own content (and is thus indefinite)
     // then items are balanced without a size limit, matching how the container was sized under a
     // min/max-content constraint.
-    let main_axis_available_space = if constants.known_main_size_is_definite {
+    // Skene: a column with a definite max main size balances against it whether or not its known
+    // main size is definite, as in `collect_flex_lines`.
+    let wraps_against_max = !constants.dir.is_row() && constants.max_size.main(constants.dir).is_some();
+    let main_axis_available_space = if constants.known_main_size_is_definite || wraps_against_max {
         match constants.max_size.main(constants.dir) {
             Some(max_size) => AvailableSpace::Definite({
                 let available = available_space.main(constants.dir).into_option().unwrap_or(max_size);
@@ -1404,7 +1423,7 @@ fn collect_balanced_flex_lines<'a>(
         return lines;
     }
 
-    let line_break_size = main_axis_available_space.into_option().unwrap_or(f32::INFINITY);
+    let line_break_size = line_limit(main_axis_available_space.into_option().unwrap_or(f32::INFINITY));
     let min_line_count = constants.line_count.unwrap_or(1) as usize;
     let item_counts = balance::balanced_line_item_counts(
         flex_items.iter().map(|item| item.hypothetical_outer_size.main(constants.dir)),
@@ -1959,7 +1978,16 @@ fn resolve_flexible_lengths(line: &mut FlexLine, constants: &AlgoConstants) {
         let total_violation = line.items.iter_mut().filter(|child| !child.frozen).fold(0.0, |acc, child| -> f32 {
             let resolved_min_main: Option<f32> = child.resolved_minimum_main_size.into();
             let max_main = child.max_size.main(constants.dir);
-            let clamped = child.target_size.main(constants.dir).maybe_clamp(resolved_min_main, max_main).max(0.0);
+            // Skene: the target main size is a border-box size, so flooring its content box at zero
+            // floors it at the item's padding and border, as its flex base size and hypothetical main
+            // size are floored (and as in Chromium). Upstream floored it at zero, so an item whose max
+            // main size is below its padding and border came out smaller than them once flexed.
+            let padding_border_sum = (child.padding + child.border).main_axis_sum(constants.dir);
+            let clamped = child
+                .target_size
+                .main(constants.dir)
+                .maybe_clamp(resolved_min_main, max_main)
+                .max(padding_border_sum);
             child.violation = clamped - child.target_size.main(constants.dir);
             child.target_size.set_main(constants.dir, clamped);
             child.outer_target_size.set_main(

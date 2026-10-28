@@ -348,6 +348,14 @@ impl Cache {
         }
     }
 
+    /// Skene: counts the cache as holding entries while it holds none, as a box laid out hidden
+    /// beneath a `Display::None` ancestor leaves it: that ancestor's cache holds the layout that
+    /// hid the box, so marking the box dirty must go on to clear it, where an empty cache stops
+    /// `mark_dirty` short of its ancestors.
+    pub fn hold_hidden(&mut self) {
+        self.is_empty = false;
+    }
+
     /// Skene: forgets the final layout entry alone, keeping the measure entries; the cache still
     /// counts as holding entries, so marking a descendant dirty still clears every ancestor.
     pub fn forget_final_layout(&mut self) {

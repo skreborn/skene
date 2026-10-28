@@ -1596,4 +1596,170 @@ mod tests {
 
     assert_eq!(rectangle(&wording, column), [0., 0., 1., 9.]);
   }
+  /// Items that fill a wrapping row exactly stay on one line where the row is stretched to its
+  /// own max-content width, its border taken off again.
+  #[test]
+  fn a_row_stretched_to_its_own_width_keeps_one_line() {
+    let mut wording = Wording::new();
+    let third = wording.new_leaf(rigid(1. / 3., 1.)).unwrap();
+    let rest = wording.new_leaf(rigid(0.8, 1.)).unwrap();
+    let wrapping = wording
+      .new_with_children(
+        taffy::style::Style {
+          flex_wrap: FlexWrap::Wrap,
+          border: taffy::geometry::Rect {
+            left: length(1.),
+            right: length(0.),
+            top: length(0.),
+            bottom: length(0.),
+          },
+          ..flex(FlexDirection::Row)
+        },
+        &[third, rest],
+      )
+      .unwrap();
+    let column = wording
+      .new_with_children(flex(FlexDirection::Column), &[wrapping])
+      .unwrap();
+
+    lay_out(&mut wording, column, space(None, None));
+
+    assert_eq!(rectangle(&wording, wrapping)[3], 1.);
+    assert_eq!(rectangle(&wording, rest)[1], 0.);
+  }
+
+  /// A flexed item whose max height is below its border keeps its border's height, as it does
+  /// before it is flexed.
+  #[test]
+  fn a_flexed_item_keeps_its_border_above_its_max_height() {
+    let mut wording = Wording::new();
+    let item = wording
+      .new_leaf(taffy::style::Style {
+        overflow: taffy::geometry::Point {
+          x: Overflow::Visible,
+          y: Overflow::Scroll,
+        },
+        max_size: taffy::geometry::Size {
+          width: auto(),
+          height: length(2.),
+        },
+        border: taffy::geometry::Rect {
+          left: length(0.),
+          right: length(0.),
+          top: length(2.),
+          bottom: length(2.),
+        },
+        ..single()
+      })
+      .unwrap();
+    let column = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: length(1.),
+            height: length(5.),
+          },
+          ..flex(FlexDirection::Column)
+        },
+        &[item],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, column, space(None, None));
+
+    assert_eq!(rectangle(&wording, item)[3], 4.);
+  }
+
+  /// A subtree moved into a box laid out hidden lays out hidden, rather than keeping the layout
+  /// it had where it was visible and the out-of-flow child it lost there.
+  #[test]
+  fn a_subtree_moved_into_a_hidden_box_lays_out_hidden() {
+    let mut wording = Wording::new();
+    let inner = wording.new_leaf(single()).unwrap();
+    let hidden = wording
+      .new_with_children(
+        taffy::style::Style {
+          display: Display::None,
+          ..single()
+        },
+        &[inner],
+      )
+      .unwrap();
+    let placed = wording
+      .new_leaf(taffy::style::Style {
+        position: taffy::style::Position::Absolute,
+        ..rigid(1., 1.)
+      })
+      .unwrap();
+    let middle = wording
+      .new_with_children(
+        taffy::style::Style {
+          position: taffy::style::Position::Relative,
+          ..single()
+        },
+        &[placed],
+      )
+      .unwrap();
+    let outer = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: length(2.),
+            height: length(2.),
+          },
+          ..single()
+        },
+        &[middle],
+      )
+      .unwrap();
+    let root = wording
+      .new_with_children(single(), &[hidden, outer])
+      .unwrap();
+
+    lay_out(&mut wording, root, space(None, None));
+    wording.remove(placed).unwrap();
+    wording.set_children(inner, &[outer]).unwrap();
+    lay_out(&mut wording, root, space(None, None));
+
+    assert_eq!(rectangle(&wording, outer), [0.; 4]);
+  }
+  /// A wrapping column with a max height wraps against it inside a column of automatic height,
+  /// as its own intrinsic height wrapped.
+  #[test]
+  fn a_column_in_an_automatic_column_wraps_against_its_max_height() {
+    let mut wording = Wording::new();
+    let empty = wording.new_leaf(single()).unwrap();
+    let padded = wording
+      .new_leaf(taffy::style::Style {
+        padding: taffy::geometry::Rect {
+          left: length(0.),
+          right: length(2.),
+          top: length(1.6),
+          bottom: length(0.4),
+        },
+        ..single()
+      })
+      .unwrap();
+    let wrapping = wording
+      .new_with_children(
+        taffy::style::Style {
+          max_size: taffy::geometry::Size {
+            width: auto(),
+            height: length(0.),
+          },
+          flex_wrap: FlexWrap::Wrap,
+          ..flex(FlexDirection::Column)
+        },
+        &[empty, padded],
+      )
+      .unwrap();
+    let column = wording
+      .new_with_children(flex(FlexDirection::Column), &[wrapping])
+      .unwrap();
+
+    lay_out(&mut wording, column, space(None, None));
+
+    assert_eq!(rectangle(&wording, empty), [0.; 4]);
+    assert_eq!(rectangle(&wording, padded), [0., 0., 2., 2.]);
+  }
 }

@@ -414,8 +414,14 @@ in a code comment.
     - Layout: a box with an aspect ratio whose width and height are both automatic takes
     its intrinsic width from its content's width in taffy, where Chromium takes it from
     its content's height through the ratio, so an empty box at a ratio of one half with a
-    16px bottom border is 8px wide there and nothing in taffy; `vendor/taffy/UPSTREAM.md`
-    names it, and the change belongs in `vendor/taffy` beside its others.
+    16px bottom border is 8px wide there and nothing in taffy; and taffy breaks a wrapping
+    column of automatic width into lines with its items measured before it knows its width,
+    and takes its width from those lines, where Chromium settles the width first and breaks
+    the lines with the items measured at it, so given a definite height such a column can
+    widen in taffy as if it wrapped where Chromium keeps its width (skene-layout's
+    natural-height invariant gives no box holding a wrapping column its natural height as
+    its own, for it). `vendor/taffy/UPSTREAM.md` names both, and the changes belong in
+    `vendor/taffy` beside its others.
     - Interaction: a press on a `Link` inside a `Link` follows both in the terminal, the
     inner route and then the outer one, where a browser follows the innermost anchor
     alone and the press is the inner link's; the web's leaves are unchecked, the server

@@ -162,11 +162,10 @@ changed, and its change lands with its evidence, in this file or `DECISIONS.md`.
   `Container`, the layout-only boxes beneath it folded into it, the toolkit's measure (a
   text engine's, a native view's) as its leaves with the toolkit's minimum as a floor,
   its rectangles fractional; the web's toolkit is CSS, whose flexbox and grid are what
-  taffy implements. The **public vocabulary is not
-  CSS's**: names and values follow the modern declarative frameworks (Flutter, SwiftUI,
-  Jetpack Compose), mixed and matched for whichever is clearest—explicit and
-  self-describing; CSS naming stays only where it is genuinely the best name in
-  context. Concretely: distributions are *arrangements*
+  taffy implements. The **public vocabulary is not CSS's**: names and values follow the
+  modern declarative frameworks (Flutter, SwiftUI, Jetpack Compose), mixed and matched
+  for whichever is clearest—explicit and self-describing; CSS naming stays only where it
+  is genuinely the best name in context. Concretely: distributions are *arrangements*
   (`arrangement`, `line_arrangement`: `Arrangement`), per-item properties are
   *alignments* (`item_alignment`, two-axis `Alignment` for grids and stacks)—never
   `justify-*`/`align-*`; `Dimension::Fraction` is a ratio of the parent (`0.5` = half,

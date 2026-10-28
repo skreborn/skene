@@ -2545,8 +2545,9 @@ sense apart where context does not.
   whose children are all inline runs (`RichText`), laid out as one `TextFlow`, one
   engine paragraph.
 - **Layout.** The layout: taffy's placing of boxes (`skene-layout`'s `Tree`, a taffy
-  engine per decorated box, the layout-only boxes folded into it), or the web's CSS. A text's layout (`text::Laid`): one
-  paragraph laid out at one width, its lines, carets and rectangles, immutable once made.
+  engine per decorated box, the layout-only boxes folded into it), or the web's CSS. A
+  text's layout (`text::Laid`): one paragraph laid out at one width, its lines, carets
+  and rectangles, immutable once made.
 - **Editing core.** Skene's one editor (`text::editing::Editor`) every drawn entry
   runs on, over its platform's engine; a platform's own text field, where one exists,
   is a platform control, and the web's entries are its `<input>` and `<textarea>`.

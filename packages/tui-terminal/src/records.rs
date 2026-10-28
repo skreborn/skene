@@ -412,8 +412,12 @@ mod tests {
     Container,
     Control,
     Grid,
+    Layout,
+    LayoutBox,
+    LazyColumn,
     NodeId,
     Overlay,
+    PlainChild,
     RichText,
     Row,
     Stack,
@@ -421,23 +425,27 @@ mod tests {
     View,
   };
 
-  use crate::{Terminal, install, mount, uninstall, with_records};
+  use crate::{Terminal, install, mount, realize::root_node, uninstall, with_records};
 
   /// Whether the record of `node` is a box created by a view taking decoration, `None`
-  /// for a run.
-  fn decorated(node: NodeId) -> Option<bool> {
+  /// for a run, and whether the layout tree holds it as a container.
+  fn decorated(node: NodeId) -> (Option<bool>, bool) {
     with_records(|records| {
-      records
+      let decorated = records
         .record(node)
         .expect("a mounted node has a record")
         .kind
         .box_record()
-        .map(|inner| inner.facts.decorated)
+        .map(|inner| inner.facts.decorated);
+
+      (decorated, records.tree.is_container(node))
     })
   }
 
-  /// A container, an overlay's box and a control's are decorated, and every layout view,
-  /// a paragraph's box and a run are not, so only the first take an engine of their own.
+  /// The root, a container, an overlay's box and a control's are decorated, and every
+  /// layout view, a lazy list's box, a third party's layout box, a paragraph's box and a
+  /// run are not, so only the first are containers of the layout tree, laid out by an
+  /// engine of their own.
   #[test]
   fn a_box_is_decorated_where_a_view_taking_decoration_created_it() {
     install();
@@ -453,18 +461,22 @@ mod tests {
     let column = mount(|| Column::<Terminal>::new().build());
     let grid = mount(|| Grid::<Terminal>::new().build());
     let stack = mount(|| Stack::<Terminal>::new().build());
+    let lazy = mount(|| LazyColumn::<Terminal>::new().build());
+    let third_party = mount(|| LayoutBox::<Terminal, PlainChild>::new(Layout::Document).build());
     let paragraph = mount(|| RichText::<Terminal>::new().build());
     let run = mount(|| Text::<Terminal>::new("a").build());
 
-    for node in [container, overlay, control] {
-      assert_eq!(decorated(node), Some(true));
+    let root = root_node().expect("an installed terminal has a root");
+
+    for node in [root, container, overlay, control] {
+      assert_eq!(decorated(node), (Some(true), true));
     }
 
-    for node in [row, column, grid, stack, paragraph] {
-      assert_eq!(decorated(node), Some(false));
+    for node in [row, column, grid, stack, lazy, third_party, paragraph] {
+      assert_eq!(decorated(node), (Some(false), false));
     }
 
-    assert_eq!(decorated(run), None);
+    assert_eq!(decorated(run), (None, false));
 
     uninstall();
   }

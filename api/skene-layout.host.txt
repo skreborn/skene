@@ -95,6 +95,7 @@ pub fn skene_layout::Tree<C>::contains(&self, skene_foundation::spine::node::Nod
 pub fn skene_layout::Tree<C>::context(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&C>
 pub fn skene_layout::Tree<C>::context_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut C>
 pub fn skene_layout::Tree<C>::insert(&mut self, skene_foundation::spine::node::NodeId, bool)
+pub fn skene_layout::Tree<C>::is_container(&self, skene_foundation::spine::node::NodeId) -> bool
 pub fn skene_layout::Tree<C>::layout(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&taffy::tree::layout::Layout>
 pub fn skene_layout::Tree<C>::mark_dirty(&mut self, skene_foundation::spine::node::NodeId)
 pub const fn skene_layout::Tree<C>::new(bool) -> Self

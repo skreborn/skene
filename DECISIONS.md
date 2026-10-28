@@ -68,7 +68,13 @@ supersedes there.
   (+0.0067%). An engine is a cursor over the one store, so the fold moves no layout
   work: the layout pass costs the same, mount's record insertion about 7 Ir more a node
   as the function is built, and the rest is the allocator's heap (a keyed reconcile's
-  vector copied as it grows in one frame of four where it grew in place).
+  vector copied as it grows in one frame of four where it grew in place). That bench
+  folds one `Column`; with each of its rows a `Row` around its run, 16,000 layout-only
+  boxes folded, per box against the fold: unchanged 524,803 to 524,667 (-0.026%),
+  pointer_move 7,015,923 to 7,016,202 (+0.004%), resized 492,076,544 to 491,919,093
+  (-0.032%), keyed_row_toggled 418,042,687 to 417,133,409 (-0.22%), mounted_first
+  2,807,770,803 to 2,809,319,457 (+0.055%), the same measures and paragraph layouts in
+  each: every relayout costs less folded, and a first mount slightly more.
 - **Typed input for the drawn runtime alone** (2026-10-27), entry points on the runtime
   taking the foundation's event types, which the compositor platforms and the web would
   bypass by dispatching from their own views into the spine, or no input type beyond the

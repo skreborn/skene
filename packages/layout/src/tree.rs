@@ -147,6 +147,17 @@ impl<C: Leaf> Tree<C> {
     self.nodes.map().contains(node)
   }
 
+  /// Whether `node` is a container, laid out by an engine of its own: inserted as
+  /// decorated, and still in the tree.
+  #[must_use]
+  pub fn is_container(&self, node: NodeId) -> bool {
+    self
+      .nodes
+      .map()
+      .get(node)
+      .is_some_and(|slot| slot.decorated)
+  }
+
   /// Gives `node` the taffy style `style`; `true` where it differs from the one it
   /// held, `false` where it is the same or `node` is outside the tree.
   pub fn set_style(&mut self, node: NodeId, style: Style) -> bool {

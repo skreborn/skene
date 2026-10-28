@@ -186,8 +186,8 @@ in a code comment.
     Orca 47's list counts and Orca's own keys on Wayland; and every compositor and screen
     reader newer than Ubuntu 24.04's.
     - Upstream: the reports in `spikes/linux/upstream` (Parley, its engine, taffy,
-    vello_cpu, vello_gpu, AccessKit, mutter, cargo-public-api, criterion) wait for the
-    author's decision to file them.
+    vello_cpu, vello_gpu, AccessKit, mutter, cargo-public-api, criterion) and the reports
+    in `vendor/taffy/UPSTREAM.md` wait for the author's decision to file them.
 4. **The spikes on hardware.** The text-engine spikes ran on GitHub's runners
     (`spikes/`, the `spike-apple`, `spike-android` and `spike-windows` workflows) and
     passed: TextKit 2 under taffy draws what `UILabel` and `NSTextField` draw, taffy
@@ -246,7 +246,8 @@ in a code comment.
     - From the shared runtime (item 1): the shared engine hosted by the toolkit through
     a min/natural measuring protocol, a container laid out in `onLayout` over its
     children's measures, a native view's minimum its floor; a layout-only box realized
-    as no `View`, its children placed in the nearest `Container`'s view by
+    as no `View`, its children placed in the nearest decorated box's view (a
+    `Container`'s, an overlay's, a control's, a native view's) by
     `BoxFacts::decorated`, the creation fact the drawn runtime folds them by (item 1);
     opacity, transform and color transitions run by the RenderThread where a property
     has an animator, the runtime's frame clock on Choreographer their floor and the
@@ -406,17 +407,15 @@ in a code comment.
     it scrolls or is contained, which a `Document` directly inside another reaches: in
     a `Link` inside a `Link`, the inner link's box loses its child's margin, whose rows
     then hit the outer link alone. No frame of the terminal's tests depends on it.
-    - Layout: a box with an aspect ratio whose width and height are both automatic takes
-    its intrinsic width from its content's width in taffy, where Chromium takes it from
-    its content's height through the ratio, so an empty box at a ratio of one half with a
-    16px bottom border is 8px wide there and nothing in taffy; and taffy breaks a wrapping
-    column of automatic width into lines with its items measured before it knows its width,
-    and takes its width from those lines, where Chromium settles the width first and breaks
-    the lines with the items measured at it, so given a definite height such a column can
-    widen in taffy as if it wrapped where Chromium keeps its width (skene-layout's
-    natural-height invariant gives no box holding a wrapping column its natural height as
-    its own, for it). `vendor/taffy/UPSTREAM.md` names both, and the changes belong in
-    `vendor/taffy` beside its others.
+    - Layout: a container at an aspect ratio whose width and height are automatic, fit to
+    its content across a column or at the start of a grid's column, takes its width from
+    its content's height through the ratio in Chromium (a 4px by 40px box inside one at a
+    ratio of one half with a 16px bottom border makes it 28px by 56px), where taffy takes
+    the width its content leaves it, floored at its border's height through the ratio
+    (8px); and a `Document` box at a ratio is not floored so and takes its height from the
+    ratio below its content (4px by 16px in a row, where Chromium makes it 8px by 56px, its
+    automatic least height its content's). The changes belong in `vendor/taffy` beside its
+    others, reproduced in skene-layout's tests and reported in its `UPSTREAM.md`.
     - Interaction: a press on a `Link` inside a `Link` follows both in the terminal, the
     inner route and then the outer one, where a browser follows the innermost anchor
     alone and the press is the inner link's; the web's leaves are unchecked, the server
@@ -569,7 +568,11 @@ in a code comment.
     (rustc-hash, itertools, digest, getrandom, miniz_oxide, bit-set, windows-sys and
     their kin). Parley from its release once that carries the changes `vendor/parley`
     and `vendor/parley_engine` hold, since `[patch.crates-io]` stays in the workspace
-    and a published crate takes Parley unpatched.
+    and a published crate takes Parley unpatched; and taffy from its release once that
+    carries `vendor/taffy`'s changes (its `SKENE.md`), filed from its `UPSTREAM.md` by
+    the author, since a published `skene-layout` takes taffy unpatched and calls what
+    only the vendored copy has (`Cache::hold_hidden`, `Cache::get_resolving`,
+    `Cache::forget_final_layout`, `Style::resolves_parent_height`).
     - The documents: `AGENTS.md` at 150 lines or fewer of numbered one-to-three-sentence
     invariants, each linking its `DESIGN.md` section; `DESIGN.md` rewritten as each step
     of the migration lands, one chapter per mechanism, each with its contract, mechanism

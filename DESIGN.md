@@ -1197,8 +1197,10 @@ Condition     = Media | State | And | Or
   moved into it lays out hidden; and a box lays out alike in any space it is given, as
   Chromium lays it out, laid out at its natural height and then at that height as a
   definite space or as its own height keeping its size and every box beneath it keeping
-  its place, which thirteen changes to flexbox, grid and the cache bring about, a box
-  holding a wrapping column given its own height aside), keyed by the scene's nodes and
+  its place, which fourteen changes to flexbox, grid and the cache bring about; and a box
+  at an aspect ratio whose width and height are automatic is as wide as its padding and
+  border's height through the ratio, each childless box laid out by taffy's leaf algorithm
+  over its measure), keyed by the scene's nodes and
   kept across frames: each decorated box (`BoxFacts::decorated`: a `Container`'s, an
   overlay's, a control's, and the root) is a container laid out by a taffy engine of its
   own over itself and the nodes beneath it up to the next containers, its engine folding

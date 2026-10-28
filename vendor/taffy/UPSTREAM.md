@@ -166,10 +166,6 @@ base size of 2.5 times the available height (25 in a 10-high space, 0 at max-con
 gives it 0. Fix: give the item the line's cross size only where it is definite (a single-line
 container with a definite cross size), and measure it at fit-content otherwise (step E).
 
-Chromium also sizes an `aspect-ratio` box whose width and height are both `auto` from its
-content height through the ratio (the second reproduction's row is 8px wide there, from the box's
-16px border); taffy sizes it from its content width (0). That gap is not changed.
-
 ## A grid's rows are capped by an ancestor's height and sized under a constraint
 
 `a_grid_lays_its_rows_out_at_max_content`. A grid whose height is not given sizes its rows in the
@@ -262,13 +258,36 @@ taffy puts them on one, the empty box stretched 2 wide. Fix: a column with a def
 size wraps against it whether or not its known main size is definite (in
 `collect_balanced_flex_lines` too).
 
-A wrapping column of auto width also differs from Chromium beyond this: taffy breaks its lines
-with its items measured before it knows its width, in the space it is given, and takes its width
-from those lines, where Chromium settles the width first and breaks the lines with the items
-measured at it. In `<div style="display:flex;width:0;height:64px"><div style="display:flex;
+## A wrapping column breaks its lines before its width is settled
+
+`a_wrapping_column_settles_its_width_before_its_lines` and
+`a_wrapping_column_is_as_wide_as_its_widest_item_at_min_content`. A `column wrap` container whose
+width is not given breaks its lines with its items measured in the space it is given (at
+min-content, each item at its min-content width) and takes its width from those lines. CSS
+Flexbox §9.9.2 sizes it by first finding the largest min-content or max-content width
+contribution among its items, then using that as the available width for each item during
+layout, and Chromium settles it so: its min-content width is its largest min-content
+contribution, its max-content width that of the lines its items break into laid out in their
+largest max-content contribution, and in a definite space it is that space clamped between
+the two. In `<div style="display:flex;width:0;height:64px"><div style="display:flex;
 flex-direction:column;flex-wrap:wrap">` holding two boxes of wrapping content (a row of 64px,
-40px and 16px words, and one of 16px and 76px words, 16px apart and 16px high), Chromium sizes the
-column 76px wide (its widest word) and lays it out as one line, as it does without the height;
-taffy measures the boxes at min-content (48px and 32px tall), which break into two lines, sizes
-the column 140px wide from those (8.75 in place of 4.75) and then lays the boxes out at that width
-in one line, where without the height it is 76px wide. That is not changed.
+40px and 16px words, and one of 16px and 76px words, 16px apart and 16px high), Chromium sizes
+the column 76px wide (its widest word) and lays it out as one line; taffy measures the boxes at
+min-content (48px and 32px tall), which break into two lines, and sizes the column 140px wide
+(8.75 in place of 4.75). A column 32px tall holding a 10px and a 20px box, each 32px tall, is
+20px wide at min-content in Chromium and 30px at max-content; taffy gives 30px at both. Fix:
+settle the width first as above (`column_wrap_width`), then lay the column out at it.
+
+## A box at an aspect ratio takes its width from its content alone
+
+`an_empty_box_at_a_ratio_is_as_wide_as_its_border_through_it`. `compute_leaf_layout`,
+`compute_flexbox_layout` and `compute_grid_layout` size a box whose width and height are both
+`auto` from its content's width, so an `aspect-ratio` box is no wider than its content, its
+padding and border included. Chromium floors its min- and max-content widths at its automatic
+minimum height (its padding and border, for `box-sizing:border-box`) transferred through the
+ratio (css-sizing-4 §5.2): an empty `display:grid; aspect-ratio:0.5; border-bottom:16px solid`
+box is 8px by 16px in a flex row and in a grid that places it at its start, and the same box as
+a flex or grid container holding a 4px by 40px box is 8px by 56px in a flex row; taffy gives
+the first no width and the second 4px. Fix: floor such a box's content width at its padding and
+border's height times the ratio, capped by its max width (`automatic_ratio_width`), laying a flex
+or grid container out again at it where its content leaves it narrower.

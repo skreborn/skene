@@ -1057,45 +1057,51 @@ mod tests {
   /// are laid out on it, each held to what Chromium lays the same page out as.
   type Wording = taffy::TaffyTree<Vec<f32>>;
 
-  /// Lays `wording` out from `root` in `space`, each leaf with words measured by them and each
-  /// without sized to its known dimensions.
+  /// Lays `wording` out from `root` in `space`, each leaf laid out by taffy's leaf algorithm
+  /// over its words.
   fn lay_out(
     wording: &mut Wording,
     root: taffy::NodeId,
     space: taffy::geometry::Size<AvailableSpace>,
   ) {
     wording
-      .compute_layout_with_measure(root, space, |input, _, words, _| {
-        let known = input.known_dimensions;
-        let limit = known.width.unwrap_or(match input.available_space.width {
-          AvailableSpace::Definite(width) => width,
-          AvailableSpace::MinContent => 0.,
-          AvailableSpace::MaxContent => f32::INFINITY,
-        });
-        let (mut widest, mut lines, mut line) = (0_f32, 0_u8, None::<f32>);
+      .compute_layout_with_measure(root, space, |input, _, words, style| {
+        taffy::compute_leaf_layout(
+          input,
+          style,
+          |_, _| 0.,
+          |known, available| {
+            let limit = known.width.unwrap_or(match available.width {
+              AvailableSpace::Definite(width) => width,
+              AvailableSpace::MinContent => 0.,
+              AvailableSpace::MaxContent => f32::INFINITY,
+            });
+            let (mut widest, mut lines, mut line) = (0_f32, 0_u8, None::<f32>);
 
-        for word in words.map_or(&[][..], |words| words.as_slice()) {
-          line = Some(match line {
-            Some(width) if width + 1. + word <= limit => width + 1. + word,
-            Some(width) => {
+            for word in words.map_or(&[][..], |words| words.as_slice()) {
+              line = Some(match line {
+                Some(width) if width + 1. + word <= limit => width + 1. + word,
+                Some(width) => {
+                  widest = widest.max(width);
+                  lines += 1;
+
+                  *word
+                }
+                None => *word,
+              });
+            }
+
+            if let Some(width) = line {
               widest = widest.max(width);
               lines += 1;
-
-              *word
             }
-            None => *word,
-          });
-        }
 
-        if let Some(width) = line {
-          widest = widest.max(width);
-          lines += 1;
-        }
-
-        taffy::tree::LayoutOutput::from_outer_size(taffy::geometry::Size {
-          width: known.width.unwrap_or(widest),
-          height: known.height.unwrap_or(f32::from(lines)),
-        })
+            taffy::geometry::Size {
+              width: known.width.unwrap_or(widest),
+              height: known.height.unwrap_or(f32::from(lines)),
+            }
+          },
+        )
       })
       .unwrap();
   }
@@ -1595,6 +1601,7 @@ mod tests {
 
     assert_eq!(rectangle(&wording, column), [0., 0., 1., 9.]);
   }
+
   /// Items that fill a wrapping row exactly stay on one line where the row is stretched to its
   /// own max-content width, its border taken off again.
   #[test]
@@ -1722,6 +1729,7 @@ mod tests {
 
     assert_eq!(rectangle(&wording, outer), [0.; 4]);
   }
+
   /// A wrapping column with a max height wraps against it inside a column of automatic height,
   /// as its own intrinsic height wrapped.
   #[test]
@@ -1760,5 +1768,160 @@ mod tests {
 
     assert_eq!(rectangle(&wording, empty), [0.; 4]);
     assert_eq!(rectangle(&wording, padded), [0., 0., 2., 2.]);
+  }
+
+  /// A box at an aspect ratio whose width and height are automatic is as wide as its border's
+  /// height through the ratio, its content being narrower: empty, in a row and at the start of a
+  /// grid, and holding a narrower box as a flex or grid container, in a row.
+  #[test]
+  fn an_empty_box_at_a_ratio_is_as_wide_as_its_border_through_it() {
+    let mut wording = Wording::new();
+    let style = taffy::style::Style {
+      aspect_ratio: Some(0.5),
+      border: taffy::geometry::Rect {
+        left: length(0.),
+        right: length(0.),
+        top: length(0.),
+        bottom: length(1.),
+      },
+      ..single()
+    };
+    let flexed = wording.new_leaf(style.clone()).unwrap();
+    let row = wording
+      .new_with_children(flex(FlexDirection::Row), &[flexed])
+      .unwrap();
+    let placed = wording.new_leaf(style.clone()).unwrap();
+    let grid = wording
+      .new_with_children(
+        taffy::style::Style {
+          display: Display::Grid,
+          justify_items: AlignItems::START,
+          ..taffy::style::Style::default()
+        },
+        &[placed],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, row, space(None, None));
+    lay_out(&mut wording, grid, space(Some(10.), None));
+
+    assert_eq!(rectangle(&wording, flexed), [0., 0., 0.5, 1.]);
+    assert_eq!(rectangle(&wording, placed), [0., 0., 0.5, 1.]);
+
+    for display in [Display::Flex, Display::Grid] {
+      let narrow = wording.new_leaf(rigid(0.25, 2.5)).unwrap();
+      let holding = wording
+        .new_with_children(
+          taffy::style::Style {
+            display,
+            ..style.clone()
+          },
+          &[narrow],
+        )
+        .unwrap();
+      let row = wording
+        .new_with_children(
+          taffy::style::Style {
+            align_items: AlignItems::START,
+            ..flex(FlexDirection::Row)
+          },
+          &[holding],
+        )
+        .unwrap();
+
+      lay_out(&mut wording, row, space(None, None));
+
+      assert_eq!(
+        rectangle(&wording, holding),
+        [0., 0., 0.5, 3.5],
+        "{display:?}"
+      );
+    }
+  }
+
+  /// A wrapping column whose width is not given is as wide as its widest item at min-content,
+  /// its lines laid out at that width.
+  #[test]
+  fn a_wrapping_column_settles_its_width_before_its_lines() {
+    let mut wording = Wording::new();
+    let first = wording
+      .new_leaf_with_context(taffy::style::Style::default(), vec![4., 2.5, 1.])
+      .unwrap();
+    let second = wording
+      .new_leaf_with_context(taffy::style::Style::default(), vec![1., 4.75])
+      .unwrap();
+    let column = wording
+      .new_with_children(
+        taffy::style::Style {
+          flex_wrap: FlexWrap::Wrap,
+          ..flex(FlexDirection::Column)
+        },
+        &[first, second],
+      )
+      .unwrap();
+    let row = wording
+      .new_with_children(
+        taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: length(0.),
+            height: length(4.),
+          },
+          ..flex(FlexDirection::Row)
+        },
+        &[column],
+      )
+      .unwrap();
+
+    lay_out(&mut wording, row, space(None, None));
+
+    assert_eq!(rectangle(&wording, column), [0., 0., 4.75, 4.]);
+    assert_eq!(rectangle(&wording, second), [0., 2., 4.75, 2.]);
+  }
+
+  /// A wrapping column of a given height whose width is not is as wide as its widest item at
+  /// min-content and as its lines at max-content.
+  #[test]
+  fn a_wrapping_column_is_as_wide_as_its_widest_item_at_min_content() {
+    let mut wording = Wording::new();
+    let mut column = |row_width: Option<f32>| {
+      let narrow = wording.new_leaf(rigid(0.625, 2.)).unwrap();
+      let wide = wording.new_leaf(rigid(1.25, 2.)).unwrap();
+      let column = wording
+        .new_with_children(
+          taffy::style::Style {
+            size: taffy::geometry::Size {
+              width: auto(),
+              height: length(2.),
+            },
+            flex_wrap: FlexWrap::Wrap,
+            ..flex(FlexDirection::Column)
+          },
+          &[narrow, wide],
+        )
+        .unwrap();
+      let row = wording
+        .new_with_children(
+          taffy::style::Style {
+            size: taffy::geometry::Size {
+              width: row_width.map_or(auto(), length),
+              height: auto(),
+            },
+            align_items: AlignItems::START,
+            ..flex(FlexDirection::Row)
+          },
+          &[column],
+        )
+        .unwrap();
+
+      (row, column)
+    };
+    let (shrunk_row, shrunk) = column(Some(0.));
+    let (free_row, free) = column(None);
+
+    lay_out(&mut wording, shrunk_row, space(None, None));
+    lay_out(&mut wording, free_row, space(None, None));
+
+    assert_eq!(rectangle(&wording, shrunk)[2], 1.25);
+    assert_eq!(rectangle(&wording, free)[2], 1.875);
   }
 }

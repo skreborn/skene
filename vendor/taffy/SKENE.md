@@ -5,7 +5,8 @@ house rules do not reach it.
 
 Skene's changes, each marked `Skene:` in the source. Each is held by a reproduction in
 skene-layout's tests, and `UPSTREAM.md` holds the reports to offer, one per change. All but the
-first two make a box lay out alike whatever space it is given, as Chromium lays it out: laid out
+first two and the last make a box lay out alike whatever space it is given, as Chromium lays it
+out: laid out
 at its natural (max-content) height and then at that height as a definite space, or as its own
 height, a box keeps its size and every box beneath it keeps its place, which skene-layout's tests
 hold over random trees.
@@ -77,5 +78,19 @@ hold over random trees.
   (`Style::resolves_parent_height`): a box whose own height, min-height or max-height is a
   percentage is served a cached size only for the parent height it was computed against. Taffy
   compared the parent's width alone.
+- compute/flexbox.rs (`compute_flexbox_layout`, `column_wrap_width`): a wrapping column whose
+  width is not given settles its width before it breaks its lines, as CSS Flexbox sizes it and
+  Chromium lays it out (its largest min-content width contribution at min-content, the width of
+  the lines its items break into in their largest max-content contribution at max-content, and
+  a definite space clamped between the two), and lays its lines out at that width. Taffy broke
+  the lines with the items measured in the space the column was given and took its width from
+  them, so a definite height could widen it as if it wrapped where Chromium keeps its width.
+- compute/mod.rs (`automatic_ratio_width`), compute/leaf.rs (`compute_leaf_layout`),
+  compute/flexbox.rs (`compute_flexbox_layout`) and compute/grid/mod.rs (`compute_grid_layout`):
+  a border-box box at an aspect ratio whose width and height are both automatic is at least as
+  wide as its padding and border's height through the ratio, its own greatest width capping it,
+  as Chromium sizes its min- and max-content widths; a flex or grid container its content leaves
+  narrower is laid out again at that width. Taffy took its width from its content alone, so an
+  empty box at a ratio was no wider than its padding and border.
 
 The licence file (LICENSE) is the upstream repository's; the published crate carries none.

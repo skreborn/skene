@@ -233,6 +233,28 @@ pub fn compute_grid_layout<Tree: LayoutGridContainer>(
     node: NodeId,
     inputs: LayoutInput,
 ) -> LayoutOutput {
+    // Skene: a box at an aspect ratio whose width and height are both automatic is laid out again
+    // at its `automatic_ratio_width` where its content leaves it narrower. Upstream took its width
+    // from its content alone.
+    let least = {
+        let style = tree.get_grid_container_style(node);
+
+        super::automatic_ratio_width(&style, &inputs, |val, basis| tree.calc(val, basis))
+    };
+    let output = lay_out_grid(tree, node, inputs);
+
+    match least {
+        Some(width) if output.size.width < width => {
+            let known_dimensions = Size { width: Some(width), height: None };
+
+            lay_out_grid(tree, node, LayoutInput { known_dimensions, ..inputs })
+        }
+        _ => output,
+    }
+}
+
+/// Skene: [`compute_grid_layout`] at the width its inputs give.
+fn lay_out_grid<Tree: LayoutGridContainer>(tree: &mut Tree, node: NodeId, inputs: LayoutInput) -> LayoutOutput {
     let LayoutInput { known_dimensions, run_mode, .. } = inputs;
 
     let style = tree.get_grid_container_style(node);

@@ -145,10 +145,17 @@ where
         },
         available_space,
     );
-    let clamped_size = known_dimensions
-        .or(node_size)
-        .unwrap_or(measured_size + content_box_inset.sum_axes())
-        .maybe_clamp(node_min_size, node_max_size);
+    let mut content_size = measured_size + content_box_inset.sum_axes();
+
+    // Skene: a box at an aspect ratio whose width and height are both automatic is at least as
+    // wide as `automatic_ratio_width`. Upstream took its width from its content alone, so an
+    // empty box at a ratio was no wider than its padding and border.
+    if let Some(width) = super::automatic_ratio_width(style, &inputs, &resolve_calc_value) {
+        content_size.width = f32_max(content_size.width, width);
+    }
+
+    let clamped_size =
+        known_dimensions.or(node_size).unwrap_or(content_size).maybe_clamp(node_min_size, node_max_size);
     let size = Size {
         width: clamped_size.width,
         height: f32_max(clamped_size.height, aspect_ratio.map(|ratio| clamped_size.width / ratio).unwrap_or(0.0)),

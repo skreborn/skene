@@ -63,6 +63,42 @@ use crate::util::sys::{round, Vec};
 use crate::util::ResolveOrZero;
 use crate::{CacheTree, MaybeMath, MaybeResolve};
 
+/// Skene: the least width a border-box box at an aspect ratio whose width and height are both
+/// automatic takes: its padding and border's height through the ratio (its automatic least height
+/// transferred, <https://www.w3.org/TR/css-sizing-4/#aspect-ratio-size-transfers>), its own greatest
+/// width capping it, as Chromium sizes its min- and max-content widths. `None` for any other box.
+pub(crate) fn automatic_ratio_width(
+    style: &impl CoreStyle,
+    inputs: &LayoutInput,
+    calc: impl Fn(*const (), f32) -> f32,
+) -> Option<f32> {
+    let ratio = style.aspect_ratio()?;
+    let calc = &calc;
+
+    if style.box_sizing() != crate::BoxSizing::BorderBox
+        || inputs.known_dimensions.width.is_some()
+        || inputs.known_dimensions.height.is_some()
+    {
+        return None;
+    }
+
+    let inherent = inputs.sizing_mode == SizingMode::InherentSize;
+
+    if inherent {
+        let size = style.size().maybe_resolve(inputs.parent_size, calc);
+
+        if size.width.is_some() || size.height.is_some() {
+            return None;
+        }
+    }
+
+    let padding = style.padding().resolve_or_zero(inputs.parent_size.width, calc);
+    let border = style.border().resolve_or_zero(inputs.parent_size.width, calc);
+    let width = (padding + border).vertical_axis_sum() * ratio;
+
+    Some(if inherent { width.maybe_min(style.max_size().maybe_resolve(inputs.parent_size, calc).width) } else { width })
+}
+
 /// Compute layout for the root node in the tree
 ///
 /// The root's containing block is the initial containing block (ICB), which has the dimensions of the

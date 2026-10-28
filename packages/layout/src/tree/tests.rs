@@ -1010,8 +1010,94 @@ fn a_scrolling_box_is_placed_with_its_overflow_and_how_far_it_scrolls() {
       scene.tree.layout(run),
       Some(Placed {
         rect: Rect::new(Point::new(6., 7.), Size::new(100., 80.)),
+        overflow: Rect::new(Point::new(0., 0.), Size::new(100., 80.)),
         ..Placed::default()
       }),
+      "decorated: {decorated}"
+    );
+  }
+}
+
+/// A box laid out in full to read its baseline while its parent is only sized leaves no
+/// layout behind once the parent lays it out again, the boxes each a run of their
+/// container's engine or a container of their own.
+#[test]
+fn a_baseline_read_while_sizing_leaves_no_layout_behind() {
+  for decorated in [false, true] {
+    let mut scene = Scene::new(false);
+    let row_style = |height: taffy::style::Dimension, align: taffy::style::AlignItems| Style {
+      display: Display::Flex,
+      size: taffy::geometry::Size {
+        width: taffy::style::Dimension::auto(),
+        height,
+      },
+      align_items: align,
+      ..Style::default()
+    };
+    let (content, _) = scene.run(1., 1.5);
+    let stretched = scene.add(
+      decorated,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[content],
+    );
+    let zero = scene.add(
+      decorated,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[stretched],
+    );
+    let sibling = scene.add(decorated, &BoxStyle::default(), Layout::Single, false, &[]);
+    let baseline = scene.add(
+      decorated,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[zero, sibling],
+    );
+    let row = scene.add(
+      true,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[baseline],
+    );
+    let auto = taffy::style::Dimension::auto();
+    let normal = taffy::style::AlignItems::NORMAL;
+
+    scene.tree.set_style(stretched, row_style(auto, normal));
+    scene.tree.set_style(
+      zero,
+      row_style(taffy::style::Dimension::percent(0.), normal),
+    );
+    scene.tree.set_style(sibling, Style::default());
+    scene.tree.set_style(
+      baseline,
+      row_style(auto, taffy::style::AlignItems::BASELINE),
+    );
+    scene.tree.set_style(row, row_style(auto, normal));
+
+    for height in [AvailableSpace::MaxContent, AvailableSpace::Definite(1.5)] {
+      scene.tree.compute(
+        row,
+        taffy::geometry::Size {
+          width: AvailableSpace::MaxContent,
+          height,
+        },
+      );
+    }
+
+    assert_eq!(
+      scene
+        .tree
+        .layout(stretched)
+        .expect("a node of the tree")
+        .rect
+        .size
+        .height,
+      0.,
       "decorated: {decorated}"
     );
   }

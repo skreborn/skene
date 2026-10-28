@@ -12,6 +12,14 @@ supersedes there.
 
 ## Decided against
 
+- **Taffy from crates.io, its defects worked around in Skene's code** (2026-10-28), the
+  plan's crates.io taffy 0.15.1 kept unpatched and `skene-layout` stepping around what the
+  oracle finds wrong in it: a workaround cannot keep a layout equal to one taffy tree's bit
+  for bit, which the oracle holds `Tree` to, and a fix belongs where the defect is. Taffy is
+  carried in `vendor/taffy` through `[patch.crates-io]`, each change marked `Skene:` and
+  listed in its `SKENE.md`, reproduced in `skene-layout`'s tests against Chromium's numbers,
+  and reported in its `UPSTREAM.md` for the author to file. Revisit when a taffy release
+  carries the changes.
 - **A small taffy tree owned by each container (the prototype's `ContainerLayout`) with
   epochs** (2026-10-28), each container holding a tree of its own members and an epoch
   telling a stale measure from a fresh one: `skene-layout`'s `Tree` keeps one store
@@ -35,8 +43,8 @@ supersedes there.
 - **A scene walk revisiting the moved nodes alone (`Tree::lay_out_revisited`)**
   (2026-10-27), rewriting the revisited nodes and the leaves their text flows in on the
   tree the last walk left, and falling back to a whole walk where a node's part changed
-  its shape: the per-container engine, one persistent taffy tree per decorated
-  `Container` with its layout-only boxes folded in, and the shared `Restyle`'s revisit
+  its shape: the per-container engine, one persistent taffy tree per decorated box
+  with its layout-only boxes folded in, and the shared `Restyle`'s revisit
   set do its work. Revisit when a structure change's relayout dominates a frame.
 - **A text trimmed as `text-box-trim` trims it (`TextFlow::trimmed`)** (2026-10-27), a
   flow's first line cut to its highest cap height and its last to its baseline: beyond
@@ -58,7 +66,8 @@ supersedes there.
   platform view there while the drawn runtime keeps a taffy tree per layout box: one
   creation fact (`BoxFacts::decorated`) tells a decorated box from a layout-only one, and
   every platform but the web folds the layout-only boxes (`Row`, `Column`, `Grid`,
-  `Stack`) into their nearest decorated `Container`'s tree by it. Revisit when the fold
+  `Stack`) into their nearest decorated box's tree by it (a `Container`'s, an overlay's,
+  a control's, a native view's, the root's). Revisit when the fold
   makes a relayout slower than per-box trees on the same case. Measured at the fold
   (2026-10-28) on the terminal's frame bench of 16,000 rows, Callgrind Ir per frame
   against per-box engines, the same leaf measures and paragraph layouts in each case:

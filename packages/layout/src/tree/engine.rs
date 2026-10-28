@@ -22,6 +22,7 @@ use taffy::{
   compute_flexbox_layout,
   compute_grid_layout,
   compute_hidden_layout,
+  compute_leaf_layout,
   compute_oof_layout,
   style::{Display, Position, Style},
   tree::{Layout, LayoutInput, LayoutOutput},
@@ -292,13 +293,11 @@ impl<'t, C: Leaf> Engine<'t, C> {
 
   /// Lays out `id`, a member of this engine, as taffy's own tree dispatches it: hidden
   /// where an ancestor is not displayed or it is not, by its display where it has
-  /// children, measured by its context where it has none, and then the boxes it contains
-  /// placed where it is laid out in full.
+  /// children, by taffy's leaf algorithm over its context's measure where it has none,
+  /// and then the boxes it contains placed where it is laid out in full.
   ///
-  /// A box laid out hidden keeps its emptied cache counted as holding entries, so a write
-  /// beneath it marks the hidden ancestor; a box laid out in full while an ancestor is
-  /// being sized makes every ancestor forget its final layout; and a box whose own height
-  /// resolves against its parent's is served a cached size for that height alone.
+  /// Its caches answer as the vendored `TaffyTree`'s do, with the changes to its cache that
+  /// `vendor/taffy/SKENE.md` lists.
   fn run(
     &mut self,
     id: taffy::NodeId,
@@ -343,21 +342,28 @@ impl<'t, C: Leaf> Engine<'t, C> {
         (Display::Flex, true) => compute_flexbox_layout(engine, id, inputs),
         (Display::Grid, true) => compute_grid_layout(engine, id, inputs),
         (_, false) => {
-          let known = inputs.known_dimensions;
-          let size = slot.context.as_ref().map_or(
-            skene_foundation::Size::new(
-              known.width.unwrap_or_default(),
-              known.height.unwrap_or_default(),
-            ),
-            |context| context.measure(known, inputs.available_space),
+          let output = compute_leaf_layout(
+            inputs,
+            &slot.style,
+            |_, _| 0.,
+            |known, available| {
+              slot
+                .context
+                .as_ref()
+                .map_or(taffy::geometry::Size::ZERO, |context| {
+                  let size = context.measure(known, available);
+
+                  taffy::geometry::Size {
+                    width: size.width,
+                    height: size.height,
+                  }
+                })
+            },
           );
 
           engine.nodes.slot_mut(id).hoisted.clear();
 
-          LayoutOutput::from_outer_size(taffy::geometry::Size {
-            width: size.width,
-            height: size.height,
-          })
+          output
         }
       };
 

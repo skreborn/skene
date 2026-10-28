@@ -40,7 +40,6 @@ use taffy::{
   TaffyTree,
   prelude::AvailableSpace,
   style::{Display, Position, Style},
-  tree::LayoutOutput,
 };
 
 use super::{Leaf, Placed, Tree};
@@ -252,20 +251,22 @@ impl Oracle {
 
     self
       .taffy
-      .compute_layout_with_measure(id, available, |input, _, context, _| {
-        let known = input.known_dimensions;
-        let size = context.map_or(
-          skene_foundation::Size::new(
-            known.width.unwrap_or_default(),
-            known.height.unwrap_or_default(),
-          ),
-          |context| context.measure(known, input.available_space),
-        );
+      .compute_layout_with_measure(id, available, |input, _, context, style| {
+        taffy::compute_leaf_layout(
+          input,
+          style,
+          |_, _| 0.,
+          |known, available| {
+            context.map_or(taffy::geometry::Size::ZERO, |context| {
+              let size = context.measure(known, available);
 
-        LayoutOutput::from_outer_size(taffy::geometry::Size {
-          width: size.width,
-          height: size.height,
-        })
+              taffy::geometry::Size {
+                width: size.width,
+                height: size.height,
+              }
+            })
+          },
+        )
       })
       .expect("lay the oracle out");
   }
@@ -1102,11 +1103,9 @@ impl Pair {
       taffy::style::GridTemplateComponent::Single(track) => percent(track),
       taffy::style::GridTemplateComponent::Repeat(repeat) => repeat.tracks.iter().any(percent),
     }) || style.grid_auto_rows.iter().any(percent);
-    // A least or greatest height of the box's own, which lays its children out at another
-    // height than their natural one.
+    // A least or greatest height of the box's own.
     let bounded = !style.min_size.height.is_auto() || !style.max_size.height.is_auto();
-    // An absolutely positioned box, which a space definite in both axes contains, placing and
-    // sizing it by its insets, and which lays out in flow in any other.
+    // An absolutely positioned box laid out in a definite width.
     let placed =
       style.position == Position::Absolute && matches!(width, AvailableSpace::Definite(_));
 
@@ -1124,15 +1123,9 @@ impl Pair {
 
   /// Whether `node`, given a definite height of its own, lays out reading it nowhere beneath it
   /// that [`height_free`](Self::height_free) leaves unchecked: no aspect ratio on it or beneath
-  /// it, through which a definite height sets a width; nothing beneath its children that is a
-  /// fraction of a height (a height, a least or greatest height, a flex basis in a column); and
-  /// no top or bottom inset beneath it that is a fraction, which a definite height resolves, the
-  /// height of a box stretched or flexed in a container of definite height being definite too.
-  ///
-  /// Nor a wrapping column on it or beneath it: taffy breaks such a column into lines with its
-  /// items measured before it knows its width, and takes its width from those lines, so a
-  /// definite height can widen it as if it wrapped where Chromium, settling the width first,
-  /// keeps it.
+  /// it; nothing beneath its children that is a fraction of a height (a height, a least or
+  /// greatest height, a flex basis in a column); and no top or bottom inset beneath it that is a
+  /// fraction.
   fn given_height_free(&self, node: NodeId) -> bool {
     let taffy = &self.oracle.taffy;
     let children = self.oracle.children(node);
@@ -1147,7 +1140,6 @@ impl Pair {
         .is_some_and(column);
 
       style.aspect_ratio.is_none()
-        && !(column(style) && style.flex_wrap != taffy::style::FlexWrap::NoWrap)
         && !(beneath
           && (percent_height(style) || in_column && style.flex_basis.into_raw().uses_percentage()))
         && !(*at != node
@@ -1198,8 +1190,7 @@ impl Pair {
         )
       })
       .collect();
-    // The space holds the box's vertical margins, which a layout from the box takes off it
-    // again, the space's height nudged until that leaves the box's height exactly.
+    // A space whose height less the box's vertical margins is the box's height exactly.
     let margins = laid.margin.top + laid.margin.bottom;
     let mut height = laid.size.height + margins;
 
@@ -1243,8 +1234,7 @@ impl Pair {
       },
     );
     self.tree.compute(node, space);
-    // A height given as the box's own is shared out among the boxes beneath it from the top
-    // down, so their rectangles keep it up to the rounding of the box's own size.
+    // Each rectangle beneath the box held up to the rounding of the box's own size.
     self.hold(
       node,
       &laid,

@@ -257,6 +257,28 @@ pub fn compute_flexbox_layout(
     node: NodeId,
     inputs: LayoutInput,
 ) -> LayoutOutput {
+    // Skene: a box at an aspect ratio whose width and height are both automatic is laid out again
+    // at its `automatic_ratio_width` where its content leaves it narrower. Upstream took its width
+    // from its content alone.
+    let least = {
+        let style = tree.get_flexbox_container_style(node);
+
+        super::automatic_ratio_width(&style, &inputs, |val, basis| tree.calc(val, basis))
+    };
+    let output = lay_out_flexbox(tree, node, inputs);
+
+    match least {
+        Some(width) if output.size.width < width => {
+            let known_dimensions = Size { width: Some(width), height: None };
+
+            lay_out_flexbox(tree, node, LayoutInput { known_dimensions, ..inputs })
+        }
+        _ => output,
+    }
+}
+
+/// Skene: [`compute_flexbox_layout`] at the width its inputs give.
+fn lay_out_flexbox(tree: &mut impl LayoutFlexboxContainer, node: NodeId, inputs: LayoutInput) -> LayoutOutput {
     let LayoutInput { known_dimensions, parent_size, run_mode, .. } = inputs;
     let style = tree.get_flexbox_container_style(node);
 
@@ -324,6 +346,7 @@ pub fn compute_flexbox_layout(
     }
 
     debug_log!("FLEX:", dbg:style.flex_direction());
+    let is_column_wrap = style.flex_direction().is_column() && style.flex_wrap().is_multi_line();
     drop(style);
 
     // Normalize the definiteness flags: they only apply to dimensions which were passed in as known
@@ -331,12 +354,24 @@ pub fn compute_flexbox_layout(
     let known_dimensions_are_definite = inputs
         .known_dimensions_are_definite
         .zip_map(known_dimensions, |is_definite, known_dimension| is_definite || known_dimension.is_none());
+    let mut inputs =
+        LayoutInput { known_dimensions: styled_based_known_dimensions, known_dimensions_are_definite, ..inputs };
 
-    let mut output = compute_preliminary(
-        tree,
-        node,
-        LayoutInput { known_dimensions: styled_based_known_dimensions, known_dimensions_are_definite, ..inputs },
-    );
+    // Skene: a wrapping column whose width is not given settles its width before it breaks its
+    // lines, and lays them out at that width (see `column_wrap_width`). Upstream broke the lines
+    // with the items measured in the space the column was given and took its width from them.
+    if is_column_wrap && styled_based_known_dimensions.width.is_none() && tree.child_count(node) > 0 {
+        let width = column_wrap_width(tree, node, inputs);
+
+        if run_mode == RunMode::ComputeSize && inputs.axis == RequestedAxis::Horizontal {
+            return LayoutOutput::from_outer_size(Size { width, height: 0.0 });
+        }
+
+        inputs.known_dimensions.width = Some(width);
+        inputs.known_dimensions_are_definite.width = true;
+    }
+
+    let mut output = compute_preliminary(tree, node, inputs);
 
     // Layout containment suppresses the box's baseline for baseline-alignment purposes
     if contain.suppresses_baseline() {
@@ -344,6 +379,91 @@ pub fn compute_flexbox_layout(
     }
 
     output
+}
+
+/// Skene: the width of a wrapping column whose width is not given, as CSS Flexbox sizes it
+/// (<https://www.w3.org/TR/css-flexbox-1/#intrinsic-cross-sizes>) and Chromium lays it out: under
+/// a min-content constraint, its items' largest min-content width contribution; under a
+/// max-content constraint, the width of the lines its items break into when each is laid out in
+/// their largest max-content width contribution; in a definite space, that space clamped between
+/// the two. Its padding and border are added, and its own least and greatest widths clamp it.
+fn column_wrap_width(tree: &mut impl LayoutFlexboxContainer, node: NodeId, inputs: LayoutInput) -> f32 {
+    let constants = compute_constants(
+        tree,
+        tree.get_flexbox_container_style(node),
+        inputs.known_dimensions,
+        inputs.known_dimensions_are_definite,
+        inputs.parent_size,
+        inputs.available_space,
+    );
+    let items = generate_anonymous_flex_items(tree, node, &constants);
+    let inset = constants.content_box_inset.horizontal_axis_sum();
+    let floor = inset - constants.scrollbar_gutter.x;
+    let min_content = |tree: &mut _| {
+        (largest_width_contribution(tree, &constants, &items, AvailableSpace::MinContent) + inset)
+            .maybe_clamp(constants.min_size.width, constants.max_size.width)
+            .max(floor)
+    };
+    let max_content = |tree: &mut _| {
+        let space = largest_width_contribution(tree, &constants, &items, AvailableSpace::MaxContent) + inset;
+        let lines = LayoutInput {
+            run_mode: RunMode::ComputeSize,
+            axis: RequestedAxis::Both,
+            available_space: Size { width: AvailableSpace::Definite(space), ..inputs.available_space },
+            ..inputs
+        };
+
+        compute_preliminary(tree, node, lines).size.width
+    };
+
+    match inputs.available_space.width {
+        AvailableSpace::MinContent => min_content(tree),
+        AvailableSpace::MaxContent => max_content(tree),
+        AvailableSpace::Definite(space) => {
+            let least = min_content(tree);
+
+            space.min(max_content(tree)).max(least)
+        }
+    }
+}
+
+/// Skene: the largest outer width any of a column's `items` contributes under `constraint`: its
+/// own width where it is given, else its width measured under the constraint, clamped by its
+/// least and greatest widths (those its height transfers through its aspect ratio included) and
+/// floored at its padding and border, its horizontal margins added.
+fn largest_width_contribution(
+    tree: &mut impl LayoutFlexboxContainer,
+    constants: &AlgoConstants,
+    items: &[FlexItem],
+    constraint: AvailableSpace,
+) -> f32 {
+    items
+        .iter()
+        .map(|item| {
+            let least = item.min_size.maybe_apply_aspect_ratio(item.aspect_ratio).width;
+            let greatest = item.max_size.maybe_apply_aspect_ratio(item.aspect_ratio).width;
+            let width = item.size.width.unwrap_or_else(|| {
+                tree.compute_child_layout(
+                    item.node,
+                    LayoutInput {
+                        run_mode: RunMode::ComputeSize,
+                        sizing_mode: SizingMode::ContentSize,
+                        axis: RequestedAxis::Horizontal,
+                        known_dimensions: Size { width: None, height: item.size.height },
+                        known_dimensions_are_definite: Size { width: true, height: true },
+                        parent_size: constants.node_inner_size,
+                        available_space: Size { width: constraint, height: AvailableSpace::MaxContent },
+                        vertical_margins_are_collapsible: Line::FALSE,
+                    },
+                )
+                .size
+                .width
+            });
+
+            width.maybe_clamp(least, greatest).max((item.padding + item.border).horizontal_axis_sum())
+                + item.margin.horizontal_axis_sum()
+        })
+        .fold(0.0, f32_max)
 }
 
 /// Compute a preliminary size for an item

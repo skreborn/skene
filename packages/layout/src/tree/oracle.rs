@@ -831,10 +831,7 @@ impl Pair {
       3 => self.reorder(node, *second),
       4 => self.adopt(node, *second),
       5 => self.set_children(node, &[]),
-      6 => {
-        self.tree.mark_dirty(node);
-        self.oracle.mark_dirty(node);
-      }
+      6 => self.remeasure(node, *second),
       7 => {
         if node != self.root {
           self.remove(node);
@@ -877,6 +874,30 @@ impl Pair {
       "a repaint's answer"
     );
     assert!(!changed, "a paint-only change keeps the measure");
+  }
+
+  /// Marks `node` for the next layout, after giving its leaf, where it has one, another
+  /// word in place where `pick` says so.
+  fn remeasure(&mut self, node: NodeId, pick: u8) {
+    if pick.is_multiple_of(2) {
+      let word = f32::from(pick % 7) * 0.75 + 1.;
+
+      if let Some(leaf) = self.tree.context_mut(node) {
+        leaf.words.push(word);
+      }
+
+      if let Some(leaf) = self
+        .oracle
+        .nodes
+        .get(&node)
+        .and_then(|id| self.oracle.taffy.get_node_context_mut(*id))
+      {
+        leaf.words.push(word);
+      }
+    }
+
+    self.tree.mark_dirty(node);
+    self.oracle.mark_dirty(node);
   }
 
   /// Gives `node` its children turned and maybe reversed, as `pick` says, with one of the
@@ -1006,10 +1027,16 @@ impl Pair {
     self.check();
   }
 
-  /// Holds every node's layouts and mark to the oracle's.
+  /// Holds every node's leaf, layouts and mark to the oracle's.
   fn check(&self) {
     for (node, id) in &self.oracle.nodes {
       assert!(self.tree.contains(*node), "{node:?} in the tree");
+
+      assert_eq!(
+        self.tree.context(*node),
+        self.oracle.taffy.get_node_context(*id),
+        "{node:?}'s leaf"
+      );
 
       assert_eq!(
         self.tree.layout(*node).map(bits),
@@ -1061,8 +1088,8 @@ proptest! {
 
   /// Any tree a scene lays out, written by any run of writes and laid out from its root
   /// or from an inline box in any space, rounded or not, lays every node out as one taffy
-  /// tree given the same writes does, bit for bit, with the same marks and every leaf
-  /// measured as often.
+  /// tree given the same writes does, bit for bit, with the same leaves and marks and
+  /// every leaf measured as often.
   #[test]
   fn the_tree_lays_out_as_one_taffy_tree(
     rounding in any::<bool>(),

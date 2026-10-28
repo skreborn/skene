@@ -967,4 +967,75 @@ mod tests {
 
     assert_eq!(taffy.grid_auto_columns, Vec::new());
   }
+
+  /// The definite space every hoisting test lays its root out in.
+  const SPACE: taffy::geometry::Size<AvailableSpace> = taffy::geometry::Size {
+    width: AvailableSpace::Definite(10.),
+    height: AvailableSpace::Definite(10.),
+  };
+
+  /// A containing block whose last child, an absolute one, is removed lays out as an empty
+  /// leaf again.
+  #[test]
+  fn a_box_that_lost_its_last_absolute_child_lays_out_again() {
+    let mut taffy: taffy::TaffyTree<()> = taffy::TaffyTree::new();
+
+    let child = taffy
+      .new_leaf(taffy::style::Style {
+        position: taffy::style::Position::Absolute,
+        ..taffy::style::Style::default()
+      })
+      .unwrap();
+
+    let root = taffy
+      .new_with_children(taffy::style::Style::default(), &[child])
+      .unwrap();
+
+    taffy.compute_layout(root, SPACE).unwrap();
+    taffy.remove(child).unwrap();
+    taffy.compute_layout(root, SPACE).unwrap();
+
+    assert_eq!(taffy.layout(root).unwrap().size.width, 0.);
+  }
+
+  /// A containing block inside a hidden subtree drops the absolute children it held, so
+  /// removing one while it is hidden leaves nothing for the next layout to reach.
+  #[test]
+  fn a_hidden_box_drops_the_absolute_children_it_held() {
+    let mut taffy: taffy::TaffyTree<()> = taffy::TaffyTree::new();
+    let absolute = taffy::style::Style {
+      position: taffy::style::Position::Absolute,
+      ..taffy::style::Style::default()
+    };
+    let pinned = taffy.new_leaf(absolute.clone()).unwrap();
+    let other = taffy.new_leaf(taffy::style::Style::default()).unwrap();
+
+    let held = taffy
+      .new_with_children(taffy::style::Style::default(), &[pinned, other])
+      .unwrap();
+
+    let overlay = taffy.new_with_children(absolute.clone(), &[held]).unwrap();
+
+    let root = taffy
+      .new_with_children(taffy::style::Style::default(), &[overlay])
+      .unwrap();
+
+    taffy.compute_layout(root, SPACE).unwrap();
+
+    taffy
+      .set_style(
+        overlay,
+        taffy::style::Style {
+          display: Display::None,
+          ..absolute
+        },
+      )
+      .unwrap();
+
+    taffy.compute_layout(root, SPACE).unwrap();
+    taffy.remove(pinned).unwrap();
+    taffy.compute_layout(root, SPACE).unwrap();
+
+    assert_eq!(taffy.layout(held).unwrap().size.width, 0.);
+  }
 }

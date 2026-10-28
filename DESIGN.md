@@ -1181,7 +1181,10 @@ Condition     = Media | State | And | Or
   decorated box, and per-child properties ride in wrappers. Every platform but the web
   maps a resolved style onto taffy through `skene-layout` once (`BoxLayout`, generic
   over the scalar, a border taking a unit per edge drawn in cells and its width in
-  pixels) and lays out on its `Tree`, keyed by the scene's nodes and kept across frames,
+  pixels) and lays out on its `Tree`, over the taffy the workspace carries in
+  `vendor/taffy` (0.15.1, its one change marked `Skene:` and listed in its `SKENE.md`: a
+  hidden box and a box with no children clear the out-of-flow children hoisted onto
+  them, where taffy kept a removed child's id and panicked on the next layout), keyed by the scene's nodes and kept across frames,
   each node's style, text and children written where they changed, revisiting the nodes
   the shared `Restyle` says moved (those queued, in motion or reading an interaction
   that moved, each with the leaf its text flows in, or every node once the definitions,

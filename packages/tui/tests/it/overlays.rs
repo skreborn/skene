@@ -846,3 +846,51 @@ fn an_open_modal_blocks_the_autofocus_beneath_it() {
     );
   });
 }
+
+/// A pinned child rebuilt beneath a closed modal lays out, and shows once the modal opens.
+#[test]
+fn a_pinned_child_rebuilt_under_a_closed_modal_shows_on_opening() {
+  with_platform(|| {
+    let open = Signal::new(true);
+    let version = Signal::new(0);
+
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("page").into_any(),
+          Overlay::modal()
+            .bind_open(open)
+            .set_child(AnyView::new(move || {
+              Container::new()
+                .set_width(10)
+                .set_height(3)
+                .set_child(Stack::new().derive_child(move || {
+                  let version = version.get();
+
+                  Pinned::new()
+                    .set_edges(Inset::all(0))
+                    .set_child(Text::new(format!("x{version}")))
+                }))
+                .build()
+            }))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert!(testing::render_to_text(20, 5).contains("x0"));
+
+    open.set(false);
+    let _ = testing::render_to_text(20, 5);
+
+    version.set(1);
+    let closed = testing::render_to_text(20, 5);
+
+    assert!(!closed.contains('x'), "the closed modal shows nothing");
+
+    open.set(true);
+
+    assert!(testing::render_to_text(20, 5).contains("x1"));
+  });
+}

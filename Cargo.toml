@@ -67,6 +67,7 @@ web-sys = "0.3"
 [patch.crates-io]
 parley = { path = "vendor/parley" }
 parley_engine = { path = "vendor/parley_engine" }
+taffy = { path = "vendor/taffy" }
 
 [profile.dev]
 debug = "line-tables-only"

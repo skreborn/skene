@@ -39,9 +39,7 @@ in a code comment.
     consulting the table until then.
     - Layout: a paragraph lays its inline boxes out within its own measure; layout
     settles before a frame commits, the terminal's settle loop becoming the frame
-    contract, and `Painted` resizes land with the layout commit. The per-container
-    engine's counts on the 1,000-row probe join the 2026-10-15 entry in `DECISIONS.md`
-    and the whole-scene tree's entry beside its numbers.
+    contract, and `Painted` resizes land with the layout commit.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color
     transitions on it; `Condition` resolution against the runtime's environment and
     pointer through the one resolution point; the spine's `Window` owning its
@@ -447,26 +445,29 @@ in a code comment.
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config
-    "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`);
-    selection spans compute once per frame; clusters re-segment around an edit, and undo
-    stores range diffs.
+    "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`),
+    each child it reads building an owned `Placed`, scroll limits included, about 22
+    instructions a row, 5% of the pointer move (2026-10-28); selection spans compute
+    once per frame; clusters re-segment around an edit, and undo stores range diffs.
     - Token caches take per-scope epochs in place of the generations every redefinition,
     structure change and environment change moves for every scope today, and interned
     names, so a palette change costs the number of tokens beyond the web too, in the
     spine's `ResolutionContext`, which every platform but the web resolves through; a
     resolution reports the environment it read as it reports the interaction, so a
     resize restyles only what reads the viewport.
-    - Constant factors: the lazy list reading a data source (a count and the item at an
-    index) through a Fenwick tree, and evicting measured extents; the terminal's text
-    leaves, each a paragraph of the cell engine, costing a 16k-row mount a quarter more
-    than the wrap they replaced (about 500 ms against 390) and a keyed row's relayout a
-    fifth more (72 ms against 60), taffy measuring each leaf once a relayout, three
-    times at a width it has not laid out before and seven at its mount (2026-10-27); one
-    constructable stylesheet with deferred collection and a set of adopted names;
-    release web output precompressed, fingerprinted and preloaded, a split build's
-    modules through wasm-opt as an unsplit bundle is, with one cached stylesheet shared
-    by static pages instead of inlined into each; a bundle budget the gate holds, a
-    release `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between
+    - Constant factors: the lazy list reading a data source (a count and the item at
+    an index) through a Fenwick tree, and evicting measured extents; the terminal's
+    text leaves, each a paragraph of the cell engine, costing a 16k-row mount a
+    quarter more than the wrap they replaced (about 500 ms against 390) and a keyed
+    row's relayout a fifth more (72 ms against 60), taffy measuring each leaf once a
+    relayout, three times at a width it has not laid out before and seven at its mount
+    (2026-10-27, the same under the per-container engine on 2026-10-28, its mount 1.4%
+    fewer instructions and its keyed relayout 1.4% more); one constructable stylesheet
+    with deferred collection and a set of adopted names; release web output
+    precompressed, fingerprinted and preloaded, a split build's modules through
+    wasm-opt as an unsplit bundle is, with one cached stylesheet shared by static
+    pages instead of inlined into each; a bundle budget the gate holds, a release
+    `counter` after `wasm-bindgen` having grown from 911 KB to 1.27 MB between
     2026-09-15 and 2026-10-02, `skene-web` and `skene-foundation` most of it.
     - The terminal's resized 16k-row frame measured between a twentieth and a twelfth
     slower (54 ms against 50 over eleven alternating runs, 47.5 against 45.0 over five

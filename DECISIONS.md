@@ -878,9 +878,13 @@ supersedes there.
   among 1,000 rows of three cost 34 measures on the changed row's 3 leaves, 12 flexbox
   runs and 1 grid run along its ancestors, 47 node layouts in all. `Tree` now lays each
   container out by a taffy engine of its own over one store of the scene's nodes, held
-  to that one tree's layouts, marks and measures by a proptest. Revisit when a relayout
-  under the per-container engine misses its frame budget where the whole-scene tree,
-  measured on the same change, meets it.
+  to that one tree's layouts, marks and measures by a proptest: on the same change it
+  costs 37 measures on the same 3 leaves, 12 flexbox runs and 1 grid run, 50 node
+  layouts and 3 engines entered, as the whole-scene tree does under the same taffy,
+  whose fit-content measure of a stretched flex item added one measure a leaf; on 16,000
+  rows a relayout measures each leaf once, a new width three times and a mount seven, as
+  before. Revisit when a relayout under the per-container engine misses its frame budget
+  where the whole-scene tree, measured on the same change, meets it.
 - **A component library's views generic over the realization** (2026-10-26): Simple's
   core wrote its views over `P: Realization`, stating what it needed from a medium as a
   bound on the platform's associated types, their members in a `Simple*Base` trait each
@@ -1049,21 +1053,26 @@ supersedes there.
   `#[skene_gui::test]` and a display runner giving each test process a private display
   and buses. Revisit with the test double.
 - **Taffy behind a small FFI library, one tree per root** (2026-10-15), called by each
-  platform's own layout primitive and crossed once per layout pass beside the
-  platform's own containers: one tree per window was as exact as one per container but
-  recomputed the whole window on any change, 200,000 toolkit measures for one label's
-  change at 1,000 rows where one tree per container issued 32,120 and left the
-  toolkit's measure cache to decide what recomputes. Taffy owns layout on every toolkit
-  but the web's, one small tree per container. Reaffirmed 2026-10-27, its earlier
-  revisit condition having held: a whole-scene tree over the terminal's
-  realization recomputed only what a change touched, one label changed among 1,000
-  rows of three costing 34 measures on the changed row's 3 leaves, 12 flexbox runs and
-  1 grid run along its ancestors, 47 node layouts in all, and the author kept one tree
-  per container regardless, a container being a decorated `Container` whose
-  layout-only boxes fold into its tree, so the drawn runtime and a toolkit hosting the
-  engine lay out the same trees. Revisit when a relayout under the per-container engine
-  misses its frame budget where the whole-scene tree, measured on the same change,
-  meets it.
+  platform's own layout primitive and crossed once per layout pass beside the platform's
+  own containers: one tree per window was as exact as one per container but recomputed
+  the whole window on any change, 200,000 toolkit measures for one label's change at
+  1,000 rows where one tree per container issued 32,120 and left the toolkit's measure
+  cache to decide what recomputes. Taffy owns layout on every toolkit but the web's, one
+  small tree per container. Reaffirmed 2026-10-27, its earlier revisit condition having
+  held: a whole-scene tree over the terminal's realization recomputed only what a change
+  touched, one label changed among 1,000 rows of three costing 34 measures on the
+  changed row's 3 leaves, 12 flexbox runs and 1 grid run along its ancestors, 47 node
+  layouts in all, and the author kept one tree per container regardless, a container
+  being a decorated `Container` whose layout-only boxes fold into its tree, so the drawn
+  runtime and a toolkit hosting the engine lay out the same trees. On the same probe the
+  per-container engine (2026-10-28) costs 37 measures on those 3 leaves, 12 flexbox runs
+  and 1 grid run, 50 node layouts and 3 engines entered (the root's, and the scrolling
+  `Container`'s twice), the same as the whole-scene tree under the same taffy: the 3
+  measures more come from taffy's stretched flex item measured at fit-content where its
+  line's cross size is not definite, a fix of the same day that asks each item of the
+  changed row for one size more. Revisit when a relayout under the per-container engine
+  misses its frame budget where the whole-scene tree, measured on the same change, meets
+  it.
 - **AccessKit only where a painted layer needs it** (2026-10-15), native views carrying
   their own accessibility everywhere else: Skene's views are drawn on every platform
   but the web, so AccessKit reports for every one of them, Skene carrying its changes

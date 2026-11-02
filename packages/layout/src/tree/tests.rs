@@ -1423,6 +1423,7 @@ fn a_paragraph_made_afresh_with_unsized_boxes_marks_nothing() {
       .tree
       .set_context(nested.inner, Some(Scene::boxes(&[nested.boxed], &measures)))
   );
+  assert!(!scene.tree.is_dirty(nested.inner));
   assert!(!scene.tree.is_dirty(nested.outer));
   assert!(!scene.tree.is_dirty(nested.root));
 }
@@ -1475,4 +1476,172 @@ fn removing_a_box_marks_its_paragraph() {
   scene.lay_out(nested.root, 100., 100.);
 
   assert_eq!(scene.unrounded(nested.outer).size, Size::new(9.5, 10.));
+}
+
+/// Adds to `scene` a box of the taffy style `style`, a container of its own where
+/// `decorated` says so, holding `children`.
+fn styled(scene: &mut Scene, decorated: bool, style: Style, children: &[NodeId]) -> NodeId {
+  let added = scene.fresh();
+
+  scene.tree.insert(added, decorated);
+  scene.tree.set_style(added, style);
+  scene.adopt(added, children);
+
+  added
+}
+
+/// A taffy style `width` by `height`.
+fn fixed(width: f32, height: f32) -> Style {
+  Style {
+    size: taffy::geometry::Size {
+      width: taffy::style::Dimension::length(width),
+      height: taffy::style::Dimension::length(height),
+    },
+    ..Style::default()
+  }
+}
+
+/// Insets of `left`, `right`, `top` and `bottom`, each auto where `None`.
+fn insets(
+  left: Option<f32>,
+  right: Option<f32>,
+  top: Option<f32>,
+  bottom: Option<f32>,
+) -> taffy::geometry::Rect<taffy::style::LengthPercentageAuto> {
+  let inset = |edge: Option<f32>| {
+    edge.map_or_else(
+      taffy::style::LengthPercentageAuto::auto,
+      taffy::style::LengthPercentageAuto::length,
+    )
+  };
+
+  taffy::geometry::Rect {
+    left: inset(left),
+    right: inset(right),
+    top: inset(top),
+    bottom: inset(bottom),
+  }
+}
+
+/// Adds to `scene` the boxes a paragraph and a row hold alike, each with the nodes inside
+/// it: a padded and bordered box of its own, one offset relative, a hidden one, one whose
+/// content overflows it, one that scrolls its content, and one holding a box positioned
+/// fixed.
+fn assorted(scene: &mut Scene) -> Vec<NodeId> {
+  let edges = |left: f32, right: f32, top: f32, bottom: f32| taffy::geometry::Rect {
+    left: taffy::style::LengthPercentage::length(left),
+    right: taffy::style::LengthPercentage::length(right),
+    top: taffy::style::LengthPercentage::length(top),
+    bottom: taffy::style::LengthPercentage::length(bottom),
+  };
+  let (run, _) = scene.run(2.25, 1.5);
+  let framed = Style {
+    padding: edges(0.5, 1., 0.25, 0.75),
+    border: edges(0.3, 0.3, 0.6, 0.6),
+    ..Style::default()
+  };
+  let framed = styled(scene, true, framed, &[run]);
+  let offset = Style {
+    inset: insets(Some(1.5), Some(4.), None, Some(0.5)),
+    ..fixed(3., 2.)
+  };
+  let offset = styled(scene, false, offset, &[]);
+  let (unseen, _) = scene.run(3., 3.);
+  let hidden = Style {
+    display: Display::None,
+    ..Style::default()
+  };
+  let hidden = styled(scene, false, hidden, &[unseen]);
+  let wide = styled(scene, false, fixed(8., 9.), &[]);
+  let overflowing = styled(scene, true, fixed(5., 5.), &[wide]);
+  let (scrolled, _) = scene.run(6., 7.);
+  let scrolling = Style {
+    overflow: taffy::geometry::Point {
+      x: taffy::style::Overflow::Scroll,
+      y: taffy::style::Overflow::Scroll,
+    },
+    scrollbar_width: 1.,
+    ..fixed(4., 4.)
+  };
+  let scrolling = styled(scene, false, scrolling, &[scrolled]);
+  let fixed_box = Style {
+    position: taffy::style::Position::Fixed,
+    inset: insets(Some(1.), None, Some(2.), None),
+    ..fixed(2., 2.)
+  };
+  let fixed_box = styled(scene, false, fixed_box, &[]);
+  let holding = styled(scene, false, fixed(1.5, 1.5), &[fixed_box]);
+
+  vec![
+    framed,
+    run,
+    offset,
+    hidden,
+    unseen,
+    overflowing,
+    wide,
+    scrolling,
+    scrolled,
+    holding,
+    fixed_box,
+  ]
+}
+
+/// A paragraph lays its boxes out as a row aligned at the start lays out the same boxes:
+/// every taffy layout inside it, rounded and not, equal field by field, its own included,
+/// a box offset relative, a hidden one, one whose content overflows it, one that scrolls
+/// and one holding a box positioned fixed among them.
+#[test]
+fn a_paragraph_lays_its_boxes_out_as_a_row_does() {
+  let container = Style {
+    display: Display::Flex,
+    align_items: taffy::style::AlignItems::START,
+    padding: taffy::geometry::Rect::length(1.3),
+    border: taffy::geometry::Rect::length(0.4),
+    ..Style::default()
+  };
+  let root = Style {
+    display: Display::Flex,
+    flex_direction: taffy::style::FlexDirection::Column,
+    align_items: taffy::style::AlignItems::START,
+    padding: taffy::geometry::Rect::length(0.45),
+    ..Style::default()
+  };
+  let mut scene = Scene::new(true);
+  let inside = assorted(&mut scene);
+  let boxes = [
+    inside[0], inside[2], inside[3], inside[5], inside[7], inside[9],
+  ];
+  let paragraph = styled(&mut scene, false, container.clone(), &boxes);
+  let measures = Rc::new(Cell::new(0));
+
+  scene
+    .tree
+    .set_context(paragraph, Some(Scene::boxes(&boxes, &measures)));
+
+  let first = styled(&mut scene, true, root.clone(), &[paragraph]);
+  let laid = assorted(&mut scene);
+  let items = [laid[0], laid[2], laid[3], laid[5], laid[7], laid[9]];
+  let row = styled(&mut scene, false, container, &items);
+  let second = styled(&mut scene, true, root, &[row]);
+
+  scene.lay_out(first, 100., 100.);
+  scene.lay_out(second, 100., 100.);
+
+  for (held, laid) in inside
+    .iter()
+    .chain([&paragraph])
+    .zip(laid.iter().chain([&row]))
+  {
+    assert_eq!(
+      scene.tree.taffy_unrounded_layout(*held),
+      scene.tree.taffy_unrounded_layout(*laid),
+      "unrounded"
+    );
+    assert_eq!(
+      scene.tree.taffy_layout(*held),
+      scene.tree.taffy_layout(*laid),
+      "rounded"
+    );
+  }
 }

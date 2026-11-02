@@ -40,9 +40,9 @@ pub trait Leaf {
     Vec::new()
   }
 
-  /// The nodes flowing inside the leaf as boxes, in order: its children in the [`Tree`],
-  /// each laid out at its max-content size and given to it through
-  /// [`size_box`](Self::size_box) before it measures, and placed where
+  /// The nodes flowing inside the leaf as boxes, in order, none positioned absolutely or
+  /// fixed: its children in the [`Tree`], each laid out at its max-content size and given
+  /// to it through [`size_box`](Self::size_box) before it measures, and placed where
   /// [`place`](Self::place) puts it; none by default.
   fn boxes(&self) -> impl Iterator<Item = NodeId> {
     std::iter::empty()

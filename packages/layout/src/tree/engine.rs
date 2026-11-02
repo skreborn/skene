@@ -413,6 +413,15 @@ impl<'t, C: Leaf> Engine<'t, C> {
         }),
       "a leaf's children are the boxes its context names, in order"
     );
+    debug_assert!(
+      self
+        .nodes
+        .slot(id)
+        .children
+        .iter()
+        .all(|child| !self.nodes.slot(*child).out_of_flow()),
+      "a leaf's boxes flow inside it"
+    );
 
     for index in 0..count {
       let child = self.nodes.slot(id).children[index];
@@ -469,9 +478,9 @@ impl<'t, C: Leaf> Engine<'t, C> {
   /// Places each box flowing inside the leaf `id`, laid out to `sized`, where the leaf's
   /// context places it in the content box of the leaf laid out to `output` from `inputs`,
   /// as taffy's algorithms place a child: its layout from its output and its style, a
-  /// relative box offset by its insets and a hidden one at the origin; each box's content
-  /// counted in the leaf's scrollable overflow, and the boxes positioned fixed inside it
-  /// passed on from the leaf.
+  /// relative box offset by its insets and a hidden one left as its hidden layout left it;
+  /// each box's content counted in the leaf's scrollable overflow, and the boxes
+  /// positioned fixed inside it passed on from the leaf.
   fn place_boxes(
     &mut self,
     id: taffy::NodeId,
@@ -512,8 +521,6 @@ impl<'t, C: Leaf> Engine<'t, C> {
       let style = &self.nodes.slot(child).style;
 
       if style.display == Display::None {
-        self.nodes.slot_mut(child).unrounded = Layout::with_order(order);
-
         continue;
       }
 

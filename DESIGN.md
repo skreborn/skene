@@ -1220,17 +1220,18 @@ Condition     = Media | State | And | Or
   children are all inline runs lays them out as one text, a `TextFlow` of their runs and
   inline boxes over the platform's text engine (Text, below), keeping their blanks and
   newlines as the reset's `white-space: pre-wrap` does and wrapping where the Unicode line
-  breaking algorithm allows across them and around an inline box, which the tree lays
-  out within the paragraph's own layout as the paragraph's child (`Leaf::boxes` naming
-  the children, in order): at its max-content size before the paragraph measures, given
-  to it through `Leaf::size_box`, and placed where the paragraph places it in its content
-  box, a change inside it laying the paragraph out again, a word too wide for a line of
-  its own broken where the line fills
-  as `overflow-wrap: break-word` breaks it, the blanks a line ends in hanging where it
-  wraps and taking room up to its limit before a newline or at the end, each run's line
-  box on its line's baseline, a box's bottom on it, and a run placed in a rectangle per
-  line it is on, clipped off any box beside it and off the blanks hanging past the line's
-  end.
+  breaking algorithm allows across them and around an inline box, a word too wide for a
+  line of its own broken where the line fills as `overflow-wrap: break-word` breaks it,
+  the blanks a line ends in hanging where it wraps and taking room up to its limit before
+  a newline or at the end, each run's line box on its line's baseline, a box's bottom on
+  it, and a run placed in a rectangle per line it is on, clipped off any box beside it and
+  off the blanks hanging past the line's end. The tree lays a leaf's inline boxes out
+  within the leaf's own layout, as its children (`Leaf::boxes` naming them, in order,
+  each in flow): each at its max-content size before the leaf measures, given to it
+  through `Leaf::size_box`, and placed where the leaf places it in its content box, its
+  layout set as taffy's parents set a child's, so a change inside a box lays its leaf out
+  again; the terminal's paragraph holds no boxes as children yet, laying each inline box
+  out on its own at its content's size first.
   The layout's own tests lay their text out through `skene-parley` in the pinned face
   the conformance suite draws in, Inter's regular, kept in `packages/parley/fonts`, its
   metrics unrounded (kerned, its letter spacing past each cluster, a line its font size
@@ -1523,13 +1524,14 @@ engine, over the geometry it reports.
   lines start at the left edge whatever the width (`Paragraph::is_left_anchored`).
   `skene-layout`'s `TextFlow` is a box's runs and inline boxes as one leaf: it builds
   the attributed text, a box's placeholder (U+FFFC in a platform's records) becoming an
-  `InlineBox` there alone, each box's size given by the tree (`Leaf::size_box`, and by
-  `Tree::set_context` from the box's last layout to a flow made afresh), keeps its
-  paragraph until a run's text or style or a box's size changes, a change of its runs' paint alone repainting the paragraph it keeps
-  without the leaf measured again (`Leaf::repaint_as`), places each run and box from the layout's range rectangles and inline
-  box frames, and answers which run a point is on (`run_at`) and which is nearest
-  (`nearest`), with the byte a caret there stands before, for every client: hit
-  testing, links and the document's selection.
+  `InlineBox` there alone, each box's size given where it is added or by the tree laying
+  it out (`Leaf::size_box`, and `Tree::set_context` from the box's last layout to a flow
+  made afresh), keeps its paragraph until a run's text or style or a box's size changes,
+  a change of its runs' paint alone repainting the paragraph it keeps without the leaf
+  measured again (`Leaf::repaint_as`), places each run and box from the layout's range
+  rectangles and inline box frames, and answers which run a point is on (`run_at`) and
+  which is nearest (`nearest`), with the byte a caret there stands before, for every
+  client: hit testing, links and the document's selection.
 - **Parley.** `skene-parley` is the engine over the patched Parley the workspace
   carries (`vendor/parley` and `vendor/parley_engine` through `[patch.crates-io]`, each
   change marked `Skene:` and listed in the crate's `SKENE.md`): a break never falls

@@ -1220,8 +1220,12 @@ Condition     = Media | State | And | Or
   children are all inline runs lays them out as one text, a `TextFlow` of their runs and
   inline boxes over the platform's text engine (Text, below), keeping their blanks and
   newlines as the reset's `white-space: pre-wrap` does and wrapping where the Unicode line
-  breaking algorithm allows across them and around an inline box, laid out at its
-  content's size first, a word too wide for a line of its own broken where the line fills
+  breaking algorithm allows across them and around an inline box, which the tree lays
+  out within the paragraph's own layout as the paragraph's child (`Leaf::boxes` naming
+  the children, in order): at its max-content size before the paragraph measures, given
+  to it through `Leaf::size_box`, and placed where the paragraph places it in its content
+  box, a change inside it laying the paragraph out again, a word too wide for a line of
+  its own broken where the line fills
   as `overflow-wrap: break-word` breaks it, the blanks a line ends in hanging where it
   wraps and taking room up to its limit before a newline or at the end, each run's line
   box on its line's baseline, a box's bottom on it, and a run placed in a rectangle per
@@ -1519,8 +1523,9 @@ engine, over the geometry it reports.
   lines start at the left edge whatever the width (`Paragraph::is_left_anchored`).
   `skene-layout`'s `TextFlow` is a box's runs and inline boxes as one leaf: it builds
   the attributed text, a box's placeholder (U+FFFC in a platform's records) becoming an
-  `InlineBox` there alone, keeps its paragraph until a run's text or style or a box's
-  size changes, a change of its runs' paint alone repainting the paragraph it keeps
+  `InlineBox` there alone, each box's size given by the tree (`Leaf::size_box`, and by
+  `Tree::set_context` from the box's last layout to a flow made afresh), keeps its
+  paragraph until a run's text or style or a box's size changes, a change of its runs' paint alone repainting the paragraph it keeps
   without the leaf measured again (`Leaf::repaint_as`), places each run and box from the layout's range rectangles and inline
   box frames, and answers which run a point is on (`run_at`) and which is nearest
   (`nearest`), with the byte a caret there stands before, for every client: hit

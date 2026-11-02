@@ -40,14 +40,16 @@ pub trait Leaf {
     Vec::new()
   }
 
-  /// The nodes flowing inside the leaf as boxes, which its host lays out at their
-  /// content's size and gives it through [`size_box`](Self::size_box) before it measures;
-  /// none by default.
-  fn boxes(&self) -> Vec<NodeId> {
-    Vec::new()
+  /// The nodes flowing inside the leaf as boxes, in order: its children in the [`Tree`],
+  /// each laid out at its max-content size and given to it through
+  /// [`size_box`](Self::size_box) before it measures, and placed where
+  /// [`place`](Self::place) puts it; none by default.
+  fn boxes(&self) -> impl Iterator<Item = NodeId> {
+    std::iter::empty()
   }
 
-  /// Gives the box `node` flowing inside the leaf the size it laid out at.
+  /// Gives the box `node` flowing inside the leaf the size it lays out at, its border box
+  /// at its max-content size, before the leaf measures or places it.
   fn size_box(&mut self, node: NodeId, size: Size<f32>) {
     let _ = (node, size);
   }
@@ -73,6 +75,11 @@ pub trait Leaf {
 /// its members: itself, and the nodes beneath it up to the next containers, which their
 /// own engines lay out from the whole of taffy's input. A layout is that of one taffy tree
 /// of every node, whichever nodes are containers, rounded once over the whole hierarchy.
+///
+/// A leaf whose context names boxes ([`Leaf::boxes`]) holds them as its children, in the
+/// same order: each is laid out at its max-content size before the leaf measures, and
+/// placed inside the leaf's content box where the leaf places it, so a change to a box's
+/// content lays its leaf out again.
 ///
 /// Every node contains the boxes positioned absolutely inside it: a style that leaves
 /// its position static is laid out relative, so a pinned box or an overlay is placed
@@ -181,10 +188,26 @@ impl<C: Leaf> Tree<C> {
   /// the one it held, `false` where it is the same, where it differs in paint alone, which
   /// the held one takes in place ([`Leaf::repaint_as`]) without the node measured again,
   /// or where `node` is outside the tree.
-  pub fn set_context(&mut self, node: NodeId, context: Option<C>) -> bool
+  ///
+  /// Each box the context names is given first the size its last layout left it, so a
+  /// context made afresh with its boxes unsized is the same as the one held where nothing
+  /// else changed.
+  pub fn set_context(&mut self, node: NodeId, mut context: Option<C>) -> bool
   where
     C: PartialEq,
   {
+    if let Some(next) = &mut context {
+      let boxes: Vec<NodeId> = next.boxes().collect();
+
+      for inline in boxes {
+        if let Some(held) = self.nodes.map().get(inline) {
+          let size = held.unrounded.size;
+
+          next.size_box(inline, Size::new(size.width, size.height));
+        }
+      }
+    }
+
     let Some(slot) = self.nodes.map_mut().get_mut(node)
     else {
       return false;

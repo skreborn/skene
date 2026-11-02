@@ -99,7 +99,7 @@ pub fn skene_layout::TextFlow<E, N>::eq(&self, &Self) -> bool
 impl<E: skene_foundation::text::engine::TextEngine, N: core::fmt::Debug> core::fmt::Debug for skene_layout::TextFlow<E, N>
 pub fn skene_layout::TextFlow<E, N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<E: skene_foundation::text::engine::TextEngine> skene_layout::Leaf for skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>
-pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::repaint_as(&mut self, &Self) -> bool
@@ -129,13 +129,13 @@ impl<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::ext
 pub fn skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>::fold_into(&self, &mut taffy::style::Style, skene_layout::Place)
 pub fn skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>::taffy_style(&self, skene_foundation::spine::values::layout::Layout, skene_layout::Place) -> taffy::style::Style
 pub trait skene_layout::Leaf
-pub fn skene_layout::Leaf::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::Leaf::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
 pub fn skene_layout::Leaf::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::Leaf::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
 pub fn skene_layout::Leaf::repaint_as(&mut self, &Self) -> bool
 pub fn skene_layout::Leaf::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 impl<E: skene_foundation::text::engine::TextEngine> skene_layout::Leaf for skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>
-pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::boxes(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::repaint_as(&mut self, &Self) -> bool

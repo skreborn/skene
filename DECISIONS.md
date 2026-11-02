@@ -12,6 +12,14 @@ supersedes there.
 
 ## Decided against
 
+- **A leaf's inline boxes held outside the tree's children (`Leaf::boxes` alone naming
+  them, the tree linking each to its leaf)** (2026-11-02), a paragraph's boxes kept apart
+  from its children list with a link of their own back to the paragraph: a box would hold
+  two relations to keep in step, its parent and its leaf, every walk of the hierarchy
+  (marking, hiding, removing, rounding) would need a second path for it, and
+  `Tree::set_context` would become a structural write. A leaf's boxes are its children in
+  the tree, in the order its context names them, which the engine asserts. Revisit if a
+  leaf's boxes must be laid out apart from the leaf's own layout.
 - **Taffy from crates.io, its defects worked around in Skene's code** (2026-10-28), the
   plan's crates.io taffy 0.15.1 kept unpatched and `skene-layout` stepping around what the
   oracle finds wrong in it: a workaround cannot keep a layout equal to one taffy tree's bit

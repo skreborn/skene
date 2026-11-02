@@ -14,7 +14,11 @@ use taffy::{
   LayoutFlexboxContainer,
   LayoutGridContainer,
   LayoutPartialTree,
+  MaybeResolve,
+  RequestedAxis,
+  ResolveOrZero,
   RunMode,
+  SizingMode,
   TraversePartialTree,
   TraverseTree,
   compute_block_layout,
@@ -24,11 +28,32 @@ use taffy::{
   compute_hidden_layout,
   compute_leaf_layout,
   compute_oof_layout,
-  style::{Display, Position, Style},
+  geometry::{Line, Point},
+  prelude::AvailableSpace,
+  style::{Display, Overflow, Position, Style},
   tree::{Layout, LayoutInput, LayoutOutput},
 };
 
 use super::Leaf;
+
+/// What a box flowing inside a leaf is laid out from: its max-content size, its style's
+/// own sizes inherent, in no parent's size.
+const MAX_CONTENT: LayoutInput = LayoutInput {
+  run_mode: RunMode::PerformLayout,
+  sizing_mode: SizingMode::InherentSize,
+  axis: RequestedAxis::Both,
+  known_dimensions: taffy::geometry::Size::NONE,
+  known_dimensions_are_definite: taffy::geometry::Size {
+    width: true,
+    height: true,
+  },
+  parent_size: taffy::geometry::Size::NONE,
+  available_space: taffy::geometry::Size {
+    width: AvailableSpace::MaxContent,
+    height: AvailableSpace::MaxContent,
+  },
+  vertical_margins_are_collapsible: Line::FALSE,
+};
 
 /// One node of the layout: what it is laid out from, and what its last layout left.
 pub(super) struct Slot<C> {
@@ -292,9 +317,9 @@ impl<'t, C: Leaf> Engine<'t, C> {
   }
 
   /// Lays out `id`, a member of this engine, as taffy's own tree dispatches it: hidden
-  /// where an ancestor is not displayed or it is not, by its display where it has
-  /// children, by taffy's leaf algorithm over its context's measure where it has none,
-  /// and then the boxes it contains placed where it is laid out in full.
+  /// where an ancestor is not displayed or it is not, as a [leaf](Self::leaf) where it
+  /// has no children or its context names boxes, by its display otherwise, and then the
+  /// boxes it contains placed where it is laid out in full.
   ///
   /// Its caches answer as the vendored `TaffyTree`'s do, with the changes to its cache that
   /// `vendor/taffy/SKENE.md` lists.
@@ -330,41 +355,22 @@ impl<'t, C: Leaf> Engine<'t, C> {
     let output = compute_cached_layout(self, id, inputs, |engine, id, inputs| {
       let slot = engine.nodes.slot(id);
       let display = slot.style.display;
-      let parent = !slot.children.is_empty();
-      let mut output = match (display, parent) {
+      let leaf = slot.children.is_empty()
+        || slot
+          .context
+          .as_ref()
+          .is_some_and(|context| context.boxes().next().is_some());
+      let mut output = match (display, leaf) {
         (Display::None, _) => {
           engine.nodes.slot_mut(id).hoisted.clear();
 
           compute_hidden_layout(engine, id)
         }
-        (Display::Block, true) => compute_block_layout(engine, id, inputs, block),
-        (Display::FlowRoot, true) => compute_block_layout(engine, id, inputs, None),
-        (Display::Flex, true) => compute_flexbox_layout(engine, id, inputs),
-        (Display::Grid, true) => compute_grid_layout(engine, id, inputs),
-        (_, false) => {
-          let output = compute_leaf_layout(
-            inputs,
-            &slot.style,
-            |_, _| 0.,
-            |known, available| {
-              slot
-                .context
-                .as_ref()
-                .map_or(taffy::geometry::Size::ZERO, |context| {
-                  let size = context.measure(known, available);
-
-                  taffy::geometry::Size {
-                    width: size.width,
-                    height: size.height,
-                  }
-                })
-            },
-          );
-
-          engine.nodes.slot_mut(id).hoisted.clear();
-
-          output
-        }
+        (_, true) => engine.leaf(id, inputs),
+        (Display::Block, false) => compute_block_layout(engine, id, inputs, block),
+        (Display::FlowRoot, false) => compute_block_layout(engine, id, inputs, None),
+        (Display::Flex, false) => compute_flexbox_layout(engine, id, inputs),
+        (Display::Grid, false) => compute_grid_layout(engine, id, inputs),
       };
 
       if inputs.run_mode == RunMode::PerformLayout {
@@ -381,6 +387,270 @@ impl<'t, C: Leaf> Engine<'t, C> {
     self.nodes.measuring -= measuring;
 
     output
+  }
+
+  /// Lays out `id` as a leaf from `inputs`: each of its children, the boxes flowing inside
+  /// it as its context names them, laid out at its max-content size and given to the
+  /// context; then measured by its context through taffy's leaf algorithm, or sized to its
+  /// known dimensions or nothing where it has none; and where it is laid out in full, each
+  /// box placed where the context places it in its content box.
+  fn leaf(&mut self, id: taffy::NodeId, inputs: LayoutInput) -> LayoutOutput {
+    let perform = inputs.run_mode == RunMode::PerformLayout;
+    let count = self.nodes.slot(id).children.len();
+    let mut sized = Vec::with_capacity(if perform { count } else { 0 });
+
+    debug_assert!(
+      self
+        .nodes
+        .slot(id)
+        .context
+        .as_ref()
+        .map_or(count == 0, |context| {
+          context
+            .boxes()
+            .map(key)
+            .eq(self.nodes.slot(id).children.iter().copied())
+        }),
+      "a leaf's children are the boxes its context names, in order"
+    );
+
+    for index in 0..count {
+      let child = self.nodes.slot(id).children[index];
+      let output = self.lay_out(
+        child,
+        LayoutInput {
+          run_mode: inputs.run_mode,
+          ..MAX_CONTENT
+        },
+        None,
+      );
+
+      if let Some(context) = self.nodes.slot_mut(id).context.as_mut() {
+        context.size_box(
+          node(child),
+          skene_foundation::Size::new(output.size.width, output.size.height),
+        );
+      }
+
+      if perform {
+        sized.push(output);
+      }
+    }
+
+    let slot = self.nodes.slot(id);
+    let mut output = compute_leaf_layout(
+      inputs,
+      &slot.style,
+      |_, _| 0.,
+      |known, available| {
+        slot
+          .context
+          .as_ref()
+          .map_or(taffy::geometry::Size::ZERO, |context| {
+            let size = context.measure(known, available);
+
+            taffy::geometry::Size {
+              width: size.width,
+              height: size.height,
+            }
+          })
+      },
+    );
+
+    if perform && count > 0 {
+      self.place_boxes(id, inputs, sized, &mut output);
+    }
+
+    self.nodes.slot_mut(id).hoisted.clear();
+
+    output
+  }
+
+  /// Places each box flowing inside the leaf `id`, laid out to `sized`, where the leaf's
+  /// context places it in the content box of the leaf laid out to `output` from `inputs`,
+  /// as taffy's algorithms place a child: its layout from its output and its style, a
+  /// relative box offset by its insets and a hidden one at the origin; each box's content
+  /// counted in the leaf's scrollable overflow, and the boxes positioned fixed inside it
+  /// passed on from the leaf.
+  fn place_boxes(
+    &mut self,
+    id: taffy::NodeId,
+    inputs: LayoutInput,
+    sized: Vec<LayoutOutput>,
+    output: &mut LayoutOutput,
+  ) {
+    let style = &self.nodes.slot(id).style;
+    let padding = style
+      .padding
+      .resolve_or_zero(inputs.parent_size.width, |_, _| 0.);
+    let border = style
+      .border
+      .resolve_or_zero(inputs.parent_size.width, |_, _| 0.);
+    let gutter = style.overflow.transpose().map(|overflow| match overflow {
+      Overflow::Scroll => style.scrollbar_width,
+      _ => 0.,
+    });
+    let inset = padding + border;
+    let content = skene_foundation::Rect::new(
+      skene_foundation::Point::new(inset.left, inset.top),
+      skene_foundation::Size::new(
+        (output.size.width - inset.horizontal_axis_sum() - gutter.x).max(0.),
+        (output.size.height - inset.vertical_axis_sum() - gutter.y).max(0.),
+      ),
+    );
+    let placed = self
+      .nodes
+      .slot(id)
+      .context
+      .as_ref()
+      .map_or_else(Vec::new, |context| context.place(content));
+    let mut cursor = 0;
+
+    for (order, mut laid) in sized.into_iter().enumerate() {
+      let child = self.nodes.slot(id).children[order];
+      let order = u32::try_from(order).unwrap_or(u32::MAX);
+      let style = &self.nodes.slot(child).style;
+
+      if style.display == Display::None {
+        self.nodes.slot_mut(child).unrounded = Layout::with_order(order);
+
+        continue;
+      }
+
+      let origin = match placed[cursor..]
+        .iter()
+        .position(|(placed, _)| key(*placed) == child)
+      {
+        Some(at) => {
+          let rect = placed[cursor + at].1;
+
+          cursor += at + 1;
+
+          Point {
+            x: rect.origin.x,
+            y: rect.origin.y,
+          }
+        }
+        None => Point {
+          x: content.origin.x,
+          y: content.origin.y,
+        },
+      };
+      let layout = Self::box_layout(style, order, origin, content.size, &laid);
+      let location = layout.location;
+      let contribution = Self::overflow_contribution(
+        Point {
+          x: location.x - border.left,
+          y: location.y - border.top,
+        },
+        &layout,
+        style,
+      );
+
+      self.nodes.slot_mut(child).unrounded = layout;
+      output.scrollable_overflow_rect = output.scrollable_overflow_rect.union(contribution);
+
+      if !laid.oof_candidates.is_empty() {
+        laid.oof_candidates.translate(location);
+        output.oof_candidates.append(&mut laid.oof_candidates);
+      }
+    }
+  }
+
+  /// The layout of a box in `style`, laid out to `laid`, `order`th among its parent's
+  /// children, placed at `origin` in its parent's content box `content` large: offset by
+  /// its insets where it is relative, its padding, border and margin resolved in no
+  /// parent's size as it was laid out.
+  fn box_layout(
+    style: &Style,
+    order: u32,
+    origin: Point<f32>,
+    content: skene_foundation::Size<f32>,
+    laid: &LayoutOutput,
+  ) -> Layout {
+    let relative = if style.position == Position::Relative {
+      let resolve = |inset: taffy::style::LengthPercentageAuto, basis: f32| {
+        inset.maybe_resolve(Some(basis), |_, _| 0.)
+      };
+
+      Point {
+        x: resolve(style.inset.left, content.width)
+          .or_else(|| resolve(style.inset.right, content.width).map(|right| -right))
+          .unwrap_or(0.),
+        y: resolve(style.inset.top, content.height)
+          .or_else(|| resolve(style.inset.bottom, content.height).map(|bottom| -bottom))
+          .unwrap_or(0.),
+      }
+    }
+    else {
+      Point::ZERO
+    };
+    let scrollbar = |overflow| {
+      if overflow == Overflow::Scroll {
+        style.scrollbar_width
+      }
+      else {
+        0.
+      }
+    };
+
+    Layout {
+      order,
+      location: Point {
+        x: origin.x + relative.x,
+        y: origin.y + relative.y,
+      },
+      size: laid.size,
+      scrollable_overflow_rect: laid.scrollable_overflow_rect,
+      scrollbar_size: taffy::geometry::Size {
+        width: scrollbar(style.overflow.y),
+        height: scrollbar(style.overflow.x),
+      },
+      padding: style.padding.resolve_or_zero(None, |_, _| 0.),
+      border: style.border.resolve_or_zero(None, |_, _| 0.),
+      margin: style.margin.resolve_or_zero(None, |_, _| 0.),
+    }
+  }
+
+  /// What a box laid out to `layout` in `style`, its border box at `location` from its
+  /// parent's padding box, adds to its parent's scrollable overflow: its border box, and
+  /// its own scrollable overflow on each axis it lets its content reach past it on.
+  fn overflow_contribution(
+    location: Point<f32>,
+    layout: &Layout,
+    style: &Style,
+  ) -> taffy::geometry::Rect<f32> {
+    let escapes = |overflow: Overflow| {
+      overflow == Overflow::Visible
+        && !style.overflow.x.is_scroll_container()
+        && !style.overflow.y.is_scroll_container()
+        && !style.contain.contains_scrollable_overflow()
+    };
+    let overflow = layout.scrollable_overflow_rect;
+    let (across, down) = (escapes(style.overflow.x), escapes(style.overflow.y));
+    let right = if across {
+      layout.size.width.max(overflow.right)
+    }
+    else {
+      layout.size.width
+    };
+    let bottom = if down {
+      layout.size.height.max(overflow.bottom)
+    }
+    else {
+      layout.size.height
+    };
+
+    if right <= 0. || bottom <= 0. {
+      return taffy::geometry::Rect::ZERO;
+    }
+
+    taffy::geometry::Rect {
+      left: location.x + if across { overflow.left.min(0.) } else { 0. },
+      right: location.x + right,
+      top: location.y + if down { overflow.top.min(0.) } else { 0. },
+      bottom: location.y + bottom,
+    }
   }
 
   /// Whether this engine lays `id` out: `id` is its root or a member beneath it, every

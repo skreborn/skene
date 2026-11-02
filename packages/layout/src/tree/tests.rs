@@ -57,12 +57,130 @@ impl Leaf for Block {
   }
 }
 
+/// A paragraph of boxes, counting its measures: it measures as its boxes side by side,
+/// as tall as the tallest, and places them left to right along its content box's top.
+#[derive(Clone)]
+struct Boxes {
+  boxes: Vec<(NodeId, Size<f32>)>,
+  measures: Rc<Cell<u32>>,
+}
+
+impl PartialEq for Boxes {
+  fn eq(&self, other: &Self) -> bool {
+    self.boxes.len() == other.boxes.len()
+      && self
+        .boxes
+        .iter()
+        .zip(&other.boxes)
+        .all(|((held, size), (other, next))| {
+          held == other
+            && size.width.to_bits() == next.width.to_bits()
+            && size.height.to_bits() == next.height.to_bits()
+        })
+  }
+}
+
+impl Leaf for Boxes {
+  fn measure(
+    &self,
+    known: taffy::geometry::Size<Option<f32>>,
+    _available: taffy::geometry::Size<AvailableSpace>,
+  ) -> Size<f32> {
+    self.measures.set(self.measures.get() + 1);
+
+    Size::new(
+      known
+        .width
+        .unwrap_or_else(|| self.boxes.iter().map(|(_, size)| size.width).sum()),
+      known.height.unwrap_or_else(|| {
+        self
+          .boxes
+          .iter()
+          .map(|(_, size)| size.height)
+          .fold(0., f32::max)
+      }),
+    )
+  }
+
+  fn place(&self, content: Rect<f32>) -> Vec<(NodeId, Rect<f32>)> {
+    let mut left = content.origin.x;
+
+    self
+      .boxes
+      .iter()
+      .map(|(node, size)| {
+        let rect = Rect::new(Point::new(left, content.origin.y), *size);
+
+        left += size.width;
+
+        (*node, rect)
+      })
+      .collect()
+  }
+
+  fn boxes(&self) -> impl Iterator<Item = NodeId> {
+    self.boxes.iter().map(|(node, _)| *node)
+  }
+
+  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+    for (held, held_size) in &mut self.boxes {
+      if *held == node {
+        *held_size = size;
+      }
+    }
+  }
+}
+
+/// What a leaf of the scene measures: a run, or a paragraph of boxes.
+#[derive(Clone, PartialEq)]
+enum Content {
+  /// A run of a fixed size.
+  Block(Block),
+  /// A paragraph of boxes.
+  Boxes(Boxes),
+}
+
+impl Leaf for Content {
+  fn measure(
+    &self,
+    known: taffy::geometry::Size<Option<f32>>,
+    available: taffy::geometry::Size<AvailableSpace>,
+  ) -> Size<f32> {
+    match self {
+      Self::Block(block) => block.measure(known, available),
+      Self::Boxes(boxes) => boxes.measure(known, available),
+    }
+  }
+
+  fn place(&self, content: Rect<f32>) -> Vec<(NodeId, Rect<f32>)> {
+    match self {
+      Self::Block(block) => block.place(content),
+      Self::Boxes(boxes) => boxes.place(content),
+    }
+  }
+
+  fn boxes(&self) -> impl Iterator<Item = NodeId> {
+    match self {
+      Self::Block(_) => None,
+      Self::Boxes(boxes) => Some(Leaf::boxes(boxes)),
+    }
+    .into_iter()
+    .flatten()
+  }
+
+  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+    if let Self::Boxes(boxes) = self {
+      boxes.size_box(node, size);
+    }
+  }
+}
+
 /// The rectangle a layout gives a node in the root: its left, top, width and height.
 type Bounds = (f32, f32, f32, f32);
 
 /// A tree of boxes and runs, with each node's parent.
 struct Scene {
-  tree: Tree<Block>,
+  tree: Tree<Content>,
   parents: HashMap<NodeId, NodeId>,
   next: u32,
 }
@@ -132,14 +250,49 @@ impl Scene {
 
     self.tree.set_context(
       run,
-      Some(Block {
+      Some(Content::Block(Block {
         width,
         height,
         measures: Rc::clone(&measures),
-      }),
+      })),
     );
 
     (run, measures)
+  }
+
+  /// Adds a paragraph styled `style` holding `boxes` as its children, each unsized, and
+  /// the count of its measures.
+  fn paragraph(
+    &mut self,
+    style: &BoxStyle<f32, Plain>,
+    boxes: &[NodeId],
+  ) -> (NodeId, Rc<Cell<u32>>) {
+    let paragraph = self.add(false, style, Layout::Single, false, boxes);
+    let measures = Rc::new(Cell::new(0));
+
+    self
+      .tree
+      .set_context(paragraph, Some(Self::boxes(boxes, &measures)));
+
+    (paragraph, measures)
+  }
+
+  /// A paragraph's context holding `boxes`, each unsized, counting its measures in
+  /// `measures`.
+  fn boxes(boxes: &[NodeId], measures: &Rc<Cell<u32>>) -> Content {
+    Content::Boxes(Boxes {
+      boxes: boxes.iter().map(|node| (*node, Size::ZERO)).collect(),
+      measures: Rc::clone(measures),
+    })
+  }
+
+  /// `node`'s rectangle in its parent before any rounding, as the last layout left it.
+  fn unrounded(&self, node: NodeId) -> Rect<f32> {
+    self
+      .tree
+      .unrounded_layout(node)
+      .expect("a node of the tree")
+      .rect
   }
 
   /// Lays the tree under `root` out in `width` by `height`.
@@ -1101,4 +1254,225 @@ fn a_baseline_read_while_sizing_leaves_no_layout_behind() {
       "decorated: {decorated}"
     );
   }
+}
+
+/// Two paragraphs, one inside a box of the other, under a row whose padding places the
+/// outer one at a fractional origin.
+struct Nested {
+  root: NodeId,
+  outer: NodeId,
+  outer_measures: Rc<Cell<u32>>,
+  holder: NodeId,
+  beside: NodeId,
+  inner: NodeId,
+  inner_measures: Rc<Cell<u32>>,
+  boxed: NodeId,
+  content: NodeId,
+}
+
+impl Nested {
+  /// The outer paragraph, padded 2, holds the box `holder` and the container `beside`, 3
+  /// by 4; `holder`, laid out by the outer paragraph's engine, holds the inner paragraph,
+  /// whose one box `boxed`, a container of its own, holds the container `content`, 5.5 by
+  /// 6; the row's padding places the outer paragraph 0.4 from its top left.
+  fn new(scene: &mut Scene) -> Self {
+    let content = scene.add(true, &sized(5.5, 6.), Layout::Single, false, &[]);
+    let boxed = scene.add(
+      true,
+      &BoxStyle::default(),
+      Layout::Single,
+      false,
+      &[content],
+    );
+    let (inner, inner_measures) = scene.paragraph(&BoxStyle::default(), &[boxed]);
+    let holder = scene.add(false, &BoxStyle::default(), Layout::Single, false, &[inner]);
+    let beside = scene.add(true, &sized(3., 4.), Layout::Single, false, &[]);
+    let (outer, outer_measures) = scene.paragraph(
+      &BoxStyle {
+        padding: Some(Inset::new(2., 2., 2., 2.)),
+        ..BoxStyle::default()
+      },
+      &[holder, beside],
+    );
+    let root = scene.add(
+      true,
+      &BoxStyle {
+        padding: Some(Inset::new(0.4, 0.4, 0., 0.)),
+        item_alignment: Some(ItemAlignment::Start),
+        ..BoxStyle::default()
+      },
+      flex(Axis::Horizontal),
+      false,
+      &[outer],
+    );
+
+    Self {
+      root,
+      outer,
+      outer_measures,
+      holder,
+      beside,
+      inner,
+      inner_measures,
+      boxed,
+      content,
+    }
+  }
+}
+
+/// A paragraph's boxes lay out at their content's size within the paragraph's own layout,
+/// a box inside a box inside a paragraph included: each placed where its paragraph places
+/// it in its content box, the paragraph measured around them, and each rounded from where
+/// it lies in the root.
+#[test]
+fn a_paragraphs_boxes_lay_out_within_its_layout() {
+  let mut scene = Scene::new(true);
+  let nested = Nested::new(&mut scene);
+
+  scene.lay_out(nested.root, 100., 100.);
+
+  assert_eq!(scene.unrounded(nested.content).size, Size::new(5.5, 6.));
+  assert_eq!(
+    scene.unrounded(nested.boxed),
+    Rect::new(Point::ZERO, Size::new(5.5, 6.))
+  );
+  assert_eq!(
+    scene.unrounded(nested.inner),
+    Rect::new(Point::ZERO, Size::new(5.5, 6.))
+  );
+  assert_eq!(
+    scene.unrounded(nested.holder),
+    Rect::new(Point::new(2., 2.), Size::new(5.5, 6.)),
+    "a box lies inside its paragraph's padding"
+  );
+  assert_eq!(
+    scene.unrounded(nested.beside),
+    Rect::new(Point::new(7.5, 2.), Size::new(3., 4.)),
+    "the next box lies after it"
+  );
+  assert_eq!(
+    scene.unrounded(nested.outer),
+    Rect::new(Point::new(0.4, 0.4), Size::new(12.5, 10.)),
+    "the paragraph measures around its boxes and its padding"
+  );
+
+  assert_eq!(scene.at(nested.outer), (0., 0., 13., 10.));
+  assert_eq!(scene.at(nested.holder), (2., 2., 6., 6.));
+  assert_eq!(scene.at(nested.beside), (8., 2., 3., 4.));
+  assert_eq!(
+    scene.at(nested.content),
+    (2., 2., 6., 6.),
+    "the innermost box rounds from where it lies in the root"
+  );
+}
+
+/// A change to the content of a box inside a box marks both paragraphs, and one layout
+/// measures and places them again.
+#[test]
+fn a_change_inside_a_box_lays_both_paragraphs_out_again() {
+  let mut scene = Scene::new(false);
+  let nested = Nested::new(&mut scene);
+
+  scene.lay_out(nested.root, 100., 100.);
+  nested.outer_measures.set(0);
+  nested.inner_measures.set(0);
+
+  scene.tree.set_style(
+    nested.content,
+    sized(7., 6.).taffy_style(
+      Layout::Single,
+      Place {
+        in_stack: false,
+        borders: Borders::Width,
+      },
+    ),
+  );
+
+  assert!(scene.tree.is_dirty(nested.inner));
+  assert!(scene.tree.is_dirty(nested.outer));
+
+  scene.lay_out(nested.root, 100., 100.);
+
+  assert!(nested.inner_measures.get() > 0);
+  assert!(nested.outer_measures.get() > 0);
+  assert_eq!(
+    scene.unrounded(nested.holder),
+    Rect::new(Point::new(2., 2.), Size::new(7., 6.))
+  );
+  assert_eq!(scene.unrounded(nested.beside).origin, Point::new(9., 2.));
+  assert_eq!(scene.unrounded(nested.outer).size, Size::new(14., 10.));
+}
+
+/// A paragraph's context made afresh with its boxes unsized is the one it holds: it is
+/// given each box's last size, and marks nothing.
+#[test]
+fn a_paragraph_made_afresh_with_unsized_boxes_marks_nothing() {
+  let mut scene = Scene::new(true);
+  let nested = Nested::new(&mut scene);
+
+  scene.lay_out(nested.root, 100., 100.);
+
+  let measures = Rc::new(Cell::new(0));
+
+  assert!(!scene.tree.set_context(
+    nested.outer,
+    Some(Scene::boxes(&[nested.holder, nested.beside], &measures))
+  ));
+  assert!(
+    !scene
+      .tree
+      .set_context(nested.inner, Some(Scene::boxes(&[nested.boxed], &measures)))
+  );
+  assert!(!scene.tree.is_dirty(nested.outer));
+  assert!(!scene.tree.is_dirty(nested.root));
+}
+
+/// A hidden paragraph lays its boxes out at nothing, the boxes inside them too.
+#[test]
+fn a_hidden_paragraph_lays_its_boxes_out_at_nothing() {
+  let mut scene = Scene::new(true);
+  let nested = Nested::new(&mut scene);
+
+  scene.lay_out(nested.root, 100., 100.);
+  scene.tree.set_style(
+    nested.outer,
+    Style {
+      display: Display::None,
+      ..Style::default()
+    },
+  );
+  scene.lay_out(nested.root, 100., 100.);
+
+  for node in [
+    nested.outer,
+    nested.holder,
+    nested.beside,
+    nested.inner,
+    nested.boxed,
+    nested.content,
+  ] {
+    assert_eq!(scene.unrounded(node), Rect::ZERO);
+    assert_eq!(scene.at(node), (0., 0., 0., 0.));
+  }
+}
+
+/// Removing a box marks its paragraph, which lays out without it once its context names
+/// it no more.
+#[test]
+fn removing_a_box_marks_its_paragraph() {
+  let mut scene = Scene::new(false);
+  let nested = Nested::new(&mut scene);
+
+  scene.lay_out(nested.root, 100., 100.);
+  scene.tree.remove(nested.beside);
+
+  assert!(scene.tree.is_dirty(nested.outer));
+
+  scene.tree.set_context(
+    nested.outer,
+    Some(Scene::boxes(&[nested.holder], &nested.outer_measures)),
+  );
+  scene.lay_out(nested.root, 100., 100.);
+
+  assert_eq!(scene.unrounded(nested.outer).size, Size::new(9.5, 10.));
 }

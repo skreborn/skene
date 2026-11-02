@@ -492,15 +492,11 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
     placed
   }
 
-  fn boxes(&self) -> Vec<NodeId> {
-    self
-      .items
-      .iter()
-      .filter_map(|item| match item {
-        Item::Box(inline) => Some(inline.node),
-        Item::Run(_) => None,
-      })
-      .collect()
+  fn boxes(&self) -> impl Iterator<Item = NodeId> {
+    self.items.iter().filter_map(|item| match item {
+      Item::Box(inline) => Some(inline.node),
+      Item::Run(_) => None,
+    })
   }
 
   fn size_box(&mut self, node: NodeId, size: Size<f32>) {
@@ -769,8 +765,8 @@ mod tests {
       self.items.push((row.unwrap_or(leaf), leaf));
     }
 
-    /// Adds the inline box `inline` flowing in `leaf`, holding `view`, a box of `size`,
-    /// and gives the leaf the size it lays out at, as its host does.
+    /// Adds the inline box `inline` flowing in `leaf`, holding `view`, a box of `size`, as
+    /// the leaf's last child, which the tree lays out at its content's size.
     fn add_box(&mut self, leaf: NodeId, inline: NodeId, view: NodeId, size: Size<f32>) {
       self.tree.insert(inline, true);
 
@@ -798,25 +794,14 @@ mod tests {
       self.tree.set_children(inline, [view]);
       self.views.insert(inline, view);
 
-      self.tree.compute(
-        inline,
-        taffy::geometry::Size {
-          width: AvailableSpace::MaxContent,
-          height: AvailableSpace::MaxContent,
-        },
-      );
-
-      let laid = self
-        .tree
-        .layout(inline)
-        .expect("the box laid out")
-        .rect
-        .size;
       let flow = self.tree.context_mut(leaf).expect("the leaf's flow");
 
       flow.add_box(inline, &[], Size::new(0., 0.));
-      crate::Leaf::size_box(flow, inline, laid);
+
+      let boxes: Vec<NodeId> = crate::Leaf::boxes(&*flow).collect();
+
       self.tree.mark_dirty(leaf);
+      self.tree.set_children(leaf, boxes);
     }
 
     /// Lays the page out and returns every node's rectangle: each item's and leaf's
@@ -851,22 +836,19 @@ mod tests {
 
           if !self.tree.contains(node) {
             rects.add(node, rect);
-
-            continue;
           }
+        }
 
-          let size = self.laid_out(node, Point::ZERO).size;
+        for (inline, view) in &self.views {
+          if self
+            .tree
+            .context(leaf)
+            .is_some_and(|flow| crate::Leaf::boxes(flow).any(|held| held == *inline))
+          {
+            let placed = self.laid_out(*inline, content.origin);
 
-          rects.add(
-            node,
-            Rect {
-              origin: rect.origin,
-              size,
-            },
-          );
-
-          if let Some(view) = self.views.get(&node) {
-            rects.add(*view, self.laid_out(*view, rect.origin));
+            rects.add(*inline, placed);
+            rects.add(*view, self.laid_out(*view, placed.origin));
           }
         }
       }

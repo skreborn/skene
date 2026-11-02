@@ -1126,6 +1126,70 @@ pub(crate) const fn cell(value: u32) -> f32 {
 }
 
 #[cfg(test)]
+mod tests {
+  use skene_foundation::{Container, RichText, Span, View};
+  use skene_layout::Leaf as _;
+
+  use super::{content, flow_of, visit_runs};
+  use crate::{Terminal, frame, install, mount, uninstall, with_records};
+
+  /// Each leaf run and inline box of a paragraph flows inside the group runs around it,
+  /// outermost first, and its flow places each group where the run or box it holds lies.
+  #[test]
+  fn a_paragraphs_runs_flow_inside_their_groups() {
+    install();
+
+    let paragraph = mount(|| {
+      RichText::<Terminal>::new()
+        .add_spans([
+          Span::new("a"),
+          Span::group([Span::group([Span::new("b")]), Span::view(Container::new())]),
+        ])
+        .build()
+    });
+
+    frame::settle(20, 1);
+
+    with_records(|records| {
+      let [a, outer] = records.layout_children(paragraph)[..]
+      else {
+        panic!("the paragraph holds a run and a group");
+      };
+      let [inner, inline] = records.layout_children(outer)[..]
+      else {
+        panic!("the outer group holds a group and an inline box");
+      };
+      let [b] = records.layout_children(inner)[..]
+      else {
+        panic!("the inner group holds a run");
+      };
+      let mut visited = Vec::new();
+
+      visit_runs(records, paragraph, &mut Vec::new(), &mut |run, groups| {
+        visited.push((run, groups.to_vec()));
+      });
+
+      assert_eq!(
+        visited,
+        [(a, vec![]), (b, vec![outer, inner]), (inline, vec![outer])]
+      );
+
+      let placed: Vec<_> = flow_of(records, paragraph)
+        .expect("a paragraph measures by its flow")
+        .flow()
+        .place(content(20))
+        .into_iter()
+        .map(|(node, _)| node)
+        .collect();
+
+      assert_eq!(placed, [a, outer, inner, b, outer, inline]);
+    });
+
+    uninstall();
+  }
+}
+
+#[cfg(test)]
 mod properties {
   use proptest::prelude::*;
   use skene_foundation::{

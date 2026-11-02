@@ -5,7 +5,7 @@
 //! style resolved for it differs from the one applied, so a keystroke relays out the
 //! changed subtree and a hover change repaints without a relayout.
 
-use std::{cell::OnceCell, ops::Range};
+use std::ops::Range;
 
 use rustc_hash::FxHashSet;
 use skene_foundation::{
@@ -95,91 +95,46 @@ impl Leaf for CellLeaf {
   }
 }
 
-/// One item of a text leaf: a run, its node, where its text ends in the leaf's and its
-/// scale, or an inline box, its node and the cells and rows it laid out at.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum FlowItem {
-  Run {
-    node: Handle,
-    end: usize,
-    scale: CellScale,
-  },
-  Box {
-    node: Handle,
-    size: (usize, usize),
-  },
-}
-
 /// What the layout measures a text leaf by: its runs and inline boxes laid out as one
 /// paragraph through the cell engine, made once a measure, a paint or a hit first asks
-/// and kept between frames. Two leaves are alike where their runs' nodes, texts and
-/// scales, their boxes' nodes and sizes and the terminal's clustering are.
-#[derive(Debug)]
+/// and kept between frames. Two leaves are alike where the terminal's clustering and their
+/// flows are: each run's node, groups, text and style, and each box's node, groups and size.
+#[derive(Debug, PartialEq)]
 pub(crate) struct CellFlow {
-  text: String,
-  items: Vec<FlowItem>,
   clustering: bool,
-  flow: OnceCell<TextFlow<CellEngine>>,
-}
-
-impl PartialEq for CellFlow {
-  fn eq(&self, other: &Self) -> bool {
-    self.clustering == other.clustering && self.items == other.items && self.text == other.text
-  }
+  flow: TextFlow<CellEngine>,
 }
 
 impl CellFlow {
   /// An empty leaf.
   fn new() -> Self {
     Self {
-      text: String::new(),
-      items: Vec::new(),
       clustering: text::clustering(),
-      flow: OnceCell::new(),
+      flow: TextFlow::new(engine(), CellScale::ONE.style(), paragraph_style()),
     }
   }
 
-  /// Adds the run `node` holding `text` at `scale`.
-  fn add_run(&mut self, node: Handle, text: &str, scale: CellScale) {
-    self.text.push_str(text);
-    self.items.push(FlowItem::Run {
-      node,
-      end: self.text.len(),
-      scale,
-    });
+  /// Adds the run `node` holding `text` at `scale`, inside `groups`, outermost first.
+  fn add_run(&mut self, node: Handle, groups: &[Handle], text: &str, scale: CellScale) {
+    self.flow.add_run(node, groups, text, scale.style());
   }
 
-  /// Adds the inline box `node` laid out `size` cells by rows.
-  fn add_box(&mut self, node: Handle, size: (usize, usize)) {
-    self.items.push(FlowItem::Box { node, size });
+  /// Adds the inline box `node` laid out `size` cells by rows, inside `groups`, outermost
+  /// first.
+  fn add_box(&mut self, node: Handle, groups: &[Handle], (cells, rows): (usize, usize)) {
+    self
+      .flow
+      .add_box(node, groups, Size::new(cells_of(cells), cells_of(rows)));
   }
 
-  /// The leaf's flow, made once.
-  pub(crate) fn flow(&self) -> &TextFlow<CellEngine> {
-    self.flow.get_or_init(|| {
-      let mut flow = TextFlow::new(engine(), CellScale::ONE.style(), paragraph_style());
-      let mut start = 0;
-
-      for item in &self.items {
-        match *item {
-          FlowItem::Run { node, end, scale } => {
-            flow.add_run(node, &[], &self.text[start..end], scale.style());
-            start = end;
-          }
-          FlowItem::Box {
-            node,
-            size: (cells, rows),
-          } => flow.add_box(node, &[], Size::new(cells_of(cells), cells_of(rows))),
-        }
-      }
-
-      flow
-    })
+  /// The leaf's flow.
+  pub(crate) const fn flow(&self) -> &TextFlow<CellEngine> {
+    &self.flow
   }
 
   /// The flow laid out `width` cells wide.
   pub(crate) fn laid(&self, width: usize) -> CellLaid {
-    self.flow().layout_in(content(width)).0
+    self.flow.layout_in(content(width)).0
   }
 }
 
@@ -389,11 +344,7 @@ pub(crate) fn inline_boxes(records: &Records, handle: Handle) -> Vec<(Handle, (i
     return Vec::new();
   };
 
-  if flow
-    .items
-    .iter()
-    .any(|item| matches!(item, FlowItem::Box { .. }))
-  {
+  if flow.flow().boxes().next().is_some() {
     let (width, _) = records.node_size(handle);
 
     return flow
@@ -476,12 +427,21 @@ pub(crate) fn paragraph_text(records: &Records, handle: Handle) -> String {
 pub(crate) fn paragraph_runs(records: &Records, handle: Handle) -> Vec<Handle> {
   let mut runs = Vec::new();
 
-  collect_runs(records, handle, &mut runs);
+  visit_runs(records, handle, &mut Vec::new(), &mut |run, _| {
+    runs.push(run);
+  });
 
   runs
 }
 
-fn collect_runs(records: &Records, handle: Handle, runs: &mut Vec<Handle>) {
+/// Visits each leaf run beneath `handle` in order, with the group runs around it beneath
+/// the paragraph, outermost first, `groups` being those around `handle`.
+fn visit_runs(
+  records: &Records,
+  handle: Handle,
+  groups: &mut Vec<Handle>,
+  visit: &mut impl FnMut(Handle, &[Handle]),
+) {
   for child in records.layout_children(handle) {
     let is_run = matches!(
       records.record(child).map(|record| &record.kind),
@@ -493,10 +453,12 @@ fn collect_runs(records: &Records, handle: Handle, runs: &mut Vec<Handle>) {
     }
 
     if is_inline_box(records, child) || records.layout_children(child).is_empty() {
-      runs.push(child);
+      visit(child, groups);
     }
     else {
-      collect_runs(records, child, runs);
+      groups.push(child);
+      visit_runs(records, child, groups, visit);
+      groups.pop();
     }
   }
 }
@@ -879,7 +841,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       else {
         let mut flow = CellFlow::new();
 
-        flow.add_run(handle, &record.text, run_scale(records, handle));
+        flow.add_run(handle, &[], &record.text, run_scale(records, handle));
 
         Some(flow)
       };
@@ -946,18 +908,19 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
 }
 
 /// The flow the paragraph `handle` lays out as: each leaf run's text at its scale, and
-/// each inline box as large as it laid out on its own, one cell before it has.
+/// each inline box as large as it laid out on its own, one cell before it has, each inside
+/// the group runs around it.
 fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
   let mut flow = CellFlow::new();
 
-  for run in paragraph_runs(records, handle) {
+  visit_runs(records, handle, &mut Vec::new(), &mut |run, groups| {
     let Some(record) = records.record(run)
     else {
-      continue;
+      return;
     };
 
     if is_inline_box(records, run) {
-      let (cells, rows) = match &record.kind {
+      let size = match &record.kind {
         Kind::Run {
           extent: Some(extent),
           ..
@@ -965,12 +928,12 @@ fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
         _ => (1, 1),
       };
 
-      flow.add_box(run, (cells, rows));
+      flow.add_box(run, groups, size);
     }
     else {
-      flow.add_run(run, &record.text, run_scale(records, run));
+      flow.add_run(run, groups, &record.text, run_scale(records, run));
     }
-  }
+  });
 
   flow
 }
@@ -1198,7 +1161,7 @@ mod properties {
     let node = Scene::<Terminal>::with(|scene| scene.create(NodeKind::Run));
     let mut flow = CellFlow::new();
 
-    flow.add_run(node, text, scale);
+    flow.add_run(node, &[], text, scale);
 
     flow
   }

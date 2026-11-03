@@ -14,7 +14,15 @@ use skene_reactive::Set;
 
 use crate::{
   interaction::scroll_to,
-  layout::{self, border_edges, has_border, is_inline_run, is_paragraph},
+  layout::{
+    self,
+    border_edges,
+    enclosing_paragraph,
+    has_border,
+    is_inline_box,
+    is_inline_run,
+    is_paragraph,
+  },
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
   records::{Backdrop, BackdropKey, CellRect, Handle, Record, Records},
   with_records,
@@ -41,10 +49,10 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
 
 /// Lays the tree out at `width` x `height` cells until it settles, painting nothing.
 ///
-/// The size reports, container measurements, inline box measurements and
-/// scroll-into-view resolve after each layout; the handlers they run may rebuild
-/// content, so the layout is computed again, once their turn has ended, until it
-/// settles (bounded, so a pathological feedback loop still ends).
+/// The size reports, container measurements and scroll-into-view resolve after each
+/// layout; the handlers they run may rebuild content, so the layout is computed again,
+/// once their turn has ended, until it settles (bounded, so a pathological feedback loop
+/// still ends).
 pub(crate) fn settle(width: u16, height: u16) {
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_records(|records| {
@@ -58,7 +66,6 @@ pub(crate) fn settle(width: u16, height: u16) {
 
       records.layout_dirty = false;
       layout::compute(records, width, height);
-      layout::measure_inline_boxes(records);
       records.fit_entries();
 
       true
@@ -642,7 +649,7 @@ fn reveal() -> bool {
   let adjusted = with_records(|records| {
     let node = records.reveal.take()?;
 
-    Some(adjustments(records, paint_owner(records, node)))
+    Some(adjustments(records, laid_owner(records, node)))
   })
   .unwrap_or_default();
   let changed = !adjusted.is_empty();
@@ -652,6 +659,16 @@ fn reveal() -> bool {
   }
 
   changed
+}
+
+/// The nearest node at or above `handle` the tree lays out: `handle` itself, or the
+/// paragraph a text or group run flows in.
+fn laid_owner(records: &Records, handle: Handle) -> Handle {
+  if is_inline_run(records, handle) && !is_inline_box(records, handle) {
+    return enclosing_paragraph(records, handle).unwrap_or(handle);
+  }
+
+  handle
 }
 
 /// The scroll offsets each scrollable ancestor of `handle` takes to show it.

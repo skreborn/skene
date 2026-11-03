@@ -218,6 +218,36 @@ fn focus_scrolls_into_view() {
   });
 }
 
+/// Focusing a control inside an inline box below the fold scrolls it into view, at its
+/// place in its paragraph.
+#[test]
+fn focus_scrolls_an_inline_box_into_view() {
+  with_platform(|| {
+    let _ = mount(|| {
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_height(3)
+            .set_overflow(Overflow::Scroll)
+            .set_child(RichText::new().add_spans([
+              Span::new("one two three four five six seven "),
+              Span::view(BasicButton::new(Activate::new()).set_label("go")),
+            ])),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(12, 4);
+
+    testing::trigger_key("Tab");
+
+    let frame = testing::render_to_text(12, 4);
+
+    assert!(frame.contains("go"), "{frame}");
+    assert!(!frame.contains("one"), "{frame}");
+  });
+}
+
 /// The rows of a `width` x `height` frame, each without its trailing blanks and the
 /// scrollbar painted down its last column.
 fn frame_rows(width: u16, height: u16) -> Vec<String> {

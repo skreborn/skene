@@ -397,7 +397,6 @@ impl<'t, C: Leaf> Engine<'t, C> {
   fn leaf(&mut self, id: taffy::NodeId, inputs: LayoutInput) -> LayoutOutput {
     let perform = inputs.run_mode == RunMode::PerformLayout;
     let count = self.nodes.slot(id).children.len();
-    let mut sized = Vec::with_capacity(if perform { count } else { 0 });
 
     debug_assert!(
       self
@@ -423,28 +422,12 @@ impl<'t, C: Leaf> Engine<'t, C> {
       "a leaf's boxes flow inside it"
     );
 
-    for index in 0..count {
-      let child = self.nodes.slot(id).children[index];
-      let output = self.lay_out(
-        child,
-        LayoutInput {
-          run_mode: inputs.run_mode,
-          ..MAX_CONTENT
-        },
-        None,
-      );
-
-      if let Some(context) = self.nodes.slot_mut(id).context.as_mut() {
-        context.size_box(
-          node(child),
-          skene_foundation::Size::new(output.size.width, output.size.height),
-        );
-      }
-
-      if perform {
-        sized.push(output);
-      }
+    let sized = if count == 0 {
+      Vec::new()
     }
+    else {
+      self.size_boxes(id, inputs)
+    };
 
     let slot = self.nodes.slot(id);
     let mut output = compute_leaf_layout(
@@ -473,6 +456,40 @@ impl<'t, C: Leaf> Engine<'t, C> {
     self.nodes.slot_mut(id).hoisted.clear();
 
     output
+  }
+
+  /// Lays out each box flowing inside the leaf `id` at its max-content size, in the run
+  /// mode of `inputs`, and gives its size to the leaf's context; the boxes' outputs where
+  /// the leaf is laid out in full, none otherwise.
+  fn size_boxes(&mut self, id: taffy::NodeId, inputs: LayoutInput) -> Vec<LayoutOutput> {
+    let perform = inputs.run_mode == RunMode::PerformLayout;
+    let count = self.nodes.slot(id).children.len();
+    let mut sized = Vec::with_capacity(if perform { count } else { 0 });
+
+    for index in 0..count {
+      let child = self.nodes.slot(id).children[index];
+      let output = self.lay_out(
+        child,
+        LayoutInput {
+          run_mode: inputs.run_mode,
+          ..MAX_CONTENT
+        },
+        None,
+      );
+
+      if let Some(context) = self.nodes.slot_mut(id).context.as_mut() {
+        context.size_box(
+          node(child),
+          skene_foundation::Size::new(output.size.width, output.size.height),
+        );
+      }
+
+      if perform {
+        sized.push(output);
+      }
+    }
+
+    sized
   }
 
   /// Places each box flowing inside the leaf `id`, laid out to `sized`, where the leaf's

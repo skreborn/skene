@@ -196,7 +196,9 @@ impl<C: Leaf> Tree<C> {
   where
     C: PartialEq,
   {
-    if let Some(next) = &mut context {
+    if let Some(next) = &mut context
+      && next.boxes().next().is_some()
+    {
       let boxes: Vec<NodeId> = next.boxes().collect();
 
       for inline in boxes {

@@ -1230,8 +1230,7 @@ Condition     = Media | State | And | Or
   each in flow): each at its max-content size before the leaf measures, given to it
   through `Leaf::size_box`, and placed where the leaf places it in its content box, its
   layout set as taffy's parents set a child's, so a change inside a box lays its leaf out
-  again; the terminal's paragraph holds no boxes as children yet, laying each inline box
-  out on its own at its content's size first.
+  again. The terminal's paragraphs lay their inline boxes out so.
   The layout's own tests lay their text out through `skene-parley` in the pinned face
   the conformance suite draws in, Inter's regular, kept in `packages/parley/fonts`, its
   metrics unrounded (kerned, its letter spacing past each cluster, a line its font size
@@ -1982,8 +1981,8 @@ blank it shows as, at its run's scale; under the mode a cluster whose code point
 to another width is laid out as a stand-in of its width (U+2060, U+FF71 or U+4E00)
 through the foundation's substitution, so every position the engine reports is a byte
 of the real text. Each text leaf is one paragraph of its runs and inline boxes (a
-`TextFlow` over the engine), an inline box a box as many cells wide and rows tall as
-it, kept between frames and measured, painted, hit and selected from its one layout, a
+`TextFlow` over the engine), an inline box a box as many whole cells wide and rows
+tall as the tree lays it out, at least one of each, kept between frames and measured, painted, hit and selected from its one layout, a
 width floored to whole cells, at least one: a run wraps and keeps its blanks as the
 guaranteed core says and draws cluster by cluster in the engine's visual order, and a point
 on a cell is probed just past its left edge, so a press lands at the nearer edge of
@@ -2212,8 +2211,12 @@ changed subtree and a hover change repaints without relayout. A frame
 paints over the previous one, rewriting only the rows the changed nodes covered and
 cover—a node whose resolution, text, caret, scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
 then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
-text through its `TextFlow`, and a view inside it flows as an inline box: laid out on its own, standing in the
-text as a placeholder of its width, painted and hit at the cells it flowed into. An
+text through its `TextFlow`, and a view inside it flows as an inline box: the
+paragraph's child in the tree, laid out at its content's size within the paragraph's
+layout, standing in the text as a placeholder of its whole cells and rows, at least one
+of each, its layout its place in the paragraph, so a frame whose box changes size lays
+it and its paragraph out once and focus reveals a control inside it where it flowed; it
+is painted and hit at the cells it flowed into. An
 edge whose border width is zero takes no cells and draws none, and a border whose color
 is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
 through `launch`, or to plain text

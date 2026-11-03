@@ -93,12 +93,38 @@ impl Leaf for CellLeaf {
       ),
     }
   }
+
+  /// A flow's places; an entry places none.
+  fn place(&self, content: Rect<f32>) -> Vec<(Handle, Rect<f32>)> {
+    match self {
+      Self::Flow(flow) => flow.place(content),
+      Self::Entry(_) => Vec::new(),
+    }
+  }
+
+  /// A flow's inline boxes; an entry names none.
+  fn boxes(&self) -> impl Iterator<Item = Handle> {
+    match self {
+      Self::Flow(flow) => Some(flow.boxes()),
+      Self::Entry(_) => None,
+    }
+    .into_iter()
+    .flatten()
+  }
+
+  /// Sizes a flow's inline box `node`; an entry holds none.
+  fn size_box(&mut self, node: Handle, size: Size<f32>) {
+    if let Self::Flow(flow) = self {
+      flow.size_box(node, size);
+    }
+  }
 }
 
 /// What the layout measures a text leaf by: its runs and inline boxes laid out as one
 /// paragraph through the cell engine, made once a measure, a paint or a hit first asks
-/// and kept between frames. Two leaves are alike where the terminal's clustering and their
-/// flows are: each run's node, groups, text and style, and each box's node, groups and size.
+/// and kept between frames, each box as large as the tree lays it out in whole cells, at
+/// least one. Two leaves are alike where the terminal's clustering and their flows are:
+/// each run's node, groups, text and style, and each box's node, groups and size.
 #[derive(Debug, PartialEq)]
 pub(crate) struct CellFlow {
   clustering: bool,
@@ -119,12 +145,18 @@ impl CellFlow {
     self.flow.add_run(node, groups, text, scale.style());
   }
 
-  /// Adds the inline box `node` laid out `size` cells by rows, inside `groups`, outermost
-  /// first.
-  fn add_box(&mut self, node: Handle, groups: &[Handle], (cells, rows): (usize, usize)) {
-    self
-      .flow
-      .add_box(node, groups, Size::new(cells_of(cells), cells_of(rows)));
+  /// Adds the inline box `node`, one cell by one row until the tree sizes it, inside
+  /// `groups`, outermost first.
+  fn add_box(&mut self, node: Handle, groups: &[Handle]) {
+    self.flow.add_box(node, groups, Self::box_size(Size::ZERO));
+  }
+
+  /// The size an inline box laid out at `size` takes in the flow: whole cells and rows, as
+  /// the tree rounds a layout, at least one of each.
+  fn box_size(size: Size<f32>) -> Size<f32> {
+    let whole = |length: f32| (length + 0.5).floor().max(1.);
+
+    Size::new(whole(size.width), whole(size.height))
   }
 
   /// The leaf's flow.
@@ -162,6 +194,27 @@ impl Leaf for CellFlow {
     );
 
     Size::new(known.width.unwrap_or(measured.width), measured.height)
+  }
+
+  /// The flow's places, its content box floored to whole cells, at least one, as it
+  /// measures.
+  fn place(&self, content: Rect<f32>) -> Vec<(Handle, Rect<f32>)> {
+    let width = content.size.width.max(0.).floor().max(1.);
+
+    self.flow.place(Rect::new(
+      content.origin,
+      Size::new(width, content.size.height),
+    ))
+  }
+
+  /// The flow's inline boxes.
+  fn boxes(&self) -> impl Iterator<Item = Handle> {
+    self.flow.boxes()
+  }
+
+  /// Sizes the inline box `node` in whole cells and rows, at least one of each.
+  fn size_box(&mut self, node: Handle, size: Size<f32>) {
+    self.flow.size_box(node, Self::box_size(size));
   }
 }
 
@@ -366,47 +419,6 @@ pub(crate) fn inline_boxes(records: &Records, handle: Handle) -> Vec<(Handle, (i
 )]
 const fn cell_of(coordinate: f32) -> i64 {
   coordinate.round() as i64
-}
-
-/// Lays every inline box out on its own and records its size, which its placeholder
-/// spans; `true` when a size changed, in which case its paragraph measures again.
-pub(crate) fn measure_inline_boxes(records: &mut Records) -> bool {
-  let mut changed = false;
-
-  for handle in records.handles() {
-    if !is_inline_box(records, handle) {
-      continue;
-    }
-
-    records.tree.compute(
-      handle,
-      taffy::geometry::Size {
-        width: AvailableSpace::MaxContent,
-        height: AvailableSpace::MaxContent,
-      },
-    );
-
-    let (width, height) = records.node_size(handle);
-    let size = (
-      usize::try_from(width).unwrap_or(1).max(1),
-      usize::try_from(height).unwrap_or(1).max(1),
-    );
-
-    if let Some(Kind::Run { extent, .. }) =
-      records.record_mut(handle).map(|record| &mut record.kind)
-      && *extent != Some(size)
-    {
-      *extent = Some(size);
-      records.queue_restyle(handle);
-      changed = true;
-    }
-  }
-
-  if changed {
-    records.layout_dirty = true;
-  }
-
-  changed
 }
 
 /// The text of the paragraph `handle`: every inline run beneath it, in order.
@@ -828,7 +840,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
       }
 
       let text = if facts.placement == RunPlacement::Embedded {
-        // An inline box lays out on its own, at its content's size.
+        // An inline box lays out at its content's size, inside its paragraph.
         style.display = Display::Flex;
 
         None
@@ -908,8 +920,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
 }
 
 /// The flow the paragraph `handle` lays out as: each leaf run's text at its scale, and
-/// each inline box as large as it laid out on its own, one cell before it has, each inside
-/// the group runs around it.
+/// each inline box, which the tree sizes, each inside the group runs around it.
 fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
   let mut flow = CellFlow::new();
 
@@ -920,15 +931,7 @@ fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
     };
 
     if is_inline_box(records, run) {
-      let size = match &record.kind {
-        Kind::Run {
-          extent: Some(extent),
-          ..
-        } => *extent,
-        _ => (1, 1),
-      };
-
-      flow.add_box(run, groups, size);
+      flow.add_box(run, groups);
     }
     else {
       flow.add_run(run, groups, &record.text, run_scale(records, run));
@@ -939,7 +942,8 @@ fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
 }
 
 /// Hands every laid-out node its flattened children, where the tree changed since the
-/// last layout.
+/// last layout and the restyle after it: a paragraph the inline boxes its flow names, in
+/// order, and a group run inside one none.
 pub(crate) fn rebuild_children(records: &mut Records) {
   if !records.restyle.take_structure() {
     return;
@@ -953,10 +957,16 @@ pub(crate) fn rebuild_children(records: &mut Records) {
     }
 
     let mut children = if is_paragraph(records, handle) {
-      Vec::new()
+      flow_of(records, handle).map_or_else(Vec::new, |flow| flow.boxes().collect())
     }
     else {
-      records.layout_children(handle)
+      let children = records.layout_children(handle);
+      let grouped = !children.is_empty()
+        && is_inline_run(records, handle)
+        && !is_inline_box(records, handle)
+        && enclosing_paragraph(records, handle).is_some();
+
+      if grouped { Vec::new() } else { children }
     };
 
     if handle == records.root {

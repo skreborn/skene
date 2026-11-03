@@ -889,6 +889,17 @@ supersedes there.
 
 ## Superseded
 
+- **The host laying a paragraph's inline boxes out before the paragraph measures (the
+  terminal's `measure_inline_boxes`, to 2026-11)** (2026-11-02), each inline box laid out
+  on its own as a root at max-content after every compute, its size in whole cells
+  recorded on its run, and its paragraph restyled and measured again in a second settle
+  round, a walk of every node on each compute finding the boxes: a frame whose box
+  changed size computed the layout twice, and the box's layout, from a root of its own,
+  stood at the origin rather than at its place in its paragraph, so scrolling a control
+  inside it into view missed where it flowed. The tree now lays a paragraph's boxes out
+  within the paragraph's layout as its children, the terminal's flow flooring each to
+  whole cells, at least one, so one compute lays out both. Revisit where a platform's text
+  engine must size an attachment in a pass of its own the tree cannot reach.
 - **One `TaffyTree` for the whole scene (the terminal's and `skene-layout`'s `Tree`, to
   2026-10)** (2026-10-28), every node of the scene in one taffy tree keyed by its node,
   laid out and rounded by taffy's own `compute_layout_with_measure`: one label changed

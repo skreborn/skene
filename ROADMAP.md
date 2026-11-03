@@ -37,9 +37,8 @@ in a code comment.
     the app's key handlers as a browser's `<input>` default runs (so never as a
     `TextEntry::on_key`, which would run before them), the terminal's own key default
     consulting the table until then.
-    - Layout: a paragraph lays its inline boxes out within its own measure; layout
-    settles before a frame commits, the terminal's settle loop becoming the frame
-    contract, and `Painted` resizes land with the layout commit.
+    - Layout: layout settles before a frame commits, the terminal's settle loop
+    becoming the frame contract, and `Painted` resizes land with the layout commit.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color
     transitions on it; `Condition` resolution against the runtime's environment and
     pointer through the one resolution point; the spine's `Window` owning its

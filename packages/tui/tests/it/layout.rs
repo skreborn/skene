@@ -1271,6 +1271,52 @@ fn an_inline_box_flows_with_the_paragraph() {
   });
 }
 
+/// An inline box whose size changes lays its paragraph out again in the same layout: the
+/// line reflows around the box's new width after one layout, not two.
+#[test]
+fn an_inline_box_relays_its_paragraph_out_in_one_pass() {
+  with_platform(|| {
+    let width = Signal::new(2);
+
+    let _ = mount(move || {
+      RichText::new()
+        .add_spans([
+          Span::new("see "),
+          Span::view(
+            Container::new()
+              .derive_width(move || width.get())
+              .set_height(1)
+              .set_background(red()),
+          ),
+          Span::new(" here"),
+        ])
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(20, 1);
+
+    assert_eq!(locate(&frame, "here"), (7, 0), "{frame}");
+    assert_eq!(colors_at(20, 1, 5, 0).1, Some(rgb(red())));
+    assert_eq!(colors_at(20, 1, 6, 0).1, None);
+
+    let before = testing::layout_generation();
+
+    width.set(5);
+
+    let frame = testing::render_to_text(20, 1);
+
+    assert_eq!(locate(&frame, "here"), (10, 0), "{frame}");
+    assert_eq!(colors_at(20, 1, 8, 0).1, Some(rgb(red())));
+    assert_eq!(colors_at(20, 1, 9, 0).1, None);
+    assert_eq!(
+      testing::layout_generation(),
+      before + 1,
+      "the box and its paragraph lay out in one layout"
+    );
+  });
+}
+
 /// An inline box as tall as two rows raises its line to two rows, the text beside it on
 /// the line's bottom row as on a baseline, and the next line flows below it.
 #[test]

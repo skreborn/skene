@@ -169,8 +169,6 @@ pub(crate) enum Kind {
     cache: Option<RunCache>,
     /// The run's running transitions and animations.
     motion: RunMotion,
-    /// An inline box's size in cells and rows, as last measured.
-    extent: Option<(usize, usize)>,
   },
 }
 
@@ -184,7 +182,6 @@ impl Kind {
       kept: StyleRecord::new().into_kept(),
       cache: None,
       motion: RunMotion::default(),
-      extent: None,
     }
   }
 

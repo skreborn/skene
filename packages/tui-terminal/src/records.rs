@@ -29,6 +29,7 @@ pub(crate) use self::{
   environment::{Contrast, OwnColors},
   field::{EntryEditor, EntryState, Field, Visible},
   frames::{Clock, FRAME_INTERVAL},
+  geometry::CellFrame,
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
   record::{
     Backdrop,

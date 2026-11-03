@@ -27,6 +27,15 @@ impl CellFrame {
       height: rect.size.height.max(0.) as i64,
     }
   }
+
+  /// Whether the cell `point` lies inside the frame's size placed with its top left at the
+  /// cell `origin`, its location aside.
+  pub(crate) const fn covers(&self, origin: (i64, i64), point: (i64, i64)) -> bool {
+    point.0 >= origin.0
+      && point.0 < origin.0 + self.width
+      && point.1 >= origin.1
+      && point.1 < origin.1 + self.height
+  }
 }
 
 impl Records {

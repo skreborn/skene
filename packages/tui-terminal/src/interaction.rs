@@ -59,7 +59,7 @@ use crate::{
     is_paragraph,
   },
   paint::control_entry,
-  records::{Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
+  records::{CellFrame, Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
   with_records,
 };
 
@@ -224,10 +224,7 @@ impl Records {
 
     let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(record);
     let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
-    let within = |left: i64, top: i64, right: i64, bottom: i64| {
-      x >= origin_x + left && x < origin_x + right && y >= origin_y + top && y < origin_y + bottom
-    };
-    let contains = handle == self.root || within(0, 0, frame.width, frame.height);
+    let contains = handle == self.root || frame.covers((origin_x, origin_y), (x, y));
 
     // A box clipping its overflow keeps every hit beneath it inside it; any other's
     // content takes a hit wherever it reaches, as a browser's does.
@@ -247,6 +244,27 @@ impl Records {
       }
     }
 
+    self.hit_reached(handle, frame, (origin_x, origin_y), contains, x, y, path)
+  }
+
+  /// Descends into `handle`, laid out to `frame` at `origin` and reached by the point,
+  /// `contains` where its frame holds it, accumulating the path; `false` where neither
+  /// its frame nor anything beneath it holds the point.
+  #[inline(never)]
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "the walk's state, passed down as the walk itself takes it"
+  )]
+  fn hit_reached(
+    &self,
+    handle: Handle,
+    frame: CellFrame,
+    (origin_x, origin_y): (i64, i64),
+    contains: bool,
+    x: i64,
+    y: i64,
+    path: &mut Vec<(Handle, (i64, i64))>,
+  ) -> bool {
     let clips = self.clips(handle);
 
     path.push((handle, (origin_x, origin_y)));
@@ -262,9 +280,15 @@ impl Records {
     }
 
     let (left, top, right, bottom) = self.node_border(handle);
+    let padding = CellFrame {
+      x: 0,
+      y: 0,
+      width: frame.width - left - right,
+      height: frame.height - top - bottom,
+    };
 
     // A clipping box clips its children to its padding box, as it paints them.
-    if !clips || within(left, top, frame.width - right, frame.height - bottom) {
+    if !clips || padding.covers((origin_x + left, origin_y + top), (x, y)) {
       // A scrolled box shifts its children by its offsets.
       let (scroll_x, scroll_y) = self.scroll_offset(handle);
       let (child_x, child_y) = (

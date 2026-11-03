@@ -1068,6 +1068,53 @@ mod tests {
     );
   }
 
+  /// A flow made afresh with its boxes unsized leaves the one held, sized, in place where
+  /// only their sizes differ, and where its text differs replaces it and is sized by the
+  /// next layout before it measures, each box at its content's size.
+  #[test]
+  fn a_flow_made_afresh_with_its_boxes_unsized_is_sized_by_the_next_layout() {
+    let (text, before, inline, view, after) = (node(), node(), node(), node(), node());
+    let mut page = Page::new(1024.);
+    let made = |first: &str| {
+      let mut flow = paragraph(&[(before, &[], first, 16.)]);
+
+      flow.add_box(inline, &[], Size::ZERO);
+      flow.add_run(after, &[], " cd", style());
+
+      flow
+    };
+
+    page.add(text, paragraph(&[(before, &[], "ab ", 16.)]), None);
+    page.add_box(text, inline, view, Size::new(20., 30.));
+    page
+      .tree
+      .context_mut(text)
+      .expect("the leaf's flow")
+      .add_run(after, &[], " cd", style());
+    page.lay_out();
+
+    assert!(
+      !page.tree.set_context(text, Some(made("ab "))),
+      "only the boxes' sizes differ"
+    );
+    assert!(!page.tree.is_dirty(text));
+
+    let rects = page.lay_out();
+    let start = width("ab ");
+    let top = 30. - baseline(24., 16.);
+
+    assert_near(rects.rect(inline), rect(start, 0., 20., 30.));
+    assert_near(rects.rect(after), rect(start + 20., top, width(" cd"), 24.));
+
+    assert!(page.tree.set_context(text, Some(made("abcd "))));
+
+    let rects = page.lay_out();
+    let start = width("abcd ");
+
+    assert_near(rects.rect(inline), rect(start, 0., 20., 30.));
+    assert_near(rects.rect(after), rect(start + 20., top, width(" cd"), 24.));
+  }
+
   /// A line may end before an inline box with no blank between them.
   #[test]
   fn a_line_may_end_before_an_inline_box() {

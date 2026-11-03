@@ -1,14 +1,40 @@
 //! The terminal's frame at scale: a scrolled column of sixteen thousand text rows, drawn
 //! with nothing changed, after a pointer move, resized, which restyles and lays out
-//! every row, with a keyed row added or removed, and mounted afresh.
+//! every row, with a keyed row added or removed, and mounted afresh; a scrolled paragraph
+//! of a thousand inline boxes among its words, resized; and a scrolled column of a
+//! thousand rows whose boxes and runs are all in motion, a frame later.
 
 #[cfg(skene_platform = "terminal")]
 mod frame {
+  use std::time::Duration;
+
   use criterion::Criterion;
-  use skene_tui::{platform::terminal::mount, prelude::*, testing};
+  use skene_foundation::{BoxKeyframe, RunKeyframe};
+  use skene_tui::{
+    Color,
+    platform::terminal::{Terminal, mount},
+    prelude::*,
+    testing,
+  };
 
   /// The rows the column holds.
   const ROWS: usize = 16_000;
+
+  /// The inline boxes the paragraph holds, a word before each.
+  const INLINE_BOXES: usize = 1_000;
+
+  /// The rows in motion the column holds.
+  const MOVING_ROWS: usize = 1_000;
+
+  /// The color a box's animation starts from and a run's ends at.
+  fn red() -> Color {
+    Color::srgb(1., 0., 0.)
+  }
+
+  /// The color a box's animation ends at and a run's starts from.
+  fn blue() -> Color {
+    Color::srgb(0., 0., 1.)
+  }
 
   /// Mounts a screen-high scroll box over [`ROWS`] text rows.
   fn mount_rows() {
@@ -38,6 +64,93 @@ mod frame {
           |row| *row,
           |row| Text::new(format!("row {row}")),
         ))
+        .build()
+    });
+  }
+
+  /// Mounts a screen-high scroll box over a paragraph of [`INLINE_BOXES`] inline boxes,
+  /// each after a word.
+  fn mount_inline_boxes() {
+    let _ = mount(|| {
+      Container::new()
+        .set_height(24)
+        .set_overflow(Overflow::ScrollIfNeeded)
+        .set_child(
+          RichText::new().add_spans((0..INLINE_BOXES).flat_map(|index| {
+            [
+              Span::new(format!("word{index} ")),
+              Span::view(Container::new().set_width(2).set_height(1)),
+            ]
+          })),
+        )
+        .build()
+    });
+  }
+
+  /// Mounts a screen-high scroll box over [`MOVING_ROWS`] rows, each a box whose background
+  /// and a text whose color run an endless animation from red to blue.
+  fn mount_moving_rows() {
+    let _ = mount(|| {
+      Container::new()
+        .set_height(24)
+        .set_overflow(Overflow::ScrollIfNeeded)
+        .set_child(
+          Column::new().set_children(
+            (0..MOVING_ROWS)
+              .map(|index| {
+                Container::new()
+                  .set_background(red())
+                  .add_animation(
+                    Animation::new(
+                      1.,
+                      [
+                        (
+                          0.,
+                          BoxKeyframe::<Terminal> {
+                            background: Some(red().into()),
+                            ..Default::default()
+                          },
+                        ),
+                        (
+                          100.,
+                          BoxKeyframe::<Terminal> {
+                            background: Some(blue().into()),
+                            ..Default::default()
+                          },
+                        ),
+                      ],
+                    )
+                    .set_iterations(Iterations::Infinite),
+                  )
+                  .set_child(
+                    Text::new(format!("row {index}")).add_animation(
+                      Animation::new(
+                        1.,
+                        [
+                          (
+                            0.,
+                            RunKeyframe::<Terminal> {
+                              color: Some(blue().into()),
+                              ..Default::default()
+                            },
+                          ),
+                          (
+                            100.,
+                            RunKeyframe::<Terminal> {
+                              color: Some(red().into()),
+                              ..Default::default()
+                            },
+                          ),
+                        ],
+                      )
+                      .set_iterations(Iterations::Infinite),
+                    ),
+                  )
+                  .into_any()
+              })
+              .collect::<Vec<_>>(),
+          ),
+        )
         .build()
     });
   }
@@ -94,6 +207,34 @@ mod frame {
             }
           });
 
+          testing::render_to_text(80, 24)
+        });
+      });
+    });
+
+    testing::with_platform(|| {
+      mount_inline_boxes();
+
+      let _ = testing::render_to_text(80, 24);
+      let mut wide = false;
+
+      criterion.bench_function("inline_boxes_resized_frame_1k_boxes", |bencher| {
+        bencher.iter(|| {
+          wide = !wide;
+
+          testing::render_to_text(if wide { 81 } else { 80 }, 24)
+        });
+      });
+    });
+
+    testing::with_platform(|| {
+      mount_moving_rows();
+
+      let _ = testing::render_to_text(80, 24);
+
+      criterion.bench_function("moving_frame_1k_rows", |bencher| {
+        bencher.iter(|| {
+          testing::trigger_frame(Duration::from_millis(16));
           testing::render_to_text(80, 24)
         });
       });

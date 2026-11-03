@@ -229,7 +229,7 @@ fn position_of(handle: NodeId) -> Option<SnapshotPlace> {
   Scene::<Terminal>::with(|scene| scene.record(node).map(|record| record.position().clone()))
 }
 
-/// The handle realizing the node at `position`, if it is live.
+/// The node at `position`, if it is live.
 fn handle_at(position: &SnapshotPlace) -> Option<NodeId> {
   Scene::<Terminal>::with(|scene| scene.node_at(position))
 }

@@ -434,12 +434,12 @@ impl Field {
 
 impl Records {
   /// The text entry at `handle`, if it is one.
-  pub(crate) fn field(&self, handle: super::NodeId) -> Option<&Field> {
+  pub(crate) fn field(&self, handle: NodeId) -> Option<&Field> {
     self.cell(handle)?.field.as_deref()
   }
 
   /// The text entry at `handle`, if it is one, to change.
-  pub(crate) fn field_mut(&mut self, handle: super::NodeId) -> Option<&mut Field> {
+  pub(crate) fn field_mut(&mut self, handle: NodeId) -> Option<&mut Field> {
     self.cell_mut(handle)?.field.as_deref_mut()
   }
 
@@ -449,7 +449,7 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and an entry's editing state is asked of it as its window is"
   )]
-  pub(crate) fn entry(&self, handle: super::NodeId) -> Option<Rc<EntryState>> {
+  pub(crate) fn entry(&self, handle: NodeId) -> Option<Rc<EntryState>> {
     Scene::<Terminal>::entry_of(handle)
   }
 

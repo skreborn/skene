@@ -291,3 +291,18 @@ a flex or grid container holding a 4px by 40px box is 8px by 56px in a flex row;
 the first no width and the second 4px. Fix: floor such a box's content width at its padding and
 border's height times the ratio, capped by its max width (`automatic_ratio_width`), laying a flex
 or grid container out again at it where its content leaves it narrower.
+
+# A layout that places a node's children itself cannot count their scrollable overflow
+
+Ready to file at https://github.com/DioxusLabs/taffy/issues as a feature request, by the
+author's choice.
+
+`compute_scrollable_overflow_contribution` (src/compute/common/scrollable_overflow.rs) is the
+rule every algorithm counts a child's contribution to its parent's scrollable overflow by: a
+child's border box, its own overflow where its overflow lets it escape, and nothing for a box
+wholly before a scroll container's origin. It is `pub(crate)`, so a layout written against the
+low-level API that places a node's children itself (a text leaf placing its inline boxes,
+laid out through `perform_child_layout`) has to copy it, and a copy drifts: skene-layout's had
+lost the scroll-origin exclusion, which `a_paragraph_lays_its_boxes_out_as_a_row_does` holds
+against a scrolling flex row holding a box inset wholly before its origin. Fix: make it public
+and re-export it from `compute` beside `compute_leaf_layout`, as Skene's copy does.

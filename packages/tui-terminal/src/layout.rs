@@ -160,6 +160,12 @@ impl CellFlow {
     )
   }
 
+  /// The cells a flow laid out `width` wide lays out across: `width` floored to whole
+  /// cells, at least one, as the terminal lays text out in cells.
+  pub(crate) const fn cells(width: f32) -> f32 {
+    width.max(0.).floor().max(1.)
+  }
+
   /// The leaf's flow.
   pub(crate) const fn flow(&self) -> &TextFlow<CellEngine> {
     &self.flow
@@ -179,15 +185,14 @@ impl Leaf for CellFlow {
     known: taffy::geometry::Size<Option<f32>>,
     available: taffy::geometry::Size<AvailableSpace>,
   ) -> Size<f32> {
-    let floor = |width: f32| width.max(0.).floor().max(1.);
     let measured = self.flow().measure(
       taffy::geometry::Size {
-        width: known.width.map(floor),
+        width: known.width.map(Self::cells),
         height: known.height,
       },
       taffy::geometry::Size {
         width: match available.width {
-          AvailableSpace::Definite(width) => AvailableSpace::Definite(floor(width)),
+          AvailableSpace::Definite(width) => AvailableSpace::Definite(Self::cells(width)),
           space => space,
         },
         height: available.height,
@@ -200,11 +205,9 @@ impl Leaf for CellFlow {
   /// The flow's places, its content box floored to whole cells, at least one, as it
   /// measures.
   fn place(&self, content: Rect<f32>) -> Vec<(Handle, Rect<f32>)> {
-    let width = content.size.width.max(0.).floor().max(1.);
-
     self.flow.place(Rect::new(
       content.origin,
-      Size::new(width, content.size.height),
+      Size::new(Self::cells(content.size.width), content.size.height),
     ))
   }
 
@@ -390,36 +393,15 @@ pub(crate) fn enclosing_paragraph(records: &Records, handle: Handle) -> Option<H
   Some(current)
 }
 
-/// The inline boxes of the paragraph `handle`, each with the cell its frame's top left
-/// is in, relative to the paragraph's origin, against the last layout.
-pub(crate) fn inline_boxes(records: &Records, handle: Handle) -> Vec<(Handle, (i64, i64))> {
-  let Some(flow) = flow_of(records, handle)
-  else {
-    return Vec::new();
-  };
-
-  if flow.flow().boxes().next().is_some() {
-    let (width, _) = records.node_size(handle);
-
-    return flow
-      .flow()
-      .place(content(usize::try_from(width).unwrap_or(1)))
-      .into_iter()
-      .filter(|(node, _)| is_inline_box(records, *node))
-      .map(|(node, rect)| (node, (cell_of(rect.origin.x), cell_of(rect.origin.y))))
-      .collect();
-  }
-
-  Vec::new()
-}
-
-/// The cell a layout coordinate of a flow falls in.
-#[expect(
-  clippy::cast_possible_truncation,
-  reason = "a coordinate in cells stays far below i64::MAX"
-)]
-const fn cell_of(coordinate: f32) -> i64 {
-  coordinate.round() as i64
+/// The inline boxes of the paragraph `handle`, in its flow's order, each a child of the
+/// paragraph in the tree, which lays it out where the flow places it.
+pub(crate) fn inline_boxes(records: &Records, handle: Handle) -> Vec<Handle> {
+  flow_of(records, handle).map_or_else(Vec::new, |flow| {
+    flow
+      .boxes()
+      .filter(|node| is_inline_box(records, *node))
+      .collect()
+  })
 }
 
 /// The text of the paragraph `handle`: every inline run beneath it, in order.

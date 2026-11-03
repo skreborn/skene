@@ -5,7 +5,7 @@ house rules do not reach it.
 
 Skene's changes, each marked `Skene:` in the source. Each is held by a reproduction in
 skene-layout's tests, and `UPSTREAM.md` holds the reports to offer, one per change. All but the
-first two and the last make a box lay out alike whatever space it is given, as Chromium lays it
+first two and the last two make a box lay out alike whatever space it is given, as Chromium lays it
 out: laid out
 at its natural (max-content) height and then at that height as a definite space, or as its own
 height, a box keeps its size and every box beneath it keeps its place, which skene-layout's tests
@@ -92,5 +92,10 @@ hold over random trees.
   as Chromium sizes its min- and max-content widths; a flex or grid container its content leaves
   narrower is laid out again at that width. Taffy took its width from its content alone, so an
   empty box at a ratio was no wider than its padding and border.
+- compute/common/scrollable_overflow.rs (`compute_scrollable_overflow_contribution`) and
+  compute/mod.rs: the contribution a child makes to its parent's scrollable overflow is public
+  (`taffy::compute_scrollable_overflow_contribution`), so a layout that places a node's children
+  itself (skene-layout's leaf placing its inline boxes) counts them as taffy's algorithms do, a
+  box wholly before a scroll container's origin left out. Taffy kept it crate-private.
 
 The licence file (LICENSE) is the upstream repository's; the published crate carries none.

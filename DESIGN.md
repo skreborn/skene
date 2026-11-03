@@ -1209,7 +1209,10 @@ Condition     = Media | State | And | Or
   own engines lay them out from taffy's whole input (the web ignores the fact, CSS laying
   out its every box), each engine running taffy's algorithms and per-node cache over one
   store of the scene's nodes and carrying the vendored tree's cache changes, so a layout
-  is that of one taffy tree of every node, rounded once over the hierarchy from where each
+  is that of one taffy tree of every node, but for a leaf's inline boxes, which the leaf
+  places as taffy's algorithms place a child and counts in its overflow through taffy's
+  own rule (`compute_scrollable_overflow_contribution`, public in the vendored copy),
+  rounded once over the hierarchy from where each
   box lies in the root, its fractional rectangles kept beside the rounded ones and either
   read as a `Placed` in the foundation's geometry (its border box, border, padding,
   overflow and how far it scrolls); each node's style, text and children written where
@@ -1527,8 +1530,10 @@ engine, over the geometry it reports.
   it out (`Leaf::size_box`, and `Tree::set_context` from the box's last layout to a flow
   made afresh), keeps its paragraph until a run's text or style or a box's size changes,
   a change of its runs' paint alone repainting the paragraph it keeps without the leaf
-  measured again (`Leaf::repaint_as`), places each run and box from the layout's range
-  rectangles and inline box frames, and answers which run a point is on (`run_at`) and
+  measured again (`Leaf::repaint_as`), adds each run and box inside the group runs
+  around it, outermost first, places each run and box from the layout's range
+  rectangles and inline box frames and each group where the runs and boxes it holds
+  lie, and answers which run a point is on (`run_at`) and
   which is nearest (`nearest`), with the byte a caret there stands before, for every
   client: hit testing, links and the document's selection.
 - **Parley.** `skene-parley` is the engine over the patched Parley the workspace
@@ -1981,7 +1986,10 @@ blank it shows as, at its run's scale; under the mode a cluster whose code point
 to another width is laid out as a stand-in of its width (U+2060, U+FF71 or U+4E00)
 through the foundation's substitution, so every position the engine reports is a byte
 of the real text. Each text leaf is one paragraph of its runs and inline boxes (a
-`TextFlow` over the engine), an inline box a box as many whole cells wide and rows
+`TextFlow` over the engine), each carried inside the group runs around it, two leaves
+being alike where their runs, groups, texts and styles and their boxes' groups and sizes
+are (the groups' placements are read by nothing until the runtime's frames,
+`ROADMAP.md` item 1, read them), an inline box a box as many whole cells wide and rows
 tall as the tree lays it out, at least one of each, kept between frames and measured,
 painted, hit and selected from its one layout, a width floored to whole cells, at least
 one: a run wraps and keeps its blanks as the guaranteed core says and draws cluster by
@@ -2217,7 +2225,8 @@ paragraph's child in the tree, laid out at its content's size within the paragra
 layout, standing in the text as a placeholder of its whole cells and rows, at least one
 of each, its layout its place in the paragraph, so a frame whose box changes size lays
 it and its paragraph out once and focus reveals a control inside it where it flowed; it
-is painted and hit at the cells it flowed into, and what its content overflows counts in
+is painted and hit at that place, the paragraph's text at the whole cells the paragraph
+was placed across, so text and boxes share one line layout, and what its content overflows counts in
 its paragraph's overflow, painted, hit and scrolled to wherever it reaches, as a browser's
 overflow is. An
 edge whose border width is zero takes no cells and draws none, and a border whose color

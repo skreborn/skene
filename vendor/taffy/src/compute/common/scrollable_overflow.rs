@@ -22,7 +22,9 @@ use crate::util::sys::{f32_max, f32_min};
 ///
 /// A box whose containment contains its scrollable overflow (layout or paint containment)
 /// contributes only its border box, regardless of its overflow style.
-pub(crate) fn compute_scrollable_overflow_contribution(
+// Skene: public (re-exported as `taffy::compute_scrollable_overflow_contribution`), so a layout
+// that places a node's children itself counts them as taffy's algorithms do.
+pub fn compute_scrollable_overflow_contribution(
     location: Point<f32>,
     size: Size<f32>,
     scrollable_overflow_rect: Rect<f32>,

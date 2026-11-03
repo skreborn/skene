@@ -1457,6 +1457,51 @@ fn a_grouped_inline_box_places_its_content() {
   });
 }
 
+/// A paragraph of a fractional width wraps its text and its inline boxes at the whole
+/// cells it lays out in, and paints and hits a box where the layout placed it: 3 cells of
+/// a box 3.5 wide, so the box goes to the second line, where a 4 cells wide paragraph
+/// would keep it on the first.
+#[test]
+fn a_fractional_paragraph_paints_and_hits_its_boxes_where_it_places_them() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = mount(move || {
+      Container::new()
+        .set_width(7)
+        .set_child(
+          Container::new()
+            .set_width(Dimension::Fraction(0.5))
+            .set_child(
+              RichText::new().add_spans([
+                Span::new("abc"),
+                Span::view(
+                  Container::new()
+                    .handle_click(move || counted.set(counted.get() + 1))
+                    .set_child(Text::new("X")),
+                ),
+              ]),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(8, 3);
+
+    assert_eq!(frame, "abc\nX\n\n");
+
+    testing::trigger_mouse_click(3, 0);
+
+    assert_eq!(clicks.get(), 0, "nothing is drawn beside the text");
+
+    testing::trigger_mouse_click(0, 1);
+
+    assert_eq!(clicks.get(), 1);
+  });
+}
+
 /// A frame reports a box's laid-out size to a handle measuring it, and again as the
 /// terminal resizes it.
 #[test]

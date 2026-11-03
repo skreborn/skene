@@ -836,8 +836,8 @@ enum NodePaint {
     clusters: Vec<ClusterPaint>,
     spans: Vec<SpanPaint>,
     links: Vec<String>,
-    /// Each inline box, with the cell its frame's top left is in.
-    boxes: Vec<(Handle, (i64, i64))>,
+    /// Each inline box, laid out where it flows.
+    boxes: Vec<Handle>,
   },
   Box {
     background: Option<(u8, u8, u8)>,
@@ -872,13 +872,12 @@ enum NodePaint {
   None,
 }
 
-/// Each cluster the text node `handle`, laid out `width` cells wide, draws, with its
-/// span (the index of its run among `source`'s), its run's scale and whether `selection`,
-/// a range of `source`'s clusters, holds it.
+/// Each cluster the text node `handle`, laid out across the cells its leaf placed it in,
+/// draws, with its span (the index of its run among `source`'s), its run's scale and
+/// whether `selection`, a range of `source`'s clusters, holds it.
 fn cluster_paints(
   records: &Records,
   handle: Handle,
-  width: usize,
   source: &Source,
   selection: Option<(usize, usize)>,
 ) -> Vec<ClusterPaint> {
@@ -886,7 +885,7 @@ fn cluster_paints(
   else {
     return Vec::new();
   };
-  let laid = flow.laid(width);
+  let laid = flow.laid(records.flow_width(handle));
   let text = flow.flow().text();
   let runs: Vec<Handle> = source.runs().map(|(run, _)| run).collect();
   let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();
@@ -962,7 +961,7 @@ fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<Selecti
   clippy::too_many_lines,
   reason = "a match dispatch over the record kinds; length is the kind count, not complexity"
 )]
-fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) -> NodePaint {
+fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
   let Some(record) = records.record(handle)
   else {
     return NodePaint::None;
@@ -1003,13 +1002,7 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
         .collect();
 
       NodePaint::Paragraph {
-        clusters: cluster_paints(
-          records,
-          handle,
-          width,
-          &source,
-          records.selection_range(handle),
-        ),
+        clusters: cluster_paints(records, handle, &source, records.selection_range(handle)),
         spans,
         links: destinations,
         boxes: inline_boxes(records, handle),
@@ -1089,13 +1082,7 @@ fn node_paint(records: &Records, handle: Handle, width: usize, focused: bool) ->
         .flatten();
 
       NodePaint::Text {
-        clusters: cluster_paints(
-          records,
-          handle,
-          width,
-          &Source::of(records, handle),
-          selection,
-        ),
+        clusters: cluster_paints(records, handle, &Source::of(records, handle), selection),
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
         decoration: CellDecoration::of(style, facts.link),
@@ -1210,7 +1197,7 @@ fn paint_node(
     let focused = records.focus_shows(handle);
     let contrast = records.contrast();
 
-    match node_paint(records, handle, width, focused) {
+    match node_paint(records, handle, focused) {
       NodePaint::Paragraph {
         clusters,
         spans,
@@ -1262,17 +1249,9 @@ fn paint_node(
           );
         }
 
-        // An inline box paints its own layout at the cell its frame lies at.
-        for (run, (cell_x, cell_y)) in boxes {
-          let (location_x, location_y) = records.node_location(run);
-
-          paint_node(
-            records,
-            buffer,
-            run,
-            x + isize::try_from(cell_x - location_x).unwrap_or(0),
-            y + isize::try_from(cell_y - location_y).unwrap_or(0),
-          );
+        // An inline box paints its own layout, where it flows in the paragraph.
+        for run in boxes {
+          paint_node(records, buffer, run, x, y);
         }
       }
       NodePaint::Box {

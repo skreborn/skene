@@ -3,6 +3,7 @@
 use skene_foundation::{Rect, Size};
 
 use super::{Handle, Record, Records};
+use crate::layout::CellFlow;
 
 /// Where a laid-out node sits in its layout parent and how large it is, in cells.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -85,6 +86,32 @@ impl Records {
     let frame = self.frame(handle);
 
     (frame.width, frame.height)
+  }
+
+  /// The cells the text node `handle` lays its flow out across, as its leaf measured and
+  /// placed it: its content box's width before any rounding, floored to whole cells, at
+  /// least one; one for a node outside the layout.
+  pub(crate) fn flow_width(&self, handle: Handle) -> usize {
+    let width = self
+      .record(handle)
+      .and_then(|record| record.node)
+      .and_then(|node| self.tree.unrounded_layout(node))
+      .map_or(0., |layout| {
+        layout.rect.size.width
+          - layout.border.start
+          - layout.border.end
+          - layout.padding.start
+          - layout.padding.end
+      });
+
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "a whole, positive count of cells, far inside usize"
+    )]
+    let cells = CellFlow::cells(width) as usize;
+
+    cells
   }
 
   /// A childless box's laid-out span in eighth cells from its parent's origin: where

@@ -496,8 +496,9 @@ impl<'t, C: Leaf> Engine<'t, C> {
   /// context places it in the content box of the leaf laid out to `output` from `inputs`,
   /// as taffy's algorithms place a child: its layout from its output and its style, a
   /// relative box offset by its insets and a hidden one left as its hidden layout left it;
-  /// each box's content counted in the leaf's scrollable overflow, and the boxes
-  /// positioned fixed inside it passed on from the leaf.
+  /// each box's contribution counted in the leaf's scrollable overflow as taffy counts a
+  /// child's, the union widened by the leaf's end padding where the leaf scrolls, and the
+  /// boxes positioned fixed inside it passed on from the leaf.
   fn place_boxes(
     &mut self,
     id: taffy::NodeId,
@@ -516,6 +517,7 @@ impl<'t, C: Leaf> Engine<'t, C> {
       Overflow::Scroll => style.scrollbar_width,
       _ => 0.,
     });
+    let scrolls = style.overflow.x.is_scroll_container() || style.overflow.y.is_scroll_container();
     let inset = padding + border;
     let content = skene_foundation::Rect::new(
       skene_foundation::Point::new(inset.left, inset.top),
@@ -531,6 +533,7 @@ impl<'t, C: Leaf> Engine<'t, C> {
       .as_ref()
       .map_or_else(Vec::new, |context| context.place(content));
     let mut cursor = 0;
+    let mut overflow = taffy::geometry::Rect::ZERO;
 
     for (order, mut laid) in sized.into_iter().enumerate() {
       let child = self.nodes.slot(id).children[order];
@@ -562,23 +565,33 @@ impl<'t, C: Leaf> Engine<'t, C> {
       };
       let layout = Self::box_layout(style, order, origin, content.size, &laid);
       let location = layout.location;
-      let contribution = Self::overflow_contribution(
+      let contribution = taffy::compute_scrollable_overflow_contribution(
         Point {
           x: location.x - border.left,
           y: location.y - border.top,
         },
-        &layout,
-        style,
+        layout.size,
+        layout.scrollable_overflow_rect,
+        style.overflow,
+        style.contain,
+        scrolls,
       );
 
       self.nodes.slot_mut(child).unrounded = layout;
-      output.scrollable_overflow_rect = output.scrollable_overflow_rect.union(contribution);
+      overflow = overflow.union(contribution);
 
       if !laid.oof_candidates.is_empty() {
         laid.oof_candidates.translate(location);
         output.oof_candidates.append(&mut laid.oof_candidates);
       }
     }
+
+    if scrolls {
+      overflow.right += padding.right;
+      overflow.bottom += padding.bottom;
+    }
+
+    output.scrollable_overflow_rect = output.scrollable_overflow_rect.union(overflow);
   }
 
   /// The layout of a box in `style`, laid out to `laid`, `order`th among its parent's
@@ -633,47 +646,6 @@ impl<'t, C: Leaf> Engine<'t, C> {
       padding: style.padding.resolve_or_zero(None, |_, _| 0.),
       border: style.border.resolve_or_zero(None, |_, _| 0.),
       margin: style.margin.resolve_or_zero(None, |_, _| 0.),
-    }
-  }
-
-  /// What a box laid out to `layout` in `style`, its border box at `location` from its
-  /// parent's padding box, adds to its parent's scrollable overflow: its border box, and
-  /// its own scrollable overflow on each axis it lets its content reach past it on.
-  fn overflow_contribution(
-    location: Point<f32>,
-    layout: &Layout,
-    style: &Style,
-  ) -> taffy::geometry::Rect<f32> {
-    let escapes = |overflow: Overflow| {
-      overflow == Overflow::Visible
-        && !style.overflow.x.is_scroll_container()
-        && !style.overflow.y.is_scroll_container()
-        && !style.contain.contains_scrollable_overflow()
-    };
-    let overflow = layout.scrollable_overflow_rect;
-    let (across, down) = (escapes(style.overflow.x), escapes(style.overflow.y));
-    let right = if across {
-      layout.size.width.max(overflow.right)
-    }
-    else {
-      layout.size.width
-    };
-    let bottom = if down {
-      layout.size.height.max(overflow.bottom)
-    }
-    else {
-      layout.size.height
-    };
-
-    if right <= 0. || bottom <= 0. {
-      return taffy::geometry::Rect::ZERO;
-    }
-
-    taffy::geometry::Rect {
-      left: location.x + if across { overflow.left.min(0.) } else { 0. },
-      right: location.x + right,
-      top: location.y + if down { overflow.top.min(0.) } else { 0. },
-      bottom: location.y + bottom,
     }
   }
 

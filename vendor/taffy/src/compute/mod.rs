@@ -37,6 +37,10 @@ pub(crate) mod flexbox;
 #[cfg(feature = "grid")]
 pub(crate) mod grid;
 
+// Skene: a child's contribution to its parent's scrollable overflow, for a layout that places a
+// node's children itself.
+#[cfg(feature = "content_size")]
+pub use self::common::scrollable_overflow::compute_scrollable_overflow_contribution;
 pub use leaf::compute_leaf_layout;
 pub use oof::{compute_oof_layout, compute_oof_layout_for_area, resolve_static_offset, OofLayoutResult};
 

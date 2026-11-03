@@ -113,7 +113,6 @@ impl Records {
     self.selectable_text(handle)?;
 
     let flow = flow_of(self, handle)?;
-    let (width, _) = self.node_size(handle);
     let point = cell_point(
       usize::try_from(local_x.max(0)).unwrap_or(0),
       usize::try_from(local_y.max(0)).unwrap_or(0),
@@ -122,7 +121,7 @@ impl Records {
     Some(
       flow
         .flow()
-        .nearest(content(usize::try_from(width).unwrap_or(1)), point)
+        .nearest(content(self.flow_width(handle)), point)
         .and_then(|hit| Source::of(self, handle).cluster_of(hit.node, hit.offset))
         .unwrap_or(0),
     )
@@ -171,16 +170,12 @@ impl Records {
         .find_map(|(run, _)| link_of(*run));
     }
 
-    let (width, _) = self.node_size(node);
     let row = usize::try_from(i64::from(y) - origin_y).ok()?;
     let column = usize::try_from(i64::from(x) - origin_x).ok()?;
 
     flow_of(self, node)?
       .flow()
-      .run_at(
-        content(usize::try_from(width).unwrap_or(1)),
-        cell_point(column, row),
-      )
+      .run_at(content(self.flow_width(node)), cell_point(column, row))
       .and_then(|_| link_of(node))
   }
 

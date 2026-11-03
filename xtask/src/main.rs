@@ -1186,7 +1186,7 @@ const TERMINAL: Minimums = Minimums {
     ("acme-sparkline::render", 2),
     ("skene-simple-tui::it", 9),
     ("skene-tui-terminal", 78),
-    ("skene-tui::it", 459),
+    ("skene-tui::it", 461),
     ("tui-context-menu::render", 1),
     ("tui-enhance::render", 2),
     ("tui-gallery::named", 1),

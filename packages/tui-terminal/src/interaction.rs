@@ -335,55 +335,40 @@ impl Records {
     };
     let boxes = inline_boxes(self, handle);
     let drawn = match (usize::try_from(x - origin.0), usize::try_from(y - origin.1)) {
-      (Ok(column), Ok(row)) => {
-        let (width, _) = self.node_size(handle);
-
-        flow
-          .flow()
-          .run_at(
-            content(usize::try_from(width).unwrap_or(1)),
-            cell_point(column, row),
-          )
-          .map(|hit| hit.node)
-          .or_else(|| {
-            boxes
-              .iter()
-              .find(|(run, (cell_x, cell_y))| {
-                let (cells, rows) = self.node_size(*run);
-                let (column, row) = (
-                  i64::try_from(column).unwrap_or(0),
-                  i64::try_from(row).unwrap_or(0),
-                );
-
-                (*cell_x..cell_x + cells).contains(&column)
-                  && (*cell_y..cell_y + rows).contains(&row)
-              })
-              .map(|(run, _)| *run)
+      (Ok(column), Ok(row)) => flow
+        .flow()
+        .run_at(content(self.flow_width(handle)), cell_point(column, row))
+        .map(|hit| hit.node)
+        .or_else(|| {
+          boxes.iter().copied().find(|run| {
+            self
+              .frame(*run)
+              .covers(self.node_location(*run), (x - origin.0, y - origin.1))
           })
-      }
+        }),
       _ => None,
     };
 
     if let Some(leaf) = drawn {
       self.push_groups(handle, leaf, origin, path);
 
-      if !is_inline_box(self, leaf) {
-        path.push((leaf, origin));
+      if is_inline_box(self, leaf) {
+        self.hit_walk(leaf, origin.0, origin.1, x, y, path);
       }
-      else if let Some((_, cell)) = boxes.into_iter().find(|(run, _)| *run == leaf) {
-        self.hit_box(leaf, origin, cell, x, y, path);
+      else {
+        path.push((leaf, origin));
       }
 
       return true;
     }
 
     // Beside every run and box, the topmost box whose content reaches the point.
-    for (run, cell) in boxes.into_iter().rev() {
+    for run in boxes.into_iter().rev() {
       let mark = path.len();
 
       self.push_groups(handle, run, origin, path);
 
-      if self.hit_box(run, origin, cell, x, y, path) {
+      if self.hit_walk(run, origin.0, origin.1, x, y, path) {
         return true;
       }
 
@@ -391,29 +376,6 @@ impl Records {
     }
 
     false
-  }
-
-  /// Hits the inline box `run` of a paragraph at `origin`, its frame at `cell` of it,
-  /// through its own layout; `true` where it or its content was hit.
-  fn hit_box(
-    &self,
-    run: Handle,
-    origin: (i64, i64),
-    (cell_x, cell_y): (i64, i64),
-    x: i64,
-    y: i64,
-    path: &mut Vec<(Handle, (i64, i64))>,
-  ) -> bool {
-    let (location_x, location_y) = self.node_location(run);
-
-    self.hit_walk(
-      run,
-      origin.0 + cell_x - location_x,
-      origin.1 + cell_y - location_y,
-      x,
-      y,
-      path,
-    )
   }
 
   /// Pushes the group runs between the paragraph `handle` and its run `leaf` onto the
@@ -463,20 +425,19 @@ impl Records {
     )
   }
 
-  /// A node's position within its layout parent: its laid-out location, or for a run
-  /// flowing in a paragraph, through any groups, the cell an inline box's frame lies at
-  /// and the paragraph's origin for any other.
+  /// A node's position within its layout parent: its laid-out location, an inline box's
+  /// in its paragraph through any groups, or the paragraph's origin for any other run
+  /// flowing in one.
   pub(crate) fn inline_location(&self, handle: Handle) -> (i64, i64) {
-    let paragraph = is_inline_run(self, handle)
-      .then(|| enclosing_paragraph(self, handle))
-      .flatten();
+    let flows = is_inline_run(self, handle)
+      && !is_inline_box(self, handle)
+      && enclosing_paragraph(self, handle).is_some();
 
-    match paragraph {
-      Some(paragraph) => inline_boxes(self, paragraph)
-        .into_iter()
-        .find(|(run, _)| *run == handle)
-        .map_or((0, 0), |(_, cell)| cell),
-      None => self.node_location(handle),
+    if flows {
+      (0, 0)
+    }
+    else {
+      self.node_location(handle)
     }
   }
 

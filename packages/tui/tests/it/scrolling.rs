@@ -219,7 +219,7 @@ fn focus_scrolls_into_view() {
 }
 
 /// Focusing a control inside an inline box below the fold scrolls it into view, at its
-/// place in its paragraph.
+/// place in its paragraph: its own line last in view, with lines still beneath it.
 #[test]
 fn focus_scrolls_an_inline_box_into_view() {
   with_platform(|| {
@@ -232,6 +232,7 @@ fn focus_scrolls_an_inline_box_into_view() {
             .set_child(RichText::new().add_spans([
               Span::new("one two three four five six seven "),
               Span::view(BasicButton::new(Activate::new()).set_label("go")),
+              Span::new(" eight nine ten eleven twelve"),
             ])),
         )
         .into_any()
@@ -241,15 +242,18 @@ fn focus_scrolls_an_inline_box_into_view() {
 
     testing::trigger_key("Tab");
 
-    let frame = testing::render_to_text(12, 4);
+    let rows = frame_rows(12, 4);
 
-    assert!(frame.contains("go"), "{frame}");
-    assert!(!frame.contains("one"), "{frame}");
+    assert_eq!(
+      rows[..3],
+      ["three four", "five six", "seven go"],
+      "{rows:?}"
+    );
   });
 }
 
 /// Focusing a control inside an inline box inside a group run scrolls it into view, at
-/// its place in its paragraph.
+/// its place in its paragraph: its own line last in view, with lines still beneath it.
 #[test]
 fn focus_scrolls_a_grouped_inline_box_into_view() {
   with_platform(|| {
@@ -264,6 +268,7 @@ fn focus_scrolls_a_grouped_inline_box_into_view() {
               Span::group([Span::view(
                 BasicButton::new(Activate::new()).set_label("go"),
               )]),
+              Span::new(" eight nine ten eleven twelve"),
             ])),
         )
         .into_any()
@@ -273,10 +278,58 @@ fn focus_scrolls_a_grouped_inline_box_into_view() {
 
     testing::trigger_key("Tab");
 
-    let frame = testing::render_to_text(12, 4);
+    let rows = frame_rows(12, 4);
 
-    assert!(frame.contains("go"), "{frame}");
-    assert!(!frame.contains("one"), "{frame}");
+    assert_eq!(
+      rows[..3],
+      ["three four", "five six", "seven go"],
+      "{rows:?}"
+    );
+  });
+}
+
+/// Focusing a control inside an inline box of a paragraph of a fractional width scrolls
+/// to the line the paragraph wrapped it onto, at the whole cells it lays out in.
+#[test]
+fn focus_scrolls_to_an_inline_box_where_a_fractional_paragraph_wraps_it() {
+  with_platform(|| {
+    let _ = mount(|| {
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_width(7)
+            .set_height(1)
+            .set_overflow(Overflow::Scroll)
+            .set_child(
+              Container::new()
+                .set_width(Dimension::Fraction(0.5))
+                .set_child(
+                  RichText::new().add_spans([
+                    Span::new("abc"),
+                    Span::view(
+                      Container::new()
+                        .handle_click(|| ())
+                        .set_child(Text::new("X")),
+                    ),
+                  ]),
+                ),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      testing::render_to_text(8, 2).lines().next(),
+      Some("abc   █")
+    );
+
+    testing::trigger_key("Tab");
+
+    assert_eq!(
+      testing::render_to_text(8, 2).lines().next(),
+      Some("X     █")
+    );
   });
 }
 

@@ -74,12 +74,15 @@ pub trait Leaf {
 /// Each container, a node inserted as one, is laid out by a taffy engine of its own over
 /// its members: itself, and the nodes beneath it up to the next containers, which their
 /// own engines lay out from the whole of taffy's input. A layout is that of one taffy tree
-/// of every node, whichever nodes are containers, rounded once over the whole hierarchy.
+/// of every node, whichever nodes are containers, but for a leaf's inline boxes, which the
+/// leaf places as taffy's algorithms place a child; it is rounded once over the whole
+/// hierarchy.
 ///
 /// A leaf whose context names boxes ([`Leaf::boxes`]) holds them as its children, in the
 /// same order: each is laid out at its max-content size before the leaf measures, and
-/// placed inside the leaf's content box where the leaf places it, so a change to a box's
-/// content lays its leaf out again.
+/// placed inside the leaf's content box where the leaf places it and counted in the leaf's
+/// scrollable overflow as taffy counts a child's, so a change to a box's content lays its
+/// leaf out again.
 ///
 /// Every node contains the boxes positioned absolutely inside it: a style that leaves
 /// its position static is laid out relative, so a pinned box or an overlay is placed

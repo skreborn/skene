@@ -107,12 +107,12 @@ impl<N: Scalar, X: StyleExtension> Default for BoxMotion<N, X> {
 
 impl<N: Scalar + Interpolate, X: StyleExtension> BoxMotion<N, X> {
   /// Presents a box: retargets every property whose target moved since `previous`,
-  /// lays the running tweens and animations over the target, and reports whether any
-  /// still runs.
+  /// lays the running tweens and animations over a copy of the target, and reports
+  /// whether any still runs.
   pub fn present(
     &mut self,
     previous: Option<&BoxStyle<N, Plain, X>>,
-    target: BoxStyle<N, Plain, X>,
+    target: &BoxStyle<N, Plain, X>,
     transitions: &[Transition<X::Property>],
     keyframes: &[Animation<BoxStyle<N, Plain, X>>],
     sample: Sample,
@@ -121,13 +121,13 @@ impl<N: Scalar + Interpolate, X: StyleExtension> BoxMotion<N, X> {
       BoxStyle::<N, Plain, X>::for_each_field(&mut RetargetBox {
         motion: &mut self.properties,
         previous,
-        target: &target,
+        target,
         transitions,
         sample,
       });
     }
 
-    let mut style = target;
+    let mut style = target.clone();
 
     BoxStyle::<N, Plain, X>::for_each_field(&mut PresentBox {
       motion: &mut self.properties,
@@ -165,12 +165,12 @@ impl<X: StyleExtension> Default for RunMotion<X> {
 
 impl<X: StyleExtension> RunMotion<X> {
   /// Presents a run: retargets every property whose target moved since `previous`,
-  /// lays the running tweens and animations over the target, and reports whether any
-  /// still runs.
+  /// lays the running tweens and animations over a copy of the target, and reports
+  /// whether any still runs.
   pub fn present(
     &mut self,
     previous: Option<&RunStyle<Plain, X>>,
-    target: RunStyle<Plain, X>,
+    target: &RunStyle<Plain, X>,
     transitions: &[Transition<X::Property>],
     keyframes: &[Animation<RunStyle<Plain, X>>],
     sample: Sample,
@@ -179,13 +179,13 @@ impl<X: StyleExtension> RunMotion<X> {
       RunStyle::<Plain, X>::for_each_field(&mut RetargetRun {
         motion: &mut self.properties,
         previous,
-        target: &target,
+        target,
         transitions,
         sample,
       });
     }
 
-    let mut style = target;
+    let mut style = target.clone();
 
     RunStyle::<Plain, X>::for_each_field(&mut PresentRun {
       motion: &mut self.properties,
@@ -367,14 +367,14 @@ mod tests {
     let white = Color::srgb(1., 1., 1.);
     let transitions = [Transition::new(Property::Background, 1.).set_easing(Easing::Linear)];
     let mut motion = BoxMotion::default();
-    let first = motion.present(None, colored(black), &transitions, &[], at(0.));
+    let first = motion.present(None, &colored(black), &transitions, &[], at(0.));
 
     assert_eq!(first.style.background, Some(black));
     assert!(!first.active);
 
     let moved = motion.present(
       Some(&colored(black)),
-      colored(white),
+      &colored(white),
       &transitions,
       &[],
       at(0.),
@@ -384,19 +384,19 @@ mod tests {
     assert!(moved.active);
 
     let held = colored(white);
-    let midway = motion.present(Some(&held), colored(white), &transitions, &[], at(0.5));
+    let midway = motion.present(Some(&held), &colored(white), &transitions, &[], at(0.5));
 
     assert_eq!(midway.style.background, Some(black.mix(white, 0.5)));
     assert!(midway.active);
 
-    let done = motion.present(Some(&held), colored(white), &transitions, &[], at(1.));
+    let done = motion.present(Some(&held), &colored(white), &transitions, &[], at(1.));
 
     assert_eq!(done.style.background, Some(white));
     assert!(!done.active);
 
     let reduced = motion.present(
       Some(&held),
-      colored(black),
+      &colored(black),
       &transitions,
       &[],
       Sample {
@@ -417,12 +417,12 @@ mod tests {
     let white = Color::srgb(1., 1., 1.);
     let fade = [Animation::new(1., [(100., colored(white))]).set_easing(Easing::Linear)];
     let mut motion = BoxMotion::default();
-    let first = motion.present(None, colored(black), &[], &fade, at(0.));
+    let first = motion.present(None, &colored(black), &[], &fade, at(0.));
 
     assert_eq!(first.style.background, Some(black));
     assert!(first.active);
 
-    let midway = motion.present(Some(&colored(black)), colored(black), &[], &fade, at(0.5));
+    let midway = motion.present(Some(&colored(black)), &colored(black), &[], &fade, at(0.5));
 
     assert_eq!(midway.style.background, Some(black.mix(white, 0.5)));
   }

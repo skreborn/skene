@@ -1342,7 +1342,8 @@ Condition     = Media | State | And | Or
   presentation pass (the first half of `Runtime::write_styles`) chooses the nodes to
   revisit, resolves each stale one through the runtime's `Env`, caches the result under
   a generation covering environment, interaction and definitions, presents it over its
-  motion and judges whether the presented value changed, which is where a transition
+  motion (a fresh node in motion sampled over the target and keyframes it cached, in
+  place) and judges whether the presented value changed, which is where a transition
   starts, and whether a box's paint reaches elsewhere past its border box
   (`Drawn::reach`, the terminal's shadow band), which moves the geometry the platform
   measures; the second half maps each presented node onto the runtime's layout tree.

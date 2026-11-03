@@ -28,16 +28,14 @@ struct Pass {
   sample: Sample,
 }
 
-/// What a node presents: the resolved box or run target, the wrapper layout of a run,
-/// the keyframes of each, and whether the resolution read the node's interaction,
-/// `None` where nothing resolved.
+/// What a node's stale resolution produced: the resolved box or run target, the wrapper
+/// layout of a run, and the keyframes of each.
 struct Targets<P: Drawn> {
   resolved_box: Option<PlainBox<P>>,
   resolved_run: Option<PlainRun<P>>,
   resolved_layout: PlainBox<P>,
   box_keyframes: Vec<Animation<PlainBox<P>>>,
   run_keyframes: Vec<Animation<PlainRun<P>>>,
-  reads_interaction: Option<bool>,
 }
 
 impl<P: Drawn> Runtime<P> {
@@ -96,9 +94,10 @@ impl<P: Drawn> Runtime<P> {
     }
   }
 
-  /// Presents `node` if its resolution is stale or it is in motion, where `displayed`;
-  /// `None` for a node without a record, or one whose fresh resolution was never
-  /// cached.
+  /// Presents `node` if its resolution is stale or it is in motion, where `displayed`: a
+  /// fresh node in motion samples its clock over the target and keyframes it cached, in
+  /// place, and only a stale one resolves again; `None` for a node without a record, or
+  /// one whose fresh resolution was never cached.
   fn present_one(
     &mut self,
     node: NodeId,
@@ -129,21 +128,17 @@ impl<P: Drawn> Runtime<P> {
       return Some(());
     }
 
-    let mut targets = self.targets(node, fresh)?;
-
-    if let Some(read) = targets.reads_interaction.take() {
-      self.restyle.read_interaction(node, read);
-    }
-
-    let record = self.record_mut(node)?;
+    let reach = record.kind.box_style().map(P::reach);
+    // `None` exactly where the node is fresh, since it has a record.
+    let resolved = if fresh { None } else { self.resolve(node) };
     let pass = Pass {
       generation,
       interaction,
       sample,
     };
-    let reach = record.kind.box_style().map(P::reach);
+    let record = self.record_mut(node)?;
     // A node whose presentation came out different from the last one repaints.
-    let (repaint, active) = record.kind.present(targets, &pass);
+    let (repaint, active) = record.kind.present(resolved, &pass)?;
 
     record.in_motion = active;
     self.geometry_stale |= record.kind.box_style().map(P::reach) != reach;
@@ -160,40 +155,10 @@ impl<P: Drawn> Runtime<P> {
     Some(())
   }
 
-  /// The targets of `node`: a fresh node in motion samples its clock over the targets
-  /// and keyframes it already resolved; only a stale one resolves again.
-  fn targets(&mut self, node: NodeId, fresh: bool) -> Option<Targets<P>> {
+  /// Resolves `node`'s targets and keyframes again, recording whether the resolution
+  /// read its interaction; `None` for a node without a record.
+  fn resolve(&mut self, node: NodeId) -> Option<Targets<P>> {
     let record = self.record(node)?;
-
-    if fresh {
-      return Some(match &record.kind {
-        Kind::Run { cache, .. } => {
-          let cache = cache.as_ref()?;
-
-          Targets {
-            resolved_box: None,
-            resolved_run: Some(cache.target.clone()),
-            resolved_layout: cache.layout.clone(),
-            box_keyframes: Vec::new(),
-            run_keyframes: cache.keyframes.clone(),
-            reads_interaction: None,
-          }
-        }
-        kind => {
-          let cache = kind.box_record()?.cache.as_ref()?;
-
-          Targets {
-            resolved_box: Some(cache.target.clone()),
-            resolved_run: None,
-            resolved_layout: PlainBox::<P>::default(),
-            box_keyframes: cache.keyframes.clone(),
-            run_keyframes: Vec::new(),
-            reads_interaction: None,
-          }
-        }
-      });
-    }
-
     let env = Env::of(self, node);
     let resolved_box = env.resolve_box();
     let (resolved_run, resolved_layout) = env
@@ -221,9 +186,10 @@ impl<P: Drawn> Runtime<P> {
         .collect::<Vec<_>>(),
       _ => Vec::new(),
     };
-    let reads_interaction = Some(env.reads_interaction());
+    let reads_interaction = env.reads_interaction();
 
     self.style_resolutions += 1;
+    self.restyle.read_interaction(node, reads_interaction);
 
     Some(Targets {
       resolved_box,
@@ -231,7 +197,6 @@ impl<P: Drawn> Runtime<P> {
       resolved_layout,
       box_keyframes,
       run_keyframes,
-      reads_interaction,
     })
   }
 
@@ -254,9 +219,10 @@ impl<P: Drawn> Runtime<P> {
 }
 
 impl<P: Drawn> Kind<P> {
-  /// Presents the node's resolution in `targets` over its motion at `pass` and caches
-  /// it; `(repaint, active)`.
-  fn present(&mut self, targets: Targets<P>, pass: &Pass) -> (bool, bool) {
+  /// Presents the node over its motion at `pass`: over `resolved`, its stale resolution,
+  /// which it caches, or where `None`, over the target and keyframes it cached, in place;
+  /// `(repaint, active)`, `None` where it neither resolved nor cached anything.
+  fn present(&mut self, resolved: Option<Targets<P>>, pass: &Pass) -> Option<(bool, bool)> {
     let Self::Run {
       kept,
       cache,
@@ -264,77 +230,102 @@ impl<P: Drawn> Kind<P> {
       ..
     } = self
     else {
-      return self.box_record_mut().map_or((false, false), |inner| {
-        inner.present(targets.resolved_box, targets.box_keyframes, pass)
-      });
+      return self.box_record_mut()?.present(resolved, pass);
     };
-    let mut active = false;
-    let previous = cache.as_ref().map(|cache| &cache.target);
-    let presented = targets.resolved_run.map(|target| {
-      let Presented {
+    let (previous, target, keyframes) = if let Some(targets) = &resolved {
+      let Some(target) = &targets.resolved_run
+      else {
+        return Some((cache.take().is_some(), false));
+      };
+
+      (
+        cache.as_ref().map(|cache| &cache.target),
+        target,
+        targets.run_keyframes.as_slice(),
+      )
+    }
+    else {
+      let cache = cache.as_ref()?;
+
+      (None, &cache.target, cache.keyframes.as_slice())
+    };
+    let Presented { style, active } =
+      motion.present(previous, target, kept.transitions(), keyframes, pass.sample);
+    let repaint = cache.as_ref().is_none_or(|cache| cache.style != style);
+
+    if let Some(Targets {
+      resolved_run: Some(target),
+      resolved_layout,
+      run_keyframes,
+      ..
+    }) = resolved
+    {
+      *cache = Some(RunCache {
+        generation: pass.generation,
+        interaction: pass.interaction,
         style,
-        active: running,
-      } = motion.present(
-        previous,
-        target.clone(),
-        kept.transitions(),
-        &targets.run_keyframes,
-        pass.sample,
-      );
+        target,
+        layout: resolved_layout,
+        keyframes: run_keyframes,
+      });
+    }
+    else if let Some(cache) = cache {
+      cache.style = style;
+    }
 
-      active |= running;
-
-      (style, target)
-    });
-    let repaint =
-      cache.as_ref().map(|cache| &cache.style) != presented.as_ref().map(|(style, _)| style);
-
-    *cache = presented.map(|(style, target)| RunCache {
-      generation: pass.generation,
-      interaction: pass.interaction,
-      style,
-      target,
-      layout: targets.resolved_layout,
-      keyframes: targets.run_keyframes,
-    });
-
-    (repaint, active)
+    Some((repaint, active))
   }
 }
 
 impl<P: Drawn> BoxRecord<P> {
-  /// Presents the box's resolution over its motion at `pass` and caches it;
-  /// `(repaint, active)`.
-  fn present(
-    &mut self,
-    resolved: Option<PlainBox<P>>,
-    keyframes: Vec<Animation<PlainBox<P>>>,
-    pass: &Pass,
-  ) -> (bool, bool) {
-    let Some(target) = resolved
+  /// Presents the box over its motion at `pass`: over `resolved`, its stale resolution,
+  /// which it caches, or where `None`, over the target and keyframes it cached, in place;
+  /// `(repaint, active)`, `None` where it neither resolved nor cached anything.
+  fn present(&mut self, resolved: Option<Targets<P>>, pass: &Pass) -> Option<(bool, bool)> {
+    let (previous, target, keyframes) = if let Some(targets) = &resolved {
+      let Some(target) = &targets.resolved_box
+      else {
+        return Some((false, false));
+      };
+
+      (
+        self.cache.as_ref().map(|cache| &cache.target),
+        target,
+        targets.box_keyframes.as_slice(),
+      )
+    }
     else {
-      return (false, false);
+      let cache = self.cache.as_ref()?;
+
+      (None, &cache.target, cache.keyframes.as_slice())
     };
-    let Presented {
-      style,
-      active: running,
-    } = self.motion.present(
-      self.cache.as_ref().map(|cache| &cache.target),
-      target.clone(),
+    let Presented { style, active } = self.motion.present(
+      previous,
+      target,
       self.kept.transitions(),
-      &keyframes,
+      keyframes,
       pass.sample,
     );
     let repaint = self.cache.as_ref().is_none_or(|cache| cache.style != style);
 
-    self.cache = Some(BoxCache {
-      generation: pass.generation,
-      interaction: pass.interaction,
-      style,
-      target,
-      keyframes,
-    });
+    if let Some(Targets {
+      resolved_box: Some(target),
+      box_keyframes,
+      ..
+    }) = resolved
+    {
+      self.cache = Some(BoxCache {
+        generation: pass.generation,
+        interaction: pass.interaction,
+        style,
+        target,
+        keyframes: box_keyframes,
+      });
+    }
+    else if let Some(cache) = &mut self.cache {
+      cache.style = style;
+    }
 
-    (repaint, running)
+    Some((repaint, active))
   }
 }

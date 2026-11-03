@@ -20,7 +20,10 @@ use skene_foundation::{
   Shortcut,
   Timers,
 };
-use skene_layout::{Tree, runtime::Runtime};
+use skene_layout::{
+  Tree,
+  runtime::{Drawn, Measured, Runtime},
+};
 
 pub(crate) use self::{
   cell::{Backdrop, BackdropKey, CellNode, PictureRecord},
@@ -31,10 +34,10 @@ pub(crate) use self::{
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
 };
 use crate::{
+  CellEngine,
   Clipboard,
   Terminal,
   detect::Palette,
-  layout::CellLeaf,
   paint::Buffer,
   selection::Selection,
 };
@@ -80,7 +83,7 @@ pub(crate) struct Records {
   cells: NodeMap<CellNode>,
   /// The layout tree; a text leaf carries its flow as context, which measures it and
   /// which painting and hit testing read the text's layout from.
-  pub(crate) tree: Tree<CellLeaf>,
+  pub(crate) tree: Tree<Measured<CellEngine>>,
   /// Screen rectangles to repaint that no live node covers any more.
   damaged_rects: Vec<CellRect>,
   /// The last painted frame, which the next paints over where nothing changed.
@@ -171,7 +174,7 @@ impl Records {
     let mut records = Self {
       runtime: Runtime::new(root, Self::launch_environment(mouse), false),
       cells: NodeMap::new(),
-      tree: Tree::new(true),
+      tree: Tree::new(Terminal::ROUNDED),
       damaged_rects: Vec::new(),
       last_frame: None,
       repainted: Vec::new(),
@@ -265,7 +268,7 @@ impl Records {
   /// changed: each entry's value laid out afresh at its next query, and each laid-out
   /// node's flow made afresh at its next restyle.
   pub(crate) fn remeasure(&mut self) {
-    self.runtime.restyle.revisit_every();
+    self.runtime.remeasure();
 
     for handle in self.runtime.handles() {
       if self.field(handle).is_some()

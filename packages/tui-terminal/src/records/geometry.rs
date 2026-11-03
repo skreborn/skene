@@ -1,9 +1,10 @@
 //! What the last layout measured of a node, in cells.
 
 use skene_foundation::{Rect, Size};
+use skene_layout::runtime::Flow;
 
 use super::{Handle, Record, Records};
-use crate::layout::CellFlow;
+use crate::CellEngine;
 
 /// Where a laid-out node sits in its layout parent and how large it is, in cells.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -111,7 +112,7 @@ impl Records {
       clippy::cast_sign_loss,
       reason = "a whole, positive count of cells, far inside usize"
     )]
-    let cells = CellFlow::cells(width) as usize;
+    let cells = Flow::<CellEngine>::whole_width(width) as usize;
 
     cells
   }

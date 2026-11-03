@@ -12,6 +12,18 @@ supersedes there.
 
 ## Decided against
 
+- **A text leaf's equality over its engine's state** (2026-11-03), each flow comparing
+  the engine it lays out through (`Drawn::Engine: PartialEq`) or the engine state a
+  `Drawn` hook reports (the terminal's grapheme clustering), so a leaf made after the
+  state changed is unlike the one held: the terminal's engine is
+  `Substituted<ParleyEngine, StandIns>`, foreign types it cannot implement `PartialEq`
+  on, and a hook would name per platform what an engine's layout depends on. The
+  runtime keeps a text generation that `Runtime::remeasure` moves wherever the
+  platform's engine comes to lay the same text out differently, and each flow
+  (`runtime::Flow`) compares the one it was made under; a remeasure replaces every flow
+  even where the engine's state came back to an earlier value, which is rare and lays
+  every frame out the same. Revisit when an engine's state is a value the runtime can
+  compare, or a remeasure that returns to an earlier state is frequent enough to cost.
 - **The drawn runtime in a thread-local of its own beside the platform's side table**
   (2026-11-03), `skene-layout`'s `Runtime<P>` held in a cell of its own and the
   platform's per-node state in another, borrowed in a fixed order: every platform
@@ -753,9 +765,10 @@ supersedes there.
   contract and the editor are the text module's, so the seam's item is the entry the
   scene keeps (`Realization::Entry`, the terminal's `Entry<CellEngine>`), naming the
   engine through it, and the web's an uninhabited type rather than an uninhabited
-  engine with an uninhabited paragraph and layout. Revisit when code generic over the
-  realization needs its engine to lay text out, which the drawn platforms' shared
-  runtime (item 1) may.
+  engine with an uninhabited paragraph and layout. Code generic over a drawn
+  realization lays text out through the engine `skene-layout` names beside the seam
+  (`Drawn::Engine`, since 2026-11-03), which leaves the seam's item the entry. Revisit
+  when the spine itself needs the engine to lay text out.
 - **Content-addressed token tags on display-wide colors** (2026-10-14), a toolkit's
   named colors tagged by their definition's content: a palette switch changed every tag
   and so restyled every node naming one. A palette switch touches no node: named

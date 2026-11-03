@@ -22,6 +22,13 @@
 //! each ([`Runtime::visit_runs`]), and a text node's source text names where each of its
 //! runs lies in it and in the flow the layout lays out ([`Source`]).
 //!
+//! The layout measures a paragraph by the runtime's text leaf ([`Measured`]): its runs
+//! and inline boxes laid out as one text through the platform's engine
+//! ([`Drawn::Engine`]) in the styles the platform gives them ([`Drawn::text_style`]), in
+//! whole units where the platform's layout rounds ([`Drawn::ROUNDED`]), made afresh
+//! under a new text generation when the engine comes to lay the same text out
+//! differently ([`Runtime::remeasure`]); a text entry measures at its native extent.
+//!
 //! The runtime is the source every node's style resolves through ([`Env`]): it keeps
 //! what its platform reports of the window ([`Window`]) and the app's choice of scheme,
 //! moved by one writer ([`Runtime::report`]) together with the resolution's generation
@@ -39,6 +46,7 @@
 
 mod adapter;
 mod environment;
+mod flow;
 mod motion;
 mod paragraph;
 mod record;
@@ -62,11 +70,13 @@ use skene_foundation::{
   RunStyle,
   TokenValue,
   interpolate::Interpolate,
+  text::{ParagraphStyle, TextEngine, TextStyle},
 };
 
 pub use self::{
   adapter::{INLINE_BOX, OverlayFocus},
   environment::{Facts, Pending, Window},
+  flow::{Flow, Measured},
   motion::{BoxMotion, Clock, Presented, RunMotion, Sample},
   paragraph::Source,
   record::{
@@ -83,7 +93,7 @@ pub use self::{
   },
   resolve::Env,
 };
-use crate::Restyle;
+use crate::{Borders, Restyle};
 
 /// A platform Skene draws whole: its realization keeps the drawn [`Runtime`] in its own
 /// state and hands it to the code written once above it.
@@ -98,6 +108,16 @@ use crate::Restyle;
 pub trait Drawn:
   Realization<TokenValue = TokenValue<<Self as Realization>::Scalar>, Scalar: Interpolate>
 {
+  /// The engine the platform lays its text out through.
+  type Engine: TextEngine;
+
+  /// How a box's border takes room in the platform's layout.
+  const BORDERS: Borders;
+
+  /// Whether the platform's layout is rounded to whole units, its text laid out in whole
+  /// units, at least one ([`Flow`]).
+  const ROUNDED: bool;
+
   /// Runs `operation` on the platform's runtime, `None` where none is installed for
   /// this thread.
   ///
@@ -129,14 +149,24 @@ pub trait Drawn:
   /// How far the paint of a box styled `style` reaches past its border box on each edge,
   /// in units of the layout.
   fn reach(style: &PlainBox<Self>) -> Inset<f32>;
+
+  /// The engine the platform's text lays out through on this thread.
+  fn engine() -> Self::Engine;
+
+  /// The paragraph style every text of the platform lays out in.
+  fn paragraph_style() -> ParagraphStyle;
+
+  /// The style the run styled `run` lays its text out in; `None` is the base a line
+  /// holding no run lays out in.
+  fn text_style(run: Option<&PlainRun<Self>>) -> TextStyle;
 }
 
 /// What a platform Skene draws whole keeps of its scene.
 ///
 /// A [`Record`] per node, the root filling the window, the overlays and text entries in
 /// build order, what moved since the last restyle, and what the next frame lays out and
-/// repaints, beside what it keeps of its window, the app's choice of scheme and the
-/// frame clock its motion samples against.
+/// repaints, beside what it keeps of its window, the app's choice of scheme, the frame
+/// clock its motion samples against and the text generation its flows are made under.
 #[derive(Debug)]
 #[must_use]
 #[expect(
@@ -166,6 +196,7 @@ pub struct Runtime<P: Drawn> {
   pub motion_active: bool,
   /// How many node styles have been resolved from their declarations.
   pub style_resolutions: u64,
+  text_generation: u64,
   damaged: Vec<NodeId>,
   clock: Clock,
   window: Window<P>,
@@ -200,6 +231,7 @@ impl<P: Drawn> Runtime<P> {
       geometry_stale: true,
       motion_active: false,
       style_resolutions: 0,
+      text_generation: 0,
       damaged: Vec::new(),
       clock: Clock::Manual(0.),
       window: Window::new(reported, painting),
@@ -322,5 +354,35 @@ impl<P: Drawn> Runtime<P> {
   #[inline(always)]
   pub fn advance_clock(&mut self, seconds: f64) {
     self.clock.advance(seconds);
+  }
+
+  /// The text generation every flow is made under: moved where the platform's engine
+  /// came to lay the same text out differently.
+  #[inline(always)]
+  #[must_use]
+  pub const fn text_generation(&self) -> u64 {
+    self.text_generation
+  }
+
+  /// Measures every node's text again, after the platform's engine came to lay the same
+  /// text out differently: every node revisited at the next restyle and the text
+  /// generation moved, so each flow made under the last one is unlike the one made
+  /// afresh.
+  pub const fn remeasure(&mut self) {
+    self.restyle.revisit_every();
+    self.text_generation = self.text_generation.wrapping_add(1);
+  }
+
+  /// An empty flow laid out through the platform's engine and paragraph style, a line
+  /// holding no run laid out in its base text style, in whole units where its layout is
+  /// rounded, under the runtime's text generation.
+  pub fn flow(&self) -> Flow<P::Engine> {
+    Flow::new(
+      P::engine(),
+      P::text_style(None),
+      P::paragraph_style(),
+      P::ROUNDED,
+      self.text_generation,
+    )
   }
 }

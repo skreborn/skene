@@ -40,8 +40,24 @@ pub const fn skene_layout::runtime::Kind<P>::kept_mut(&mut self) -> core::option
 pub const fn skene_layout::runtime::Kind<P>::mark_stale(&mut self)
 pub fn skene_layout::runtime::Kind<P>::resolved_under(&self) -> core::option::Option<(u64, skene_foundation::spine::resolve::Interaction)>
 pub fn skene_layout::runtime::Kind<P>::run(skene_foundation::spine::props::RunFacts) -> Self
+pub fn skene_layout::runtime::Kind<P>::run_style(&self) -> core::option::Option<&skene_layout::runtime::PlainRun<P>>
 impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Kind<P> where <P as skene_foundation::spine::realization::Realization>::StyleExt: core::fmt::Debug
 pub fn skene_layout::runtime::Kind<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_layout::runtime::Measured<E: skene_foundation::text::engine::TextEngine>
+pub skene_layout::runtime::Measured::Entry(skene_foundation::spine::values::size::Size<f32>)
+pub skene_layout::runtime::Measured::Flow(alloc::boxed::Box<skene_layout::runtime::Flow<E>>)
+impl<E: skene_foundation::text::engine::TextEngine> skene_layout::runtime::Measured<E>
+pub fn skene_layout::runtime::Measured<E>::flow(&self) -> core::option::Option<&skene_layout::runtime::Flow<E>>
+impl<E: skene_foundation::text::engine::TextEngine> core::cmp::PartialEq for skene_layout::runtime::Measured<E>
+pub fn skene_layout::runtime::Measured<E>::eq(&self, &Self) -> bool
+impl<E: skene_foundation::text::engine::TextEngine> core::fmt::Debug for skene_layout::runtime::Measured<E>
+pub fn skene_layout::runtime::Measured<E>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<E: skene_foundation::text::engine::TextEngine> skene_layout::Leaf for skene_layout::runtime::Measured<E>
+pub fn skene_layout::runtime::Measured<E>::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Measured<E>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
+pub fn skene_layout::runtime::Measured<E>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::runtime::Measured<E>::repaint_as(&mut self, &Self) -> bool
+pub fn skene_layout::runtime::Measured<E>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 pub enum skene_layout::runtime::OverlayFocus
 pub skene_layout::runtime::OverlayFocus::Held
 pub skene_layout::runtime::OverlayFocus::Moved(skene_foundation::spine::node::NodeId)
@@ -107,6 +123,24 @@ impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_layout
 impl<N: core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Facts<N>
 pub fn skene_layout::runtime::Facts<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: core::marker::Copy> core::marker::Copy for skene_layout::runtime::Facts<N>
+pub struct skene_layout::runtime::Flow<E: skene_foundation::text::engine::TextEngine>
+impl<E: skene_foundation::text::engine::TextEngine> skene_layout::runtime::Flow<E>
+pub fn skene_layout::runtime::Flow<E>::add_box(&mut self, skene_foundation::spine::node::NodeId, &[skene_foundation::spine::node::NodeId])
+pub fn skene_layout::runtime::Flow<E>::add_run(&mut self, skene_foundation::spine::node::NodeId, &[skene_foundation::spine::node::NodeId], &str, skene_foundation::text::model::TextStyle)
+pub const fn skene_layout::runtime::Flow<E>::flow(&self) -> &skene_layout::TextFlow<E>
+pub fn skene_layout::runtime::Flow<E>::laid(&self, skene_foundation::spine::values::rect::Rect<f32>) -> <<E as skene_foundation::text::engine::TextEngine>::Paragraph as skene_foundation::text::engine::Paragraph>::Laid
+pub const fn skene_layout::runtime::Flow<E>::new(E, skene_foundation::text::model::TextStyle, skene_foundation::text::model::ParagraphStyle, bool, u64) -> Self
+pub const fn skene_layout::runtime::Flow<E>::whole_width(f32) -> f32
+impl<E: skene_foundation::text::engine::TextEngine> core::cmp::PartialEq for skene_layout::runtime::Flow<E>
+pub fn skene_layout::runtime::Flow<E>::eq(&self, &Self) -> bool
+impl<E: skene_foundation::text::engine::TextEngine> core::fmt::Debug for skene_layout::runtime::Flow<E>
+pub fn skene_layout::runtime::Flow<E>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<E: skene_foundation::text::engine::TextEngine> skene_layout::Leaf for skene_layout::runtime::Flow<E>
+pub fn skene_layout::runtime::Flow<E>::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Flow<E>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
+pub fn skene_layout::runtime::Flow<E>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::runtime::Flow<E>::repaint_as(&mut self, &Self) -> bool
+pub fn skene_layout::runtime::Flow<E>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
 pub struct skene_layout::runtime::Pending<N: 'static>
 impl<N: skene_foundation::spine::scalar::Scalar> skene_layout::runtime::Pending<N>
 pub fn skene_layout::runtime::Pending<N>::moved(&self) -> bool
@@ -167,6 +201,7 @@ impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::advance_clock(&mut self, f64)
 pub fn skene_layout::runtime::Runtime<P>::damage(&mut self, skene_foundation::spine::node::NodeId)
 pub fn skene_layout::runtime::Runtime<P>::destroy(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_layout::runtime::Record<P>>
+pub fn skene_layout::runtime::Runtime<P>::flow(&self) -> skene_layout::runtime::Flow<<P as skene_layout::runtime::Drawn>::Engine>
 pub fn skene_layout::runtime::Runtime<P>::handles(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub const fn skene_layout::runtime::Runtime<P>::has_damage(&self) -> bool
 pub fn skene_layout::runtime::Runtime<P>::new(skene_foundation::spine::node::NodeId, skene_foundation::spine::condition::Environment<<P as skene_foundation::spine::realization::Realization>::Scalar>, bool) -> Self
@@ -174,9 +209,11 @@ pub fn skene_layout::runtime::Runtime<P>::now(&self) -> f64
 pub fn skene_layout::runtime::Runtime<P>::record(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Record<P>>
 pub fn skene_layout::runtime::Runtime<P>::record_count(&self) -> usize
 pub fn skene_layout::runtime::Runtime<P>::record_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut skene_layout::runtime::Record<P>>
+pub const fn skene_layout::runtime::Runtime<P>::remeasure(&mut self)
 pub const fn skene_layout::runtime::Runtime<P>::root(&self) -> skene_foundation::spine::node::NodeId
 pub const fn skene_layout::runtime::Runtime<P>::set_clock(&mut self, skene_layout::runtime::Clock)
 pub fn skene_layout::runtime::Runtime<P>::take_damage(&mut self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub const fn skene_layout::runtime::Runtime<P>::text_generation(&self) -> u64
 pub fn skene_layout::runtime::Runtime<P>::try_with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> core::option::Option<R>
 pub fn skene_layout::runtime::Runtime<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
@@ -263,10 +300,16 @@ impl<P: skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime
 pub fn skene_layout::runtime::Window<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub const skene_layout::runtime::INLINE_BOX: char
 pub trait skene_layout::runtime::Drawn: skene_foundation::spine::realization::Realization<TokenValue = skene_foundation::spine::resolve::TokenValue<<Self as skene_foundation::spine::realization::Realization>::Scalar>, Scalarskene_foundation::spine::motion::interpolate::Interpolate>
+pub type skene_layout::runtime::Drawn::Engine: skene_foundation::text::engine::TextEngine
+pub const skene_layout::runtime::Drawn::BORDERS: skene_layout::Borders
+pub const skene_layout::runtime::Drawn::ROUNDED: bool
+pub fn skene_layout::runtime::Drawn::engine() -> Self::Engine
 pub fn skene_layout::runtime::Drawn::finish_box(&mut skene_foundation::spine::box_style::BoxStyle<Self::Scalar, skene_foundation::spine::shape::Plain, Self::StyleExt>)
 pub fn skene_layout::runtime::Drawn::finish_run(&mut skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, Self::StyleExt>, &skene_foundation::spine::resolve::Resolver<'_, Self::Scalar, Self::StyleExt>)
+pub fn skene_layout::runtime::Drawn::paragraph_style() -> skene_foundation::text::model::ParagraphStyle
 pub fn skene_layout::runtime::Drawn::reach(&skene_layout::runtime::PlainBox<Self>) -> skene_foundation::spine::values::inset::Inset<f32>
 pub fn skene_layout::runtime::Drawn::sizes_text() -> bool
+pub fn skene_layout::runtime::Drawn::text_style(core::option::Option<&skene_layout::runtime::PlainRun<Self>>) -> skene_foundation::text::model::TextStyle
 pub fn skene_layout::runtime::Drawn::with_runtime<R>(impl core::ops::function::FnOnce(&mut skene_layout::runtime::Runtime<Self>) -> R) -> core::option::Option<R>
 pub type skene_layout::runtime::KeptStyle<P> = skene_foundation::spine::record::CompiledStyle<<P as skene_foundation::spine::realization::Realization>::Scalar, <P as skene_foundation::spine::realization::Realization>::StyleExt>
 pub type skene_layout::runtime::Observer<P> = alloc::rcs::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>)>
@@ -413,3 +456,15 @@ pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::measure
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::repaint_as(&mut self, &Self) -> bool
 pub fn skene_layout::TextFlow<E, skene_foundation::spine::node::NodeId>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
+impl<E: skene_foundation::text::engine::TextEngine> skene_layout::Leaf for skene_layout::runtime::Flow<E>
+pub fn skene_layout::runtime::Flow<E>::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Flow<E>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
+pub fn skene_layout::runtime::Flow<E>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::runtime::Flow<E>::repaint_as(&mut self, &Self) -> bool
+pub fn skene_layout::runtime::Flow<E>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)
+impl<E: skene_foundation::text::engine::TextEngine> skene_layout::Leaf for skene_layout::runtime::Measured<E>
+pub fn skene_layout::runtime::Measured<E>::boxes(&self) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Measured<E>::measure(&self, taffy::geometry::Size<core::option::Option<f32>>, taffy::geometry::Size<taffy::style::available_space::AvailableSpace>) -> skene_foundation::spine::values::size::Size<f32>
+pub fn skene_layout::runtime::Measured<E>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
+pub fn skene_layout::runtime::Measured<E>::repaint_as(&mut self, &Self) -> bool
+pub fn skene_layout::runtime::Measured<E>::size_box(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::size::Size<f32>)

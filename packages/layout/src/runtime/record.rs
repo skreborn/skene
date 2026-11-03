@@ -285,6 +285,15 @@ impl<P: Drawn> Kind<P> {
   pub fn box_style(&self) -> Option<&PlainBox<P>> {
     self.box_record().and_then(BoxRecord::style)
   }
+
+  /// The resolved style of a run, once a frame resolved it.
+  #[inline(always)]
+  pub fn run_style(&self) -> Option<&PlainRun<P>> {
+    match self {
+      Self::Run { cache, .. } => cache.as_ref().map(|cache| &cache.style),
+      _ => None,
+    }
+  }
 }
 
 /// One realized node.

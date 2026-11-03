@@ -28,10 +28,10 @@ in a code comment.
     damage and the measured rectangles, hit testing, focus, capture, wheel latching,
     selection) moves into `skene-layout`, generic over the platform's scalar, beside the
     style mapping, the `Tree`, the `Restyle` and its presentation pass, its frames hit
-    through, clipped and scrolled as a browser's are; a paragraph is kept as one
-    laid-out paragraph of its runs, which places them and their inline boxes for the frames, a paragraph's document selection
-    and its text content kept once above the engine, in the runtime, where each
-    realization keeps them today. A drawn entry's key default is written once there too,
+    through, clipped and scrolled as a browser's are, a paragraph's runs and inline
+    boxes placed for them by its flow, which the runtime already lays out, and a
+    paragraph's document selection and its text content kept once above the engine, in
+    the runtime, where each realization keeps them today. A drawn entry's key default is written once there too,
     over the shared entry the scene keeps: the core's `Binding` table, run after the
     app's key handlers as a browser's `<input>` default runs (so never as a
     `TextEntry::on_key`, which would run before them), the terminal's own key default

@@ -25,7 +25,7 @@ use crate::{
   Terminal,
   cells::Cells,
   engine::{DrawnCluster, drawn},
-  layout::{border_edges, flow_of, has_border, inline_boxes, padding_cells},
+  layout::{border_edges, content, flow_of, has_border, inline_boxes, padding_cells},
   records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
@@ -879,7 +879,7 @@ fn cluster_paints(
   else {
     return Vec::new();
   };
-  let laid = flow.laid(records.flow_width(handle));
+  let laid = flow.laid(content(records.flow_width(handle)));
   let text = flow.flow().text();
   let runs: Vec<Handle> = source.runs().map(|(run, _)| run).collect();
   let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();

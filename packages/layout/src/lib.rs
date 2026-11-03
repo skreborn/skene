@@ -15,7 +15,9 @@
 //! choosing the nodes whose style may have moved, resolving each stale one
 //! ([`runtime::Env`]) against what the platform reports of its window
 //! ([`runtime::Window`]), caching it and laying its motion over it at one reading of the
-//! frame clock ([`runtime::Runtime::present`], [`runtime::Clock`]), beside the adapter the
+//! frame clock ([`runtime::Runtime::present`], [`runtime::Clock`]), the text leaf a
+//! paragraph lays out as through the platform's engine, in whole units where its layout
+//! rounds ([`runtime::Flow`], [`runtime::Measured`]), beside the adapter the
 //! platform's realization forwards to for everything that is no cell's or pixel's
 //! ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The web lays out
 //! through CSS and needs none of it.

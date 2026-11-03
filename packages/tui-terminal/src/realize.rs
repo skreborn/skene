@@ -37,10 +37,13 @@ use skene_foundation::{
   Timer,
   TokenScope,
   terminal::{BOLD_WEIGHT, BorderGlyphs, TerminalStyle, Typography},
-  text::editing::Entry,
+  text::{ParagraphStyle, TextStyle, editing::Entry},
   typography,
 };
-use skene_layout::runtime::{Drawn, OverlayFocus, Runtime};
+use skene_layout::{
+  Borders,
+  runtime::{Drawn, OverlayFocus, Runtime},
+};
 use skene_reactive::{Memo, ReadSignal};
 
 use crate::{
@@ -86,6 +89,11 @@ pub(crate) fn try_with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> 
 }
 
 impl Drawn for Terminal {
+  type Engine = CellEngine;
+
+  const BORDERS: Borders = Borders::Unit;
+  const ROUNDED: bool = true;
+
   fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R> {
     try_with_records(|records| operation(&mut records.runtime))
   }
@@ -132,6 +140,20 @@ impl Drawn for Terminal {
       bottom: band,
       start: 0.,
     }
+  }
+
+  fn engine() -> CellEngine {
+    crate::engine::engine()
+  }
+
+  fn paragraph_style() -> ParagraphStyle {
+    crate::engine::paragraph_style()
+  }
+
+  /// A run lays out at the scale its size draws at, one cell where the terminal does not
+  /// size text, a line holding no run at one cell.
+  fn text_style(run: Option<&RunStyle<Plain, TerminalStyle>>) -> TextStyle {
+    crate::text::scale_of(run.and_then(|run| run.ext.size)).style()
   }
 }
 

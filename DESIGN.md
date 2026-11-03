@@ -21,8 +21,9 @@ What each crate holds is the README's crate table. They stack: `skene-reactive` 
 bottom, `skene-foundation` on it, the layout and the drawn runtime every platform but
 the web runs (`skene-layout`, whose `runtime` holds each node's record, the scene walk
 over them and the paragraph structure it reads, their style's resolution and its
-presentation over their motion on the frame clock, and the environment the platform
-reports, behind the `Drawn` trait a drawn platform implements) and the text engine
+presentation over their motion on the frame clock, the text leaf it lays a paragraph
+out as through the platform's engine, and the environment the platform reports, behind
+the `Drawn` trait a drawn platform implements) and the text engine
 over Parley (`skene-parley`) on the foundation, the platforms on the foundation and,
 where they draw, on those two, each platform's realization a crate of its own
 (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
@@ -2034,14 +2035,18 @@ so no shaper inserts one), a tab's stops a cell apart and a tab laid out as the 
 blank it shows as, at its run's scale; under the mode a cluster whose code points sum
 to another width is laid out as a stand-in of its width (U+2060, U+FF71 or U+4E00)
 through the foundation's substitution, so every position the engine reports is a byte
-of the real text. Each text leaf is one paragraph of its runs and inline boxes (a
-`TextFlow` over the engine), each carried inside the group runs around it, two leaves
-being alike where their runs, groups, texts and styles and their boxes' groups and sizes
-are (the groups' placements are read by nothing until the runtime's frames,
-`ROADMAP.md` item 1, read them), an inline box a box as many whole cells wide and rows
-tall as the tree lays it out, at least one of each, kept between frames and measured,
-painted, hit and selected from its one layout, a width floored to whole cells, at least
-one: a run wraps and keeps its blanks as the guaranteed core says and draws cluster by
+of the real text. Each text leaf is the drawn runtime's (`runtime::Flow`), one
+paragraph of its runs and inline boxes (a `TextFlow` over `Drawn::Engine`, the cell
+engine here), each carried inside the group runs around it, two leaves being alike
+where they were made under one text generation of the runtime, which a change of the
+terminal's clustering or sizing moves (`Runtime::remeasure`), and their runs, groups,
+texts and styles and their boxes' groups and sizes are (the groups' placements are read
+by nothing until the runtime's frames, `ROADMAP.md` item 1, read them). The runtime
+keeps the whole-unit floors for a platform whose layout rounds (`Drawn::ROUNDED`): an
+inline box is as many whole cells wide and rows tall as the tree lays it out, at least
+one of each, and the leaf, kept between frames and measured, painted, hit and selected
+from its one layout, lays out across its width floored to whole cells, at least one: a
+run wraps and keeps its blanks as the guaranteed core says and draws cluster by
 cluster in the engine's visual order, and a point on a cell is probed just past its left
 edge, so a press lands at the nearer edge of the cluster drawn there, after a wide one
 on its second cell. So that a terminal reordering bidirectional text itself does not

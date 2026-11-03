@@ -410,3 +410,140 @@ mod tests {
     );
   }
 }
+
+#[cfg(test)]
+mod properties {
+  use proptest::prelude::*;
+  use skene_foundation::{
+    NodeKind,
+    Scene,
+    text::{Laid as _, TextIndex},
+  };
+  use skene_layout::{
+    Leaf as _,
+    runtime::{Drawn, Flow},
+    taffy::{geometry::Size, prelude::AvailableSpace},
+  };
+
+  use super::{CellEngine, drawn, whole, wrap_spans};
+  use crate::{
+    Terminal,
+    layout::{cells_of, content},
+    text::{self, CellScale},
+  };
+
+  /// Text mostly of the clusters wrapping turns on: words, blanks, tabs, newlines, a
+  /// hyphen, wide and combining clusters.
+  fn arbitrary_text() -> impl Strategy<Value = String> {
+    const PIECES: &[&str] = &[
+      "a", "bc", "word", " ", "  ", "\t", "\n", "-", "日", "本語", "e\u{301}", "(x)",
+    ];
+
+    proptest::collection::vec(proptest::sample::select(PIECES), 0..24)
+      .prop_map(|pieces| pieces.concat())
+  }
+
+  /// The flow of a run holding `text` at `scale`.
+  fn flow(text: &str, scale: CellScale) -> Flow<CellEngine> {
+    let node = Scene::<Terminal>::with(|scene| scene.create(NodeKind::Run));
+    let mut flow = Flow::new(
+      Terminal::engine(),
+      Terminal::text_style(None),
+      Terminal::paragraph_style(),
+      Terminal::ROUNDED,
+      0,
+    );
+
+    flow.add_run(node, &[], text, scale.style());
+
+    flow
+  }
+
+  proptest! {
+    #![proptest_config(ProptestConfig::with_cases(2000))]
+
+    /// Any text at any width and scale measures as the lines it lays out into: as tall as
+    /// they are, every cluster drawn on its line's rows, and as wide as the widest line
+    /// drawn, or wider by blanks ending a line before a newline or at the text's end that
+    /// take their room up to the width.
+    #[test]
+    fn a_measure_matches_its_wrapped_lines(
+      text in arbitrary_text(),
+      width in 0..40_usize,
+      scale in 1..4_u8,
+    ) {
+      text::reset();
+
+      let flow = flow(&text, CellScale::Whole(scale));
+      let measured = flow.measure(
+        Size { width: None, height: None },
+        Size {
+          width: AvailableSpace::Definite(cells_of(width)),
+          height: AvailableSpace::MaxContent,
+        },
+      );
+      let laid = flow.laid(content(width.max(1)));
+      let lines = laid.lines();
+      let clusters = drawn(&laid, &text, &TextIndex::new(&text));
+      let widest = clusters
+        .iter()
+        .map(|cluster| cluster.column + cluster.advance)
+        .max()
+        .unwrap_or(0);
+      let rows: usize = lines.iter().map(|line| whole(line.height)).sum();
+      let (cells, height) = (whole(measured.width), whole(measured.height));
+
+      prop_assert_eq!(height, rows);
+      prop_assert_eq!(rows, whole(laid.size().height));
+      prop_assert!(cells == widest || (cells > widest && cells <= width.max(1)));
+
+      for cluster in &clusters {
+        prop_assert!(cluster.top + usize::from(scale) <= rows);
+      }
+    }
+
+    /// Any text wraps at any width into lines that fit, but for a lone cluster too wide
+    /// for one, and that leave out nothing but the blanks a line ends in and the
+    /// newlines between paragraphs, an empty text into one empty line.
+    #[test]
+    fn a_wrap_fits_and_keeps_the_text(text in arbitrary_text(), width in 1..30_usize) {
+      text::reset();
+
+      let lines = wrap_spans(&text, width);
+      let clusters: Vec<&str> = text::clusters(&text).map(|(_, cluster)| cluster).collect();
+      let mut expected_start = 0;
+
+      prop_assert!(!lines.is_empty());
+
+      for (start, line) in &lines {
+        let cells = text::cells(line);
+        let count = text::count(line);
+
+        prop_assert!(
+          cells <= width || count == 1,
+          "{:?} spans {} cells at width {}",
+          line,
+          cells,
+          width
+        );
+
+        prop_assert!(*start >= expected_start);
+
+        for skipped in &clusters[expected_start..*start] {
+          prop_assert!(
+            matches!(*skipped, " " | "\t" | "\n" | "\r\n"),
+            "{skipped:?} was left out"
+          );
+        }
+
+        prop_assert_eq!(&clusters[*start..start + count].concat(), line);
+
+        expected_start = start + count;
+      }
+
+      for skipped in &clusters[expected_start..] {
+        prop_assert!(matches!(*skipped, " " | "\t" | "\n"), "{skipped:?} was left out");
+      }
+    }
+  }
+}

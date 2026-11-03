@@ -12,6 +12,7 @@ use skene_foundation::{
   KeyEvent,
   Modifiers,
   NamedKey,
+  NodeId,
   Scene,
   TextSelection,
   text::{
@@ -24,7 +25,7 @@ use skene_foundation::{
 use crate::{
   Terminal,
   layout::padding_cells,
-  records::{AUTOSCROLL_INTERVAL, Drag, EntryEditor, Field, Handle, Records},
+  records::{AUTOSCROLL_INTERVAL, Drag, EntryEditor, Field, Records},
   with_records,
 };
 
@@ -55,7 +56,7 @@ pub(crate) struct Area {
 
 impl Records {
   /// The cells an entry shows its value in: inside its border and padding.
-  pub(crate) fn field_area(&self, handle: Handle) -> Area {
+  pub(crate) fn field_area(&self, handle: NodeId) -> Area {
     let (width, height) = self.node_size(handle);
     let border = self.node_border(handle);
     let padding = self
@@ -83,12 +84,12 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and an entry's editability is asked of it as of the rest"
   )]
-  pub(crate) fn is_editable(&self, handle: Handle) -> bool {
+  pub(crate) fn is_editable(&self, handle: NodeId) -> bool {
     Scene::<Terminal>::read(|scene| scene.is_editable(handle))
   }
 
   /// The inset from an entry's edge to its value: border plus padding.
-  fn field_inset(&self, handle: Handle) -> (i64, i64) {
+  fn field_inset(&self, handle: NodeId) -> (i64, i64) {
     let border = self.node_border(handle);
     let padding = self
       .runtime
@@ -105,7 +106,7 @@ impl Records {
 
   /// An entry's local cell as a column and row of its value: past the inset, clamped
   /// at its start.
-  fn entry_cell(&self, handle: Handle, local_x: i64, local_y: i64) -> (usize, usize) {
+  fn entry_cell(&self, handle: NodeId, local_x: i64, local_y: i64) -> (usize, usize) {
     let (inset_x, inset_y) = self.field_inset(handle);
 
     (
@@ -116,7 +117,7 @@ impl Records {
 
   /// The layout position an entry's local cell stands for in its value as it shows:
   /// mapped through the inset and the window, clamped into the visible area.
-  fn entry_point(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<(f32, f32)> {
+  fn entry_point(&self, handle: NodeId, local_x: i64, local_y: i64) -> Option<(f32, f32)> {
     let area = self.field_area(handle);
     let (column, row) = self.entry_cell(handle, local_x, local_y);
     let field = self.field(handle)?;
@@ -126,12 +127,12 @@ impl Records {
   }
 
   /// Whether the node is an editor, whose window scrolls down its wrapped rows.
-  pub(crate) fn is_editor(&self, handle: Handle) -> bool {
+  pub(crate) fn is_editor(&self, handle: NodeId) -> bool {
     self.field(handle).is_some_and(Field::is_editor)
   }
 
   /// An editor's window as it shows in its laid-out area; `None` for any other node.
-  pub(crate) fn editor_window(&self, handle: Handle) -> Option<u32> {
+  pub(crate) fn editor_window(&self, handle: NodeId) -> Option<u32> {
     let field = self.field(handle).filter(|field| field.is_editor())?;
     let entry = self.entry(handle)?;
 
@@ -140,7 +141,7 @@ impl Records {
 
   /// How far an editor's window can scroll in its laid-out area; `None` for any other
   /// node.
-  pub(crate) fn editor_window_limit(&self, handle: Handle) -> Option<u32> {
+  pub(crate) fn editor_window_limit(&self, handle: NodeId) -> Option<u32> {
     let field = self.field(handle).filter(|field| field.is_editor())?;
     let entry = self.entry(handle)?;
 
@@ -148,7 +149,7 @@ impl Records {
   }
 
   /// Moves an editor's window to `window`, clamped, in its laid-out area.
-  pub(crate) fn set_editor_window(&mut self, handle: Handle, window: u32) {
+  pub(crate) fn set_editor_window(&mut self, handle: NodeId, window: u32) {
     let area = self.field_area(handle);
     let Some(entry) = self.entry(handle)
     else {
@@ -166,7 +167,7 @@ impl Records {
   /// Scrolls the single-line field at `handle` by `delta` cells in its laid-out area,
   /// damaging it: `None` when the node is no field or `delta` is zero, else whether it
   /// moved.
-  pub(crate) fn scroll_field_by(&mut self, handle: Handle, delta: i64) -> Option<bool> {
+  pub(crate) fn scroll_field_by(&mut self, handle: NodeId, delta: i64) -> Option<bool> {
     if delta == 0 {
       return None;
     }
@@ -184,7 +185,7 @@ impl Records {
   }
 
   /// Settles an entry's window around its caret, in its laid-out area.
-  pub(crate) fn settle_entry(&mut self, handle: Handle) {
+  pub(crate) fn settle_entry(&mut self, handle: NodeId) {
     let area = self.field_area(handle);
     let Some(entry) = self.entry(handle)
     else {
@@ -213,7 +214,7 @@ impl Records {
 
   /// Settles what an entry's editor changed: a changed value restyles and lays the entry
   /// out again, and a changed value or selection settles its window and repaints it.
-  pub(crate) fn settle_changes(&mut self, handle: Handle) {
+  pub(crate) fn settle_changes(&mut self, handle: NodeId) {
     let area = self.field_area(handle);
     let Some(entry) = self.entry(handle)
     else {
@@ -242,7 +243,7 @@ impl Records {
   /// it, and settles what it changed; else once the operation holding it ends.
   pub(crate) fn with_entry(
     &mut self,
-    handle: Handle,
+    handle: NodeId,
     operation: impl FnOnce(&mut EntryEditor) + 'static,
   ) {
     let Some(entry) = self.entry(handle)
@@ -262,7 +263,7 @@ impl Records {
   }
 
   /// Collapses the selection inside `entry` at its caret.
-  pub(crate) fn collapse_entry_selection(&mut self, entry: Handle) {
+  pub(crate) fn collapse_entry_selection(&mut self, entry: NodeId) {
     self.with_entry(entry, |editor| {
       let caret = editor.selection().end;
 
@@ -272,7 +273,7 @@ impl Records {
 
   /// Takes focus into `entry`: a field selects its whole value and an editor puts its
   /// caret at the end, as a browser's `<input>` and `<textarea>` do.
-  pub(crate) fn focus_entry(&mut self, entry: Handle) {
+  pub(crate) fn focus_entry(&mut self, entry: NodeId) {
     let Some(multiline) = self.field(entry).map(Field::is_editor)
     else {
       return;
@@ -295,7 +296,7 @@ impl Records {
 
   /// Places `entry`'s selection from outside its editing, each index clamped into the
   /// value; it is not reported back.
-  pub(crate) fn place_entry_selection(&mut self, entry: Handle, selection: TextSelection) {
+  pub(crate) fn place_entry_selection(&mut self, entry: NodeId, selection: TextSelection) {
     let Some(reported) = self.entry(entry).map(|state| state.reported())
     else {
       return;
@@ -311,7 +312,7 @@ impl Records {
   /// Shows `edit` in `entry` from outside its editing: its text written as
   /// [`write_entry`](Self::write_entry) writes it, then its selection placed where it gives
   /// one.
-  pub(crate) fn show_entry(&mut self, entry: Handle, edit: &Edit) {
+  pub(crate) fn show_entry(&mut self, entry: NodeId, edit: &Edit) {
     self.write_entry(entry, &edit.text);
 
     if let Some(selection) = edit.selection {
@@ -322,7 +323,7 @@ impl Records {
   /// Writes `value` into `entry` from outside its editing, as the entry holds it: one undo
   /// step but for an entry's first value, the caret mapped through the change and the
   /// selection collapsed at it; nothing happens where it is shown already.
-  pub(crate) fn write_entry(&mut self, entry: Handle, value: &str) {
+  pub(crate) fn write_entry(&mut self, entry: NodeId, value: &str) {
     let value = value.to_owned();
 
     self.with_entry(entry, move |editor| {
@@ -337,7 +338,7 @@ impl Records {
   /// Makes `entry` secure where `secure`: its value drawn masked, a mark a cluster, its
   /// selection kept from the clipboard and its history dropped, as the editing core keeps
   /// a secure text.
-  pub(crate) fn set_entry_secure(&mut self, entry: Handle, secure: bool) {
+  pub(crate) fn set_entry_secure(&mut self, entry: NodeId, secure: bool) {
     let Some(mask) = self.entry(entry).map(|state| Rc::clone(state.mask()))
     else {
       return;
@@ -355,14 +356,14 @@ impl Records {
   }
 
   /// Whether `entry` is a secure text entry.
-  pub(crate) fn is_secure_entry(&self, entry: Handle) -> bool {
+  pub(crate) fn is_secure_entry(&self, entry: NodeId) -> bool {
     self.entry(entry).is_some_and(|state| state.is_secure())
   }
 
   /// Whether the caret position at an entry's local cell lies inside its selection.
   pub(crate) fn entry_selection_contains(
     &self,
-    handle: Handle,
+    handle: NodeId,
     local_x: i64,
     local_y: i64,
   ) -> bool {
@@ -384,7 +385,7 @@ impl Records {
   /// The caret drag's overshoot: how far past the entry's visible value the pointer is
   /// held, in cells of a field and rows of an editor, negative before its start; `None`
   /// while the pointer is inside it or the window can scroll no further that way.
-  fn caret_drag_overshoot(&self) -> Option<(Handle, i64)> {
+  fn caret_drag_overshoot(&self) -> Option<(NodeId, i64)> {
     let Some(Drag::Caret(handle)) = self.drag
     else {
       return None;
@@ -430,7 +431,7 @@ impl Records {
   /// Steps the caret drag's autoscroll on the frame clock: once per interval while the
   /// pointer is held past the entry's visible value, the window scrolls toward it by the
   /// overshoot; the entry and the point its caret follows to, at the edge, are returned.
-  fn autoscroll_step(&mut self) -> Option<(Handle, (f32, f32))> {
+  fn autoscroll_step(&mut self) -> Option<(NodeId, (f32, f32))> {
     let Some((handle, overshoot)) = self.caret_drag_overshoot()
     else {
       self.autoscroll_at = None;
@@ -478,7 +479,7 @@ impl Records {
 /// it, settle after, and moved selections are reported. `None` where the entry is gone or
 /// an operation holds its editor already.
 fn operate<R>(
-  entry: Handle,
+  entry: NodeId,
   lay_out: bool,
   operation: impl FnOnce(&mut EntryEditor) -> R,
 ) -> Option<R> {
@@ -511,7 +512,7 @@ fn operate<R>(
 
 /// Settles an operation on the editor of `entry` once it has ended: the operations that
 /// waited for it run, what they and it changed settles, and moved selections are reported.
-fn finish(entry: Handle) {
+fn finish(entry: NodeId) {
   if let Some(state) = with_records(|records| records.entry(entry)) {
     while state.has_deferred() {
       let Ok(mut editor) = state.editor().try_borrow_mut()
@@ -611,7 +612,7 @@ pub(crate) fn edit_focused(event: &KeyEvent) {
 /// Places the caret of `entry` at its local cell, the `clicks`th press in a row (a double
 /// press takes the word, a triple the line of an editor and the value of a field),
 /// extending the selection where `extend`, and starts the drag that follows the press.
-pub(crate) fn press_entry(entry: Handle, local_x: i64, local_y: i64, clicks: u8, extend: bool) {
+pub(crate) fn press_entry(entry: NodeId, local_x: i64, local_y: i64, clicks: u8, extend: bool) {
   let Some((x, y)) = with_records(|records| records.entry_point(entry, local_x, local_y))
   else {
     return;
@@ -625,7 +626,7 @@ pub(crate) fn press_entry(entry: Handle, local_x: i64, local_y: i64, clicks: u8,
 /// Follows a caret drag to the screen cell (`x`, `y`): the selection extends to the
 /// position under the pointer, clamped to the visible value's edge, by the press's unit;
 /// past the edge, the autoscroll carries it on from there.
-pub(crate) fn drag_entry(entry: Handle, x: u16, y: u16) {
+pub(crate) fn drag_entry(entry: NodeId, x: u16, y: u16) {
   let point = with_records(|records| {
     let (origin_x, origin_y) = records.screen_origin(entry);
 
@@ -662,7 +663,7 @@ pub(crate) fn paste_requested(text: &str) {
 
 /// Inserts `text` into the entry at `target`, in place of its selection, where the
 /// entry is editable.
-fn paste_into(target: Option<Handle>, text: &str) {
+fn paste_into(target: Option<NodeId>, text: &str) {
   let Some(target) = target.filter(|target| with_records(|records| records.is_field(*target)))
   else {
     return;

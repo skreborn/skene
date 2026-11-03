@@ -18,6 +18,7 @@ use std::time::Duration;
 
 use skene_foundation::{
   ClipboardAction,
+  NodeId,
   RunPlacement,
   Scene,
   text::{Round, Segments, TextIndex},
@@ -27,14 +28,14 @@ use skene_layout::runtime::Source;
 use crate::{
   Terminal,
   layout::{cell_point, content},
-  records::{Drag, Handle, Kind, Records},
+  records::{Drag, Kind, Records},
   text,
 };
 
 /// One end of a selection: a run and a cluster offset into its source text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SelectionPoint {
-  pub(crate) node: Handle,
+  pub(crate) node: NodeId,
   pub(crate) offset: usize,
 }
 
@@ -72,7 +73,7 @@ impl Records {
   /// outside every control and `Copy` is offered: text inside a control is never
   /// selectable, whatever it opts into, and without `Copy` nothing in the document is
   /// selectable.
-  pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
+  pub(crate) fn selectable_text(&self, handle: NodeId) -> Option<String> {
     let record = self.runtime.record(handle)?;
 
     if !self.offers(ClipboardAction::Copy) || self.runtime.enclosing_control(handle).is_some() {
@@ -101,7 +102,7 @@ impl Records {
   /// The cluster offset within the node's source a caret at the node-local cell would
   /// take: the caret nearest it, clamped into the text's lines and their ends, against
   /// the last layout.
-  fn run_offset(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<usize> {
+  fn run_offset(&self, handle: NodeId, local_x: i64, local_y: i64) -> Option<usize> {
     self.selectable_text(handle)?;
 
     let flow = self.runtime.flow_of(handle)?;
@@ -121,7 +122,7 @@ impl Records {
 
   /// The deepest text on `path`, with its origin: a paragraph, or a run that flows in
   /// none.
-  fn text_root(&self, path: &[(Handle, (i64, i64))]) -> Option<(Handle, (i64, i64))> {
+  fn text_root(&self, path: &[(NodeId, (i64, i64))]) -> Option<(NodeId, (i64, i64))> {
     path.iter().rev().copied().find(|(handle, _)| {
       self.runtime.is_paragraph(*handle)
         || matches!(
@@ -143,10 +144,10 @@ impl Records {
   /// The linked run at the cell (`x`, `y`) and its destination, when the cell carries
   /// the run's character—exact hits only, never clamped into a neighboring line; in a
   /// paragraph, the deepest run on the path that links, a group's link its spans'.
-  pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(Handle, String)> {
+  pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(NodeId, String)> {
     let path = self.hit_test(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
-    let link_of = |run: Handle| match &self.runtime.record(run)?.kind {
+    let link_of = |run: NodeId| match &self.runtime.record(run)?.kind {
       Kind::Run {
         facts, destination, ..
       } if facts.link => destination.clone().map(|url| (run, url)),
@@ -179,7 +180,7 @@ impl Records {
   fn nearest_text_position(&self, x: u16, y: u16) -> Option<SelectionPoint> {
     let (pointer_x, pointer_y) = (i64::from(x), i64::from(y));
     let mut best: Option<(i64, i64)> = None;
-    let mut nearest: Option<(Handle, (i64, i64))> = None;
+    let mut nearest: Option<(NodeId, (i64, i64))> = None;
 
     for node in self.document_runs() {
       if !self.reachable_under_modal(node) {
@@ -207,7 +208,7 @@ impl Records {
 
   /// Every selectable run in document order, the subtrees of closed overlays and the
   /// runs inside a paragraph excluded.
-  fn document_runs(&self) -> Vec<Handle> {
+  fn document_runs(&self) -> Vec<NodeId> {
     let mut order = Vec::new();
     let mut stack = vec![self.runtime.root()];
 
@@ -235,7 +236,7 @@ impl Records {
   }
 
   /// The selection's ends in document order, with every selectable run it spans.
-  fn selection_span(&self) -> Option<(SelectionPoint, SelectionPoint, Vec<Handle>)> {
+  fn selection_span(&self) -> Option<(SelectionPoint, SelectionPoint, Vec<NodeId>)> {
     let selection = self.selection?;
     let runs = self.document_runs();
     let anchor_at = runs
@@ -256,7 +257,7 @@ impl Records {
 
   /// The selected character range within the node's source, when the selection touches
   /// it; a range running past the node's end is `usize::MAX`, clamped by the caller.
-  pub(crate) fn selection_range(&self, handle: Handle) -> Option<(usize, usize)> {
+  pub(crate) fn selection_range(&self, handle: NodeId) -> Option<(usize, usize)> {
     let (start, end, runs) = self.selection_span()?;
 
     if !runs.contains(&handle) {
@@ -280,13 +281,13 @@ impl Records {
   }
 
   /// The focused text entry, when one holds focus.
-  pub(crate) fn focused_entry(&self) -> Option<Handle> {
+  pub(crate) fn focused_entry(&self) -> Option<NodeId> {
     self.focused().filter(|focused| self.is_field(*focused))
   }
 
   /// The entry the clipboard acts on: the focused entry, or the entry focus left for
   /// the open popup it now sits in.
-  pub(crate) fn clipboard_entry(&self) -> Option<Handle> {
+  pub(crate) fn clipboard_entry(&self) -> Option<NodeId> {
     self.focused_entry().or_else(|| {
       let focused = self.focused()?;
       let ancestors = self.runtime.ancestors(focused);
@@ -303,7 +304,7 @@ impl Records {
   }
 
   /// Whether the entry `entry` holds a selection.
-  pub(crate) fn entry_has_selection(&self, entry: Handle) -> bool {
+  pub(crate) fn entry_has_selection(&self, entry: NodeId) -> bool {
     self.entry(entry).is_some_and(|state| state.has_selection())
   }
 
@@ -356,7 +357,7 @@ impl Records {
 
   /// The clusters `from..to` of the node's selectable `text` as they appear in the
   /// source: in a paragraph, an inline box's placeholder is the text the box holds.
-  fn source_text(&self, node: Handle, text: &str, from: usize, to: usize) -> String {
+  fn source_text(&self, node: NodeId, text: &str, from: usize, to: usize) -> String {
     if !self.runtime.is_paragraph(node) {
       return text::slice(text, from, to).to_owned();
     }
@@ -385,7 +386,7 @@ impl Records {
   }
 
   /// The text of every run beneath `handle`, in order.
-  fn inner_text(&self, handle: Handle) -> String {
+  fn inner_text(&self, handle: NodeId) -> String {
     let mut text = String::new();
     let mut stack = vec![handle];
 
@@ -490,7 +491,7 @@ impl Records {
 
   /// Drops the selection when one of its ends lives in `handle`, on the node's text
   /// change or removal.
-  pub(crate) fn invalidate_selection(&mut self, handle: Handle) {
+  pub(crate) fn invalidate_selection(&mut self, handle: NodeId) {
     if let Some(selection) = self.selection
       && (selection.anchor.node == handle || selection.focus.node == handle)
     {

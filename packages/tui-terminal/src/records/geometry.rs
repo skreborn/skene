@@ -3,7 +3,7 @@
 use skene_foundation::{NodeId, Rect, Size};
 use skene_layout::runtime::Flow;
 
-use super::{Handle, Records};
+use super::Records;
 use crate::CellEngine;
 
 /// Where a laid-out node sits in its layout parent and how large it is, in cells.
@@ -77,7 +77,7 @@ impl Records {
   }
 
   /// `handle`'s frame in its layout parent; empty for a stale handle.
-  pub(crate) fn frame(&self, handle: Handle) -> CellFrame {
+  pub(crate) fn frame(&self, handle: NodeId) -> CellFrame {
     if !self.runtime.contains(handle) {
       return CellFrame::default();
     }
@@ -86,7 +86,7 @@ impl Records {
   }
 
   /// A node's laid-out size, in cells.
-  pub(crate) fn node_size(&self, handle: Handle) -> (i64, i64) {
+  pub(crate) fn node_size(&self, handle: NodeId) -> (i64, i64) {
     let frame = self.frame(handle);
 
     (frame.width, frame.height)
@@ -95,7 +95,7 @@ impl Records {
   /// The cells the text node `handle` lays its flow out across, as its leaf measured and
   /// placed it: its content box's width before any rounding, floored to whole cells, at
   /// least one; one for a node outside the layout.
-  pub(crate) fn flow_width(&self, handle: Handle) -> usize {
+  pub(crate) fn flow_width(&self, handle: NodeId) -> usize {
     let width = self
       .runtime
       .contains(handle)
@@ -123,7 +123,7 @@ impl Records {
   /// it begins and how far it extends, unrounded, so boxes beside each other meet
   /// where the layout put them. `None` for a box with laid-out children, those inside
   /// an anchor or a scope among them, or one of no width.
-  pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
+  pub(crate) fn smooth_span(&self, handle: NodeId) -> Option<(isize, isize)> {
     if !self.runtime.contains(handle) {
       return None;
     }
@@ -154,7 +154,7 @@ impl Records {
   }
 
   /// A node's laid-out position within its layout parent, in cells.
-  pub(crate) fn node_location(&self, handle: Handle) -> (i64, i64) {
+  pub(crate) fn node_location(&self, handle: NodeId) -> (i64, i64) {
     let frame = self.frame(handle);
 
     (frame.x, frame.y)
@@ -165,7 +165,7 @@ impl Records {
     clippy::cast_possible_truncation,
     reason = "taffy rounds a layout to whole cells, far inside i64"
   )]
-  pub(crate) fn node_border(&self, handle: Handle) -> (i64, i64, i64, i64) {
+  pub(crate) fn node_border(&self, handle: NodeId) -> (i64, i64, i64, i64) {
     let Some(layout) = self.runtime.tree().layout(handle)
     else {
       return (0, 0, 0, 0);
@@ -181,7 +181,7 @@ impl Records {
   }
 
   /// A node's size inside its border, in cells: what its size observers hear.
-  pub(crate) fn client_size(&self, handle: Handle) -> Size<i32> {
+  pub(crate) fn client_size(&self, handle: NodeId) -> Size<i32> {
     let (width, height) = self.node_size(handle);
     let (left, top, right, bottom) = self.node_border(handle);
     let cells = |extent: i64| i32::try_from(extent.max(0)).unwrap_or(i32::MAX);

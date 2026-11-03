@@ -50,7 +50,7 @@ use crate::{
   Terminal,
   layout::{cell_point, content},
   paint::control_entry,
-  records::{CellFrame, Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
+  records::{CellFrame, Drag, Kind, Press, Record, Records, ScrollLatch},
   with_records,
 };
 
@@ -59,7 +59,7 @@ pub(crate) const WHEEL_STEP: i64 = 3;
 
 impl Records {
   /// Whether `handle` sits inside an open overlay.
-  pub(crate) fn inside_open_overlay(&self, handle: Option<Handle>) -> bool {
+  pub(crate) fn inside_open_overlay(&self, handle: Option<NodeId>) -> bool {
     handle.is_some_and(|handle| {
       let ancestors = self.runtime.ancestors(handle);
 
@@ -76,7 +76,7 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
-  pub(crate) fn topmost_open_overlay(&self) -> Option<(Handle, bool)> {
+  pub(crate) fn topmost_open_overlay(&self) -> Option<(NodeId, bool)> {
     Scene::<Terminal>::read(|scene| {
       let top = scene.open_overlays().last().copied()?;
 
@@ -89,7 +89,7 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
-  pub(crate) fn topmost_modal(&self) -> Option<Handle> {
+  pub(crate) fn topmost_modal(&self) -> Option<NodeId> {
     Scene::<Terminal>::read(|scene| scene.topmost_modal(scene.open_overlays()))
   }
 
@@ -99,13 +99,13 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
-  pub(crate) fn reachable_under_modal(&self, handle: Handle) -> bool {
+  pub(crate) fn reachable_under_modal(&self, handle: NodeId) -> bool {
     Scene::<Terminal>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), handle))
   }
 
   /// The deepest node under the cell (`x`, `y`) and its ancestors, the root first: the
   /// path hover and a press hold along.
-  pub(crate) fn pointer_path(&self, x: u16, y: u16) -> Vec<Handle> {
+  pub(crate) fn pointer_path(&self, x: u16, y: u16) -> Vec<NodeId> {
     self
       .hit_test(x, y)
       .last()
@@ -115,7 +115,7 @@ impl Records {
 
   /// The path from the root to the deepest node containing the cell (`x`, `y`), each
   /// with its absolute origin, against the last computed layout.
-  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(Handle, (i64, i64))> {
+  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(NodeId, (i64, i64))> {
     let modal = self.topmost_modal();
 
     // Overlays hit first, topmost first; below the topmost open modal nothing is
@@ -151,12 +151,12 @@ impl Records {
   /// beneath it is.
   fn hit_walk(
     &self,
-    handle: Handle,
+    handle: NodeId,
     offset_x: i64,
     offset_y: i64,
     x: i64,
     y: i64,
-    path: &mut Vec<(Handle, (i64, i64))>,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
     let Some(record) = self.runtime.record(handle)
     else {
@@ -212,13 +212,13 @@ impl Records {
   )]
   fn hit_reached(
     &self,
-    handle: Handle,
+    handle: NodeId,
     frame: CellFrame,
     (origin_x, origin_y): (i64, i64),
     contains: bool,
     x: i64,
     y: i64,
-    path: &mut Vec<(Handle, (i64, i64))>,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
     let clips = self.clips(handle);
 
@@ -278,11 +278,11 @@ impl Records {
   #[inline(never)]
   fn hit_paragraph(
     &self,
-    handle: Handle,
+    handle: NodeId,
     origin: (i64, i64),
     x: i64,
     y: i64,
-    path: &mut Vec<(Handle, (i64, i64))>,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
     let Some(flow) = self.runtime.flow_of(handle)
     else {
@@ -337,12 +337,12 @@ impl Records {
   /// path, from the outermost, each at the paragraph's `origin`.
   fn push_groups(
     &self,
-    handle: Handle,
-    leaf: Handle,
+    handle: NodeId,
+    leaf: NodeId,
     origin: (i64, i64),
-    path: &mut Vec<(Handle, (i64, i64))>,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) {
-    let mut chain: Vec<Handle> = self
+    let mut chain: Vec<NodeId> = self
       .runtime
       .ancestors(leaf)
       .into_iter()
@@ -363,10 +363,10 @@ impl Records {
   /// Hits `overlay`'s subtree at its computed origin, accumulating the path.
   pub(crate) fn hit_overlay(
     &self,
-    overlay: Handle,
+    overlay: NodeId,
     x: u16,
     y: u16,
-    path: &mut Vec<(Handle, (i64, i64))>,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
     let (origin_x, origin_y) = self.overlay_origin(overlay);
     let (location_x, location_y) = self.node_location(overlay);
@@ -384,7 +384,7 @@ impl Records {
   /// A node's position within its layout parent: its laid-out location, an inline box's
   /// in its paragraph through any groups, or the paragraph's origin for any other run
   /// flowing in one.
-  pub(crate) fn inline_location(&self, handle: Handle) -> (i64, i64) {
+  pub(crate) fn inline_location(&self, handle: NodeId) -> (i64, i64) {
     let flows = self.runtime.is_inline_run(handle)
       && !self.runtime.is_inline_box(handle)
       && self.runtime.enclosing_paragraph(handle).is_some();
@@ -400,7 +400,7 @@ impl Records {
   /// A node's on-screen origin: its layout locations summed up the parent chain, each
   /// ancestor's scroll offsets subtracted, content inside an overlay positioned against
   /// the overlay's origin.
-  pub(crate) fn screen_origin(&self, handle: Handle) -> (i64, i64) {
+  pub(crate) fn screen_origin(&self, handle: NodeId) -> (i64, i64) {
     let (mut x, mut y) = (0, 0);
     let mut current = Some(handle);
 
@@ -435,7 +435,7 @@ impl Records {
 
   /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
   /// anchor, everything else against the terminal.
-  pub(crate) fn overlay_origin(&self, handle: Handle) -> (i64, i64) {
+  pub(crate) fn overlay_origin(&self, handle: NodeId) -> (i64, i64) {
     let viewport = self.runtime.window().reported().viewport;
     let (columns, rows) = (i64::from(viewport.width), i64::from(viewport.height));
     let Some(Kind::Overlay {
@@ -573,7 +573,7 @@ impl Records {
 
   /// A node's overflow per axis as CSS computes it, `Visible` when unset or the node has
   /// no box style.
-  fn overflow(&self, handle: Handle) -> Axes<Overflow> {
+  fn overflow(&self, handle: NodeId) -> Axes<Overflow> {
     self
       .runtime
       .record(handle)
@@ -584,18 +584,18 @@ impl Records {
 
   /// Whether the node's content scrolls: a box overflowing by its style on either axis,
   /// or an editor windowing its wrapped rows.
-  pub(crate) fn is_scrollable(&self, handle: Handle) -> bool {
+  pub(crate) fn is_scrollable(&self, handle: NodeId) -> bool {
     self.is_editor(handle) || self.overflow(handle).scrolls()
   }
 
   /// Whether the node clips its children when painting.
-  pub(crate) fn clips(&self, handle: Handle) -> bool {
+  pub(crate) fn clips(&self, handle: NodeId) -> bool {
     self.overflow(handle) != Axes::all(Overflow::Visible)
   }
 
   /// A node's scroll offsets, clamped to what the last layout allows; an editor's is
   /// its window down its rows.
-  pub(crate) fn scroll_offset(&self, handle: Handle) -> (u32, u32) {
+  pub(crate) fn scroll_offset(&self, handle: NodeId) -> (u32, u32) {
     if let Some(window) = self.editor_window(handle) {
       return (0, window);
     }
@@ -616,7 +616,7 @@ impl Records {
 
   /// A node's maximum scroll offsets, from the last computed layout and zero on an axis
   /// that does not scroll; an editor's is how far its window can scroll down its rows.
-  pub(crate) fn scroll_limits(&self, handle: Handle) -> (u32, u32) {
+  pub(crate) fn scroll_limits(&self, handle: NodeId) -> (u32, u32) {
     if let Some(limit) = self.editor_window_limit(handle) {
       return (0, limit);
     }
@@ -649,7 +649,7 @@ impl Records {
 
   /// The offsets `handle` would scroll to by a delta, clamped; `None` when it does not
   /// scroll or cannot move further.
-  fn scrolled_by(&self, handle: Handle, delta_x: i64, delta_y: i64) -> Option<(u32, u32)> {
+  fn scrolled_by(&self, handle: NodeId, delta_x: i64, delta_y: i64) -> Option<(u32, u32)> {
     if !self.is_scrollable(handle) {
       return None;
     }
@@ -666,7 +666,7 @@ impl Records {
 
   /// Stores a node's offsets and repaints; the scroll notification is the caller's. An
   /// editor's window moves instead, notifying nothing.
-  fn write_scroll(&mut self, handle: Handle, offsets: (u32, u32)) -> Option<NodeId> {
+  fn write_scroll(&mut self, handle: NodeId, offsets: (u32, u32)) -> Option<NodeId> {
     self.runtime.damage(handle);
     self.runtime.geometry_stale = true;
 
@@ -683,7 +683,7 @@ impl Records {
 
   /// A scrollable's track along `axis`: its absolute start, its length in cells, and
   /// the scroll limit.
-  fn scroll_geometry(&self, handle: Handle, axis: Axis) -> (i64, i64, u32) {
+  fn scroll_geometry(&self, handle: NodeId, axis: Axis) -> (i64, i64, u32) {
     let (limit_x, limit_y) = self.scroll_limits(handle);
     let (origin_x, origin_y) = self.screen_origin(handle);
     let (width, height) = self.node_size(handle);
@@ -697,7 +697,7 @@ impl Records {
 
   /// The scrollbar under (`x`, `y`), if any: the owning scrollable, its axis, and the
   /// pointer's position within the track, exact where the terminal reports pixels.
-  fn scrollbar_hit(&self, x: u16, y: u16) -> Option<(Handle, Axis, f32)> {
+  fn scrollbar_hit(&self, x: u16, y: u16) -> Option<(NodeId, Axis, f32)> {
     let (px, py) = (i64::from(x), i64::from(y));
     let (within_x, within_y) = self.pointer_within;
 
@@ -740,7 +740,7 @@ impl Records {
   )]
   fn thumb_offsets(
     &self,
-    handle: Handle,
+    handle: NodeId,
     axis: Axis,
     track: i64,
     limit: u32,
@@ -759,7 +759,7 @@ impl Records {
   }
 
   /// Whether the node is a text entry.
-  pub(crate) fn is_field(&self, handle: Handle) -> bool {
+  pub(crate) fn is_field(&self, handle: NodeId) -> bool {
     self.field(handle).is_some()
   }
 }
@@ -774,17 +774,17 @@ fn records<R>(operation: impl FnOnce(&mut Records) -> R) -> R {
 /// single-line entry selects its whole value with the caret at its end, an editor puts
 /// its caret at the end, and the entry focus left collapses its selection—unless focus
 /// left it for an open popup, which keeps it for the popup to act on.
-pub(crate) fn set_focus(next: Option<Handle>) {
+pub(crate) fn set_focus(next: Option<NodeId>) {
   focus_on(next, false);
 }
 
 /// Moves focus to `next` as a script or a closing popup does: like [`set_focus`], but
 /// the entry it reaches keeps its selection and caret as they were.
-pub(crate) fn set_focus_restored(next: Option<Handle>) {
+pub(crate) fn set_focus_restored(next: Option<NodeId>) {
   focus_on(next, true);
 }
 
-fn focus_on(next: Option<Handle>, restored: bool) {
+fn focus_on(next: Option<NodeId>, restored: bool) {
   let moved = records(|records| {
     let previous = records.focused();
 
@@ -891,7 +891,7 @@ fn pointer_event(
 
 /// The deepest node under (`x`, `y`) with its origin, or the node declaring drag axes
 /// the held press captured.
-fn pointer_target(records: &Records, x: u16, y: u16) -> Option<(Handle, (i64, i64))> {
+fn pointer_target(records: &Records, x: u16, y: u16) -> Option<(NodeId, (i64, i64))> {
   if let Some(press) = &records.press
     && records.buttons.contains(PointerButton::Primary)
     && let Some(captured) = press.captured
@@ -1152,10 +1152,10 @@ fn press_default(
   y: u16,
   button: PointerButton,
   modifiers: Modifiers,
-  path: &[(Handle, (i64, i64))],
-  entry: Option<Handle>,
+  path: &[(NodeId, (i64, i64))],
+  entry: Option<NodeId>,
   entry_held_focus: bool,
-  link: Option<(Handle, String)>,
+  link: Option<(NodeId, String)>,
 ) {
   let entry_local = entry.map(|entry| {
     let origin = path
@@ -1399,7 +1399,7 @@ const fn cells(count: i64) -> f32 {
 }
 
 /// Writes `offsets` into `handle` and notifies its scroll handlers.
-pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
+pub(crate) fn scroll_to(handle: NodeId, offsets: (u32, u32)) {
   let node = records(|records| {
     if records.scroll_offset(handle) == offsets {
       return None;
@@ -1425,7 +1425,7 @@ pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
 
 /// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved. A
 /// single-line field scrolls its window along its value by the horizontal delta.
-pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
+pub(crate) fn scroll_by(handle: NodeId, delta_x: i64, delta_y: i64) -> bool {
   if let Some(moved) = records(|records| records.scroll_field_by(handle, delta_x)) {
     return moved;
   }
@@ -1482,7 +1482,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
       }
       _ => None,
     };
-    let candidates: Vec<Handle> = records
+    let candidates: Vec<NodeId> = records
       .hit_test(x, y)
       .iter()
       .rev()

@@ -12,6 +12,7 @@ use skene_foundation::{
   Inset,
   Length,
   NativeElement,
+  NodeId,
   RunPlacement,
   Scene,
   TextDecoration,
@@ -26,7 +27,7 @@ use crate::{
   cells::Cells,
   engine::{DrawnCluster, drawn},
   layout::{border_edges, content, has_border, padding_cells},
-  records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
+  records::{Contrast, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
 };
@@ -714,7 +715,7 @@ pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
 /// computed origin.
-fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: Handle) {
+fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: NodeId) {
   let Some(Kind::Overlay { backdrop, .. }) =
     records.runtime.record(overlay).map(|record| &record.kind)
   else {
@@ -831,7 +832,7 @@ enum NodePaint {
     spans: Vec<SpanPaint>,
     links: Vec<String>,
     /// Each inline box, laid out where it flows.
-    boxes: Vec<Handle>,
+    boxes: Vec<NodeId>,
   },
   Box {
     background: Option<(u8, u8, u8)>,
@@ -871,7 +872,7 @@ enum NodePaint {
 /// whether `selection`, a range of `source`'s clusters, holds it.
 fn cluster_paints(
   records: &Records,
-  handle: Handle,
+  handle: NodeId,
   source: &Source,
   selection: Option<(usize, usize)>,
 ) -> Vec<ClusterPaint> {
@@ -881,7 +882,7 @@ fn cluster_paints(
   };
   let laid = flow.laid(content(records.flow_width(handle)));
   let text = flow.flow().text();
-  let runs: Vec<Handle> = source.runs().map(|(run, _)| run).collect();
+  let runs: Vec<NodeId> = source.runs().map(|(run, _)| run).collect();
   let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();
 
   drawn(&laid, text, &TextIndex::new(text))
@@ -902,7 +903,7 @@ fn cluster_paints(
 
 /// The border paint of a resolved box style: in its color, the terminal's own ink where
 /// it sets none, and unshown where its color is transparent.
-fn border_paint(records: &Records, handle: Handle) -> Option<BorderPaint> {
+fn border_paint(records: &Records, handle: NodeId) -> Option<BorderPaint> {
   let style = &records
     .runtime
     .record(handle)?
@@ -930,7 +931,7 @@ fn selection_colors(style: &PlainRun) -> Option<SelectionColors> {
 
 /// The emphasis a link run paints in while its focus shows: the typography's colors,
 /// or reverse video when both are unset or transparent.
-fn link_focus_emphasis(records: &Records, run: Handle) -> Emphasis {
+fn link_focus_emphasis(records: &Records, run: NodeId) -> Emphasis {
   let (ink, surface) = Env::of(&records.runtime, run).resolve_link_focus();
 
   emphasis_colors(ink, surface).map_or(Emphasis::Reverse, Emphasis::Colors)
@@ -956,7 +957,7 @@ fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<Selecti
   clippy::too_many_lines,
   reason = "a match dispatch over the record kinds; length is the kind count, not complexity"
 )]
-fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
+fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
   let Some(record) = records.runtime.record(handle)
   else {
     return NodePaint::None;
@@ -1103,7 +1104,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
 fn paint_node(
   records: &Records,
   buffer: &mut Buffer,
-  handle: Handle,
+  handle: NodeId,
   offset_x: isize,
   offset_y: isize,
 ) {
@@ -1583,7 +1584,7 @@ fn place_image(
 fn place_backdrop(
   records: &Records,
   buffer: &mut Buffer,
-  handle: Handle,
+  handle: NodeId,
   (x, y): (isize, isize),
   (width, height): (usize, usize),
 ) -> bool {
@@ -1632,7 +1633,7 @@ fn place_backdrop(
 fn draw_scrollbars(
   records: &Records,
   buffer: &mut Buffer,
-  handle: Handle,
+  handle: NodeId,
   x: isize,
   y: isize,
   width: usize,
@@ -2077,7 +2078,7 @@ const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
 
 /// The scale the run `handle` draws at: its resolved size where the terminal sizes
 /// text, one cell elsewhere and for an inline box.
-pub(crate) fn run_scale(records: &Records, handle: Handle) -> CellScale {
+pub(crate) fn run_scale(records: &Records, handle: NodeId) -> CellScale {
   if records.runtime.is_inline_box(handle) {
     return CellScale::ONE;
   }
@@ -2311,7 +2312,7 @@ pub(crate) fn changed_columns(
 }
 
 /// Whether the control `handle` is a text entry; `None` where it is no control.
-pub(crate) fn control_entry(records: &Records, handle: Handle) -> Option<bool> {
+pub(crate) fn control_entry(records: &Records, handle: NodeId) -> Option<bool> {
   match records.runtime.record(handle)?.kind {
     Kind::Control { native, .. } => Some(native.is_some_and(NativeElement::is_text_entry)),
     _ => None,

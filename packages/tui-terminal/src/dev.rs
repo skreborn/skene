@@ -31,6 +31,7 @@ use skene_foundation::{
   HasChildren,
   HasRun,
   Inset,
+  NodeId,
   Overlay,
   RunBase,
   Scene,
@@ -40,7 +41,7 @@ use skene_foundation::{
 };
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
-use crate::{Terminal, records::Handle};
+use crate::Terminal;
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
@@ -221,7 +222,7 @@ pub(crate) fn swap(path: &Path) -> ! {
 }
 
 /// The snapshot position of the node `handle` realizes.
-fn position_of(handle: Handle) -> Option<SnapshotPlace> {
+fn position_of(handle: NodeId) -> Option<SnapshotPlace> {
   let node =
     crate::try_with_records(|records| records.runtime.contains(handle).then_some(handle))??;
 
@@ -229,14 +230,14 @@ fn position_of(handle: Handle) -> Option<SnapshotPlace> {
 }
 
 /// The handle realizing the node at `position`, if it is live.
-fn handle_at(position: &SnapshotPlace) -> Option<Handle> {
+fn handle_at(position: &SnapshotPlace) -> Option<NodeId> {
   Scene::<Terminal>::with(|scene| scene.node_at(position))
 }
 
 /// Every scrolled node's offsets by position, in creation order: the dev loop's carry
 /// across a restart.
 fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
-  let scrolled: Vec<(Handle, u32, u32)> = crate::try_with_records(|records| {
+  let scrolled: Vec<(NodeId, u32, u32)> = crate::try_with_records(|records| {
     records
       .runtime
       .handles()
@@ -331,7 +332,7 @@ fn adopt_scroll() {
   else {
     return;
   };
-  let restored: Vec<(Handle, (u32, u32))> = entries
+  let restored: Vec<(NodeId, (u32, u32))> = entries
     .into_iter()
     .filter_map(|(position, x, y)| Some((handle_at(&position)?, (x, y))))
     .collect();

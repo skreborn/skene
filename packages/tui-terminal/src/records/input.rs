@@ -3,7 +3,7 @@
 
 use skene_foundation::{FocusOrder, NodeId, Scene};
 
-use super::{Handle, Kind, Records};
+use super::{Kind, Records};
 use crate::Terminal;
 
 /// The center of a cell, where a pointer reported by cell alone is taken to be.
@@ -14,7 +14,7 @@ pub(crate) const CELL_CENTER: (f32, f32) = (0.5, 0.5);
 pub(crate) enum Drag {
   /// A scrollbar's thumb: motion scrolls so the grabbed spot follows the pointer.
   Scrollbar {
-    node: Handle,
+    node: NodeId,
     axis: skene_foundation::Axis,
     /// The grabbed position within the thumb, in track cells, exact where the
     /// terminal reports pixels.
@@ -24,7 +24,7 @@ pub(crate) enum Drag {
   Selection,
   /// A text entry's caret: motion moves it to the position under the pointer, the
   /// anchor held.
-  Caret(Handle),
+  Caret(NodeId),
   /// A press under a node offering drag data: a drag of what the node offers starts
   /// once the pointer leaves the press's cell `from`, and has once `started`.
   Item {
@@ -46,7 +46,7 @@ pub(crate) const AUTOSCROLL_INTERVAL: std::time::Duration = std::time::Duration:
 /// clock reading of the last wheel event.
 pub(crate) struct ScrollLatch {
   pub(crate) cell: (u16, u16),
-  pub(crate) target: Handle,
+  pub(crate) target: NodeId,
   pub(crate) last: f64,
 }
 
@@ -55,10 +55,10 @@ pub(crate) struct ScrollLatch {
 /// captured it, if any, the focusable it landed on, and its place in a run of quick
 /// presses at one cell.
 pub(crate) struct Press {
-  pub(crate) path: Vec<Handle>,
-  pub(crate) pressed: Handle,
-  pub(crate) captured: Option<Handle>,
-  pub(crate) target: Option<Handle>,
+  pub(crate) path: Vec<NodeId>,
+  pub(crate) pressed: NodeId,
+  pub(crate) captured: Option<NodeId>,
+  pub(crate) target: Option<NodeId>,
   pub(crate) count: u8,
 }
 
@@ -68,18 +68,18 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and focus is asked of it as of the rest"
   )]
-  pub(crate) fn focus_order(&self, handle: Handle) -> Option<FocusOrder> {
+  pub(crate) fn focus_order(&self, handle: NodeId) -> Option<FocusOrder> {
     Scene::<Terminal>::read(|scene| scene.focus_order(handle))
   }
 
   /// Whether `handle` takes focus at all: by traversal, by pointer, or programmatically.
-  pub(crate) fn is_focusable(&self, handle: Handle) -> bool {
+  pub(crate) fn is_focusable(&self, handle: NodeId) -> bool {
     self.focus_order(handle).is_some()
   }
 
   /// Whether a press's pointer drags `handle`: a box or a control declaring the axes it
   /// drags along, which keeps a press's pointer until the release.
-  pub(crate) fn drags(&self, handle: Handle) -> bool {
+  pub(crate) fn drags(&self, handle: NodeId) -> bool {
     self
       .runtime
       .record(handle)
@@ -88,7 +88,7 @@ impl Records {
   }
 
   /// Whether `handle` is a control a press's pointer drags.
-  pub(crate) fn drags_as_control(&self, handle: Handle) -> bool {
+  pub(crate) fn drags_as_control(&self, handle: NodeId) -> bool {
     matches!(
       self.runtime.record(handle).map(|record| &record.kind),
       Some(Kind::Control { .. })
@@ -113,13 +113,13 @@ impl Records {
     clippy::unused_self,
     reason = "every reader holds the records, and focus is asked of it as of the rest"
   )]
-  pub(crate) fn focused(&self) -> Option<Handle> {
+  pub(crate) fn focused(&self) -> Option<NodeId> {
     Scene::<Terminal>::read(Scene::focused)
   }
 
   /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
   /// since a pointer press.
-  pub(crate) fn focus_shows(&self, handle: Handle) -> bool {
+  pub(crate) fn focus_shows(&self, handle: NodeId) -> bool {
     self.runtime.contains(handle) && Scene::<Terminal>::read(|scene| scene.focus_shows(handle))
   }
 
@@ -141,7 +141,7 @@ impl Records {
   /// The node a press or focus on `handle` lands on: itself when focusable, else its
   /// enclosing control when that is; `None` where neither takes focus, as for a disabled
   /// control.
-  pub(crate) fn focus_holder(&self, handle: Handle) -> Option<Handle> {
+  pub(crate) fn focus_holder(&self, handle: NodeId) -> Option<NodeId> {
     if self.is_focusable(handle) {
       return Some(handle);
     }
@@ -160,7 +160,7 @@ impl Records {
   }
 
   /// The hover path, the deepest node under the mouse first, up to the root.
-  pub(crate) fn hovered(&self) -> Vec<Handle> {
+  pub(crate) fn hovered(&self) -> Vec<NodeId> {
     Scene::<Terminal>::read(Scene::hovered)
       .map_or_else(Vec::new, |deepest| self.runtime.ancestors(deepest))
   }

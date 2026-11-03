@@ -1,9 +1,9 @@
 //! When the next frame is due and what it repaints: the damage, the frame clock's pace
 //! and the scheduled actions.
 
-use skene_foundation::Scene;
+use skene_foundation::{NodeId, Scene};
 
-use super::{CellRect, Handle, Records};
+use super::{CellRect, Records};
 use crate::Terminal;
 
 /// How long the loop waits for input between frames while the frame clock runs: the
@@ -12,7 +12,7 @@ pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from
 
 impl Records {
   /// Takes the nodes and rectangles marked for repaint.
-  pub(crate) fn take_damage(&mut self) -> (Vec<Handle>, Vec<CellRect>) {
+  pub(crate) fn take_damage(&mut self) -> (Vec<NodeId>, Vec<CellRect>) {
     (
       self.runtime.take_damage(),
       std::mem::take(&mut self.damaged_rects),

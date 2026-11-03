@@ -41,9 +41,6 @@ pub(crate) const DEFAULT_CELL_PIXELS: (u16, u16) = (10, 20);
 /// A rectangle of cells on the screen: its origin, then its size.
 pub(crate) type CellRect = (i64, i64, i64, i64);
 
-/// A node's record's key: the scene's own id for the node.
-pub(crate) type Handle = NodeId;
-
 /// One realized node, as the drawn runtime keeps it.
 pub(crate) type Record = skene_layout::runtime::Record<Terminal>;
 
@@ -111,7 +108,7 @@ pub(crate) struct Records {
   /// Whether a clipboard read is staged for the terminal loop.
   pub(crate) pending_paste: bool,
   /// The entry the last clipboard read was asked for, where its reply lands.
-  pub(crate) paste_target: Option<Handle>,
+  pub(crate) paste_target: Option<NodeId>,
   /// The link pressed at its cell, opened when the release lands on the same cell.
   pub(crate) pressed_link: Option<(u16, u16, String)>,
   /// A link destination staged for the terminal loop to open.
@@ -125,7 +122,7 @@ pub(crate) struct Records {
   /// The scheduled actions, each due at a clock reading.
   pub(crate) timers: Timers<Box<dyn FnOnce()>>,
   /// The node to scroll into view once the next layout is computed.
-  pub(crate) reveal: Option<Handle>,
+  pub(crate) reveal: Option<NodeId>,
   /// The window title the document asks for.
   pub(crate) title: Option<String>,
   /// Whether the title changed since the terminal was last told it.
@@ -223,13 +220,13 @@ impl Records {
 
   /// The terminal's own state of `handle`, if it is live.
   #[inline(always)]
-  pub(crate) fn cell(&self, handle: Handle) -> Option<&CellNode> {
+  pub(crate) fn cell(&self, handle: NodeId) -> Option<&CellNode> {
     self.cells.get(handle)
   }
 
   /// The terminal's own state of `handle`, mutably, if it is live.
   #[inline(always)]
-  pub(crate) fn cell_mut(&mut self, handle: Handle) -> Option<&mut CellNode> {
+  pub(crate) fn cell_mut(&mut self, handle: NodeId) -> Option<&mut CellNode> {
     self.cells.get_mut(handle)
   }
 
@@ -279,7 +276,7 @@ impl Records {
   }
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
-  pub(crate) fn destroy(&mut self, handle: Handle) {
+  pub(crate) fn destroy(&mut self, handle: NodeId) {
     if self.runtime.destroy(handle).is_none() {
       return;
     }

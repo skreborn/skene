@@ -6,6 +6,7 @@ use std::rc::Rc;
 use skene_foundation::{
   Canvas,
   Color,
+  NodeId,
   Size,
   kurbo::{Rect, RoundedRect, Stroke},
 };
@@ -16,7 +17,7 @@ use crate::{
   interaction::scroll_to,
   layout::{border_edges, has_border},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
-  records::{Backdrop, BackdropKey, CellRect, Handle, Record, Records},
+  records::{Backdrop, BackdropKey, CellRect, Record, Records},
   with_records,
 };
 
@@ -139,7 +140,7 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
 fn damaged_rows(
   records: &Records,
   height: usize,
-  damaged: Vec<Handle>,
+  damaged: Vec<NodeId>,
   mut rects: Vec<CellRect>,
   moved: bool,
 ) -> Vec<bool> {
@@ -182,7 +183,7 @@ fn damaged_rows(
 
 /// The node whose paint covers `handle`: the paragraph an inline run flows in, or an
 /// inline box's content, through any groups; else the node itself.
-fn paint_owner(records: &Records, handle: Handle) -> Handle {
+fn paint_owner(records: &Records, handle: NodeId) -> NodeId {
   let mut owner = handle;
 
   while let Some(parent) = records.runtime.layout_parent(owner) {
@@ -198,7 +199,7 @@ fn paint_owner(records: &Records, handle: Handle) -> Handle {
 
 /// The screen rectangle `handle` paints at `origin`, grown by the cells its shadow
 /// reaches; `None` for a node without extent.
-fn rect_at(records: &Records, handle: Handle, (x, y): (i64, i64)) -> Option<CellRect> {
+fn rect_at(records: &Records, handle: NodeId, (x, y): (i64, i64)) -> Option<CellRect> {
   let (width, height) = records.node_size(handle);
 
   if width <= 0 || height <= 0 {
@@ -622,7 +623,7 @@ fn reveal() -> bool {
 
 /// The nearest node at or above `handle` the tree lays out: `handle` itself, or the
 /// paragraph a text or group run flows in.
-fn laid_owner(records: &Records, handle: Handle) -> Handle {
+fn laid_owner(records: &Records, handle: NodeId) -> NodeId {
   if records.runtime.is_inline_run(handle) && !records.runtime.is_inline_box(handle) {
     return records
       .runtime
@@ -634,7 +635,7 @@ fn laid_owner(records: &Records, handle: Handle) -> Handle {
 }
 
 /// The scroll offsets each scrollable ancestor of `handle` takes to show it.
-fn adjustments(records: &Records, handle: Handle) -> Vec<(Handle, (u32, u32))> {
+fn adjustments(records: &Records, handle: NodeId) -> Vec<(NodeId, (u32, u32))> {
   let mut adjusted = Vec::new();
   let (mut rel_x, mut rel_y) = records.node_location(handle);
   let (width, height) = records.node_size(handle);

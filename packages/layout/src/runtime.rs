@@ -49,9 +49,10 @@ pub trait Drawn: Realization<TokenValue = TokenValue<<Self as Realization>::Scal
   /// Runs `operation` on the platform's runtime, `None` where none is installed for
   /// this thread.
   ///
-  /// The platform's state is borrowed while `operation` runs, so nothing of the app's
-  /// runs inside it: no handler, and no write whose effects run before it returns. A call
-  /// nested inside `operation`, or inside a handler the platform runs, panics.
+  /// The platform's state is borrowed while `operation` runs, and a call nested inside
+  /// it panics, so `operation` runs nothing of the app's: no handler, and no write whose
+  /// effects run before it returns. The platform runs its handlers with nothing
+  /// borrowed, so a handler reaches the runtime as any other caller does.
   fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R>;
 }
 

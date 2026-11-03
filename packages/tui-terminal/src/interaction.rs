@@ -488,8 +488,8 @@ impl Records {
   /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
   /// anchor, everything else against the terminal.
   pub(crate) fn overlay_origin(&self, handle: Handle) -> (i64, i64) {
-    let (columns, rows) = self.last_size;
-    let (columns, rows) = (i64::from(columns), i64::from(rows));
+    let viewport = self.runtime.window().reported().viewport;
+    let (columns, rows) = (i64::from(viewport.width), i64::from(viewport.height));
     let Some(Kind::Overlay {
       placement,
       position,

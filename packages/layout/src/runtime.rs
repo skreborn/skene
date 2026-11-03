@@ -9,16 +9,39 @@
 //! and each node's style is presented on the platform's frame clock, its transitions and
 //! keyframe animations laid over it ([`BoxMotion`], [`RunMotion`]).
 //!
+//! The runtime is the source every node's style resolves through ([`Env`]): it keeps
+//! what its platform reports of the window ([`Window`]) and the app's choice of scheme,
+//! moved by one writer ([`Runtime::report`]) together with the resolution's generation
+//! and the environment's signals, and it calls the platform's fill-ins of its own
+//! vocabulary ([`Drawn::finish_box`], [`Drawn::finish_run`]).
+//!
 //! A platform keeps its own per-node state in a side table of its own keyed by the node,
 //! never in the runtime's records.
 
+mod environment;
 mod motion;
 mod record;
+mod resolve;
 mod structure;
 
-use skene_foundation::{Axis, BoxFacts, Layout, NodeId, NodeMap, Realization, TokenValue};
+use skene_foundation::{
+  Axis,
+  BoxFacts,
+  BoxStyle,
+  ColorScheme,
+  Environment,
+  Layout,
+  NodeId,
+  NodeMap,
+  Plain,
+  Realization,
+  Resolver,
+  RunStyle,
+  TokenValue,
+};
 
 pub use self::{
+  environment::{Facts, Pending, Window},
   motion::{BoxMotion, Presented, RunMotion, Sample},
   record::{
     BoxCache,
@@ -32,6 +55,7 @@ pub use self::{
     RunCache,
     SlotLeaf,
   },
+  resolve::Env,
 };
 use crate::Restyle;
 
@@ -54,13 +78,32 @@ pub trait Drawn: Realization<TokenValue = TokenValue<<Self as Realization>::Scal
   /// effects run before it returns. The platform runs its handlers with nothing
   /// borrowed, so a handler reaches the runtime as any other caller does.
   fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R>;
+
+  /// Whether the platform draws text at sizes other than its
+  /// [`FONT_SIZE`](Realization::FONT_SIZE), as it last found; see
+  /// [`ResolutionSource::sizes_text`](skene_foundation::ResolutionSource::sizes_text).
+  ///
+  /// It reads nothing the runtime holds, since the runtime is borrowed while it runs.
+  fn sizes_text() -> bool;
+
+  /// Fills in what the platform's own vocabulary takes of a box's `style` once every
+  /// property it declares is resolved.
+  fn finish_box(style: &mut BoxStyle<Self::Scalar, Plain, Self::StyleExt>);
+
+  /// Fills in what the platform's own vocabulary takes of a run's `style` once every
+  /// property it declares is resolved, reading the tokens in force at the run through
+  /// `resolver`.
+  fn finish_run(
+    style: &mut RunStyle<Plain, Self::StyleExt>,
+    resolver: &Resolver<'_, Self::Scalar, Self::StyleExt>,
+  );
 }
 
 /// What a platform Skene draws whole keeps of its scene.
 ///
 /// A [`Record`] per node, the root filling the window, the overlays and text entries in
 /// build order, what moved since the last restyle, and what the next frame lays out and
-/// repaints.
+/// repaints, beside what it keeps of its window and the app's choice of scheme.
 #[derive(Debug)]
 #[must_use]
 pub struct Runtime<P: Drawn> {
@@ -79,12 +122,16 @@ pub struct Runtime<P: Drawn> {
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub paint_dirty: bool,
   damaged: Vec<NodeId>,
+  window: Window<P>,
+  choice: Option<ColorScheme>,
 }
 
 impl<P: Drawn> Runtime<P> {
   /// A runtime whose root box, filling the window, is the scene's node `root`: a
-  /// decorated vertical flex box, its frame yet to be laid out and painted.
-  pub fn new(root: NodeId) -> Self {
+  /// decorated vertical flex box, its frame yet to be laid out and painted, in a window
+  /// whose platform reports `reported` and whose pictures paint where `painting` holds,
+  /// the app having chosen no scheme.
+  pub fn new(root: NodeId, reported: Environment<P::Scalar>, painting: bool) -> Self {
     let root_facts = BoxFacts {
       layout: Layout::Flex {
         axis: Axis::Vertical,
@@ -105,6 +152,8 @@ impl<P: Drawn> Runtime<P> {
       layout_dirty: true,
       paint_dirty: true,
       damaged: Vec::new(),
+      window: Window::new(reported, painting),
+      choice: None,
     };
 
     runtime.insert(root, Kind::Box(BoxRecord::new(None, None, root_facts)));

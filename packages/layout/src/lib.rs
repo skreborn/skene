@@ -10,8 +10,10 @@
 //! realization's text engine ([`TextFlow`]). The [`runtime`] module holds what a
 //! platform Skene draws whole runs beneath its realization: the store such a platform
 //! keeps in its own state and hands out through [`runtime::Drawn`], a record per node
-//! with the scene walk over them ([`runtime::Runtime`]), and each node's motion presented
-//! on the platform's frame clock. The web lays out through CSS and needs none of it.
+//! with the scene walk over them ([`runtime::Runtime`]), each node's motion presented on
+//! the platform's frame clock, and each node's style resolved ([`runtime::Env`]) against
+//! what the platform reports of its window ([`runtime::Window`]). The web lays out
+//! through CSS and needs none of it.
 
 mod restyle;
 pub mod runtime;

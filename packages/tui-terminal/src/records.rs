@@ -10,10 +10,10 @@ mod geometry;
 mod input;
 
 pub(crate) use skene_foundation::Interaction;
-use skene_foundation::{ColorScheme, NodeId, NodeMap, PointerButtons, Scene, Shortcut, Timers};
+use skene_foundation::{NodeId, NodeMap, PointerButtons, Scene, Shortcut, Timers};
 use skene_layout::{Tree, runtime::Runtime};
 
-use self::environment::MediaState;
+use self::environment::LAUNCH_ENVIRONMENT;
 pub(crate) use self::{
   cell::{Backdrop, BackdropKey, CellNode, PictureRecord},
   environment::{Contrast, OwnColors},
@@ -71,9 +71,6 @@ pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
 /// A node's style and motion as the shared half applies it.
 pub(crate) type KeptStyle = skene_layout::runtime::KeptStyle<Terminal>;
 
-/// What a derived leaf last wrote into a node's slot.
-pub(crate) type SlotLeaf = skene_layout::runtime::SlotLeaf<Terminal>;
-
 /// Every record the platform holds, the layout tree, the interaction state and the
 /// environment.
 #[expect(
@@ -82,7 +79,8 @@ pub(crate) type SlotLeaf = skene_layout::runtime::SlotLeaf<Terminal>;
 )]
 pub(crate) struct Records {
   /// The drawn runtime: a record per node, the root filling the screen, the overlays and
-  /// entries in build order, the restyle, and what the next frame lays out and repaints.
+  /// entries in build order, the restyle, what the next frame lays out and repaints, and
+  /// the environment the terminal reports with the app's choice of scheme.
   pub(crate) runtime: Runtime<Terminal>,
   /// The terminal's own state of each node, beside its record: its field, scroll
   /// offsets, the cells it covers and what it paints beyond its style.
@@ -136,18 +134,12 @@ pub(crate) struct Records {
   pub(crate) pressed_link: Option<(u16, u16, String)>,
   /// A link destination staged for the terminal loop to open.
   pub(crate) pending_open: Option<String>,
-  /// The size of the last computed layout, which hit-testing resolves against.
-  pub(crate) last_size: (u16, u16),
-  /// Whether the terminal background is dark, as detected.
-  pub(crate) detected_dark: bool,
   /// The terminal's own foreground, where it reported one (OSC 10).
   pub(crate) detected_foreground: Option<(u8, u8, u8)>,
   /// The terminal's own background, where it reported one (OSC 11).
   pub(crate) detected_background: Option<(u8, u8, u8)>,
   /// The terminal's sixteen base colors, as it reported them (OSC 4).
   pub(crate) palette: Palette,
-  /// The color scheme the app has chosen, overriding the detected background.
-  pub(crate) choice: Option<ColorScheme>,
   /// The scheduled actions, each due at a clock reading.
   pub(crate) timers: Timers<Box<dyn FnOnce()>>,
   /// The node to scroll into view once the next layout is computed.
@@ -169,18 +161,12 @@ pub(crate) struct Records {
   pub(crate) quit: bool,
   /// The clock motion samples against.
   pub(crate) clock: Clock,
-  /// Whether the reader prefers reduced motion.
-  pub(crate) reduced_motion: bool,
   /// Whether a tween or an animation was still running at the last restyle, so the
   /// next frame is due at the frame rate.
   pub(crate) motion_active: bool,
   /// The clock reading the caret drag's autoscroll last stepped at, `None` while no
   /// drag is held past its entry's edge.
   pub(crate) autoscroll_at: Option<f64>,
-  /// The environment's signals, once first asked for.
-  media: Option<MediaState>,
-  /// Whether the terminal proved a graphics protocol, so pictures render and place.
-  pub(crate) graphics: bool,
   /// Whether the terminal's clipboard answers (mode 5522), so every operation is
   /// offered from its reply rather than the launch choice.
   pub(crate) clipboard_answers: bool,
@@ -199,7 +185,7 @@ impl Records {
   /// Records whose root box, filling the screen, is the scene's node `root`.
   pub(crate) fn new(root: NodeId) -> Self {
     let mut records = Self {
-      runtime: Runtime::new(root),
+      runtime: Runtime::new(root, LAUNCH_ENVIRONMENT, false),
       cells: NodeMap::new(),
       tree: Tree::new(true),
       damaged_rects: Vec::new(),
@@ -222,12 +208,9 @@ impl Records {
       paste_target: None,
       pressed_link: None,
       pending_open: None,
-      last_size: DEFAULT_SIZE,
-      detected_dark: true,
       detected_foreground: None,
       detected_background: None,
       palette: Palette::DEFAULT,
-      choice: None,
       timers: Timers::new(),
       reveal: None,
       title: None,
@@ -238,11 +221,8 @@ impl Records {
       covers_stale: true,
       quit: false,
       clock: Clock::Manual(0.),
-      reduced_motion: false,
       motion_active: false,
       autoscroll_at: None,
-      media: None,
-      graphics: false,
       clipboard_answers: false,
       key_releases: false,
       cell_pixels: DEFAULT_CELL_PIXELS,

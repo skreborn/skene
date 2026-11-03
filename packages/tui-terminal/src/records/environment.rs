@@ -1,24 +1,10 @@
-//! The environment the terminal reports: the scheme in force and its colors, the
-//! viewport and the pointer, as values and as signals, and the resolution's source.
+//! What the terminal reports of its environment, which the drawn runtime keeps, and the
+//! colors it shows under the scheme in force.
 
-use skene_foundation::{
-  Color,
-  ColorScheme,
-  ContainerName,
-  Environment,
-  Inset,
-  MediaSignals,
-  NodeId,
-  PointerPrecision,
-  ResolutionSource,
-  Size,
-  Slot,
-  Token,
-};
-use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
+use skene_foundation::{Color, ColorScheme, Environment, Inset, PointerPrecision, Size, Token};
 
-use super::{Records, SlotLeaf};
-use crate::{Terminal, detect};
+use super::{DEFAULT_SIZE, Records};
+use crate::detect;
 
 type SystemColors = skene_foundation::SystemColors<i32>;
 
@@ -48,61 +34,39 @@ impl OwnColors {
   };
 }
 
-/// The environment as signals, with the write halves the platform drives.
-pub(crate) struct MediaState {
-  /// The root owner the signals live under.
-  pub(crate) owner: Owner,
-  /// Writes the viewport.
-  pub(crate) set_viewport: WriteSignal<Size<i32>>,
-  /// Writes the color scheme in force.
-  pub(crate) set_scheme: WriteSignal<ColorScheme>,
-  /// Writes whether the reader prefers reduced motion.
-  pub(crate) set_reduced_motion: WriteSignal<bool>,
-  /// Whether the terminal proved a graphics protocol.
-  pub(crate) graphics: ReadSignal<bool>,
-  /// Writes whether the terminal proved a graphics protocol.
-  pub(crate) set_graphics: WriteSignal<bool>,
-  /// The environment's signals.
-  pub(crate) signals: MediaSignals<i32>,
-}
-
-impl ResolutionSource<Terminal> for Records {
-  /// The terminal draws every size at one cell where it proves no text sizing.
-  fn environment(&self) -> Environment<i32> {
-    Self::environment(self)
-  }
-
-  fn container_size(&self, name: ContainerName) -> Option<Size<i32>> {
-    self
-      .media
-      .as_ref()?
-      .signals
-      .container_sizes
-      .get_untracked(name)
-  }
-
-  fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf> {
-    self.runtime.record(node)?.slots.get(&slot).cloned()
-  }
-
-  fn sizes_text(&self) -> bool {
-    crate::text::sizing()
-  }
-
-  fn generation(&self) -> u64 {
-    self.runtime.restyle.generation()
-  }
-}
+/// The environment the terminal reports until it learns otherwise: its default size, a
+/// dark background, no preference for reduced motion, reduced transparency or more
+/// contrast, which it has no answer for, the mouse fine and hovering, and no edge kept
+/// clear.
+pub(crate) const LAUNCH_ENVIRONMENT: Environment<i32> = Environment {
+  viewport: Size::new(DEFAULT_SIZE.0 as i32, DEFAULT_SIZE.1 as i32),
+  scheme: ColorScheme::Dark,
+  reduced_motion: false,
+  reduced_transparency: false,
+  high_contrast: false,
+  pointer: PointerPrecision::Fine,
+  hover: true,
+  safe_area: Inset::ZERO,
+};
 
 impl Records {
   /// Whether the scheme in force is dark: the app's choice when it has made one, and
   /// the background the terminal reported otherwise.
   pub(crate) const fn dark(&self) -> bool {
-    match self.choice {
-      Some(ColorScheme::Light) => false,
-      Some(ColorScheme::Dark) => true,
-      None => self.detected_dark,
-    }
+    matches!(self.runtime.scheme(), ColorScheme::Dark)
+  }
+
+  /// Whether the background the terminal reported is dark.
+  pub(crate) const fn detected_dark(&self) -> bool {
+    matches!(self.runtime.window().reported().scheme, ColorScheme::Dark)
+  }
+
+  /// The terminal's size in cells, as it last reported it.
+  pub(crate) fn screen_size(&self) -> (u16, u16) {
+    let Size { width, height } = self.runtime.window().reported().viewport;
+    let cells = |length: i32| u16::try_from(length.max(0)).unwrap_or(u16::MAX);
+
+    (cells(width), cells(height))
   }
 
   /// The colors an unset cell shows, which a paint mixes against: the terminal's
@@ -124,7 +88,7 @@ impl Records {
       }
     };
 
-    if dark != self.detected_dark {
+    if dark != self.detected_dark() {
       return defaults;
     }
 
@@ -137,7 +101,7 @@ impl Records {
   /// The terminal's own colors, where it reported them and the scheme in force is the
   /// one its background implies.
   pub(crate) const fn own_colors(&self) -> OwnColors {
-    if self.dark() != self.detected_dark {
+    if self.dark() != self.detected_dark() {
       return OwnColors::NONE;
     }
 
@@ -191,99 +155,5 @@ impl Records {
       selection: token(SystemColors::SELECTION, window.mix(accent, 0.5)),
       selection_inactive: token(SystemColors::SELECTION_INACTIVE, tint(0.25)),
     }
-  }
-
-  /// The color scheme in force.
-  #[inline(always)]
-  pub(crate) const fn scheme(&self) -> ColorScheme {
-    if self.dark() {
-      ColorScheme::Dark
-    }
-    else {
-      ColorScheme::Light
-    }
-  }
-
-  /// The viewport as the last layout measured it.
-  #[inline(always)]
-  pub(crate) fn viewport(&self) -> Size<i32> {
-    Size::new(i32::from(self.last_size.0), i32::from(self.last_size.1))
-  }
-
-  /// The environment the terminal reports; it has no answer for reduced transparency
-  /// or more contrast, which never hold, its pointer is the mouse, fine and hovering
-  /// where the app takes it and absent where it does not, and it keeps no edge clear.
-  pub(crate) fn environment(&self) -> Environment<i32> {
-    Environment {
-      viewport: self.viewport(),
-      scheme: self.scheme(),
-      reduced_motion: self.reduced_motion,
-      reduced_transparency: false,
-      high_contrast: false,
-      pointer: self.pointer(),
-      hover: self.mouse,
-      safe_area: Inset::ZERO,
-    }
-  }
-
-  /// The pointer the terminal reports: the mouse, where the app takes it.
-  pub(crate) const fn pointer(&self) -> PointerPrecision {
-    if self.mouse {
-      PointerPrecision::Fine
-    }
-    else {
-      PointerPrecision::Absent
-    }
-  }
-
-  /// Marks every resolved style stale and the frame in need of layout.
-  #[inline(always)]
-  pub(crate) const fn invalidate_styles(&mut self) {
-    self.runtime.restyle.invalidate();
-    self.runtime.layout_dirty = true;
-    self.runtime.paint_dirty = true;
-  }
-
-  /// The environment's signals, created on first use under a root owner of their own.
-  pub(crate) fn media(&mut self) -> &MediaState {
-    let viewport = self.viewport();
-    let scheme = self.scheme();
-    let reduced = self.reduced_motion;
-    let pointer = self.pointer();
-    let hover = self.mouse;
-    let graphics = self.graphics;
-
-    self.media.get_or_insert_with(|| {
-      let owner = Owner::new();
-
-      owner.enter(|| {
-        let (signals, writers) = MediaSignals::new(Environment {
-          viewport,
-          scheme,
-          reduced_motion: reduced,
-          reduced_transparency: false,
-          high_contrast: false,
-          pointer,
-          hover,
-          safe_area: Inset::ZERO,
-        });
-        let (graphics, set_graphics) = Signal::new(graphics).split();
-
-        MediaState {
-          owner,
-          set_viewport: writers.viewport,
-          set_scheme: writers.scheme,
-          set_reduced_motion: writers.reduced_motion,
-          graphics,
-          set_graphics,
-          signals,
-        }
-      })
-    })
-  }
-
-  /// The owner of the environment's signals, for a teardown to dispose.
-  pub(crate) fn take_media_owner(&mut self) -> Option<Owner> {
-    self.media.take().map(|media| media.owner)
   }
 }

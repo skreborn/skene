@@ -30,6 +30,19 @@ supersedes there.
   platform keeps its own per-node state in a side table of its own keyed by the
   `NodeId`, inserted and removed beside the runtime's record. Revisit when generic code
   must read a platform's per-node extension.
+- **The environment answered by a `Drawn` hook** (2026-11-03), the runtime asking its
+  platform for the viewport, the scheme, the reduced-motion preference, the pointer and
+  whether it paints pictures each time a style resolves: a hook cannot read the
+  platform's state while the runtime is borrowed from it, and the four writers the
+  terminal had (its resize, its scheme detection, its reduced-motion seam and its
+  launch's mouse, beside the graphics probe and the app's scheme choice) each repeated
+  the compare, the restyle's invalidation and the signal's write after the borrow is
+  released. The runtime keeps the facts its platform reports, per window
+  (`runtime::Window`), beside the app's choice of scheme, and one writer,
+  `Runtime::report`, moves the facts, the resolution's generation and the signals
+  together, the signal writes left in a `Pending` the platform writes once it has
+  redefined what follows the new scheme. Revisit when a platform can only poll a fact
+  rather than report its change.
 - **A leaf's inline boxes held outside the tree's children (`Leaf::boxes` alone naming
   them, the tree linking each to its leaf)** (2026-11-02), a paragraph's boxes kept apart
   from its children list with a link of their own back to the paragraph: a box would hold

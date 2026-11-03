@@ -40,18 +40,17 @@ in a code comment.
     - Layout: layout settles before a frame commits, the terminal's settle loop
     becoming the frame contract, and `Painted` resizes land with the layout commit.
     - Beside it: the frame clock running `skene_foundation::interpolate`, color
-    transitions on it; `Condition` resolution against the runtime's environment and
-    pointer through the one resolution point; the spine's `Window` owning its
-    `Environment`, `media::*` reading the window's, and the scene's held state (open
-    overlays, kept focus, autofocus, shortcuts, a drag) partitioned by root, each root
-    read by one window, the web and the terminal having one window each and the
-    runtime's state kept per window; one typed input enum in the foundation beside the
-    spine's events (a pointer, a wheel with its delta's unit, a key, a paste), which
-    every platform produces before dispatch, the web's DOM listeners included, each
-    platform's conventions its policy (when two presses fall on the same spot, its
-    intervals and steps); the executor's wake through the event loop's waker, another
-    thread's work arriving as a task the owning executor wakes; and the runtime's timers
-    folded into the loop's wait, the loop-integrated timer.
+    transitions on it; the spine's `Window` owning its `Environment`, `media::*` reading
+    the window's, and the scene's held state (open overlays, kept focus, autofocus,
+    shortcuts, a drag) partitioned by root, each root read by one window, the web and
+    the terminal having one window each and the runtime's state kept per window; one
+    typed input enum in the foundation beside the spine's events (a pointer, a wheel
+    with its delta's unit, a key, a paste), which every platform produces before
+    dispatch, the web's DOM listeners included, each platform's conventions its policy
+    (when two presses fall on the same spot, its intervals and steps); the executor's
+    wake through the event loop's waker, another thread's work arriving as a task the
+    owning executor wakes; and the runtime's timers folded into the loop's wait, the
+    loop-integrated timer.
 2. **Lists and overlays, designed for both kinds of platform.** Every realization below
     needs both, each shaped once for the compositor platforms, which place views among
     native ones, and for the window platforms, which draw everything. Lists are designed
@@ -694,9 +693,10 @@ in a code comment.
     stretches the field to its height. The field's value row, its caret, a press's
     mapping to its value (`field_inset`) and its paint's inset move together.
 30. **A launched terminal app follows a reduced-motion preference.** Only
-    `testing::trigger_reduced_motion` writes the terminal's flag, so a launched app
-    respects none, where reduced motion is respected by default; its source (a launch
-    setting, the host desktop's settings portal where one answers) is settled here.
+    `testing::trigger_reduced_motion` reports the preference to the runtime, so a
+    launched app respects none, where reduced motion is respected by default; its source
+    (a launch setting, the host desktop's settings portal where one answers) is settled
+    here.
 31. **The terminal scrolls a box by keys as Chromium does.** The arrow keys, Space and
     Shift-Space, and Home and End scroll the focused scroll box, or the nearest one
     holding focus, where no control takes them; the terminal scrolls by the page keys

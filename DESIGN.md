@@ -20,7 +20,8 @@ throughout—there is no separate "widget" concept.
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout and the drawn runtime every platform but
 the web runs (`skene-layout`, whose `runtime` holds each node's record, the scene walk
-over them and their motion, behind the `Drawn` trait a drawn platform implements) and
+over them, their motion, their style's resolution and the environment the platform
+reports, behind the `Drawn` trait a drawn platform implements) and
 the text engine over Parley (`skene-parley`) on the foundation, the platforms on the
 foundation and, where they draw, on those two, each platform's realization a crate of
 its own (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
@@ -1327,28 +1328,32 @@ Condition     = Media | State | And | Or
 - **Terminal** (and native) resolve every property at one point through the spine's
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
-  unit, its token and slot lookups and its font size. The terminal caches the result per
-  node under a generation covering environment, interaction and definitions, and
-  reports whether the resolved value changed; that report is where a transition
-  starts. It builds the resolver through one `ResolutionContext` (a node's environment,
-  interaction and containers from the scene, a token resolved where it is defined, its
-  definition converted into the shared `TokenValue`, the font size from the
-  typography's size token, the platform's `EM` where text takes no sizes) over a
-  `ResolutionSource` giving what the scene does not hold: the environment, container
-  sizes, slots and whether text is drawn at other sizes. The browser is that
-  resolution's oracle: the parity harness (`browser_parity`) builds each case on the
-  browser leaf, its read node a low-level view keeping the style the shared half hands
-  the web, resolves it through `CompiledStyle::resolve` with the resolver of a
-  `ResolutionContext` over the web's own scene (its themes, scopes, containers and the
-  enclosing control's state), runs its motion through the foundation's `Motion`, and
-  holds the value to the one the engine computes, so a divergence it finds is one every
-  platform resolving through the shared half shares. The terminal keeps the style
-  `apply_style` hands it for each box, control, overlay and run, and resolves it at every
-  restyle through the shared `Keep::Nothing` entry, the one resolution setting whether
-  the node's interaction was read and giving a run its wrapper's layout beside its own
-  properties, before its own fill-ins (rounded border glyphs, the typography's size and
-  weight, `bold`); its transitions and animations are the kept style's. A text entry's
-  value takes the typography's tokens in force at the entry.
+  unit, its token and slot lookups and its font size. The drawn runtime
+  (`skene_layout::runtime`) is that point for every platform Skene draws whole: it
+  caches the result per node under a generation covering environment, interaction and
+  definitions, and reports whether the resolved value changed; that report is where a
+  transition starts. It builds the resolver through one `ResolutionContext` (a node's
+  environment, interaction and containers from the scene, a token resolved where it is
+  defined, its definition converted into the shared `TokenValue`, the font size from
+  the typography's size token, the platform's `EM` where text takes no sizes) over the
+  runtime itself as its `ResolutionSource`, giving what the scene does not hold: the
+  environment it keeps of its window, container sizes, slots and whether text is drawn
+  at other sizes (`Drawn::sizes_text`). The browser is that resolution's oracle: the
+  parity harness (`browser_parity`) builds each case on the browser leaf, its read node
+  a low-level view keeping the style the shared half hands the web, resolves it through
+  `CompiledStyle::resolve` with the resolver of a `ResolutionContext` over the web's
+  own scene (its themes, scopes, containers and the enclosing control's state), runs
+  its motion through the foundation's `Motion`, and holds the value to the one the
+  engine computes, so a divergence it finds is one every platform resolving through
+  the shared half shares. The runtime keeps the style `apply_style` hands it for each
+  box, control, overlay and run, and resolves it at every restyle through the shared
+  `Keep::Nothing` entry (`runtime::Env`), the one resolution setting whether the node's
+  interaction was read and giving a run its wrapper's layout beside its own properties,
+  before the platform's fill-ins of its own vocabulary, its `Drawn::finish_box` and
+  `Drawn::finish_run` (the terminal's rounded border glyphs, the typography's size and
+  weight, `bold`); its transitions and animations are the kept style's. In the
+  terminal, a text entry's value takes the typography's tokens in force at the entry,
+  through the same resolver.
 
 ### Tokens and themes
 
@@ -1456,13 +1461,27 @@ a subtree is not wanted.
 
 `media::viewport()`, `media::scheme()` and `media::reduced_motion()` are signals on every
 facade, backed by the platform: `MediaQueryList` and `resize` in the browser, the
-terminal's size and background. `media::watch(&media)`
-turns any declared condition into a memo rendered from the same query text the class
-compiler renders, so the signal and the stylesheet cannot disagree. A box's measured size
-reaches a view through `Realization::observe_size` (the lazy column's viewport, the slider's
-track). On the server these hold the client hints the render was given
-(`Sec-CH-Prefers-Color-Scheme`, `Sec-CH-Viewport-Width`, `Sec-CH-Prefers-Reduced-Motion`;
-Chromium only, opt-in through `Accept-CH`/`Critical-CH`), else documented defaults.
+terminal's size and background. `media::watch(&media)` turns any declared condition into
+a memo rendered from the same query text the class compiler renders, so the signal and
+the stylesheet cannot disagree. A box's measured size reaches a view through
+`Realization::observe_size` (the lazy column's viewport, the slider's track). On the
+server these hold the client hints the render was given (`Sec-CH-Prefers-Color-Scheme`,
+`Sec-CH-Viewport-Width`, `Sec-CH-Prefers-Reduced-Motion`; Chromium only, opt-in through
+`Accept-CH`/`Critical-CH`), else documented defaults.
+
+A platform Skene draws whole keeps none of it itself: the drawn runtime keeps what the
+platform reports of its window (`runtime::Window`: the environment, its scheme the
+platform's own, and whether it paints pictures, `Painting::available`'s fact) beside the
+app's choice of scheme, one per app, and the signals following them, created on first
+use. The scheme in force is the choice, else the reported one. One writer,
+`Runtime::report`, moves them: it compares, marks every resolved style stale where the
+environment in force moved (the frame repainting where only the painting did), and
+leaves the signal writes in a `Pending` written once the runtime is released, after
+whatever the platform redefines from the new scheme (the terminal's `SystemColors`).
+The named containers' sizes the platform measures after a layout are published the
+same way (`Runtime::publish_container_sizes`). The terminal reports its size at each
+frame, its background's scheme once detected, the mouse as its pointer at launch and
+its graphics probe's answer.
 
 ### The interner
 

@@ -20,7 +20,8 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_foundation::{ClipboardAction, View};
+use skene_foundation::{ClipboardAction, ColorScheme, View};
+use skene_layout::runtime::Runtime;
 
 pub(crate) use self::keys::{key_event, press};
 use self::{
@@ -776,30 +777,19 @@ pub(crate) fn set_detected_background(background: (u8, u8, u8)) {
   set_detected_scheme(detect::is_dark(background));
 }
 
-/// Records the detected background, moving the scheme in force where it changes, and
-/// defines the platform's colors afresh.
+/// Reports the detected background's scheme, moving the scheme in force where it
+/// changes, and defines the platform's colors afresh before the scheme signal moves.
 pub(crate) fn set_detected_scheme(dark: bool) {
-  let write = with_records(|records| {
-    let before = records.scheme();
-
-    records.detected_dark = dark;
-
-    let after = records.scheme();
-
-    if before == after {
-      return None;
-    }
-
-    records.invalidate_styles();
-
-    Some((records.media().set_scheme, after))
-  });
+  let scheme = if dark {
+    ColorScheme::Dark
+  }
+  else {
+    ColorScheme::Light
+  };
+  let pending = Runtime::<Terminal>::report(|facts| facts.reported.scheme = scheme);
 
   crate::realize::define_system_colors();
-
-  if let Some((write, scheme)) = write {
-    skene_reactive::Set::set(&write, scheme);
-  }
+  pending.write();
 }
 
 /// Dispatches one mouse event: hover tracking (with the pointer shape), the pointer
@@ -920,7 +910,7 @@ pub(crate) fn apply_sizing(confirmed: bool) -> bool {
 
   with_records(|records| {
     records.remeasure();
-    records.invalidate_styles();
+    records.runtime.invalidate_styles();
   });
 
   true
@@ -930,24 +920,12 @@ pub(crate) fn apply_sizing(confirmed: bool) -> bool {
 /// builds its painted form or its fallback, and the next frame paints whole; `true`
 /// when that changed it.
 pub(crate) fn apply_graphics(confirmed: bool) -> bool {
-  let write = with_records(|records| {
-    if records.graphics == confirmed {
-      return None;
-    }
+  let pending = Runtime::<Terminal>::report(|facts| facts.painting = confirmed);
+  let moved = pending.moved();
 
-    records.graphics = confirmed;
-    records.runtime.paint_dirty = true;
+  pending.write();
 
-    Some(records.media().set_graphics)
-  });
-  let Some(write) = write
-  else {
-    return false;
-  };
-
-  skene_reactive::Set::set(&write, confirmed);
-
-  true
+  moved
 }
 
 /// Takes the cell's pixel size from the window's, where the terminal reports it, so a

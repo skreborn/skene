@@ -6,6 +6,7 @@ use std::{any::TypeId, cell::RefCell, rc::Rc, thread::LocalKey};
 use skene_foundation::{
   Availability,
   BoxFacts,
+  BoxStyle,
   ClipboardAction,
   ColorScheme,
   CompiledStyle,
@@ -24,21 +25,26 @@ use skene_foundation::{
   Observation,
   Painting,
   Placement,
+  Plain,
   PointerEvent,
   Realization,
+  Resolver,
   RunPlacement,
+  RunStyle,
   Scene,
   Size,
   Slot,
   SlotLeaf,
+  StaticLeaf,
   SystemColors,
   Timer,
   TokenScope,
-  terminal::{TerminalStyle, Typography},
+  terminal::{BOLD_WEIGHT, BorderGlyphs, TerminalStyle, Typography},
   text::editing::Entry,
+  typography,
 };
 use skene_layout::runtime::{Drawn, Runtime};
-use skene_reactive::{Memo, ReadSignal, Set};
+use skene_reactive::{Memo, ReadSignal};
 
 use crate::{
   CellEngine,
@@ -90,6 +96,38 @@ pub(crate) fn root_node() -> Option<NodeId> {
 impl Drawn for Terminal {
   fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R> {
     try_with_records(|records| operation(&mut records.runtime))
+  }
+
+  fn sizes_text() -> bool {
+    crate::text::sizing()
+  }
+
+  /// A corner radius above zero draws rounded border glyphs where the box sets none.
+  fn finish_box(style: &mut BoxStyle<i32, Plain, TerminalStyle>) {
+    if style.ext.border_glyphs.is_none()
+      && style.ext.corner_radius.is_some_and(|radius| radius.0 > 0.)
+    {
+      style.ext.border_glyphs = Some(BorderGlyphs::ROUNDED);
+    }
+  }
+
+  /// A size or weight the run leaves unset is the typography's in force at the run, and
+  /// a run that says nothing of bold is bold from its weight.
+  fn finish_run(
+    style: &mut RunStyle<Plain, TerminalStyle>,
+    resolver: &Resolver<'_, i32, TerminalStyle>,
+  ) {
+    if style.ext.size.is_none() {
+      style.ext.size = resolver.keyframe_run_value(&StaticLeaf::from(typography::SIZE));
+    }
+
+    if style.ext.weight.is_none() {
+      style.ext.weight = resolver.keyframe_run_value(&StaticLeaf::from(typography::WEIGHT));
+    }
+
+    if style.ext.bold.is_none() {
+      style.ext.bold = style.ext.weight.map(|weight| weight >= BOLD_WEIGHT);
+    }
   }
 }
 
@@ -309,7 +347,7 @@ impl Realization for Terminal {
   }
 
   fn define_tokens(_scope: TokenScope, _definitions: &Definitions<Self::TokenValue>) {
-    with_records(Records::invalidate_styles);
+    with_records(|records| records.runtime.invalidate_styles());
   }
 
   fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent {
@@ -347,7 +385,7 @@ impl Realization for Terminal {
   }
 
   fn lay_out() {
-    let (width, height) = with_records(|records| records.last_size);
+    let (width, height) = with_records(|records| records.screen_size());
 
     crate::frame::settle(width, height);
   }
@@ -375,7 +413,7 @@ impl Realization for Terminal {
   }
 
   fn media() -> MediaSignals<i32> {
-    with_records(|records| records.media().signals)
+    with_records(|records| records.runtime.media())
   }
 
   fn watch_media(media: &Media<i32>) -> Memo<bool> {
@@ -383,27 +421,10 @@ impl Realization for Terminal {
   }
 
   fn set_scheme(scheme: Option<ColorScheme>) {
-    let write = with_records(|records| {
-      let before = records.scheme();
-
-      records.choice = scheme;
-
-      let after = records.scheme();
-
-      if before == after {
-        return None;
-      }
-
-      records.invalidate_styles();
-
-      Some((records.media().set_scheme, after))
-    });
+    let pending = Runtime::<Self>::report(|facts| facts.choice = scheme);
 
     define_system_colors();
-
-    if let Some((write, scheme)) = write {
-      write.set(scheme);
-    }
+    pending.write();
   }
 
   fn schedule(delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
@@ -457,7 +478,7 @@ impl Realization for Terminal {
   }
 
   fn chosen_scheme() -> Option<ColorScheme> {
-    with_records(|records| records.choice)
+    with_records(|records| records.runtime.chosen_scheme())
   }
 
   fn set_window_title(title: Option<&str>) {
@@ -475,7 +496,7 @@ impl Realization for Terminal {
 
 impl Painting for Terminal {
   fn available() -> ReadSignal<bool> {
-    with_records(|records| records.media().graphics)
+    with_records(|records| records.runtime.painting_available())
   }
 
   fn paint(node: NodeId, painter: Box<skene_foundation::Painter>) {
@@ -562,7 +583,7 @@ pub fn uninstall() {
     records
       .borrow_mut()
       .as_mut()
-      .and_then(Records::take_media_owner)
+      .and_then(|records| records.runtime.take_media_owner())
   });
 
   if let Some(owner) = owner {

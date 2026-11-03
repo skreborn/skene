@@ -6,13 +6,13 @@ use std::rc::Rc;
 use skene_foundation::{
   Canvas,
   Color,
-  ContainerName,
   Size,
   kurbo::{Rect, RoundedRect, Stroke},
 };
-use skene_reactive::Set;
+use skene_layout::runtime::Runtime;
 
 use crate::{
+  Terminal,
   interaction::scroll_to,
   layout::{
     self,
@@ -224,7 +224,7 @@ fn rect_at(records: &Records, handle: Handle, (x, y): (i64, i64)) -> Option<Cell
 /// the box's content in pixels, while the terminal shows graphics: the painter runs
 /// on a canvas of that size, and the pixels take the next generation.
 fn render_pictures(records: &mut Records) {
-  if !records.graphics {
+  if !records.runtime.window().painting() {
     return;
   }
 
@@ -283,7 +283,7 @@ fn render_pictures(records: &mut Records) {
 /// shadow's band in pixels, rendered afresh when the size, the cell's pixels or any
 /// part of the decoration changed.
 fn render_backdrops(records: &mut Records) {
-  if !records.graphics {
+  if !records.runtime.window().painting() {
     return;
   }
 
@@ -533,64 +533,31 @@ fn record_painted(records: &mut Records) {
   }
 }
 
-/// Records the terminal size, moving the viewport signal and every resolved style when
+/// Reports the terminal size, moving the viewport signal and every resolved style when
 /// it changed.
 pub(crate) fn resize(width: u16, height: u16) {
-  let write = with_records(|records| {
-    if records.last_size == (width, height) {
-      return None;
-    }
+  let viewport = Size::new(i32::from(width), i32::from(height));
 
-    records.last_size = (width, height);
-    records.invalidate_styles();
-
-    Some((records.media().set_viewport, records.viewport()))
-  });
-
-  if let Some((write, viewport)) = write {
-    write.set(viewport);
-  }
+  Runtime::<Terminal>::report(|facts| facts.reported.viewport = viewport).write();
 }
 
-/// Measures every named container; `true` when a size changed, in which case every
-/// style is stale and the container sizes signal moves.
+/// Measures every named container and publishes the sizes; `true` when a size changed,
+/// in which case every style is stale and the container sizes signal moves.
 fn measure_containers() -> bool {
-  let (changed, publish) = with_records(|records| {
-    let mut changed: Vec<(ContainerName, Size<i32>)> = Vec::new();
+  let measured = with_records(|records| {
+    records
+      .runtime
+      .handles()
+      .into_iter()
+      .filter_map(|handle| {
+        let name = records.runtime.record(handle).and_then(Record::container)?;
 
-    for handle in records.runtime.handles() {
-      let Some(name) = records.runtime.record(handle).and_then(Record::container)
-      else {
-        continue;
-      };
-      let size = records.client_size(handle);
-
-      if records.media().signals.container_sizes.get_untracked(name) != Some(size)
-        && !changed.iter().any(|(held, _)| *held == name)
-      {
-        changed.push((name, size));
-      }
-    }
-
-    if changed.is_empty() {
-      return (false, None);
-    }
-
-    records.invalidate_styles();
-
-    (
-      true,
-      Some((records.media().signals.container_sizes, changed)),
-    )
+        Some((name, records.client_size(handle)))
+      })
+      .collect::<Vec<_>>()
   });
 
-  if let Some((sizes, changed)) = publish {
-    for (name, size) in changed {
-      sizes.set(name, size);
-    }
-  }
-
-  changed
+  Runtime::<Terminal>::publish_container_sizes(measured)
 }
 
 /// One observer with the size to report to it.

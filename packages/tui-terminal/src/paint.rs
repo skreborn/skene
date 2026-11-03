@@ -19,6 +19,7 @@ use skene_foundation::{
   terminal::{BorderGlyphs, ScrollbarGlyphs},
   text::TextIndex,
 };
+use skene_layout::runtime::Env;
 
 use crate::{
   Terminal,
@@ -35,6 +36,7 @@ use crate::{
     padding_cells,
   },
   records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
+  resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
 };
 
@@ -938,7 +940,7 @@ fn selection_colors(style: &PlainRun) -> Option<SelectionColors> {
 /// The emphasis a link run paints in while its focus shows: the typography's colors,
 /// or reverse video when both are unset or transparent.
 fn link_focus_emphasis(records: &Records, run: Handle) -> Emphasis {
-  let (ink, surface) = crate::resolve::Env::of(records, run).resolve_link_focus();
+  let (ink, surface) = Env::of(&records.runtime, run).resolve_link_focus();
 
   emphasis_colors(ink, surface).map_or(Emphasis::Reverse, Emphasis::Colors)
 }
@@ -1053,7 +1055,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
         };
       };
       let mut visible = field.visible(&entry, area, focused);
-      let run = crate::resolve::Env::of(records, handle).resolve_entry_run();
+      let run = Env::of(&records.runtime, handle).resolve_entry_run();
 
       if !(focused && area.columns > 0) {
         visible.caret = None;
@@ -1308,7 +1310,7 @@ fn paint_node(
         if let Some(image) = cell
           .and_then(|cell| cell.picture.as_ref())
           .and_then(|picture| picture.image.clone())
-          && records.graphics
+          && records.runtime.window().painting()
         {
           place_image(
             records,
@@ -1583,7 +1585,7 @@ fn place_backdrop(
   (x, y): (isize, isize),
   (width, height): (usize, usize),
 ) -> bool {
-  if !records.graphics {
+  if !records.runtime.window().painting() {
     return false;
   }
 

@@ -24,6 +24,7 @@ use skene_foundation::{
   Role,
   Scene,
 };
+use skene_layout::runtime::Runtime;
 
 pub use self::pty::{Pty, PtyHost};
 use crate::{
@@ -409,20 +410,7 @@ pub fn trigger_frame(elapsed: Duration) {
 /// reduced-motion condition and the motion that respects it.
 pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
-    let write = with_records(|records| {
-      if records.reduced_motion == reduced {
-        return None;
-      }
-
-      records.reduced_motion = reduced;
-      records.invalidate_styles();
-
-      Some(records.media().set_reduced_motion)
-    });
-
-    if let Some(write) = write {
-      skene_reactive::Set::set(&write, reduced);
-    }
+    Runtime::<Terminal>::report(|facts| facts.reported.reduced_motion = reduced).write();
   });
 }
 

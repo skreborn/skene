@@ -25,7 +25,7 @@ use skene_layout::{
   Place,
   Revisit,
   TextFlow,
-  runtime::{Presented, Sample},
+  runtime::{Env, Presented, Sample},
   taffy::{
     self,
     prelude::{AvailableSpace, length},
@@ -50,7 +50,6 @@ use crate::{
     RunCache,
     RunMotion,
   },
-  resolve::Env,
   text::{self, CellScale},
 };
 
@@ -545,7 +544,7 @@ fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) 
 fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option<Restyled> {
   let generation = records.runtime.restyle.generation();
   let now = records.now();
-  let reduced = records.reduced_motion;
+  let reduced = records.runtime.window().reported().reduced_motion;
   let record = records.runtime.record_mut(handle)?;
 
   if !displayed {
@@ -667,7 +666,7 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
     });
   }
 
-  let env = Env::of(records, handle);
+  let env = Env::of(&records.runtime, handle);
   let resolved_box = env.resolve_box();
   let (resolved_run, resolved_layout) = env
     .resolve_run()

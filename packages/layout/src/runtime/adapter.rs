@@ -36,9 +36,10 @@ pub enum OverlayFocus {
 }
 
 impl<P: Drawn> Runtime<P> {
-  /// Creates the record of `node` from `spec`, joining the overlays or the text entries
-  /// where it is one, an inline box's text its placeholder ([`INLINE_BOX`]); `false`
-  /// where `spec` realizes no node of its own (an anchor or a scope), which keeps none.
+  /// Creates the record of `node` from `spec`, carrying the platform's own state of it
+  /// ([`Drawn::node`]), joining the overlays or the text entries where it is one, an
+  /// inline box's text its placeholder ([`INLINE_BOX`]); `false` where `spec` realizes
+  /// no node of its own (an anchor or a scope), which keeps none.
   pub fn create(&mut self, node: NodeId, spec: &NodeSpec) -> bool {
     let inner = |boxed| BoxRecord::new(spec.role, spec.drag, boxed);
     let kind = match &spec.facts {

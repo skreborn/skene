@@ -964,8 +964,8 @@ supersedes there.
   frame over 16,000 rows, before and after: unchanged 525,134 and 524,975, a pointer
   move 6,892,698 and 6,893,140, within two builds' spread, a resize 236.29M and 233.55M,
   a keyed row toggled 235.20M and 232.48M, the first mount 1,926.0M and 1,923.3M).
-  Revisit when the runtime keeps an entry's placeholder and lines itself, and
-  the extent becomes the runtime's own.
+  Revisit when the runtime keeps an entry's placeholder and lines itself, and the
+  extent becomes the runtime's own.
 - **The host laying a paragraph's inline boxes out before the paragraph measures (the
   terminal's `measure_inline_boxes`, to 2026-11)** (2026-11-02), each inline box laid out
   on its own as a root at max-content after every compute, its size in whole cells

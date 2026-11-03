@@ -12,6 +12,16 @@ supersedes there.
 
 ## Decided against
 
+- **An entry's native extent from a `Drawn` hook** (2026-11-03), the runtime asking its
+  platform (`Drawn::entry_extent`) how wide and tall a text entry's content lays out
+  while it writes the layout tree: the extent reads the platform's own field (the
+  terminal's widest line of the value, cached, its placeholder and its lines) from the
+  side table in the same state the runtime is borrowed from, so a hook called mid-pass
+  cannot reach it. The platform hands the extent in as an argument
+  (`Runtime::write_styles(extent)`), borrowing its side table beside the runtime as
+  disjoint fields, and the runtime keeps the generic half (the chrome from
+  `Drawn::BORDERS` and the padding, the `<input>`'s intrinsic-size rule, the entry's
+  leaf). Revisit when the runtime keeps an entry's placeholder and lines itself.
 - **A text leaf's equality over its engine's state** (2026-11-03), each flow comparing
   the engine it lays out through (`Drawn::Engine: PartialEq`) or the engine state a
   `Drawn` hook reports (the terminal's grapheme clustering), so a leaf made after the

@@ -1,6 +1,6 @@
-//! The terminal's state beside the scene: the drawn runtime's records, each node's cell
-//! state beside its record, the layout tree, the interaction state, and the environment
-//! it reports.
+//! The terminal's state beside the scene: the drawn runtime with its records and its
+//! layout tree, each node's cell state beside its record, the interaction state, and the
+//! environment it reports.
 
 mod cell;
 mod environment;
@@ -20,27 +20,17 @@ use skene_foundation::{
   Shortcut,
   Timers,
 };
-use skene_layout::{
-  Tree,
-  runtime::{Drawn, Measured, Runtime},
-};
+use skene_layout::runtime::Runtime;
 
 pub(crate) use self::{
   cell::{Backdrop, BackdropKey, CellNode, PictureRecord},
   environment::{Contrast, OwnColors},
-  field::{EntryEditor, EntryState, Field, Visible},
+  field::{EntryEditor, Field, Visible},
   frames::FRAME_INTERVAL,
   geometry::CellFrame,
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
 };
-use crate::{
-  CellEngine,
-  Clipboard,
-  Terminal,
-  detect::Palette,
-  paint::Buffer,
-  selection::Selection,
-};
+use crate::{Clipboard, Terminal, detect::Palette, paint::Buffer, selection::Selection};
 
 /// The size the platform reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
@@ -66,24 +56,20 @@ pub(crate) type PlainBox = skene_layout::runtime::PlainBox<Terminal>;
 /// A run's style resolved against live state.
 pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
 
-/// Every record the platform holds, the layout tree, the interaction state and the
-/// environment.
+/// The drawn runtime, each node's cell state, the interaction state and the environment.
 #[expect(
   clippy::struct_excessive_bools,
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Records {
   /// The drawn runtime: a record per node, the root filling the screen, the overlays and
-  /// entries in build order, the restyle with its presentation's counters, what the next
-  /// frame lays out and repaints, the environment the terminal reports with the app's
-  /// choice of scheme, and the frame clock.
+  /// entries in build order, the restyle with its presentation's counters, the layout
+  /// tree, what the next frame lays out and repaints, the environment the terminal
+  /// reports with the app's choice of scheme, and the frame clock.
   pub(crate) runtime: Runtime<Terminal>,
   /// The terminal's own state of each node, beside its record: its field, scroll
   /// offsets, the cells it covers and what it paints beyond its style.
   cells: NodeMap<CellNode>,
-  /// The layout tree; a text leaf carries its flow as context, which measures it and
-  /// which painting and hit testing read the text's layout from.
-  pub(crate) tree: Tree<Measured<CellEngine>>,
   /// Screen rectangles to repaint that no live node covers any more.
   damaged_rects: Vec<CellRect>,
   /// The last painted frame, which the next paints over where nothing changed.
@@ -144,10 +130,6 @@ pub(crate) struct Records {
   pub(crate) title: Option<String>,
   /// Whether the title changed since the terminal was last told it.
   pub(crate) title_dirty: bool,
-  /// How many layouts have been computed.
-  pub(crate) layout_generation: u64,
-  /// How many taffy styles have been written.
-  pub(crate) set_style_calls: u64,
   /// Whether a key asked the app to quit.
   pub(crate) quit: bool,
   /// The clock reading the caret drag's autoscroll last stepped at, `None` while no
@@ -174,7 +156,6 @@ impl Records {
     let mut records = Self {
       runtime: Runtime::new(root, Self::launch_environment(mouse), false),
       cells: NodeMap::new(),
-      tree: Tree::new(Terminal::ROUNDED),
       damaged_rects: Vec::new(),
       last_frame: None,
       repainted: Vec::new(),
@@ -202,8 +183,6 @@ impl Records {
       reveal: None,
       title: None,
       title_dirty: false,
-      layout_generation: 0,
-      set_style_calls: 0,
       quit: false,
       autoscroll_at: None,
       clipboard_answers: false,
@@ -218,10 +197,8 @@ impl Records {
   }
 
   /// Creates the record of `node` from `spec` in the runtime, beside cell state holding
-  /// a text entry's field and nothing else yet, and a fresh leaf of the layout tree: a
-  /// container of its own where a view taking decoration created its box, and laid out
-  /// by its nearest such ancestor's engine where it is a layout-only box or a run;
-  /// `false` where `spec` realizes no node of its own.
+  /// a text entry's field and nothing else yet; `false` where `spec` realizes no node of
+  /// its own.
   pub(crate) fn create(&mut self, node: NodeId, spec: &NodeSpec) -> bool {
     if !self.runtime.create(node, spec) {
       return false;
@@ -239,16 +216,8 @@ impl Records {
     true
   }
 
-  /// Adds the leaf of the layout tree of `node`, whose record the runtime holds, a
-  /// container where its box is decorated, and its cell state holding nothing yet.
+  /// Adds the cell state of `node`, whose record the runtime holds, holding nothing yet.
   fn insert_cells(&mut self, node: NodeId) {
-    let decorated = self
-      .runtime
-      .record(node)
-      .is_some_and(|record| record.kind.is_decorated());
-
-    self.tree.insert(node, decorated);
-
     let _replaced = self.cells.insert(node, CellNode::default());
   }
 
@@ -270,16 +239,27 @@ impl Records {
   pub(crate) fn remeasure(&mut self) {
     self.runtime.remeasure();
 
-    for handle in self.runtime.handles() {
+    for handle in self.runtime.entries.clone() {
       if self.field(handle).is_some()
         && let Some(entry) = Scene::<Terminal>::entry_of(handle)
         && let Ok(mut editor) = entry.editor().try_borrow_mut()
       {
         editor.relayout();
       }
-
-      self.tree.mark_dirty(handle);
     }
+  }
+
+  /// Presents the styles that may have moved through the runtime and writes the layout
+  /// tree from them ([`Runtime::write_styles`]), each text entry measuring at its
+  /// field's native extent; `true` where any taffy style or leaf changed.
+  pub(crate) fn write_styles(&mut self) -> bool {
+    let cells = &self.cells;
+
+    self.runtime.write_styles(|node| {
+      let field = cells.get(node)?.field.as_deref()?;
+
+      Some(field.extent(Scene::<Terminal>::entry_of(node).as_deref()))
+    })
   }
 
   /// How many nodes the platform holds a record of.
@@ -302,8 +282,6 @@ impl Records {
     }
 
     let cell = self.cells.remove(handle);
-
-    self.tree.remove(handle);
 
     if let Some(rect) = cell.and_then(|cell| cell.painted) {
       self.damaged_rects.push(rect);
@@ -368,7 +346,7 @@ mod tests {
         .box_record()
         .map(|inner| inner.facts.decorated);
 
-      (decorated, records.tree.is_container(node))
+      (decorated, records.runtime.tree().is_container(node))
     })
   }
 

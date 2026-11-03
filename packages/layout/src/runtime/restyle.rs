@@ -44,7 +44,8 @@ struct Targets<P: Drawn> {
 
 impl<P: Drawn> Runtime<P> {
   /// Presents every node whose style may have moved, and returns each such node holding
-  /// a record, displayed or not, runs first, for the platform to map onto its layout.
+  /// a record, displayed or not, runs first, for the layout tree to take
+  /// ([`write_styles`](Self::write_styles)).
   ///
   /// Every node is revisited once the definitions, the environment or the display
   /// moved; otherwise the nodes queued since the last pass, those in motion, and those
@@ -55,7 +56,7 @@ impl<P: Drawn> Runtime<P> {
   /// one whose reach changed moves the geometry ([`Runtime::geometry_stale`]). A node
   /// out of the display runs no motion and forgets its presentation, so it shows afresh
   /// once displayed again.
-  pub fn present(&mut self) -> Vec<NodeId> {
+  pub(super) fn present(&mut self) -> Vec<NodeId> {
     let (mut nodes, displayed) = self.revisited();
     let generation = self.restyle.generation();
     let sample = Sample {

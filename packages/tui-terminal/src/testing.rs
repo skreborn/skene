@@ -456,7 +456,7 @@ pub fn record_count() -> usize {
 #[must_use]
 pub fn layout_generation() -> u64 {
   end_turn();
-  with_records(|records| records.layout_generation)
+  with_records(|records| records.runtime.layout_generation())
 }
 
 /// How many taffy styles have been written since the platform was installed, for a test
@@ -464,7 +464,7 @@ pub fn layout_generation() -> u64 {
 #[must_use]
 pub fn style_writes() -> u64 {
   end_turn();
-  with_records(|records| records.set_style_calls)
+  with_records(|records| records.runtime.style_writes())
 }
 
 /// How many node styles have been resolved from their declarations since the platform
@@ -472,7 +472,7 @@ pub fn style_writes() -> u64 {
 #[must_use]
 pub fn style_resolutions() -> u64 {
   end_turn();
-  with_records(|records| records.runtime.style_resolutions)
+  with_records(|records| records.runtime.style_resolutions())
 }
 
 /// The rows the last render rewrote, for a test asserting that a change repainted only

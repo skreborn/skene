@@ -14,7 +14,7 @@ use skene_layout::runtime::Runtime;
 use crate::{
   Terminal,
   interaction::scroll_to,
-  layout::{self, border_edges, has_border},
+  layout::{border_edges, has_border},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
   records::{Backdrop, BackdropKey, CellRect, Handle, Record, Records},
   with_records,
@@ -48,16 +48,18 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
 pub(crate) fn settle(width: u16, height: u16) {
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_records(|records| {
-      let restyled = layout::restyle(records);
+      let restyled = records.write_styles();
 
-      layout::rebuild_children(records);
+      records.runtime.write_children();
 
       if !(restyled || records.runtime.layout_dirty) {
         return false;
       }
 
       records.runtime.layout_dirty = false;
-      layout::compute(records, width, height);
+      records
+        .runtime
+        .compute(Size::new(f32::from(width), f32::from(height)));
       records.fit_entries();
 
       true

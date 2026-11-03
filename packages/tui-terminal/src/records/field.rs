@@ -8,6 +8,7 @@ use std::{cell::Cell, rc::Rc};
 use skene_foundation::{
   NodeId,
   Scene,
+  Size,
   text::{
     Laid as _,
     MaskState,
@@ -131,6 +132,17 @@ impl Field {
     }
 
     self.widest.get()
+  }
+
+  /// The native extent of the entry holding the value `entry`, in cells: eight columns,
+  /// or one past its value's widest line or its placeholder's widest where wider, and
+  /// its lines tall.
+  pub(crate) fn extent(&self, entry: Option<&EntryState>) -> Size<f32> {
+    let columns = (self.widest(entry) + 1)
+      .max(self.placeholder.as_deref().map_or(0, Self::widest_of))
+      .max(8);
+
+    Size::new(cells_of(columns), f32::from(self.lines))
   }
 
   /// The cells `text`'s widest line spans.

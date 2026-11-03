@@ -48,7 +48,7 @@ use skene_foundation::{
 
 use crate::{
   Terminal,
-  layout::{cell_point, content, flow_of, inline_boxes},
+  layout::{cell_point, content},
   paint::control_entry,
   records::{CellFrame, Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
   with_records,
@@ -284,11 +284,11 @@ impl Records {
     y: i64,
     path: &mut Vec<(Handle, (i64, i64))>,
   ) -> bool {
-    let Some(flow) = flow_of(self, handle)
+    let Some(flow) = self.runtime.flow_of(handle)
     else {
       return false;
     };
-    let boxes = inline_boxes(self, handle);
+    let boxes = self.runtime.inline_boxes(handle);
     let drawn = match (usize::try_from(x - origin.0), usize::try_from(y - origin.1)) {
       (Ok(column), Ok(row)) => flow
         .flow()
@@ -623,7 +623,7 @@ impl Records {
 
     let overflow = self.overflow(handle);
 
-    match self.tree.layout(handle) {
+    match self.runtime.tree().layout(handle) {
       #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,

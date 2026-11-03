@@ -7,14 +7,20 @@
 //! the next frame lays out and repaints. The runtime reads the scene's structure as the
 //! layout and the display see it ([`Runtime::layout_children`], [`Runtime::displayed`]).
 //!
-//! One pass presents every node whose style may have moved ([`Runtime::present`]): it
-//! chooses the nodes from what moved since the last pass ([`Restyle`]), resolves each
-//! stale one through [`Env`] and caches the resolution under the generation and the
-//! interaction it read, and lays its transitions and keyframe animations over it
-//! ([`BoxMotion`], [`RunMotion`]) at one reading of the runtime's [`Clock`], counting
-//! what it resolved and marking what repaints, what stays in motion and whether a box's
-//! reach moved ([`Drawn::reach`]). The platform maps the presented styles onto its own
-//! layout.
+//! One pass presents every node whose style may have moved and writes it into the
+//! runtime's layout tree ([`Runtime::write_styles`]): it chooses the nodes from what
+//! moved since the last pass ([`Restyle`]), resolves each stale one through [`Env`] and
+//! caches the resolution under the generation and the interaction it read, and lays its
+//! transitions and keyframe animations over it ([`BoxMotion`], [`RunMotion`]) at one
+//! reading of the runtime's [`Clock`], counting what it resolved and marking what
+//! repaints, what stays in motion and whether a box's reach moved ([`Drawn::reach`]);
+//! it then maps each presented node onto its taffy style, a box's border taking room as
+//! the platform's layout takes it ([`Drawn::BORDERS`]), and its leaf, a text entry's
+//! native extent handed in by the platform. Where the scene's structure moved, every
+//! laid-out node is handed its children, anchors and scopes flattened into their
+//! content and the root holding the overlays it reaches ([`Runtime::write_children`]),
+//! and the layout is computed at the window's size ([`Runtime::compute`]) and read
+//! through [`Runtime::tree`].
 //!
 //! The runtime reads the paragraph structure from its records and the scene: a flow box
 //! whose every laid-out child is an inline run lays them out as one paragraph
@@ -53,6 +59,7 @@ mod record;
 mod resolve;
 mod restyle;
 mod structure;
+mod sync;
 
 use skene_foundation::{
   Axis,
@@ -93,7 +100,7 @@ pub use self::{
   },
   resolve::Env,
 };
-use crate::{Borders, Restyle};
+use crate::{Borders, Restyle, Tree};
 
 /// A platform Skene draws whole: its realization keeps the drawn [`Runtime`] in its own
 /// state and hands it to the code written once above it.
@@ -161,12 +168,16 @@ pub trait Drawn:
   fn text_style(run: Option<&PlainRun<Self>>) -> TextStyle;
 }
 
+/// The layout tree a runtime of the platform `P` keeps.
+type LayoutTree<P> = Tree<Measured<<P as Drawn>::Engine>>;
+
 /// What a platform Skene draws whole keeps of its scene.
 ///
 /// A [`Record`] per node, the root filling the window, the overlays and text entries in
-/// build order, what moved since the last restyle, and what the next frame lays out and
-/// repaints, beside what it keeps of its window, the app's choice of scheme, the frame
-/// clock its motion samples against and the text generation its flows are made under.
+/// build order, what moved since the last restyle, the layout tree it writes from them,
+/// and what the next frame lays out and repaints, beside what it keeps of its window, the
+/// app's choice of scheme, the frame clock its motion samples against and the text
+/// generation its flows are made under.
 #[derive(Debug)]
 #[must_use]
 #[expect(
@@ -194,9 +205,11 @@ pub struct Runtime<P: Drawn> {
   /// Whether a tween or an animation was still running at the last presentation, so
   /// the next frame is due at the frame rate.
   pub motion_active: bool,
-  /// How many node styles have been resolved from their declarations.
-  pub style_resolutions: u64,
+  style_resolutions: u64,
+  style_writes: u64,
+  layout_generation: u64,
   text_generation: u64,
+  tree: LayoutTree<P>,
   damaged: Vec<NodeId>,
   clock: Clock,
   window: Window<P>,
@@ -231,7 +244,10 @@ impl<P: Drawn> Runtime<P> {
       geometry_stale: true,
       motion_active: false,
       style_resolutions: 0,
+      style_writes: 0,
+      layout_generation: 0,
       text_generation: 0,
+      tree: Tree::new(P::ROUNDED),
       damaged: Vec::new(),
       clock: Clock::Manual(0.),
       window: Window::new(reported, painting),
@@ -270,9 +286,13 @@ impl<P: Drawn> Runtime<P> {
     self.root
   }
 
-  /// Stores a record of `kind` as the record of `node`, its structure moved.
+  /// Stores a record of `kind` as the record of `node`, beside a fresh node of the layout
+  /// tree: a container laid out by an engine of its own where a view taking decoration
+  /// created its box, and laid out by its nearest such ancestor's engine where it is a
+  /// layout-only box or a run; its structure moved.
   fn insert(&mut self, node: NodeId, kind: Kind<P>) {
     self.restyle.move_structure();
+    self.tree.insert(node, kind.is_decorated());
 
     let _replaced = self.records.insert(node, Record::new(node, kind));
   }
@@ -302,12 +322,14 @@ impl<P: Drawn> Runtime<P> {
     self.records.values().count()
   }
 
-  /// Releases the record of `node`, retiring it from the overlays, the entries and the
-  /// restyle, its structure moved and the frame repainting; the record removed, for the
-  /// platform to clear its own references, or `None` where `node` held none.
+  /// Releases the record of `node`, retiring it from the overlays, the entries, the
+  /// restyle and the layout tree, its structure moved and the frame repainting; the
+  /// record removed, for the platform to clear its own references, or `None` where
+  /// `node` held none.
   pub fn destroy(&mut self, node: NodeId) -> Option<Record<P>> {
     let record = self.records.remove(node)?;
 
+    self.tree.remove(node);
     self.overlays.retain(|overlay| *overlay != node);
     self.entries.retain(|entry| *entry != node);
     self.restyle.read_interaction(node, false);
@@ -365,12 +387,46 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// Measures every node's text again, after the platform's engine came to lay the same
-  /// text out differently: every node revisited at the next restyle and the text
-  /// generation moved, so each flow made under the last one is unlike the one made
-  /// afresh.
-  pub const fn remeasure(&mut self) {
+  /// text out differently: every node revisited at the next restyle and measured again
+  /// at the next layout, and the text generation moved, so each flow made under the last
+  /// one is unlike the one made afresh.
+  pub fn remeasure(&mut self) {
     self.restyle.revisit_every();
     self.text_generation = self.text_generation.wrapping_add(1);
+
+    for (node, _) in self.records.iter() {
+      self.tree.mark_dirty(node);
+    }
+  }
+
+  /// The layout tree: a node per record, its taffy style and its leaf as the last
+  /// [`write_styles`](Self::write_styles) wrote them, its children as the last
+  /// [`write_children`](Self::write_children) did, laid out by the last
+  /// [`compute`](Self::compute).
+  #[inline(always)]
+  pub const fn tree(&self) -> &Tree<Measured<P::Engine>> {
+    &self.tree
+  }
+
+  /// How many node styles have been resolved from their declarations.
+  #[inline(always)]
+  #[must_use]
+  pub const fn style_resolutions(&self) -> u64 {
+    self.style_resolutions
+  }
+
+  /// How many taffy styles have been written into the layout tree.
+  #[inline(always)]
+  #[must_use]
+  pub const fn style_writes(&self) -> u64 {
+    self.style_writes
+  }
+
+  /// How many layouts have been computed.
+  #[inline(always)]
+  #[must_use]
+  pub const fn layout_generation(&self) -> u64 {
+    self.layout_generation
   }
 
   /// An empty flow laid out through the platform's engine and paragraph style, a line

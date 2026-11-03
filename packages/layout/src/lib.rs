@@ -15,7 +15,10 @@
 //! choosing the nodes whose style may have moved, resolving each stale one
 //! ([`runtime::Env`]) against what the platform reports of its window
 //! ([`runtime::Window`]), caching it and laying its motion over it at one reading of the
-//! frame clock ([`runtime::Runtime::present`], [`runtime::Clock`]), the text leaf a
+//! frame clock ([`runtime::Clock`]), the layout tree it writes from the scene, each
+//! presented node's taffy style and leaf and every laid-out node's children, and
+//! computes at the window's size ([`runtime::Runtime::write_styles`],
+//! [`runtime::Runtime::write_children`], [`runtime::Runtime::compute`]), the text leaf a
 //! paragraph lays out as through the platform's engine, in whole units where its layout
 //! rounds ([`runtime::Flow`], [`runtime::Measured`]), beside the adapter the
 //! platform's realization forwards to for everything that is no cell's or pixel's

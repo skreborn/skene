@@ -45,7 +45,8 @@ impl Records {
   /// record outside the layout.
   pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
     self
-      .tree
+      .runtime
+      .tree()
       .layout(record.node)
       .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
@@ -54,7 +55,7 @@ impl Records {
   /// cells its laid-out content reaches from the frame's origin, left, top, right and
   /// bottom: its own box, or farther where its content overflows it.
   pub(crate) fn reach_of(&self, record: &Record) -> (CellFrame, [f32; 4]) {
-    let Some(layout) = self.tree.layout(record.node)
+    let Some(layout) = self.runtime.tree().layout(record.node)
     else {
       return (CellFrame::default(), [0.; 4]);
     };
@@ -98,7 +99,7 @@ impl Records {
       .runtime
       .record(handle)
       .map(|record| record.node)
-      .and_then(|node| self.tree.unrounded_layout(node))
+      .and_then(|node| self.runtime.tree().unrounded_layout(node))
       .map_or(0., |layout| {
         layout.rect.size.width
           - layout.border.start
@@ -133,7 +134,7 @@ impl Records {
       beneath.extend(self.runtime.children(child));
     }
 
-    let rect = self.tree.unrounded_layout(record.node)?.rect;
+    let rect = self.runtime.tree().unrounded_layout(record.node)?.rect;
     #[expect(
       clippy::cast_possible_truncation,
       reason = "a position in eighth cells stays far inside isize"
@@ -161,7 +162,7 @@ impl Records {
     reason = "taffy rounds a layout to whole cells, far inside i64"
   )]
   pub(crate) fn node_border(&self, handle: Handle) -> (i64, i64, i64, i64) {
-    let Some(layout) = self.tree.layout(handle)
+    let Some(layout) = self.runtime.tree().layout(handle)
     else {
       return (0, 0, 0, 0);
     };

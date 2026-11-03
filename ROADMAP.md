@@ -24,14 +24,15 @@ in a code comment.
     itself, Linux and Windows need as well, since they too own their window; each
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
-    - The terminal's retained runtime beyond its layout tree and its restyle (the
-    damage and the measured rectangles, hit testing, focus, capture, wheel latching,
-    selection) moves into `skene-layout`, generic over the platform's scalar, beside the
-    style mapping, the `Tree`, the `Restyle` and its presentation pass, its frames hit
-    through, clipped and scrolled as a browser's are, a paragraph's runs and inline
-    boxes placed for them by its flow, which the runtime already lays out, and a
-    paragraph's document selection and its text content kept once above the engine, in
-    the runtime, where each realization keeps them today. A drawn entry's key default
+    - What the terminal still keeps of its retained runtime (the damage and the
+    measured rectangles, hit testing, focus, capture, wheel latching, selection, the
+    frames' placement of runs and inline boxes, a paragraph's text content) moves into
+    the drawn runtime in `skene-layout`, beside the layout tree it already writes from
+    the scene and the restyle presenting into it, generic over the platform's scalar:
+    its frames hit through, clipped and scrolled as a browser's are, a paragraph's runs
+    and inline boxes placed for them by its flow, which the runtime already lays out,
+    and a paragraph's document selection and its text content kept once above the
+    engine, in the runtime, where each realization keeps them today. A drawn entry's key default
     is written once there too, over the shared entry the scene keeps: the core's
     `Binding` table, run after the app's key handlers as a browser's `<input>` default
     runs (so never as a `TextEntry::on_key`, which would run before them), the
@@ -434,9 +435,10 @@ in a code comment.
     styled native `<select>` and the hydration swap goes, the drawn face remaining
     elsewhere.
 13. **The quadratic hot paths.**
-    - The terminal: a structure change, a token's redefinition and a container's resize
-    still restyle every node, and a structure change hands every node its layout
-    children afresh, where each should reach only the subtree it touched (per-scope
+    - The drawn runtime, the terminal its client: a structure change, a token's
+    redefinition and a container's resize still restyle every node, and a structure
+    change hands every node its layout children afresh (`Runtime::write_children`),
+    where each should reach only the subtree it touched (per-scope
     token and per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench

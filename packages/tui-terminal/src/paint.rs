@@ -25,7 +25,7 @@ use crate::{
   Terminal,
   cells::Cells,
   engine::{DrawnCluster, drawn},
-  layout::{border_edges, content, flow_of, has_border, inline_boxes, padding_cells},
+  layout::{border_edges, content, has_border, padding_cells},
   records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
@@ -875,7 +875,7 @@ fn cluster_paints(
   source: &Source,
   selection: Option<(usize, usize)>,
 ) -> Vec<ClusterPaint> {
-  let Some(flow) = flow_of(records, handle)
+  let Some(flow) = records.runtime.flow_of(handle)
   else {
     return Vec::new();
   };
@@ -1000,7 +1000,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
         clusters: cluster_paints(records, handle, &source, records.selection_range(handle)),
         spans,
         links: destinations,
-        boxes: inline_boxes(records, handle),
+        boxes: records.runtime.inline_boxes(handle),
       }
     }
     Kind::Box(inner) | Kind::Overlay { inner, .. } => {
@@ -1210,7 +1210,10 @@ fn paint_node(
       } => {
         // The paragraph's links join the frame's.
         let links: Vec<u16> = links.iter().map(|link| buffer.link(link)).collect();
-        let text = flow_of(records, handle).map_or("", |flow| flow.flow().text());
+        let text = records
+          .runtime
+          .flow_of(handle)
+          .map_or("", |flow| flow.flow().text());
 
         for cluster in &clusters {
           let Some(paint) = spans.get(usize::from(cluster.span))
@@ -1332,7 +1335,10 @@ fn paint_node(
         selection,
       } => {
         let link = link.map(|url| buffer.link(&url));
-        let text = flow_of(records, handle).map_or("", |flow| flow.flow().text());
+        let text = records
+          .runtime
+          .flow_of(handle)
+          .map_or("", |flow| flow.flow().text());
 
         for cluster in &clusters {
           let DrawnCluster {

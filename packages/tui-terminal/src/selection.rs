@@ -26,7 +26,7 @@ use skene_layout::runtime::Source;
 
 use crate::{
   Terminal,
-  layout::{cell_point, content, flow_of},
+  layout::{cell_point, content},
   records::{Drag, Handle, Kind, Records},
   text,
 };
@@ -104,7 +104,7 @@ impl Records {
   fn run_offset(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<usize> {
     self.selectable_text(handle)?;
 
-    let flow = flow_of(self, handle)?;
+    let flow = self.runtime.flow_of(handle)?;
     let point = cell_point(
       usize::try_from(local_x.max(0)).unwrap_or(0),
       usize::try_from(local_y.max(0)).unwrap_or(0),
@@ -165,7 +165,9 @@ impl Records {
     let row = usize::try_from(i64::from(y) - origin_y).ok()?;
     let column = usize::try_from(i64::from(x) - origin_x).ok()?;
 
-    flow_of(self, node)?
+    self
+      .runtime
+      .flow_of(node)?
       .flow()
       .run_at(content(self.flow_width(node)), cell_point(column, row))
       .and_then(|_| link_of(node))

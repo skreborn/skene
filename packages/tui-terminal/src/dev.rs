@@ -222,7 +222,8 @@ pub(crate) fn swap(path: &Path) -> ! {
 
 /// The snapshot position of the node `handle` realizes.
 fn position_of(handle: Handle) -> Option<SnapshotPlace> {
-  let node = crate::try_with_records(|records| records.record(handle)?.node)??;
+  let node =
+    crate::try_with_records(|records| records.runtime.record(handle).map(|record| record.node))??;
 
   Scene::<Terminal>::with(|scene| scene.record(node).map(|record| record.position().clone()))
 }
@@ -237,6 +238,7 @@ fn handle_at(position: &SnapshotPlace) -> Option<Handle> {
 fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
   let scrolled: Vec<(Handle, u32, u32)> = crate::try_with_records(|records| {
     records
+      .runtime
       .handles()
       .into_iter()
       .filter_map(|handle| {

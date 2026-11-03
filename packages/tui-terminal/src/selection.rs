@@ -81,9 +81,9 @@ impl Records {
   /// selectable, whatever it opts into, and without `Copy` nothing in the document is
   /// selectable.
   pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
-    let record = self.record(handle)?;
+    let record = self.runtime.record(handle)?;
 
-    if !self.offers(ClipboardAction::Copy) || self.enclosing_control(handle).is_some() {
+    if !self.offers(ClipboardAction::Copy) || self.runtime.enclosing_control(handle).is_some() {
       return None;
     }
 
@@ -94,7 +94,7 @@ impl Records {
       Kind::Box(_) if is_paragraph(self, handle) => {
         let selectable = paragraph_runs(self, handle).iter().any(|run| {
           matches!(
-            self.record(*run).map(|record| &record.kind),
+            self.runtime.record(*run).map(|record| &record.kind),
             Some(Kind::Run { facts, .. }) if facts.selectable
           )
         });
@@ -133,7 +133,7 @@ impl Records {
     path.iter().rev().copied().find(|(handle, _)| {
       is_paragraph(self, *handle)
         || matches!(
-          self.record(*handle).map(|record| &record.kind),
+          self.runtime.record(*handle).map(|record| &record.kind),
           Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Line
         )
     })
@@ -154,7 +154,7 @@ impl Records {
   pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(Handle, String)> {
     let path = self.hit_test(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
-    let link_of = |run: Handle| match &self.record(run)?.kind {
+    let link_of = |run: Handle| match &self.runtime.record(run)?.kind {
       Kind::Run {
         facts, destination, ..
       } if facts.link => destination.clone().map(|url| (run, url)),
@@ -215,10 +215,11 @@ impl Records {
   /// runs inside a paragraph excluded.
   fn document_runs(&self) -> Vec<Handle> {
     let mut order = Vec::new();
-    let mut stack = vec![self.root];
+    let mut stack = vec![self.runtime.root()];
 
     while let Some(current) = stack.pop() {
       if self
+        .runtime
         .record(current)
         .is_some_and(|record| record.is_overlay() && !record.is_open_overlay())
       {
@@ -233,7 +234,7 @@ impl Records {
         }
       }
 
-      stack.extend(self.children_reversed(current));
+      stack.extend(self.runtime.children_reversed(current));
     }
 
     order
@@ -294,7 +295,7 @@ impl Records {
   pub(crate) fn clipboard_entry(&self) -> Option<Handle> {
     self.focused_entry().or_else(|| {
       let focused = self.focused()?;
-      let ancestors = self.ancestors(focused);
+      let ancestors = self.runtime.ancestors(focused);
       let popup = self
         .open_overlays()
         .into_iter()
@@ -394,14 +395,14 @@ impl Records {
     let mut stack = vec![handle];
 
     while let Some(current) = stack.pop() {
-      if let Some(record) = self.record(current)
+      if let Some(record) = self.runtime.record(current)
         && current != handle
         && matches!(&record.kind, Kind::Run { facts, .. } if facts.placement != RunPlacement::Embedded)
       {
         text.push_str(&record.text);
       }
 
-      stack.extend(self.children_reversed(current));
+      stack.extend(self.runtime.children_reversed(current));
     }
 
     text
@@ -414,7 +415,7 @@ impl Records {
       focus: point,
     });
     self.drag = Some(Drag::Selection);
-    self.paint_dirty = true;
+    self.runtime.paint_dirty = true;
   }
 
   /// Follows a selection drag to (`x`, `y`): the exact position under the pointer, or
@@ -434,7 +435,7 @@ impl Records {
     if selection.focus != point {
       selection.focus = point;
       self.selection = Some(selection);
-      self.paint_dirty = true;
+      self.runtime.paint_dirty = true;
     }
   }
 
@@ -462,7 +463,7 @@ impl Records {
         offset: to,
       },
     });
-    self.paint_dirty = true;
+    self.runtime.paint_dirty = true;
   }
 
   /// Selects the whole run at `point`.
@@ -482,13 +483,13 @@ impl Records {
         offset: text::count(&text),
       },
     });
-    self.paint_dirty = true;
+    self.runtime.paint_dirty = true;
   }
 
   /// Clears the document's selection.
   pub(crate) const fn clear_selection(&mut self) {
     if self.selection.take().is_some() {
-      self.paint_dirty = true;
+      self.runtime.paint_dirty = true;
     }
   }
 

@@ -40,17 +40,10 @@ impl Clock {
 }
 
 impl Records {
-  /// Marks `handle` for repaint: the rows it covered at the last paint and the rows it
-  /// covers now are rewritten at the next frame.
-  #[inline(always)]
-  pub(crate) fn damage(&mut self, handle: Handle) {
-    self.damaged.push(handle);
-  }
-
   /// Takes the nodes and rectangles marked for repaint.
   pub(crate) fn take_damage(&mut self) -> (Vec<Handle>, Vec<CellRect>) {
     (
-      std::mem::take(&mut self.damaged),
+      self.runtime.take_damage(),
       std::mem::take(&mut self.damaged_rects),
     )
   }
@@ -58,13 +51,14 @@ impl Records {
   /// Whether anything is left to paint: a whole-frame repaint, a pending restyle, a
   /// moved interaction, a layout or structure change, or a damaged node.
   pub(crate) fn needs_frame(&self) -> bool {
-    self.paint_dirty
+    self.runtime.paint_dirty
       || self
+        .runtime
         .restyle
         .is_pending(Scene::<Terminal>::read(Scene::interaction_generation))
-      || self.layout_dirty
+      || self.runtime.layout_dirty
       || self.frame_clock_running()
-      || !self.damaged.is_empty()
+      || self.runtime.has_damage()
       || !self.damaged_rects.is_empty()
   }
 

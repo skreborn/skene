@@ -1,11 +1,12 @@
-//! What the records keep per node: its kind with the facts its creation carried, its
-//! style kept as a record, its resolved style and motion, its text and slots, and what
-//! it reports of its size.
+//! What the drawn runtime keeps per node: its kind with the facts its creation carried,
+//! its style kept as a record, its resolved style and motion, its text and slots, and
+//! what it reports of its size.
 
-use std::rc::Rc;
+use std::{fmt, rc::Rc};
 
 use rustc_hash::FxHashMap;
 use skene_foundation::{
+  Animation,
   BoxFacts,
   BoxStyle,
   Color,
@@ -18,102 +19,111 @@ use skene_foundation::{
   NodeId,
   Placement,
   Plain,
+  Point,
+  Realization,
   Record as StyleRecord,
   Role,
   RunFacts,
   RunStyle,
   Size,
   Slot,
-  terminal::TerminalStyle,
 };
 
-/// A box-like node's motion on the terminal's frame clock.
-pub(crate) type BoxMotion = skene_layout::runtime::BoxMotion<i32, TerminalStyle>;
+use super::{BoxMotion, Drawn, RunMotion};
 
-/// A run's motion on the terminal's frame clock.
-pub(crate) type RunMotion = skene_layout::runtime::RunMotion<TerminalStyle>;
+/// A box's style on the platform `P`, resolved against live state.
+pub type PlainBox<P> = BoxStyle<<P as Realization>::Scalar, Plain, <P as Realization>::StyleExt>;
 
-/// A box's style resolved against live state.
-pub(crate) type PlainBox = BoxStyle<i32, Plain, TerminalStyle>;
+/// A run's style on the platform `P`, resolved against live state.
+pub type PlainRun<P> = RunStyle<Plain, <P as Realization>::StyleExt>;
 
-/// A run's style resolved against live state.
-pub(crate) type PlainRun = RunStyle<Plain, TerminalStyle>;
+/// A node's style and motion as the shared half applies it on the platform `P`, its
+/// record kept at [`Keep::Everything`](skene_foundation::Keep::Everything), which every
+/// restyle resolves through
+/// [`ResolutionContext::resolve`](skene_foundation::ResolutionContext::resolve).
+pub type KeptStyle<P> = CompiledStyle<<P as Realization>::Scalar, <P as Realization>::StyleExt>;
 
-/// What a derived leaf last wrote into a node's slot; see [`skene_foundation::SlotLeaf`].
-pub(crate) type SlotLeaf = skene_foundation::SlotLeaf<i32, TerminalStyle>;
+/// What a derived leaf last wrote into a node's slot on the platform `P`; see
+/// [`skene_foundation::SlotLeaf`].
+pub type SlotLeaf<P> =
+  skene_foundation::SlotLeaf<<P as Realization>::Scalar, <P as Realization>::StyleExt>;
 
-/// A node's style and motion as the shared half applies it, its record kept at
-/// [`Keep::Everything`](skene_foundation::Keep::Everything), which every restyle resolves
-/// through [`ResolutionContext::resolve`](skene_foundation::ResolutionContext::resolve).
-pub(crate) type KeptStyle = CompiledStyle<i32, TerminalStyle>;
+/// A report of a box's size on the platform `P`.
+pub type Observer<P> = Rc<dyn Fn(Size<<P as Realization>::Scalar>)>;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
-pub(crate) struct BoxCache {
+#[derive(Debug)]
+#[must_use]
+pub struct BoxCache<P: Drawn> {
   /// The resolution generation it was resolved under.
-  pub(crate) generation: u64,
+  pub generation: u64,
   /// The interaction state it was resolved under.
-  pub(crate) interaction: Interaction,
+  pub interaction: Interaction,
   /// The style laid out and painted: the target with every running tween sampled.
-  pub(crate) style: PlainBox,
+  pub style: PlainBox<P>,
   /// The style the resolution produced, which a change is judged against.
-  pub(crate) target: PlainBox,
+  pub target: PlainBox<P>,
   /// The keyframes resolved at the node, reused across the frames of a running motion.
-  pub(crate) keyframes: Vec<skene_foundation::Animation<PlainBox>>,
+  pub keyframes: Vec<Animation<PlainBox<P>>>,
 }
 
 /// A run's style resolved under one generation and interaction, with the per-child
 /// layout properties a wrapper annotated the run with.
-pub(crate) struct RunCache {
+#[derive(Debug)]
+#[must_use]
+pub struct RunCache<P: Drawn> {
   /// The resolution generation it was resolved under.
-  pub(crate) generation: u64,
+  pub generation: u64,
   /// The interaction state it was resolved under.
-  pub(crate) interaction: Interaction,
+  pub interaction: Interaction,
   /// The style painted: the target with every running tween sampled.
-  pub(crate) style: PlainRun,
+  pub style: PlainRun<P>,
   /// The style the resolution produced, which a change is judged against.
-  pub(crate) target: PlainRun,
+  pub target: PlainRun<P>,
   /// The per-child layout properties a wrapper annotated the run with.
-  pub(crate) layout: PlainBox,
+  pub layout: PlainBox<P>,
   /// The keyframes resolved at the node, reused across the frames of a running motion.
-  pub(crate) keyframes: Vec<skene_foundation::Animation<PlainRun>>,
+  pub keyframes: Vec<Animation<PlainRun<P>>>,
 }
 
 /// A box-like node's facts, its kept style, its resolution and its motion.
-pub(crate) struct BoxRecord {
+#[derive(Debug)]
+#[must_use]
+pub struct BoxRecord<P: Drawn> {
   /// The role the node was created with.
-  pub(crate) role: Option<Role>,
+  pub role: Option<Role>,
   /// The axes a press's pointer drags the node along; `None` for a node no press drags.
-  pub(crate) drag: Option<DragAxes>,
+  pub drag: Option<DragAxes>,
   /// The facts of the box the node was created with.
-  pub(crate) facts: BoxFacts,
+  pub facts: BoxFacts,
   /// The node's style and motion, kept whole as the shared half applied it; empty until
   /// it does.
-  pub(crate) kept: KeptStyle,
+  pub kept: KeptStyle<P>,
   /// The style last resolved and presented, once a frame resolved it.
-  pub(crate) cache: Option<BoxCache>,
+  pub cache: Option<BoxCache<P>>,
   /// The node's running transitions and animations.
-  pub(crate) motion: BoxMotion,
+  pub motion: BoxMotion<P::Scalar, P::StyleExt>,
 }
 
-impl BoxRecord {
+impl<P: Drawn> BoxRecord<P> {
   /// The record of a box created stating `role`, dragged along `drag`, from `facts`,
   /// its style setting nothing until the shared half applies it.
-  pub(crate) fn new(role: Option<Role>, drag: Option<DragAxes>, facts: BoxFacts) -> Self {
+  pub fn new(role: Option<Role>, drag: Option<DragAxes>, facts: BoxFacts) -> Self {
     Self {
       role,
       drag,
       facts,
       kept: StyleRecord::new().into_kept(),
       cache: None,
-      motion: BoxMotion::default(),
+      motion: BoxMotion::new(),
     }
   }
 
   /// Marks the resolution stale while keeping what the node presents, so the next
   /// frame resolves again and a moved value starts from where the eye left off.
   #[inline(always)]
-  pub(crate) const fn mark_stale(&mut self) {
+  pub const fn mark_stale(&mut self) {
     if let Some(cache) = &mut self.cache {
       cache.generation = 0;
     }
@@ -121,15 +131,17 @@ impl BoxRecord {
 
   /// The resolved style, once a frame resolved it.
   #[inline(always)]
-  pub(crate) fn style(&self) -> Option<&PlainBox> {
+  pub fn style(&self) -> Option<&PlainBox<P>> {
     self.cache.as_ref().map(|cache| &cache.style)
   }
 }
 
 /// What a record is, with everything its creation carried.
-pub(crate) enum Kind {
+#[derive(Debug)]
+#[must_use]
+pub enum Kind<P: Drawn> {
   /// A box.
-  Box(BoxRecord),
+  Box(BoxRecord<P>),
   /// A control: a box a native element may stand in for.
   Control {
     /// The native element the control stands in; `None` for one its view draws.
@@ -137,21 +149,21 @@ pub(crate) enum Kind {
     /// The name the control was created with.
     label: Option<String>,
     /// The control's own box.
-    inner: BoxRecord,
+    inner: BoxRecord<P>,
   },
   /// An overlay: a box shown above the app while open.
   Overlay {
     /// The overlay's own box, carrying the overlay's role.
-    inner: BoxRecord,
+    inner: BoxRecord<P>,
     /// Where the overlay sits, as its last placement content said.
     placement: Placement,
     /// The backdrop color painted over the app while open, if any.
     backdrop: Option<Color>,
     /// Whether the overlay is open.
     open: bool,
-    /// The cell the overlay's top-start corner is pinned to, if it is, as its last
-    /// placement content said.
-    position: Option<(i64, i64)>,
+    /// The point the overlay's top-start corner is pinned to, if it is, in the units a
+    /// pointer event reports, as its last placement content said.
+    position: Option<Point<f32>>,
   },
   /// A text run.
   Run {
@@ -161,30 +173,30 @@ pub(crate) enum Kind {
     destination: Option<String>,
     /// The run's style, then the per-child layout a wrapper annotated it with, and its
     /// motion, kept whole as the shared half applied them; empty until it does.
-    kept: KeptStyle,
+    kept: KeptStyle<P>,
     /// The style last resolved and presented, once a frame resolved it.
-    cache: Option<RunCache>,
+    cache: Option<RunCache<P>>,
     /// The run's running transitions and animations.
-    motion: RunMotion,
+    motion: RunMotion<P::StyleExt>,
   },
 }
 
-impl Kind {
+impl<P: Drawn> Kind<P> {
   /// The record of a run created from `facts`, its style setting nothing until the
   /// shared half applies it.
-  pub(crate) fn run(facts: RunFacts) -> Self {
+  pub fn run(facts: RunFacts) -> Self {
     Self::Run {
       facts,
       destination: None,
       kept: StyleRecord::new().into_kept(),
       cache: None,
-      motion: RunMotion::default(),
+      motion: RunMotion::new(),
     }
   }
 
   /// The node's kept style, replaced by what the shared half applies: a box's, a
   /// control's, an overlay's or a run's.
-  pub(crate) const fn kept_mut(&mut self) -> Option<&mut KeptStyle> {
+  pub const fn kept_mut(&mut self) -> Option<&mut KeptStyle<P>> {
     match self {
       Self::Run { kept, .. } => Some(kept),
       kind => match kind.box_record_mut() {
@@ -196,16 +208,16 @@ impl Kind {
 
   /// Forgets what the node presented and the motion it ran, so it presents afresh: its
   /// animations from their start, and no transition into its style.
-  pub(crate) fn forget_presentation(&mut self) {
+  pub fn forget_presentation(&mut self) {
     match self {
       Self::Run { cache, motion, .. } => {
         *cache = None;
-        *motion = RunMotion::default();
+        *motion = RunMotion::new();
       }
       kind => {
         if let Some(inner) = kind.box_record_mut() {
           inner.cache = None;
-          inner.motion = BoxMotion::default();
+          inner.motion = BoxMotion::new();
         }
       }
     }
@@ -213,7 +225,7 @@ impl Kind {
 
   /// Marks the node's resolution stale while keeping what it presents, so the next
   /// frame resolves it again and a moved value starts from where the eye left off.
-  pub(crate) const fn mark_stale(&mut self) {
+  pub const fn mark_stale(&mut self) {
     match self {
       Self::Run {
         cache: Some(cache), ..
@@ -228,7 +240,7 @@ impl Kind {
 
   /// The generation and the interaction the node's style was resolved under, once a
   /// frame resolved it.
-  pub(crate) fn resolved_under(&self) -> Option<(u64, Interaction)> {
+  pub fn resolved_under(&self) -> Option<(u64, Interaction)> {
     match self {
       Self::Run { cache, .. } => cache
         .as_ref()
@@ -240,9 +252,19 @@ impl Kind {
     }
   }
 
+  /// Whether the node is a box a view taking decoration created: a container of its
+  /// own, laid out by a layout of its own.
+  #[inline(always)]
+  pub const fn is_decorated(&self) -> bool {
+    match self.box_record() {
+      Some(inner) => inner.facts.decorated,
+      None => false,
+    }
+  }
+
   /// The box record of a box, a control or an overlay.
   #[inline(always)]
-  pub(crate) const fn box_record(&self) -> Option<&BoxRecord> {
+  pub const fn box_record(&self) -> Option<&BoxRecord<P>> {
     match self {
       Self::Box(inner) | Self::Control { inner, .. } | Self::Overlay { inner, .. } => Some(inner),
       Self::Run { .. } => None,
@@ -251,7 +273,7 @@ impl Kind {
 
   /// The box record of a box, a control or an overlay, mutably.
   #[inline(always)]
-  pub(crate) const fn box_record_mut(&mut self) -> Option<&mut BoxRecord> {
+  pub const fn box_record_mut(&mut self) -> Option<&mut BoxRecord<P>> {
     match self {
       Self::Box(inner) | Self::Control { inner, .. } | Self::Overlay { inner, .. } => Some(inner),
       Self::Run { .. } => None,
@@ -260,38 +282,41 @@ impl Kind {
 
   /// The resolved style of a box-like record, once a frame resolved it.
   #[inline(always)]
-  pub(crate) fn box_style(&self) -> Option<&PlainBox> {
+  pub fn box_style(&self) -> Option<&PlainBox<P>> {
     self.box_record().and_then(BoxRecord::style)
   }
 }
 
 /// One realized node.
-pub(crate) struct Record {
+#[must_use]
+pub struct Record<P: Drawn> {
   /// What the node is, with the facts it was created from, its resolution and its motion.
-  pub(crate) kind: Kind,
-  /// The scene node the record realizes, once bound.
-  pub(crate) node: Option<NodeId>,
+  pub kind: Kind<P>,
+  /// The scene node the record realizes.
+  pub node: NodeId,
   /// A run's text, as last set.
-  pub(crate) text: String,
+  pub text: String,
   /// The node's slot values, as last written.
-  pub(crate) slots: FxHashMap<Slot, SlotLeaf>,
+  pub slots: FxHashMap<Slot, SlotLeaf<P>>,
   /// The reports of the box's size.
-  pub(crate) observers: Vec<Rc<dyn Fn(Size<i32>)>>,
+  pub observers: Vec<Observer<P>>,
   /// The size last reported to the observers.
-  pub(crate) reported: Option<Size<i32>>,
+  pub reported: Option<Size<P::Scalar>>,
   /// Whether a tween or an animation of the node was still running at the last
   /// restyle, so the next frame resolves it again.
-  pub(crate) in_motion: bool,
+  pub in_motion: bool,
   /// Whether the node was out of the display at the last restyle: inside a closed
   /// overlay, or detached from the root.
-  pub(crate) hidden: bool,
+  pub hidden: bool,
 }
 
-impl Record {
-  pub(super) fn new(kind: Kind) -> Self {
+impl<P: Drawn> Record<P> {
+  /// The record of `node`, realized as `kind`: no text, slot, observer or report yet,
+  /// at rest and in the display.
+  pub fn new(node: NodeId, kind: Kind<P>) -> Self {
     Self {
       kind,
-      node: None,
+      node,
       text: String::new(),
       slots: FxHashMap::default(),
       observers: Vec::new(),
@@ -303,13 +328,13 @@ impl Record {
 
   /// The layout mode of a box-like record.
   #[inline(always)]
-  pub(crate) fn layout(&self) -> Option<Layout> {
+  pub fn layout(&self) -> Option<Layout> {
     self.kind.box_record().map(|inner| inner.facts.layout)
   }
 
   /// The name the record publishes for container queries.
   #[inline(always)]
-  pub(crate) fn container(&self) -> Option<ContainerName> {
+  pub fn container(&self) -> Option<ContainerName> {
     self
       .kind
       .box_record()
@@ -319,19 +344,35 @@ impl Record {
   /// Whether the record's box is hidden by its style: it and its content draw nothing
   /// and take neither the pointer nor focus.
   #[inline(always)]
-  pub(crate) fn is_invisible(&self) -> bool {
+  pub fn is_invisible(&self) -> bool {
     self.kind.box_style().and_then(|style| style.hidden) == Some(true)
   }
 
   /// Whether the record is an overlay.
   #[inline(always)]
-  pub(crate) const fn is_overlay(&self) -> bool {
+  pub const fn is_overlay(&self) -> bool {
     matches!(self.kind, Kind::Overlay { .. })
   }
 
   /// Whether the record is an open overlay.
   #[inline(always)]
-  pub(crate) const fn is_open_overlay(&self) -> bool {
+  pub const fn is_open_overlay(&self) -> bool {
     matches!(self.kind, Kind::Overlay { open: true, .. })
+  }
+}
+
+impl<P: Drawn + fmt::Debug> fmt::Debug for Record<P> {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_struct("Record")
+      .field("kind", &self.kind)
+      .field("node", &self.node)
+      .field("text", &self.text)
+      .field("slots", &self.slots)
+      .field("observers", &self.observers.len())
+      .field("reported", &self.reported)
+      .field("in_motion", &self.in_motion)
+      .field("hidden", &self.hidden)
+      .finish()
   }
 }

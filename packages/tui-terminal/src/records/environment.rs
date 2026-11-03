@@ -17,7 +17,7 @@ use skene_foundation::{
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
-use super::{Records, record::SlotLeaf};
+use super::{Records, SlotLeaf};
 use crate::{Terminal, detect};
 
 type SystemColors = skene_foundation::SystemColors<i32>;
@@ -82,7 +82,7 @@ impl ResolutionSource<Terminal> for Records {
   }
 
   fn slot(&self, node: NodeId, slot: Slot) -> Option<SlotLeaf> {
-    self.record(node)?.slots.get(&slot).cloned()
+    self.runtime.record(node)?.slots.get(&slot).cloned()
   }
 
   fn sizes_text(&self) -> bool {
@@ -90,7 +90,7 @@ impl ResolutionSource<Terminal> for Records {
   }
 
   fn generation(&self) -> u64 {
-    self.restyle.generation()
+    self.runtime.restyle.generation()
   }
 }
 
@@ -239,9 +239,9 @@ impl Records {
   /// Marks every resolved style stale and the frame in need of layout.
   #[inline(always)]
   pub(crate) const fn invalidate_styles(&mut self) {
-    self.restyle.invalidate();
-    self.layout_dirty = true;
-    self.paint_dirty = true;
+    self.runtime.restyle.invalidate();
+    self.runtime.layout_dirty = true;
+    self.runtime.paint_dirty = true;
   }
 
   /// The environment's signals, created on first use under a root owner of their own.

@@ -23,7 +23,7 @@ use skene_foundation::{
 use crate::{
   Terminal,
   cells::Cells,
-  engine::{Drawn, drawn},
+  engine::{DrawnCluster, drawn},
   layout::{
     Source,
     border_edges,
@@ -695,7 +695,7 @@ impl Buffer {
 /// wide glyphs a later paint broke into; a picture an open overlay covers in part is
 /// left out.
 pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
-  paint_node(records, buffer, records.root, 0, 0);
+  paint_node(records, buffer, records.runtime.root(), 0, 0);
 
   let overlays = records.open_overlays();
 
@@ -722,7 +722,8 @@ pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
 /// computed origin.
 fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: Handle) {
-  let Some(Kind::Overlay { backdrop, .. }) = records.record(overlay).map(|record| &record.kind)
+  let Some(Kind::Overlay { backdrop, .. }) =
+    records.runtime.record(overlay).map(|record| &record.kind)
   else {
     return;
   };
@@ -823,7 +824,7 @@ impl Emphasis {
 /// One cluster a text draws: where it draws, the span it belongs to, its scale, and
 /// whether it is selected.
 struct ClusterPaint {
-  drawn: Drawn,
+  drawn: DrawnCluster,
   span: u16,
   scale: CellScale,
   selected: bool,
@@ -910,6 +911,7 @@ fn cluster_paints(
 /// it sets none, and unshown where its color is transparent.
 fn border_paint(records: &Records, handle: Handle) -> Option<BorderPaint> {
   let style = &records
+    .runtime
     .record(handle)?
     .kind
     .box_record()?
@@ -962,7 +964,7 @@ fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<Selecti
   reason = "a match dispatch over the record kinds; length is the kind count, not complexity"
 )]
 fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
-  let Some(record) = records.record(handle)
+  let Some(record) = records.runtime.record(handle)
   else {
     return NodePaint::None;
   };
@@ -979,7 +981,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
             destination,
             cache,
             ..
-          }) = records.record(run).map(|record| &record.kind)
+          }) = records.runtime.record(run).map(|record| &record.kind)
           else {
             unreachable!("paragraph runs are runs");
           };
@@ -1107,10 +1109,14 @@ fn paint_node(
   offset_x: isize,
   offset_y: isize,
 ) {
-  let Some(record) = records.record(handle)
+  let Some(record) = records.runtime.record(handle)
   else {
-    for child in records.children(handle) {
-      if records.record(child).is_some_and(Record::is_overlay) {
+    for child in records.runtime.children(handle) {
+      if records
+        .runtime
+        .record(child)
+        .is_some_and(Record::is_overlay)
+      {
         continue;
       }
 
@@ -1213,7 +1219,7 @@ fn paint_node(
           else {
             continue;
           };
-          let Drawn {
+          let DrawnCluster {
             at,
             end,
             column,
@@ -1331,7 +1337,7 @@ fn paint_node(
         let text = flow_of(records, handle).map_or("", |flow| flow.flow().text());
 
         for cluster in &clusters {
-          let Drawn {
+          let DrawnCluster {
             at,
             end,
             column,
@@ -1460,8 +1466,12 @@ fn paint_node(
     y - isize::try_from(scroll_y).unwrap_or(0),
   );
 
-  for child in records.children(handle) {
-    if records.record(child).is_some_and(Record::is_overlay) {
+  for child in records.runtime.children(handle) {
+    if records
+      .runtime
+      .record(child)
+      .is_some_and(Record::is_overlay)
+    {
       continue;
     }
 
@@ -1581,14 +1591,15 @@ fn place_backdrop(
   else {
     return false;
   };
-  let ancestors = records.ancestors(handle);
+  let ancestors = records.runtime.ancestors(handle);
   let depth = ancestors.len()
     + 512
-      * usize::from(
-        ancestors
-          .iter()
-          .any(|ancestor| records.record(*ancestor).is_some_and(Record::is_overlay)),
-      );
+      * usize::from(ancestors.iter().any(|ancestor| {
+        records
+          .runtime
+          .record(*ancestor)
+          .is_some_and(Record::is_overlay)
+      }));
   let layer = BACKDROP_Z + i32::try_from(depth.min(1023)).unwrap_or(1023);
   let band = isize::try_from(backdrop.key.band).unwrap_or(0);
 
@@ -1632,6 +1643,7 @@ fn draw_scrollbars(
   );
   let contrast = records.contrast();
   let style = records
+    .runtime
     .record(handle)
     .and_then(|record| record.kind.box_style());
   let bar = BarStyle {
@@ -2066,7 +2078,7 @@ pub(crate) fn run_scale(records: &Records, handle: Handle) -> CellScale {
     return CellScale::ONE;
   }
 
-  match records.record(handle).map(|record| &record.kind) {
+  match records.runtime.record(handle).map(|record| &record.kind) {
     Some(Kind::Run { cache, .. }) => {
       text::scale_of(cache.as_ref().and_then(|cache| cache.style.ext.size))
     }
@@ -2296,7 +2308,7 @@ pub(crate) fn changed_columns(
 
 /// Whether the control `handle` is a text entry; `None` where it is no control.
 pub(crate) fn control_entry(records: &Records, handle: Handle) -> Option<bool> {
-  match records.record(handle)?.kind {
+  match records.runtime.record(handle)?.kind {
     Kind::Control { native, .. } => Some(native.is_some_and(NativeElement::is_text_entry)),
     _ => None,
   }

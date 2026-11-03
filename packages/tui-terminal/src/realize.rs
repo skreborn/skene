@@ -37,6 +37,7 @@ use skene_foundation::{
   terminal::{TerminalStyle, Typography},
   text::editing::Entry,
 };
+use skene_layout::runtime::{Drawn, Runtime};
 use skene_reactive::{Memo, ReadSignal, Set};
 
 use crate::{
@@ -86,6 +87,12 @@ pub(crate) fn root_node() -> Option<NodeId> {
   ROOT.with(|root| *root.borrow())
 }
 
+impl Drawn for Terminal {
+  fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R> {
+    try_with_records(|records| operation(&mut records.runtime))
+  }
+}
+
 impl Realization for Terminal {
   const FONT_SIZE: f32 = 1.;
   const KEEP: Keep = Keep::Nothing;
@@ -127,7 +134,7 @@ impl Realization for Terminal {
             && let Some(cell) = records.cell_mut(node)
           {
             cell.field = Some(field);
-            records.entries.push(node);
+            records.runtime.entries.push(node);
           }
         });
       }
@@ -143,7 +150,7 @@ impl Realization for Terminal {
           },
         );
 
-        records.overlays.push(node);
+        records.runtime.overlays.push(node);
       }),
       NodeFacts::Run(run) => {
         let inline_box = run.placement == RunPlacement::Embedded;
@@ -152,7 +159,7 @@ impl Realization for Terminal {
           records.insert(node, Kind::run(run.clone()));
 
           // An inline box flows as one placeholder cluster, as large as its own layout.
-          if inline_box && let Some(record) = records.record_mut(node) {
+          if inline_box && let Some(record) = records.runtime.record_mut(node) {
             record.text = crate::layout::INLINE_BOX.to_string();
           }
         });
@@ -166,31 +173,32 @@ impl Realization for Terminal {
   fn apply_style(node: NodeId, style: CompiledStyle<i32, TerminalStyle>) {
     with_records(|records| {
       if let Some(kept) = records
+        .runtime
         .record_mut(node)
         .and_then(|record| record.kind.kept_mut())
       {
         *kept = style;
-        records.queue_restyle(node);
+        records.runtime.restyle.queue(node);
       }
     });
   }
 
   fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<i32, TerminalStyle>) {
     with_records(|records| {
-      if let Some(record) = records.record_mut(node) {
+      if let Some(record) = records.runtime.record_mut(node) {
         record.slots.insert(slot, leaf.clone());
         record.kind.mark_stale();
-        records.queue_restyle(node);
-        records.layout_dirty = true;
-        records.damage(node);
+        records.runtime.restyle.queue(node);
+        records.runtime.layout_dirty = true;
+        records.runtime.damage(node);
       }
     });
   }
 
   fn set_control_state(node: NodeId, _state: &ControlState) {
     with_records(|records| {
-      records.layout_dirty = true;
-      records.damage(node);
+      records.runtime.layout_dirty = true;
+      records.runtime.damage(node);
     });
   }
 
@@ -223,23 +231,25 @@ impl Realization for Terminal {
       | ContentValue::Chosen(_)
       | ContentValue::Membership(_) => {
         with_records(|records| {
-          records.layout_dirty = true;
-          records.damage(node);
+          records.runtime.layout_dirty = true;
+          records.runtime.damage(node);
         });
       }
       ContentValue::Destination(path) => with_records(|records| {
-        if let Some(Kind::Run { destination, .. }) =
-          records.record_mut(node).map(|record| &mut record.kind)
+        if let Some(Kind::Run { destination, .. }) = records
+          .runtime
+          .record_mut(node)
+          .map(|record| &mut record.kind)
         {
           *destination = Some(path.to_owned());
-          records.damage(node);
+          records.runtime.damage(node);
         }
       }),
       ContentValue::Placeholder(hint) => with_records(|records| {
         if let Some(field) = records.field_mut(node) {
           field.placeholder = Some(hint.to_owned());
-          records.layout_dirty = true;
-          records.damage(node);
+          records.runtime.layout_dirty = true;
+          records.runtime.damage(node);
         }
       }),
       ContentValue::Secure(secure) => {
@@ -251,19 +261,14 @@ impl Realization for Terminal {
           placement: held,
           position,
           ..
-        }) = records.record_mut(node).map(|record| &mut record.kind)
+        }) = records
+          .runtime
+          .record_mut(node)
+          .map(|record| &mut record.kind)
         {
-          #[expect(
-            clippy::cast_possible_truncation,
-            reason = "a pointer's cell lies within the terminal, far inside i64"
-          )]
-          let cell = placement
-            .position
-            .map(|point| (point.x.floor() as i64, point.y.floor() as i64));
-
           *held = placement.placement;
-          *position = cell;
-          records.paint_dirty = true;
+          *position = placement.position;
+          records.runtime.paint_dirty = true;
         }
       }),
     }
@@ -284,19 +289,19 @@ impl Realization for Terminal {
   }
 
   fn attach(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
-    with_records(Records::note_structure);
+    with_records(|records| records.runtime.note_structure());
   }
 
   fn relocate(_parent: NodeId, _child: NodeId, _before: Option<NodeId>) {
-    with_records(Records::note_structure);
+    with_records(|records| records.runtime.note_structure());
   }
 
   fn hide(_parent: NodeId, _child: NodeId) {
-    with_records(Records::note_structure);
+    with_records(|records| records.runtime.note_structure());
   }
 
   fn remove(_parent: NodeId, _child: NodeId) {
-    with_records(Records::note_structure);
+    with_records(|records| records.runtime.note_structure());
   }
 
   fn destroy(node: NodeId) {
@@ -351,16 +356,16 @@ impl Realization for Terminal {
     let kept = Rc::clone(&report);
 
     with_records(|records| {
-      if let Some(record) = records.record_mut(node) {
+      if let Some(record) = records.runtime.record_mut(node) {
         record.observers.push(report);
         record.reported = None;
-        records.layout_dirty = true;
+        records.runtime.layout_dirty = true;
       }
     });
 
     Observation::new(move || {
       with_records(|records| {
-        if let Some(record) = records.record_mut(node) {
+        if let Some(record) = records.runtime.record_mut(node) {
           record
             .observers
             .retain(|observer| !Rc::ptr_eq(observer, &kept));
@@ -480,7 +485,7 @@ impl Painting for Terminal {
           painter: Rc::from(painter),
           image: None,
         });
-        records.damage(node);
+        records.runtime.damage(node);
       }
     });
   }
@@ -491,7 +496,7 @@ impl CellPainter for Terminal {
     with_records(|records| {
       if let Some(cell) = records.cell_mut(node) {
         cell.painter = Some(painter);
-        records.damage(node);
+        records.runtime.damage(node);
       }
     });
   }
@@ -521,7 +526,7 @@ pub(crate) fn install() {
     })));
   });
 
-  let node = with_records(|records| records.root);
+  let node = with_records(|records| records.runtime.root());
 
   // Every run inherits its text properties through the typography tokens, so the
   // terminal's defaults are defined at the root before any theme redefines them.

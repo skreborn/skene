@@ -12,6 +12,24 @@ supersedes there.
 
 ## Decided against
 
+- **The drawn runtime in a thread-local of its own beside the platform's side table**
+  (2026-11-03), `skene-layout`'s `Runtime<P>` held in a cell of its own and the
+  platform's per-node state in another, borrowed in a fixed order: every platform
+  function that holds the records would take both borrows, and a double borrow, or a
+  borrow out of order, would be found only at run time. The runtime is a field of the
+  platform's one state (the terminal's `Records::runtime`, beside its cell state), which
+  generic code reaches through `Drawn::with_runtime`, so the two borrow disjointly as
+  fields, checked at compile time, and nesting panics as a nested borrow of the
+  platform's state always has. Revisit when a hook the runtime calls mid-operation must
+  read the platform's own state and cannot be handed it as an argument.
+- **An associated type on `Drawn` for a platform's per-node or per-window state**
+  (2026-11-03), the runtime's records carrying a `Drawn::Node` the platform defines, and
+  its windows a `Drawn::Window`: an associated type of a public trait implemented by a
+  public type must be as public as the trait (E0446), so the platform's private state
+  (the terminal's `CellNode`, its `Field`, its painter) would become its public API. A
+  platform keeps its own per-node state in a side table of its own keyed by the
+  `NodeId`, inserted and removed beside the runtime's record. Revisit when generic code
+  must read a platform's per-node extension.
 - **A leaf's inline boxes held outside the tree's children (`Leaf::boxes` alone naming
   them, the tree linking each to its leaf)** (2026-11-02), a paragraph's boxes kept apart
   from its children list with a link of their own back to the paragraph: a box would hold

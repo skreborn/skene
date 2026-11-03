@@ -43,9 +43,9 @@ impl Records {
   /// `record`'s frame in its layout parent, as the last layout rounded it; empty for a
   /// record outside the layout.
   pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
-    record
-      .node
-      .and_then(|node| self.tree.layout(node))
+    self
+      .tree
+      .layout(record.node)
       .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
 
@@ -53,7 +53,7 @@ impl Records {
   /// cells its laid-out content reaches from the frame's origin, left, top, right and
   /// bottom: its own box, or farther where its content overflows it.
   pub(crate) fn reach_of(&self, record: &Record) -> (CellFrame, [f32; 4]) {
-    let Some(layout) = record.node.and_then(|node| self.tree.layout(node))
+    let Some(layout) = self.tree.layout(record.node)
     else {
       return (CellFrame::default(), [0.; 4]);
     };
@@ -77,6 +77,7 @@ impl Records {
   /// `handle`'s frame in its layout parent; empty for a stale handle.
   pub(crate) fn frame(&self, handle: Handle) -> CellFrame {
     self
+      .runtime
       .record(handle)
       .map_or_else(CellFrame::default, |record| self.frame_of(record))
   }
@@ -93,8 +94,9 @@ impl Records {
   /// least one; one for a node outside the layout.
   pub(crate) fn flow_width(&self, handle: Handle) -> usize {
     let width = self
+      .runtime
       .record(handle)
-      .and_then(|record| record.node)
+      .map(|record| record.node)
       .and_then(|node| self.tree.unrounded_layout(node))
       .map_or(0., |layout| {
         layout.rect.size.width
@@ -119,18 +121,18 @@ impl Records {
   /// where the layout put them. `None` for a box with laid-out children, those inside
   /// an anchor or a scope among them, or one of no width.
   pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
-    let record = self.record(handle)?;
-    let mut beneath = self.children(handle);
+    let record = self.runtime.record(handle)?;
+    let mut beneath = self.runtime.children(handle);
 
     while let Some(child) = beneath.pop() {
-      if self.record(child).is_some() {
+      if self.runtime.record(child).is_some() {
         return None;
       }
 
-      beneath.extend(self.children(child));
+      beneath.extend(self.runtime.children(child));
     }
 
-    let rect = self.tree.unrounded_layout(record.node?)?.rect;
+    let rect = self.tree.unrounded_layout(record.node)?.rect;
     #[expect(
       clippy::cast_possible_truncation,
       reason = "a position in eighth cells stays far inside isize"

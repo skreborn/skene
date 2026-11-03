@@ -496,7 +496,7 @@ where
           // shows.
           last_frame = None;
 
-          with_records(|records| records.paint_dirty = true);
+          with_records(|records| records.runtime.paint_dirty = true);
 
           // A notification without a pixel size keeps the known one while the
           // terminal reports resizes in band, since that report carries the true one.
@@ -549,7 +549,7 @@ where
           last_frame = None;
 
           with_records(|records| {
-            records.paint_dirty = true;
+            records.runtime.paint_dirty = true;
             records.title_dirty = records.title.is_some();
           });
         }
@@ -648,7 +648,7 @@ where
           if moved && depth == ColorDepth::Ansi16 {
             last_frame = None;
 
-            with_records(|records| records.paint_dirty = true);
+            with_records(|records| records.runtime.paint_dirty = true);
           }
         }
         Event::Clipboard(content) => {
@@ -708,14 +708,14 @@ where
             depth = reported;
             last_frame = None;
 
-            with_records(|records| records.paint_dirty = true);
+            with_records(|records| records.runtime.paint_dirty = true);
           }
 
           if detect::styled_underlines_reported(&attributes) && !styled_underlines {
             styled_underlines = true;
             last_frame = None;
 
-            with_records(|records| records.paint_dirty = true);
+            with_records(|records| records.runtime.paint_dirty = true);
           }
         }
         _ => {}
@@ -761,7 +761,7 @@ fn finish(terminal: &mut impl Device) {
 pub(crate) fn set_detected_foreground(foreground: (u8, u8, u8)) {
   with_records(|records| {
     records.detected_foreground = Some(foreground);
-    records.paint_dirty = true;
+    records.runtime.paint_dirty = true;
   });
   crate::realize::define_system_colors();
 }
@@ -771,7 +771,7 @@ pub(crate) fn set_detected_foreground(foreground: (u8, u8, u8)) {
 pub(crate) fn set_detected_background(background: (u8, u8, u8)) {
   with_records(|records| {
     records.detected_background = Some(background);
-    records.paint_dirty = true;
+    records.runtime.paint_dirty = true;
   });
   set_detected_scheme(detect::is_dark(background));
 }
@@ -903,8 +903,8 @@ pub(crate) fn apply_clustering(confirmed: bool) -> bool {
 
   with_records(|records| {
     records.remeasure();
-    records.layout_dirty = true;
-    records.paint_dirty = true;
+    records.runtime.layout_dirty = true;
+    records.runtime.paint_dirty = true;
   });
 
   true
@@ -936,7 +936,7 @@ pub(crate) fn apply_graphics(confirmed: bool) -> bool {
     }
 
     records.graphics = confirmed;
-    records.paint_dirty = true;
+    records.runtime.paint_dirty = true;
 
     Some(records.media().set_graphics)
   });
@@ -958,7 +958,7 @@ fn set_cell_pixels(size: &WindowSize) {
   with_records(|records| {
     if records.cell_pixels != cell {
       records.cell_pixels = cell;
-      records.paint_dirty = true;
+      records.runtime.paint_dirty = true;
     }
   });
 }

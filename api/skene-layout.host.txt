@@ -1,6 +1,44 @@
 pub mod skene_layout
 pub use skene_layout::taffy
 pub mod skene_layout::runtime
+pub enum skene_layout::runtime::Kind<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::Kind::Box(skene_layout::runtime::BoxRecord<P>)
+pub skene_layout::runtime::Kind::Control
+pub skene_layout::runtime::Kind::Control::inner: skene_layout::runtime::BoxRecord<P>
+pub skene_layout::runtime::Kind::Control::label: core::option::Option<alloc::string::String>
+pub skene_layout::runtime::Kind::Control::native: core::option::Option<skene_foundation::spine::control::NativeElement>
+pub skene_layout::runtime::Kind::Overlay
+pub skene_layout::runtime::Kind::Overlay::backdrop: core::option::Option<skene_foundation::spine::values::color::Color>
+pub skene_layout::runtime::Kind::Overlay::inner: skene_layout::runtime::BoxRecord<P>
+pub skene_layout::runtime::Kind::Overlay::open: bool
+pub skene_layout::runtime::Kind::Overlay::placement: skene_foundation::spine::values::placement::Placement
+pub skene_layout::runtime::Kind::Overlay::position: core::option::Option<skene_foundation::spine::values::point::Point<f32>>
+pub skene_layout::runtime::Kind::Run
+pub skene_layout::runtime::Kind::Run::cache: core::option::Option<skene_layout::runtime::RunCache<P>>
+pub skene_layout::runtime::Kind::Run::destination: core::option::Option<alloc::string::String>
+pub skene_layout::runtime::Kind::Run::facts: skene_foundation::spine::props::RunFacts
+pub skene_layout::runtime::Kind::Run::kept: skene_layout::runtime::KeptStyle<P>
+pub skene_layout::runtime::Kind::Run::motion: skene_layout::runtime::RunMotion<<P as skene_foundation::spine::realization::Realization>::StyleExt>
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Kind<P>
+pub const fn skene_layout::runtime::Kind<P>::box_record(&self) -> core::option::Option<&skene_layout::runtime::BoxRecord<P>>
+pub const fn skene_layout::runtime::Kind<P>::box_record_mut(&mut self) -> core::option::Option<&mut skene_layout::runtime::BoxRecord<P>>
+pub fn skene_layout::runtime::Kind<P>::box_style(&self) -> core::option::Option<&skene_layout::runtime::PlainBox<P>>
+pub fn skene_layout::runtime::Kind<P>::forget_presentation(&mut self)
+pub const fn skene_layout::runtime::Kind<P>::is_decorated(&self) -> bool
+pub const fn skene_layout::runtime::Kind<P>::kept_mut(&mut self) -> core::option::Option<&mut skene_layout::runtime::KeptStyle<P>>
+pub const fn skene_layout::runtime::Kind<P>::mark_stale(&mut self)
+pub fn skene_layout::runtime::Kind<P>::resolved_under(&self) -> core::option::Option<(u64, skene_foundation::spine::resolve::Interaction)>
+pub fn skene_layout::runtime::Kind<P>::run(skene_foundation::spine::props::RunFacts) -> Self
+impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Kind<P> where <P as skene_foundation::spine::realization::Realization>::StyleExt: core::fmt::Debug
+pub fn skene_layout::runtime::Kind<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::runtime::BoxCache<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::BoxCache::generation: u64
+pub skene_layout::runtime::BoxCache::interaction: skene_foundation::spine::resolve::Interaction
+pub skene_layout::runtime::BoxCache::keyframes: alloc::vec::Vec<skene_foundation::spine::motion::Animation<skene_layout::runtime::PlainBox<P>>>
+pub skene_layout::runtime::BoxCache::style: skene_layout::runtime::PlainBox<P>
+pub skene_layout::runtime::BoxCache::target: skene_layout::runtime::PlainBox<P>
+impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::BoxCache<P>
+pub fn skene_layout::runtime::BoxCache<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::BoxMotion<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension>
 impl<N: skene_foundation::spine::scalar::Scalar + skene_foundation::spine::motion::interpolate::Interpolate, X: skene_foundation::spine::extension::StyleExtension> skene_layout::runtime::BoxMotion<N, X>
 pub fn skene_layout::runtime::BoxMotion<N, X>::present(&mut self, core::option::Option<&skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>>, skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>, &[skene_foundation::spine::motion::Transition<<X as skene_foundation::spine::extension::StyleExtension>::Property>], &[skene_foundation::spine::motion::Animation<skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>>], skene_layout::runtime::Sample) -> skene_layout::runtime::Presented<skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>>
@@ -10,11 +48,51 @@ impl<N: core::fmt::Debug + skene_foundation::spine::scalar::Scalar, X: core::fmt
 pub fn skene_layout::runtime::BoxMotion<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension> core::default::Default for skene_layout::runtime::BoxMotion<N, X>
 pub fn skene_layout::runtime::BoxMotion<N, X>::default() -> Self
+pub struct skene_layout::runtime::BoxRecord<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::BoxRecord::cache: core::option::Option<skene_layout::runtime::BoxCache<P>>
+pub skene_layout::runtime::BoxRecord::drag: core::option::Option<skene_foundation::spine::values::axis::DragAxes>
+pub skene_layout::runtime::BoxRecord::facts: skene_foundation::spine::props::BoxFacts
+pub skene_layout::runtime::BoxRecord::kept: skene_layout::runtime::KeptStyle<P>
+pub skene_layout::runtime::BoxRecord::motion: skene_layout::runtime::BoxMotion<<P as skene_foundation::spine::realization::Realization>::Scalar, <P as skene_foundation::spine::realization::Realization>::StyleExt>
+pub skene_layout::runtime::BoxRecord::role: core::option::Option<accesskit::Role>
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::BoxRecord<P>
+pub const fn skene_layout::runtime::BoxRecord<P>::mark_stale(&mut self)
+pub fn skene_layout::runtime::BoxRecord<P>::new(core::option::Option<accesskit::Role>, core::option::Option<skene_foundation::spine::values::axis::DragAxes>, skene_foundation::spine::props::BoxFacts) -> Self
+pub fn skene_layout::runtime::BoxRecord<P>::style(&self) -> core::option::Option<&skene_layout::runtime::PlainBox<P>>
+impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::BoxRecord<P> where <P as skene_foundation::spine::realization::Realization>::Scalar: core::fmt::Debug, <P as skene_foundation::spine::realization::Realization>::StyleExt: core::fmt::Debug
+pub fn skene_layout::runtime::BoxRecord<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::Presented<S>
 pub skene_layout::runtime::Presented::active: bool
 pub skene_layout::runtime::Presented::style: S
 impl<S: core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Presented<S>
 pub fn skene_layout::runtime::Presented<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::runtime::Record<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::Record::hidden: bool
+pub skene_layout::runtime::Record::in_motion: bool
+pub skene_layout::runtime::Record::kind: skene_layout::runtime::Kind<P>
+pub skene_layout::runtime::Record::node: skene_foundation::spine::node::NodeId
+pub skene_layout::runtime::Record::observers: alloc::vec::Vec<skene_layout::runtime::Observer<P>>
+pub skene_layout::runtime::Record::reported: core::option::Option<skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>>
+pub skene_layout::runtime::Record::slots: rustc_hash::FxHashMap<skene_foundation::spine::leaf::Slot, skene_layout::runtime::SlotLeaf<P>>
+pub skene_layout::runtime::Record::text: alloc::string::String
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Record<P>
+pub fn skene_layout::runtime::Record<P>::container(&self) -> core::option::Option<skene_foundation::spine::condition::ContainerName>
+pub fn skene_layout::runtime::Record<P>::is_invisible(&self) -> bool
+pub const fn skene_layout::runtime::Record<P>::is_open_overlay(&self) -> bool
+pub const fn skene_layout::runtime::Record<P>::is_overlay(&self) -> bool
+pub fn skene_layout::runtime::Record<P>::layout(&self) -> core::option::Option<skene_foundation::spine::values::layout::Layout>
+pub fn skene_layout::runtime::Record<P>::new(skene_foundation::spine::node::NodeId, skene_layout::runtime::Kind<P>) -> Self
+impl<P: skene_layout::runtime::Drawn + core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Record<P>
+pub fn skene_layout::runtime::Record<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::runtime::RunCache<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::RunCache::generation: u64
+pub skene_layout::runtime::RunCache::interaction: skene_foundation::spine::resolve::Interaction
+pub skene_layout::runtime::RunCache::keyframes: alloc::vec::Vec<skene_foundation::spine::motion::Animation<skene_layout::runtime::PlainRun<P>>>
+pub skene_layout::runtime::RunCache::layout: skene_layout::runtime::PlainBox<P>
+pub skene_layout::runtime::RunCache::style: skene_layout::runtime::PlainRun<P>
+pub skene_layout::runtime::RunCache::target: skene_layout::runtime::PlainRun<P>
+impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::RunCache<P>
+pub fn skene_layout::runtime::RunCache<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::RunMotion<X: skene_foundation::spine::extension::StyleExtension>
 impl<X: skene_foundation::spine::extension::StyleExtension> skene_layout::runtime::RunMotion<X>
 pub const fn skene_layout::runtime::RunMotion<X>::new() -> Self
@@ -24,6 +102,39 @@ impl<X: core::fmt::Debug + skene_foundation::spine::extension::StyleExtension> c
 pub fn skene_layout::runtime::RunMotion<X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<X: skene_foundation::spine::extension::StyleExtension> core::default::Default for skene_layout::runtime::RunMotion<X>
 pub fn skene_layout::runtime::RunMotion<X>::default() -> Self
+pub struct skene_layout::runtime::Runtime<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::Runtime::entries: alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub skene_layout::runtime::Runtime::layout_dirty: bool
+pub skene_layout::runtime::Runtime::overlays: alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub skene_layout::runtime::Runtime::paint_dirty: bool
+pub skene_layout::runtime::Runtime::restyle: skene_layout::Restyle
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
+pub fn skene_layout::runtime::Runtime<P>::ancestors(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::children(&self, skene_foundation::spine::node::NodeId) -> smallvec::SmallVec<[skene_foundation::spine::node::NodeId; 8]>
+pub fn skene_layout::runtime::Runtime<P>::children_reversed(&self, skene_foundation::spine::node::NodeId) -> impl core::iter::traits::iterator::Iterator<Item = skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::displayed(&self) -> rustc_hash::FxHashSet<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::enclosing_control(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::is_reachable(&self, skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_layout::runtime::Runtime<P>::layout_children(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::layout_parent(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub const fn skene_layout::runtime::Runtime<P>::note_structure(&mut self)
+pub fn skene_layout::runtime::Runtime<P>::parent(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
+pub fn skene_layout::runtime::Runtime<P>::damage(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_layout::runtime::Runtime<P>::destroy(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_layout::runtime::Record<P>>
+pub fn skene_layout::runtime::Runtime<P>::handles(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub const fn skene_layout::runtime::Runtime<P>::has_damage(&self) -> bool
+pub fn skene_layout::runtime::Runtime<P>::insert(&mut self, skene_foundation::spine::node::NodeId, skene_layout::runtime::Kind<P>)
+pub fn skene_layout::runtime::Runtime<P>::new(skene_foundation::spine::node::NodeId) -> Self
+pub fn skene_layout::runtime::Runtime<P>::record(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Record<P>>
+pub fn skene_layout::runtime::Runtime<P>::record_count(&self) -> usize
+pub fn skene_layout::runtime::Runtime<P>::record_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut skene_layout::runtime::Record<P>>
+pub const fn skene_layout::runtime::Runtime<P>::root(&self) -> skene_foundation::spine::node::NodeId
+pub fn skene_layout::runtime::Runtime<P>::take_damage(&mut self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::try_with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> core::option::Option<R>
+pub fn skene_layout::runtime::Runtime<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
+impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Runtime<P>
+pub fn skene_layout::runtime::Runtime<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::Sample
 pub skene_layout::runtime::Sample::now: f64
 pub skene_layout::runtime::Sample::reduced: bool
@@ -35,6 +146,13 @@ impl core::fmt::Debug for skene_layout::runtime::Sample
 pub fn skene_layout::runtime::Sample::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::runtime::Sample
 impl core::marker::StructuralPartialEq for skene_layout::runtime::Sample
+pub trait skene_layout::runtime::Drawn: skene_foundation::spine::realization::Realization<TokenValue = skene_foundation::spine::resolve::TokenValue<<Self as skene_foundation::spine::realization::Realization>::Scalar>>
+pub fn skene_layout::runtime::Drawn::with_runtime<R>(impl core::ops::function::FnOnce(&mut skene_layout::runtime::Runtime<Self>) -> R) -> core::option::Option<R>
+pub type skene_layout::runtime::KeptStyle<P> = skene_foundation::spine::record::CompiledStyle<<P as skene_foundation::spine::realization::Realization>::Scalar, <P as skene_foundation::spine::realization::Realization>::StyleExt>
+pub type skene_layout::runtime::Observer<P> = alloc::rcs::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>)>
+pub type skene_layout::runtime::PlainBox<P> = skene_foundation::spine::box_style::BoxStyle<<P as skene_foundation::spine::realization::Realization>::Scalar, skene_foundation::spine::shape::Plain, <P as skene_foundation::spine::realization::Realization>::StyleExt>
+pub type skene_layout::runtime::PlainRun<P> = skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, <P as skene_foundation::spine::realization::Realization>::StyleExt>
+pub type skene_layout::runtime::SlotLeaf<P> = skene_foundation::spine::resolve::SlotLeaf<<P as skene_foundation::spine::realization::Realization>::Scalar, <P as skene_foundation::spine::realization::Realization>::StyleExt>
 pub enum skene_layout::Borders
 pub skene_layout::Borders::Unit
 pub skene_layout::Borders::Width

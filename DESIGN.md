@@ -19,12 +19,14 @@ throughout—there is no separate "widget" concept.
 
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout and the drawn runtime every platform but
-the web runs (`skene-layout`) and the text engine over Parley (`skene-parley`) on the
-foundation, the platforms on the foundation and, where they draw, on those two, each
-platform's realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with
-its facade over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants
-and sizes, naming no realization) on the foundation, each facade's Simple crate (its
-presets) on its facade, and the macros, the transport and the CLI beside them.
+the web runs (`skene-layout`, whose `runtime` holds each node's record, the scene walk
+over them and their motion, behind the `Drawn` trait a drawn platform implements) and
+the text engine over Parley (`skene-parley`) on the foundation, the platforms on the
+foundation and, where they draw, on those two, each platform's realization a crate of
+its own (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
+`skene-tui`), the Simple core (its palette, variants and sizes, naming no realization)
+on the foundation, each facade's Simple crate (its presets) on its facade, and the
+macros, the transport and the CLI beside them.
 
 **A facade per medium, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
@@ -1904,15 +1906,18 @@ The terminal's realization is `skene-tui-terminal`, beneath the facade `skene-tu
 which names its `Terminal` as `Active`, re-exports its surface as `platform::terminal`
 and its launch (`launch`, `Launch`, `Clipboard`, `MOUSE_KEY`, `Device` and its `Note`
 and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) and its
-`testing` at the root. The realization holds everything down to the device: the records,
-each node's cell state beside its record (a text entry's presentation, its scroll
-offsets, the cells it covers and what it paints beyond its style), layout, the cell
-engine, painting, the frame writer, the event loop and its interaction, the editing
-state of its drawn entries, the dev reload's restore and rebuild notice, and the
-`device`, `tty`, `parse` and `escape` modules. It names no facade: what it builds of its
-own, the rebuild notice, it builds from the foundation's views at `Terminal`, and the
-values it defines it spells in the foundation's generics at cells (`SystemColors<i32>`).
-Its build script generates the typeface its text is measured in.
+`testing` at the root. The realization holds everything down to the device: its records
+are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by generic
+code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, which
+keeps each node's cell-only state in a side table keyed by the node (a text entry's
+presentation, its scroll offsets, the cells it covers and what it paints beyond its
+style); beside them sit layout, the cell engine, painting, the frame writer, the event
+loop and its interaction, the editing state of its drawn entries, the dev reload's
+restore and rebuild notice, and the `device`, `tty`, `parse` and `escape` modules. It
+names no facade: what it builds of its own, the rebuild notice, it builds from the
+foundation's views at `Terminal`, and the values it defines it spells in the
+foundation's generics at cells (`SystemColors<i32>`). Its build script generates the
+typeface its text is measured in.
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
@@ -2589,11 +2594,13 @@ sense apart where context does not.
 - **Store.** A `Store`: the reactive state a `#[derive(Store)]` struct lives in, read and
   written through its fields' accessors. A snapshot's store and restore: what a dev
   reload records and reads back. A platform's record store (see record).
-- **Record.** A platform's record of a node: what it keeps per `NodeId` beside its
-  realization, the terminal's. A snapshot record: what a run writes for
-  its successor at a dev reload. A node's style record (`Record`): its box and run
-  styles and their motion as one erased list under Skene's property names (The style
-  model).
+- **Record.** A drawn platform's record of a node (`skene_layout::runtime::Record`):
+  what the drawn runtime (`runtime::Runtime`) keeps per `NodeId` beside the scene, its
+  kind and the facts its creation carried, its kept and resolved style, its motion, its
+  text and slots, the platform's own per-node state kept beside it in a side table of
+  its own (the terminal's cell state). A snapshot record: what a run writes for its
+  successor at a dev reload. A node's style record (`Record`): its box and run styles
+  and their motion as one erased list under Skene's property names (The style model).
 - **Realize.** A platform turning a scene node into its own representation: an element
   in the browser, an entry in the server's string tree, a record and a node of its
   layout tree in the terminal. `LowLevel::realize` mints a node a view realizes itself.

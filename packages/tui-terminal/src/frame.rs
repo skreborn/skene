@@ -60,11 +60,11 @@ pub(crate) fn settle(width: u16, height: u16) {
 
       layout::rebuild_children(records);
 
-      if !(restyled || records.layout_dirty) {
+      if !(restyled || records.runtime.layout_dirty) {
         return false;
       }
 
-      records.layout_dirty = false;
+      records.runtime.layout_dirty = false;
       layout::compute(records, width, height);
       records.fit_entries();
 
@@ -77,7 +77,7 @@ pub(crate) fn settle(width: u16, height: u16) {
     crate::realize::end_turn();
 
     let settled =
-      !(containers || reported || revealed || with_records(|records| records.layout_dirty));
+      !(containers || reported || revealed || with_records(|records| records.runtime.layout_dirty));
 
     if settled {
       break;
@@ -93,7 +93,7 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
       .last_frame
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
-    let full = std::mem::take(&mut records.paint_dirty) || previous.is_none();
+    let full = std::mem::take(&mut records.runtime.paint_dirty) || previous.is_none();
     let moved = std::mem::take(&mut records.covers_stale) || full;
     let (damaged, rects) = records.take_damage();
 
@@ -159,7 +159,7 @@ fn damaged_rows(
   }
 
   if moved {
-    for handle in records.handles() {
+    for handle in records.runtime.handles() {
       let Some(cell) = records.cell(handle)
       else {
         continue;
@@ -191,7 +191,7 @@ fn damaged_rows(
 fn paint_owner(records: &Records, handle: Handle) -> Handle {
   let mut owner = handle;
 
-  while let Some(parent) = records.layout_parent(owner) {
+  while let Some(parent) = records.runtime.layout_parent(owner) {
     if !(is_paragraph(records, parent) || is_inline_run(records, parent)) {
       break;
     }
@@ -212,6 +212,7 @@ fn rect_at(records: &Records, handle: Handle, (x, y): (i64, i64)) -> Option<Cell
   }
 
   let band = records
+    .runtime
     .record(handle)
     .and_then(|record| record.kind.box_style())
     .map_or(0, |style| i64::from(ShadowPaint::band(style)));
@@ -229,7 +230,7 @@ fn render_pictures(records: &mut Records) {
 
   let (cell_width, cell_height) = records.cell_pixels;
 
-  for handle in records.handles() {
+  for handle in records.runtime.handles() {
     let Some(picture) = records.cell(handle).and_then(|cell| cell.picture.as_ref())
     else {
       continue;
@@ -288,8 +289,8 @@ fn render_backdrops(records: &mut Records) {
 
   let cell_pixels = records.cell_pixels;
 
-  for handle in records.handles() {
-    let Some(record) = records.record(handle)
+  for handle in records.runtime.handles() {
+    let Some(record) = records.runtime.record(handle)
     else {
       continue;
     };
@@ -469,10 +470,10 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
 /// down the tree once; a node outside it covers none.
 fn measure_covers(records: &mut Records) {
   let mut covers = Vec::new();
-  let mut pending = vec![(records.root, (0, 0), None)];
+  let mut pending = vec![(records.runtime.root(), (0, 0), None)];
 
   while let Some((handle, (base_x, base_y), laid_out_parent)) = pending.pop() {
-    let record = records.record(handle);
+    let record = records.runtime.record(handle);
     let laid_out = record.is_some();
     let origin = if record.is_some_and(Record::is_overlay) {
       records.overlay_origin(handle)
@@ -503,13 +504,14 @@ fn measure_covers(records: &mut Records) {
 
     pending.extend(
       records
+        .runtime
         .children(handle)
         .into_iter()
         .map(|child| (child, origin, beneath)),
     );
   }
 
-  for handle in records.handles() {
+  for handle in records.runtime.handles() {
     if let Some(cell) = records.cell_mut(handle) {
       cell.covers = None;
     }
@@ -524,7 +526,7 @@ fn measure_covers(records: &mut Records) {
 
 /// Records the rectangle every node covers as the one it covered at this paint.
 fn record_painted(records: &mut Records) {
-  for handle in records.handles() {
+  for handle in records.runtime.handles() {
     if let Some(cell) = records.cell_mut(handle) {
       cell.painted = cell.covers;
     }
@@ -556,8 +558,8 @@ fn measure_containers() -> bool {
   let (changed, publish) = with_records(|records| {
     let mut changed: Vec<(ContainerName, Size<i32>)> = Vec::new();
 
-    for handle in records.handles() {
-      let Some(name) = records.record(handle).and_then(Record::container)
+    for handle in records.runtime.handles() {
+      let Some(name) = records.runtime.record(handle).and_then(Record::container)
       else {
         continue;
       };
@@ -600,8 +602,8 @@ fn report_sizes() -> bool {
   let reports: Vec<Report> = with_records(|records| {
     let mut reports = Vec::new();
 
-    for handle in records.handles() {
-      let Some(record) = records.record(handle)
+    for handle in records.runtime.handles() {
+      let Some(record) = records.runtime.record(handle)
       else {
         continue;
       };
@@ -623,7 +625,7 @@ fn report_sizes() -> bool {
           .map(|observer| (Rc::clone(observer), size)),
       );
 
-      if let Some(record) = records.record_mut(handle) {
+      if let Some(record) = records.runtime.record_mut(handle) {
         record.reported = Some(size);
       }
     }
@@ -672,7 +674,7 @@ fn adjustments(records: &Records, handle: Handle) -> Vec<(Handle, (u32, u32))> {
   let mut adjusted = Vec::new();
   let (mut rel_x, mut rel_y) = records.node_location(handle);
   let (width, height) = records.node_size(handle);
-  let mut current = records.layout_parent(handle);
+  let mut current = records.runtime.layout_parent(handle);
 
   while let Some(ancestor) = current {
     let (mut offset_x, mut offset_y) = records.scroll_offset(ancestor);
@@ -715,7 +717,7 @@ fn adjustments(records: &Records, handle: Handle) -> Vec<(Handle, (u32, u32))> {
 
     rel_x += location_x - i64::from(offset_x);
     rel_y += location_y - i64::from(offset_y);
-    current = records.layout_parent(ancestor);
+    current = records.runtime.layout_parent(ancestor);
   }
 
   adjusted

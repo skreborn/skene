@@ -186,7 +186,7 @@ pub fn focused_node() -> Option<skene_foundation::NodeId> {
   with_records(|records| {
     records
       .focused()
-      .and_then(|focused| records.record(focused).and_then(|record| record.node))
+      .and_then(|focused| records.runtime.record(focused).map(|record| record.node))
   })
 }
 
@@ -196,7 +196,7 @@ skene_foundation::access_queries!(Terminal, name_facts);
 /// from its editor once the records are released.
 fn name_facts(node: NodeId) -> NameFacts {
   let (facts, entry) = with_records(|records| {
-    let Some(record) = records.record(node)
+    let Some(record) = records.runtime.record(node)
     else {
       return (NameFacts::default(), None);
     };

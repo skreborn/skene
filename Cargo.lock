@@ -2658,6 +2658,7 @@ dependencies = [
  "rustc-hash 2.1.3",
  "skene-foundation",
  "skene-parley",
+ "smallvec",
  "taffy",
 ]
 
@@ -2770,7 +2771,6 @@ dependencies = [
  "skene-layout",
  "skene-parley",
  "skene-reactive",
- "smallvec",
  "unicode-segmentation",
  "unicode-width",
 ]

@@ -59,6 +59,7 @@ impl Records {
     let (width, height) = self.node_size(handle);
     let border = self.node_border(handle);
     let padding = self
+      .runtime
       .record(handle)
       .and_then(|record| record.kind.box_style())
       .map(padding_cells)
@@ -90,6 +91,7 @@ impl Records {
   fn field_inset(&self, handle: Handle) -> (i64, i64) {
     let border = self.node_border(handle);
     let padding = self
+      .runtime
       .record(handle)
       .and_then(|record| record.kind.box_style())
       .map(padding_cells)
@@ -175,7 +177,7 @@ impl Records {
     let moved = field.scroll_window(&entry, area, delta);
 
     if moved {
-      self.damage(handle);
+      self.runtime.damage(handle);
     }
 
     Some(moved)
@@ -197,7 +199,7 @@ impl Records {
   /// Lays every editor's value out at the width of its laid-out area; an editor an
   /// operation holds is left to it.
   pub(crate) fn fit_entries(&self) {
-    for entry in &self.entries {
+    for entry in &self.runtime.entries {
       let (Some(field), Some(state)) = (self.field(*entry), self.entry(*entry))
       else {
         continue;
@@ -228,11 +230,11 @@ impl Records {
     }
 
     field.settle(&entry, area);
-    self.damage(handle);
+    self.runtime.damage(handle);
 
     if changed.text {
-      self.queue_restyle(handle);
-      self.layout_dirty = true;
+      self.runtime.restyle.queue(handle);
+      self.runtime.layout_dirty = true;
     }
   }
 
@@ -347,9 +349,9 @@ impl Records {
       editor.relayout();
     });
 
-    self.queue_restyle(entry);
-    self.layout_dirty = true;
-    self.damage(entry);
+    self.runtime.restyle.queue(entry);
+    self.runtime.layout_dirty = true;
+    self.runtime.damage(entry);
   }
 
   /// Whether `entry` is a secure text entry.
@@ -464,7 +466,7 @@ impl Records {
 
     let point = field.point_at(field.window, area, column, row);
 
-    self.damage(handle);
+    self.runtime.damage(handle);
 
     Some((handle, point))
   }

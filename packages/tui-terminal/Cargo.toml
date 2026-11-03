@@ -21,7 +21,6 @@ skene-foundation.workspace = true
 skene-layout.workspace = true
 skene-parley.workspace = true
 skene-reactive.workspace = true
-smallvec.workspace = true
 unicode-segmentation.workspace = true
 unicode-width = "0.2"
 

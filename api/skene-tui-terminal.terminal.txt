@@ -289,6 +289,8 @@ pub fn skene_tui_terminal::Terminal::set_scheme(core::option::Option<skene_found
 pub fn skene_tui_terminal::Terminal::set_window_title(core::option::Option<&str>)
 pub fn skene_tui_terminal::Terminal::watch_media(&skene_foundation::spine::condition::Media<i32>) -> skene_reactive::memo::Memo<bool>
 pub fn skene_tui_terminal::Terminal::write(skene_foundation::spine::node::NodeId, skene_foundation::spine::content::ContentValue<'_>)
+impl skene_layout::runtime::Drawn for skene_tui_terminal::Terminal
+pub fn skene_tui_terminal::Terminal::with_runtime<R>(impl core::ops::function::FnOnce(&mut skene_layout::runtime::Runtime<Self>) -> R) -> core::option::Option<R>
 impl skene_tui_terminal::CellPainter for skene_tui_terminal::Terminal
 pub fn skene_tui_terminal::Terminal::paint(skene_foundation::spine::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui_terminal::Cells<'_>, skene_foundation::spine::values::rect::Rect<u32>)>)
 pub struct skene_tui_terminal::WindowSize

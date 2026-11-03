@@ -1,5 +1,6 @@
-//! The records beside the scene: what the platform keeps per node, its cells' state
-//! beside it, the layout tree, the interaction state, and the environment it reports.
+//! The terminal's state beside the scene: the drawn runtime's records, each node's cell
+//! state beside its record, the layout tree, the interaction state, and the environment
+//! it reports.
 
 mod cell;
 mod environment;
@@ -7,23 +8,10 @@ mod field;
 mod frames;
 mod geometry;
 mod input;
-mod record;
-mod structure;
 
 pub(crate) use skene_foundation::Interaction;
-use skene_foundation::{
-  Axis,
-  BoxFacts,
-  ColorScheme,
-  Layout,
-  NodeId,
-  NodeMap,
-  PointerButtons,
-  Scene,
-  Shortcut,
-  Timers,
-};
-use skene_layout::{Restyle, Tree};
+use skene_foundation::{ColorScheme, NodeId, NodeMap, PointerButtons, Scene, Shortcut, Timers};
+use skene_layout::{Tree, runtime::Runtime};
 
 use self::environment::MediaState;
 pub(crate) use self::{
@@ -33,7 +21,6 @@ pub(crate) use self::{
   frames::{Clock, FRAME_INTERVAL},
   geometry::CellFrame,
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
-  record::{BoxCache, BoxRecord, KeptStyle, Kind, PlainBox, PlainRun, Record, RunCache, RunMotion},
 };
 use crate::{
   Clipboard,
@@ -56,6 +43,37 @@ pub(crate) type CellRect = (i64, i64, i64, i64);
 /// A node's record's key: the scene's own id for the node.
 pub(crate) type Handle = NodeId;
 
+/// One realized node, as the drawn runtime keeps it.
+pub(crate) type Record = skene_layout::runtime::Record<Terminal>;
+
+/// What a record is, with everything its creation carried.
+pub(crate) type Kind = skene_layout::runtime::Kind<Terminal>;
+
+/// A box-like node's facts, its kept style, its resolution and its motion.
+pub(crate) type BoxRecord = skene_layout::runtime::BoxRecord<Terminal>;
+
+/// A box's style resolved under one generation and interaction.
+pub(crate) type BoxCache = skene_layout::runtime::BoxCache<Terminal>;
+
+/// A run's style resolved under one generation and interaction.
+pub(crate) type RunCache = skene_layout::runtime::RunCache<Terminal>;
+
+/// A run's motion on the terminal's frame clock.
+pub(crate) type RunMotion =
+  skene_layout::runtime::RunMotion<skene_foundation::terminal::TerminalStyle>;
+
+/// A box's style resolved against live state.
+pub(crate) type PlainBox = skene_layout::runtime::PlainBox<Terminal>;
+
+/// A run's style resolved against live state.
+pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
+
+/// A node's style and motion as the shared half applies it.
+pub(crate) type KeptStyle = skene_layout::runtime::KeptStyle<Terminal>;
+
+/// What a derived leaf last wrote into a node's slot.
+pub(crate) type SlotLeaf = skene_layout::runtime::SlotLeaf<Terminal>;
+
 /// Every record the platform holds, the layout tree, the interaction state and the
 /// environment.
 #[expect(
@@ -63,23 +81,15 @@ pub(crate) type Handle = NodeId;
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Records {
-  /// The records, by node.
-  by_node: NodeMap<Record>,
+  /// The drawn runtime: a record per node, the root filling the screen, the overlays and
+  /// entries in build order, the restyle, and what the next frame lays out and repaints.
+  pub(crate) runtime: Runtime<Terminal>,
   /// The terminal's own state of each node, beside its record: its field, scroll
   /// offsets, the cells it covers and what it paints beyond its style.
   cells: NodeMap<CellNode>,
   /// The layout tree; a text leaf carries its flow as context, which measures it and
   /// which painting and hit testing read the text's layout from.
   pub(crate) tree: Tree<CellLeaf>,
-  /// The root box, filling the screen.
-  pub(crate) root: Handle,
-  /// Every overlay, in build order; later entries stack on top.
-  pub(crate) overlays: Vec<Handle>,
-  /// Every text entry, in build order.
-  pub(crate) entries: Vec<Handle>,
-  /// The nodes whose paint changed since the last frame; each repaints the rows it
-  /// covered and covers.
-  damaged: Vec<Handle>,
   /// Screen rectangles to repaint that no live node covers any more.
   damaged_rects: Vec<CellRect>,
   /// The last painted frame, which the next paints over where nothing changed.
@@ -152,17 +162,9 @@ pub(crate) struct Records {
   pub(crate) set_style_calls: u64,
   /// How many node styles have been resolved from their declarations.
   pub(crate) style_resolutions: u64,
-  /// Whether anything the layout reads changed since it was last computed.
-  pub(crate) layout_dirty: bool,
-  /// Whether the whole frame repaints; a change confined to a node damages it instead.
-  pub(crate) paint_dirty: bool,
   /// Whether a node's screen rectangle may have moved since the last paint measured
   /// them: the layout, a scroll offset or a shadow's reach changed.
   pub(crate) covers_stale: bool,
-  /// What moved since the last restyle: the resolution generation, moving when
-  /// definitions, the environment or a control's state change, and the nodes the next
-  /// restyle revisits.
-  pub(crate) restyle: Restyle,
   /// Whether a key asked the app to quit.
   pub(crate) quit: bool,
   /// The clock motion samples against.
@@ -196,25 +198,10 @@ pub(crate) struct Records {
 impl Records {
   /// Records whose root box, filling the screen, is the scene's node `root`.
   pub(crate) fn new(root: NodeId) -> Self {
-    let root_facts = BoxFacts {
-      layout: Layout::Flex {
-        axis: Axis::Vertical,
-        reversed: false,
-      },
-      container: None,
-      transition_name: None,
-      link: false,
-      acting: false,
-      decorated: true,
-    };
     let mut records = Self {
-      by_node: NodeMap::new(),
+      runtime: Runtime::new(root),
       cells: NodeMap::new(),
       tree: Tree::new(true),
-      root,
-      overlays: Vec::new(),
-      entries: Vec::new(),
-      damaged: Vec::new(),
       damaged_rects: Vec::new(),
       last_frame: None,
       repainted: Vec::new(),
@@ -248,10 +235,7 @@ impl Records {
       layout_generation: 0,
       set_style_calls: 0,
       style_resolutions: 0,
-      layout_dirty: true,
-      paint_dirty: true,
       covers_stale: true,
-      restyle: Restyle::new(),
       quit: false,
       clock: Clock::Manual(0.),
       reduced_motion: false,
@@ -265,37 +249,33 @@ impl Records {
       picture_generation: 0,
     };
 
-    records.insert(root, Kind::Box(BoxRecord::new(None, None, root_facts)));
+    let decorated = records
+      .runtime
+      .record(root)
+      .is_some_and(|record| record.kind.is_decorated());
+
+    records.insert_cells(root, decorated);
 
     records
   }
 
-  /// Stores a record of `kind` as the record of `node`, beside cell state holding
-  /// nothing yet, a fresh leaf of the layout tree: a container of its own where a view
-  /// taking decoration created its box, and laid out by its nearest such ancestor's
-  /// engine where it is a layout-only box or a run.
+  /// Stores a record of `kind` as the record of `node` in the runtime, beside cell state
+  /// holding nothing yet and a fresh leaf of the layout tree: a container of its own
+  /// where a view taking decoration created its box, and laid out by its nearest such
+  /// ancestor's engine where it is a layout-only box or a run.
   pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
-    let decorated = kind.box_record().is_some_and(|inner| inner.facts.decorated);
-    let mut record = Record::new(kind);
+    let decorated = kind.is_decorated();
 
-    record.node = Some(node);
+    self.runtime.insert(node, kind);
+    self.insert_cells(node, decorated);
+  }
+
+  /// Adds `node`'s leaf of the layout tree, a container where it is `decorated`, and its
+  /// cell state holding nothing yet.
+  fn insert_cells(&mut self, node: NodeId, decorated: bool) {
     self.tree.insert(node, decorated);
-    self.restyle.move_structure();
 
-    let _replaced = self.by_node.insert(node, record);
     let _replaced = self.cells.insert(node, CellNode::default());
-  }
-
-  /// The record of `handle`, if it is live.
-  #[inline(always)]
-  pub(crate) fn record(&self, handle: Handle) -> Option<&Record> {
-    self.by_node.get(handle)
-  }
-
-  /// The record of `handle`, mutably, if it is live.
-  #[inline(always)]
-  pub(crate) fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
-    self.by_node.get_mut(handle)
   }
 
   /// The terminal's own state of `handle`, if it is live.
@@ -313,7 +293,7 @@ impl Records {
   /// Replaces the run `handle`'s text, its selection, style and layout made afresh;
   /// nothing happens where it reads `text` already.
   pub(crate) fn write_text(&mut self, handle: Handle, text: &str) {
-    let Some(record) = self.record_mut(handle)
+    let Some(record) = self.runtime.record_mut(handle)
     else {
       return;
     };
@@ -324,25 +304,18 @@ impl Records {
 
     text.clone_into(&mut record.text);
     self.invalidate_selection(handle);
-    self.queue_restyle(handle);
-    self.layout_dirty = true;
-    self.damage(handle);
-  }
-
-  /// Queues `handle` for the next restyle, which resolves it where its resolution is
-  /// stale and hands the layout what it measures by.
-  #[inline(always)]
-  pub(crate) fn queue_restyle(&mut self, handle: Handle) {
-    self.restyle.queue(handle);
+    self.runtime.restyle.queue(handle);
+    self.runtime.layout_dirty = true;
+    self.runtime.damage(handle);
   }
 
   /// Measures every node's text again, after the terminal's clustering or sizing
   /// changed: each entry's value laid out afresh at its next query, and each laid-out
   /// node's flow made afresh at its next restyle.
   pub(crate) fn remeasure(&mut self) {
-    self.restyle.revisit_every();
+    self.runtime.restyle.revisit_every();
 
-    for handle in self.handles() {
+    for handle in self.runtime.handles() {
       if self.field(handle).is_some()
         && let Some(entry) = Scene::<Terminal>::entry_of(handle)
         && let Ok(mut editor) = entry.editor().try_borrow_mut()
@@ -354,14 +327,9 @@ impl Records {
     }
   }
 
-  /// Every live handle, in index order.
-  pub(crate) fn handles(&self) -> Vec<Handle> {
-    self.by_node.iter().map(|(handle, _)| handle).collect()
-  }
-
   /// How many nodes the platform holds a record of.
   pub(crate) fn record_count(&self) -> usize {
-    let count = self.by_node.values().count();
+    let count = self.runtime.record_count();
 
     debug_assert_eq!(
       self.cells.values().count(),
@@ -374,17 +342,13 @@ impl Records {
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: Handle) {
-    if self.by_node.remove(handle).is_none() {
+    if self.runtime.destroy(handle).is_none() {
       return;
     }
 
     let cell = self.cells.remove(handle);
 
     self.tree.remove(handle);
-
-    self.overlays.retain(|overlay| *overlay != handle);
-    self.entries.retain(|entry| *entry != handle);
-    self.restyle.read_interaction(handle, false);
 
     if let Some(rect) = cell.and_then(|cell| cell.painted) {
       self.damaged_rects.push(rect);
@@ -411,8 +375,6 @@ impl Records {
     }
 
     self.invalidate_selection(handle);
-    self.restyle.move_structure();
-    self.paint_dirty = true;
   }
 }
 
@@ -444,6 +406,7 @@ mod tests {
   fn decorated(node: NodeId) -> (Option<bool>, bool) {
     with_records(|records| {
       let decorated = records
+        .runtime
         .record(node)
         .expect("a mounted node has a record")
         .kind

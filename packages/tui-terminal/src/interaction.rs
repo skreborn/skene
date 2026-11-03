@@ -80,14 +80,14 @@ impl Records {
   pub(crate) fn open_overlays(&self) -> Vec<Handle> {
     Scene::<Terminal>::read(|scene| scene.open_overlays().to_vec())
       .into_iter()
-      .filter(|overlay| self.is_reachable(*overlay))
+      .filter(|overlay| self.runtime.is_reachable(*overlay))
       .collect()
   }
 
   /// Whether `handle` sits inside an open overlay.
   pub(crate) fn inside_open_overlay(&self, handle: Option<Handle>) -> bool {
     handle.is_some_and(|handle| {
-      let ancestors = self.ancestors(handle);
+      let ancestors = self.runtime.ancestors(handle);
 
       self
         .open_overlays()
@@ -145,7 +145,7 @@ impl Records {
     let overlays: Vec<NodeId> = self
       .open_overlays()
       .into_iter()
-      .filter_map(|overlay| self.record(overlay)?.node)
+      .filter_map(|overlay| self.runtime.record(overlay).map(|record| record.node))
       .collect();
 
     Scene::<Terminal>::read(|scene| {
@@ -161,7 +161,7 @@ impl Records {
     self
       .hit_test(x, y)
       .last()
-      .map(|(deepest, _)| self.ancestors(*deepest).into_iter().rev().collect())
+      .map(|(deepest, _)| self.runtime.ancestors(*deepest).into_iter().rev().collect())
       .unwrap_or_default()
   }
 
@@ -186,7 +186,14 @@ impl Records {
 
     let mut path = Vec::new();
 
-    self.hit_walk(self.root, 0, 0, i64::from(x), i64::from(y), &mut path);
+    self.hit_walk(
+      self.runtime.root(),
+      0,
+      0,
+      i64::from(x),
+      i64::from(y),
+      &mut path,
+    );
 
     path
   }
@@ -203,10 +210,10 @@ impl Records {
     y: i64,
     path: &mut Vec<(Handle, (i64, i64))>,
   ) -> bool {
-    let Some(record) = self.record(handle)
+    let Some(record) = self.runtime.record(handle)
     else {
-      for child in self.children_reversed(handle) {
-        if self.record(child).is_some_and(Record::is_overlay) {
+      for child in self.runtime.children_reversed(handle) {
+        if self.runtime.record(child).is_some_and(Record::is_overlay) {
           continue;
         }
 
@@ -224,7 +231,7 @@ impl Records {
 
     let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(record);
     let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
-    let contains = handle == self.root || frame.covers((origin_x, origin_y), (x, y));
+    let contains = handle == self.runtime.root() || frame.covers((origin_x, origin_y), (x, y));
 
     // A box clipping its overflow keeps every hit beneath it inside it; any other's
     // content takes a hit wherever it reaches, as a browser's does.
@@ -297,8 +304,8 @@ impl Records {
       );
 
       // Later children paint on top, so they win the hit; overlays hit separately.
-      for child in self.children_reversed(handle) {
-        if self.record(child).is_some_and(Record::is_overlay) {
+      for child in self.runtime.children_reversed(handle) {
+        if self.runtime.record(child).is_some_and(Record::is_overlay) {
           continue;
         }
 
@@ -388,13 +395,14 @@ impl Records {
     path: &mut Vec<(Handle, (i64, i64))>,
   ) {
     let mut chain: Vec<Handle> = self
+      .runtime
       .ancestors(leaf)
       .into_iter()
       .skip(1)
       .take_while(|ancestor| *ancestor != handle)
       .filter(|ancestor| {
         matches!(
-          self.record(*ancestor).map(|record| &record.kind),
+          self.runtime.record(*ancestor).map(|record| &record.kind),
           Some(Kind::Run { .. })
         )
       })
@@ -449,7 +457,7 @@ impl Records {
     let mut current = Some(handle);
 
     while let Some(visited) = current {
-      let record = self.record(visited);
+      let record = self.runtime.record(visited);
 
       if record.is_some_and(Record::is_overlay) {
         let (overlay_x, overlay_y) = self.overlay_origin(visited);
@@ -463,7 +471,7 @@ impl Records {
         x += location_x;
         y += location_y;
 
-        if let Some(parent) = self.layout_parent(visited) {
+        if let Some(parent) = self.runtime.layout_parent(visited) {
           let (scroll_x, scroll_y) = self.scroll_offset(parent);
 
           x -= i64::from(scroll_x);
@@ -471,7 +479,7 @@ impl Records {
         }
       }
 
-      current = self.parent(visited);
+      current = self.runtime.parent(visited);
     }
 
     (x, y)
@@ -486,7 +494,7 @@ impl Records {
       placement,
       position,
       ..
-    }) = self.record(handle).map(|record| &record.kind)
+    }) = self.runtime.record(handle).map(|record| &record.kind)
     else {
       return (0, 0);
     };
@@ -498,8 +506,14 @@ impl Records {
     });
     let (width, height) = self.node_size(handle);
 
-    // A pinned overlay sits at its cell, shifted back into the screen.
-    if let Some((x, y)) = position {
+    // A pinned overlay sits at the cell its point falls in, shifted back into the screen.
+    if let Some(point) = position {
+      #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a pointer's cell lies within the terminal, far inside i64"
+      )]
+      let (x, y) = (point.x.floor() as i64, point.y.floor() as i64);
+
       return (x.min(columns - width).max(0), y.min(rows - height).max(0));
     }
 
@@ -569,7 +583,7 @@ impl Records {
     }
 
     self.hovered().iter().find_map(|handle| {
-      let record = self.record(*handle)?;
+      let record = self.runtime.record(*handle)?;
 
       if let Some(style) = record.kind.box_style()
         && let Some(cursor) = style.cursor
@@ -613,6 +627,7 @@ impl Records {
   /// no box style.
   fn overflow(&self, handle: Handle) -> Axes<Overflow> {
     self
+      .runtime
       .record(handle)
       .and_then(|record| record.kind.box_style())
       .and_then(|style| style.overflow)
@@ -622,7 +637,10 @@ impl Records {
   /// Whether the node's box is hidden: it and its content draw nothing and take neither
   /// the pointer nor focus.
   pub(crate) fn is_hidden(&self, handle: Handle) -> bool {
-    self.record(handle).is_some_and(Record::is_invisible)
+    self
+      .runtime
+      .record(handle)
+      .is_some_and(Record::is_invisible)
   }
 
   /// Whether the node's content scrolls: a box overflowing by its style on either axis,
@@ -710,7 +728,7 @@ impl Records {
   /// Stores a node's offsets and repaints; the scroll notification is the caller's. An
   /// editor's window moves instead, notifying nothing.
   fn write_scroll(&mut self, handle: Handle, offsets: (u32, u32)) -> Option<NodeId> {
-    self.damage(handle);
+    self.runtime.damage(handle);
     self.covers_stale = true;
 
     if self.is_editor(handle) {
@@ -721,7 +739,7 @@ impl Records {
 
     self.cell_mut(handle)?.scroll = offsets;
 
-    self.record(handle)?.node
+    self.runtime.record(handle).map(|record| record.node)
   }
 
   /// A scrollable's track along `axis`: its absolute start, its length in cells, and
@@ -805,19 +823,21 @@ impl Records {
   /// takes focus as the scene chooses ([`Scene::modal_focus`]). The scene returns focus as an
   /// overlay closes.
   pub(crate) fn set_overlay_open(&mut self, handle: Handle, open: bool) -> OverlayFocus {
-    let Some(Kind::Overlay { open: held, .. }) =
-      self.record_mut(handle).map(|record| &mut record.kind)
+    let Some(Kind::Overlay { open: held, .. }) = self
+      .runtime
+      .record_mut(handle)
+      .map(|record| &mut record.kind)
     else {
       return OverlayFocus::Held;
     };
     let was_open = std::mem::replace(held, open);
 
     if was_open != open {
-      self.restyle.revisit_every();
+      self.runtime.restyle.revisit_every();
     }
 
-    self.layout_dirty = true;
-    self.paint_dirty = true;
+    self.runtime.layout_dirty = true;
+    self.runtime.paint_dirty = true;
 
     if !open || was_open || !Scene::<Terminal>::read(|scene| scene.is_modal(handle)) {
       return OverlayFocus::Held;
@@ -869,7 +889,7 @@ fn focus_on(next: Option<Handle>, restored: bool) {
         records.collapse_entry_selection(previous);
       }
 
-      records.damage(previous);
+      records.runtime.damage(previous);
     }
 
     if let Some(next) = next {
@@ -878,11 +898,11 @@ fn focus_on(next: Option<Handle>, restored: bool) {
       }
 
       records.settle_entry(next);
-      records.damage(next);
+      records.runtime.damage(next);
       records.reveal = Some(next);
     }
 
-    Some(next.and_then(|next| records.record(next).and_then(|record| record.node)))
+    Some(next.and_then(|next| records.runtime.record(next).map(|record| record.node)))
   });
 
   if let Some(gained) = moved {
@@ -901,7 +921,7 @@ pub(crate) fn move_focus(step: isize) {
     let order = records.tab_stops();
     let from = records
       .focused()
-      .and_then(|focused| records.record(focused)?.node);
+      .and_then(|focused| records.runtime.record(focused).map(|record| record.node));
 
     Scene::<Terminal>::read(|scene| scene.tab_from(root, &order, from, step))
   });
@@ -923,7 +943,9 @@ pub(crate) fn set_hover(x: u16, y: u16) {
       records.scroll_latch = None;
     }
 
-    next.last().and_then(|handle| records.record(*handle)?.node)
+    next
+      .last()
+      .and_then(|handle| records.runtime.record(*handle).map(|record| record.node))
   });
 
   notify_pointer_moved::<Terminal>(deepest);
@@ -984,7 +1006,7 @@ pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modi
   let target = records(|records| pointer_target(records, x, y));
 
   if let Some((handle, origin)) = target
-    && let Some(node) = records(|records| records.record(handle).and_then(|record| record.node))
+    && let Some(node) = records(|records| records.runtime.record(handle).map(|record| record.node))
   {
     let _ = dispatch_pointer_move::<Terminal>(node, &pointer_event(x, y, origin, None, modifiers));
   }
@@ -1062,11 +1084,11 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     let path = records.hit_test(x, y);
     let deepest = path
       .last()
-      .and_then(|(handle, _)| records.record(*handle)?.node);
+      .and_then(|(handle, _)| records.runtime.record(*handle).map(|record| record.node));
     let overlays: Vec<NodeId> = records
       .open_overlays()
       .into_iter()
-      .filter_map(|overlay| records.record(overlay)?.node)
+      .filter_map(|overlay| records.runtime.record(overlay).map(|record| record.node))
       .collect();
     let dismissed = Scene::<Terminal>::read(|scene| scene.dismissed_by_press(&overlays, deepest));
     let inside_overlay = records
@@ -1120,11 +1142,16 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         // control that opened it.
         let (first, _) = path.first()?;
 
-        if !records.record(*first).is_some_and(Record::is_overlay) {
+        if !records
+          .runtime
+          .record(*first)
+          .is_some_and(Record::is_overlay)
+        {
           return None;
         }
 
         records
+          .runtime
           .ancestors(*first)
           .into_iter()
           .find(|node| records.is_focusable(*node))
@@ -1136,7 +1163,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   let entry_held_focus =
     entry.is_some_and(|entry| records(|records| records.focused() == Some(entry)));
 
-  let node = records(|records| records.record(deepest).and_then(|record| record.node));
+  let node = records(|records| records.runtime.record(deepest).map(|record| record.node));
   let prevented = node.map_or(Prevented::default(), |node| {
     dispatch_pointer_down::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers))
   });
@@ -1147,7 +1174,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
 
   records(|records| {
     if button == PointerButton::Primary {
-      let path = records.ancestors(deepest);
+      let path = records.runtime.ancestors(deepest);
       let captured = path.iter().copied().find(|handle| records.drags(*handle));
       let count = records.register_press(x, y);
 
@@ -1307,7 +1334,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   });
 
   if let Some((handle, origin)) = target
-    && let Some(node) = records(|records| records.record(handle).and_then(|record| record.node))
+    && let Some(node) = records(|records| records.runtime.record(handle).map(|record| record.node))
   {
     let _ =
       dispatch_pointer_up::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers));
@@ -1338,7 +1365,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     let pressed_link = records.pressed_link.take();
 
     (
-      common.and_then(|handle| records.record(handle).and_then(|record| record.node)),
+      common.and_then(|handle| records.runtime.record(handle).map(|record| record.node)),
       pressed_link,
       press.count,
     )
@@ -1395,7 +1422,7 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
   let over = records(|records| {
     let (handle, _) = records.hit_test(x, y).last().copied()?;
 
-    records.record(handle)?.node
+    records.runtime.record(handle).map(|record| record.node)
   });
   let _ = move_drag::<Terminal>(over);
 }
@@ -1515,7 +1542,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
   let under = records(|records| {
     let (handle, origin) = records.hit_test(x, y).last().copied()?;
 
-    Some((records.record(handle)?.node?, origin))
+    Some((records.runtime.record(handle)?.node, origin))
   });
 
   if let Some((node, origin)) = under {
@@ -1584,19 +1611,20 @@ pub(crate) fn page_scroll(pages: i64) {
       .focused()
       .and_then(|focused| {
         records
+          .runtime
           .ancestors(focused)
           .into_iter()
           .find(|node| records.is_scrollable(*node))
       })
       .or_else(|| {
-        let mut stack = vec![records.root];
+        let mut stack = vec![records.runtime.root()];
 
         while let Some(current) = stack.pop() {
           if records.is_scrollable(current) {
             return Some(current);
           }
 
-          stack.extend(records.children_reversed(current));
+          stack.extend(records.runtime.children_reversed(current));
         }
 
         None
@@ -1628,9 +1656,9 @@ pub(crate) fn key(event: &KeyEvent) {
       records.set_focus_visible(true);
     }
 
-    let handle = records.focused().unwrap_or(records.root);
+    let handle = records.focused().unwrap_or(records.runtime.root());
 
-    records.record(handle).and_then(|record| record.node)
+    records.runtime.record(handle).map(|record| record.node)
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_down::<Terminal>(node, event)
@@ -1650,9 +1678,9 @@ pub(crate) fn key(event: &KeyEvent) {
 /// prevented it, activates the activatable row whose `Space` it releases.
 pub(crate) fn key_up(event: &KeyEvent) {
   let target = records(|records| {
-    let handle = records.focused().unwrap_or(records.root);
+    let handle = records.focused().unwrap_or(records.runtime.root());
 
-    records.record(handle).and_then(|record| record.node)
+    records.runtime.record(handle).map(|record| record.node)
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_up::<Terminal>(node, event)
@@ -1794,8 +1822,8 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
 /// corner, the request naming no pointer.
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = records(|records| {
-    let handle = records.focused().unwrap_or(records.root);
-    let node = records.record(handle).and_then(|record| record.node)?;
+    let handle = records.focused().unwrap_or(records.runtime.root());
+    let node = records.runtime.record(handle)?.node;
     let (origin_x, origin_y) = records.screen_origin(handle);
     let (_, height) = records.node_size(handle);
 
@@ -1858,7 +1886,7 @@ fn cancel_press() {
 
   Scene::<Terminal>::with(|scene| scene.set_pressed(None));
 
-  if let Some(node) = records(|records| records.record(reached).and_then(|record| record.node)) {
+  if let Some(node) = records(|records| records.runtime.record(reached).map(|record| record.node)) {
     let event = PointerEvent {
       buttons: PointerButtons::new(),
       pressure: 0.,

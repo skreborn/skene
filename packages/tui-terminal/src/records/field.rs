@@ -22,7 +22,7 @@ use skene_foundation::{
 use super::Records;
 use crate::{
   Terminal,
-  engine::{CellEngine, Drawn, drawn, engine, paragraph_style, whole, wrap_spans},
+  engine::{CellEngine, DrawnCluster, drawn, engine, paragraph_style, whole, wrap_spans},
   field::{Area, settled_window},
   layout::{cell_point, cells_of},
   text::{self, CellScale},
@@ -170,7 +170,7 @@ impl Field {
 
   /// Every cluster the editor's value draws, in bytes of the value, with what it shows:
   /// the cluster itself, or a secure entry's mark.
-  fn drawn_value(editor: &EntryEditor) -> Vec<(Drawn, String)> {
+  fn drawn_value(editor: &EntryEditor) -> Vec<(DrawnCluster, String)> {
     let laid = editor.laid();
     let value = editor.text();
 
@@ -186,7 +186,7 @@ impl Field {
     drawn(laid.inner(), &shown, &TextIndex::new(&shown))
       .into_iter()
       .map(|cluster| {
-        let real = Drawn {
+        let real = DrawnCluster {
           at: laid.real_index(cluster.at),
           end: laid.real_index(cluster.end),
           ..cluster
@@ -444,6 +444,7 @@ impl Records {
   /// Every entry's editing state, in build order.
   pub(crate) fn entry_states(&self) -> Vec<Rc<EntryState>> {
     self
+      .runtime
       .entries
       .iter()
       .filter_map(|entry| self.entry(*entry))

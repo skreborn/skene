@@ -276,7 +276,7 @@ impl Source {
     let mut source = Vec::new();
 
     for run in runs {
-      let Some(record) = records.record(run)
+      let Some(record) = records.runtime.record(run)
       else {
         continue;
       };
@@ -346,16 +346,16 @@ pub(crate) fn flow_of(records: &Records, handle: Handle) -> Option<&CellFlow> {
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
 /// laid-out child is an inline text run or an inline box.
 pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
-  if records.record(handle).and_then(Record::layout) != Some(Layout::Document) {
+  if records.runtime.record(handle).and_then(Record::layout) != Some(Layout::Document) {
     return false;
   }
 
-  let children = records.layout_children(handle);
+  let children = records.runtime.layout_children(handle);
 
   !children.is_empty()
     && children.iter().all(|child| {
       matches!(
-        records.record(*child).map(|record| &record.kind),
+        records.runtime.record(*child).map(|record| &record.kind),
         Some(Kind::Run { facts, .. }) if facts.placement != RunPlacement::Line
       )
     })
@@ -365,7 +365,7 @@ pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
 /// text, its text one placeholder cluster as large as the box.
 pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
   matches!(
-    records.record(handle).map(|record| &record.kind),
+    records.runtime.record(handle).map(|record| &record.kind),
     Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Embedded
   )
 }
@@ -374,21 +374,21 @@ pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
 /// paragraph.
 pub(crate) fn is_inline_run(records: &Records, handle: Handle) -> bool {
   matches!(
-    records.record(handle).map(|record| &record.kind),
+    records.runtime.record(handle).map(|record| &record.kind),
     Some(Kind::Run { facts, .. }) if facts.placement != RunPlacement::Line
   )
 }
 
 /// The paragraph the inline run `handle` flows in, through any groups around it.
 pub(crate) fn enclosing_paragraph(records: &Records, handle: Handle) -> Option<Handle> {
-  let mut current = records.layout_parent(handle)?;
+  let mut current = records.runtime.layout_parent(handle)?;
 
   while !is_paragraph(records, current) {
     if !is_inline_run(records, current) {
       return None;
     }
 
-    current = records.layout_parent(current)?;
+    current = records.runtime.layout_parent(current)?;
   }
 
   Some(current)
@@ -410,7 +410,7 @@ pub(crate) fn paragraph_text(records: &Records, handle: Handle) -> String {
   let mut text = String::new();
 
   for run in paragraph_runs(records, handle) {
-    if let Some(record) = records.record(run) {
+    if let Some(record) = records.runtime.record(run) {
       text.push_str(&record.text);
     }
   }
@@ -438,9 +438,9 @@ fn visit_runs(
   groups: &mut Vec<Handle>,
   visit: &mut impl FnMut(Handle, &[Handle]),
 ) {
-  for child in records.layout_children(handle) {
+  for child in records.runtime.layout_children(handle) {
     let is_run = matches!(
-      records.record(child).map(|record| &record.kind),
+      records.runtime.record(child).map(|record| &record.kind),
       Some(Kind::Run { .. })
     );
 
@@ -448,7 +448,7 @@ fn visit_runs(
       continue;
     }
 
-    if is_inline_box(records, child) || records.layout_children(child).is_empty() {
+    if is_inline_box(records, child) || records.runtime.layout_children(child).is_empty() {
       visit(child, groups);
     }
     else {
@@ -475,7 +475,10 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
   for handle in handles {
     let shown = match &displayed {
       Some(displayed) => displayed.contains(&handle),
-      None => records.record(handle).is_some_and(|record| !record.hidden),
+      None => records
+        .runtime
+        .record(handle)
+        .is_some_and(|record| !record.hidden),
     };
     let Some(restyled) = restyle_one(records, handle, shown)
     else {
@@ -499,12 +502,13 @@ pub(crate) fn restyle(records: &mut Records) -> bool {
 /// every node.
 fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) {
   let interaction = Scene::<Terminal>::read(Scene::interaction_generation);
-  let (mut handles, displayed) = match records.restyle.take(interaction) {
-    Revisit::Every => (records.handles(), Some(records.displayed())),
+  let (mut handles, displayed) = match records.runtime.restyle.take(interaction) {
+    Revisit::Every => (records.runtime.handles(), Some(records.runtime.displayed())),
     Revisit::Nodes(mut handles, moved) => {
       if moved {
         handles.extend(
           records
+            .runtime
             .restyle
             .interactive()
             .filter(|handle| records.interaction_moved(*handle)),
@@ -527,7 +531,7 @@ fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) 
 
   handles.sort_by_key(|handle| {
     !matches!(
-      records.record(*handle).map(|record| &record.kind),
+      records.runtime.record(*handle).map(|record| &record.kind),
       Some(Kind::Run { .. })
     )
   });
@@ -539,17 +543,17 @@ fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) 
 /// to; `None` for a node without a record. A node out of the display runs no motion
 /// and forgets its presentation, so it shows afresh once `displayed` again.
 fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option<Restyled> {
-  let generation = records.restyle.generation();
+  let generation = records.runtime.restyle.generation();
   let now = records.now();
   let reduced = records.reduced_motion;
-  let record = records.record_mut(handle)?;
+  let record = records.runtime.record_mut(handle)?;
 
   if !displayed {
     if !record.hidden {
       record.hidden = true;
       record.in_motion = false;
       record.kind.forget_presentation();
-      records.restyle.read_interaction(handle, false);
+      records.runtime.restyle.read_interaction(handle, false);
     }
 
     return Some(taffy_style_of(records, handle));
@@ -557,7 +561,7 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
 
   record.hidden = false;
 
-  let record = records.record(handle)?;
+  let record = records.runtime.record(handle)?;
   let interaction = records.interaction(handle);
   let fresh = record.kind.resolved_under() == Some((generation, interaction));
   let in_motion = record.in_motion;
@@ -573,10 +577,10 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     } = targets(records, handle, fresh)?;
 
     if let Some(read) = reads_interaction {
-      records.restyle.read_interaction(handle, read);
+      records.runtime.restyle.read_interaction(handle, read);
     }
 
-    let record = records.record_mut(handle)?;
+    let record = records.runtime.record_mut(handle)?;
     let frame = Frame {
       generation,
       interaction,
@@ -606,11 +610,11 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     records.motion_active |= active;
 
     if active {
-      records.restyle.keep_moving(handle);
+      records.runtime.restyle.keep_moving(handle);
     }
 
     if repaint {
-      records.damage(handle);
+      records.runtime.damage(handle);
     }
   }
 
@@ -632,7 +636,7 @@ struct Targets {
 /// The targets of `handle`: a fresh node in motion samples its clock over the targets
 /// and keyframes it already resolved; only a stale one resolves again.
 fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets> {
-  let record = records.record(handle)?;
+  let record = records.runtime.record(handle)?;
 
   if fresh {
     return Some(match &record.kind {
@@ -793,10 +797,10 @@ fn present_box(
 
 /// The taffy style `handle` takes from its resolved style and its place in the tree.
 fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
-  let record = records.record(handle).expect("a live record");
-  let layout_parent = records.layout_parent(handle);
+  let record = records.runtime.record(handle).expect("a live record");
+  let layout_parent = records.runtime.layout_parent(handle);
   let in_stack = layout_parent
-    .and_then(|parent| records.record(parent))
+    .and_then(|parent| records.runtime.record(parent))
     .and_then(Record::layout)
     == Some(Layout::Stack);
   let place = Place {
@@ -804,7 +808,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     borders: Borders::Unit,
   };
   // The root's child fills the viewport, unless it sizes its own height.
-  let fills_root = layout_parent == Some(records.root)
+  let fills_root = layout_parent == Some(records.runtime.root())
     && !record.is_overlay()
     && record
       .kind
@@ -815,7 +819,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     Kind::Run { facts, cache, .. } => {
       let mut style = Style::default();
       let inline = facts.placement != RunPlacement::Line;
-      let has_children = !records.layout_children(handle).is_empty();
+      let has_children = !records.runtime.layout_children(handle).is_empty();
 
       // A wrapper's properties on a bare run: its flexibility, alignment, pinning and
       // grid placement, folded like a box's.
@@ -909,7 +913,7 @@ fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
   let mut flow = CellFlow::new();
 
   visit_runs(records, handle, &mut Vec::new(), &mut |run, groups| {
-    let Some(record) = records.record(run)
+    let Some(record) = records.runtime.record(run)
     else {
       return;
     };
@@ -929,11 +933,11 @@ fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
 /// last layout and the restyle after it: a paragraph the inline boxes its flow names, in
 /// order, and a group run inside one none.
 pub(crate) fn rebuild_children(records: &mut Records) {
-  if !records.restyle.take_structure() {
+  if !records.runtime.restyle.take_structure() {
     return;
   }
 
-  let handles = records.handles();
+  let handles = records.runtime.handles();
 
   for handle in handles {
     if !records.tree.contains(handle) {
@@ -944,7 +948,7 @@ pub(crate) fn rebuild_children(records: &mut Records) {
       flow_of(records, handle).map_or_else(Vec::new, |flow| flow.boxes().collect())
     }
     else {
-      let children = records.layout_children(handle);
+      let children = records.runtime.layout_children(handle);
       let grouped = !children.is_empty()
         && is_inline_run(records, handle)
         && !is_inline_box(records, handle)
@@ -953,25 +957,26 @@ pub(crate) fn rebuild_children(records: &mut Records) {
       if grouped { Vec::new() } else { children }
     };
 
-    if handle == records.root {
+    if handle == records.runtime.root() {
       children.extend(
         records
+          .runtime
           .overlays
           .iter()
           .copied()
-          .filter(|overlay| records.is_reachable(*overlay)),
+          .filter(|overlay| records.runtime.is_reachable(*overlay)),
       );
     }
 
     records.tree.set_children(handle, children);
   }
 
-  records.layout_dirty = true;
+  records.runtime.layout_dirty = true;
 }
 
 /// Computes the layout at `width` x `height`, the root sized to the terminal.
 pub(crate) fn compute(records: &mut Records, width: u16, height: u16) {
-  let root = records.root;
+  let root = records.runtime.root();
   let (width, height) = (f32::from(width), f32::from(height));
 
   records.tree.set_style(
@@ -1145,15 +1150,15 @@ mod tests {
     frame::settle(20, 1);
 
     with_records(|records| {
-      let [a, outer] = records.layout_children(paragraph)[..]
+      let [a, outer] = records.runtime.layout_children(paragraph)[..]
       else {
         panic!("the paragraph holds a run and a group");
       };
-      let [inner, inline] = records.layout_children(outer)[..]
+      let [inner, inline] = records.runtime.layout_children(outer)[..]
       else {
         panic!("the outer group holds a group and an inline box");
       };
-      let [b] = records.layout_children(inner)[..]
+      let [b] = records.runtime.layout_children(inner)[..]
       else {
         panic!("the inner group holds a run");
       };

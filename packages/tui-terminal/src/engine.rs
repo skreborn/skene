@@ -82,7 +82,7 @@ impl Substitute for StandIns {
 /// One grapheme cluster a laid-out text draws: the bytes of the text it holds, the cell
 /// its block's left edge is in, the row its block's top is on, and the cells it advances.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Drawn {
+pub(crate) struct DrawnCluster {
   pub(crate) at: usize,
   pub(crate) end: usize,
   pub(crate) column: usize,
@@ -94,7 +94,7 @@ pub(crate) struct Drawn {
 /// engine places it, as wide as the terminal draws it at its run's size and as tall as the
 /// size's rows, its block's foot on its line's baseline. A line's break and the blanks
 /// hanging past its end, wholly or in part, draw nothing.
-pub(crate) fn drawn(laid: &CellLaid, text: &str, index: &TextIndex) -> Vec<Drawn> {
+pub(crate) fn drawn(laid: &CellLaid, text: &str, index: &TextIndex) -> Vec<DrawnCluster> {
   let mut drawn = Vec::new();
   let lines = laid.lines();
 
@@ -138,7 +138,7 @@ pub(crate) fn drawn(laid: &CellLaid, text: &str, index: &TextIndex) -> Vec<Drawn
 
           let advance = text::width(grapheme) * whole(rows);
 
-          drawn.push(Drawn {
+          drawn.push(DrawnCluster {
             at,
             end: next,
             column,

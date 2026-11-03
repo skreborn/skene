@@ -8,7 +8,9 @@
 //! moved since a platform last restyled its tree and so the nodes it revisits next
 //! ([`Restyle`]), and a paragraph's runs and inline boxes laid out as one text through a
 //! realization's text engine ([`TextFlow`]). The [`runtime`] module holds what a
-//! platform Skene draws whole runs beneath its realization: each node's motion presented
+//! platform Skene draws whole runs beneath its realization: the store such a platform
+//! keeps in its own state and hands out through [`runtime::Drawn`], a record per node
+//! with the scene walk over them ([`runtime::Runtime`]), and each node's motion presented
 //! on the platform's frame clock. The web lays out through CSS and needs none of it.
 
 mod restyle;

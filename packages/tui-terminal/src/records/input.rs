@@ -3,7 +3,7 @@
 
 use skene_foundation::{FocusOrder, Interaction, NodeId, Scene};
 
-use super::{Handle, Records, record::Kind};
+use super::{Handle, Kind, Records};
 use crate::Terminal;
 
 /// The center of a cell, where a pointer reported by cell alone is taken to be.
@@ -81,6 +81,7 @@ impl Records {
   /// drags along, which keeps a press's pointer until the release.
   pub(crate) fn drags(&self, handle: Handle) -> bool {
     self
+      .runtime
       .record(handle)
       .and_then(|record| record.kind.box_record())
       .is_some_and(|inner| inner.drag.is_some())
@@ -89,19 +90,19 @@ impl Records {
   /// Whether `handle` is a control a press's pointer drags.
   pub(crate) fn drags_as_control(&self, handle: Handle) -> bool {
     matches!(
-      self.record(handle).map(|record| &record.kind),
+      self.runtime.record(handle).map(|record| &record.kind),
       Some(Kind::Control { .. })
     ) && self.drags(handle)
   }
 
   /// The focused link run's node and destination, while a link holds focus.
   pub(crate) fn focused_link(&self) -> Option<(NodeId, String)> {
-    let record = self.record(self.focused()?)?;
+    let record = self.runtime.record(self.focused()?)?;
 
     match &record.kind {
       Kind::Run {
         facts, destination, ..
-      } if facts.link => Some((record.node?, destination.clone()?)),
+      } if facts.link => Some((record.node, destination.clone()?)),
       _ => None,
     }
   }
@@ -118,7 +119,7 @@ impl Records {
   /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
   /// since a pointer press.
   pub(crate) fn focus_shows(&self, handle: Handle) -> bool {
-    let node = self.record(handle).and_then(|record| record.node);
+    let node = self.runtime.record(handle).map(|record| record.node);
 
     Scene::<Terminal>::read(|scene| node.is_some_and(|node| scene.focus_shows(node)))
   }
@@ -134,7 +135,7 @@ impl Records {
     });
 
     if changed && let Some(focused) = self.focused() {
-      self.damage(focused);
+      self.runtime.damage(focused);
     }
   }
 
@@ -147,6 +148,7 @@ impl Records {
     }
 
     self
+      .runtime
       .enclosing_control(handle)
       .filter(|control| self.is_focusable(*control))
   }
@@ -154,7 +156,7 @@ impl Records {
   /// The interaction state `handle`'s conditions resolve against now, as the scene
   /// resolves it.
   pub(crate) fn interaction(&self, handle: Handle) -> Interaction {
-    let node = self.record(handle).and_then(|record| record.node);
+    let node = self.runtime.record(handle).map(|record| record.node);
 
     Scene::<Terminal>::with(|scene| {
       node.map_or_else(Interaction::default, |node| scene.interaction(node))
@@ -165,6 +167,7 @@ impl Records {
   /// node presenting nothing.
   pub(crate) fn interaction_moved(&self, handle: Handle) -> bool {
     self
+      .runtime
       .record(handle)
       .and_then(|record| record.kind.resolved_under())
       .is_some_and(|(_, resolved)| resolved != self.interaction(handle))
@@ -179,6 +182,7 @@ impl Records {
 
   /// The hover path, the deepest node under the mouse first, up to the root.
   pub(crate) fn hovered(&self) -> Vec<Handle> {
-    Scene::<Terminal>::read(Scene::hovered).map_or_else(Vec::new, |deepest| self.ancestors(deepest))
+    Scene::<Terminal>::read(Scene::hovered)
+      .map_or_else(Vec::new, |deepest| self.runtime.ancestors(deepest))
   }
 }

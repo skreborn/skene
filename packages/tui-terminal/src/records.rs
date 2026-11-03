@@ -239,8 +239,11 @@ impl Records {
   pub(crate) fn remeasure(&mut self) {
     self.runtime.remeasure();
 
-    for handle in self.runtime.entries.clone() {
-      if self.field(handle).is_some()
+    for &handle in &self.runtime.entries {
+      if self
+        .cells
+        .get(handle)
+        .is_some_and(|cell| cell.field.is_some())
         && let Some(entry) = Scene::<Terminal>::entry_of(handle)
         && let Ok(mut editor) = entry.editor().try_borrow_mut()
       {

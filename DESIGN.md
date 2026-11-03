@@ -25,8 +25,8 @@ presentation over their motion on the frame clock, the layout tree it writes fro
 scene and computes, each node's taffy style and children synced there, the text leaf
 it lays a paragraph out as through the platform's engine, and the environment the
 platform reports, behind the `Drawn` trait a drawn platform implements) and the text
-engine over Parley (`skene-parley`) on the foundation, the platforms on the foundation and,
-where they draw, on those two, each platform's realization a crate of its own
+engine over Parley (`skene-parley`) on the foundation, the platforms on the foundation
+and, where they draw, on those two, each platform's realization a crate of its own
 (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
 `skene-tui`), the Simple core (its palette, variants and sizes, naming no realization)
 on the foundation, each facade's Simple crate (its presets) on its facade, and the
@@ -1230,8 +1230,8 @@ Condition     = Media | State | And | Or
   motion or reading an interaction that moved, each with the leaf its text flows in, or
   every node once the definitions, the environment or the structure moved), written by the
   drawn runtime from the scene as it changes (`Runtime::write_styles`, `write_children`
-  and `compute`), at the values its motion presents. There a box whose
-  children are all inline runs lays them out as one text, a `TextFlow` of their runs and
+  and `compute`), at the values its motion presents. There a box whose children are all
+  inline runs lays them out as one text, a `TextFlow` of their runs and
   inline boxes over the platform's text engine (Text, below), keeping their blanks and
   newlines as the reset's `white-space: pre-wrap` does and wrapping where the Unicode line
   breaking algorithm allows across them and around an inline box, a word too wide for a
@@ -1339,15 +1339,15 @@ Condition     = Media | State | And | Or
   unit, its token and slot lookups and its font size. The drawn runtime
   (`skene_layout::runtime`) keeps, for every platform Skene draws whole, each node's
   kept style, its resolution cache (`BoxCache`, `RunCache`) and its motion, and its
-  presentation pass (`Runtime::write_styles`) chooses the nodes to revisit, resolves each
-  stale one through the runtime's `Env`, caches the result under a generation covering
-  environment, interaction and definitions, presents it over its motion and judges
-  whether the presented value changed, which is where a transition starts, and whether
-  a box's paint reaches elsewhere past its border box (`Drawn::reach`, the terminal's
-  shadow band), which moves the geometry the platform measures, and maps each presented
-  node onto the runtime's layout tree. `Env` builds the
-  resolver through one `ResolutionContext` (a node's environment, interaction and
-  containers from the scene, a token resolved where it is defined, its definition
+  presentation pass (the first half of `Runtime::write_styles`) chooses the nodes to
+  revisit, resolves each stale one through the runtime's `Env`, caches the result under
+  a generation covering environment, interaction and definitions, presents it over its
+  motion and judges whether the presented value changed, which is where a transition
+  starts, and whether a box's paint reaches elsewhere past its border box
+  (`Drawn::reach`, the terminal's shadow band), which moves the geometry the platform
+  measures; the second half maps each presented node onto the runtime's layout tree.
+  `Env` builds the resolver through one `ResolutionContext` (a node's environment,
+  interaction and containers from the scene, a token resolved where it is defined, its definition
   converted into the shared `TokenValue`, the font size from the typography's size
   token, the platform's `EM` where text takes no sizes) over the runtime itself as its
   `ResolutionSource`, giving what the scene does not hold: the environment it keeps of
@@ -1957,8 +1957,9 @@ it reads the layout through. It keeps as its own each node's cell state beside i
 record, an entry's edit, placeholder, secure flag and keyboard, focus, pointer
 localization, timers, the clipboard, the window title and navigation. Beside the
 runtime and the side table sit the cell geometry, the cell engine, painting, the frame
-writer, the event loop and its interaction, the editing state of its drawn entries, the dev reload's
-restore and rebuild notice, and the `device`, `tty`, `parse` and `escape` modules. It
+writer, the event loop and its interaction, the editing state of its drawn entries, the
+dev reload's restore and rebuild notice, and the `device`, `tty`, `parse` and `escape`
+modules. It
 names no facade: what it builds of its own, the rebuild notice, it builds from the
 foundation's views at `Terminal`, and the values it defines it spells in the
 foundation's generics at cells (`SystemColors<i32>`). Its build script generates the
@@ -2651,8 +2652,8 @@ sense apart where context does not.
   successor at a dev reload. A node's style record (`Record`): its box and run styles
   and their motion as one erased list under Skene's property names (The style model).
 - **Realize.** A platform turning a scene node into its own representation: an element
-  in the browser, an entry in the server's string tree, a record and a node of its
-  layout tree in the terminal. `LowLevel::realize` mints a node a view realizes itself.
+  in the browser, an entry in the server's string tree, a record of the drawn runtime
+  and a node of the runtime's layout tree in the terminal. `LowLevel::realize` mints a node a view realizes itself.
 - **Build.** `View::build`: a view creating its scene nodes and returning its root's
   id. Compiling is never building, and `skene build` is named in full.
 - **Floor and upgrade.** What a platform always has and what a signal proves it can

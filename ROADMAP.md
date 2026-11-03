@@ -32,8 +32,8 @@ in a code comment.
     its frames hit through, clipped and scrolled as a browser's are, a paragraph's runs
     and inline boxes placed for them by its flow, which the runtime already lays out,
     and a paragraph's document selection and its text content kept once above the
-    engine, in the runtime, where each realization keeps them today. A drawn entry's key default
-    is written once there too, over the shared entry the scene keeps: the core's
+    engine, in the runtime, where each realization keeps them today. A drawn entry's key
+    default is written once there too, over the shared entry the scene keeps: the core's
     `Binding` table, run after the app's key handlers as a browser's `<input>` default
     runs (so never as a `TextEntry::on_key`, which would run before them), the
     terminal's own key default consulting the table until then.
@@ -95,8 +95,8 @@ in a code comment.
     - The seam: who lays a realization out (`LayoutOwner`: the shared engine or the
     toolkit) and whether it draws a scroll box's bars from the box's parts, associated
     items of `Realization` landing with this realization, their first reader, since the
-    web's layout is CSS and the terminal maps its own taffy tree and draws its bars from
-    `TerminalStyle`.
+    web's layout is CSS and the drawn runtime maps the terminal's taffy tree, the
+    terminal drawing its bars from `TerminalStyle`.
     - The first frame: 1000 eager rows take 64.5–73.6 ms (layout 17.3–19.7 ms) against a
     target of 50 (16), shaping 3,000 paragraphs being 37–45 ms of it, while a lazy list of
     1,000 to 100,000 rows draws in 12.7–22.8 ms. What remains is cheaper shaping per
@@ -438,8 +438,8 @@ in a code comment.
     - The drawn runtime, the terminal its client: a structure change, a token's
     redefinition and a container's resize still restyle every node, and a structure
     change hands every node its layout children afresh (`Runtime::write_children`),
-    where each should reach only the subtree it touched (per-scope
-    token and per-container query invalidation, `em` from the node's own font size);
+    where each should reach only the subtree it touched (per-scope token and
+    per-container query invalidation, `em` from the node's own font size);
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config

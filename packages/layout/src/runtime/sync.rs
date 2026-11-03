@@ -56,8 +56,8 @@ impl<P: Drawn> Runtime<P> {
 
   /// Hands every laid-out node its flattened children, where the scene's structure moved
   /// since the last time: a paragraph the inline boxes its flow names, in order, a group
-  /// run inside one none, and the root its overlays the scene reaches; the layout
-  /// computed again.
+  /// run inside one none, and the root its overlays the scene reaches; the layout then
+  /// due again ([`Runtime::layout_dirty`]).
   pub fn write_children(&mut self) {
     if !self.restyle.take_structure() {
       return;
@@ -349,8 +349,8 @@ mod tests {
 
   use super::native_size;
 
-  /// The size, the least and the most an entry `native` units long lays out at along an
-  /// axis styled `size`, `min` and `max`.
+  /// The size and the least an entry `native` units long lays out at along an axis
+  /// styled `size`, `min` and `max`.
   fn laid(
     size: Dimension,
     min: LengthPercentageAuto,

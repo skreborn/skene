@@ -404,6 +404,7 @@ impl<P: Drawn> Runtime<P> {
   /// [`write_children`](Self::write_children) did, laid out by the last
   /// [`compute`](Self::compute).
   #[inline(always)]
+  #[must_use]
   pub const fn tree(&self) -> &Tree<Measured<P::Engine>> {
     &self.tree
   }

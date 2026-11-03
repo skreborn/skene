@@ -24,12 +24,12 @@ in a code comment.
     itself, Linux and Windows need as well, since they too own their window; each
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
-    - The terminal's retained runtime beyond its layout tree and its restyle's schedule
-    (the damage and the measured rectangles, hit testing, focus, capture, wheel
-    latching, selection) moves into `skene-layout`, generic over the platform's scalar,
-    beside the style mapping, the `Tree`, the `Restyle` and its presentation pass, its
-    frames hit through, clipped and scrolled as a browser's are; a paragraph is kept as one laid-out paragraph of its runs, which
-    places them and their inline boxes for the frames, a paragraph's document selection
+    - The terminal's retained runtime beyond its layout tree and its restyle (the
+    damage and the measured rectangles, hit testing, focus, capture, wheel latching,
+    selection) moves into `skene-layout`, generic over the platform's scalar, beside the
+    style mapping, the `Tree`, the `Restyle` and its presentation pass, its frames hit
+    through, clipped and scrolled as a browser's are; a paragraph is kept as one
+    laid-out paragraph of its runs, which places them and their inline boxes for the frames, a paragraph's document selection
     and its text content kept once above the engine, in the runtime, where each
     realization keeps them today. A drawn entry's key default is written once there too,
     over the shared entry the scene keeps: the core's `Binding` table, run after the

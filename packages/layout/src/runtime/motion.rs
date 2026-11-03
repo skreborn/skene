@@ -60,6 +60,7 @@ pub struct Sample {
 /// The clock motion samples against, in seconds: the wall clock in a launched app, a
 /// hand-stepped one under an in-process test.
 #[derive(Clone, Copy, Debug)]
+#[must_use]
 pub enum Clock {
   /// The wall clock since `Instant`.
   Real(Instant),

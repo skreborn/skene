@@ -303,9 +303,10 @@ pub struct Record<P: Drawn> {
   /// The size last reported to the observers.
   pub reported: Option<Size<P::Scalar>>,
   /// Whether a tween or an animation of the node was still running at the last
-  /// restyle, so the next frame resolves it again.
+  /// presentation ([`Runtime::present`](super::Runtime::present)), so the next one
+  /// presents it again.
   pub in_motion: bool,
-  /// Whether the node was out of the display at the last restyle: inside a closed
+  /// Whether the node was out of the display at the last presentation: inside a closed
   /// overlay, or detached from the root.
   pub hidden: bool,
 }

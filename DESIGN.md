@@ -1777,8 +1777,9 @@ through `skene-layout`'s `runtime::BoxMotion` and `runtime::RunMotion` over it, 
 over the platform's scalar and style extension, at a `runtime::Sample` of the runtime's
 frame clock (`runtime::Clock`: the wall clock in a launched app, stepped by hand under a
 test), read once per presentation pass so every node of a pass presents at one instant:
-the terminal (quantized to cells and truecolor), native later. A platform hands the runner each property from the resolution point
-that reports a changed value—never through the reactive graph per frame—and it
+the terminal (quantized to cells and truecolor), native later. A platform hands the
+runner each property from the resolution point that reports a changed value—never
+through the reactive graph per frame—and it
 interpolates per value type, starting, reversing and cancelling transitions as CSS does:
 a change back to where a running transition began reverses it over the share it had
 played. A property a keyframe animation leaves out at `0%` or `100%` moves from and to

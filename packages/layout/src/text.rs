@@ -71,12 +71,20 @@ struct FlowRun<N> {
 
 /// An inline box of a flow: its node, the groups around it, the byte of the flow's text it
 /// stands before, and its size.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 struct FlowBox<N> {
   node: N,
   groups: Vec<N>,
   index: usize,
   size: Size<f32>,
+}
+
+/// Two boxes are alike where their nodes, groups and indices are, whatever sizes the layout
+/// gave them.
+impl<N: PartialEq> PartialEq for FlowBox<N> {
+  fn eq(&self, other: &Self) -> bool {
+    self.node == other.node && self.groups == other.groups && self.index == other.index
+  }
 }
 
 /// Where a point falls in a flow: a run, and the byte of the run's text a caret there
@@ -99,6 +107,9 @@ pub struct RunHit<N> {
 /// line box there, its glyphs centered in it, short of the blanks hanging past the line's
 /// end; each group around a run lies where the run does, and each box where the engine
 /// places it. The text is made into a paragraph once, until a box it holds is sized afresh.
+///
+/// Two flows are alike where their styles, text, runs and boxes are, each box's size, the
+/// layout's output, left out.
 #[must_use]
 pub struct TextFlow<E: TextEngine, N = NodeId> {
   engine: E,
@@ -499,15 +510,22 @@ impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {
     })
   }
 
-  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
-    for item in &mut self.items {
-      if let Item::Box(inline) = item
-        && inline.node == node
-        && inline.size != size
-      {
+  fn size_boxes(&mut self, sizes: impl IntoIterator<Item = Size<f32>>) {
+    let boxes = self.items.iter_mut().filter_map(|item| match item {
+      Item::Box(inline) => Some(inline),
+      Item::Run(_) => None,
+    });
+    let mut resized = false;
+
+    for (inline, size) in boxes.zip(sizes) {
+      if inline.size != size {
         inline.size = size;
-        self.leaf = OnceCell::new();
+        resized = true;
       }
+    }
+
+    if resized {
+      self.leaf = OnceCell::new();
     }
   }
 
@@ -1256,6 +1274,70 @@ mod tests {
 
     assert!(tree.set_context(text, Some(resized)));
     assert!(tree.is_dirty(text), "a change of size lays out again");
+  }
+
+  /// Sizing a flow's boxes gives each its own size, in order, the runs between them
+  /// skipped, makes its text into a paragraph afresh only where a size differs, and leaves
+  /// the flow alike to one whose boxes are unsized.
+  #[test]
+  fn sizing_a_flows_boxes_in_order_lays_it_out_afresh_only_where_one_differs() {
+    use crate::Leaf as _;
+
+    let (run, first, second, third) = (node(), node(), node(), node());
+    let made = || {
+      let mut flow = TextFlow::new(engine(), style(), ParagraphStyle::default());
+
+      flow.add_box(first, &[], Size::ZERO);
+      flow.add_run(run, &[], "alpha ", style());
+      flow.add_box(second, &[], Size::ZERO);
+      flow.add_box(third, &[], Size::ZERO);
+
+      flow
+    };
+    let mut flow = made();
+    let sizes = [
+      Size::new(10., 20.),
+      Size::new(30., 40.),
+      Size::new(50., 60.),
+    ];
+
+    flow.size_boxes(sizes);
+    flow.leaf();
+
+    let content = Rect::new(Point::ZERO, Size::new(1000., 100.));
+    let placed = |flow: &TextFlow<ParleyEngine>| {
+      flow
+        .place(content)
+        .into_iter()
+        .filter(|(node, _)| *node != run)
+        .map(|(node, rect)| (node, rect.size))
+        .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+      placed(&flow),
+      vec![(first, sizes[0]), (second, sizes[1]), (third, sizes[2])]
+    );
+
+    flow.size_boxes(sizes);
+
+    assert!(flow.leaf.get().is_some(), "no size differs");
+
+    flow.size_boxes([sizes[0], Size::new(35., 40.), sizes[2]]);
+
+    assert!(flow.leaf.get().is_none(), "the second box's size differs");
+    assert_eq!(
+      placed(&flow),
+      vec![
+        (first, sizes[0]),
+        (second, Size::new(35., 40.)),
+        (third, sizes[2])
+      ]
+    );
+    assert!(
+      flow == made(),
+      "a box's size is no part of a flow's equality"
+    );
   }
 
   #[test]

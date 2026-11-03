@@ -21,8 +21,8 @@ use crate::{Leaf, TextFlow};
 /// least one, and each inline box as large as the tree lays it out rounded to whole units, at least
 /// one of each; a flow in fractional units keeps both as they are. Two flows are alike
 /// where they were made under one text generation of the runtime, in the same units, and
-/// their flows are: each run's node, groups, text and style, and each box's node, groups
-/// and size.
+/// their flows are: each run's node, groups, text and style, and each box's node and
+/// groups.
 #[must_use]
 pub struct Flow<E: TextEngine> {
   generation: u64,
@@ -58,7 +58,9 @@ impl<E: TextEngine> Flow<E> {
   /// Adds the inline box `node`, inside `groups`, outermost first, after everything the
   /// flow holds, unsized until the tree sizes it: one unit by one in whole units.
   pub fn add_box(&mut self, node: NodeId, groups: &[NodeId]) {
-    self.text.add_box(node, groups, self.box_size(Size::ZERO));
+    self
+      .text
+      .add_box(node, groups, Self::box_size(self.whole, Size::ZERO));
   }
 
   /// The width a flow in whole units lays out across when laid out `width` wide: `width`
@@ -78,9 +80,10 @@ impl<E: TextEngine> Flow<E> {
     }
   }
 
-  /// The size an inline box laid out at `size` takes in the flow.
-  const fn box_size(&self, size: Size<f32>) -> Size<f32> {
-    if self.whole {
+  /// The size an inline box laid out at `size` takes in a flow, in whole units where
+  /// `whole` holds.
+  const fn box_size(whole: bool, size: Size<f32>) -> Size<f32> {
+    if whole {
       Size::new(
         (size.width + 0.5).floor().max(1.),
         (size.height + 0.5).floor().max(1.),
@@ -163,11 +166,13 @@ impl<E: TextEngine> Leaf for Flow<E> {
     self.text.boxes()
   }
 
-  /// Sizes the inline box `node` as the flow takes a box laid out at `size`.
-  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
-    let size = self.box_size(size);
+  /// Sizes each inline box, in order, as the flow takes a box laid out at its size.
+  fn size_boxes(&mut self, sizes: impl IntoIterator<Item = Size<f32>>) {
+    let whole = self.whole;
 
-    self.text.size_box(node, size);
+    self
+      .text
+      .size_boxes(sizes.into_iter().map(|size| Self::box_size(whole, size)));
   }
 
   /// Takes `next`'s paint where both were made under one text generation in the same
@@ -249,10 +254,10 @@ impl<E: TextEngine> Leaf for Measured<E> {
     self.flow().into_iter().flat_map(Leaf::boxes)
   }
 
-  /// Sizes a flow's inline box `node`; an entry holds none.
-  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+  /// Sizes a flow's inline boxes, in order; an entry holds none.
+  fn size_boxes(&mut self, sizes: impl IntoIterator<Item = Size<f32>>) {
     if let Self::Flow(flow) = self {
-      flow.size_box(node, size);
+      flow.size_boxes(sizes);
     }
   }
 
@@ -410,7 +415,7 @@ mod tests {
 
     assert_eq!(sized(&flow), Size::new(1., 1.));
 
-    flow.size_box(inline, Size::new(2.6, 0.2));
+    flow.size_boxes([Size::new(2.6, 0.2)]);
 
     assert_eq!(sized(&flow), Size::new(3., 1.));
   }
@@ -434,7 +439,7 @@ mod tests {
     assert_ne!(placed(&flow, line), placed(&flow, line.floor()));
 
     flow.add_box(inline, &[]);
-    flow.size_box(inline, Size::new(2.6, 0.2));
+    flow.size_boxes([Size::new(2.6, 0.2)]);
 
     let size = placed(&flow, 1000.)
       .into_iter()

@@ -19,6 +19,9 @@ use taffy::{
 use self::engine::{Engine, Nodes, Slot, key};
 
 /// What a leaf of the layout carries: what measures it and places what flows inside it.
+///
+/// A leaf's equality, which [`Tree::set_context`] judges a context by, leaves out the sizes
+/// its boxes were given, since they are the layout's output.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a leaf of the layout",
   note = "a leaf's context measures the leaf and places the nodes flowing inside it"
@@ -42,16 +45,17 @@ pub trait Leaf {
 
   /// The nodes flowing inside the leaf as boxes, in order, none positioned absolutely or
   /// fixed: its children in the [`Tree`], each laid out at its max-content size and given
-  /// to it through [`size_box`](Self::size_box) before it measures, and placed where
-  /// [`place`](Self::place) puts it; none by default.
+  /// to it with its siblings, in order, through [`size_boxes`](Self::size_boxes) before it
+  /// measures, and placed where [`place`](Self::place) puts it; none by default.
   fn boxes(&self) -> impl Iterator<Item = NodeId> {
     std::iter::empty()
   }
 
-  /// Gives the box `node` flowing inside the leaf the size it lays out at, its border box
-  /// at its max-content size, before the leaf measures or places it.
-  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
-    let _ = (node, size);
+  /// Gives each box [`boxes`](Self::boxes) names, in its order, the size it lays out at,
+  /// its border box at its max-content size, before the leaf measures or places it; none
+  /// by default.
+  fn size_boxes(&mut self, sizes: impl IntoIterator<Item = Size<f32>>) {
+    let _ = sizes;
   }
 
   /// Takes `next`'s paint in place, where `next` differs from this leaf in paint alone:
@@ -192,27 +196,14 @@ impl<C: Leaf> Tree<C> {
   /// the held one takes in place ([`Leaf::repaint_as`]) without the node measured again,
   /// or where `node` is outside the tree.
   ///
-  /// Each box the context names is given first the size its last layout left it, so a
-  /// context made afresh with its boxes unsized is the same as the one held where nothing
-  /// else changed.
-  pub fn set_context(&mut self, node: NodeId, mut context: Option<C>) -> bool
+  /// A context made afresh with its boxes unsized is the same as the one held where
+  /// nothing else changed, since a leaf's equality leaves the sizes of its boxes out
+  /// ([`Leaf`]): the held context keeps its sized boxes, and one that replaces it is sized
+  /// by the next layout before it measures.
+  pub fn set_context(&mut self, node: NodeId, context: Option<C>) -> bool
   where
     C: PartialEq,
   {
-    if let Some(next) = &mut context
-      && next.boxes().next().is_some()
-    {
-      let boxes: Vec<NodeId> = next.boxes().collect();
-
-      for inline in boxes {
-        if let Some(held) = self.nodes.map().get(inline) {
-          let size = held.unrounded.size;
-
-          next.size_box(inline, Size::new(size.width, size.height));
-        }
-      }
-    }
-
     let Some(slot) = self.nodes.map_mut().get_mut(node)
     else {
       return false;

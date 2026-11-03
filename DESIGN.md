@@ -1242,7 +1242,7 @@ Condition     = Media | State | And | Or
   off the blanks hanging past the line's end. The tree lays a leaf's inline boxes out
   within the leaf's own layout, as its children (`Leaf::boxes` naming them, in order,
   each in flow): each at its max-content size before the leaf measures, given to it
-  through `Leaf::size_box`, and placed where the leaf places it in its content box, its
+  with its siblings, in order, through `Leaf::size_boxes`, and placed where the leaf places it in its content box, its
   layout set as taffy's parents set a child's, so a change inside a box lays its leaf out
   again. The terminal's paragraphs lay their inline boxes out so.
   The layout's own tests lay their text out through `skene-parley` in the pinned face
@@ -1563,9 +1563,10 @@ engine, over the geometry it reports.
   `skene-layout`'s `TextFlow` is a box's runs and inline boxes as one leaf: it builds
   the attributed text, a box's placeholder (`runtime::INLINE_BOX`, U+FFFC, in the
   drawn runtime's records) becoming an `InlineBox` there alone, each box's size given
-  where it is added or by the tree laying it out (`Leaf::size_box`, and
-  `Tree::set_context` from the box's last layout to a flow made afresh), keeps its
-  paragraph until a run's text or style or a box's size changes,
+  where it is added or by the tree laying it out (`Leaf::size_boxes`), a box's size
+  being the layout's output, which a flow's equality leaves out, so a flow made afresh
+  compares alike, keeps its paragraph until a run's text or style or a box's size
+  changes,
   a change of its runs' paint alone repainting the paragraph it keeps without the leaf
   measured again (`Leaf::repaint_as`), adds each run and box inside the group runs
   around it, outermost first, places each run and box from the layout's range

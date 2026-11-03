@@ -1,7 +1,11 @@
 //! [`Tree`]'s engines over small trees of boxes and runs, each a container or a member of
 //! one as the scene creates it.
 
-use std::{cell::Cell, collections::HashMap, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  collections::HashMap,
+  rc::Rc,
+};
 
 use skene_foundation::{
   Axis,
@@ -57,26 +61,23 @@ impl Leaf for Block {
   }
 }
 
-/// A paragraph of boxes, counting its measures: it measures as its boxes side by side,
-/// as tall as the tallest, and places them left to right along its content box's top.
+/// A paragraph of boxes, counting its measures and keeping the sizes each sizing gave its
+/// boxes: it measures as its boxes side by side, as tall as the tallest, and places them
+/// left to right along its content box's top.
 #[derive(Clone)]
 struct Boxes {
-  boxes: Vec<(NodeId, Size<f32>)>,
+  children: Vec<(NodeId, Size<f32>)>,
   measures: Rc<Cell<u32>>,
+  sizings: Rc<RefCell<Vec<Vec<Size<f32>>>>>,
 }
 
 impl PartialEq for Boxes {
   fn eq(&self, other: &Self) -> bool {
-    self.boxes.len() == other.boxes.len()
-      && self
-        .boxes
-        .iter()
-        .zip(&other.boxes)
-        .all(|((held, size), (other, next))| {
-          held == other
-            && size.width.to_bits() == next.width.to_bits()
-            && size.height.to_bits() == next.height.to_bits()
-        })
+    self
+      .children
+      .iter()
+      .map(|(node, _)| node)
+      .eq(other.children.iter().map(|(node, _)| node))
   }
 }
 
@@ -91,10 +92,10 @@ impl Leaf for Boxes {
     Size::new(
       known
         .width
-        .unwrap_or_else(|| self.boxes.iter().map(|(_, size)| size.width).sum()),
+        .unwrap_or_else(|| self.children.iter().map(|(_, size)| size.width).sum()),
       known.height.unwrap_or_else(|| {
         self
-          .boxes
+          .children
           .iter()
           .map(|(_, size)| size.height)
           .fold(0., f32::max)
@@ -106,7 +107,7 @@ impl Leaf for Boxes {
     let mut left = content.origin.x;
 
     self
-      .boxes
+      .children
       .iter()
       .map(|(node, size)| {
         let rect = Rect::new(Point::new(left, content.origin.y), *size);
@@ -119,15 +120,17 @@ impl Leaf for Boxes {
   }
 
   fn boxes(&self) -> impl Iterator<Item = NodeId> {
-    self.boxes.iter().map(|(node, _)| *node)
+    self.children.iter().map(|(node, _)| *node)
   }
 
-  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
-    for (held, held_size) in &mut self.boxes {
-      if *held == node {
-        *held_size = size;
-      }
+  fn size_boxes(&mut self, sizes: impl IntoIterator<Item = Size<f32>>) {
+    let sizes: Vec<Size<f32>> = sizes.into_iter().collect();
+
+    for ((_, held), size) in self.children.iter_mut().zip(&sizes) {
+      *held = *size;
     }
+
+    self.sizings.borrow_mut().push(sizes);
   }
 }
 
@@ -168,9 +171,9 @@ impl Leaf for Content {
     .flatten()
   }
 
-  fn size_box(&mut self, node: NodeId, size: Size<f32>) {
+  fn size_boxes(&mut self, sizes: impl IntoIterator<Item = Size<f32>>) {
     if let Self::Boxes(boxes) = self {
-      boxes.size_box(node, size);
+      boxes.size_boxes(sizes);
     }
   }
 }
@@ -281,8 +284,9 @@ impl Scene {
   /// `measures`.
   fn boxes(boxes: &[NodeId], measures: &Rc<Cell<u32>>) -> Content {
     Content::Boxes(Boxes {
-      boxes: boxes.iter().map(|node| (*node, Size::ZERO)).collect(),
+      children: boxes.iter().map(|node| (*node, Size::ZERO)).collect(),
       measures: Rc::clone(measures),
+      sizings: Rc::default(),
     })
   }
 
@@ -1485,8 +1489,8 @@ fn a_change_inside_a_box_lays_both_paragraphs_out_again() {
   assert_eq!(scene.unrounded(nested.outer).size, Size::new(14., 10.));
 }
 
-/// A paragraph's context made afresh with its boxes unsized is the one it holds: it is
-/// given each box's last size, and marks nothing.
+/// A paragraph's context made afresh with its boxes unsized is the one it holds, since a
+/// context's equality leaves its boxes' sizes out, and marks nothing.
 #[test]
 fn a_paragraph_made_afresh_with_unsized_boxes_marks_nothing() {
   let mut scene = Scene::new(true);
@@ -1508,6 +1512,75 @@ fn a_paragraph_made_afresh_with_unsized_boxes_marks_nothing() {
   assert!(!scene.tree.is_dirty(nested.inner));
   assert!(!scene.tree.is_dirty(nested.outer));
   assert!(!scene.tree.is_dirty(nested.root));
+}
+
+/// A paragraph's boxes are given their sizes together, in order, each its own laid-out
+/// size, once in every pass that measures the paragraph, and again once one of them
+/// changes.
+#[test]
+fn a_paragraphs_boxes_are_sized_in_order_once_per_pass() {
+  let mut scene = Scene::new(false);
+  let boxes = [(1., 2.), (3., 4.), (5., 6.)]
+    .map(|(width, height)| scene.add(true, &sized(width, height), Layout::Single, false, &[]));
+  let paragraph = scene.add(false, &BoxStyle::default(), Layout::Single, false, &boxes);
+  let measures = Rc::new(Cell::new(0));
+  let sizings = Rc::new(RefCell::new(Vec::new()));
+
+  scene.tree.set_context(
+    paragraph,
+    Some(Content::Boxes(Boxes {
+      children: boxes.iter().map(|node| (*node, Size::ZERO)).collect(),
+      measures: Rc::clone(&measures),
+      sizings: Rc::clone(&sizings),
+    })),
+  );
+
+  let root = scene.add(
+    true,
+    &BoxStyle {
+      item_alignment: Some(ItemAlignment::Start),
+      ..BoxStyle::default()
+    },
+    flex(Axis::Horizontal),
+    false,
+    &[paragraph],
+  );
+
+  scene.lay_out(root, 100., 100.);
+
+  assert!(measures.get() > 0);
+  assert_eq!(sizings.borrow().len(), measures.get() as usize);
+  assert!(
+    sizings
+      .borrow()
+      .iter()
+      .all(|sizes| *sizes == [Size::new(1., 2.), Size::new(3., 4.), Size::new(5., 6.)])
+  );
+  assert_eq!(scene.unrounded(boxes[2]).origin, Point::new(4., 0.));
+
+  sizings.borrow_mut().clear();
+  measures.set(0);
+  scene.tree.set_style(
+    boxes[1],
+    sized(7., 4.).taffy_style(
+      Layout::Single,
+      Place {
+        in_stack: false,
+        borders: Borders::Width,
+      },
+    ),
+  );
+  scene.lay_out(root, 100., 100.);
+
+  assert!(measures.get() > 0);
+  assert_eq!(sizings.borrow().len(), measures.get() as usize);
+  assert!(
+    sizings
+      .borrow()
+      .iter()
+      .all(|sizes| *sizes == [Size::new(1., 2.), Size::new(7., 4.), Size::new(5., 6.)])
+  );
+  assert_eq!(scene.unrounded(boxes[2]).origin, Point::new(8., 0.));
 }
 
 /// A hidden paragraph lays its boxes out at nothing, the boxes inside them too.

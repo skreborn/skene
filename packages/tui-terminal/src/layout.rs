@@ -153,10 +153,11 @@ impl CellFlow {
 
   /// The size an inline box laid out at `size` takes in the flow: whole cells and rows, as
   /// the tree rounds a layout, at least one of each.
-  fn box_size(size: Size<f32>) -> Size<f32> {
-    let whole = |length: f32| (length + 0.5).floor().max(1.);
-
-    Size::new(whole(size.width), whole(size.height))
+  const fn box_size(size: Size<f32>) -> Size<f32> {
+    Size::new(
+      (size.width + 0.5).floor().max(1.),
+      (size.height + 0.5).floor().max(1.),
+    )
   }
 
   /// The leaf's flow.

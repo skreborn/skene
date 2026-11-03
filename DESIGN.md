@@ -1982,16 +1982,17 @@ to another width is laid out as a stand-in of its width (U+2060, U+FF71 or U+4E0
 through the foundation's substitution, so every position the engine reports is a byte
 of the real text. Each text leaf is one paragraph of its runs and inline boxes (a
 `TextFlow` over the engine), an inline box a box as many whole cells wide and rows
-tall as the tree lays it out, at least one of each, kept between frames and measured, painted, hit and selected from its one layout, a
-width floored to whole cells, at least one: a run wraps and keeps its blanks as the
-guaranteed core says and draws cluster by cluster in the engine's visual order, and a point
-on a cell is probed just past its left edge, so a press lands at the nearer edge of
-the cluster drawn there, after a wide one on its second cell. So that a terminal
-reordering bidirectional text itself does not reorder it twice, launch asks for the
-BiDi mode (ECMA-48's BDSM, mode 8, through `CSI 8 $ p`) and switches it to explicit
-(`CSI 8 l`), and the hand-back restores the mode the first reply reported, writing
-nothing where none came: a reply while one is kept, as a take-over after a stop the
-process did not hand back for brings, is of the mode launch set. A cell holds a cluster (`Glyph`: one code point, an interned cluster,
+tall as the tree lays it out, at least one of each, kept between frames and measured,
+painted, hit and selected from its one layout, a width floored to whole cells, at least
+one: a run wraps and keeps its blanks as the guaranteed core says and draws cluster by
+cluster in the engine's visual order, and a point on a cell is probed just past its left
+edge, so a press lands at the nearer edge of the cluster drawn there, after a wide one
+on its second cell. So that a terminal reordering bidirectional text itself does not
+reorder it twice, launch asks for the BiDi mode (ECMA-48's BDSM, mode 8, through
+`CSI 8 $ p`) and switches it to explicit (`CSI 8 l`), and the hand-back restores the
+mode the first reply reported, writing nothing where none came: a reply while one is
+kept, as a take-over after a stop the process did not hand back for brings, is of the
+mode launch set. A cell holds a cluster (`Glyph`: one code point, an interned cluster,
 or the continuation of a wide one, which paints nothing) while a text entry's caret
 and selection are reported in clusters and its window counts cells, settling by cells
 around the caret. A confirmation arriving after the first frame lays every text and

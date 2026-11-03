@@ -583,12 +583,12 @@ fn canned(gene: &Gene, node: NodeId, tally: &Tally) -> Option<Canned> {
 }
 
 /// What a node is in the scene: a box in its parent's flow, an overlay above the root's
-/// flow, or an inline box laid out on its own.
+/// flow, or a box no parent holds, laid out as a root of its own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Role {
   Flow,
   Overlay,
-  Inline,
+  Detached,
 }
 
 /// A space a root lays out in.
@@ -609,7 +609,7 @@ fn viewport(pick: u8) -> taffy::geometry::Size<AvailableSpace> {
   }
 }
 
-/// The space an inline box lays out in on its own.
+/// The space a detached box lays out in as a root of its own.
 const MAX_CONTENT: taffy::geometry::Size<AvailableSpace> = taffy::geometry::Size {
   width: AvailableSpace::MaxContent,
   height: AvailableSpace::MaxContent,
@@ -775,8 +775,8 @@ impl Pair {
   }
 
   /// Builds the case's tree from `genes`, its first gene the root's: each other node in
-  /// its parent's flow, above the root's flow as an overlay, or on its own as an inline
-  /// box, as its genes pick.
+  /// its parent's flow, above the root's flow as an overlay, or held by no parent, as its
+  /// genes pick.
   fn build(&mut self, genes: &[Gene]) {
     let mut parents: Vec<Option<usize>> = Vec::new();
 
@@ -789,7 +789,7 @@ impl Pair {
         (Role::Overlay, Some(0))
       }
       else if gene[0] > 240 {
-        (Role::Inline, None)
+        (Role::Detached, None)
       }
       else {
         (Role::Flow, Some(usize::from(gene[0]) % index))
@@ -1001,9 +1001,9 @@ impl Pair {
   }
 
   /// Lays the root out in the space `pick` names, after a parentless node `first` picks
-  /// laid out on its own as an inline box is, where `pick` says so.
+  /// laid out as a root of its own at its max-content size, where `pick` says so.
   fn recompute(&mut self, first: u8, pick: u8) {
-    let inline: Vec<NodeId> = self
+    let detached: Vec<NodeId> = self
       .ids
       .iter()
       .copied()
@@ -1012,8 +1012,8 @@ impl Pair {
       })
       .collect();
 
-    if !pick.is_multiple_of(2) && !inline.is_empty() {
-      self.compute(inline[usize::from(first) % inline.len()], MAX_CONTENT);
+    if !pick.is_multiple_of(2) && !detached.is_empty() {
+      self.compute(detached[usize::from(first) % detached.len()], MAX_CONTENT);
     }
 
     self.compute(self.root, viewport(pick));
@@ -1334,7 +1334,7 @@ proptest! {
   })]
 
   /// Any tree a scene lays out, written by any run of writes and laid out from its root
-  /// or from an inline box in any space, rounded or not, lays every node out as one taffy
+  /// or from a detached box in any space, rounded or not, lays every node out as one taffy
   /// tree given the same writes does, bit for bit, with the same leaves and marks and
   /// every leaf measured as often.
   #[test]

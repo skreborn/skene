@@ -34,22 +34,30 @@ impl OwnColors {
   };
 }
 
-/// The environment the terminal reports until it learns otherwise: its default size, a
-/// dark background, no preference for reduced motion, reduced transparency or more
-/// contrast, which it has no answer for, the mouse fine and hovering, and no edge kept
-/// clear.
-pub(crate) const LAUNCH_ENVIRONMENT: Environment<i32> = Environment {
-  viewport: Size::new(DEFAULT_SIZE.0 as i32, DEFAULT_SIZE.1 as i32),
-  scheme: ColorScheme::Dark,
-  reduced_motion: false,
-  reduced_transparency: false,
-  high_contrast: false,
-  pointer: PointerPrecision::Fine,
-  hover: true,
-  safe_area: Inset::ZERO,
-};
-
 impl Records {
+  /// The environment the terminal reports until it learns otherwise: its default size, a
+  /// dark background, no preference for reduced motion, reduced transparency or more
+  /// contrast, which it has no answer for, the mouse as its pointer, fine and hovering
+  /// where the app takes it (`mouse`) and absent where it does not, and no edge kept
+  /// clear.
+  pub(crate) const fn launch_environment(mouse: bool) -> Environment<i32> {
+    Environment {
+      viewport: Size::new(DEFAULT_SIZE.0 as i32, DEFAULT_SIZE.1 as i32),
+      scheme: ColorScheme::Dark,
+      reduced_motion: false,
+      reduced_transparency: false,
+      high_contrast: false,
+      pointer: if mouse {
+        PointerPrecision::Fine
+      }
+      else {
+        PointerPrecision::Absent
+      },
+      hover: mouse,
+      safe_area: Inset::ZERO,
+    }
+  }
+
   /// Whether the scheme in force is dark: the app's choice when it has made one, and
   /// the background the terminal reported otherwise.
   pub(crate) const fn dark(&self) -> bool {

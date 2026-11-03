@@ -8,14 +8,12 @@ use skene_foundation::{
   Media,
   MenuEntry,
   Modifiers,
-  PointerPrecision,
   Shortcut,
   State,
   View,
   When,
   typography,
 };
-use skene_layout::runtime::Runtime;
 
 use crate::{Device, Terminal, event_loop, with_records};
 
@@ -136,23 +134,13 @@ impl Launch {
   ///
   /// Panics if the platform is already installed for this thread.
   pub fn install(self) {
-    crate::realize::install();
+    crate::realize::install(self.mouse);
 
     with_records(|records| {
       records.clipboard = self.clipboard;
-      records.mouse = self.mouse;
       records.mouse_key = self.mouse_key;
     });
-    Runtime::<Terminal>::report(|facts| {
-      facts.reported.pointer = if self.mouse {
-        PointerPrecision::Fine
-      }
-      else {
-        PointerPrecision::Absent
-      };
-      facts.reported.hover = self.mouse;
-    })
-    .write();
+
     serve_standard_menu();
   }
 

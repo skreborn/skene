@@ -524,12 +524,13 @@ impl CellPainter for Terminal {
 }
 
 /// Installs the terminal platform for this thread: the reactive runtime, flushing at
-/// the end of each turn, the host executor, the scene and the records.
+/// the end of each turn, the host executor, the scene and the records, the app taking
+/// the mouse where `mouse` holds.
 ///
 /// # Panics
 ///
 /// Panics if it is already installed.
-pub(crate) fn install() {
+pub(crate) fn install(mouse: bool) {
   skene_foundation::hold_flushes(|| {});
   skene_foundation::task::install();
   crate::text::reset();
@@ -542,9 +543,10 @@ pub(crate) fn install() {
       "the terminal platform is already installed for this thread",
     );
 
-    *records = Some(Records::new(Scene::<Terminal>::with(|scene| {
-      scene.create(NodeKind::Box)
-    })));
+    *records = Some(Records::new(
+      Scene::<Terminal>::with(|scene| scene.create(NodeKind::Box)),
+      mouse,
+    ));
   });
 
   let node = with_records(|records| records.runtime.root());

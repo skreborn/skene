@@ -13,7 +13,6 @@ pub(crate) use skene_foundation::Interaction;
 use skene_foundation::{NodeId, NodeMap, PointerButtons, Scene, Shortcut, Timers};
 use skene_layout::{Tree, runtime::Runtime};
 
-use self::environment::LAUNCH_ENVIRONMENT;
 pub(crate) use self::{
   cell::{Backdrop, BackdropKey, CellNode, PictureRecord},
   environment::{Contrast, OwnColors},
@@ -182,10 +181,11 @@ pub(crate) struct Records {
 }
 
 impl Records {
-  /// Records whose root box, filling the screen, is the scene's node `root`.
-  pub(crate) fn new(root: NodeId) -> Self {
+  /// Records whose root box, filling the screen, is the scene's node `root`, the app
+  /// taking the mouse where `mouse` holds.
+  pub(crate) fn new(root: NodeId, mouse: bool) -> Self {
     let mut records = Self {
-      runtime: Runtime::new(root, LAUNCH_ENVIRONMENT, false),
+      runtime: Runtime::new(root, Self::launch_environment(mouse), false),
       cells: NodeMap::new(),
       tree: Tree::new(true),
       damaged_rects: Vec::new(),
@@ -200,7 +200,7 @@ impl Records {
       pointer_within: CELL_CENTER,
       scroll_latch: None,
       clipboard: Clipboard::ALL,
-      mouse: true,
+      mouse,
       mouse_key: None,
       mouse_released: false,
       pending_copy: None,

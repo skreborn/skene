@@ -18,7 +18,7 @@ use skene_foundation::{
 use super::{Drawn, Runtime};
 
 /// What the runtime keeps of one window: the environment its platform reports, whether
-/// it paints pictures, and the signals following them once first asked for.
+/// it paints pictures, and the signals following them once first asked for or moved.
 #[must_use]
 pub struct Window<P: Drawn> {
   reported: Environment<P::Scalar>,
@@ -218,7 +218,7 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// Takes the owner of the environment's signals, for a teardown to dispose; `None`
-  /// where they were never asked for.
+  /// where they were never created.
   pub fn take_media_owner(&mut self) -> Option<Owner> {
     self.window.media.take().map(|media| media.owner)
   }
@@ -251,9 +251,10 @@ impl<P: Drawn> Runtime<P> {
   ///
   /// Where the environment in force moved, every resolved style goes stale and the frame
   /// lays out and repaints; where only whether the window paints moved, the frame
-  /// repaints. The signals that moved are written once the runtime is released, by the
-  /// [`Pending`] returned, so what reads them runs with nothing borrowed; a platform
-  /// that redefines tokens from the new scheme does so before writing it.
+  /// repaints. Where anything moved, the signals are created if they were not yet, and
+  /// those that moved are written once the runtime is released, by the [`Pending`]
+  /// returned, so what reads them runs with nothing borrowed; a platform that redefines
+  /// tokens from the new scheme does so before writing it.
   ///
   /// # Panics
   ///

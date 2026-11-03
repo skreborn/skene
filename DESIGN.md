@@ -1472,16 +1472,16 @@ server these hold the client hints the render was given (`Sec-CH-Prefers-Color-S
 A platform Skene draws whole keeps none of it itself: the drawn runtime keeps what the
 platform reports of its window (`runtime::Window`: the environment, its scheme the
 platform's own, and whether it paints pictures, `Painting::available`'s fact) beside the
-app's choice of scheme, one per app, and the signals following them, created on first
-use. The scheme in force is the choice, else the reported one. One writer,
-`Runtime::report`, moves them: it compares, marks every resolved style stale where the
-environment in force moved (the frame repainting where only the painting did), and
-leaves the signal writes in a `Pending` written once the runtime is released, after
-whatever the platform redefines from the new scheme (the terminal's `SystemColors`).
-The named containers' sizes the platform measures after a layout are published the
-same way (`Runtime::publish_container_sizes`). The terminal reports its size at each
-frame, its background's scheme once detected, the mouse as its pointer at launch and
-its graphics probe's answer.
+app's choice of scheme, one per app, and the signals following them, created when first
+asked for or first moved. The scheme in force is the choice, else the reported one. One
+writer, `Runtime::report`, moves them: it compares, marks every resolved style stale
+where the environment in force moved (the frame repainting where only the painting did),
+and leaves the signal writes in a `Pending` written once the runtime is released, after
+whatever the platform redefines from the new scheme (the terminal's `SystemColors`). The
+named containers' sizes the platform measures after a layout are published the same way
+(`Runtime::publish_container_sizes`). The terminal starts its runtime with the mouse its
+launch takes as the pointer, and reports its size at each frame, its background's scheme
+once detected and its graphics probe's answer.
 
 ### The interner
 

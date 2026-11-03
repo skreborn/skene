@@ -10,13 +10,11 @@ use super::{
   BoxRecord,
   Drawn,
   Env,
-  KeptStyle,
   Kind,
   PlainBox,
   PlainRun,
   Presented,
   RunCache,
-  RunMotion,
   Runtime,
   Sample,
 };
@@ -141,16 +139,9 @@ impl<P: Drawn> Runtime<P> {
       return Some(());
     }
 
-    let Targets {
-      resolved_box,
-      resolved_run,
-      resolved_layout,
-      box_keyframes,
-      run_keyframes,
-      reads_interaction,
-    } = self.targets(node, fresh)?;
+    let mut targets = self.targets(node, fresh)?;
 
-    if let Some(read) = reads_interaction {
+    if let Some(read) = targets.reads_interaction.take() {
       self.restyle.read_interaction(node, read);
     }
 
@@ -162,22 +153,7 @@ impl<P: Drawn> Runtime<P> {
     };
     let reach = record.kind.box_style().map(P::reach);
     // A node whose presentation came out different from the last one repaints.
-    let (repaint, active) = match &mut record.kind {
-      Kind::Run {
-        kept,
-        cache,
-        motion,
-        ..
-      } => {
-        let target = resolved_run.map(|target| (target, resolved_layout));
-
-        present_run(kept, cache, motion, target, &run_keyframes, &pass)
-      }
-      kind => match kind.box_record_mut() {
-        Some(inner) => present_box(inner, resolved_box, &box_keyframes, &pass),
-        None => (false, false),
-      },
-    };
+    let (repaint, active) = record.kind.present(targets, &pass);
 
     record.in_motion = active;
     self.geometry_stale |= record.kind.box_style().map(P::reach) != reach;
@@ -287,81 +263,88 @@ impl<P: Drawn> Runtime<P> {
   }
 }
 
-/// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
-fn present_run<P: Drawn>(
-  kept: &KeptStyle<P>,
-  cache: &mut Option<RunCache<P>>,
-  motion: &mut RunMotion<P::StyleExt>,
-  resolved: Option<(PlainRun<P>, PlainBox<P>)>,
-  keyframes: &[Animation<PlainRun<P>>],
-  pass: &Pass,
-) -> (bool, bool) {
-  let mut active = false;
-  let previous = cache.as_ref().map(|cache| &cache.target);
-  let presented = resolved.map(|(target, layout)| {
+impl<P: Drawn> Kind<P> {
+  /// Presents the node's resolution in `targets` over its motion at `pass` and caches
+  /// it; `(repaint, active)`.
+  fn present(&mut self, targets: Targets<P>, pass: &Pass) -> (bool, bool) {
+    let Self::Run {
+      kept,
+      cache,
+      motion,
+      ..
+    } = self
+    else {
+      return self.box_record_mut().map_or((false, false), |inner| {
+        inner.present(targets.resolved_box, targets.box_keyframes, pass)
+      });
+    };
+    let mut active = false;
+    let previous = cache.as_ref().map(|cache| &cache.target);
+    let presented = targets.resolved_run.map(|target| {
+      let Presented {
+        style,
+        active: running,
+      } = motion.present(
+        previous,
+        target.clone(),
+        kept.transitions(),
+        &targets.run_keyframes,
+        pass.sample,
+      );
+
+      active |= running;
+
+      (style, target)
+    });
+    let repaint =
+      cache.as_ref().map(|cache| &cache.style) != presented.as_ref().map(|(style, _)| style);
+
+    *cache = presented.map(|(style, target)| RunCache {
+      generation: pass.generation,
+      interaction: pass.interaction,
+      style,
+      target,
+      layout: targets.resolved_layout,
+      keyframes: targets.run_keyframes,
+    });
+
+    (repaint, active)
+  }
+}
+
+impl<P: Drawn> BoxRecord<P> {
+  /// Presents the box's resolution over its motion at `pass` and caches it;
+  /// `(repaint, active)`.
+  fn present(
+    &mut self,
+    resolved: Option<PlainBox<P>>,
+    keyframes: Vec<Animation<PlainBox<P>>>,
+    pass: &Pass,
+  ) -> (bool, bool) {
+    let Some(target) = resolved
+    else {
+      return (false, false);
+    };
     let Presented {
       style,
       active: running,
-    } = motion.present(
-      previous,
+    } = self.motion.present(
+      self.cache.as_ref().map(|cache| &cache.target),
       target.clone(),
-      kept.transitions(),
-      keyframes,
+      self.kept.transitions(),
+      &keyframes,
       pass.sample,
     );
+    let repaint = self.cache.as_ref().is_none_or(|cache| cache.style != style);
 
-    active |= running;
+    self.cache = Some(BoxCache {
+      generation: pass.generation,
+      interaction: pass.interaction,
+      style,
+      target,
+      keyframes,
+    });
 
-    (style, target, layout)
-  });
-  let repaint =
-    cache.as_ref().map(|cache| &cache.style) != presented.as_ref().map(|(style, _, _)| style);
-
-  *cache = presented.map(|(style, target, layout)| RunCache {
-    generation: pass.generation,
-    interaction: pass.interaction,
-    style,
-    target,
-    layout,
-    keyframes: keyframes.to_vec(),
-  });
-
-  (repaint, active)
-}
-
-/// Presents a box's resolution over its motion and caches it; `(repaint, active)`.
-fn present_box<P: Drawn>(
-  inner: &mut BoxRecord<P>,
-  resolved: Option<PlainBox<P>>,
-  keyframes: &[Animation<PlainBox<P>>],
-  pass: &Pass,
-) -> (bool, bool) {
-  let Some(target) = resolved
-  else {
-    return (false, false);
-  };
-  let Presented {
-    style,
-    active: running,
-  } = inner.motion.present(
-    inner.cache.as_ref().map(|cache| &cache.target),
-    target.clone(),
-    inner.kept.transitions(),
-    keyframes,
-    pass.sample,
-  );
-  let repaint = inner
-    .cache
-    .as_ref()
-    .is_none_or(|cache| cache.style != style);
-
-  inner.cache = Some(BoxCache {
-    generation: pass.generation,
-    interaction: pass.interaction,
-    style,
-    target,
-    keyframes: keyframes.to_vec(),
-  });
-
-  (repaint, running)
+    (repaint, running)
+  }
 }

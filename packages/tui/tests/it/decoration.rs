@@ -1,8 +1,9 @@
-//! Decoration in cells: a shadow mixing into the cells beneath and moving by its offset,
-//! a box's scrollbars in its own glyphs and colors, a paint mixing against the
-//! terminal's own colors, and a run's decoration lines.
+//! Decoration in cells: a shadow mixing into the cells beneath, moving by its offset and
+//! repainting the band its reach moves to, a box's scrollbars in its own glyphs and
+//! colors, a paint mixing against the terminal's own colors, and a run's decoration
+//! lines.
 
-use skene_tui::{CellDecoration, platform::terminal::mount, prelude::*, testing};
+use skene_tui::{CellDecoration, Length, platform::terminal::mount, prelude::*, testing};
 
 use crate::common::{black, blue, colors_at, red, rgb, with_platform};
 
@@ -63,6 +64,59 @@ fn a_shadows_offset_moves_it() {
     assert_eq!(background(3, 1), clean);
     assert_eq!(background(4, 2), clean);
     assert_eq!(background(2, 3), clean);
+  });
+}
+
+/// A shadow whose reach moves after a frame painted, under a condition that lays nothing
+/// out again, repaints the band it reaches now and clears the one it left, though the
+/// box itself kept its cells.
+#[test]
+fn a_shadow_whose_reach_moves_repaints_its_band() {
+  with_platform(|| {
+    let _ = mount(|| {
+      Container::new()
+        .set_background(red())
+        .set_child(
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_shadow(black().with_alpha(0.5))
+            .set_shadow_softening(0)
+            .set_shadow_offset(Length::from(1).when(State::Hovered, 2)),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = || {
+      let colors = testing::render_to_colors(5, 4);
+
+      move |x: usize, y: usize| colors[y * 5 + x].1.expect("a painted background")
+    };
+    let near = frame();
+    let clean = near(0, 0);
+
+    assert!(near(1, 1).0 < clean.0, "the band starts one cell in");
+    assert_eq!(near(2, 2), clean);
+
+    testing::trigger_mouse_move(0, 0);
+
+    let far = frame();
+
+    assert_eq!(far(1, 1), clean, "the band left the cells it reached");
+    assert!(
+      far(2, 2).0 < clean.0,
+      "the band reaches a row it never painted"
+    );
+    assert!(far(3, 2).0 < clean.0);
+
+    testing::trigger_mouse_move(4, 3);
+
+    let back = frame();
+
+    assert!(back(1, 1).0 < clean.0, "the band returns");
+    assert_eq!(back(2, 2), clean, "the far band is cleared");
+    assert_eq!(back(3, 2), clean);
   });
 }
 

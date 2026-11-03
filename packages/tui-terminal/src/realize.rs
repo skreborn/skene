@@ -1,6 +1,6 @@
 //! The terminal's realization of the platform: the drawn runtime's adapter for everything
 //! that is no cell's, its layout tree included, beside each node's cell state, and the
-//! terminal's own focus, clock, clipboard and title.
+//! terminal's own focus, timers, clipboard and title.
 
 use std::{any::TypeId, cell::RefCell, rc::Rc, thread::LocalKey};
 

@@ -1333,16 +1333,19 @@ Condition     = Media | State | And | Or
   `Resolver`—variant overlay against the environment and the node's `Interaction`, token
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
   unit, its token and slot lookups and its font size. The drawn runtime
-  (`skene_layout::runtime`) is that point for every platform Skene draws whole: it
-  caches the result per node under a generation covering environment, interaction and
-  definitions, and reports whether the resolved value changed; that report is where a
-  transition starts. It builds the resolver through one `ResolutionContext` (a node's
-  environment, interaction and containers from the scene, a token resolved where it is
-  defined, its definition converted into the shared `TokenValue`, the font size from
-  the typography's size token, the platform's `EM` where text takes no sizes) over the
-  runtime itself as its `ResolutionSource`, giving what the scene does not hold: the
-  environment it keeps of its window, container sizes, slots and whether text is drawn
-  at other sizes (`Drawn::sizes_text`). The browser is that resolution's oracle: the
+  (`skene_layout::runtime`) keeps, for every platform Skene draws whole, each node's
+  kept style, its resolution cache (`BoxCache`, `RunCache`) and its motion; the
+  terminal's restyle (`layout.rs`) still chooses the nodes to revisit, resolves each
+  through the runtime's `Env`, caches the result under a generation covering
+  environment, interaction and definitions, and judges whether the presented value
+  changed; that judgment is where a transition starts. `Env` builds the resolver
+  through one `ResolutionContext` (a node's environment, interaction and containers
+  from the scene, a token resolved where it is defined, its definition converted into
+  the shared `TokenValue`, the font size from the typography's size token, the
+  platform's `EM` where text takes no sizes) over the runtime itself as its
+  `ResolutionSource`, giving what the scene does not hold: the environment it keeps of
+  its window, container sizes, slots and whether text is drawn at other sizes
+  (`Drawn::sizes_text`). The browser is that resolution's oracle: the
   parity harness (`browser_parity`) builds each case on the browser leaf, its read node
   a low-level view keeping the style the shared half hands the web, resolves it through
   `CompiledStyle::resolve` with the resolver of a `ResolutionContext` over the web's
@@ -1350,9 +1353,9 @@ Condition     = Media | State | And | Or
   its motion through the foundation's `Motion`, and holds the value to the one the
   engine computes, so a divergence it finds is one every platform resolving through
   the shared half shares. The runtime keeps the style `apply_style` hands it for each
-  box, control, overlay and run, and resolves it at every restyle through the shared
-  `Keep::Nothing` entry (`runtime::Env`), the one resolution setting whether the node's
-  interaction was read and giving a run its wrapper's layout beside its own properties,
+  box, control, overlay and run, and the terminal's restyle resolves it through the
+  shared `Keep::Nothing` entry (`runtime::Env`), the one resolution setting whether the
+  node's interaction was read and giving a run its wrapper's layout beside its own properties,
   before the platform's fill-ins of its own vocabulary, its `Drawn::finish_box` and
   `Drawn::finish_run` (the terminal's rounded border glyphs, the typography's size and
   weight, `bold`); its transitions and animations are the kept style's. In the

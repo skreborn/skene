@@ -36,6 +36,22 @@ mod frame {
     Color::srgb(0., 0., 1.)
   }
 
+  /// A box keyframe of one background color.
+  fn frame(color: Color) -> BoxKeyframe<Terminal> {
+    BoxKeyframe::<Terminal> {
+      background: Some(color.into()),
+      ..Default::default()
+    }
+  }
+
+  /// A run keyframe of one text color.
+  fn ink_frame(color: Color) -> RunKeyframe<Terminal> {
+    RunKeyframe::<Terminal> {
+      color: Some(color.into()),
+      ..Default::default()
+    }
+  }
+
   /// Mounts a screen-high scroll box over [`ROWS`] text rows.
   fn mount_rows() {
     let _ = mount(|| {
@@ -88,7 +104,8 @@ mod frame {
   }
 
   /// Mounts a screen-high scroll box over [`MOVING_ROWS`] rows, each a box whose background
-  /// and a text whose color run an endless animation from red to blue.
+  /// runs an endless animation from red to blue around a text whose color runs one from
+  /// blue to red.
   fn mount_moving_rows() {
     let _ = mount(|| {
       Container::new()
@@ -101,49 +118,13 @@ mod frame {
                 Container::new()
                   .set_background(red())
                   .add_animation(
-                    Animation::new(
-                      1.,
-                      [
-                        (
-                          0.,
-                          BoxKeyframe::<Terminal> {
-                            background: Some(red().into()),
-                            ..Default::default()
-                          },
-                        ),
-                        (
-                          100.,
-                          BoxKeyframe::<Terminal> {
-                            background: Some(blue().into()),
-                            ..Default::default()
-                          },
-                        ),
-                      ],
-                    )
-                    .set_iterations(Iterations::Infinite),
+                    Animation::new(1., [(0., frame(red())), (100., frame(blue()))])
+                      .set_iterations(Iterations::Infinite),
                   )
                   .set_child(
                     Text::new(format!("row {index}")).add_animation(
-                      Animation::new(
-                        1.,
-                        [
-                          (
-                            0.,
-                            RunKeyframe::<Terminal> {
-                              color: Some(blue().into()),
-                              ..Default::default()
-                            },
-                          ),
-                          (
-                            100.,
-                            RunKeyframe::<Terminal> {
-                              color: Some(red().into()),
-                              ..Default::default()
-                            },
-                          ),
-                        ],
-                      )
-                      .set_iterations(Iterations::Infinite),
+                      Animation::new(1., [(0., ink_frame(blue())), (100., ink_frame(red()))])
+                        .set_iterations(Iterations::Infinite),
                     ),
                   )
                   .into_any()
@@ -155,6 +136,7 @@ mod frame {
     });
   }
 
+  /// Registers every case of the frame bench.
   pub(crate) fn frames(criterion: &mut Criterion) {
     testing::with_platform(|| {
       mount_rows();

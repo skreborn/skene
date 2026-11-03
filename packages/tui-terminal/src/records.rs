@@ -1,6 +1,6 @@
 //! The terminal's state beside the scene: the drawn runtime with its records and its
-//! layout tree, each node's cell state beside its record, the interaction state, and the
-//! environment it reports.
+//! layout tree, each node's cell state carried in its record, the interaction state, and
+//! the environment it reports.
 
 mod cell;
 mod environment;
@@ -9,17 +9,7 @@ mod frames;
 mod geometry;
 mod input;
 
-use skene_foundation::{
-  NativeElement,
-  NodeFacts,
-  NodeId,
-  NodeMap,
-  NodeSpec,
-  PointerButtons,
-  Scene,
-  Shortcut,
-  Timers,
-};
+use skene_foundation::{NodeId, PointerButtons, Scene, Shortcut, Timers};
 use skene_layout::runtime::Runtime;
 
 pub(crate) use self::{
@@ -53,20 +43,20 @@ pub(crate) type PlainBox = skene_layout::runtime::PlainBox<Terminal>;
 /// A run's style resolved against live state.
 pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
 
-/// The drawn runtime, each node's cell state, the interaction state and the environment.
+/// The drawn runtime with each node's cell state carried in its record, the interaction
+/// state and the environment.
 #[expect(
   clippy::struct_excessive_bools,
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Records {
-  /// The drawn runtime: a record per node, the root filling the screen, the overlays and
-  /// entries in build order, the restyle with its presentation's counters, the layout
-  /// tree, what the next frame lays out and repaints, the environment the terminal
-  /// reports with the app's choice of scheme, and the frame clock.
+  /// The drawn runtime: a record per node carrying the terminal's own state of it (its
+  /// field, scroll offsets, the cells it covers and what it paints beyond its style), the
+  /// root filling the screen, the overlays and entries in build order, the restyle with
+  /// its presentation's counters, the layout tree, what the next frame lays out and
+  /// repaints, the environment the terminal reports with the app's choice of scheme, and
+  /// the frame clock.
   pub(crate) runtime: Runtime<Terminal>,
-  /// The terminal's own state of each node, beside its record: its field, scroll
-  /// offsets, the cells it covers and what it paints beyond its style.
-  cells: NodeMap<CellNode>,
   /// Screen rectangles to repaint that no live node covers any more.
   damaged_rects: Vec<CellRect>,
   /// The last painted frame, which the next paints over where nothing changed.
@@ -150,9 +140,8 @@ impl Records {
   /// Records whose root box, filling the screen, is the scene's node `root`, the app
   /// taking the mouse where `mouse` holds.
   pub(crate) fn new(root: NodeId, mouse: bool) -> Self {
-    let mut records = Self {
+    Self {
       runtime: Runtime::new(root, Self::launch_environment(mouse), false),
-      cells: NodeMap::new(),
       damaged_rects: Vec::new(),
       last_frame: None,
       repainted: Vec::new(),
@@ -186,48 +175,22 @@ impl Records {
       key_releases: false,
       cell_pixels: DEFAULT_CELL_PIXELS,
       picture_generation: 0,
-    };
-
-    records.insert_cells(root);
-
-    records
-  }
-
-  /// Creates the record of `node` from `spec` in the runtime, beside cell state holding
-  /// a text entry's field and nothing else yet; `false` where `spec` realizes no node of
-  /// its own.
-  pub(crate) fn create(&mut self, node: NodeId, spec: &NodeSpec) -> bool {
-    if !self.runtime.create(node, spec) {
-      return false;
     }
-
-    self.insert_cells(node);
-
-    if let NodeFacts::Control(control) = &spec.facts
-      && control.native.is_some_and(NativeElement::is_text_entry)
-      && let Some(cell) = self.cells.get_mut(node)
-    {
-      cell.field = Some(Box::new(Field::new(control.lines)));
-    }
-
-    true
-  }
-
-  /// Adds the cell state of `node`, whose record the runtime holds, holding nothing yet.
-  fn insert_cells(&mut self, node: NodeId) {
-    let _replaced = self.cells.insert(node, CellNode::default());
   }
 
   /// The terminal's own state of `handle`, if it is live.
   #[inline(always)]
   pub(crate) fn cell(&self, handle: NodeId) -> Option<&CellNode> {
-    self.cells.get(handle)
+    self.runtime.record(handle).map(|record| &record.platform)
   }
 
   /// The terminal's own state of `handle`, mutably, if it is live.
   #[inline(always)]
   pub(crate) fn cell_mut(&mut self, handle: NodeId) -> Option<&mut CellNode> {
-    self.cells.get_mut(handle)
+    self
+      .runtime
+      .record_mut(handle)
+      .map(|record| &mut record.platform)
   }
 
   /// Measures every node's text again, after the terminal's clustering or sizing
@@ -237,10 +200,7 @@ impl Records {
     self.runtime.remeasure();
 
     for &handle in &self.runtime.entries {
-      if self
-        .cells
-        .get(handle)
-        .is_some_and(|cell| cell.field.is_some())
+      if self.cell(handle).is_some_and(|cell| cell.field.is_some())
         && let Some(entry) = Scene::<Terminal>::entry_of(handle)
         && let Ok(mut editor) = entry.editor().try_borrow_mut()
       {
@@ -249,41 +209,14 @@ impl Records {
     }
   }
 
-  /// Presents the styles that may have moved through the runtime and writes the layout
-  /// tree from them ([`Runtime::write_styles`]), each text entry measuring at its
-  /// field's native extent; `true` where any taffy style or leaf changed.
-  pub(crate) fn write_styles(&mut self) -> bool {
-    let cells = &self.cells;
-
-    self.runtime.write_styles(|node| {
-      let field = cells.get(node)?.field.as_deref()?;
-
-      Some(field.extent(Scene::<Terminal>::entry_of(node).as_deref()))
-    })
-  }
-
-  /// How many nodes the platform holds a record of.
-  pub(crate) fn record_count(&self) -> usize {
-    let count = self.runtime.record_count();
-
-    debug_assert_eq!(
-      self.cells.values().count(),
-      count,
-      "every record has its cell state beside it, and nothing else does"
-    );
-
-    count
-  }
-
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: NodeId) {
-    if self.runtime.destroy(handle).is_none() {
+    let Some(record) = self.runtime.destroy(handle)
+    else {
       return;
-    }
+    };
 
-    let cell = self.cells.remove(handle);
-
-    if let Some(rect) = cell.and_then(|cell| cell.painted) {
+    if let Some(rect) = record.platform.painted {
       self.damaged_rects.push(rect);
     }
 

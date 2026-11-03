@@ -1294,9 +1294,9 @@ fn paint_node(
           }
         }
 
-        let cell = records.cell(handle);
+        let cell = &record.platform;
 
-        if let Some(painter) = cell.and_then(|cell| cell.painter.as_ref()) {
+        if let Some(painter) = &cell.painter {
           let size = skene_foundation::Size::new(
             u32::try_from(isize::try_from(width).unwrap_or(0) - edges.0 - edges.2).unwrap_or(0),
             u32::try_from(isize::try_from(height).unwrap_or(0) - edges.1 - edges.3).unwrap_or(0),
@@ -1308,7 +1308,8 @@ fn paint_node(
         }
 
         if let Some(image) = cell
-          .and_then(|cell| cell.picture.as_ref())
+          .picture
+          .as_ref()
           .and_then(|picture| picture.image.clone())
           && records.runtime.window().painting()
         {

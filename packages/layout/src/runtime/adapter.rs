@@ -41,48 +41,42 @@ impl<P: Drawn> Runtime<P> {
   /// where `spec` realizes no node of its own (an anchor or a scope), which keeps none.
   pub fn create(&mut self, node: NodeId, spec: &NodeSpec) -> bool {
     let inner = |boxed| BoxRecord::new(spec.role, spec.drag, boxed);
-
-    match &spec.facts {
-      NodeFacts::Box(boxed) => self.insert(node, Kind::Box(inner(boxed.clone()))),
+    let kind = match &spec.facts {
+      NodeFacts::Box(boxed) => Kind::Box(inner(boxed.clone())),
       NodeFacts::Control(control) => {
-        self.insert(
-          node,
-          Kind::Control {
-            native: control.native,
-            label: control.label.clone(),
-            inner: inner(control.boxed.clone()),
-          },
-        );
-
         if control.native.is_some_and(NativeElement::is_text_entry) {
           self.entries.push(node);
         }
-      }
-      NodeFacts::Overlay(overlay) => {
-        self.insert(
-          node,
-          Kind::Overlay {
-            inner: inner(overlay.boxed.clone()),
-            placement: Placement::Center,
-            backdrop: overlay.backdrop,
-            open: false,
-            position: None,
-          },
-        );
 
-        self.overlays.push(node);
-      }
-      NodeFacts::Run(run) => {
-        self.insert(node, Kind::run(run.clone()));
-
-        if run.placement == RunPlacement::Embedded
-          && let Some(record) = self.record_mut(node)
-        {
-          record.text = INLINE_BOX.to_string();
+        Kind::Control {
+          native: control.native,
+          label: control.label.clone(),
+          inner: inner(control.boxed.clone()),
         }
       }
+      NodeFacts::Overlay(overlay) => {
+        self.overlays.push(node);
+
+        Kind::Overlay {
+          inner: inner(overlay.boxed.clone()),
+          placement: Placement::Center,
+          backdrop: overlay.backdrop,
+          open: false,
+          position: None,
+        }
+      }
+      NodeFacts::Run(run) => Kind::run(run.clone()),
       NodeFacts::Anchor | NodeFacts::Scope => return false,
+    };
+    let mut record = Record::new(kind, P::node(spec));
+
+    if let NodeFacts::Run(run) = &spec.facts
+      && run.placement == RunPlacement::Embedded
+    {
+      record.text = INLINE_BOX.to_string();
     }
+
+    self.insert(node, record);
 
     true
   }

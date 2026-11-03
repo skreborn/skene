@@ -1,16 +1,17 @@
-//! What the terminal keeps per node beside its record: a text entry's presentation, the
+//! What the terminal keeps per node in its record: a text entry's presentation, the
 //! scroll offsets, the cells the node covers, and what it paints beyond its style.
 
-use std::rc::Rc;
+use std::{fmt, rc::Rc};
 
 use skene_foundation::Inset;
 
 use super::{CellRect, Field};
 use crate::{cells::Painter, paint::Image};
 
-/// The terminal's own state of one realized node, kept beside its record.
+/// The terminal's own state of one realized node, carried in its record
+/// ([`Drawn::Node`](skene_layout::runtime::Drawn::Node)).
 #[derive(Default)]
-pub(crate) struct CellNode {
+pub struct CellNode {
   /// A text entry's presentation of its value; `None` for every other node.
   pub(crate) field: Option<Box<Field>>,
   /// The scroll offsets, in cells.
@@ -26,6 +27,21 @@ pub(crate) struct CellNode {
   /// The box's decoration painted in pixels beneath its cells, where the terminal
   /// shows graphics and the decoration asks for more than cells draw.
   pub(crate) backdrop: Option<Backdrop>,
+}
+
+impl fmt::Debug for CellNode {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_struct("CellNode")
+      .field("field", &self.field.is_some())
+      .field("scroll", &self.scroll)
+      .field("painted", &self.painted)
+      .field("covers", &self.covers)
+      .field("painter", &self.painter.is_some())
+      .field("picture", &self.picture.is_some())
+      .field("backdrop", &self.backdrop.is_some())
+      .finish()
+  }
 }
 
 /// A box's decoration as pixels: what it was rendered from, and the image.

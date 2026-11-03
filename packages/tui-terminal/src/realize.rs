@@ -1,6 +1,6 @@
 //! The terminal's realization of the platform: the drawn runtime's adapter for everything
-//! that is no cell's, its layout tree included, beside each node's cell state, and the
-//! terminal's own focus, timers, clipboard and title.
+//! that is no cell's, its layout tree included, each node's cell state carried in its
+//! record, and the terminal's own focus, timers, clipboard and title.
 
 use std::{any::TypeId, cell::RefCell, rc::Rc, thread::LocalKey};
 
@@ -18,6 +18,8 @@ use skene_foundation::{
   Keep,
   Media,
   MediaSignals,
+  NativeElement,
+  NodeFacts,
   NodeId,
   NodeKind,
   NodeSpec,
@@ -53,7 +55,7 @@ use crate::{
   cells::{CellPainter, Painter},
   interaction,
   paint::ShadowPaint,
-  records::{Field, PictureRecord, Records},
+  records::{CellNode, Field, PictureRecord, Records},
 };
 
 thread_local! {
@@ -90,12 +92,35 @@ pub(crate) fn try_with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> 
 
 impl Drawn for Terminal {
   type Engine = CellEngine;
+  type Node = CellNode;
 
   const BORDERS: Borders = Borders::Unit;
   const ROUNDED: bool = true;
 
   fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R> {
     try_with_records(|records| operation(&mut records.runtime))
+  }
+
+  /// A text entry's state holds its field, laid out over its lines; every other node's
+  /// holds nothing yet.
+  fn node(spec: &NodeSpec) -> CellNode {
+    match &spec.facts {
+      NodeFacts::Control(control) if control.native.is_some_and(NativeElement::is_text_entry) => {
+        CellNode {
+          field: Some(Box::new(Field::new(control.lines))),
+          ..CellNode::default()
+        }
+      }
+      _ => CellNode::default(),
+    }
+  }
+
+  /// A text entry's extent is its field's, over the value its editing state holds.
+  fn entry_extent(node: NodeId, own: &CellNode) -> Option<Size<f32>> {
+    own
+      .field
+      .as_deref()
+      .map(|field| field.extent(Scene::<Self>::entry_of(node).as_deref()))
   }
 
   fn sizes_text() -> bool {
@@ -172,7 +197,7 @@ impl Realization for Terminal {
   }
 
   fn create(node: NodeId, spec: &NodeSpec) -> bool {
-    with_records(|records| records.create(node, spec))
+    with_records(|records| records.runtime.create(node, spec))
   }
 
   fn apply_style(node: NodeId, style: CompiledStyle<i32, TerminalStyle>) {

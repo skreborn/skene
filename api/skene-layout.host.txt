@@ -157,6 +157,7 @@ pub skene_layout::runtime::Record::hidden: bool
 pub skene_layout::runtime::Record::in_motion: bool
 pub skene_layout::runtime::Record::kind: skene_layout::runtime::Kind<P>
 pub skene_layout::runtime::Record::observers: alloc::vec::Vec<skene_layout::runtime::Observer<P>>
+pub skene_layout::runtime::Record::platform: <P as skene_layout::runtime::Drawn>::Node
 pub skene_layout::runtime::Record::reported: core::option::Option<skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>>
 pub skene_layout::runtime::Record::slots: rustc_hash::FxHashMap<skene_foundation::spine::leaf::Slot, skene_layout::runtime::SlotLeaf<P>>
 pub skene_layout::runtime::Record::text: alloc::string::String
@@ -166,7 +167,7 @@ pub fn skene_layout::runtime::Record<P>::is_invisible(&self) -> bool
 pub const fn skene_layout::runtime::Record<P>::is_open_overlay(&self) -> bool
 pub const fn skene_layout::runtime::Record<P>::is_overlay(&self) -> bool
 pub fn skene_layout::runtime::Record<P>::layout(&self) -> core::option::Option<skene_foundation::spine::values::layout::Layout>
-pub fn skene_layout::runtime::Record<P>::new(skene_layout::runtime::Kind<P>) -> Self
+pub fn skene_layout::runtime::Record<P>::new(skene_layout::runtime::Kind<P>, <P as skene_layout::runtime::Drawn>::Node) -> Self
 impl<P: skene_layout::runtime::Drawn + core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Record<P>
 pub fn skene_layout::runtime::Record<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::RunCache<P: skene_layout::runtime::Drawn>
@@ -209,6 +210,8 @@ pub fn skene_layout::runtime::Runtime<P>::now(&self) -> f64
 pub fn skene_layout::runtime::Runtime<P>::record(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Record<P>>
 pub fn skene_layout::runtime::Runtime<P>::record_count(&self) -> usize
 pub fn skene_layout::runtime::Runtime<P>::record_mut(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<&mut skene_layout::runtime::Record<P>>
+pub fn skene_layout::runtime::Runtime<P>::records(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, &skene_layout::runtime::Record<P>)>
+pub fn skene_layout::runtime::Runtime<P>::records_mut(&mut self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, &mut skene_layout::runtime::Record<P>)>
 pub fn skene_layout::runtime::Runtime<P>::remeasure(&mut self)
 pub const fn skene_layout::runtime::Runtime<P>::root(&self) -> skene_foundation::spine::node::NodeId
 pub const fn skene_layout::runtime::Runtime<P>::set_clock(&mut self, skene_layout::runtime::Clock)
@@ -258,7 +261,7 @@ pub fn skene_layout::runtime::Runtime<P>::compute(&mut self, skene_foundation::s
 pub fn skene_layout::runtime::Runtime<P>::flow_of(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Flow<<P as skene_layout::runtime::Drawn>::Engine>>
 pub fn skene_layout::runtime::Runtime<P>::inline_boxes(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::runtime::Runtime<P>::write_children(&mut self)
-pub fn skene_layout::runtime::Runtime<P>::write_styles(&mut self, impl core::ops::function::Fn(skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::size::Size<f32>>) -> bool
+pub fn skene_layout::runtime::Runtime<P>::write_styles(&mut self) -> bool
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::enclosing_paragraph(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::runtime::Runtime<P>::is_inline_box(&self, skene_foundation::spine::node::NodeId) -> bool
@@ -308,11 +311,14 @@ pub fn skene_layout::runtime::Window<P>::fmt(&self, &mut core::fmt::Formatter<'_
 pub const skene_layout::runtime::INLINE_BOX: char
 pub trait skene_layout::runtime::Drawn: skene_foundation::spine::realization::Realization<TokenValue = skene_foundation::spine::resolve::TokenValue<<Self as skene_foundation::spine::realization::Realization>::Scalar>, Scalarskene_foundation::spine::motion::interpolate::Interpolate>
 pub type skene_layout::runtime::Drawn::Engine: skene_foundation::text::engine::TextEngine
+pub type skene_layout::runtime::Drawn::Node: core::default::Default + core::fmt::Debug
 pub const skene_layout::runtime::Drawn::BORDERS: skene_layout::Borders
 pub const skene_layout::runtime::Drawn::ROUNDED: bool
 pub fn skene_layout::runtime::Drawn::engine() -> Self::Engine
+pub fn skene_layout::runtime::Drawn::entry_extent(skene_foundation::spine::node::NodeId, &Self::Node) -> core::option::Option<skene_foundation::spine::values::size::Size<f32>>
 pub fn skene_layout::runtime::Drawn::finish_box(&mut skene_foundation::spine::box_style::BoxStyle<Self::Scalar, skene_foundation::spine::shape::Plain, Self::StyleExt>)
 pub fn skene_layout::runtime::Drawn::finish_run(&mut skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, Self::StyleExt>, &skene_foundation::spine::resolve::Resolver<'_, Self::Scalar, Self::StyleExt>)
+pub fn skene_layout::runtime::Drawn::node(&skene_foundation::spine::props::NodeSpec) -> Self::Node
 pub fn skene_layout::runtime::Drawn::paragraph_style() -> skene_foundation::text::model::ParagraphStyle
 pub fn skene_layout::runtime::Drawn::reach(&skene_layout::runtime::PlainBox<Self>) -> skene_foundation::spine::values::inset::Inset<f32>
 pub fn skene_layout::runtime::Drawn::sizes_text() -> bool

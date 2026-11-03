@@ -16,11 +16,11 @@
 //! repaints, what stays in motion and whether a box's reach moved ([`Drawn::reach`]);
 //! it then maps each presented node onto its taffy style, a box's border taking room as
 //! the platform's layout takes it ([`Drawn::BORDERS`]), and its leaf, a text entry's
-//! native extent handed in by the platform. Where the scene's structure moved, every
-//! laid-out node is handed its children, anchors and scopes flattened into their
-//! content and the root holding the overlays it reaches ([`Runtime::write_children`]),
-//! and the layout is computed at the window's size ([`Runtime::compute`]) and read
-//! through [`Runtime::tree`].
+//! native extent read through [`Drawn::entry_extent`]. Where the scene's structure
+//! moved, every laid-out node is handed its children, anchors and scopes flattened into
+//! their content and the root holding the overlays it reaches
+//! ([`Runtime::write_children`]), and the layout is computed at the window's size
+//! ([`Runtime::compute`]) and read through [`Runtime::tree`].
 //!
 //! The runtime reads the paragraph structure from its records and the scene: a flow box
 //! whose every laid-out child is an inline run lays them out as one paragraph
@@ -47,8 +47,9 @@
 //! overlay opened with the focus move it asks for ([`Runtime::set_overlay_open`]), and a
 //! view mounted under the root with the window's autofocus ([`Runtime::mount`]).
 //!
-//! A platform keeps its own per-node state in a side table of its own keyed by the node,
-//! never in the runtime's records.
+//! A record carries the platform's own state of its node ([`Drawn::Node`]), made with
+//! the record from the node's spec ([`Drawn::node`]) and dropped with it, and a hook the
+//! runtime calls mid-pass is handed it ([`Drawn::entry_extent`]).
 
 mod adapter;
 mod environment;
@@ -71,10 +72,12 @@ use skene_foundation::{
   Layout,
   NodeId,
   NodeMap,
+  NodeSpec,
   Plain,
   Realization,
   Resolver,
   RunStyle,
+  Size,
   TokenValue,
   interpolate::Interpolate,
   text::{ParagraphStyle, TextEngine, TextStyle},
@@ -118,6 +121,11 @@ pub trait Drawn:
   /// The engine the platform lays its text out through.
   type Engine: TextEngine;
 
+  /// The platform's own state of a node, kept in the node's record: made by
+  /// [`node`](Self::node) as the record is created, the root's its default, and dropped
+  /// with the record.
+  type Node: Default + std::fmt::Debug;
+
   /// How a box's border takes room in the platform's layout.
   const BORDERS: Borders;
 
@@ -133,6 +141,16 @@ pub trait Drawn:
   /// effects run before it returns. The platform runs its handlers with nothing
   /// borrowed, so a handler reaches the runtime as any other caller does.
   fn with_runtime<R>(operation: impl FnOnce(&mut Runtime<Self>) -> R) -> Option<R>;
+
+  /// The platform's own state of the node created from `spec`.
+  fn node(spec: &NodeSpec) -> Self::Node;
+
+  /// The native extent of the text entry `node` holding the platform's state `own`, its
+  /// content box's size, `None` where it is no entry.
+  ///
+  /// It reads nothing the runtime holds but `own`, since the runtime is borrowed while it
+  /// runs.
+  fn entry_extent(node: NodeId, own: &Self::Node) -> Option<Size<f32>>;
 
   /// Whether the platform draws text at sizes other than its
   /// [`FONT_SIZE`](Realization::FONT_SIZE), as it last found; see
@@ -254,7 +272,13 @@ impl<P: Drawn> Runtime<P> {
       choice: None,
     };
 
-    runtime.insert(root, Kind::Box(BoxRecord::new(None, None, root_facts)));
+    runtime.insert(
+      root,
+      Record::new(
+        Kind::Box(BoxRecord::new(None, None, root_facts)),
+        P::Node::default(),
+      ),
+    );
 
     runtime
   }
@@ -286,15 +310,15 @@ impl<P: Drawn> Runtime<P> {
     self.root
   }
 
-  /// Stores a record of `kind` as the record of `node`, beside a fresh node of the layout
-  /// tree: a container laid out by an engine of its own where a view taking decoration
-  /// created its box, and laid out by its nearest such ancestor's engine where it is a
+  /// Stores `record` as the record of `node`, beside a fresh node of the layout tree: a
+  /// container laid out by an engine of its own where a view taking decoration created
+  /// its box, and laid out by its nearest such ancestor's engine where it is a
   /// layout-only box or a run; its structure moved.
-  fn insert(&mut self, node: NodeId, kind: Kind<P>) {
+  fn insert(&mut self, node: NodeId, record: Record<P>) {
     self.restyle.move_structure();
-    self.tree.insert(node, kind.is_decorated());
+    self.tree.insert(node, record.kind.is_decorated());
 
-    let _replaced = self.records.insert(node, Record::new(kind));
+    let _replaced = self.records.insert(node, record);
   }
 
   /// Whether `node` holds a record: it is live.
@@ -321,6 +345,16 @@ impl<P: Drawn> Runtime<P> {
   #[must_use]
   pub fn handles(&self) -> Vec<NodeId> {
     self.records.iter().map(|(node, _)| node).collect()
+  }
+
+  /// Every live node with its record, in index order.
+  pub fn records(&self) -> impl Iterator<Item = (NodeId, &Record<P>)> {
+    self.records.iter()
+  }
+
+  /// Every live node with its record, mutably, in index order.
+  pub fn records_mut(&mut self) -> impl Iterator<Item = (NodeId, &mut Record<P>)> {
+    self.records.iter_mut()
   }
 
   /// How many nodes the runtime holds a record of.

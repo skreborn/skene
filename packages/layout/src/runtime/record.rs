@@ -317,12 +317,14 @@ pub struct Record<P: Drawn> {
   /// Whether the node was out of the display at the last presentation: inside a closed
   /// overlay, or detached from the root.
   pub hidden: bool,
+  /// The platform's own state of the node ([`Drawn::Node`]).
+  pub platform: P::Node,
 }
 
 impl<P: Drawn> Record<P> {
-  /// The record of a node realized as `kind`: no text, slot, observer or report yet, at
-  /// rest and in the display.
-  pub fn new(kind: Kind<P>) -> Self {
+  /// The record of a node realized as `kind`, the platform's own state of it `platform`:
+  /// no text, slot, observer or report yet, at rest and in the display.
+  pub fn new(kind: Kind<P>, platform: P::Node) -> Self {
     Self {
       kind,
       text: String::new(),
@@ -331,6 +333,7 @@ impl<P: Drawn> Record<P> {
       reported: None,
       in_motion: false,
       hidden: false,
+      platform,
     }
   }
 
@@ -380,6 +383,7 @@ impl<P: Drawn + fmt::Debug> fmt::Debug for Record<P> {
       .field("reported", &self.reported)
       .field("in_motion", &self.in_motion)
       .field("hidden", &self.hidden)
+      .field("platform", &self.platform)
       .finish()
   }
 }

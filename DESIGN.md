@@ -1946,22 +1946,22 @@ and its launch (`launch`, `Launch`, `Clipboard`, `MOUSE_KEY`, `Device` and its `
 and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) and its
 `testing` at the root. The realization holds everything down to the device: its records
 are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by generic
-code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, which
-keeps each node's cell-only state in a side table keyed by the node (a text entry's
-presentation, its scroll offsets, the cells it covers and what it paints beyond its
-style). Its `impl Realization` forwards to the runtime's adapter for everything that is
-no cell's: a node's record created and destroyed, its style, slots, control state and
-contents, a size observed, an overlay opened with the focus move it asks for, and a
-mount with the window's autofocus. The runtime writes the layout tree from the scene
-and computes it, the terminal handing it only a text entry's native extent (its value's
-widest line or its placeholder's, and its lines, in cells) and keeping the cell geometry
-it reads the layout through. It keeps as its own each node's cell state beside its
-record, an entry's edit, placeholder, secure flag and keyboard, focus, pointer
+code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, whose
+records carry the terminal's per-node cell state (`Drawn::Node`, its `CellNode`, made
+from the node's spec with the record and dropped with it: a text entry's field, its
+scroll offsets, the cells it covers and what it paints beyond its style). Its
+`impl Realization` forwards to the runtime's adapter for everything that is no cell's: a
+node's record created and destroyed, its style, slots, control state and contents, a
+size observed, an overlay opened with the focus move it asks for, and a mount with the
+window's autofocus. The runtime writes the layout tree from the scene and computes it,
+asking the terminal only for a text entry's native extent (`Drawn::entry_extent`, read
+from the field its record carries: its value's widest line or its placeholder's, and its
+lines, in cells), the terminal keeping the cell geometry it reads the layout through. It
+keeps as its own an entry's edit, placeholder, secure flag and keyboard, focus, pointer
 localization, timers, the clipboard, the window title and navigation. Beside the
-runtime and the side table sit the cell geometry, the cell engine, painting, the frame
-writer, the event loop and its interaction, the editing state of its drawn entries, the
-dev reload's restore and rebuild notice, and the `device`, `tty`, `parse` and `escape`
-modules. It
+runtime sit the cell geometry, the cell engine, painting, the frame writer, the event
+loop and its interaction, the editing state of its drawn entries, the dev reload's
+restore and rebuild notice, and the `device`, `tty`, `parse` and `escape` modules. It
 names no facade: what it builds of its own, the rebuild notice, it builds from the
 foundation's views at `Terminal`, and the values it defines it spells in the
 foundation's generics at cells (`SystemColors<i32>`). Its build script generates the
@@ -2649,8 +2649,8 @@ sense apart where context does not.
 - **Record.** A drawn platform's record of a node (`skene_layout::runtime::Record`):
   what the drawn runtime (`runtime::Runtime`) keeps per `NodeId` beside the scene, its
   kind and the facts its creation carried, its kept and resolved style, its motion, its
-  text and slots, the platform's own per-node state kept beside it in a side table of
-  its own (the terminal's cell state). A snapshot record: what a run writes for its
+  text and slots, the platform's own per-node state carried in it (`Drawn::Node`, the
+  terminal's cell state). A snapshot record: what a run writes for its
   successor at a dev reload. A node's style record (`Record`): its box and run styles
   and their motion as one erased list under Skene's property names (The style model).
 - **Realize.** A platform turning a scene node into its own representation: an element

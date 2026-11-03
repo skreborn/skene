@@ -49,7 +49,7 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
 pub(crate) fn settle(width: u16, height: u16) {
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_records(|records| {
-      let restyled = records.write_styles();
+      let restyled = records.runtime.write_styles();
 
       records.runtime.write_children();
 
@@ -154,11 +154,8 @@ fn damaged_rows(
   }
 
   if moved {
-    for handle in records.runtime.handles() {
-      let Some(cell) = records.cell(handle)
-      else {
-        continue;
-      };
+    for (_, record) in records.runtime.records() {
+      let cell = &record.platform;
 
       if cell.painted != cell.covers {
         rects.extend(cell.painted);
@@ -224,8 +221,14 @@ fn render_pictures(records: &mut Records) {
   }
 
   let (cell_width, cell_height) = records.cell_pixels;
+  let pictured: Vec<NodeId> = records
+    .runtime
+    .records()
+    .filter(|(_, record)| record.platform.picture.is_some())
+    .map(|(node, _)| node)
+    .collect();
 
-  for handle in records.runtime.handles() {
+  for handle in pictured {
     let Some(picture) = records.cell(handle).and_then(|cell| cell.picture.as_ref())
     else {
       continue;
@@ -348,9 +351,10 @@ fn render_backdrops(records: &mut Records) {
       continue;
     }
 
-    if records
-      .cell(handle)
-      .and_then(|cell| cell.backdrop.as_ref())
+    if record
+      .platform
+      .backdrop
+      .as_ref()
       .is_some_and(|backdrop| backdrop.key == key)
     {
       continue;
@@ -506,10 +510,8 @@ fn measure_covers(records: &mut Records) {
     );
   }
 
-  for handle in records.runtime.handles() {
-    if let Some(cell) = records.cell_mut(handle) {
-      cell.covers = None;
-    }
+  for (_, record) in records.runtime.records_mut() {
+    record.platform.covers = None;
   }
 
   for (handle, rect) in covers {
@@ -521,10 +523,8 @@ fn measure_covers(records: &mut Records) {
 
 /// Records the rectangle every node covers as the one it covered at this paint.
 fn record_painted(records: &mut Records) {
-  for handle in records.runtime.handles() {
-    if let Some(cell) = records.cell_mut(handle) {
-      cell.painted = cell.covers;
-    }
+  for (_, record) in records.runtime.records_mut() {
+    record.platform.painted = record.platform.covers;
   }
 }
 
@@ -542,13 +542,8 @@ fn measure_containers() -> bool {
   let measured = with_records(|records| {
     records
       .runtime
-      .handles()
-      .into_iter()
-      .filter_map(|handle| {
-        let name = records.runtime.record(handle).and_then(Record::container)?;
-
-        Some((name, records.client_size(handle)))
-      })
+      .records()
+      .filter_map(|(handle, record)| Some((record.container()?, records.client_size(handle))))
       .collect::<Vec<_>>()
   });
 
@@ -563,17 +558,18 @@ type Report = (Rc<dyn Fn(Size<i32>)>, Size<i32>);
 fn report_sizes() -> bool {
   let reports: Vec<Report> = with_records(|records| {
     let mut reports = Vec::new();
+    let observed: Vec<NodeId> = records
+      .runtime
+      .records()
+      .filter(|(_, record)| !record.observers.is_empty())
+      .map(|(node, _)| node)
+      .collect();
 
-    for handle in records.runtime.handles() {
+    for handle in observed {
       let Some(record) = records.runtime.record(handle)
       else {
         continue;
       };
-
-      if record.observers.is_empty() {
-        continue;
-      }
-
       let size = records.client_size(handle);
 
       if record.reported == Some(size) {

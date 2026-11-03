@@ -448,7 +448,7 @@ pub fn pending_timers() -> usize {
 #[must_use]
 pub fn record_count() -> usize {
   end_turn();
-  with_records(|records| records.record_count())
+  with_records(|records| records.runtime.record_count())
 }
 
 /// How many layouts have been computed since the platform was installed, for a test

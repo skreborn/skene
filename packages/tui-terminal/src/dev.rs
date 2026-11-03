@@ -240,10 +240,9 @@ fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
   let scrolled: Vec<(NodeId, u32, u32)> = crate::try_with_records(|records| {
     records
       .runtime
-      .handles()
-      .into_iter()
-      .filter_map(|handle| {
-        let (x, y) = records.cell(handle)?.scroll;
+      .records()
+      .filter_map(|(handle, record)| {
+        let (x, y) = record.platform.scroll;
 
         (x > 0 || y > 0).then_some((handle, x, y))
       })

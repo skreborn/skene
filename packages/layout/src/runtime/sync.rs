@@ -21,7 +21,7 @@ struct Restyled<P: Drawn> {
 impl<P: Drawn> Runtime<P> {
   /// Presents every node whose style may have moved and writes the taffy style and the
   /// leaf of each into the layout tree, a text entry's leaf measuring at the native
-  /// content extent `extent` gives it; `true` where any changed.
+  /// content extent [`Drawn::entry_extent`] reports; `true` where any changed.
   ///
   /// Every node is revisited once the definitions, the environment or the display
   /// moved; otherwise the nodes queued since the last pass, those in motion, and those
@@ -35,11 +35,11 @@ impl<P: Drawn> Runtime<P> {
   ///
   /// A node's taffy style is written only where its presented style maps to one other
   /// than the one applied, so a change confined to paint lays nothing out again.
-  pub fn write_styles(&mut self, extent: impl Fn(NodeId) -> Option<Size<f32>>) -> bool {
+  pub fn write_styles(&mut self) -> bool {
     let mut changed = false;
 
     for node in self.present() {
-      let restyled = self.restyled(node, &extent);
+      let restyled = self.restyled(node);
 
       if self.tree.set_context(node, restyled.leaf) {
         changed = true;
@@ -147,7 +147,7 @@ impl<P: Drawn> Runtime<P> {
 
   /// The taffy style and the leaf `node` takes from its presented style and its place in
   /// the scene.
-  fn restyled(&self, node: NodeId, extent: &impl Fn(NodeId) -> Option<Size<f32>>) -> Restyled<P> {
+  fn restyled(&self, node: NodeId) -> Restyled<P> {
     let record = self.record(node).expect("a presented node has a record");
     let layout_parent = self.layout_parent(node);
     let in_stack = layout_parent
@@ -231,7 +231,7 @@ impl<P: Drawn> Runtime<P> {
       Kind::Control { inner, .. } => {
         let resolved = inner.style().cloned().unwrap_or_default();
         let mut style = resolved.taffy_style(inner.facts.layout, place);
-        let leaf = extent(node).map(|native| {
+        let leaf = P::entry_extent(node, &record.platform).map(|native| {
           let chrome = Self::chrome(&resolved);
 
           native_size(

@@ -86,7 +86,7 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
     let full = std::mem::take(&mut records.runtime.paint_dirty) || previous.is_none();
-    let moved = std::mem::take(&mut records.covers_stale) || full;
+    let moved = std::mem::take(&mut records.runtime.geometry_stale) || full;
     let (damaged, rects) = records.take_damage();
 
     if let Some(previous) = previous.as_ref().filter(|_| !moved)

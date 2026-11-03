@@ -14,6 +14,7 @@ use skene_foundation::{
   ContentValue,
   ControlState,
   Definitions,
+  Inset,
   Keep,
   Media,
   MediaSignals,
@@ -48,6 +49,7 @@ use crate::{
   Unadoptable,
   cells::{CellPainter, Painter},
   interaction,
+  paint::ShadowPaint,
   records::{Field, PictureRecord, Records},
 };
 
@@ -117,6 +119,18 @@ impl Drawn for Terminal {
 
     if style.ext.bold.is_none() {
       style.ext.bold = style.ext.weight.map(|weight| weight >= BOLD_WEIGHT);
+    }
+  }
+
+  /// A shadow reaches past the box by its band of cells, down and to the end.
+  fn reach(style: &BoxStyle<i32, Plain, TerminalStyle>) -> Inset<f32> {
+    let band = f32::from(ShadowPaint::band(style));
+
+    Inset {
+      top: 0.,
+      end: band,
+      bottom: band,
+      start: 0.,
     }
   }
 }
@@ -291,7 +305,7 @@ impl Realization for Terminal {
 
   fn schedule(delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
     with_records(|records| {
-      let at = records.now() + delay.as_secs_f64();
+      let at = records.runtime.now() + delay.as_secs_f64();
 
       records.timers.schedule(at, action)
     })

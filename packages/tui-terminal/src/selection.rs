@@ -53,7 +53,7 @@ impl Records {
   /// Counts a press at (`x`, `y`) into its multi-click sequence: 1 for a fresh press,
   /// 2 for a double click, 3 for a triple; a fourth begins a new sequence.
   pub(crate) fn register_press(&mut self, x: u16, y: u16) -> u8 {
-    let now = self.now();
+    let now = self.runtime.now();
     let count = match self.last_press {
       Some((at, press_x, press_y, count))
         if press_x == x && press_y == y && now - at <= MULTI_CLICK.as_secs_f64() && count < 3 =>

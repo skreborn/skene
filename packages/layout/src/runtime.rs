@@ -5,9 +5,16 @@
 //! kept and resolved style and its motion, beside the root filling the window, the
 //! overlays and text entries in build order, what moved since the last restyle and what
 //! the next frame lays out and repaints. The runtime reads the scene's structure as the
-//! layout and the display see it ([`Runtime::layout_children`], [`Runtime::displayed`]),
-//! and each node's style is presented on the platform's frame clock, its transitions and
-//! keyframe animations laid over it ([`BoxMotion`], [`RunMotion`]).
+//! layout and the display see it ([`Runtime::layout_children`], [`Runtime::displayed`]).
+//!
+//! One pass presents every node whose style may have moved ([`Runtime::present`]): it
+//! chooses the nodes from what moved since the last pass ([`Restyle`]), resolves each
+//! stale one through [`Env`] and caches the resolution under the generation and the
+//! interaction it read, and lays its transitions and keyframe animations over it
+//! ([`BoxMotion`], [`RunMotion`]) at one reading of the runtime's [`Clock`], counting
+//! what it resolved and marking what repaints, what stays in motion and whether a box's
+//! reach moved ([`Drawn::reach`]). The platform maps the presented styles onto its own
+//! layout.
 //!
 //! The runtime reads the paragraph structure from its records and the scene: a flow box
 //! whose every laid-out child is an inline run lays them out as one paragraph
@@ -36,6 +43,7 @@ mod motion;
 mod paragraph;
 mod record;
 mod resolve;
+mod restyle;
 mod structure;
 
 use skene_foundation::{
@@ -44,6 +52,7 @@ use skene_foundation::{
   BoxStyle,
   ColorScheme,
   Environment,
+  Inset,
   Layout,
   NodeId,
   NodeMap,
@@ -52,12 +61,13 @@ use skene_foundation::{
   Resolver,
   RunStyle,
   TokenValue,
+  interpolate::Interpolate,
 };
 
 pub use self::{
   adapter::{INLINE_BOX, OverlayFocus},
   environment::{Facts, Pending, Window},
-  motion::{BoxMotion, Presented, RunMotion, Sample},
+  motion::{BoxMotion, Clock, Presented, RunMotion, Sample},
   paragraph::Source,
   record::{
     BoxCache,
@@ -85,7 +95,9 @@ use crate::Restyle;
   label = "a drawn platform keeps the drawn runtime in its own state and hands it out through `Drawn::with_runtime`",
   note = "a platform whose toolkit keeps its own tree and resolves its own styles, as the web's does, realizes the seam without the runtime"
 )]
-pub trait Drawn: Realization<TokenValue = TokenValue<<Self as Realization>::Scalar>> {
+pub trait Drawn:
+  Realization<TokenValue = TokenValue<<Self as Realization>::Scalar>, Scalar: Interpolate>
+{
   /// Runs `operation` on the platform's runtime, `None` where none is installed for
   /// this thread.
   ///
@@ -113,15 +125,24 @@ pub trait Drawn: Realization<TokenValue = TokenValue<<Self as Realization>::Scal
     style: &mut RunStyle<Plain, Self::StyleExt>,
     resolver: &Resolver<'_, Self::Scalar, Self::StyleExt>,
   );
+
+  /// How far the paint of a box styled `style` reaches past its border box on each edge,
+  /// in units of the layout.
+  fn reach(style: &PlainBox<Self>) -> Inset<f32>;
 }
 
 /// What a platform Skene draws whole keeps of its scene.
 ///
 /// A [`Record`] per node, the root filling the window, the overlays and text entries in
 /// build order, what moved since the last restyle, and what the next frame lays out and
-/// repaints, beside what it keeps of its window and the app's choice of scheme.
+/// repaints, beside what it keeps of its window, the app's choice of scheme and the
+/// frame clock its motion samples against.
 #[derive(Debug)]
 #[must_use]
+#[expect(
+  clippy::struct_excessive_bools,
+  reason = "each flag is an independent fact about the next frame"
+)]
 pub struct Runtime<P: Drawn> {
   records: NodeMap<Record<P>>,
   root: NodeId,
@@ -137,7 +158,16 @@ pub struct Runtime<P: Drawn> {
   pub layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub paint_dirty: bool,
+  /// Whether a node's rectangle on the window may have moved since the platform last
+  /// measured them: the layout, a scroll offset or a box's reach changed.
+  pub geometry_stale: bool,
+  /// Whether a tween or an animation was still running at the last presentation, so
+  /// the next frame is due at the frame rate.
+  pub motion_active: bool,
+  /// How many node styles have been resolved from their declarations.
+  pub style_resolutions: u64,
   damaged: Vec<NodeId>,
+  clock: Clock,
   window: Window<P>,
   choice: Option<ColorScheme>,
 }
@@ -146,7 +176,7 @@ impl<P: Drawn> Runtime<P> {
   /// A runtime whose root box, filling the window, is the scene's node `root`: a
   /// decorated vertical flex box, its frame yet to be laid out and painted, in a window
   /// whose platform reports `reported` and whose pictures paint where `painting` holds,
-  /// the app having chosen no scheme.
+  /// the app having chosen no scheme, its frame clock stepped by hand from zero.
   pub fn new(root: NodeId, reported: Environment<P::Scalar>, painting: bool) -> Self {
     let root_facts = BoxFacts {
       layout: Layout::Flex {
@@ -167,7 +197,11 @@ impl<P: Drawn> Runtime<P> {
       restyle: Restyle::new(),
       layout_dirty: true,
       paint_dirty: true,
+      geometry_stale: true,
+      motion_active: false,
+      style_resolutions: 0,
       damaged: Vec::new(),
+      clock: Clock::Manual(0.),
       window: Window::new(reported, painting),
       choice: None,
     };
@@ -269,5 +303,24 @@ impl<P: Drawn> Runtime<P> {
   #[inline(always)]
   pub fn take_damage(&mut self) -> Vec<NodeId> {
     std::mem::take(&mut self.damaged)
+  }
+
+  /// The frame clock's reading, in seconds.
+  #[inline(always)]
+  #[must_use]
+  pub fn now(&self) -> f64 {
+    self.clock.now()
+  }
+
+  /// Runs the frame clock as `clock`.
+  #[inline(always)]
+  pub const fn set_clock(&mut self, clock: Clock) {
+    self.clock = clock;
+  }
+
+  /// Steps the frame clock forward by `seconds`, stepping it by hand from then on.
+  #[inline(always)]
+  pub fn advance_clock(&mut self, seconds: f64) {
+    self.clock.advance(seconds);
   }
 }

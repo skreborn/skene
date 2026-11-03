@@ -21,7 +21,7 @@ use std::{
 };
 
 use skene_foundation::{ClipboardAction, ColorScheme, View};
-use skene_layout::runtime::Runtime;
+use skene_layout::runtime::{Clock, Runtime};
 
 pub(crate) use self::keys::{key_event, press};
 use self::{
@@ -249,7 +249,7 @@ where
   launch.install();
 
   let mouse = with_records(|records| {
-    records.clock = crate::records::Clock::Real(Instant::now());
+    records.runtime.set_clock(Clock::Real(Instant::now()));
 
     records.mouse
   });
@@ -738,7 +738,7 @@ pub(crate) fn run_due_timers() {
   let mut ran = false;
 
   while let Some(action) = with_records(|records| {
-    let now = records.now();
+    let now = records.runtime.now();
 
     records.timers.pop_due(now, batch)
   }) {

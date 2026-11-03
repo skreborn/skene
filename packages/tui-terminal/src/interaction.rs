@@ -668,7 +668,7 @@ impl Records {
   /// editor's window moves instead, notifying nothing.
   fn write_scroll(&mut self, handle: Handle, offsets: (u32, u32)) -> Option<NodeId> {
     self.runtime.damage(handle);
-    self.covers_stale = true;
+    self.runtime.geometry_stale = true;
 
     if self.is_editor(handle) {
       self.set_editor_window(handle, offsets.1);
@@ -1467,7 +1467,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
     }
   }
 
-  let now = records(|records| records.now());
+  let now = records(|records| records.runtime.now());
   let (latched, candidates) = records(|records| {
     let latched = match records.scroll_latch.as_mut() {
       Some(entry)

@@ -1,7 +1,7 @@
 //! The input state: focus as the scene holds it, the press awaiting its release, the
 //! drag in progress, the wheel's latched target and the hover path.
 
-use skene_foundation::{FocusOrder, Interaction, NodeId, Scene};
+use skene_foundation::{FocusOrder, NodeId, Scene};
 
 use super::{Handle, Kind, Records};
 use crate::Terminal;
@@ -151,26 +151,6 @@ impl Records {
       .runtime
       .enclosing_control(handle)
       .filter(|control| self.is_focusable(*control))
-  }
-
-  /// The interaction state `handle`'s conditions resolve against now, as the scene
-  /// resolves it.
-  pub(crate) fn interaction(&self, handle: Handle) -> Interaction {
-    let node = self.runtime.record(handle).map(|record| record.node);
-
-    Scene::<Terminal>::with(|scene| {
-      node.map_or_else(Interaction::default, |node| scene.interaction(node))
-    })
-  }
-
-  /// Whether `handle`'s interaction moved since its style was resolved; `false` for a
-  /// node presenting nothing.
-  pub(crate) fn interaction_moved(&self, handle: Handle) -> bool {
-    self
-      .runtime
-      .record(handle)
-      .and_then(|record| record.kind.resolved_under())
-      .is_some_and(|(_, resolved)| resolved != self.interaction(handle))
   }
 
   /// Whether the app holds the mouse now: taken at launch and not handed to the

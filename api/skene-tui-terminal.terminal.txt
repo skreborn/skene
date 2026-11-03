@@ -292,6 +292,7 @@ pub fn skene_tui_terminal::Terminal::write(skene_foundation::spine::node::NodeId
 impl skene_layout::runtime::Drawn for skene_tui_terminal::Terminal
 pub fn skene_tui_terminal::Terminal::finish_box(&mut skene_foundation::spine::box_style::BoxStyle<i32, skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_tui_terminal::Terminal::finish_run(&mut skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>, &skene_foundation::spine::resolve::Resolver<'_, i32, skene_foundation::terminal::ext::TerminalStyle>)
+pub fn skene_tui_terminal::Terminal::reach(&skene_foundation::spine::box_style::BoxStyle<i32, skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>) -> skene_foundation::spine::values::inset::Inset<f32>
 pub fn skene_tui_terminal::Terminal::sizes_text() -> bool
 pub fn skene_tui_terminal::Terminal::with_runtime<R>(impl core::ops::function::FnOnce(&mut skene_layout::runtime::Runtime<Self>) -> R) -> core::option::Option<R>
 impl skene_tui_terminal::CellPainter for skene_tui_terminal::Terminal

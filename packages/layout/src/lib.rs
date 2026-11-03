@@ -11,13 +11,14 @@
 //! platform Skene draws whole runs beneath its realization: the store such a platform
 //! keeps in its own state and hands out through [`runtime::Drawn`], a record per node
 //! with the scene walk over them ([`runtime::Runtime`]), the paragraph structure read
-//! from them with a text node's source text ([`runtime::Source`]), each node's motion
-//! presented on the platform's frame clock, and each node's style resolved
+//! from them with a text node's source text ([`runtime::Source`]), the presentation pass
+//! choosing the nodes whose style may have moved, resolving each stale one
 //! ([`runtime::Env`]) against what the platform reports of its window
-//! ([`runtime::Window`]), beside the adapter the platform's realization forwards to for
-//! everything that is no cell's or pixel's ([`runtime::Runtime::create`],
-//! [`runtime::Runtime::mount`] and their kin). The web lays out through CSS and needs
-//! none of it.
+//! ([`runtime::Window`]), caching it and laying its motion over it at one reading of the
+//! frame clock ([`runtime::Runtime::present`], [`runtime::Clock`]), beside the adapter the
+//! platform's realization forwards to for everything that is no cell's or pixel's
+//! ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The web lays out
+//! through CSS and needs none of it.
 
 mod restyle;
 pub mod runtime;

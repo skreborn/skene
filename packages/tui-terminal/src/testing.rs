@@ -399,8 +399,8 @@ pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8
 pub fn trigger_frame(elapsed: Duration) {
   trigger(|| {
     with_records(|records| {
-      records.clock.advance(elapsed.as_secs_f64());
-      records.motion_active = true;
+      records.runtime.advance_clock(elapsed.as_secs_f64());
+      records.runtime.motion_active = true;
     });
     run_due_timers();
   });
@@ -472,7 +472,7 @@ pub fn style_writes() -> u64 {
 #[must_use]
 pub fn style_resolutions() -> u64 {
   end_turn();
-  with_records(|records| records.style_resolutions)
+  with_records(|records| records.runtime.style_resolutions)
 }
 
 /// The rows the last render rewrote, for a test asserting that a change repainted only

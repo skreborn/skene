@@ -1,5 +1,8 @@
 //! Motion on a platform's frame clock: the foundation's runner, given each property as
-//! the node's resolution changes it and laid over the resolved style.
+//! the node's resolution changes it and laid over the resolved style, at the reading of
+//! the runtime's [`Clock`].
+
+use std::time::Instant;
 
 use skene_foundation::{
   Animation,
@@ -52,6 +55,35 @@ pub struct Sample {
   pub now: f64,
   /// Whether the reader prefers reduced motion.
   pub reduced: bool,
+}
+
+/// The clock motion samples against, in seconds: the wall clock in a launched app, a
+/// hand-stepped one under an in-process test.
+#[derive(Clone, Copy, Debug)]
+pub enum Clock {
+  /// The wall clock since `Instant`.
+  Real(Instant),
+  /// A reading stepped by hand.
+  Manual(f64),
+}
+
+impl Clock {
+  /// The current reading, in seconds.
+  #[inline(always)]
+  #[must_use]
+  pub fn now(&self) -> f64 {
+    match self {
+      Self::Real(epoch) => epoch.elapsed().as_secs_f64(),
+      Self::Manual(seconds) => *seconds,
+    }
+  }
+
+  /// Steps the reading forward by `seconds`; a wall clock becomes a hand-stepped one
+  /// at its current reading.
+  #[inline(always)]
+  pub fn advance(&mut self, seconds: f64) {
+    *self = Self::Manual(self.now() + seconds);
+  }
 }
 
 impl<N: Scalar, X: StyleExtension> BoxMotion<N, X> {

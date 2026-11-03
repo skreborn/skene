@@ -25,11 +25,10 @@ in a code comment.
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
     - The terminal's retained runtime beyond its layout tree and its restyle's schedule
-    (the restyle's resolution caches and presentation, the damage and the measured
-    rectangles, hit testing, focus, capture, wheel latching, selection) moves into
-    `skene-layout`, generic over the platform's scalar, beside the style mapping, the
-    `Tree` and the `Restyle`, its frames hit through, clipped and scrolled as a
-    browser's are; a paragraph is kept as one laid-out paragraph of its runs, which
+    (the damage and the measured rectangles, hit testing, focus, capture, wheel
+    latching, selection) moves into `skene-layout`, generic over the platform's scalar,
+    beside the style mapping, the `Tree`, the `Restyle` and its presentation pass, its
+    frames hit through, clipped and scrolled as a browser's are; a paragraph is kept as one laid-out paragraph of its runs, which
     places them and their inline boxes for the frames, a paragraph's document selection
     and its text content kept once above the engine, in the runtime, where each
     realization keeps them today. A drawn entry's key default is written once there too,
@@ -39,8 +38,8 @@ in a code comment.
     consulting the table until then.
     - Layout: layout settles before a frame commits, the terminal's settle loop
     becoming the frame contract, and `Painted` resizes land with the layout commit.
-    - Beside it: the frame clock running `skene_foundation::interpolate`, color
-    transitions on it; the spine's `Window` owning its `Environment`, `media::*` reading
+    - Beside it: the frame clock's pacing, frames due at the platform's rate while
+    motion runs; the spine's `Window` owning its `Environment`, `media::*` reading
     the window's, and the scene's held state (open overlays, kept focus, autofocus,
     shortcuts, a drag) partitioned by root, each root read by one window, the web and
     the terminal having one window each and the runtime's state kept per window; one

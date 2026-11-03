@@ -437,7 +437,7 @@ impl Records {
 
       return None;
     };
-    let now = self.now();
+    let now = self.runtime.now();
     let interval = AUTOSCROLL_INTERVAL.as_secs_f64();
     let Some(at) = self.autoscroll_at
     else {

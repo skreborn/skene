@@ -20,12 +20,12 @@ throughout—there is no separate "widget" concept.
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout and the drawn runtime every platform but
 the web runs (`skene-layout`, whose `runtime` holds each node's record, the scene walk
-over them and the paragraph structure it reads, their motion, their style's resolution
-and the environment the platform reports, behind the `Drawn` trait a drawn platform
-implements) and
-the text engine over Parley (`skene-parley`) on the foundation, the platforms on the
-foundation and, where they draw, on those two, each platform's realization a crate of
-its own (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
+over them and the paragraph structure it reads, their style's resolution and its
+presentation over their motion on the frame clock, and the environment the platform
+reports, behind the `Drawn` trait a drawn platform implements) and the text engine
+over Parley (`skene-parley`) on the foundation, the platforms on the foundation and,
+where they draw, on those two, each platform's realization a crate of its own
+(`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
 `skene-tui`), the Simple core (its palette, variants and sizes, naming no realization)
 on the foundation, each facade's Simple crate (its presets) on its facade, and the
 macros, the transport and the CLI beside them.
@@ -1335,15 +1335,18 @@ Condition     = Media | State | And | Or
   lookup through the scene, expression evaluation, slot reads—handing it the medium's
   unit, its token and slot lookups and its font size. The drawn runtime
   (`skene_layout::runtime`) keeps, for every platform Skene draws whole, each node's
-  kept style, its resolution cache (`BoxCache`, `RunCache`) and its motion; the
-  terminal's restyle (`layout.rs`) still chooses the nodes to revisit, resolves each
-  through the runtime's `Env`, caches the result under a generation covering
-  environment, interaction and definitions, and judges whether the presented value
-  changed; that judgment is where a transition starts. `Env` builds the resolver
-  through one `ResolutionContext` (a node's environment, interaction and containers
-  from the scene, a token resolved where it is defined, its definition converted into
-  the shared `TokenValue`, the font size from the typography's size token, the
-  platform's `EM` where text takes no sizes) over the runtime itself as its
+  kept style, its resolution cache (`BoxCache`, `RunCache`) and its motion, and its
+  presentation pass (`Runtime::present`) chooses the nodes to revisit, resolves each
+  stale one through the runtime's `Env`, caches the result under a generation covering
+  environment, interaction and definitions, presents it over its motion and judges
+  whether the presented value changed, which is where a transition starts, and whether
+  a box's paint reaches elsewhere past its border box (`Drawn::reach`, the terminal's
+  shadow band), which moves the geometry the platform measures; the terminal's
+  `layout.rs` only maps each presented node onto its layout tree. `Env` builds the
+  resolver through one `ResolutionContext` (a node's environment, interaction and
+  containers from the scene, a token resolved where it is defined, its definition
+  converted into the shared `TokenValue`, the font size from the typography's size
+  token, the platform's `EM` where text takes no sizes) over the runtime itself as its
   `ResolutionSource`, giving what the scene does not hold: the environment it keeps of
   its window, container sizes, slots and whether text is drawn at other sizes
   (`Drawn::sizes_text`). The browser is that resolution's oracle: the
@@ -1354,7 +1357,7 @@ Condition     = Media | State | And | Or
   its motion through the foundation's `Motion`, and holds the value to the one the
   engine computes, so a divergence it finds is one every platform resolving through
   the shared half shares. The runtime keeps the style `apply_style` hands it for each
-  box, control, overlay and run, and the terminal's restyle resolves it through the
+  box, control, overlay and run, and its presentation pass resolves it through the
   shared `Keep::Nothing` entry (`runtime::Env`), the one resolution setting whether the
   node's interaction was read and giving a run its wrapper's layout beside its own properties,
   before the platform's fill-ins of its own vocabulary, its `Drawn::finish_box` and
@@ -1771,9 +1774,10 @@ The public API speaks the ecosystem's standard reactive vocabulary:
 platform running motion on its own clock runs it through one runner,
 `skene_foundation::interpolate::Motion`, and a platform Skene draws presents each node
 through `skene-layout`'s `runtime::BoxMotion` and `runtime::RunMotion` over it, generic
-over the platform's scalar and style extension, at a `runtime::Sample` of its clock: the
-terminal on its frame clock (quantized to cells and truecolor), which a test advances by
-hand, native later. A platform hands the runner each property from the resolution point
+over the platform's scalar and style extension, at a `runtime::Sample` of the runtime's
+frame clock (`runtime::Clock`: the wall clock in a launched app, stepped by hand under a
+test), read once per presentation pass so every node of a pass presents at one instant:
+the terminal (quantized to cells and truecolor), native later. A platform hands the runner each property from the resolution point
 that reports a changed value—never through the reactive graph per frame—and it
 interpolates per value type, starting, reversing and cancelling transitions as CSS does:
 a change back to where a running transition began reverses it over the share it had

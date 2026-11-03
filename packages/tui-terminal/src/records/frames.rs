@@ -1,7 +1,5 @@
-//! When the next frame is due and what it repaints: the damage, the frame clock and the
-//! scheduled actions.
-
-use std::time::Instant;
+//! When the next frame is due and what it repaints: the damage, the frame clock's pace
+//! and the scheduled actions.
 
 use skene_foundation::Scene;
 
@@ -11,33 +9,6 @@ use crate::Terminal;
 /// How long the loop waits for input between frames while the frame clock runs: the
 /// frame rate's cap.
 pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_millis(16);
-
-/// The clock motion samples against, in seconds: the wall clock in a launched app, a
-/// hand-stepped one under an in-process test.
-pub(crate) enum Clock {
-  /// The wall clock since `Instant`.
-  Real(Instant),
-  /// A reading stepped by hand.
-  Manual(f64),
-}
-
-impl Clock {
-  /// The current reading, in seconds.
-  #[inline(always)]
-  pub(crate) fn now(&self) -> f64 {
-    match self {
-      Self::Real(epoch) => epoch.elapsed().as_secs_f64(),
-      Self::Manual(seconds) => *seconds,
-    }
-  }
-
-  /// Steps the reading forward by `seconds`; a wall clock becomes a hand-stepped one
-  /// at its current reading.
-  #[inline(always)]
-  pub(crate) fn advance(&mut self, seconds: f64) {
-    *self = Self::Manual(self.now() + seconds);
-  }
-}
 
 impl Records {
   /// Takes the nodes and rectangles marked for repaint.
@@ -66,23 +37,17 @@ impl Records {
   /// a caret drag is held past its entry's edge.
   #[inline(always)]
   pub(crate) fn frame_clock_running(&self) -> bool {
-    self.motion_active || self.autoscrolls()
+    self.runtime.motion_active || self.autoscrolls()
   }
 
   /// How long until the earliest scheduled action is due, if any is; a delay past
   /// what a duration holds is the longest one.
   pub(crate) fn next_timer_due(&self) -> Option<std::time::Duration> {
-    let now = self.now();
+    let now = self.runtime.now();
 
     self.timers.next_due().map(|at| {
       std::time::Duration::try_from_secs_f64((at - now).max(0.)).unwrap_or(std::time::Duration::MAX)
     })
-  }
-
-  /// The clock reading motion samples against, in seconds.
-  #[inline(always)]
-  pub(crate) fn now(&self) -> f64 {
-    self.clock.now()
   }
 }
 

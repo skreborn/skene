@@ -9,7 +9,6 @@ mod frames;
 mod geometry;
 mod input;
 
-pub(crate) use skene_foundation::Interaction;
 use skene_foundation::{
   NativeElement,
   NodeFacts,
@@ -27,7 +26,7 @@ pub(crate) use self::{
   cell::{Backdrop, BackdropKey, CellNode, PictureRecord},
   environment::{Contrast, OwnColors},
   field::{EntryEditor, EntryState, Field, Visible},
-  frames::{Clock, FRAME_INTERVAL},
+  frames::FRAME_INTERVAL,
   geometry::CellFrame,
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
 };
@@ -58,27 +57,11 @@ pub(crate) type Record = skene_layout::runtime::Record<Terminal>;
 /// What a record is, with everything its creation carried.
 pub(crate) type Kind = skene_layout::runtime::Kind<Terminal>;
 
-/// A box-like node's facts, its kept style, its resolution and its motion.
-pub(crate) type BoxRecord = skene_layout::runtime::BoxRecord<Terminal>;
-
-/// A box's style resolved under one generation and interaction.
-pub(crate) type BoxCache = skene_layout::runtime::BoxCache<Terminal>;
-
-/// A run's style resolved under one generation and interaction.
-pub(crate) type RunCache = skene_layout::runtime::RunCache<Terminal>;
-
-/// A run's motion on the terminal's frame clock.
-pub(crate) type RunMotion =
-  skene_layout::runtime::RunMotion<skene_foundation::terminal::TerminalStyle>;
-
 /// A box's style resolved against live state.
 pub(crate) type PlainBox = skene_layout::runtime::PlainBox<Terminal>;
 
 /// A run's style resolved against live state.
 pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
-
-/// A node's style and motion as the shared half applies it.
-pub(crate) type KeptStyle = skene_layout::runtime::KeptStyle<Terminal>;
 
 /// Every record the platform holds, the layout tree, the interaction state and the
 /// environment.
@@ -88,8 +71,9 @@ pub(crate) type KeptStyle = skene_layout::runtime::KeptStyle<Terminal>;
 )]
 pub(crate) struct Records {
   /// The drawn runtime: a record per node, the root filling the screen, the overlays and
-  /// entries in build order, the restyle, what the next frame lays out and repaints, and
-  /// the environment the terminal reports with the app's choice of scheme.
+  /// entries in build order, the restyle with its presentation's counters, what the next
+  /// frame lays out and repaints, the environment the terminal reports with the app's
+  /// choice of scheme, and the frame clock.
   pub(crate) runtime: Runtime<Terminal>,
   /// The terminal's own state of each node, beside its record: its field, scroll
   /// offsets, the cells it covers and what it paints beyond its style.
@@ -161,18 +145,8 @@ pub(crate) struct Records {
   pub(crate) layout_generation: u64,
   /// How many taffy styles have been written.
   pub(crate) set_style_calls: u64,
-  /// How many node styles have been resolved from their declarations.
-  pub(crate) style_resolutions: u64,
-  /// Whether a node's screen rectangle may have moved since the last paint measured
-  /// them: the layout, a scroll offset or a shadow's reach changed.
-  pub(crate) covers_stale: bool,
   /// Whether a key asked the app to quit.
   pub(crate) quit: bool,
-  /// The clock motion samples against.
-  pub(crate) clock: Clock,
-  /// Whether a tween or an animation was still running at the last restyle, so the
-  /// next frame is due at the frame rate.
-  pub(crate) motion_active: bool,
   /// The clock reading the caret drag's autoscroll last stepped at, `None` while no
   /// drag is held past its entry's edge.
   pub(crate) autoscroll_at: Option<f64>,
@@ -227,11 +201,7 @@ impl Records {
       title_dirty: false,
       layout_generation: 0,
       set_style_calls: 0,
-      style_resolutions: 0,
-      covers_stale: true,
       quit: false,
-      clock: Clock::Manual(0.),
-      motion_active: false,
       autoscroll_at: None,
       clipboard_answers: false,
       key_releases: false,

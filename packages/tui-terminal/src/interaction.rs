@@ -1733,12 +1733,16 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = records(|records| {
     let handle = records.focused().unwrap_or(records.runtime.root());
-    let node = records.runtime.contains(handle).then_some(handle)?;
+
+    if !records.runtime.contains(handle) {
+      return None;
+    }
+
     let (origin_x, origin_y) = records.screen_origin(handle);
     let (_, height) = records.node_size(handle);
 
     Some((
-      node,
+      handle,
       (origin_x, origin_y),
       u16::try_from(origin_x.max(0)).unwrap_or(u16::MAX),
       u16::try_from((origin_y + height).max(0)).unwrap_or(u16::MAX),

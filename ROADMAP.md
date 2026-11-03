@@ -31,11 +31,11 @@ in a code comment.
     through, clipped and scrolled as a browser's are, a paragraph's runs and inline
     boxes placed for them by its flow, which the runtime already lays out, and a
     paragraph's document selection and its text content kept once above the engine, in
-    the runtime, where each realization keeps them today. A drawn entry's key default is written once there too,
-    over the shared entry the scene keeps: the core's `Binding` table, run after the
-    app's key handlers as a browser's `<input>` default runs (so never as a
-    `TextEntry::on_key`, which would run before them), the terminal's own key default
-    consulting the table until then.
+    the runtime, where each realization keeps them today. A drawn entry's key default
+    is written once there too, over the shared entry the scene keeps: the core's
+    `Binding` table, run after the app's key handlers as a browser's `<input>` default
+    runs (so never as a `TextEntry::on_key`, which would run before them), the
+    terminal's own key default consulting the table until then.
     - Layout: layout settles before a frame commits, the terminal's settle loop
     becoming the frame contract, and `Painted` resizes land with the layout commit.
     - Beside it: the frame clock's pacing, frames due at the platform's rate while

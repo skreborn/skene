@@ -15,15 +15,16 @@ supersedes there.
 - **A text leaf's equality over its engine's state** (2026-11-03), each flow comparing
   the engine it lays out through (`Drawn::Engine: PartialEq`) or the engine state a
   `Drawn` hook reports (the terminal's grapheme clustering), so a leaf made after the
-  state changed is unlike the one held: the terminal's engine is
-  `Substituted<ParleyEngine, StandIns>`, foreign types it cannot implement `PartialEq`
-  on, and a hook would name per platform what an engine's layout depends on. The
-  runtime keeps a text generation that `Runtime::remeasure` moves wherever the
-  platform's engine comes to lay the same text out differently, and each flow
-  (`runtime::Flow`) compares the one it was made under; a remeasure replaces every flow
-  even where the engine's state came back to an earlier value, which is rare and lays
-  every frame out the same. Revisit when an engine's state is a value the runtime can
-  compare, or a remeasure that returns to an earlier state is frequent enough to cost.
+  state changed is unlike the one held: the terminal's engine holds none of that state
+  (its `StandIns` is a unit reading the clustering the terminal keeps beside it), so
+  two engines alike in value lay the same text out differently, and a hook would name
+  per platform what an engine's layout depends on. The runtime keeps a text generation
+  that `Runtime::remeasure` moves wherever the platform's engine comes to lay the same
+  text out differently, and each flow (`runtime::Flow`) compares the one it was made
+  under; a remeasure replaces every flow even where the engine's state came back to an
+  earlier value, which is rare and lays every frame out the same. Revisit when an
+  engine's state is a value the runtime can compare, or a remeasure that returns to an
+  earlier state is frequent enough to cost.
 - **The drawn runtime in a thread-local of its own beside the platform's side table**
   (2026-11-03), `skene-layout`'s `Runtime<P>` held in a cell of its own and the
   platform's per-node state in another, borrowed in a fixed order: every platform

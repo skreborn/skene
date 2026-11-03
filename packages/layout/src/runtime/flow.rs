@@ -1,3 +1,7 @@
+//! The drawn runtime's text leaf: a paragraph's runs and inline boxes laid out as one text
+//! through the platform's engine, in whole units where the platform's layout rounds, or a
+//! text entry's native extent.
+
 use skene_foundation::{
   NodeId,
   Rect,
@@ -16,8 +20,9 @@ use crate::{Leaf, TextFlow};
 /// whole units lays out its boxes: measured and placed at its width floored to whole units, at
 /// least one, and each inline box as large as the tree lays it out rounded to whole units, at least
 /// one of each; a flow in fractional units keeps both as they are. Two flows are alike
-/// where they were made under one text generation of the runtime and their flows are:
-/// each run's node, groups, text and style, and each box's node, groups and size.
+/// where they were made under one text generation of the runtime, in the same units, and
+/// their flows are: each run's node, groups, text and style, and each box's node, groups
+/// and size.
 #[must_use]
 pub struct Flow<E: TextEngine> {
   generation: u64,
@@ -340,6 +345,20 @@ mod tests {
       .height
   }
 
+  /// The size `flow` measures at, its width known to be `width`.
+  fn measured_known(flow: &Flow<ParleyEngine>, width: f32) -> Size<f32> {
+    flow.measure(
+      taffy::geometry::Size {
+        width: Some(width),
+        height: None,
+      },
+      taffy::geometry::Size {
+        width: AvailableSpace::MaxContent,
+        height: AvailableSpace::MaxContent,
+      },
+    )
+  }
+
   /// Where `flow` places its nodes in a content box `width` wide.
   fn placed(flow: &Flow<ParleyEngine>, width: f32) -> Vec<(NodeId, Rect<f32>)> {
     flow.place(Rect::new(Point::ZERO, Size::new(width, 0.)))
@@ -358,7 +377,11 @@ mod tests {
     assert_eq!(height_at(&flow, line), height_at(&flow, line.floor()));
     assert_eq!(height_at(&flow, line), 48.);
     assert_eq!(height_at(&flow, line.ceil()), 24.);
+    assert_eq!(height_at(&flow, 0.25), height_at(&flow, 1.));
+    assert_eq!(measured_known(&flow, line), Size::new(line, 48.));
+    assert_eq!(measured_known(&flow, line.ceil()).height, 24.);
     assert_eq!(placed(&flow, line), placed(&flow, line.floor()));
+    assert_ne!(placed(&flow, line.floor()), placed(&flow, line.ceil()));
     assert_eq!(placed(&flow, 0.25), placed(&flow, 1.));
     assert_eq!(
       flow
@@ -401,12 +424,14 @@ mod tests {
     let line = flow.flow().leaf().laid(None).size().width;
 
     assert_eq!(height_at(&flow, line), 24.);
+    assert_eq!(measured_known(&flow, line), Size::new(line, 24.));
     assert_eq!(
       placed(&flow, line),
       flow
         .flow()
         .place(Rect::new(Point::ZERO, Size::new(line, 0.)))
     );
+    assert_ne!(placed(&flow, line), placed(&flow, line.floor()));
 
     flow.add_box(inline, &[]);
     flow.size_box(inline, Size::new(2.6, 0.2));
@@ -435,6 +460,7 @@ mod tests {
     assert_eq!(held, make(0));
     assert_ne!(held, make(1));
     assert!(!held.repaint_as(&make(1)));
+    assert!(held.repaint_as(&make(0)));
   }
 
   /// An entry measures at its native extent in each dimension the layout leaves unknown,

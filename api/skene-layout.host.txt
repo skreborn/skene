@@ -40,7 +40,7 @@ pub const fn skene_layout::runtime::Kind<P>::kept_mut(&mut self) -> core::option
 pub const fn skene_layout::runtime::Kind<P>::mark_stale(&mut self)
 pub fn skene_layout::runtime::Kind<P>::resolved_under(&self) -> core::option::Option<(u64, skene_foundation::spine::resolve::Interaction)>
 pub fn skene_layout::runtime::Kind<P>::run(skene_foundation::spine::props::RunFacts) -> Self
-pub fn skene_layout::runtime::Kind<P>::run_style(&self) -> core::option::Option<&skene_layout::runtime::PlainRun<P>>
+pub const fn skene_layout::runtime::Kind<P>::run_style(&self) -> core::option::Option<&skene_layout::runtime::PlainRun<P>>
 impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Kind<P> where <P as skene_foundation::spine::realization::Realization>::StyleExt: core::fmt::Debug
 pub fn skene_layout::runtime::Kind<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_layout::runtime::Measured<E: skene_foundation::text::engine::TextEngine>

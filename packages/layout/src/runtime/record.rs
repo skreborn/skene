@@ -288,9 +288,11 @@ impl<P: Drawn> Kind<P> {
 
   /// The resolved style of a run, once a frame resolved it.
   #[inline(always)]
-  pub fn run_style(&self) -> Option<&PlainRun<P>> {
+  pub const fn run_style(&self) -> Option<&PlainRun<P>> {
     match self {
-      Self::Run { cache, .. } => cache.as_ref().map(|cache| &cache.style),
+      Self::Run {
+        cache: Some(cache), ..
+      } => Some(&cache.style),
       _ => None,
     }
   }

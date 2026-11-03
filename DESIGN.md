@@ -18,13 +18,13 @@ throughout—there is no separate "widget" concept.
 ## Crates
 
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
-bottom, `skene-foundation` on it, the layout every platform but the web computes
-(`skene-layout`) and the text engine over Parley (`skene-parley`) on the foundation, the
-platforms on the foundation and, where they draw, on those two, each platform's
-realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with its facade
-over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants and sizes,
-naming no realization) on the foundation, each facade's Simple crate (its presets) on
-its facade, and the macros, the transport and the CLI beside them.
+bottom, `skene-foundation` on it, the layout and the drawn runtime every platform but
+the web runs (`skene-layout`) and the text engine over Parley (`skene-parley`) on the
+foundation, the platforms on the foundation and, where they draw, on those two, each
+platform's realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with
+its facade over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants
+and sizes, naming no realization) on the foundation, each facade's Simple crate (its
+presets) on its facade, and the macros, the transport and the CLI beside them.
 
 **A facade per medium, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither

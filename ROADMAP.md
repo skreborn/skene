@@ -448,6 +448,12 @@ in a code comment.
     about 22 instructions a row, 5% of the pointer move (2026-10-28); selection spans
     compute once per frame; clusters re-segment around an edit, and undo stores range
     diffs.
+    - A paragraph of many inline boxes still costs the terminal a pass over the whole
+    paragraph per run: placing a run asks whether its parent is a paragraph
+    (`Runtime::enclosing_paragraph`, `is_paragraph` gathering every layout child of the
+    paragraph afresh), two fifths of a frame of the bench's paragraph of 1k boxes, and
+    painting it looks each cluster's paint up (`cluster_paints`), a third (2026-11-03,
+    `inline_boxes_resized_frame_1k_boxes`, 489M instructions a frame).
     - Token caches take per-scope epochs in place of the generations every redefinition,
     structure change and environment change moves for every scope today, and interned
     names, so a palette change costs the number of tokens beyond the web too, in the

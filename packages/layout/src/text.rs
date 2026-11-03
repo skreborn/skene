@@ -335,10 +335,22 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
     let lines = laid.lines();
     let extents = laid.run_extents();
     let frames = laid.inline_boxes();
+    let mut beside: Vec<Vec<Rect<f32>>> = Vec::new();
+
+    for frame in &frames {
+      if let Some(line) = Self::line_of(&lines, *frame) {
+        if beside.len() <= line {
+          beside.resize_with(line + 1, Vec::new);
+        }
+
+        beside[line].push(*frame);
+      }
+    }
+
     let around = Around {
       lines: &lines,
       extents: &extents,
-      frames: &frames,
+      beside: &beside,
     };
     let mut on_lines: Vec<Vec<(usize, Rect<f32>)>> = vec![Vec::new(); lines.len().max(1)];
     let mut boxes = 0;
@@ -383,7 +395,7 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
     let Around {
       lines,
       extents,
-      frames,
+      beside,
     } = *around;
     let mut spans: Vec<Option<(f32, f32)>> = vec![None; lines.len()];
 
@@ -394,10 +406,7 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
       };
       let (mut left, mut right) = (rect.origin.x, rect.origin.x + rect.size.width);
 
-      for frame in frames
-        .iter()
-        .filter(|frame| Self::line_of(lines, **frame) == Some(line))
-      {
+      for frame in beside.get(line).map_or(&[][..], Vec::as_slice) {
         let (start, end) = (frame.origin.x, frame.origin.x + frame.size.width);
 
         if start <= left && left < end {
@@ -458,12 +467,13 @@ impl<E: TextEngine, N: Clone + PartialEq> TextFlow<E, N> {
 }
 
 /// What a layout holds that places a run on its lines: its lines, its stretches painted
-/// alike and its boxes' frames.
+/// alike and the frames of the boxes on each line, in order, none past the last line
+/// holding one.
 #[derive(Clone, Copy)]
 struct Around<'a> {
   lines: &'a [LineInfo],
   extents: &'a [RunExtent],
-  frames: &'a [Rect<f32>],
+  beside: &'a [Vec<Rect<f32>>],
 }
 
 impl<E: TextEngine> Leaf for TextFlow<E, NodeId> {

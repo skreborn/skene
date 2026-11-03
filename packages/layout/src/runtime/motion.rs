@@ -1,141 +1,186 @@
-//! Motion on the terminal's frame clock: core's runner, given each property as the
-//! node's resolution changes it and laid over the resolved style.
+//! Motion on a platform's frame clock: the foundation's runner, given each property as
+//! the node's resolution changes it and laid over the resolved style.
 
 use skene_foundation::{
   Animation,
   BoxField,
   BoxFieldVisitor,
+  BoxStyle,
   BoxValue,
   IntoBoxValue,
   IntoRunValue,
+  Plain,
   RunField,
   RunFieldVisitor,
+  RunStyle,
   RunValue,
+  Scalar,
+  StyleExtension,
   Transition,
-  interpolate::Motion,
-  terminal::{TerminalProperty, TerminalStyle},
+  interpolate::{Interpolate, Motion},
 };
 
-use crate::records::{PlainBox, PlainRun};
-
 /// What a box-like node runs: its properties' motion.
-#[derive(Default)]
-pub(crate) struct BoxMotion {
-  properties: Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
+#[derive(Debug)]
+#[must_use]
+pub struct BoxMotion<N: Scalar, X: StyleExtension> {
+  properties: Motion<X::Property, BoxValue<N, X>>,
 }
 
 /// What a run runs: its properties' motion.
-#[derive(Default)]
-pub(crate) struct RunMotion {
-  properties: Motion<TerminalProperty, RunValue<TerminalStyle>>,
+#[derive(Debug)]
+#[must_use]
+pub struct RunMotion<X: StyleExtension> {
+  properties: Motion<X::Property, RunValue<X>>,
 }
 
-/// What presenting a node at one clock reading produced.
-pub(crate) struct Presented<S> {
+/// What presenting a node at one [`Sample`] produced.
+#[derive(Debug)]
+#[must_use]
+pub struct Presented<S> {
   /// The style to lay out and paint.
-  pub(crate) style: S,
+  pub style: S,
   /// Whether a tween or an animation is still running, so another frame is due.
-  pub(crate) active: bool,
+  pub active: bool,
 }
 
 /// The clock reading a node presents at, and whether the reader prefers reduced motion.
-#[derive(Clone, Copy)]
-pub(crate) struct Clock {
-  pub(crate) now: f64,
-  pub(crate) reduced: bool,
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[must_use]
+pub struct Sample {
+  /// The frame clock's reading, in seconds.
+  pub now: f64,
+  /// Whether the reader prefers reduced motion.
+  pub reduced: bool,
 }
 
-impl BoxMotion {
-  /// Presents a box: retargets every property whose target moved since `previous`,
-  /// lays the running tweens and animations over the target, and reports whether any
-  /// still runs.
-  pub(crate) fn present(
-    &mut self,
-    previous: Option<&PlainBox>,
-    target: PlainBox,
-    transitions: &[Transition<TerminalProperty>],
-    keyframes: &[Animation<PlainBox>],
-    clock: Clock,
-  ) -> Presented<PlainBox> {
-    if let Some(previous) = previous {
-      PlainBox::for_each_field(&mut RetargetBox {
-        motion: &mut self.properties,
-        previous,
-        target: &target,
-        transitions,
-        clock,
-      });
-    }
-
-    let mut style = target;
-
-    PlainBox::for_each_field(&mut PresentBox {
-      motion: &mut self.properties,
-      style: &mut style,
-      keyframes,
-      clock,
-    });
-
-    Presented {
-      style,
-      active: self
-        .properties
-        .is_running(keyframes, clock.now, clock.reduced),
+impl<N: Scalar, X: StyleExtension> BoxMotion<N, X> {
+  /// A box at rest: no tween in flight, its animations counting from the first sample
+  /// it presents at.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self {
+      properties: Motion::new(),
     }
   }
 }
 
-impl RunMotion {
-  /// Presents a run: retargets every property whose target moved since `previous`,
+impl<N: Scalar, X: StyleExtension> Default for BoxMotion<N, X> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<N: Scalar + Interpolate, X: StyleExtension> BoxMotion<N, X> {
+  /// Presents a box: retargets every property whose target moved since `previous`,
   /// lays the running tweens and animations over the target, and reports whether any
   /// still runs.
-  pub(crate) fn present(
+  pub fn present(
     &mut self,
-    previous: Option<&PlainRun>,
-    target: PlainRun,
-    transitions: &[Transition<TerminalProperty>],
-    keyframes: &[Animation<PlainRun>],
-    clock: Clock,
-  ) -> Presented<PlainRun> {
+    previous: Option<&BoxStyle<N, Plain, X>>,
+    target: BoxStyle<N, Plain, X>,
+    transitions: &[Transition<X::Property>],
+    keyframes: &[Animation<BoxStyle<N, Plain, X>>],
+    sample: Sample,
+  ) -> Presented<BoxStyle<N, Plain, X>> {
     if let Some(previous) = previous {
-      PlainRun::for_each_field(&mut RetargetRun {
+      BoxStyle::<N, Plain, X>::for_each_field(&mut RetargetBox {
         motion: &mut self.properties,
         previous,
         target: &target,
         transitions,
-        clock,
+        sample,
       });
     }
 
     let mut style = target;
 
-    PlainRun::for_each_field(&mut PresentRun {
+    BoxStyle::<N, Plain, X>::for_each_field(&mut PresentBox {
       motion: &mut self.properties,
       style: &mut style,
       keyframes,
-      clock,
+      sample,
     });
 
     Presented {
       style,
       active: self
         .properties
-        .is_running(keyframes, clock.now, clock.reduced),
+        .is_running(keyframes, sample.now, sample.reduced),
+    }
+  }
+}
+
+impl<X: StyleExtension> RunMotion<X> {
+  /// A run at rest: no tween in flight, its animations counting from the first sample
+  /// it presents at.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self {
+      properties: Motion::new(),
+    }
+  }
+}
+
+impl<X: StyleExtension> Default for RunMotion<X> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<X: StyleExtension> RunMotion<X> {
+  /// Presents a run: retargets every property whose target moved since `previous`,
+  /// lays the running tweens and animations over the target, and reports whether any
+  /// still runs.
+  pub fn present(
+    &mut self,
+    previous: Option<&RunStyle<Plain, X>>,
+    target: RunStyle<Plain, X>,
+    transitions: &[Transition<X::Property>],
+    keyframes: &[Animation<RunStyle<Plain, X>>],
+    sample: Sample,
+  ) -> Presented<RunStyle<Plain, X>> {
+    if let Some(previous) = previous {
+      RunStyle::<Plain, X>::for_each_field(&mut RetargetRun {
+        motion: &mut self.properties,
+        previous,
+        target: &target,
+        transitions,
+        sample,
+      });
+    }
+
+    let mut style = target;
+
+    RunStyle::<Plain, X>::for_each_field(&mut PresentRun {
+      motion: &mut self.properties,
+      style: &mut style,
+      keyframes,
+      sample,
+    });
+
+    Presented {
+      style,
+      active: self
+        .properties
+        .is_running(keyframes, sample.now, sample.reduced),
     }
   }
 }
 
 /// Retargets every box property whose target moved.
-struct RetargetBox<'a> {
-  motion: &'a mut Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
-  previous: &'a PlainBox,
-  target: &'a PlainBox,
-  transitions: &'a [Transition<TerminalProperty>],
-  clock: Clock,
+struct RetargetBox<'a, N: Scalar, X: StyleExtension> {
+  motion: &'a mut Motion<X::Property, BoxValue<N, X>>,
+  previous: &'a BoxStyle<N, Plain, X>,
+  target: &'a BoxStyle<N, Plain, X>,
+  transitions: &'a [Transition<X::Property>],
+  sample: Sample,
 }
 
-impl BoxFieldVisitor<i32, TerminalStyle> for RetargetBox<'_> {
-  fn field<F: BoxField<i32, TerminalStyle>>(&mut self) {
+impl<N: Scalar + Interpolate, X: StyleExtension> BoxFieldVisitor<N, X> for RetargetBox<'_, N, X> {
+  fn field<F: BoxField<N, X>>(&mut self) {
     let (previous, target) = (F::get(self.previous), F::get(self.target));
 
     if previous == target {
@@ -147,24 +192,24 @@ impl BoxFieldVisitor<i32, TerminalStyle> for RetargetBox<'_> {
       previous.clone().map(IntoBoxValue::into_box_value).as_ref(),
       target.clone().map(IntoBoxValue::into_box_value).as_ref(),
       self.transitions,
-      self.clock.now,
-      self.clock.reduced,
+      self.sample.now,
+      self.sample.reduced,
     );
   }
 }
 
 /// Writes every box property's running tween and animations over the target, each
 /// sample held to its property's range as CSS holds an interpolated value.
-struct PresentBox<'a> {
-  motion: &'a mut Motion<TerminalProperty, BoxValue<i32, TerminalStyle>>,
-  style: &'a mut PlainBox,
-  keyframes: &'a [Animation<PlainBox>],
-  clock: Clock,
+struct PresentBox<'a, N: Scalar, X: StyleExtension> {
+  motion: &'a mut Motion<X::Property, BoxValue<N, X>>,
+  style: &'a mut BoxStyle<N, Plain, X>,
+  keyframes: &'a [Animation<BoxStyle<N, Plain, X>>],
+  sample: Sample,
 }
 
-impl BoxFieldVisitor<i32, TerminalStyle> for PresentBox<'_> {
-  fn field<F: BoxField<i32, TerminalStyle>>(&mut self) {
-    let tweened = self.motion.sample(F::KEY, self.clock.now);
+impl<N: Scalar + Interpolate, X: StyleExtension> BoxFieldVisitor<N, X> for PresentBox<'_, N, X> {
+  fn field<F: BoxField<N, X>>(&mut self) {
+    let tweened = self.motion.sample(F::KEY, self.sample.now);
 
     if tweened.is_none() && self.keyframes.is_empty() {
       return;
@@ -178,8 +223,8 @@ impl BoxFieldVisitor<i32, TerminalStyle> for PresentBox<'_> {
       self.keyframes,
       underlying,
       |frame| F::get(frame).clone().map(IntoBoxValue::into_box_value),
-      self.clock.now,
-      self.clock.reduced,
+      self.sample.now,
+      self.sample.reduced,
     );
     let value = if value == target {
       value
@@ -193,16 +238,16 @@ impl BoxFieldVisitor<i32, TerminalStyle> for PresentBox<'_> {
 }
 
 /// Retargets every run property whose target moved.
-struct RetargetRun<'a> {
-  motion: &'a mut Motion<TerminalProperty, RunValue<TerminalStyle>>,
-  previous: &'a PlainRun,
-  target: &'a PlainRun,
-  transitions: &'a [Transition<TerminalProperty>],
-  clock: Clock,
+struct RetargetRun<'a, X: StyleExtension> {
+  motion: &'a mut Motion<X::Property, RunValue<X>>,
+  previous: &'a RunStyle<Plain, X>,
+  target: &'a RunStyle<Plain, X>,
+  transitions: &'a [Transition<X::Property>],
+  sample: Sample,
 }
 
-impl RunFieldVisitor<TerminalStyle> for RetargetRun<'_> {
-  fn field<F: RunField<TerminalStyle>>(&mut self) {
+impl<X: StyleExtension> RunFieldVisitor<X> for RetargetRun<'_, X> {
+  fn field<F: RunField<X>>(&mut self) {
     let (previous, target) = (F::get(self.previous), F::get(self.target));
 
     if previous == target {
@@ -214,23 +259,23 @@ impl RunFieldVisitor<TerminalStyle> for RetargetRun<'_> {
       previous.clone().map(IntoRunValue::into_run_value).as_ref(),
       target.clone().map(IntoRunValue::into_run_value).as_ref(),
       self.transitions,
-      self.clock.now,
-      self.clock.reduced,
+      self.sample.now,
+      self.sample.reduced,
     );
   }
 }
 
 /// Writes every run property's running tween and animations over the target.
-struct PresentRun<'a> {
-  motion: &'a mut Motion<TerminalProperty, RunValue<TerminalStyle>>,
-  style: &'a mut PlainRun,
-  keyframes: &'a [Animation<PlainRun>],
-  clock: Clock,
+struct PresentRun<'a, X: StyleExtension> {
+  motion: &'a mut Motion<X::Property, RunValue<X>>,
+  style: &'a mut RunStyle<Plain, X>,
+  keyframes: &'a [Animation<RunStyle<Plain, X>>],
+  sample: Sample,
 }
 
-impl RunFieldVisitor<TerminalStyle> for PresentRun<'_> {
-  fn field<F: RunField<TerminalStyle>>(&mut self) {
-    let tweened = self.motion.sample(F::KEY, self.clock.now);
+impl<X: StyleExtension> RunFieldVisitor<X> for PresentRun<'_, X> {
+  fn field<F: RunField<X>>(&mut self) {
+    let tweened = self.motion.sample(F::KEY, self.sample.now);
 
     if tweened.is_none() && self.keyframes.is_empty() {
       return;
@@ -242,8 +287,8 @@ impl RunFieldVisitor<TerminalStyle> for PresentRun<'_> {
       self.keyframes,
       underlying,
       |frame| F::get(frame).clone().map(IntoRunValue::into_run_value),
-      self.clock.now,
-      self.clock.reduced,
+      self.sample.now,
+      self.sample.reduced,
     );
 
     *F::get_mut(self.style) = value.and_then(F::Value::from_run_value);
@@ -252,10 +297,20 @@ impl RunFieldVisitor<TerminalStyle> for PresentRun<'_> {
 
 #[cfg(test)]
 mod tests {
-  use skene_foundation::{Animation, Color, Easing, Property, Transition};
+  use skene_foundation::{
+    Animation,
+    BoxStyle,
+    Color,
+    Easing,
+    Plain,
+    Property,
+    Transition,
+    terminal::TerminalStyle,
+  };
 
-  use super::{BoxMotion, Clock};
-  use crate::records::PlainBox;
+  use super::{BoxMotion, Sample};
+
+  type PlainBox = BoxStyle<i32, Plain, TerminalStyle>;
 
   fn colored(color: Color) -> PlainBox {
     PlainBox {
@@ -264,8 +319,8 @@ mod tests {
     }
   }
 
-  const fn at(now: f64) -> Clock {
-    Clock {
+  const fn at(now: f64) -> Sample {
+    Sample {
       now,
       reduced: false,
     }
@@ -311,7 +366,7 @@ mod tests {
       colored(black),
       &transitions,
       &[],
-      Clock {
+      Sample {
         now: 1.,
         reduced: true,
       },

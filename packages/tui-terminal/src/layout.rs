@@ -25,6 +25,7 @@ use skene_layout::{
   Place,
   Revisit,
   TextFlow,
+  runtime::{Presented, Sample},
   taffy::{
     self,
     prelude::{AvailableSpace, length},
@@ -35,7 +36,6 @@ use skene_layout::{
 use crate::{
   Terminal,
   engine::{CellEngine, CellLaid, engine, paragraph_style},
-  motion::{Clock, Presented},
   paint::{ShadowPaint, run_scale},
   records::{
     BoxCache,
@@ -48,6 +48,7 @@ use crate::{
     Record,
     Records,
     RunCache,
+    RunMotion,
   },
   resolve::Env,
   text::{self, CellScale},
@@ -579,7 +580,7 @@ fn restyle_one(records: &mut Records, handle: Handle, displayed: bool) -> Option
     let frame = Frame {
       generation,
       interaction,
-      clock: Clock { now, reduced },
+      sample: Sample { now, reduced },
     };
     let reach = record.kind.box_style().map(ShadowPaint::band);
     // A node whose presentation came out different from the last one repaints.
@@ -704,18 +705,18 @@ fn targets(records: &mut Records, handle: Handle, fresh: bool) -> Option<Targets
 }
 
 /// What one restyle resolves under: the generation and interaction it is cached as,
-/// and the clock its motion samples at.
+/// and the clock reading its motion presents at.
 struct Frame {
   generation: u64,
   interaction: crate::records::Interaction,
-  clock: Clock,
+  sample: Sample,
 }
 
 /// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
 fn present_run(
   kept: &crate::records::KeptStyle,
   cache: &mut Option<RunCache>,
-  motion: &mut crate::motion::RunMotion,
+  motion: &mut RunMotion,
   resolved: Option<(PlainRun, PlainBox)>,
   keyframes: &[skene_foundation::Animation<PlainRun>],
   frame: &Frame,
@@ -731,7 +732,7 @@ fn present_run(
       target.clone(),
       kept.transitions(),
       keyframes,
-      frame.clock,
+      frame.sample,
     );
 
     active |= running;
@@ -772,7 +773,7 @@ fn present_box(
     target.clone(),
     inner.kept.transitions(),
     keyframes,
-    frame.clock,
+    frame.sample,
   );
   let repaint = inner
     .cache

@@ -43,6 +43,7 @@ pub(crate) use self::{
     PlainRun,
     Record,
     RunCache,
+    RunMotion,
   },
 };
 use crate::{

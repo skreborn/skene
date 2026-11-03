@@ -7,10 +7,12 @@
 //! ([`Tree`]), each node's layout read in the foundation's geometry ([`Placed`]), what
 //! moved since a platform last restyled its tree and so the nodes it revisits next
 //! ([`Restyle`]), and a paragraph's runs and inline boxes laid out as one text through a
-//! realization's text engine ([`TextFlow`]). The web lays out through CSS and needs none
-//! of it.
+//! realization's text engine ([`TextFlow`]). The [`runtime`] module holds what a
+//! platform Skene draws whole runs beneath its realization: each node's motion presented
+//! on the platform's frame clock. The web lays out through CSS and needs none of it.
 
 mod restyle;
+pub mod runtime;
 mod text;
 mod tree;
 

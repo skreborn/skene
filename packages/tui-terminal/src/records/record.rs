@@ -29,10 +29,13 @@ use skene_foundation::{
 };
 
 use super::{CellRect, field::Field};
-use crate::{
-  motion::{BoxMotion, RunMotion},
-  paint::Image,
-};
+use crate::paint::Image;
+
+/// A box-like node's motion on the terminal's frame clock.
+pub(crate) type BoxMotion = skene_layout::runtime::BoxMotion<i32, TerminalStyle>;
+
+/// A run's motion on the terminal's frame clock.
+pub(crate) type RunMotion = skene_layout::runtime::RunMotion<TerminalStyle>;
 
 /// A box's style resolved against live state.
 pub(crate) type PlainBox = BoxStyle<i32, Plain, TerminalStyle>;

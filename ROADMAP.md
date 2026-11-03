@@ -26,7 +26,7 @@ in a code comment.
     takes it too, the terminal its first client.
     - The terminal's retained runtime beyond its layout tree and its restyle's schedule
     (the restyle's resolution caches and presentation, the damage and the measured
-    rectangles, hit testing, focus, capture, wheel latching, selection, motion) moves
+    rectangles, hit testing, focus, capture, wheel latching, selection) moves
     into `skene-layout`, generic over the platform's scalar, beside the style mapping,
     the `Tree` and the `Restyle`, its frames hit through, clipped and scrolled as a
     browser's are; a paragraph is kept as one laid-out paragraph of its runs, which

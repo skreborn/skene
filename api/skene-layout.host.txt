@@ -1,5 +1,40 @@
 pub mod skene_layout
 pub use skene_layout::taffy
+pub mod skene_layout::runtime
+pub struct skene_layout::runtime::BoxMotion<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension>
+impl<N: skene_foundation::spine::scalar::Scalar + skene_foundation::spine::motion::interpolate::Interpolate, X: skene_foundation::spine::extension::StyleExtension> skene_layout::runtime::BoxMotion<N, X>
+pub fn skene_layout::runtime::BoxMotion<N, X>::present(&mut self, core::option::Option<&skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>>, skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>, &[skene_foundation::spine::motion::Transition<<X as skene_foundation::spine::extension::StyleExtension>::Property>], &[skene_foundation::spine::motion::Animation<skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>>], skene_layout::runtime::Sample) -> skene_layout::runtime::Presented<skene_foundation::spine::box_style::BoxStyle<N, skene_foundation::spine::shape::Plain, X>>
+impl<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension> skene_layout::runtime::BoxMotion<N, X>
+pub const fn skene_layout::runtime::BoxMotion<N, X>::new() -> Self
+impl<N: core::fmt::Debug + skene_foundation::spine::scalar::Scalar, X: core::fmt::Debug + skene_foundation::spine::extension::StyleExtension> core::fmt::Debug for skene_layout::runtime::BoxMotion<N, X> where <X as skene_foundation::spine::extension::StyleExtension>::Property: core::fmt::Debug
+pub fn skene_layout::runtime::BoxMotion<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: skene_foundation::spine::scalar::Scalar, X: skene_foundation::spine::extension::StyleExtension> core::default::Default for skene_layout::runtime::BoxMotion<N, X>
+pub fn skene_layout::runtime::BoxMotion<N, X>::default() -> Self
+pub struct skene_layout::runtime::Presented<S>
+pub skene_layout::runtime::Presented::active: bool
+pub skene_layout::runtime::Presented::style: S
+impl<S: core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Presented<S>
+pub fn skene_layout::runtime::Presented<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::runtime::RunMotion<X: skene_foundation::spine::extension::StyleExtension>
+impl<X: skene_foundation::spine::extension::StyleExtension> skene_layout::runtime::RunMotion<X>
+pub const fn skene_layout::runtime::RunMotion<X>::new() -> Self
+impl<X: skene_foundation::spine::extension::StyleExtension> skene_layout::runtime::RunMotion<X>
+pub fn skene_layout::runtime::RunMotion<X>::present(&mut self, core::option::Option<&skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, X>>, skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, X>, &[skene_foundation::spine::motion::Transition<<X as skene_foundation::spine::extension::StyleExtension>::Property>], &[skene_foundation::spine::motion::Animation<skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, X>>], skene_layout::runtime::Sample) -> skene_layout::runtime::Presented<skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, X>>
+impl<X: core::fmt::Debug + skene_foundation::spine::extension::StyleExtension> core::fmt::Debug for skene_layout::runtime::RunMotion<X> where <X as skene_foundation::spine::extension::StyleExtension>::Property: core::fmt::Debug
+pub fn skene_layout::runtime::RunMotion<X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<X: skene_foundation::spine::extension::StyleExtension> core::default::Default for skene_layout::runtime::RunMotion<X>
+pub fn skene_layout::runtime::RunMotion<X>::default() -> Self
+pub struct skene_layout::runtime::Sample
+pub skene_layout::runtime::Sample::now: f64
+pub skene_layout::runtime::Sample::reduced: bool
+impl core::clone::Clone for skene_layout::runtime::Sample
+pub fn skene_layout::runtime::Sample::clone(&self) -> Self
+impl core::cmp::PartialEq for skene_layout::runtime::Sample
+pub fn skene_layout::runtime::Sample::eq(&self, &Self) -> bool
+impl core::fmt::Debug for skene_layout::runtime::Sample
+pub fn skene_layout::runtime::Sample::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::runtime::Sample
+impl core::marker::StructuralPartialEq for skene_layout::runtime::Sample
 pub enum skene_layout::Borders
 pub skene_layout::Borders::Unit
 pub skene_layout::Borders::Width

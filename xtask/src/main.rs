@@ -1137,7 +1137,7 @@ const HOST: Minimums = Minimums {
     ("skene-conformance", 1),
     ("skene-dev", 6),
     ("skene-foundation", 268),
-    ("skene-layout", 65),
+    ("skene-layout", 67),
     ("skene-macros", 7),
     ("skene-parley::it", 42),
     ("skene-reactive", 6),
@@ -1185,7 +1185,7 @@ const TERMINAL: Minimums = Minimums {
   binaries: &[
     ("acme-sparkline::render", 2),
     ("skene-simple-tui::it", 9),
-    ("skene-tui-terminal", 78),
+    ("skene-tui-terminal", 76),
     ("skene-tui::it", 461),
     ("tui-context-menu::render", 1),
     ("tui-enhance::render", 2),

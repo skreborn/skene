@@ -2163,7 +2163,7 @@ Pictures come through the kitty graphics protocol. Launch sends the protocol's q
 (`a=q`, one pixel, an id of its own) among the other queries; a terminal that answers
 `OK` (an APC reply the parser reads) proves it, `Painting::available` turns true, and
 every `Painted` whose fallback stood rebuilds into its painted box. A painted box's
-painter is kept on its record; before a frame paints, every painted box whose image
+painter is kept in its cell state; before a frame paints, every painted box whose image
 is missing or of another size than its content in pixels—its cells times the cell's
 pixel size, the window's where the terminal reports it and ten by twenty else—runs
 its painter on a `Canvas` of that size and keeps the RGBA pixels under the next

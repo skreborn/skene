@@ -361,7 +361,15 @@ impl Records {
 
   /// How many nodes the platform holds a record of.
   pub(crate) fn record_count(&self) -> usize {
-    self.by_node.values().count()
+    let count = self.by_node.values().count();
+
+    debug_assert_eq!(
+      self.cells.values().count(),
+      count,
+      "every record has its cell state beside it, and nothing else does"
+    );
+
+    count
   }
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.

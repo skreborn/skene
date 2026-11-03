@@ -43,7 +43,7 @@ struct Targets<P: Drawn> {
 impl<P: Drawn> Runtime<P> {
   /// Presents every node whose style may have moved, as
   /// [`write_styles`](Self::write_styles) states, and returns each such node holding a
-  /// record, displayed or not, runs first, for the layout tree to take.
+  /// record, displayed or not, for the layout tree to take.
   pub(super) fn present(&mut self) -> Vec<NodeId> {
     let (mut nodes, displayed) = self.revisited();
     let generation = self.restyle.generation();
@@ -66,11 +66,10 @@ impl<P: Drawn> Runtime<P> {
     nodes
   }
 
-  /// The nodes the next pass revisits, runs first, with the display where it revisits
-  /// every node.
+  /// The nodes the next pass revisits, with the display where it revisits every node.
   fn revisited(&mut self) -> (Vec<NodeId>, Option<FxHashSet<NodeId>>) {
     let interaction = Scene::<P>::read(Scene::interaction_generation);
-    let (mut nodes, displayed) = match self.restyle.take(interaction) {
+    match self.restyle.take(interaction) {
       Revisit::Every => (self.handles(), Some(self.displayed())),
       Revisit::Nodes(mut nodes, moved) => {
         if moved {
@@ -94,16 +93,7 @@ impl<P: Drawn> Runtime<P> {
 
         (nodes, None)
       }
-    };
-
-    nodes.sort_by_key(|node| {
-      !matches!(
-        self.record(*node).map(|record| &record.kind),
-        Some(Kind::Run { .. })
-      )
-    });
-
-    (nodes, displayed)
+    }
   }
 
   /// Presents `node` if its resolution is stale or it is in motion, where `displayed`;

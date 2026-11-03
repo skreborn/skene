@@ -31,8 +31,8 @@ pub const INLINE_BOX: char = '\u{fffc}';
 pub enum OverlayFocus {
   /// Focus stays where it is.
   Held,
-  /// Focus moves to the node, or leaves every node.
-  Moved(Option<NodeId>),
+  /// Focus moves to the node.
+  Moved(NodeId),
 }
 
 impl<P: Drawn> Runtime<P> {
@@ -214,8 +214,8 @@ impl<P: Drawn> Runtime<P> {
   /// Opens or closes the overlay `node`, returning the focus move the change asks for: a
   /// modal opening takes focus as the scene chooses
   /// ([`Scene::modal_focus`](skene_foundation::Scene::modal_focus)), and the scene
-  /// returns focus as an overlay closes. Every node is resolved again where it opened or
-  /// closed, and the frame is laid out and repainted.
+  /// returns focus as an overlay closes. Every node is resolved again where the overlay
+  /// opened or closed, and the frame is laid out and repainted.
   pub fn set_overlay_open(&mut self, node: NodeId, open: bool) -> OverlayFocus {
     let Some(Kind::Overlay { open: held, .. }) =
       self.record_mut(node).map(|record| &mut record.kind)
@@ -237,9 +237,7 @@ impl<P: Drawn> Runtime<P> {
 
     let order = self.tab_order();
 
-    OverlayFocus::Moved(Some(Scene::<P>::read(|scene| {
-      scene.modal_focus(node, &order)
-    })))
+    OverlayFocus::Moved(Scene::<P>::read(|scene| scene.modal_focus(node, &order)))
   }
 
   /// Every open overlay reachable from the root, in the order they opened; later

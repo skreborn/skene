@@ -60,7 +60,6 @@ use crate::{
   },
   paint::control_entry,
   records::{CellFrame, Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
-  try_with_records,
   with_records,
 };
 
@@ -1657,11 +1656,10 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
     return;
   }
 
-  let default = try_with_records(|records| records.runtime.root()).and_then(|root| {
-    Scene::<Terminal>::with(|scene| {
-      scene.key_default(root, at, event, false, |node| {
-        records(|records| records.runtime.is_invisible(node))
-      })
+  let root = records(|records| records.runtime.root());
+  let default = Scene::<Terminal>::with(|scene| {
+    scene.key_default(root, at, event, false, |node| {
+      records(|records| records.runtime.is_invisible(node))
     })
   });
 

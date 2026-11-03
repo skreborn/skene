@@ -197,7 +197,7 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// Stores a record of `kind` as the record of `node`, its structure moved.
-  pub fn insert(&mut self, node: NodeId, kind: Kind<P>) {
+  fn insert(&mut self, node: NodeId, kind: Kind<P>) {
     self.restyle.move_structure();
 
     let _replaced = self.records.insert(node, Record::new(node, kind));

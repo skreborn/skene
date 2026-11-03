@@ -155,7 +155,7 @@ impl Realization for Terminal {
     let focus = with_records(|records| records.runtime.set_overlay_open(node, open));
 
     if let OverlayFocus::Moved(next) = focus {
-      interaction::set_focus(next);
+      interaction::set_focus(Some(next));
     }
   }
 

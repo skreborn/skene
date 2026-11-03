@@ -89,10 +89,10 @@ own borrow. A platform Skene draws whole mirrors it through `skene-layout`'s dra
 whose adapter its realization forwards to (`runtime::Runtime::create`, `write`,
 `set_overlay_open`, `mount` and their kin), so the records, the overlays and entries in
 build order and the focus a modal takes as it opens are kept once for every such
-platform, each adding only what is its medium's own. The scene also says where each node is placed (`Scene::placed_children`,
-`Scene::placed_parent`): where it stands, except the caption a control keeps beside it
-(`Scene::keep_caption_beside`), placed before the control among its siblings on every
-platform. The terminal reads its structure there rather than keeping a copy, through
+platform, each adding only what is its medium's own. The scene also says where each
+node is placed (`Scene::placed_children`, `Scene::placed_parent`): where it stands,
+except the caption a control keeps beside it (`Scene::keep_caption_beside`), placed
+before the control among its siblings on every platform. The terminal reads its structure there rather than keeping a copy, through
 `Scene::read`, the shared borrow reads take, which nests and mirrors nothing, and the
 server's string tree serializes the scene's structure through its records, a control's
 carrier and its caption's `<label>` the only elements it adds; the browser's tree is the
@@ -1941,7 +1941,7 @@ contents, a size observed, an overlay opened with the focus move it asks for, an
 mount with the window's autofocus. It keeps as its own each node's cell state and
 layout leaf beside its record, an entry's edit, placeholder, secure flag and keyboard,
 focus, pointer localization, layout, timers, the clipboard, the window title and
-navigation. Beside them sit layout, the cell engine, painting, the frame writer, the event
+navigation. Beside the runtime and the side table sit layout, the cell engine, painting, the frame writer, the event
 loop and its interaction, the editing state of its drawn entries, the dev reload's
 restore and rebuild notice, and the `device`, `tty`, `parse` and `escape` modules. It
 names no facade: what it builds of its own, the rebuild notice, it builds from the

@@ -180,10 +180,7 @@ impl Launch {
 /// items, drawn in the terminal's default colors, which any menu closer to the pressed
 /// node takes precedence over.
 fn serve_standard_menu() {
-  let Some(root) = crate::try_with_records(|records| records.runtime.root())
-  else {
-    return;
-  };
+  let root = with_records(|records| records.runtime.root());
   let gray = Color::srgb(0.5, 0.5, 0.5);
 
   skene_reactive::Owner::root().enter(|| {

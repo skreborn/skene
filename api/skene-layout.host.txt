@@ -33,7 +33,7 @@ impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for sk
 pub fn skene_layout::runtime::Kind<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub enum skene_layout::runtime::OverlayFocus
 pub skene_layout::runtime::OverlayFocus::Held
-pub skene_layout::runtime::OverlayFocus::Moved(core::option::Option<skene_foundation::spine::node::NodeId>)
+pub skene_layout::runtime::OverlayFocus::Moved(skene_foundation::spine::node::NodeId)
 impl core::clone::Clone for skene_layout::runtime::OverlayFocus
 pub fn skene_layout::runtime::OverlayFocus::clone(&self) -> Self
 impl core::cmp::Eq for skene_layout::runtime::OverlayFocus
@@ -188,7 +188,6 @@ pub fn skene_layout::runtime::Runtime<P>::damage(&mut self, skene_foundation::sp
 pub fn skene_layout::runtime::Runtime<P>::destroy(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_layout::runtime::Record<P>>
 pub fn skene_layout::runtime::Runtime<P>::handles(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub const fn skene_layout::runtime::Runtime<P>::has_damage(&self) -> bool
-pub fn skene_layout::runtime::Runtime<P>::insert(&mut self, skene_foundation::spine::node::NodeId, skene_layout::runtime::Kind<P>)
 pub fn skene_layout::runtime::Runtime<P>::new(skene_foundation::spine::node::NodeId, skene_foundation::spine::condition::Environment<<P as skene_foundation::spine::realization::Realization>::Scalar>, bool) -> Self
 pub fn skene_layout::runtime::Runtime<P>::record(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Record<P>>
 pub fn skene_layout::runtime::Runtime<P>::record_count(&self) -> usize

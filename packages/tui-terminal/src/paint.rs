@@ -19,22 +19,13 @@ use skene_foundation::{
   terminal::{BorderGlyphs, ScrollbarGlyphs},
   text::TextIndex,
 };
-use skene_layout::runtime::Env;
+use skene_layout::runtime::{Env, Source};
 
 use crate::{
   Terminal,
   cells::Cells,
   engine::{DrawnCluster, drawn},
-  layout::{
-    Source,
-    border_edges,
-    flow_of,
-    has_border,
-    inline_boxes,
-    is_inline_box,
-    is_paragraph,
-    padding_cells,
-  },
+  layout::{border_edges, flow_of, has_border, inline_boxes, padding_cells},
   records::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
@@ -972,8 +963,8 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
   };
 
   match &record.kind {
-    Kind::Box(_) if is_paragraph(records, handle) => {
-      let source = Source::of(records, handle);
+    Kind::Box(_) if records.runtime.is_paragraph(handle) => {
+      let source = Source::of(&records.runtime, handle);
       let mut destinations = Vec::new();
       let spans: Vec<SpanPaint> = source
         .runs()
@@ -1072,7 +1063,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
         selection: selection_colors(&run),
       }
     }
-    Kind::Run { .. } if is_inline_box(records, handle) => NodePaint::None,
+    Kind::Run { .. } if records.runtime.is_inline_box(handle) => NodePaint::None,
     Kind::Run {
       facts,
       destination,
@@ -1086,7 +1077,12 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
         .flatten();
 
       NodePaint::Text {
-        clusters: cluster_paints(records, handle, &Source::of(records, handle), selection),
+        clusters: cluster_paints(
+          records,
+          handle,
+          &Source::of(&records.runtime, handle),
+          selection,
+        ),
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
         decoration: CellDecoration::of(style, facts.link),
@@ -1158,7 +1154,7 @@ fn paint_node(
     return;
   }
 
-  let paragraph = !run && is_paragraph(records, handle);
+  let paragraph = !run && records.runtime.is_paragraph(handle);
 
   // A paragraph's inline boxes and an inline box's content paint wherever they reach,
   // past the frame they flow in, as overflow paints.
@@ -2076,7 +2072,7 @@ const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
 /// The scale the run `handle` draws at: its resolved size where the terminal sizes
 /// text, one cell elsewhere and for an inline box.
 pub(crate) fn run_scale(records: &Records, handle: Handle) -> CellScale {
-  if is_inline_box(records, handle) {
+  if records.runtime.is_inline_box(handle) {
     return CellScale::ONE;
   }
 

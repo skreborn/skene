@@ -14,15 +14,7 @@ use skene_layout::runtime::Runtime;
 use crate::{
   Terminal,
   interaction::scroll_to,
-  layout::{
-    self,
-    border_edges,
-    enclosing_paragraph,
-    has_border,
-    is_inline_box,
-    is_inline_run,
-    is_paragraph,
-  },
+  layout::{self, border_edges, has_border},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
   records::{Backdrop, BackdropKey, CellRect, Handle, Record, Records},
   with_records,
@@ -192,7 +184,7 @@ fn paint_owner(records: &Records, handle: Handle) -> Handle {
   let mut owner = handle;
 
   while let Some(parent) = records.runtime.layout_parent(owner) {
-    if !(is_paragraph(records, parent) || is_inline_run(records, parent)) {
+    if !(records.runtime.is_paragraph(parent) || records.runtime.is_inline_run(parent)) {
       break;
     }
 
@@ -629,8 +621,11 @@ fn reveal() -> bool {
 /// The nearest node at or above `handle` the tree lays out: `handle` itself, or the
 /// paragraph a text or group run flows in.
 fn laid_owner(records: &Records, handle: Handle) -> Handle {
-  if is_inline_run(records, handle) && !is_inline_box(records, handle) {
-    return enclosing_paragraph(records, handle).unwrap_or(handle);
+  if records.runtime.is_inline_run(handle) && !records.runtime.is_inline_box(handle) {
+    return records
+      .runtime
+      .enclosing_paragraph(handle)
+      .unwrap_or(handle);
   }
 
   handle

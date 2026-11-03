@@ -9,6 +9,12 @@
 //! and each node's style is presented on the platform's frame clock, its transitions and
 //! keyframe animations laid over it ([`BoxMotion`], [`RunMotion`]).
 //!
+//! The runtime reads the paragraph structure from its records and the scene: a flow box
+//! whose every laid-out child is an inline run lays them out as one paragraph
+//! ([`Runtime::is_paragraph`]), its leaf runs visited in order with the groups around
+//! each ([`Runtime::visit_runs`]), and a text node's source text names where each of its
+//! runs lies in it and in the flow the layout lays out ([`Source`]).
+//!
 //! The runtime is the source every node's style resolves through ([`Env`]): it keeps
 //! what its platform reports of the window ([`Window`]) and the app's choice of scheme,
 //! moved by one writer ([`Runtime::report`]) together with the resolution's generation
@@ -27,6 +33,7 @@
 mod adapter;
 mod environment;
 mod motion;
+mod paragraph;
 mod record;
 mod resolve;
 mod structure;
@@ -51,6 +58,7 @@ pub use self::{
   adapter::{INLINE_BOX, OverlayFocus},
   environment::{Facts, Pending, Window},
   motion::{BoxMotion, Presented, RunMotion, Sample},
+  paragraph::Source,
   record::{
     BoxCache,
     BoxRecord,

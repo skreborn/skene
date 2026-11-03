@@ -22,19 +22,11 @@ use skene_foundation::{
   Scene,
   text::{Round, Segments, TextIndex},
 };
+use skene_layout::runtime::Source;
 
 use crate::{
   Terminal,
-  layout::{
-    Source,
-    cell_point,
-    content,
-    flow_of,
-    is_inline_box,
-    is_paragraph,
-    paragraph_runs,
-    paragraph_text,
-  },
+  layout::{cell_point, content, flow_of},
   records::{Drag, Handle, Kind, Records},
   text,
 };
@@ -91,14 +83,14 @@ impl Records {
       Kind::Run { facts, .. } if facts.selectable && !record.text.is_empty() => {
         Some(record.text.clone())
       }
-      Kind::Box(_) if is_paragraph(self, handle) => {
-        let selectable = paragraph_runs(self, handle).iter().any(|run| {
+      Kind::Box(_) if self.runtime.is_paragraph(handle) => {
+        let selectable = self.runtime.paragraph_runs(handle).iter().any(|run| {
           matches!(
             self.runtime.record(*run).map(|record| &record.kind),
             Some(Kind::Run { facts, .. }) if facts.selectable
           )
         });
-        let text = paragraph_text(self, handle);
+        let text = self.runtime.paragraph_text(handle);
 
         (selectable && !text.is_empty()).then_some(text)
       }
@@ -122,7 +114,7 @@ impl Records {
       flow
         .flow()
         .nearest(content(self.flow_width(handle)), point)
-        .and_then(|hit| Source::of(self, handle).cluster_of(hit.node, hit.offset))
+        .and_then(|hit| Source::of(&self.runtime, handle).cluster_of(hit.node, hit.offset))
         .unwrap_or(0),
     )
   }
@@ -131,7 +123,7 @@ impl Records {
   /// none.
   fn text_root(&self, path: &[(Handle, (i64, i64))]) -> Option<(Handle, (i64, i64))> {
     path.iter().rev().copied().find(|(handle, _)| {
-      is_paragraph(self, *handle)
+      self.runtime.is_paragraph(*handle)
         || matches!(
           self.runtime.record(*handle).map(|record| &record.kind),
           Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Line
@@ -161,7 +153,7 @@ impl Records {
       _ => None,
     };
 
-    if is_paragraph(self, node) {
+    if self.runtime.is_paragraph(node) {
       let from = path.iter().position(|(handle, _)| *handle == node)?;
 
       return path[from + 1..]
@@ -229,7 +221,7 @@ impl Records {
       if self.selectable_text(current).is_some() {
         order.push(current);
 
-        if is_paragraph(self, current) {
+        if self.runtime.is_paragraph(current) {
           continue;
         }
       }
@@ -363,11 +355,11 @@ impl Records {
   /// The clusters `from..to` of the node's selectable `text` as they appear in the
   /// source: in a paragraph, an inline box's placeholder is the text the box holds.
   fn source_text(&self, node: Handle, text: &str, from: usize, to: usize) -> String {
-    if !is_paragraph(self, node) {
+    if !self.runtime.is_paragraph(node) {
       return text::slice(text, from, to).to_owned();
     }
 
-    let source = Source::of(self, node);
+    let source = Source::of(&self.runtime, node);
     let (from, to) = (
       source.index.byte_of_grapheme(from),
       source.index.byte_of_grapheme(to),
@@ -379,7 +371,7 @@ impl Records {
         continue;
       }
 
-      if is_inline_box(self, run) {
+      if self.runtime.is_inline_box(run) {
         selected.push_str(&self.inner_text(run));
       }
       else {

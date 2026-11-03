@@ -20,8 +20,9 @@ throughout—there is no separate "widget" concept.
 What each crate holds is the README's crate table. They stack: `skene-reactive` at the
 bottom, `skene-foundation` on it, the layout and the drawn runtime every platform but
 the web runs (`skene-layout`, whose `runtime` holds each node's record, the scene walk
-over them, their motion, their style's resolution and the environment the platform
-reports, behind the `Drawn` trait a drawn platform implements) and
+over them and the paragraph structure it reads, their motion, their style's resolution
+and the environment the platform reports, behind the `Drawn` trait a drawn platform
+implements) and
 the text engine over Parley (`skene-parley`) on the foundation, the platforms on the
 foundation and, where they draw, on those two, each platform's realization a crate of
 its own (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,

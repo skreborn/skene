@@ -48,16 +48,7 @@ use skene_foundation::{
 
 use crate::{
   Terminal,
-  layout::{
-    cell_point,
-    content,
-    enclosing_paragraph,
-    flow_of,
-    inline_boxes,
-    is_inline_box,
-    is_inline_run,
-    is_paragraph,
-  },
+  layout::{cell_point, content, flow_of, inline_boxes},
   paint::control_entry,
   records::{CellFrame, Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
   with_records,
@@ -233,7 +224,7 @@ impl Records {
 
     path.push((handle, (origin_x, origin_y)));
 
-    if is_paragraph(self, handle) {
+    if self.runtime.is_paragraph(handle) {
       let hit = self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
 
       if !(contains || hit) {
@@ -316,7 +307,7 @@ impl Records {
     if let Some(leaf) = drawn {
       self.push_groups(handle, leaf, origin, path);
 
-      if is_inline_box(self, leaf) {
+      if self.runtime.is_inline_box(leaf) {
         self.hit_walk(leaf, origin.0, origin.1, x, y, path);
       }
       else {
@@ -394,9 +385,9 @@ impl Records {
   /// in its paragraph through any groups, or the paragraph's origin for any other run
   /// flowing in one.
   pub(crate) fn inline_location(&self, handle: Handle) -> (i64, i64) {
-    let flows = is_inline_run(self, handle)
-      && !is_inline_box(self, handle)
-      && enclosing_paragraph(self, handle).is_some();
+    let flows = self.runtime.is_inline_run(handle)
+      && !self.runtime.is_inline_box(handle)
+      && self.runtime.enclosing_paragraph(handle).is_some();
 
     if flows {
       (0, 0)

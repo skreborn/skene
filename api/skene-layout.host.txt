@@ -196,6 +196,14 @@ pub const fn skene_layout::runtime::Runtime<P>::root(&self) -> skene_foundation:
 pub fn skene_layout::runtime::Runtime<P>::take_damage(&mut self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::runtime::Runtime<P>::try_with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> core::option::Option<R>
 pub fn skene_layout::runtime::Runtime<P>::with<R>(impl core::ops::function::FnOnce(&mut Self) -> R) -> R
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
+pub fn skene_layout::runtime::Runtime<P>::enclosing_paragraph(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::is_inline_box(&self, skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_layout::runtime::Runtime<P>::is_inline_run(&self, skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_layout::runtime::Runtime<P>::is_paragraph(&self, skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_layout::runtime::Runtime<P>::paragraph_runs(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::paragraph_text(&self, skene_foundation::spine::node::NodeId) -> alloc::string::String
+pub fn skene_layout::runtime::Runtime<P>::visit_runs(&self, skene_foundation::spine::node::NodeId, &mut alloc::vec::Vec<skene_foundation::spine::node::NodeId>, &mut impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::node::NodeId]))
 impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_layout::runtime::Drawn> skene_foundation::spine::resolve::ResolutionSource<P> for skene_layout::runtime::Runtime<P>
@@ -215,6 +223,18 @@ impl core::fmt::Debug for skene_layout::runtime::Sample
 pub fn skene_layout::runtime::Sample::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::runtime::Sample
 impl core::marker::StructuralPartialEq for skene_layout::runtime::Sample
+pub struct skene_layout::runtime::Source
+pub skene_layout::runtime::Source::index: skene_foundation::text::index::TextIndex
+pub skene_layout::runtime::Source::text: alloc::string::String
+impl skene_layout::runtime::Source
+pub fn skene_layout::runtime::Source::at_flow(&self, usize) -> core::option::Option<(skene_foundation::spine::node::NodeId, usize)>
+pub fn skene_layout::runtime::Source::cluster_of(&self, skene_foundation::spine::node::NodeId, usize) -> core::option::Option<usize>
+pub fn skene_layout::runtime::Source::of<P: skene_layout::runtime::Drawn>(&skene_layout::runtime::Runtime<P>, skene_foundation::spine::node::NodeId) -> Self
+pub fn skene_layout::runtime::Source::runs(&self) -> impl core::iter::traits::iterator::Iterator<Item = (skene_foundation::spine::node::NodeId, core::ops::range::Range<usize>)> + '_
+impl core::clone::Clone for skene_layout::runtime::Source
+pub fn skene_layout::runtime::Source::clone(&self) -> Self
+impl core::fmt::Debug for skene_layout::runtime::Source
+pub fn skene_layout::runtime::Source::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::Window<P: skene_layout::runtime::Drawn>
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Window<P>
 pub fn skene_layout::runtime::Window<P>::container_size(&self, skene_foundation::spine::condition::ContainerName) -> core::option::Option<skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>>

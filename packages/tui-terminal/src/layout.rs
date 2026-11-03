@@ -5,19 +5,8 @@
 //! style resolved for it differs from the one applied, so a keystroke relays out the
 //! changed subtree and a hover change repaints without a relayout.
 
-use std::ops::Range;
-
 use rustc_hash::FxHashSet;
-use skene_foundation::{
-  Inset,
-  Layout,
-  Point,
-  Rect,
-  RunPlacement,
-  Scene,
-  Size,
-  text::{Round, TextIndex},
-};
+use skene_foundation::{Inset, Layout, Point, Rect, RunPlacement, Scene, Size};
 use skene_layout::{
   Borders,
   BoxLayout,
@@ -238,99 +227,6 @@ pub(crate) const fn cells_of(count: usize) -> f32 {
   count as f32
 }
 
-/// One run of a text node's source: its node, the bytes of the source it holds, and the
-/// byte of the flow its text starts at, `None` for an inline box, which the flow holds
-/// as a box rather than as its placeholder.
-#[derive(Debug, Clone)]
-struct SourceRun {
-  node: Handle,
-  source: Range<usize>,
-  flow: Option<usize>,
-}
-
-/// A text node's source text as its runs hold it, an inline box its placeholder, its
-/// clusters, and where each run lies in it and in the flow the layout lays out: a
-/// paragraph's leaf runs, or a run flowing in none.
-#[derive(Debug)]
-pub(crate) struct Source {
-  pub(crate) text: String,
-  pub(crate) index: TextIndex,
-  runs: Vec<SourceRun>,
-}
-
-impl Source {
-  /// The source of the text node `handle`.
-  pub(crate) fn of(records: &Records, handle: Handle) -> Self {
-    let runs = if is_paragraph(records, handle) {
-      paragraph_runs(records, handle)
-    }
-    else {
-      vec![handle]
-    };
-    let mut text = String::new();
-    let mut flow = 0;
-    let mut source = Vec::new();
-
-    for run in runs {
-      let Some(record) = records.runtime.record(run)
-      else {
-        continue;
-      };
-      let at = text.len();
-      let boxed = is_inline_box(records, run);
-
-      text.push_str(&record.text);
-      source.push(SourceRun {
-        node: run,
-        source: at..text.len(),
-        flow: (!boxed).then_some(flow),
-      });
-
-      if !boxed {
-        flow += record.text.len();
-      }
-    }
-
-    Self {
-      index: TextIndex::new(&text),
-      text,
-      runs: source,
-    }
-  }
-
-  /// The source's runs in order: each node and the bytes of the source it holds.
-  pub(crate) fn runs(&self) -> impl Iterator<Item = (Handle, Range<usize>)> + '_ {
-    self.runs.iter().map(|run| (run.node, run.source.clone()))
-  }
-
-  /// The cluster of the source a caret before byte `offset` of `node`'s text stands
-  /// before; `None` for a node outside the source.
-  pub(crate) fn cluster_of(&self, node: Handle, offset: usize) -> Option<usize> {
-    let run = self.runs.iter().find(|run| run.node == node)?;
-    let byte = (run.source.start + offset).min(run.source.end);
-
-    Some(self.index.grapheme_at_byte(byte, Round::Down))
-  }
-
-  /// The run whose text holds byte `at` of the flow, and the cluster of the source it
-  /// lies in.
-  pub(crate) fn at_flow(&self, at: usize) -> Option<(Handle, usize)> {
-    self.runs.iter().find_map(|run| {
-      let start = run.flow?;
-      let length = run.source.len();
-
-      (start <= at && at < start + length).then(|| {
-        (
-          run.node,
-          self
-            .index
-            .grapheme_at_byte(run.source.start + at - start, Round::Down),
-        )
-      })
-    })
-  }
-}
-
 /// The flow the text node `handle` lays out as, when it holds one.
 pub(crate) fn flow_of(records: &Records, handle: Handle) -> Option<&CellFlow> {
   match records.tree.context(handle)? {
@@ -339,120 +235,15 @@ pub(crate) fn flow_of(records: &Records, handle: Handle) -> Option<&CellFlow> {
   }
 }
 
-/// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
-/// laid-out child is an inline text run or an inline box.
-pub(crate) fn is_paragraph(records: &Records, handle: Handle) -> bool {
-  if records.runtime.record(handle).and_then(Record::layout) != Some(Layout::Document) {
-    return false;
-  }
-
-  let children = records.runtime.layout_children(handle);
-
-  !children.is_empty()
-    && children.iter().all(|child| {
-      matches!(
-        records.runtime.record(*child).map(|record| &record.kind),
-        Some(Kind::Run { facts, .. }) if facts.placement != RunPlacement::Line
-      )
-    })
-}
-
-/// Whether `handle` is an inline box: a run laid out as a box among its paragraph's
-/// text, its text one placeholder cluster as large as the box.
-pub(crate) fn is_inline_box(records: &Records, handle: Handle) -> bool {
-  matches!(
-    records.runtime.record(handle).map(|record| &record.kind),
-    Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Embedded
-  )
-}
-
-/// Whether `handle` is an inline run: text, a group or an inline box flowing in a
-/// paragraph.
-pub(crate) fn is_inline_run(records: &Records, handle: Handle) -> bool {
-  matches!(
-    records.runtime.record(handle).map(|record| &record.kind),
-    Some(Kind::Run { facts, .. }) if facts.placement != RunPlacement::Line
-  )
-}
-
-/// The paragraph the inline run `handle` flows in, through any groups around it.
-pub(crate) fn enclosing_paragraph(records: &Records, handle: Handle) -> Option<Handle> {
-  let mut current = records.runtime.layout_parent(handle)?;
-
-  while !is_paragraph(records, current) {
-    if !is_inline_run(records, current) {
-      return None;
-    }
-
-    current = records.runtime.layout_parent(current)?;
-  }
-
-  Some(current)
-}
-
 /// The inline boxes of the paragraph `handle`, in its flow's order, each a child of the
 /// paragraph in the tree, which lays it out where the flow places it.
 pub(crate) fn inline_boxes(records: &Records, handle: Handle) -> Vec<Handle> {
   flow_of(records, handle).map_or_else(Vec::new, |flow| {
     flow
       .boxes()
-      .filter(|node| is_inline_box(records, *node))
+      .filter(|node| records.runtime.is_inline_box(*node))
       .collect()
   })
-}
-
-/// The text of the paragraph `handle`: every inline run beneath it, in order.
-pub(crate) fn paragraph_text(records: &Records, handle: Handle) -> String {
-  let mut text = String::new();
-
-  for run in paragraph_runs(records, handle) {
-    if let Some(record) = records.runtime.record(run) {
-      text.push_str(&record.text);
-    }
-  }
-
-  text
-}
-
-/// The leaf runs of the paragraph `handle`, in order: a group run contributes its
-/// runs, never its own (empty) text.
-pub(crate) fn paragraph_runs(records: &Records, handle: Handle) -> Vec<Handle> {
-  let mut runs = Vec::new();
-
-  visit_runs(records, handle, &mut Vec::new(), &mut |run, _| {
-    runs.push(run);
-  });
-
-  runs
-}
-
-/// Visits each leaf run beneath `handle` in order, with the group runs around it beneath
-/// the paragraph, outermost first, `groups` being those around `handle`.
-fn visit_runs(
-  records: &Records,
-  handle: Handle,
-  groups: &mut Vec<Handle>,
-  visit: &mut impl FnMut(Handle, &[Handle]),
-) {
-  for child in records.runtime.layout_children(handle) {
-    let is_run = matches!(
-      records.runtime.record(child).map(|record| &record.kind),
-      Some(Kind::Run { .. })
-    );
-
-    if !is_run {
-      continue;
-    }
-
-    if is_inline_box(records, child) || records.runtime.layout_children(child).is_empty() {
-      visit(child, groups);
-    }
-    else {
-      groups.push(child);
-      visit_runs(records, child, groups, visit);
-      groups.pop();
-    }
-  }
 }
 
 /// Resolves the styles that may have moved and writes the taffy styles that changed;
@@ -513,8 +304,8 @@ fn revisited(records: &mut Records) -> (Vec<Handle>, Option<FxHashSet<Handle>>) 
 
       let paragraphs: Vec<Handle> = handles
         .iter()
-        .filter(|handle| is_inline_run(records, **handle))
-        .filter_map(|handle| enclosing_paragraph(records, *handle))
+        .filter(|handle| records.runtime.is_inline_run(**handle))
+        .filter_map(|handle| records.runtime.enclosing_paragraph(*handle))
         .collect();
 
       handles.extend(paragraphs);
@@ -855,7 +646,7 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
     }
     Kind::Box(inner) => {
       let resolved = inner.style().cloned().unwrap_or_default();
-      let paragraph = is_paragraph(records, handle);
+      let paragraph = records.runtime.is_paragraph(handle);
       let mut style = resolved.taffy_style(inner.facts.layout, place);
 
       if fills_root {
@@ -908,19 +699,21 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
 fn paragraph_flow(records: &Records, handle: Handle) -> CellFlow {
   let mut flow = CellFlow::new();
 
-  visit_runs(records, handle, &mut Vec::new(), &mut |run, groups| {
-    let Some(record) = records.runtime.record(run)
-    else {
-      return;
-    };
+  records
+    .runtime
+    .visit_runs(handle, &mut Vec::new(), &mut |run, groups| {
+      let Some(record) = records.runtime.record(run)
+      else {
+        return;
+      };
 
-    if is_inline_box(records, run) {
-      flow.add_box(run, groups);
-    }
-    else {
-      flow.add_run(run, groups, &record.text, run_scale(records, run));
-    }
-  });
+      if records.runtime.is_inline_box(run) {
+        flow.add_box(run, groups);
+      }
+      else {
+        flow.add_run(run, groups, &record.text, run_scale(records, run));
+      }
+    });
 
   flow
 }
@@ -940,15 +733,15 @@ pub(crate) fn rebuild_children(records: &mut Records) {
       continue;
     }
 
-    let mut children = if is_paragraph(records, handle) {
+    let mut children = if records.runtime.is_paragraph(handle) {
       flow_of(records, handle).map_or_else(Vec::new, |flow| flow.boxes().collect())
     }
     else {
       let children = records.runtime.layout_children(handle);
       let grouped = !children.is_empty()
-        && is_inline_run(records, handle)
-        && !is_inline_box(records, handle)
-        && enclosing_paragraph(records, handle).is_some();
+        && records.runtime.is_inline_run(handle)
+        && !records.runtime.is_inline_box(handle)
+        && records.runtime.enclosing_paragraph(handle).is_some();
 
       if grouped { Vec::new() } else { children }
     };
@@ -1125,7 +918,7 @@ mod tests {
   use skene_foundation::{Container, RichText, Span, View};
   use skene_layout::Leaf as _;
 
-  use super::{content, flow_of, visit_runs};
+  use super::{content, flow_of};
   use crate::{Terminal, frame, install, mount, uninstall, with_records};
 
   /// Each leaf run and inline box of a paragraph flows inside the group runs around it,
@@ -1160,9 +953,11 @@ mod tests {
       };
       let mut visited = Vec::new();
 
-      visit_runs(records, paragraph, &mut Vec::new(), &mut |run, groups| {
-        visited.push((run, groups.to_vec()));
-      });
+      records
+        .runtime
+        .visit_runs(paragraph, &mut Vec::new(), &mut |run, groups| {
+          visited.push((run, groups.to_vec()));
+        });
 
       assert_eq!(
         visited,

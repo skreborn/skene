@@ -180,7 +180,7 @@ impl Launch {
 /// items, drawn in the terminal's default colors, which any menu closer to the pressed
 /// node takes precedence over.
 fn serve_standard_menu() {
-  let Some(root) = crate::realize::root_node()
+  let Some(root) = crate::try_with_records(|records| records.runtime.root())
   else {
     return;
   };

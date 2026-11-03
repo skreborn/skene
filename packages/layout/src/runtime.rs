@@ -15,9 +15,16 @@
 //! and the environment's signals, and it calls the platform's fill-ins of its own
 //! vocabulary ([`Drawn::finish_box`], [`Drawn::finish_run`]).
 //!
+//! A drawn platform's realization forwards to the runtime for everything that is no
+//! cell's or pixel's: a node's record created ([`Runtime::create`]) and destroyed, its
+//! style, slots, state and contents applied ([`Runtime::write`]), its size observed, an
+//! overlay opened with the focus move it asks for ([`Runtime::set_overlay_open`]), and a
+//! view mounted under the root with the window's autofocus ([`Runtime::mount`]).
+//!
 //! A platform keeps its own per-node state in a side table of its own keyed by the node,
 //! never in the runtime's records.
 
+mod adapter;
 mod environment;
 mod motion;
 mod record;
@@ -41,6 +48,7 @@ use skene_foundation::{
 };
 
 pub use self::{
+  adapter::{INLINE_BOX, OverlayFocus},
   environment::{Facts, Pending, Window},
   motion::{BoxMotion, Presented, RunMotion, Sample},
   record::{

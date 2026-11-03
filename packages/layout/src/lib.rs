@@ -12,8 +12,10 @@
 //! keeps in its own state and hands out through [`runtime::Drawn`], a record per node
 //! with the scene walk over them ([`runtime::Runtime`]), each node's motion presented on
 //! the platform's frame clock, and each node's style resolved ([`runtime::Env`]) against
-//! what the platform reports of its window ([`runtime::Window`]). The web lays out
-//! through CSS and needs none of it.
+//! what the platform reports of its window ([`runtime::Window`]), beside the adapter
+//! the platform's realization forwards to for everything that is no cell's or pixel's
+//! ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The web
+//! lays out through CSS and needs none of it.
 
 mod restyle;
 pub mod runtime;

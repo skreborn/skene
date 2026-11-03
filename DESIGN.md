@@ -85,7 +85,11 @@ makes one of every kind, the terminal none for an anchor or a scope, whose conte
 its parent's layout in its place, and a node a low-level view mints counts as made. Every
 structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once in the spine;
 the platform is called only to mirror it into its records, after the spine has released its
-own borrow. The scene also says where each node is placed (`Scene::placed_children`,
+own borrow. A platform Skene draws whole mirrors it through `skene-layout`'s drawn runtime,
+whose adapter its realization forwards to (`runtime::Runtime::create`, `write`,
+`set_overlay_open`, `mount` and their kin), so the records, the overlays and entries in
+build order and the focus a modal takes as it opens are kept once for every such
+platform, each adding only what is its medium's own. The scene also says where each node is placed (`Scene::placed_children`,
 `Scene::placed_parent`): where it stands, except the caption a control keeps beside it
 (`Scene::keep_caption_beside`), placed before the control among its siblings on every
 platform. The terminal reads its structure there rather than keeping a copy, through
@@ -1546,10 +1550,11 @@ engine, over the geometry it reports.
   line shares the unbounded layout where only sizes and baselines are asked for or the
   lines start at the left edge whatever the width (`Paragraph::is_left_anchored`).
   `skene-layout`'s `TextFlow` is a box's runs and inline boxes as one leaf: it builds
-  the attributed text, a box's placeholder (U+FFFC in a platform's records) becoming an
-  `InlineBox` there alone, each box's size given where it is added or by the tree laying
-  it out (`Leaf::size_box`, and `Tree::set_context` from the box's last layout to a flow
-  made afresh), keeps its paragraph until a run's text or style or a box's size changes,
+  the attributed text, a box's placeholder (`runtime::INLINE_BOX`, U+FFFC, in the
+  drawn runtime's records) becoming an `InlineBox` there alone, each box's size given
+  where it is added or by the tree laying it out (`Leaf::size_box`, and
+  `Tree::set_context` from the box's last layout to a flow made afresh), keeps its
+  paragraph until a run's text or style or a box's size changes,
   a change of its runs' paint alone repainting the paragraph it keeps without the leaf
   measured again (`Leaf::repaint_as`), adds each run and box inside the group runs
   around it, outermost first, places each run and box from the layout's range
@@ -1930,7 +1935,13 @@ are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by gen
 code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, which
 keeps each node's cell-only state in a side table keyed by the node (a text entry's
 presentation, its scroll offsets, the cells it covers and what it paints beyond its
-style); beside them sit layout, the cell engine, painting, the frame writer, the event
+style). Its `impl Realization` forwards to the runtime's adapter for everything that is
+no cell's: a node's record created and destroyed, its style, slots, control state and
+contents, a size observed, an overlay opened with the focus move it asks for, and a
+mount with the window's autofocus. It keeps as its own each node's cell state and
+layout leaf beside its record, an entry's edit, placeholder, secure flag and keyboard,
+focus, pointer localization, layout, timers, the clipboard, the window title and
+navigation. Beside them sit layout, the cell engine, painting, the frame writer, the event
 loop and its interaction, the editing state of its drawn entries, the dev reload's
 restore and rebuild notice, and the `device`, `tty`, `parse` and `escape` modules. It
 names no facade: what it builds of its own, the rebuild notice, it builds from the

@@ -60,36 +60,21 @@ use crate::{
   },
   paint::control_entry,
   records::{CellFrame, Drag, Handle, Kind, Press, Record, Records, ScrollLatch},
+  try_with_records,
   with_records,
 };
 
 /// The rows or columns one wheel report scrolls: a browser's three lines per notch.
 pub(crate) const WHEEL_STEP: i64 = 3;
 
-/// The focus move an overlay's opening asks for.
-pub(crate) enum OverlayFocus {
-  /// Focus stays where it is.
-  Held,
-  /// Focus moves to the node, or leaves every node.
-  Moved(Option<Handle>),
-}
-
 impl Records {
-  /// Every open overlay reachable from the root, in the order they opened; later
-  /// entries stack on top.
-  pub(crate) fn open_overlays(&self) -> Vec<Handle> {
-    Scene::<Terminal>::read(|scene| scene.open_overlays().to_vec())
-      .into_iter()
-      .filter(|overlay| self.runtime.is_reachable(*overlay))
-      .collect()
-  }
-
   /// Whether `handle` sits inside an open overlay.
   pub(crate) fn inside_open_overlay(&self, handle: Option<Handle>) -> bool {
     handle.is_some_and(|handle| {
       let ancestors = self.runtime.ancestors(handle);
 
       self
+        .runtime
         .open_overlays()
         .iter()
         .any(|overlay| ancestors.contains(overlay))
@@ -128,33 +113,6 @@ impl Records {
     Scene::<Terminal>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), handle))
   }
 
-  /// The tab stops in traversal order, as the scene orders them: document order, the
-  /// scene's child order; closed overlays and hidden boxes excluded, and an open modal
-  /// containing the whole order with the overlays opened after it.
-  pub(crate) fn tab_order(&self) -> Vec<Handle> {
-    self.tab_stops()
-  }
-
-  /// The tab stops' nodes in traversal order, as [`tab_order`](Self::tab_order) orders
-  /// them.
-  fn tab_stops(&self) -> Vec<NodeId> {
-    let Some(root) = crate::realize::root_node()
-    else {
-      return Vec::new();
-    };
-    let overlays: Vec<NodeId> = self
-      .open_overlays()
-      .into_iter()
-      .filter_map(|overlay| self.runtime.record(overlay).map(|record| record.node))
-      .collect();
-
-    Scene::<Terminal>::read(|scene| {
-      scene.tab_order(root, &overlays, |node| {
-        scene.contains(node) && self.is_hidden(node)
-      })
-    })
-  }
-
   /// The deepest node under the cell (`x`, `y`) and its ancestors, the root first: the
   /// path hover and a press hold along.
   pub(crate) fn pointer_path(&self, x: u16, y: u16) -> Vec<Handle> {
@@ -172,7 +130,7 @@ impl Records {
 
     // Overlays hit first, topmost first; below the topmost open modal nothing is
     // hittable.
-    for overlay in self.open_overlays().iter().rev() {
+    for overlay in self.runtime.open_overlays().iter().rev() {
       let mut path = Vec::new();
 
       if self.hit_overlay(*overlay, x, y, &mut path) {
@@ -634,15 +592,6 @@ impl Records {
       .map_or(Axes::all(Overflow::Visible), Axes::computed)
   }
 
-  /// Whether the node's box is hidden: it and its content draw nothing and take neither
-  /// the pointer nor focus.
-  pub(crate) fn is_hidden(&self, handle: Handle) -> bool {
-    self
-      .runtime
-      .record(handle)
-      .is_some_and(Record::is_invisible)
-  }
-
   /// Whether the node's content scrolls: a box overflowing by its style on either axis,
   /// or an editor windowing its wrapped rows.
   pub(crate) fn is_scrollable(&self, handle: Handle) -> bool {
@@ -819,37 +768,6 @@ impl Records {
     }
   }
 
-  /// Opens or closes an overlay, returning the focus move the change asks for: a modal opening
-  /// takes focus as the scene chooses ([`Scene::modal_focus`]). The scene returns focus as an
-  /// overlay closes.
-  pub(crate) fn set_overlay_open(&mut self, handle: Handle, open: bool) -> OverlayFocus {
-    let Some(Kind::Overlay { open: held, .. }) = self
-      .runtime
-      .record_mut(handle)
-      .map(|record| &mut record.kind)
-    else {
-      return OverlayFocus::Held;
-    };
-    let was_open = std::mem::replace(held, open);
-
-    if was_open != open {
-      self.runtime.restyle.revisit_every();
-    }
-
-    self.runtime.layout_dirty = true;
-    self.runtime.paint_dirty = true;
-
-    if !open || was_open || !Scene::<Terminal>::read(|scene| scene.is_modal(handle)) {
-      return OverlayFocus::Held;
-    }
-
-    let order = self.tab_order();
-
-    OverlayFocus::Moved(Some(Scene::<Terminal>::read(|scene| {
-      scene.modal_focus(handle, &order)
-    })))
-  }
-
   /// Whether the node is a text entry.
   pub(crate) fn is_field(&self, handle: Handle) -> bool {
     self.field(handle).is_some()
@@ -917,8 +835,8 @@ fn focus_on(next: Option<Handle>, restored: bool) {
 /// after it, or before it for a negative `step`, in document order.
 pub(crate) fn move_focus(step: isize) {
   let next = records(|records| {
-    let root = crate::realize::root_node()?;
-    let order = records.tab_stops();
+    let root = records.runtime.root();
+    let order = records.runtime.tab_order();
     let from = records
       .focused()
       .and_then(|focused| records.runtime.record(focused).map(|record| record.node));
@@ -1086,6 +1004,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
       .last()
       .and_then(|(handle, _)| records.runtime.record(*handle).map(|record| record.node));
     let overlays: Vec<NodeId> = records
+      .runtime
       .open_overlays()
       .into_iter()
       .filter_map(|overlay| records.runtime.record(overlay).map(|record| record.node))
@@ -1738,10 +1657,10 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
     return;
   }
 
-  let default = crate::realize::root_node().and_then(|root| {
+  let default = try_with_records(|records| records.runtime.root()).and_then(|root| {
     Scene::<Terminal>::with(|scene| {
       scene.key_default(root, at, event, false, |node| {
-        records(|records| records.is_hidden(node))
+        records(|records| records.runtime.is_invisible(node))
       })
     })
   });

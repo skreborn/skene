@@ -10,7 +10,17 @@ mod geometry;
 mod input;
 
 pub(crate) use skene_foundation::Interaction;
-use skene_foundation::{NodeId, NodeMap, PointerButtons, Scene, Shortcut, Timers};
+use skene_foundation::{
+  NativeElement,
+  NodeFacts,
+  NodeId,
+  NodeMap,
+  NodeSpec,
+  PointerButtons,
+  Scene,
+  Shortcut,
+  Timers,
+};
 use skene_layout::{Tree, runtime::Runtime};
 
 pub(crate) use self::{
@@ -229,30 +239,41 @@ impl Records {
       picture_generation: 0,
     };
 
-    let decorated = records
-      .runtime
-      .record(root)
-      .is_some_and(|record| record.kind.is_decorated());
-
-    records.insert_cells(root, decorated);
+    records.insert_cells(root);
 
     records
   }
 
-  /// Stores a record of `kind` as the record of `node` in the runtime, beside cell state
-  /// holding nothing yet and a fresh leaf of the layout tree: a container of its own
-  /// where a view taking decoration created its box, and laid out by its nearest such
-  /// ancestor's engine where it is a layout-only box or a run.
-  pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
-    let decorated = kind.is_decorated();
+  /// Creates the record of `node` from `spec` in the runtime, beside cell state holding
+  /// a text entry's field and nothing else yet, and a fresh leaf of the layout tree: a
+  /// container of its own where a view taking decoration created its box, and laid out
+  /// by its nearest such ancestor's engine where it is a layout-only box or a run;
+  /// `false` where `spec` realizes no node of its own.
+  pub(crate) fn create(&mut self, node: NodeId, spec: &NodeSpec) -> bool {
+    if !self.runtime.create(node, spec) {
+      return false;
+    }
 
-    self.runtime.insert(node, kind);
-    self.insert_cells(node, decorated);
+    self.insert_cells(node);
+
+    if let NodeFacts::Control(control) = &spec.facts
+      && control.native.is_some_and(NativeElement::is_text_entry)
+      && let Some(cell) = self.cells.get_mut(node)
+    {
+      cell.field = Some(Box::new(Field::new(control.lines)));
+    }
+
+    true
   }
 
-  /// Adds `node`'s leaf of the layout tree, a container where it is `decorated`, and its
-  /// cell state holding nothing yet.
-  fn insert_cells(&mut self, node: NodeId, decorated: bool) {
+  /// Adds the leaf of the layout tree of `node`, whose record the runtime holds, a
+  /// container where its box is decorated, and its cell state holding nothing yet.
+  fn insert_cells(&mut self, node: NodeId) {
+    let decorated = self
+      .runtime
+      .record(node)
+      .is_some_and(|record| record.kind.is_decorated());
+
     self.tree.insert(node, decorated);
 
     let _replaced = self.cells.insert(node, CellNode::default());
@@ -268,25 +289,6 @@ impl Records {
   #[inline(always)]
   pub(crate) fn cell_mut(&mut self, handle: Handle) -> Option<&mut CellNode> {
     self.cells.get_mut(handle)
-  }
-
-  /// Replaces the run `handle`'s text, its selection, style and layout made afresh;
-  /// nothing happens where it reads `text` already.
-  pub(crate) fn write_text(&mut self, handle: Handle, text: &str) {
-    let Some(record) = self.runtime.record_mut(handle)
-    else {
-      return;
-    };
-
-    if record.text == text {
-      return;
-    }
-
-    text.clone_into(&mut record.text);
-    self.invalidate_selection(handle);
-    self.runtime.restyle.queue(handle);
-    self.runtime.layout_dirty = true;
-    self.runtime.damage(handle);
   }
 
   /// Measures every node's text again, after the terminal's clustering or sizing
@@ -379,7 +381,7 @@ mod tests {
     View,
   };
 
-  use crate::{Terminal, install, mount, realize::root_node, uninstall, with_records};
+  use crate::{Terminal, install, mount, uninstall, with_records};
 
   /// Whether the record of `node` is a box created by a view taking decoration, `None`
   /// for a run, and whether the layout tree holds it as a container.
@@ -421,7 +423,7 @@ mod tests {
     let paragraph = mount(|| RichText::<Terminal>::new().build());
     let run = mount(|| Text::<Terminal>::new("a").build());
 
-    let root = root_node().expect("an installed terminal has a root");
+    let root = with_records(|records| records.runtime.root());
 
     for node in [root, container, overlay, control] {
       assert_eq!(decorated(node), (Some(true), true));

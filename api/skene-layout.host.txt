@@ -31,6 +31,18 @@ pub fn skene_layout::runtime::Kind<P>::resolved_under(&self) -> core::option::Op
 pub fn skene_layout::runtime::Kind<P>::run(skene_foundation::spine::props::RunFacts) -> Self
 impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Kind<P> where <P as skene_foundation::spine::realization::Realization>::StyleExt: core::fmt::Debug
 pub fn skene_layout::runtime::Kind<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_layout::runtime::OverlayFocus
+pub skene_layout::runtime::OverlayFocus::Held
+pub skene_layout::runtime::OverlayFocus::Moved(core::option::Option<skene_foundation::spine::node::NodeId>)
+impl core::clone::Clone for skene_layout::runtime::OverlayFocus
+pub fn skene_layout::runtime::OverlayFocus::clone(&self) -> Self
+impl core::cmp::Eq for skene_layout::runtime::OverlayFocus
+impl core::cmp::PartialEq for skene_layout::runtime::OverlayFocus
+pub fn skene_layout::runtime::OverlayFocus::eq(&self, &Self) -> bool
+impl core::fmt::Debug for skene_layout::runtime::OverlayFocus
+pub fn skene_layout::runtime::OverlayFocus::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::runtime::OverlayFocus
+impl core::marker::StructuralPartialEq for skene_layout::runtime::OverlayFocus
 pub struct skene_layout::runtime::BoxCache<P: skene_layout::runtime::Drawn>
 pub skene_layout::runtime::BoxCache::generation: u64
 pub skene_layout::runtime::BoxCache::interaction: skene_foundation::spine::resolve::Interaction
@@ -149,6 +161,18 @@ pub fn skene_layout::runtime::Runtime<P>::layout_parent(&self, skene_foundation:
 pub const fn skene_layout::runtime::Runtime<P>::note_structure(&mut self)
 pub fn skene_layout::runtime::Runtime<P>::parent(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
+pub fn skene_layout::runtime::Runtime<P>::apply_slot(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_layout::runtime::SlotLeaf<P>)
+pub fn skene_layout::runtime::Runtime<P>::apply_style(&mut self, skene_foundation::spine::node::NodeId, skene_layout::runtime::KeptStyle<P>)
+pub fn skene_layout::runtime::Runtime<P>::create(&mut self, skene_foundation::spine::node::NodeId, &skene_foundation::spine::props::NodeSpec) -> bool
+pub fn skene_layout::runtime::Runtime<P>::is_invisible(&self, skene_foundation::spine::node::NodeId) -> bool
+pub fn skene_layout::runtime::Runtime<P>::mount(impl core::ops::function::FnOnce() -> skene_foundation::spine::node::NodeId) -> skene_foundation::spine::node::NodeId
+pub fn skene_layout::runtime::Runtime<P>::observe_size(skene_foundation::spine::node::NodeId, skene_layout::runtime::Observer<P>) -> skene_foundation::spine::realization::Observation
+pub fn skene_layout::runtime::Runtime<P>::open_overlays(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::set_control_state(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_layout::runtime::Runtime<P>::set_overlay_open(&mut self, skene_foundation::spine::node::NodeId, bool) -> skene_layout::runtime::OverlayFocus
+pub fn skene_layout::runtime::Runtime<P>::tab_order(&self) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
+pub fn skene_layout::runtime::Runtime<P>::write(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::content::ContentValue<'_>) -> bool
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub const fn skene_layout::runtime::Runtime<P>::chosen_scheme(&self) -> core::option::Option<skene_foundation::spine::values::color::ColorScheme>
 pub const fn skene_layout::runtime::Runtime<P>::environment(&self) -> skene_foundation::spine::condition::Environment<<P as skene_foundation::spine::realization::Realization>::Scalar>
 pub const fn skene_layout::runtime::Runtime<P>::invalidate_styles(&mut self)
@@ -199,6 +223,7 @@ pub const fn skene_layout::runtime::Window<P>::painting(&self) -> bool
 pub const fn skene_layout::runtime::Window<P>::reported(&self) -> &skene_foundation::spine::condition::Environment<<P as skene_foundation::spine::realization::Realization>::Scalar>
 impl<P: skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Window<P>
 pub fn skene_layout::runtime::Window<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub const skene_layout::runtime::INLINE_BOX: char
 pub trait skene_layout::runtime::Drawn: skene_foundation::spine::realization::Realization<TokenValue = skene_foundation::spine::resolve::TokenValue<<Self as skene_foundation::spine::realization::Realization>::Scalar>>
 pub fn skene_layout::runtime::Drawn::finish_box(&mut skene_foundation::spine::box_style::BoxStyle<Self::Scalar, skene_foundation::spine::shape::Plain, Self::StyleExt>)
 pub fn skene_layout::runtime::Drawn::finish_run(&mut skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, Self::StyleExt>, &skene_foundation::spine::resolve::Resolver<'_, Self::Scalar, Self::StyleExt>)

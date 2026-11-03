@@ -297,6 +297,7 @@ impl Records {
       let focused = self.focused()?;
       let ancestors = self.runtime.ancestors(focused);
       let popup = self
+        .runtime
         .open_overlays()
         .into_iter()
         .rev()

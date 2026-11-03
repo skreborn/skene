@@ -53,9 +53,6 @@ use crate::{
   text::{self, CellScale},
 };
 
-/// The character standing in for one cell of an inline box in its paragraph's text.
-pub(crate) const INLINE_BOX: char = '\u{fffc}';
-
 /// How far into its cell a point stands for the cell: just past its left edge, so a caret
 /// placed at a cell goes to the cell's left edge, where a cluster's edge lies there, and
 /// otherwise to the nearer edge of the cluster whose block holds it: before a cluster from

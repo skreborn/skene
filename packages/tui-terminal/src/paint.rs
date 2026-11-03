@@ -699,7 +699,7 @@ impl Buffer {
 pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
   paint_node(records, buffer, records.runtime.root(), 0, 0);
 
-  let overlays = records.open_overlays();
+  let overlays = records.runtime.open_overlays();
 
   buffer.pictures.retain(|picture| {
     picture.layer < 0

@@ -1,11 +1,11 @@
-//! The terminal's realization of the platform: one record per node beside the scene,
-//! the layout tree those records lay out in, and the environment as signals.
+//! The terminal's realization of the platform: the drawn runtime's adapter for everything
+//! that is no cell's, beside each node's cell state, the layout tree its records lay out
+//! in, and the terminal's own focus, layout, clock, clipboard and title.
 
 use std::{any::TypeId, cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_foundation::{
   Availability,
-  BoxFacts,
   BoxStyle,
   ClipboardAction,
   ColorScheme,
@@ -17,19 +17,15 @@ use skene_foundation::{
   Keep,
   Media,
   MediaSignals,
-  NativeElement,
-  NodeFacts,
   NodeId,
   NodeKind,
   NodeSpec,
   Observation,
   Painting,
-  Placement,
   Plain,
   PointerEvent,
   Realization,
   Resolver,
-  RunPlacement,
   RunStyle,
   Scene,
   Size,
@@ -43,7 +39,7 @@ use skene_foundation::{
   text::editing::Entry,
   typography,
 };
-use skene_layout::runtime::{Drawn, Runtime};
+use skene_layout::runtime::{Drawn, OverlayFocus, Runtime};
 use skene_reactive::{Memo, ReadSignal};
 
 use crate::{
@@ -52,13 +48,12 @@ use crate::{
   Unadoptable,
   cells::{CellPainter, Painter},
   interaction,
-  records::{BoxRecord, Field, Kind, PictureRecord, Records},
+  records::{Field, PictureRecord, Records},
 };
 
 thread_local! {
   static SCENE: RefCell<Scene<Terminal>> = RefCell::new(Scene::new());
   static STORE: RefCell<Option<Records>> = const { RefCell::new(None) };
-  static ROOT: RefCell<Option<NodeId>> = const { RefCell::new(None) };
 }
 
 /// Ends the turn: runs the flush its writes scheduled, so their effects have taken hold
@@ -86,11 +81,6 @@ pub(crate) fn with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> R {
 /// Runs `operation` on the records, or `None` when none is installed.
 pub(crate) fn try_with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> Option<R> {
   STORE.with(|records| records.borrow_mut().as_mut().map(operation))
-}
-
-/// The scene node every mounted view attaches under.
-pub(crate) fn root_node() -> Option<NodeId> {
-  ROOT.with(|root| *root.borrow())
 }
 
 impl Drawn for Terminal {
@@ -146,104 +136,25 @@ impl Realization for Terminal {
   }
 
   fn create(node: NodeId, spec: &NodeSpec) -> bool {
-    let inner = |boxed: &BoxFacts| BoxRecord::new(spec.role, spec.drag, boxed.clone());
-
-    match &spec.facts {
-      NodeFacts::Box(boxed) => {
-        with_records(|records| records.insert(node, Kind::Box(inner(boxed))));
-      }
-      NodeFacts::Control(control) => {
-        let field = control
-          .native
-          .is_some_and(NativeElement::is_text_entry)
-          .then(|| Box::new(Field::new(control.lines)));
-
-        with_records(|records| {
-          records.insert(
-            node,
-            Kind::Control {
-              native: control.native,
-              label: control.label.clone(),
-              inner: inner(&control.boxed),
-            },
-          );
-
-          if let Some(field) = field
-            && let Some(cell) = records.cell_mut(node)
-          {
-            cell.field = Some(field);
-            records.runtime.entries.push(node);
-          }
-        });
-      }
-      NodeFacts::Overlay(overlay) => with_records(|records| {
-        records.insert(
-          node,
-          Kind::Overlay {
-            inner: inner(&overlay.boxed),
-            placement: Placement::Center,
-            backdrop: overlay.backdrop,
-            open: false,
-            position: None,
-          },
-        );
-
-        records.runtime.overlays.push(node);
-      }),
-      NodeFacts::Run(run) => {
-        let inline_box = run.placement == RunPlacement::Embedded;
-
-        with_records(|records| {
-          records.insert(node, Kind::run(run.clone()));
-
-          // An inline box flows as one placeholder cluster, as large as its own layout.
-          if inline_box && let Some(record) = records.runtime.record_mut(node) {
-            record.text = crate::layout::INLINE_BOX.to_string();
-          }
-        });
-      }
-      NodeFacts::Anchor | NodeFacts::Scope => return false,
-    }
-
-    true
+    with_records(|records| records.create(node, spec))
   }
 
   fn apply_style(node: NodeId, style: CompiledStyle<i32, TerminalStyle>) {
-    with_records(|records| {
-      if let Some(kept) = records
-        .runtime
-        .record_mut(node)
-        .and_then(|record| record.kind.kept_mut())
-      {
-        *kept = style;
-        records.runtime.restyle.queue(node);
-      }
-    });
+    with_records(|records| records.runtime.apply_style(node, style));
   }
 
   fn apply_slot(node: NodeId, slot: Slot, leaf: &SlotLeaf<i32, TerminalStyle>) {
-    with_records(|records| {
-      if let Some(record) = records.runtime.record_mut(node) {
-        record.slots.insert(slot, leaf.clone());
-        record.kind.mark_stale();
-        records.runtime.restyle.queue(node);
-        records.runtime.layout_dirty = true;
-        records.runtime.damage(node);
-      }
-    });
+    with_records(|records| records.runtime.apply_slot(node, slot, leaf));
   }
 
   fn set_control_state(node: NodeId, _state: &ControlState) {
-    with_records(|records| {
-      records.runtime.layout_dirty = true;
-      records.runtime.damage(node);
-    });
+    with_records(|records| records.runtime.set_control_state(node));
   }
 
   fn set_overlay_open(node: NodeId, open: bool, _anchor: Option<NodeId>) {
-    let focus = with_records(|records| records.set_overlay_open(node, open));
+    let focus = with_records(|records| records.runtime.set_overlay_open(node, open));
 
-    if let interaction::OverlayFocus::Moved(next) = focus {
+    if let OverlayFocus::Moved(next) = focus {
       interaction::set_focus(next);
     }
   }
@@ -258,31 +169,10 @@ impl Realization for Terminal {
 
   fn write(node: NodeId, value: ContentValue<'_>) {
     match value {
-      ContentValue::Text(text) => with_records(|records| records.write_text(node, text)),
       ContentValue::Edit(edit) => {
         with_records(|records| records.show_entry(node, edit));
         crate::field::report_selections();
       }
-      ContentValue::Checked(_)
-      | ContentValue::Range(_)
-      | ContentValue::Choice(_)
-      | ContentValue::Chosen(_)
-      | ContentValue::Membership(_) => {
-        with_records(|records| {
-          records.runtime.layout_dirty = true;
-          records.runtime.damage(node);
-        });
-      }
-      ContentValue::Destination(path) => with_records(|records| {
-        if let Some(Kind::Run { destination, .. }) = records
-          .runtime
-          .record_mut(node)
-          .map(|record| &mut record.kind)
-        {
-          *destination = Some(path.to_owned());
-          records.runtime.damage(node);
-        }
-      }),
       ContentValue::Placeholder(hint) => with_records(|records| {
         if let Some(field) = records.field_mut(node) {
           field.placeholder = Some(hint.to_owned());
@@ -294,19 +184,9 @@ impl Realization for Terminal {
         with_records(|records| records.set_entry_secure(node, secure));
       }
       ContentValue::Keyboard(_) | ContentValue::Door { .. } => {}
-      ContentValue::Placement(placement) => with_records(|records| {
-        if let Some(Kind::Overlay {
-          placement: held,
-          position,
-          ..
-        }) = records
-          .runtime
-          .record_mut(node)
-          .map(|record| &mut record.kind)
-        {
-          *held = placement.placement;
-          *position = placement.position;
-          records.runtime.paint_dirty = true;
+      value => with_records(|records| {
+        if records.runtime.write(node, value) {
+          records.invalidate_selection(node);
         }
       }),
     }
@@ -391,25 +271,7 @@ impl Realization for Terminal {
   }
 
   fn observe_size(node: NodeId, report: Rc<dyn Fn(Size<i32>)>) -> Observation {
-    let kept = Rc::clone(&report);
-
-    with_records(|records| {
-      if let Some(record) = records.runtime.record_mut(node) {
-        record.observers.push(report);
-        record.reported = None;
-        records.runtime.layout_dirty = true;
-      }
-    });
-
-    Observation::new(move || {
-      with_records(|records| {
-        if let Some(record) = records.runtime.record_mut(node) {
-          record
-            .observers
-            .retain(|observer| !Rc::ptr_eq(observer, &kept));
-        }
-      });
-    })
+    Runtime::<Self>::observe_size(node, report)
   }
 
   fn media() -> MediaSignals<i32> {
@@ -549,13 +411,10 @@ pub(crate) fn install(mouse: bool) {
     ));
   });
 
-  let node = with_records(|records| records.runtime.root());
-
   // Every run inherits its text properties through the typography tokens, so the
   // terminal's defaults are defined at the root before any theme redefines them.
   <Typography as skene_foundation::ThemedIn<Terminal>>::define_root();
   define_system_colors();
-  ROOT.with(|held| *held.borrow_mut() = Some(node));
 
   crate::dev::provide_restoration();
 }
@@ -581,19 +440,13 @@ pub(crate) fn define_system_colors() {
 /// Uninstalls the terminal platform: empties the scene and the records, and resets the
 /// reactive runtime and root scope, so one thread can run many independent mounts.
 pub fn uninstall() {
-  let owner = STORE.with(|records| {
-    records
-      .borrow_mut()
-      .as_mut()
-      .and_then(|records| records.runtime.take_media_owner())
-  });
+  let owner = try_with_records(|records| records.runtime.take_media_owner()).flatten();
 
   if let Some(owner) = owner {
     owner.dispose();
   }
 
   skene_foundation::reset_thread::<Terminal>();
-  ROOT.with(|root| *root.borrow_mut() = None);
   STORE.with(|records| *records.borrow_mut() = None);
 }
 
@@ -607,27 +460,5 @@ pub fn uninstall() {
 ///
 /// Panics if the platform is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
-  end_turn();
-
-  let root = root_node().expect("the root node exists once installed");
-  let node = skene_reactive::Owner::root().enter(|| {
-    let node = view();
-
-    Scene::<Terminal>::with(|scene| scene.attach(root, node, None));
-
-    node
-  });
-
-  end_turn();
-
-  let opening = with_records(|records| {
-    Scene::<Terminal>::with(|scene| scene.take_autofocus(root, |node| records.is_hidden(node)))
-  });
-
-  if let Some(opening) = opening {
-    Terminal::focus(opening);
-    end_turn();
-  }
-
-  node
+  Runtime::<Terminal>::mount(view)
 }

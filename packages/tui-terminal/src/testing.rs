@@ -234,7 +234,7 @@ fn name_facts(node: NodeId) -> NameFacts {
     };
 
     let facts = NameFacts {
-      hidden: facts.hidden || records.is_hidden(node),
+      hidden: facts.hidden || records.runtime.is_invisible(node),
       ..facts
     };
 

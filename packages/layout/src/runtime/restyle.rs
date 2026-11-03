@@ -203,9 +203,11 @@ impl<P: Drawn> Runtime<P> {
   /// The interaction state `node`'s conditions resolve against now, as the scene
   /// resolves it.
   fn interaction(&self, node: NodeId) -> Interaction {
-    let node = self.record(node).map(|record| record.node);
+    if !self.contains(node) {
+      return Interaction::default();
+    }
 
-    Scene::<P>::with(|scene| node.map_or_else(Interaction::default, |node| scene.interaction(node)))
+    Scene::<P>::with(|scene| scene.interaction(node))
   }
 
   /// Whether `node`'s interaction moved since its style was resolved; `false` for a

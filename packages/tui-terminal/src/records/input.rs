@@ -97,12 +97,13 @@ impl Records {
 
   /// The focused link run's node and destination, while a link holds focus.
   pub(crate) fn focused_link(&self) -> Option<(NodeId, String)> {
-    let record = self.runtime.record(self.focused()?)?;
+    let node = self.focused()?;
+    let record = self.runtime.record(node)?;
 
     match &record.kind {
       Kind::Run {
         facts, destination, ..
-      } if facts.link => Some((record.node, destination.clone()?)),
+      } if facts.link => Some((node, destination.clone()?)),
       _ => None,
     }
   }
@@ -119,9 +120,7 @@ impl Records {
   /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
   /// since a pointer press.
   pub(crate) fn focus_shows(&self, handle: Handle) -> bool {
-    let node = self.runtime.record(handle).map(|record| record.node);
-
-    Scene::<Terminal>::read(|scene| node.is_some_and(|node| scene.focus_shows(node)))
+    self.runtime.contains(handle) && Scene::<Terminal>::read(|scene| scene.focus_shows(handle))
   }
 
   /// Records whether focus shows, repainting the focused node when that changes.

@@ -177,7 +177,7 @@ impl Records {
       return false;
     }
 
-    let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(record);
+    let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(handle);
     let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
     let contains = handle == self.runtime.root() || frame.covers((origin_x, origin_y), (x, y));
 
@@ -678,7 +678,7 @@ impl Records {
 
     self.cell_mut(handle)?.scroll = offsets;
 
-    self.runtime.record(handle).map(|record| record.node)
+    Some(handle)
   }
 
   /// A scrollable's track along `axis`: its absolute start, its length in cells, and
@@ -810,7 +810,7 @@ fn focus_on(next: Option<Handle>, restored: bool) {
       records.reveal = Some(next);
     }
 
-    Some(next.and_then(|next| records.runtime.record(next).map(|record| record.node)))
+    Some(next.filter(|&next| records.runtime.contains(next)))
   });
 
   if let Some(gained) = moved {
@@ -829,7 +829,7 @@ pub(crate) fn move_focus(step: isize) {
     let order = records.runtime.tab_order();
     let from = records
       .focused()
-      .and_then(|focused| records.runtime.record(focused).map(|record| record.node));
+      .filter(|&focused| records.runtime.contains(focused));
 
     Scene::<Terminal>::read(|scene| scene.tab_from(root, &order, from, step))
   });
@@ -853,7 +853,8 @@ pub(crate) fn set_hover(x: u16, y: u16) {
 
     next
       .last()
-      .and_then(|handle| records.runtime.record(*handle).map(|record| record.node))
+      .copied()
+      .filter(|&handle| records.runtime.contains(handle))
   });
 
   notify_pointer_moved::<Terminal>(deepest);
@@ -914,7 +915,7 @@ pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modi
   let target = records(|records| pointer_target(records, x, y));
 
   if let Some((handle, origin)) = target
-    && let Some(node) = records(|records| records.runtime.record(handle).map(|record| record.node))
+    && let Some(node) = records(|records| records.runtime.contains(handle).then_some(handle))
   {
     let _ = dispatch_pointer_move::<Terminal>(node, &pointer_event(x, y, origin, None, modifiers));
   }
@@ -992,12 +993,13 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     let path = records.hit_test(x, y);
     let deepest = path
       .last()
-      .and_then(|(handle, _)| records.runtime.record(*handle).map(|record| record.node));
+      .map(|&(handle, _)| handle)
+      .filter(|&handle| records.runtime.contains(handle));
     let overlays: Vec<NodeId> = records
       .runtime
       .open_overlays()
       .into_iter()
-      .filter_map(|overlay| records.runtime.record(overlay).map(|record| record.node))
+      .filter(|&overlay| records.runtime.contains(overlay))
       .collect();
     let dismissed = Scene::<Terminal>::read(|scene| scene.dismissed_by_press(&overlays, deepest));
     let inside_overlay = records
@@ -1072,7 +1074,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   let entry_held_focus =
     entry.is_some_and(|entry| records(|records| records.focused() == Some(entry)));
 
-  let node = records(|records| records.runtime.record(deepest).map(|record| record.node));
+  let node = records(|records| records.runtime.contains(deepest).then_some(deepest));
   let prevented = node.map_or(Prevented::default(), |node| {
     dispatch_pointer_down::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers))
   });
@@ -1243,7 +1245,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   });
 
   if let Some((handle, origin)) = target
-    && let Some(node) = records(|records| records.runtime.record(handle).map(|record| record.node))
+    && let Some(node) = records(|records| records.runtime.contains(handle).then_some(handle))
   {
     let _ =
       dispatch_pointer_up::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers));
@@ -1274,7 +1276,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     let pressed_link = records.pressed_link.take();
 
     (
-      common.and_then(|handle| records.runtime.record(handle).map(|record| record.node)),
+      common.filter(|&handle| records.runtime.contains(handle)),
       pressed_link,
       press.count,
     )
@@ -1331,7 +1333,7 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
   let over = records(|records| {
     let (handle, _) = records.hit_test(x, y).last().copied()?;
 
-    records.runtime.record(handle).map(|record| record.node)
+    records.runtime.contains(handle).then_some(handle)
   });
   let _ = move_drag::<Terminal>(over);
 }
@@ -1451,7 +1453,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
   let under = records(|records| {
     let (handle, origin) = records.hit_test(x, y).last().copied()?;
 
-    Some((records.runtime.record(handle)?.node, origin))
+    records.runtime.contains(handle).then_some((handle, origin))
   });
 
   if let Some((node, origin)) = under {
@@ -1567,7 +1569,7 @@ pub(crate) fn key(event: &KeyEvent) {
 
     let handle = records.focused().unwrap_or(records.runtime.root());
 
-    records.runtime.record(handle).map(|record| record.node)
+    records.runtime.contains(handle).then_some(handle)
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_down::<Terminal>(node, event)
@@ -1589,7 +1591,7 @@ pub(crate) fn key_up(event: &KeyEvent) {
   let target = records(|records| {
     let handle = records.focused().unwrap_or(records.runtime.root());
 
-    records.runtime.record(handle).map(|record| record.node)
+    records.runtime.contains(handle).then_some(handle)
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_up::<Terminal>(node, event)
@@ -1731,7 +1733,7 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = records(|records| {
     let handle = records.focused().unwrap_or(records.runtime.root());
-    let node = records.runtime.record(handle)?.node;
+    let node = records.runtime.contains(handle).then_some(handle)?;
     let (origin_x, origin_y) = records.screen_origin(handle);
     let (_, height) = records.node_size(handle);
 
@@ -1794,7 +1796,7 @@ fn cancel_press() {
 
   Scene::<Terminal>::with(|scene| scene.set_pressed(None));
 
-  if let Some(node) = records(|records| records.runtime.record(reached).map(|record| record.node)) {
+  if let Some(node) = records(|records| records.runtime.contains(reached).then_some(reached)) {
     let event = PointerEvent {
       buttons: PointerButtons::new(),
       pressure: 0.,

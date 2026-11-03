@@ -156,7 +156,6 @@ pub struct skene_layout::runtime::Record<P: skene_layout::runtime::Drawn>
 pub skene_layout::runtime::Record::hidden: bool
 pub skene_layout::runtime::Record::in_motion: bool
 pub skene_layout::runtime::Record::kind: skene_layout::runtime::Kind<P>
-pub skene_layout::runtime::Record::node: skene_foundation::spine::node::NodeId
 pub skene_layout::runtime::Record::observers: alloc::vec::Vec<skene_layout::runtime::Observer<P>>
 pub skene_layout::runtime::Record::reported: core::option::Option<skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>>
 pub skene_layout::runtime::Record::slots: rustc_hash::FxHashMap<skene_foundation::spine::leaf::Slot, skene_layout::runtime::SlotLeaf<P>>
@@ -167,7 +166,7 @@ pub fn skene_layout::runtime::Record<P>::is_invisible(&self) -> bool
 pub const fn skene_layout::runtime::Record<P>::is_open_overlay(&self) -> bool
 pub const fn skene_layout::runtime::Record<P>::is_overlay(&self) -> bool
 pub fn skene_layout::runtime::Record<P>::layout(&self) -> core::option::Option<skene_foundation::spine::values::layout::Layout>
-pub fn skene_layout::runtime::Record<P>::new(skene_foundation::spine::node::NodeId, skene_layout::runtime::Kind<P>) -> Self
+pub fn skene_layout::runtime::Record<P>::new(skene_layout::runtime::Kind<P>) -> Self
 impl<P: skene_layout::runtime::Drawn + core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Record<P>
 pub fn skene_layout::runtime::Record<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::RunCache<P: skene_layout::runtime::Drawn>
@@ -198,6 +197,7 @@ pub skene_layout::runtime::Runtime::paint_dirty: bool
 pub skene_layout::runtime::Runtime::restyle: skene_layout::Restyle
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::advance_clock(&mut self, f64)
+pub fn skene_layout::runtime::Runtime<P>::contains(&self, skene_foundation::spine::node::NodeId) -> bool
 pub fn skene_layout::runtime::Runtime<P>::damage(&mut self, skene_foundation::spine::node::NodeId)
 pub fn skene_layout::runtime::Runtime<P>::destroy(&mut self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_layout::runtime::Record<P>>
 pub fn skene_layout::runtime::Runtime<P>::flow(&self) -> skene_layout::runtime::Flow<<P as skene_layout::runtime::Drawn>::Engine>

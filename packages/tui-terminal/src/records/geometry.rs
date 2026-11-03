@@ -1,9 +1,9 @@
 //! What the last layout measured of a node, in cells.
 
-use skene_foundation::{Rect, Size};
+use skene_foundation::{NodeId, Rect, Size};
 use skene_layout::runtime::Flow;
 
-use super::{Handle, Record, Records};
+use super::{Handle, Records};
 use crate::CellEngine;
 
 /// Where a laid-out node sits in its layout parent and how large it is, in cells.
@@ -41,21 +41,21 @@ impl CellFrame {
 }
 
 impl Records {
-  /// `record`'s frame in its layout parent, as the last layout rounded it; empty for a
-  /// record outside the layout.
-  pub(crate) fn frame_of(&self, record: &Record) -> CellFrame {
+  /// `node`'s frame in its layout parent, as the last layout rounded it; empty for a
+  /// node outside the layout.
+  pub(crate) fn frame_of(&self, node: NodeId) -> CellFrame {
     self
       .runtime
       .tree()
-      .layout(record.node)
+      .layout(node)
       .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
 
-  /// `record`'s frame in its layout parent, as [`frame_of`](Self::frame_of), and the
+  /// `node`'s frame in its layout parent, as [`frame_of`](Self::frame_of), and the
   /// cells its laid-out content reaches from the frame's origin, left, top, right and
   /// bottom: its own box, or farther where its content overflows it.
-  pub(crate) fn reach_of(&self, record: &Record) -> (CellFrame, [f32; 4]) {
-    let Some(layout) = self.runtime.tree().layout(record.node)
+  pub(crate) fn reach_of(&self, node: NodeId) -> (CellFrame, [f32; 4]) {
+    let Some(layout) = self.runtime.tree().layout(node)
     else {
       return (CellFrame::default(), [0.; 4]);
     };
@@ -78,10 +78,11 @@ impl Records {
 
   /// `handle`'s frame in its layout parent; empty for a stale handle.
   pub(crate) fn frame(&self, handle: Handle) -> CellFrame {
-    self
-      .runtime
-      .record(handle)
-      .map_or_else(CellFrame::default, |record| self.frame_of(record))
+    if !self.runtime.contains(handle) {
+      return CellFrame::default();
+    }
+
+    self.frame_of(handle)
   }
 
   /// A node's laid-out size, in cells.
@@ -97,8 +98,8 @@ impl Records {
   pub(crate) fn flow_width(&self, handle: Handle) -> usize {
     let width = self
       .runtime
-      .record(handle)
-      .map(|record| record.node)
+      .contains(handle)
+      .then_some(handle)
       .and_then(|node| self.runtime.tree().unrounded_layout(node))
       .map_or(0., |layout| {
         layout.rect.size.width
@@ -123,18 +124,21 @@ impl Records {
   /// where the layout put them. `None` for a box with laid-out children, those inside
   /// an anchor or a scope among them, or one of no width.
   pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
-    let record = self.runtime.record(handle)?;
+    if !self.runtime.contains(handle) {
+      return None;
+    }
+
     let mut beneath = self.runtime.children(handle);
 
     while let Some(child) = beneath.pop() {
-      if self.runtime.record(child).is_some() {
+      if self.runtime.contains(child) {
         return None;
       }
 
       beneath.extend(self.runtime.children(child));
     }
 
-    let rect = self.runtime.tree().unrounded_layout(record.node)?.rect;
+    let rect = self.runtime.tree().unrounded_layout(handle)?.rect;
     #[expect(
       clippy::cast_possible_truncation,
       reason = "a position in eighth cells stays far inside isize"

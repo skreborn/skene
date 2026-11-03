@@ -258,7 +258,7 @@ impl<P: Drawn> Runtime<P> {
     let overlays: Vec<NodeId> = self
       .open_overlays()
       .into_iter()
-      .filter(|overlay| self.record(*overlay).is_some())
+      .filter(|&overlay| self.contains(overlay))
       .collect();
 
     Scene::<P>::read(|scene| {

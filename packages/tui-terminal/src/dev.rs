@@ -223,7 +223,7 @@ pub(crate) fn swap(path: &Path) -> ! {
 /// The snapshot position of the node `handle` realizes.
 fn position_of(handle: Handle) -> Option<SnapshotPlace> {
   let node =
-    crate::try_with_records(|records| records.runtime.record(handle).map(|record| record.node))??;
+    crate::try_with_records(|records| records.runtime.contains(handle).then_some(handle))??;
 
   Scene::<Terminal>::with(|scene| scene.record(node).map(|record| record.position().clone()))
 }

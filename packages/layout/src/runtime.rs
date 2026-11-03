@@ -294,7 +294,14 @@ impl<P: Drawn> Runtime<P> {
     self.restyle.move_structure();
     self.tree.insert(node, kind.is_decorated());
 
-    let _replaced = self.records.insert(node, Record::new(node, kind));
+    let _replaced = self.records.insert(node, Record::new(kind));
+  }
+
+  /// Whether `node` holds a record: it is live.
+  #[inline(always)]
+  #[must_use]
+  pub fn contains(&self, node: NodeId) -> bool {
+    self.records.contains(node)
   }
 
   /// The record of `node`, if it is live.

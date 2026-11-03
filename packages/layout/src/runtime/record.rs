@@ -16,7 +16,6 @@ use skene_foundation::{
   Interaction,
   Layout,
   NativeElement,
-  NodeId,
   Placement,
   Plain,
   Point,
@@ -303,8 +302,6 @@ impl<P: Drawn> Kind<P> {
 pub struct Record<P: Drawn> {
   /// What the node is, with the facts it was created from, its resolution and its motion.
   pub kind: Kind<P>,
-  /// The scene node the record realizes.
-  pub node: NodeId,
   /// A run's text, as last set.
   pub text: String,
   /// The node's slot values, as last written.
@@ -323,12 +320,11 @@ pub struct Record<P: Drawn> {
 }
 
 impl<P: Drawn> Record<P> {
-  /// The record of `node`, realized as `kind`: no text, slot, observer or report yet,
-  /// at rest and in the display.
-  pub fn new(node: NodeId, kind: Kind<P>) -> Self {
+  /// The record of a node realized as `kind`: no text, slot, observer or report yet, at
+  /// rest and in the display.
+  pub fn new(kind: Kind<P>) -> Self {
     Self {
       kind,
-      node,
       text: String::new(),
       slots: FxHashMap::default(),
       observers: Vec::new(),
@@ -378,7 +374,6 @@ impl<P: Drawn + fmt::Debug> fmt::Debug for Record<P> {
     formatter
       .debug_struct("Record")
       .field("kind", &self.kind)
-      .field("node", &self.node)
       .field("text", &self.text)
       .field("slots", &self.slots)
       .field("observers", &self.observers.len())

@@ -187,7 +187,7 @@ pub fn focused_node() -> Option<skene_foundation::NodeId> {
   with_records(|records| {
     records
       .focused()
-      .and_then(|focused| records.runtime.record(focused).map(|record| record.node))
+      .filter(|&focused| records.runtime.contains(focused))
   })
 }
 

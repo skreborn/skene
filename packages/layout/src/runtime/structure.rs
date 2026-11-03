@@ -68,7 +68,7 @@ impl<P: Drawn> Runtime<P> {
       let mut current = scene.placed_parent(node);
 
       while let Some(visited) = current {
-        if self.record(visited).is_some() {
+        if self.contains(visited) {
           return Some(visited);
         }
 

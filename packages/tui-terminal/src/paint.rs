@@ -1128,7 +1128,7 @@ fn paint_node(
     return;
   }
 
-  let frame = records.frame_of(record);
+  let frame = records.frame_of(handle);
   let (x, y) = (
     offset_x + isize::try_from(frame.x).unwrap_or(0),
     offset_y + isize::try_from(frame.y).unwrap_or(0),
@@ -1164,7 +1164,7 @@ fn paint_node(
   );
 
   if !(shown && repainted) && (paragraph || inline_box) {
-    let (_, [reach_left, reach_top, reach_right, reach_bottom]) = records.reach_of(record);
+    let (_, [reach_left, reach_top, reach_right, reach_bottom]) = records.reach_of(handle);
     let (left, top, right, bottom) = (
       cells_before(reach_left).min(-band),
       cells_before(reach_top).min(-band),

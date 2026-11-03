@@ -1,6 +1,7 @@
-//! The records beside the scene: what the platform keeps per node, the layout tree,
-//! the interaction state, and the environment it reports.
+//! The records beside the scene: what the platform keeps per node, its cells' state
+//! beside it, the layout tree, the interaction state, and the environment it reports.
 
+mod cell;
 mod environment;
 mod field;
 mod frames;
@@ -26,25 +27,13 @@ use skene_layout::{Restyle, Tree};
 
 use self::environment::MediaState;
 pub(crate) use self::{
+  cell::{Backdrop, BackdropKey, CellNode, PictureRecord},
   environment::{Contrast, OwnColors},
   field::{EntryEditor, EntryState, Field, Visible},
   frames::{Clock, FRAME_INTERVAL},
   geometry::CellFrame,
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
-  record::{
-    Backdrop,
-    BackdropKey,
-    BoxCache,
-    BoxRecord,
-    KeptStyle,
-    Kind,
-    PictureRecord,
-    PlainBox,
-    PlainRun,
-    Record,
-    RunCache,
-    RunMotion,
-  },
+  record::{BoxCache, BoxRecord, KeptStyle, Kind, PlainBox, PlainRun, Record, RunCache, RunMotion},
 };
 use crate::{
   Clipboard,
@@ -76,6 +65,9 @@ pub(crate) type Handle = NodeId;
 pub(crate) struct Records {
   /// The records, by node.
   by_node: NodeMap<Record>,
+  /// The terminal's own state of each node, beside its record: its field, scroll
+  /// offsets, the cells it covers and what it paints beyond its style.
+  cells: NodeMap<CellNode>,
   /// The layout tree; a text leaf carries its flow as context, which measures it and
   /// which painting and hit testing read the text's layout from.
   pub(crate) tree: Tree<CellLeaf>,
@@ -217,6 +209,7 @@ impl Records {
     };
     let mut records = Self {
       by_node: NodeMap::new(),
+      cells: NodeMap::new(),
       tree: Tree::new(true),
       root,
       overlays: Vec::new(),
@@ -277,10 +270,10 @@ impl Records {
     records
   }
 
-  /// Stores a record of `kind` as the record of `node`, a fresh leaf of the layout
-  /// tree: a container of its own where a view taking decoration created its box, and
-  /// laid out by its nearest such ancestor's engine where it is a layout-only box or a
-  /// run.
+  /// Stores a record of `kind` as the record of `node`, beside cell state holding
+  /// nothing yet, a fresh leaf of the layout tree: a container of its own where a view
+  /// taking decoration created its box, and laid out by its nearest such ancestor's
+  /// engine where it is a layout-only box or a run.
   pub(crate) fn insert(&mut self, node: NodeId, kind: Kind) {
     let decorated = kind.box_record().is_some_and(|inner| inner.facts.decorated);
     let mut record = Record::new(kind);
@@ -290,6 +283,7 @@ impl Records {
     self.restyle.move_structure();
 
     let _replaced = self.by_node.insert(node, record);
+    let _replaced = self.cells.insert(node, CellNode::default());
   }
 
   /// The record of `handle`, if it is live.
@@ -302,6 +296,18 @@ impl Records {
   #[inline(always)]
   pub(crate) fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
     self.by_node.get_mut(handle)
+  }
+
+  /// The terminal's own state of `handle`, if it is live.
+  #[inline(always)]
+  pub(crate) fn cell(&self, handle: Handle) -> Option<&CellNode> {
+    self.cells.get(handle)
+  }
+
+  /// The terminal's own state of `handle`, mutably, if it is live.
+  #[inline(always)]
+  pub(crate) fn cell_mut(&mut self, handle: Handle) -> Option<&mut CellNode> {
+    self.cells.get_mut(handle)
   }
 
   /// Replaces the run `handle`'s text, its selection, style and layout made afresh;
@@ -337,12 +343,7 @@ impl Records {
     self.restyle.revisit_every();
 
     for handle in self.handles() {
-      let Some(record) = self.record_mut(handle)
-      else {
-        continue;
-      };
-
-      if record.kind.field().is_some()
+      if self.field(handle).is_some()
         && let Some(entry) = Scene::<Terminal>::entry_of(handle)
         && let Ok(mut editor) = entry.editor().try_borrow_mut()
       {
@@ -365,10 +366,11 @@ impl Records {
 
   /// Releases the record of `handle`, retiring the handle and every reference to it.
   pub(crate) fn destroy(&mut self, handle: Handle) {
-    let Some(record) = self.by_node.remove(handle)
-    else {
+    if self.by_node.remove(handle).is_none() {
       return;
-    };
+    }
+
+    let cell = self.cells.remove(handle);
 
     self.tree.remove(handle);
 
@@ -376,7 +378,7 @@ impl Records {
     self.entries.retain(|entry| *entry != handle);
     self.restyle.read_interaction(handle, false);
 
-    if let Some(rect) = record.painted {
+    if let Some(rect) = cell.and_then(|cell| cell.painted) {
       self.damaged_rects.push(rect);
     }
 

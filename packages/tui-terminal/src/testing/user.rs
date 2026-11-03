@@ -22,7 +22,7 @@ use crate::with_records;
 ///
 /// Panics where `node` covered no cell.
 fn cell_of(node: NodeId) -> (u16, u16) {
-  let rect = with_records(|records| records.record(node).and_then(|record| record.painted));
+  let rect = with_records(|records| records.cell(node).and_then(|cell| cell.painted));
   let center = rect
     .filter(|(_, _, width, height)| *width > 0 && *height > 0)
     .and_then(|(x, y, width, height)| {

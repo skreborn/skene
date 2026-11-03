@@ -1,6 +1,6 @@
 //! What the records keep per node: its kind with the facts its creation carried, its
-//! style kept as a record, its resolved style and motion, and what the frame last
-//! measured and painted of it.
+//! style kept as a record, its resolved style and motion, its text and slots, and what
+//! it reports of its size.
 
 use std::rc::Rc;
 
@@ -12,7 +12,6 @@ use skene_foundation::{
   CompiledStyle,
   ContainerName,
   DragAxes,
-  Inset,
   Interaction,
   Layout,
   NativeElement,
@@ -27,9 +26,6 @@ use skene_foundation::{
   Slot,
   terminal::TerminalStyle,
 };
-
-use super::{CellRect, field::Field};
-use crate::paint::Image;
 
 /// A box-like node's motion on the terminal's frame clock.
 pub(crate) type BoxMotion = skene_layout::runtime::BoxMotion<i32, TerminalStyle>;
@@ -142,8 +138,6 @@ pub(crate) enum Kind {
     label: Option<String>,
     /// The control's own box.
     inner: BoxRecord,
-    /// A text entry's presentation of its value; `None` for every other control.
-    field: Option<Box<Field>>,
   },
   /// An overlay: a box shown above the app while open.
   Overlay {
@@ -269,24 +263,6 @@ impl Kind {
   pub(crate) fn box_style(&self) -> Option<&PlainBox> {
     self.box_record().and_then(BoxRecord::style)
   }
-
-  /// A text entry's presentation of its value.
-  #[inline(always)]
-  pub(crate) fn field(&self) -> Option<&Field> {
-    match self {
-      Self::Control { field, .. } => field.as_deref(),
-      _ => None,
-    }
-  }
-
-  /// A text entry's presentation of its value, mutably.
-  #[inline(always)]
-  pub(crate) fn field_mut(&mut self) -> Option<&mut Field> {
-    match self {
-      Self::Control { field, .. } => field.as_deref_mut(),
-      _ => None,
-    }
-  }
 }
 
 /// One realized node.
@@ -303,65 +279,12 @@ pub(crate) struct Record {
   pub(crate) observers: Vec<Rc<dyn Fn(Size<i32>)>>,
   /// The size last reported to the observers.
   pub(crate) reported: Option<Size<i32>>,
-  /// The scroll offsets, in cells.
-  pub(crate) scroll: (u32, u32),
-  /// The screen rectangle the node covered at the last paint.
-  pub(crate) painted: Option<CellRect>,
-  /// The screen rectangle the node covers now, as the frame being painted measured it.
-  pub(crate) covers: Option<CellRect>,
   /// Whether a tween or an animation of the node was still running at the last
   /// restyle, so the next frame resolves it again.
   pub(crate) in_motion: bool,
   /// Whether the node was out of the display at the last restyle: inside a closed
   /// overlay, or detached from the root.
   pub(crate) hidden: bool,
-  /// The painter a low-level view runs inside the box on every repaint.
-  pub(crate) painter: Option<Box<crate::cells::Painter>>,
-  /// The picture a painted box draws through the terminal's graphics.
-  pub(crate) picture: Option<PictureRecord>,
-  /// The box's decoration painted in pixels beneath its cells, where the terminal
-  /// shows graphics and the decoration asks for more than cells draw.
-  pub(crate) backdrop: Option<Backdrop>,
-}
-
-/// A box's decoration as pixels: what it was rendered from, and the image.
-pub(crate) struct Backdrop {
-  pub(crate) key: BackdropKey,
-  pub(crate) image: Rc<Image>,
-}
-
-/// What a backdrop is rendered from; a change to any part renders it afresh.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct BackdropKey {
-  /// The box's columns and the shadow's band.
-  pub(crate) columns: u16,
-  /// The box's rows and the shadow's band.
-  pub(crate) rows: u16,
-  /// The cells the shadow reaches down and right with its softening.
-  pub(crate) band: u16,
-  /// A cell's size in pixels.
-  pub(crate) cell_pixels: (u16, u16),
-  /// The box's surface; `None` for none.
-  pub(crate) background: Option<(u8, u8, u8)>,
-  /// The border's ink; `None` for no border or a transparent one.
-  pub(crate) border: Option<(u8, u8, u8)>,
-  /// The edges the border is drawn on.
-  pub(crate) border_edges: Inset<bool>,
-  /// The corner radius.
-  pub(crate) radius: f32,
-  /// The shadow's color as RGBA; `None` for no shadow or a transparent one.
-  pub(crate) shadow: Option<[f32; 4]>,
-  /// How far the shadow falls down and right, in cells.
-  pub(crate) shadow_offset: f32,
-  /// How far the shadow's edge softens past its offset, in cells.
-  pub(crate) shadow_softening: f32,
-}
-
-/// A painted box's picture: its painter, and the image last rendered from it, dropped
-/// when the painter is replaced and stale when the box's pixel size differs.
-pub(crate) struct PictureRecord {
-  pub(crate) painter: Rc<skene_foundation::Painter>,
-  pub(crate) image: Option<Rc<Image>>,
 }
 
 impl Record {
@@ -373,14 +296,8 @@ impl Record {
       slots: FxHashMap::default(),
       observers: Vec::new(),
       reported: None,
-      scroll: (0, 0),
-      painted: None,
-      covers: None,
       in_motion: false,
       hidden: false,
-      painter: None,
-      picture: None,
-      backdrop: None,
     }
   }
 

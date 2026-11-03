@@ -1905,12 +1905,14 @@ which names its `Terminal` as `Active`, re-exports its surface as `platform::ter
 and its launch (`launch`, `Launch`, `Clipboard`, `MOUSE_KEY`, `Device` and its `Note`
 and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) and its
 `testing` at the root. The realization holds everything down to the device: the records,
-layout, the cell engine, painting, the frame writer, the event loop and its interaction,
-the editing state of its drawn entries, the dev reload's restore and rebuild notice, and
-the `device`, `tty`, `parse` and `escape` modules. It names no facade: what it builds of
-its own, the rebuild notice, it builds from the foundation's views at `Terminal`, and
-the values it defines it spells in the foundation's generics at cells
-(`SystemColors<i32>`). Its build script generates the typeface its text is measured in.
+each node's cell state beside its record (a text entry's presentation, its scroll
+offsets, the cells it covers and what it paints beyond its style), layout, the cell
+engine, painting, the frame writer, the event loop and its interaction, the editing
+state of its drawn entries, the dev reload's restore and rebuild notice, and the
+`device`, `tty`, `parse` and `escape` modules. It names no facade: what it builds of its
+own, the rebuild notice, it builds from the foundation's views at `Terminal`, and the
+values it defines it spells in the foundation's generics at cells (`SystemColors<i32>`).
+Its build script generates the typeface its text is measured in.
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the

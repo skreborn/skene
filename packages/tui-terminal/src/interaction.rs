@@ -643,7 +643,7 @@ impl Records {
       return (0, window);
     }
 
-    let Some((x, y)) = self.record(handle).map(|record| record.scroll)
+    let Some((x, y)) = self.cell(handle).map(|cell| cell.scroll)
     else {
       return (0, 0);
     };
@@ -719,11 +719,9 @@ impl Records {
       return None;
     }
 
-    let record = self.record_mut(handle)?;
+    self.cell_mut(handle)?.scroll = offsets;
 
-    record.scroll = offsets;
-
-    record.node
+    self.record(handle)?.node
   }
 
   /// A scrollable's track along `axis`: its absolute start, its length in cells, and
@@ -832,11 +830,9 @@ impl Records {
     })))
   }
 
-  /// Whether the record is a text entry.
+  /// Whether the node is a text entry.
   pub(crate) fn is_field(&self, handle: Handle) -> bool {
-    self
-      .record(handle)
-      .is_some_and(|record| record.kind.field().is_some())
+    self.field(handle).is_some()
   }
 }
 

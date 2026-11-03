@@ -240,7 +240,7 @@ fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
       .handles()
       .into_iter()
       .filter_map(|handle| {
-        let (x, y) = records.record(handle)?.scroll;
+        let (x, y) = records.cell(handle)?.scroll;
 
         (x > 0 || y > 0).then_some((handle, x, y))
       })

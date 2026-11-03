@@ -423,12 +423,12 @@ impl Field {
 impl Records {
   /// The text entry at `handle`, if it is one.
   pub(crate) fn field(&self, handle: super::Handle) -> Option<&Field> {
-    self.record(handle)?.kind.field()
+    self.cell(handle)?.field.as_deref()
   }
 
   /// The text entry at `handle`, if it is one, to change.
   pub(crate) fn field_mut(&mut self, handle: super::Handle) -> Option<&mut Field> {
-    self.record_mut(handle)?.kind.field_mut()
+    self.cell_mut(handle)?.field.as_deref_mut()
   }
 
   /// The editing state the scene keeps for the entry at `handle`, where it is one and

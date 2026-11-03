@@ -112,7 +112,6 @@ impl Realization for Terminal {
           .native
           .is_some_and(NativeElement::is_text_entry)
           .then(|| Box::new(Field::new(control.lines)));
-        let entry = field.is_some();
 
         with_records(|records| {
           records.insert(
@@ -121,11 +120,13 @@ impl Realization for Terminal {
               native: control.native,
               label: control.label.clone(),
               inner: inner(&control.boxed),
-              field,
             },
           );
 
-          if entry {
+          if let Some(field) = field
+            && let Some(cell) = records.cell_mut(node)
+          {
+            cell.field = Some(field);
             records.entries.push(node);
           }
         });
@@ -235,10 +236,7 @@ impl Realization for Terminal {
         }
       }),
       ContentValue::Placeholder(hint) => with_records(|records| {
-        if let Some(Kind::Control {
-          field: Some(field), ..
-        }) = records.record_mut(node).map(|record| &mut record.kind)
-        {
+        if let Some(field) = records.field_mut(node) {
           field.placeholder = Some(hint.to_owned());
           records.layout_dirty = true;
           records.damage(node);
@@ -477,8 +475,8 @@ impl Painting for Terminal {
 
   fn paint(node: NodeId, painter: Box<skene_foundation::Painter>) {
     with_records(|records| {
-      if let Some(record) = records.record_mut(node) {
-        record.picture = Some(PictureRecord {
+      if let Some(cell) = records.cell_mut(node) {
+        cell.picture = Some(PictureRecord {
           painter: Rc::from(painter),
           image: None,
         });
@@ -491,8 +489,8 @@ impl Painting for Terminal {
 impl CellPainter for Terminal {
   fn paint(node: NodeId, painter: Box<Painter>) {
     with_records(|records| {
-      if let Some(record) = records.record_mut(node) {
-        record.painter = Some(painter);
+      if let Some(cell) = records.cell_mut(node) {
+        cell.painter = Some(painter);
         records.damage(node);
       }
     });

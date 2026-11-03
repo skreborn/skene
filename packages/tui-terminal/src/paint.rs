@@ -1019,7 +1019,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
         shadow: style.and_then(ShadowPaint::of),
       }
     }
-    Kind::Control { inner, field, .. } => {
+    Kind::Control { inner, .. } => {
       let style = inner.style();
       let background = style
         .and_then(|style| style.background)
@@ -1027,7 +1027,7 @@ fn node_paint(records: &Records, handle: Handle, focused: bool) -> NodePaint {
       let shadow = style.and_then(ShadowPaint::of);
       let border = border_paint(records, handle);
 
-      let Some(field) = field
+      let Some(field) = records.field(handle)
       else {
         return NodePaint::Box {
           background,
@@ -1286,7 +1286,9 @@ fn paint_node(
           }
         }
 
-        if let Some(painter) = &record.painter {
+        let cell = records.cell(handle);
+
+        if let Some(painter) = cell.and_then(|cell| cell.painter.as_ref()) {
           let size = skene_foundation::Size::new(
             u32::try_from(isize::try_from(width).unwrap_or(0) - edges.0 - edges.2).unwrap_or(0),
             u32::try_from(isize::try_from(height).unwrap_or(0) - edges.1 - edges.3).unwrap_or(0),
@@ -1297,9 +1299,8 @@ fn paint_node(
           painter(&mut cells, rect);
         }
 
-        if let Some(image) = record
-          .picture
-          .as_ref()
+        if let Some(image) = cell
+          .and_then(|cell| cell.picture.as_ref())
           .and_then(|picture| picture.image.clone())
           && records.graphics
         {
@@ -1576,9 +1577,7 @@ fn place_backdrop(
     return false;
   }
 
-  let Some(backdrop) = records
-    .record(handle)
-    .and_then(|record| record.backdrop.as_ref())
+  let Some(backdrop) = records.cell(handle).and_then(|cell| cell.backdrop.as_ref())
   else {
     return false;
   };

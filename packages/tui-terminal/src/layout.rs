@@ -870,10 +870,10 @@ fn taffy_style_of(records: &Records, handle: Handle) -> Restyled {
 
       Restyled { style, leaf }
     }
-    Kind::Control { inner, field, .. } => {
+    Kind::Control { inner, .. } => {
       let resolved = inner.style().cloned().unwrap_or_default();
       let mut style = resolved.taffy_style(inner.facts.layout, place);
-      let leaf = field.as_ref().map(|field| {
+      let leaf = records.field(handle).map(|field| {
         entry_leaf(
           &mut style,
           &resolved,

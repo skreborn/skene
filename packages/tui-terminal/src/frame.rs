@@ -152,22 +152,22 @@ fn damaged_rows(
   for handle in damaged {
     let target = paint_owner(records, handle);
 
-    if let Some(record) = records.record(target) {
-      rects.extend(record.painted);
-      rects.extend(record.covers);
+    if let Some(cell) = records.cell(target) {
+      rects.extend(cell.painted);
+      rects.extend(cell.covers);
     }
   }
 
   if moved {
     for handle in records.handles() {
-      let Some(record) = records.record(handle)
+      let Some(cell) = records.cell(handle)
       else {
         continue;
       };
 
-      if record.painted != record.covers {
-        rects.extend(record.painted);
-        rects.extend(record.covers);
+      if cell.painted != cell.covers {
+        rects.extend(cell.painted);
+        rects.extend(cell.covers);
       }
     }
   }
@@ -230,11 +230,7 @@ fn render_pictures(records: &mut Records) {
   let (cell_width, cell_height) = records.cell_pixels;
 
   for handle in records.handles() {
-    let Some(record) = records.record(handle)
-    else {
-      continue;
-    };
-    let Some(picture) = &record.picture
+    let Some(picture) = records.cell(handle).and_then(|cell| cell.picture.as_ref())
     else {
       continue;
     };
@@ -267,8 +263,8 @@ fn render_pictures(records: &mut Records) {
     let generation = records.picture_generation;
 
     if let Some(picture) = records
-      .record_mut(handle)
-      .and_then(|record| record.picture.as_mut())
+      .cell_mut(handle)
+      .and_then(|cell| cell.picture.as_mut())
     {
       picture.image = Some(Rc::new(Image {
         generation,
@@ -349,16 +345,16 @@ fn render_backdrops(records: &mut Records) {
     let wanted = width > 0 && height > 0 && (radius > 0. || border.is_some() || shadow.is_some());
 
     if !wanted {
-      if let Some(record) = records.record_mut(handle) {
-        record.backdrop = None;
+      if let Some(cell) = records.cell_mut(handle) {
+        cell.backdrop = None;
       }
 
       continue;
     }
 
-    if record
-      .backdrop
-      .as_ref()
+    if records
+      .cell(handle)
+      .and_then(|cell| cell.backdrop.as_ref())
       .is_some_and(|backdrop| backdrop.key == key)
     {
       continue;
@@ -370,8 +366,8 @@ fn render_backdrops(records: &mut Records) {
 
     let generation = records.picture_generation;
 
-    if let Some(record) = records.record_mut(handle) {
-      record.backdrop = Some(Backdrop {
+    if let Some(cell) = records.cell_mut(handle) {
+      cell.backdrop = Some(Backdrop {
         image: Rc::new(Image {
           generation,
           width: key.columns.saturating_mul(cell_pixels.0),
@@ -514,14 +510,14 @@ fn measure_covers(records: &mut Records) {
   }
 
   for handle in records.handles() {
-    if let Some(record) = records.record_mut(handle) {
-      record.covers = None;
+    if let Some(cell) = records.cell_mut(handle) {
+      cell.covers = None;
     }
   }
 
   for (handle, rect) in covers {
-    if let Some(record) = records.record_mut(handle) {
-      record.covers = rect;
+    if let Some(cell) = records.cell_mut(handle) {
+      cell.covers = rect;
     }
   }
 }
@@ -529,8 +525,8 @@ fn measure_covers(records: &mut Records) {
 /// Records the rectangle every node covers as the one it covered at this paint.
 fn record_painted(records: &mut Records) {
   for handle in records.handles() {
-    if let Some(record) = records.record_mut(handle) {
-      record.painted = record.covers;
+    if let Some(cell) = records.cell_mut(handle) {
+      cell.painted = cell.covers;
     }
   }
 }

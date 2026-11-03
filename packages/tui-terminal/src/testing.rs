@@ -200,10 +200,8 @@ fn name_facts(node: NodeId) -> NameFacts {
     else {
       return (NameFacts::default(), None);
     };
-    let entry = match &record.kind {
-      Kind::Control { field: Some(_), .. } => records.entry(node),
-      _ => None,
-    };
+    let field = records.field(node);
+    let entry = field.and_then(|_| records.entry(node));
     let access = || Scene::<Terminal>::read(|scene| scene.access(node));
     let facts = match &record.kind {
       Kind::Run { facts, .. } => NameFacts::of_run(facts, record.text.clone()),
@@ -215,12 +213,11 @@ fn name_facts(node: NodeId) -> NameFacts {
         native,
         label,
         inner,
-        field,
       } => {
         let facts = NameFacts::of_box(inner.role, &inner.facts, access()).with_control(
           *native,
           label.clone(),
-          field.as_ref().and_then(|field| field.placeholder.clone()),
+          field.and_then(|field| field.placeholder.clone()),
           entry.as_ref().and_then(|entry| entry.value()),
         );
         let secure = entry.as_ref().is_some_and(|entry| entry.is_secure());

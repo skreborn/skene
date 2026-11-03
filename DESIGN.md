@@ -2217,7 +2217,9 @@ paragraph's child in the tree, laid out at its content's size within the paragra
 layout, standing in the text as a placeholder of its whole cells and rows, at least one
 of each, its layout its place in the paragraph, so a frame whose box changes size lays
 it and its paragraph out once and focus reveals a control inside it where it flowed; it
-is painted and hit at the cells it flowed into. An
+is painted and hit at the cells it flowed into, and what its content overflows counts in
+its paragraph's overflow, painted, hit and scrolled to wherever it reaches, as a browser's
+overflow is. An
 edge whose border width is zero takes no cells and draws none, and a border whose color
 is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
 through `launch`, or to plain text

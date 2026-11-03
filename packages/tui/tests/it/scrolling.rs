@@ -248,6 +248,95 @@ fn focus_scrolls_an_inline_box_into_view() {
   });
 }
 
+/// Focusing a control inside an inline box inside a group run scrolls it into view, at
+/// its place in its paragraph.
+#[test]
+fn focus_scrolls_a_grouped_inline_box_into_view() {
+  with_platform(|| {
+    let _ = mount(|| {
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_height(3)
+            .set_overflow(Overflow::Scroll)
+            .set_child(RichText::new().add_spans([
+              Span::new("one two three four five six seven "),
+              Span::group([Span::view(
+                BasicButton::new(Activate::new()).set_label("go"),
+              )]),
+            ])),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(12, 4);
+
+    testing::trigger_key("Tab");
+
+    let frame = testing::render_to_text(12, 4);
+
+    assert!(frame.contains("go"), "{frame}");
+    assert!(!frame.contains("one"), "{frame}");
+  });
+}
+
+/// The content an inline box overflows reaches its scroll box as a browser's does: past
+/// the paragraph it flows in, it takes a hit, the box scrolls to it and it paints where
+/// it scrolled to.
+#[test]
+fn an_inline_box_s_overflow_scrolls_paints_and_hits() {
+  with_platform(|| {
+    let clicked = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&clicked);
+
+    let _ = mount(move || {
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_height(2)
+            .set_overflow(Overflow::Scroll)
+            .set_child(RichText::new().add_spans([
+              Span::new("a "),
+              Span::view(Container::new().set_width(3).set_height(1).set_child(
+                Column::new().derive_children(
+                  || 0..5,
+                  |index| *index,
+                  move |index| {
+                    let log = Rc::clone(&log);
+
+                    Container::new()
+                      .handle_click(move || log.borrow_mut().push(index))
+                      .set_child(Text::new(format!("r{index}")))
+                  },
+                ),
+              )),
+            ])),
+        )
+        .into_any()
+        .build()
+    });
+
+    let rows = frame_rows(12, 4);
+
+    assert_eq!(rows[..2], ["a r0", "  r1"], "{rows:?}");
+
+    testing::trigger_mouse_click(2, 1);
+
+    assert_eq!(*clicked.borrow(), vec![1]);
+    assert_eq!(frame_rows(12, 4)[..2], ["a r0", "  r1"]);
+
+    testing::trigger_mouse_scroll(2, 0, 0, 3);
+
+    let rows = frame_rows(12, 4);
+
+    assert_eq!(rows[..2], ["  r3", "  r4"], "{rows:?}");
+
+    testing::trigger_mouse_click(2, 0);
+
+    assert_eq!(*clicked.borrow(), vec![1, 3]);
+  });
+}
+
 /// The rows of a `width` x `height` frame, each without its trailing blanks and the
 /// scrollbar painted down its last column.
 fn frame_rows(width: u16, height: u16) -> Vec<String> {

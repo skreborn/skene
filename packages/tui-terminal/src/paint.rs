@@ -12,6 +12,7 @@ use skene_foundation::{
   Inset,
   Length,
   NativeElement,
+  RunPlacement,
   Scene,
   TextDecoration,
   TextDecorationStyle,
@@ -1146,20 +1147,47 @@ fn paint_node(
     usize::try_from(frame.height).unwrap_or(0),
   );
   let run = matches!(record.kind, Kind::Run { .. });
-  let reach = record.kind.box_style().map_or(0, |style| {
+  let band = record.kind.box_style().map_or(0, |style| {
     isize::try_from(ShadowPaint::band(style)).unwrap_or(0)
   });
-  let shown = buffer
-    .visible(
-      x - reach,
-      y - reach,
-      isize::try_from(width).unwrap_or(isize::MAX) + 2 * reach,
-      isize::try_from(height).unwrap_or(isize::MAX) + 2 * reach,
-    )
+  let (right, bottom) = (
+    isize::try_from(width).unwrap_or(isize::MAX) + band,
+    isize::try_from(height).unwrap_or(isize::MAX) + band,
+  );
+  let mut shown = buffer
+    .visible(x - band, y - band, right + band, bottom + band)
     .is_some();
-  let repainted = !run || buffer.repaints(y, height);
+  let mut repainted = !run || buffer.repaints(y, height);
 
-  if (run && !(shown && repainted)) || (!shown && records.clips(handle)) {
+  if !(run || shown) && records.clips(handle) {
+    return;
+  }
+
+  let paragraph = !run && is_paragraph(records, handle);
+
+  // A paragraph's inline boxes and an inline box's content paint wherever they reach,
+  // past the frame they flow in, as overflow paints.
+  let inline_box = matches!(
+    &record.kind,
+    Kind::Run { facts, .. } if facts.placement == RunPlacement::Embedded
+  );
+
+  if !(shown && repainted) && (paragraph || inline_box) {
+    let (_, [reach_left, reach_top, reach_right, reach_bottom]) = records.reach_of(record);
+    let (left, top, right, bottom) = (
+      cells_before(reach_left).min(-band),
+      cells_before(reach_top).min(-band),
+      cells_past(reach_right).max(right),
+      cells_past(reach_bottom).max(bottom),
+    );
+
+    shown = buffer
+      .visible(x + left, y + top, right - left, bottom - top)
+      .is_some();
+    repainted = !run || buffer.repaints(y + top, usize::try_from(bottom - top).unwrap_or(0));
+  }
+
+  if run && !(shown && repainted) {
     return;
   }
 
@@ -1177,7 +1205,6 @@ fn paint_node(
     )
   };
   let edges = border;
-  let paragraph = !run && is_paragraph(records, handle);
 
   if shown && repainted {
     let focused = records.focus_shows(handle);
@@ -1466,6 +1493,24 @@ fn paint_node(
   if records.is_scrollable(handle) {
     draw_scrollbars(records, buffer, handle, x, y, width, height, border);
   }
+}
+
+/// The cell a reach of `cells` before a frame's origin starts at.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "a reach in cells stays far inside isize"
+)]
+const fn cells_before(cells: f32) -> isize {
+  cells.floor() as isize
+}
+
+/// The cell a reach of `cells` past a frame's origin ends before.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "a reach in cells stays far inside isize"
+)]
+const fn cells_past(cells: f32) -> isize {
+  cells.ceil() as isize
 }
 
 /// The intersection of two clip rectangles.

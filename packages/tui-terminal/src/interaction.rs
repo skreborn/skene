@@ -252,14 +252,13 @@ impl Records {
     path.push((handle, (origin_x, origin_y)));
 
     if is_paragraph(self, handle) {
-      if contains {
-        self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
-      }
-      else {
+      let hit = self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
+
+      if !(contains || hit) {
         path.pop();
       }
 
-      return contains;
+      return contains || hit;
     }
 
     let (left, top, right, bottom) = self.node_border(handle);
@@ -294,7 +293,10 @@ impl Records {
 
   /// Hits the runs of the paragraph `handle`, at `origin`, under the point: the run drawn
   /// there and the groups around it join the path from the outermost group to the leaf,
-  /// each at the paragraph's origin, and an inline box hits through its own layout.
+  /// each at the paragraph's origin, and an inline box hits through its own layout, its
+  /// content wherever it reaches where no run or box is drawn at the point, as overflow
+  /// takes a hit; `true` where a run or a box's content was hit.
+  #[inline(never)]
   fn hit_paragraph(
     &self,
     handle: Handle,
@@ -302,42 +304,103 @@ impl Records {
     x: i64,
     y: i64,
     path: &mut Vec<(Handle, (i64, i64))>,
-  ) {
-    let (Ok(column), Ok(row)) = (usize::try_from(x - origin.0), usize::try_from(y - origin.1))
-    else {
-      return;
-    };
+  ) -> bool {
     let Some(flow) = flow_of(self, handle)
     else {
-      return;
+      return false;
     };
-    let (width, _) = self.node_size(handle);
-    let (content, point) = (
-      content(usize::try_from(width).unwrap_or(1)),
-      cell_point(column, row),
-    );
     let boxes = inline_boxes(self, handle);
-    let Some(leaf) = flow
-      .flow()
-      .run_at(content, point)
-      .map(|hit| hit.node)
-      .or_else(|| {
-        boxes
-          .iter()
-          .find(|(run, (cell_x, cell_y))| {
-            let (cells, rows) = self.node_size(*run);
-            let (column, row) = (
-              i64::try_from(column).unwrap_or(0),
-              i64::try_from(row).unwrap_or(0),
-            );
+    let drawn = match (usize::try_from(x - origin.0), usize::try_from(y - origin.1)) {
+      (Ok(column), Ok(row)) => {
+        let (width, _) = self.node_size(handle);
 
-            (*cell_x..cell_x + cells).contains(&column) && (*cell_y..cell_y + rows).contains(&row)
+        flow
+          .flow()
+          .run_at(
+            content(usize::try_from(width).unwrap_or(1)),
+            cell_point(column, row),
+          )
+          .map(|hit| hit.node)
+          .or_else(|| {
+            boxes
+              .iter()
+              .find(|(run, (cell_x, cell_y))| {
+                let (cells, rows) = self.node_size(*run);
+                let (column, row) = (
+                  i64::try_from(column).unwrap_or(0),
+                  i64::try_from(row).unwrap_or(0),
+                );
+
+                (*cell_x..cell_x + cells).contains(&column)
+                  && (*cell_y..cell_y + rows).contains(&row)
+              })
+              .map(|(run, _)| *run)
           })
-          .map(|(run, _)| *run)
-      })
-    else {
-      return;
+      }
+      _ => None,
     };
+
+    if let Some(leaf) = drawn {
+      self.push_groups(handle, leaf, origin, path);
+
+      if !is_inline_box(self, leaf) {
+        path.push((leaf, origin));
+      }
+      else if let Some((_, cell)) = boxes.into_iter().find(|(run, _)| *run == leaf) {
+        self.hit_box(leaf, origin, cell, x, y, path);
+      }
+
+      return true;
+    }
+
+    // Beside every run and box, the topmost box whose content reaches the point.
+    for (run, cell) in boxes.into_iter().rev() {
+      let mark = path.len();
+
+      self.push_groups(handle, run, origin, path);
+
+      if self.hit_box(run, origin, cell, x, y, path) {
+        return true;
+      }
+
+      path.truncate(mark);
+    }
+
+    false
+  }
+
+  /// Hits the inline box `run` of a paragraph at `origin`, its frame at `cell` of it,
+  /// through its own layout; `true` where it or its content was hit.
+  fn hit_box(
+    &self,
+    run: Handle,
+    origin: (i64, i64),
+    (cell_x, cell_y): (i64, i64),
+    x: i64,
+    y: i64,
+    path: &mut Vec<(Handle, (i64, i64))>,
+  ) -> bool {
+    let (location_x, location_y) = self.node_location(run);
+
+    self.hit_walk(
+      run,
+      origin.0 + cell_x - location_x,
+      origin.1 + cell_y - location_y,
+      x,
+      y,
+      path,
+    )
+  }
+
+  /// Pushes the group runs between the paragraph `handle` and its run `leaf` onto the
+  /// path, from the outermost, each at the paragraph's `origin`.
+  fn push_groups(
+    &self,
+    handle: Handle,
+    leaf: Handle,
+    origin: (i64, i64),
+    path: &mut Vec<(Handle, (i64, i64))>,
+  ) {
     let mut chain: Vec<Handle> = self
       .ancestors(leaf)
       .into_iter()
@@ -353,25 +416,6 @@ impl Records {
 
     chain.reverse();
     path.extend(chain.into_iter().map(|run| (run, origin)));
-
-    if !is_inline_box(self, leaf) {
-      path.push((leaf, origin));
-
-      return;
-    }
-
-    if let Some((_, (cell_x, cell_y))) = boxes.into_iter().find(|(run, _)| *run == leaf) {
-      let (location_x, location_y) = self.node_location(leaf);
-
-      self.hit_walk(
-        leaf,
-        origin.0 + cell_x - location_x,
-        origin.1 + cell_y - location_y,
-        x,
-        y,
-        path,
-      );
-    }
   }
 
   /// Hits `overlay`'s subtree at its computed origin, accumulating the path.

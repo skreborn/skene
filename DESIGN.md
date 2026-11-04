@@ -30,7 +30,8 @@ the cover its paint damages, the reach a hit takes it at and the clip what shows
 is cut to, in paint order, each open overlay's subtree moved to where the runtime places
 it: pinned and moved back in, anchored below or above with a flip, or at one of seven
 window placements), a run flowing in a paragraph placed in the pieces its flow lays it
-out in, the topmost node at a point hit over that index, the damage the next paint
+out in, what shows of a node within its clip and the window, where a test's user acts on
+it, the topmost node at a point hit over that index, the damage the next paint
 repaints as nodes and rectangles of the window (each damaged node's paint owner's cover
 at the last paint and now, every cover that moved, and what a destroyed node covered),
 which the platform collapses into its own granularity, and the environment the platform

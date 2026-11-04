@@ -5,7 +5,7 @@
 //! it; and the damage the next paint repaints, as nodes and the rectangles of the window
 //! they cover.
 
-use skene_foundation::{Inset, NodeId, NodeMap, Point, Rect, RunPlacement, Scene, Size};
+use skene_foundation::{Inset, NodeId, NodeMap, Point, Rect, RunPlacement, Scalar, Scene, Size};
 use smallvec::SmallVec;
 
 use super::{Drawn, Kind, Runtime};
@@ -380,14 +380,7 @@ impl Frames {
       }
 
       let clip = if laid.clips {
-        let border = laid.placed.border;
-        let padding = Rect::new(
-          Point::new(rect.origin.x + border.start, rect.origin.y + border.top),
-          Size::new(
-            (rect.size.width - border.start - border.end).max(0.),
-            (rect.size.height - border.top - border.bottom).max(0.),
-          ),
-        );
+        let padding = rect.deflate(laid.placed.border);
 
         Some(visit.clip.map_or(padding, |clip| clip.intersect(padding)))
       }
@@ -787,6 +780,52 @@ impl<P: Drawn> Runtime<P> {
       .frames()
       .locate(node, |paragraph| self.pieces(node, paragraph))
       .map(|(_, origin)| origin)
+  }
+
+  /// What shows of `node` in the window: its border box ([`Frames::rect`]) within its
+  /// clip ([`Frame::clip`]) and the window; for a run flowing in a paragraph, of the first
+  /// piece it takes ([`run_rects`](Self::run_rects)) of which anything shows, within its
+  /// paragraph's clip and the padding box of a paragraph that clips. `None` where nothing
+  /// shows, or for a node the index does not hold.
+  #[must_use]
+  pub fn shown(&self, node: NodeId) -> Option<Rect<f32>> {
+    let viewport = self.window().reported().viewport;
+    let window = Rect::new(
+      Point::ZERO,
+      Size::new(viewport.width.to_f32(), viewport.height.to_f32()),
+    );
+    let frames = self.frames();
+    let showing = |rect: Rect<f32>, clip: Option<Rect<f32>>| {
+      let shown = clip
+        .map_or(rect, |clip| rect.intersect(clip))
+        .intersect(window);
+
+      (shown.size.width > 0. && shown.size.height > 0.).then_some(shown)
+    };
+
+    if let Some(frame) = frames.get(node) {
+      return showing(frame.rect, frame.clip);
+    }
+
+    let paragraph = frames.paragraph_of(node)?;
+    let clip = if self.clips(paragraph.node) {
+      let border = self.tree.layout(paragraph.node).unwrap_or_default().border;
+      let padding = paragraph.rect.deflate(border);
+
+      Some(
+        paragraph
+          .clip
+          .map_or(padding, |clip| clip.intersect(padding)),
+      )
+    }
+    else {
+      paragraph.clip
+    };
+
+    self
+      .pieces(node, paragraph)
+      .into_iter()
+      .find_map(|piece| showing(piece, clip))
   }
 
   /// The index of the window's rectangles ([`Frames`]) as the scene, the records and the

@@ -1,5 +1,5 @@
 //! A user in the terminal: nodes found by role and text as a reader finds them, and
-//! driven by clicks, keys and typed text at the cells they cover.
+//! driven by clicks, keys and typed text at the cells that show of them.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -211,5 +211,116 @@ fn a_user_clicks_a_span_where_it_flows() {
     user::click(testing::find_by_text("click").expect("the span"));
 
     assert_eq!(clicks.get(), (0, 1));
+  });
+}
+
+/// A box with a shadow takes a click on what shows of its own cells, never on the band
+/// its shadow paints beyond them.
+#[test]
+fn a_user_clicks_a_shadowed_row_on_its_own_cells() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+    let row = NodeHandle::new();
+
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_width(6)
+            .set_height(1)
+            .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5))
+            .handle_click(move || counted.set(counted.get() + 1))
+            .bind_handle(row)
+            .set_child(Text::new("Row")),
+          Text::new("Below"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = testing::render_to_text(10, 3);
+
+    user::click(row.node().expect("the row built"));
+
+    assert_eq!(clicks.get(), 1);
+  });
+}
+
+/// A box half scrolled out of its scroll box takes a click on what shows of it, inside
+/// the scroll box's clip.
+#[test]
+fn a_user_clicks_a_scrolled_box_where_it_shows() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+    let tall = NodeHandle::new();
+
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_height(3)
+            .set_overflow(Overflow::ScrollIfNeeded)
+            .set_child(
+              Column::new().set_children((
+                Container::new()
+                  .set_height(4)
+                  .handle_click(move || counted.set(counted.get() + 1))
+                  .bind_handle(tall)
+                  .set_child(Text::new("tall")),
+                Container::new().set_height(2).set_child(Text::new("short")),
+              )),
+            ),
+          Text::new("Below"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = testing::render_to_text(12, 5);
+
+    testing::trigger_mouse_scroll(2, 1, 0, 3);
+
+    let _ = testing::render_to_text(12, 5);
+
+    user::click(tall.node().expect("the tall box built"));
+
+    assert_eq!(clicks.get(), 1);
+  });
+}
+
+/// A span whose first line is scrolled out of its scroll box takes a click on the first
+/// of its lines that shows.
+#[test]
+fn a_user_clicks_a_wrapped_span_on_a_line_that_shows() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = mount(move || {
+      Container::new()
+        .set_width(5)
+        .set_height(1)
+        .set_overflow(Overflow::ScrollIfNeeded)
+        .set_child(RichText::new().add_spans([
+          Span::new("ab "),
+          Span::new("cd ef").handle_click(move || counted.set(counted.get() + 1)),
+        ]))
+        .into_any()
+        .build()
+    });
+
+    let _ = testing::render_to_text(8, 3);
+
+    testing::trigger_mouse_scroll(0, 0, 0, 1);
+
+    let shown = testing::render_to_text(8, 3);
+
+    assert!(shown.starts_with("ef"), "the second line shows: {shown:?}");
+
+    user::click(testing::find_by_text("cd ef").expect("the span"));
+
+    assert_eq!(clicks.get(), 1);
   });
 }

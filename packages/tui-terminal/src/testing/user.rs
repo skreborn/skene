@@ -1,9 +1,9 @@
 //! A user's gestures on the terminal, each the input the terminal reports for it,
 //! through the `trigger_` seams.
 //!
-//! A pointer acts at the center cell of the rectangle a node covered at the last paint,
-//! a run flowing in a paragraph at the center of the first piece its flow places it in;
-//! a key acts where focus is.
+//! A pointer acts at the center cell of what shows of a node's border box, within its
+//! clip and the screen, a run flowing in a paragraph at the center of what shows of the
+//! first piece its flow places it in of which anything shows; a key acts where focus is.
 
 use skene_foundation::{Key, KeyEvent, NodeId};
 use unicode_segmentation::UnicodeSegmentation;
@@ -17,22 +17,16 @@ use super::{
 };
 use crate::{frame::cell_rect, with_records};
 
-/// The center cell of the rectangle `node` covered at the last paint, or of the first
-/// piece a run flowing in a paragraph takes
-/// ([`Runtime::run_rects`](skene_layout::runtime::Runtime::run_rects)).
+/// The center cell of what shows of `node`'s border box on screen, within its clip
+/// ([`Runtime::shown`](skene_layout::runtime::Runtime::shown)), or of the first piece a
+/// run flowing in a paragraph takes of which anything shows.
 ///
 /// # Panics
 ///
-/// Panics where `node` covered no cell.
+/// Panics where nothing of `node` shows on screen.
 fn cell_of(node: NodeId) -> (u16, u16) {
-  let rect = with_records(|records| {
-    let piece = records.runtime.run_rects(node).first().copied();
-
-    piece
-      .or(records.runtime.record(node)?.painted)
-      .map(cell_rect)
-  });
-  let center = rect
+  let center = with_records(|records| records.runtime.shown(node))
+    .map(cell_rect)
     .filter(|(_, _, width, height)| *width > 0 && *height > 0)
     .and_then(|(x, y, width, height)| {
       Some((
@@ -41,14 +35,14 @@ fn cell_of(node: NodeId) -> (u16, u16) {
       ))
     });
 
-  center.unwrap_or_else(|| panic!("{node:?} covers no cell on screen"))
+  center.unwrap_or_else(|| panic!("{node:?} shows no cell on screen"))
 }
 
 /// Moves the pointer over `node`.
 ///
 /// # Panics
 ///
-/// Panics where `node` covers no cell on screen.
+/// Panics where nothing of `node` shows on screen.
 pub fn hover(node: NodeId) {
   let (x, y) = cell_of(node);
 
@@ -60,7 +54,7 @@ pub fn hover(node: NodeId) {
 ///
 /// # Panics
 ///
-/// Panics where `node` covers no cell on screen.
+/// Panics where nothing of `node` shows on screen.
 pub fn click(node: NodeId) {
   let (x, y) = cell_of(node);
 
@@ -73,7 +67,7 @@ pub fn click(node: NodeId) {
 ///
 /// # Panics
 ///
-/// Panics where `node` covers no cell on screen.
+/// Panics where nothing of `node` shows on screen.
 pub fn hold(node: NodeId) {
   let (x, y) = cell_of(node);
 
@@ -86,7 +80,7 @@ pub fn hold(node: NodeId) {
 ///
 /// # Panics
 ///
-/// Panics where `node` covers no cell on screen.
+/// Panics where nothing of `node` shows on screen.
 pub fn release(node: NodeId) {
   let (x, y) = cell_of(node);
 
@@ -97,7 +91,7 @@ pub fn release(node: NodeId) {
 ///
 /// # Panics
 ///
-/// Panics where `node` covers no cell on screen.
+/// Panics where nothing of `node` shows on screen.
 pub fn double_click(node: NodeId) {
   click(node);
   click(node);
@@ -113,7 +107,7 @@ pub fn press_key(event: &KeyEvent) {
 ///
 /// # Panics
 ///
-/// Panics where `node` covers no cell on screen.
+/// Panics where nothing of `node` shows on screen.
 pub fn type_text(node: NodeId, text: &str) {
   click(node);
 

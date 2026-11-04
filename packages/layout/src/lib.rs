@@ -28,7 +28,8 @@
 //! ([`runtime::Runtime::overlay_origin`]), the index of the window's rectangles, covers,
 //! reaches and clips in paint order built from the layout, the scroll offsets and the
 //! overlays' placement ([`runtime::Frames`]), a run flowing in a paragraph placed where
-//! its flow lays its pieces out ([`runtime::Runtime::run_rects`]), the topmost node at a
+//! its flow lays its pieces out ([`runtime::Runtime::run_rects`]), what shows of a node
+//! within its clip and the window ([`runtime::Runtime::shown`]), the topmost node at a
 //! point hit over that index, a paragraph resolving it to its run or inline box
 //! ([`runtime::Runtime::hit`]), and the damage the next paint repaints as nodes and the
 //! rectangles of the window they cover ([`runtime::Runtime::take_damage`]), beside the

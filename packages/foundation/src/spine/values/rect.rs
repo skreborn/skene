@@ -80,6 +80,18 @@ impl Rect<f32> {
     )
   }
 
+  /// The rectangle shrunk by `by` on each edge, its start edge the left, down to no
+  /// extent at most.
+  pub const fn deflate(self, by: Inset<f32>) -> Self {
+    Self::new(
+      Point::new(self.origin.x + by.start, self.origin.y + by.top),
+      Size::new(
+        (self.size.width - by.start - by.end).max(0.),
+        (self.size.height - by.top - by.bottom).max(0.),
+      ),
+    )
+  }
+
   /// The rectangle moved by `by`.
   pub const fn translate(self, by: Point<f32>) -> Self {
     Self::new(
@@ -100,16 +112,18 @@ mod tests {
   }
 
   /// Two rectangles intersect in what both cover, of no extent where they do not meet,
-  /// unite in the least rectangle covering both, grow by an inset edge by edge and move
-  /// by a point.
+  /// unite in the least rectangle covering both, grow and shrink by an inset edge by edge,
+  /// shrinking to no extent at most, and move by a point.
   #[test]
-  fn rectangles_intersect_unite_grow_and_move() {
+  fn rectangles_intersect_unite_grow_shrink_and_move() {
     let a = rect(0., 0., 4., 3.);
 
     assert_eq!(a.intersect(rect(2., 1., 4., 4.)), rect(2., 1., 2., 2.));
     assert_eq!(a.intersect(rect(6., 5., 1., 1.)).size, Size::ZERO);
     assert_eq!(a.union(rect(2., -1., 4., 2.)), rect(0., -1., 6., 4.));
     assert_eq!(a.inflate(Inset::new(1, 2, 3, 4)), rect(-1., -2., 8., 9.));
+    assert_eq!(a.deflate(Inset::new(1, 1, 1, 0)), rect(1., 1., 2., 2.));
+    assert_eq!(a.deflate(Inset::new(1, 3, 3, 1)), rect(1., 3., 0., 0.));
     assert_eq!(a.translate(Point::new(-2., 5.)), rect(-2., 5., 4., 3.));
   }
 

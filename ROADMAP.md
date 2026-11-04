@@ -32,13 +32,12 @@ in a code comment.
     (`Frames::visit`), each node handed the rectangle and clips hit testing reads,
     where it sums them and the scroll offsets above it down the tree itself, so paint
     and hit agree by construction and a painter for another medium walks the same
-    index; a paragraph's document selection and its
-    text content kept once above the engine, in the runtime, where each realization
-    keeps them today. A drawn entry's key default is written once there too, over the
-    shared entry the scene keeps: the core's `Binding` table, run after the app's key
-    handlers as a browser's `<input>` default runs (so never as a `TextEntry::on_key`,
-    which would run before them), the terminal's own key default consulting the table
-    until then.
+    index; a paragraph's document selection and its text content kept once above the
+    engine, in the runtime, where each realization keeps them today. A drawn entry's
+    key default is written once there too, over the shared entry the scene keeps: the
+    core's `Binding` table, run after the app's key handlers as a browser's `<input>`
+    default runs (so never as a `TextEntry::on_key`, which would run before them), the
+    terminal's own key default consulting the table until then.
     - Layout: layout settles before a frame commits, the terminal's settle loop
     becoming the frame contract, and `Painted` resizes land with the layout commit.
     - Beside it: the frame clock's pacing, frames due at the platform's rate while

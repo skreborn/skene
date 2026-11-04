@@ -1945,7 +1945,7 @@ mod tests {
     };
     use skene_foundation::{Inset, NodeId, Point, Rect};
 
-    use super::{Canned, Frame, Frames, Laid, Place, ROOT, at, laid, node, rect};
+    use super::{Canned, Frame, Frames, Laid, Place, ROOT, Step, at, laid, node, rect};
 
     impl Frames {
       /// The topmost node at `point` found by looking at every entry: the last in paint
@@ -1976,6 +1976,68 @@ mod tests {
           .rev()
           .find(takes)
           .map(|frame| frame.node)
+      }
+
+      /// What a walk passing over what the nodes of `skip` hold hears, read from each
+      /// entry's parent rather than from where its subtree ends: the root's flow, then each
+      /// layer announced before its entries, each entry that takes hits entered, then its
+      /// children in order where it is not skipped, then left where it is not.
+      fn walked_by_parents(&self, skip: &[NodeId]) -> Vec<Step> {
+        let mut steps = Vec::new();
+
+        self.walk_by_parents(0..self.flow_len(), skip, &mut steps);
+
+        for layer in self.layers() {
+          steps.push(Step::Layer(layer.overlay));
+          self.walk_by_parents(layer.start..layer.end, skip, &mut steps);
+        }
+
+        steps
+      }
+
+      /// Walks the entries of `range` from those with no parent, as
+      /// [`walked_by_parents`](Self::walked_by_parents) walks them, into `steps`.
+      fn walk_by_parents(
+        &self,
+        range: std::ops::Range<usize>,
+        skip: &[NodeId],
+        steps: &mut Vec<Step>,
+      ) {
+        for index in range.clone() {
+          if self.entries()[index].parent.is_none() {
+            self.enter_by_parents(index, range.clone(), skip, steps);
+          }
+        }
+      }
+
+      /// Enters the entry at `index` of `range` and its children into `steps`, as
+      /// [`walked_by_parents`](Self::walked_by_parents) enters them.
+      fn enter_by_parents(
+        &self,
+        index: usize,
+        range: std::ops::Range<usize>,
+        skip: &[NodeId],
+        steps: &mut Vec<Step>,
+      ) {
+        let frame = self.entries()[index];
+
+        if !frame.hits {
+          return;
+        }
+
+        steps.push(Step::Enter(index, frame.node));
+
+        if skip.contains(&frame.node) {
+          return;
+        }
+
+        for child in range.clone() {
+          if self.entries()[child].parent == Some(index) {
+            self.enter_by_parents(child, range.clone(), skip, steps);
+          }
+        }
+
+        steps.push(Step::Leave(index, frame.node));
       }
     }
 
@@ -2123,6 +2185,37 @@ mod tests {
 
         Some(reach.translate(location))
       }
+
+      /// A window of the subtrees `flow` beneath the root and the overlays `overlays` open
+      /// over it, in order, the root's overflow reaching everything they hold.
+      fn planted(flow: &[Shape], overlays: &[Opened]) -> Self {
+        let mut canned = Self::new();
+        let mut next = 1;
+        let mut held = flow
+          .iter()
+          .filter_map(|shape| canned.plant(shape, ROOT, &mut next))
+          .fold(rect(0., 0., 40., 20.), Rect::union);
+
+        for overlay in overlays {
+          let top = node(next);
+
+          if let Some(reach) = canned.plant(&overlay.shape, ROOT, &mut next) {
+            held = held.union(reach);
+          }
+
+          if overlay.shape.laying.is_none() {
+            continue;
+          }
+
+          canned.laid_mut(top).overlay = true;
+          canned.open.push((top, overlay.modal));
+          canned.places.insert(top, Place::At(overlay.at));
+        }
+
+        canned.laid_mut(ROOT).placed.overflow = held;
+
+        canned
+      }
     }
 
     proptest! {
@@ -2142,32 +2235,7 @@ mod tests {
         flow in vec(shape(3), 0..5),
         overlays in vec(opened(), 0..3),
       ) {
-        let mut canned = Canned::new();
-        let mut next = 1;
-        let mut held = flow
-          .iter()
-          .filter_map(|shape| canned.plant(shape, ROOT, &mut next))
-          .fold(rect(0., 0., 40., 20.), Rect::union);
-
-        for overlay in &overlays {
-          let top = node(next);
-
-          if let Some(reach) = canned.plant(&overlay.shape, ROOT, &mut next) {
-            held = held.union(reach);
-          }
-
-          if overlay.shape.laying.is_none() {
-            continue;
-          }
-
-          canned.laid_mut(top).overlay = true;
-          canned.open.push((top, overlay.modal));
-          canned.places.insert(top, Place::At(overlay.at));
-        }
-
-        canned.laid_mut(ROOT).placed.overflow = held;
-
-        let frames = Frames::build(&canned, Frames::default());
+        let frames = Frames::build(&Canned::planted(&flow, &overlays), Frames::default());
 
         for y in -12_i16..60 {
           for x in -12_i16..90 {
@@ -2181,6 +2249,31 @@ mod tests {
             );
           }
         }
+      }
+
+      /// The walk over where each entry's subtree ends hears what a walk down each entry's
+      /// parents hears, over any tree beneath any open overlays, passing over what every
+      /// third node holds, or nothing.
+      #[test]
+      fn the_walk_follows_the_parents(
+        flow in vec(shape(3), 0..5),
+        overlays in vec(opened(), 0..3),
+        skips in any::<bool>(),
+      ) {
+        let frames = Frames::build(&Canned::planted(&flow, &overlays), Frames::default());
+        let skip: Vec<NodeId> = if skips {
+          frames
+            .entries()
+            .iter()
+            .map(|frame| frame.node)
+            .filter(|node| node.index() % 3 == 0)
+            .collect()
+        }
+        else {
+          Vec::new()
+        };
+
+        prop_assert_eq!(frames.walked(&skip).steps, frames.walked_by_parents(&skip));
       }
     }
   }

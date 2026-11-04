@@ -58,21 +58,23 @@
 //!
 //! The runtime keeps one index of its window's rectangles ([`Runtime::frames`]): every
 //! laid-out node's border box in the window, the cover its paint damages, the reach a
-//! hit takes it at, the clips what shows of it and of its content are cut to and whether
-//! it takes hits ([`Frame`]), in paint order, the root's flow and then each open
-//! overlay's subtree in the order they opened ([`Layer`]), moved to where the runtime
-//! places the overlay. A platform's painter walks it in paint order ([`Frames::visit`]):
-//! each entry entered with its index before what it holds and left after it, an
-//! invisible subtree passed over, and each open overlay's layer announced before its
-//! entries ([`FrameVisitor`]), so paint and hit read one index. It is built afresh at its first
-//! read after a layout, a scroll offset, a box's reach or visibility, an overlay's opening or
-//! placement, or the scene's structure moved, beside whether the covers moved since the platform
-//! last painted ([`Runtime::covers_moved`]). A run flowing in a paragraph has no entry: it lies in
-//! the pieces its paragraph's flow places it in, one per line it reaches, read from that one
-//! paragraph as a query asks ([`Runtime::run_rects`]), its rectangle their union and its origin its
-//! first piece's corner ([`Runtime::rect`], [`Runtime::origin`]). What shows of a node is its
-//! border box within its clip and the window, or of a run the first of its pieces of which
-//! anything shows ([`Runtime::shown`]).
+//! hit takes it at, the clips what shows of it and of its content are cut to and
+//! whether it takes hits ([`Frame`]), in paint order, the root's flow and then each
+//! open overlay's subtree in the order they opened ([`Layer`]), moved to where the
+//! runtime places the overlay. A platform's painter walks it in paint order
+//! ([`Frames::visit`]): each entry entered with its index before what it holds and left
+//! after it, an invisible subtree passed over, and each open overlay's layer announced
+//! before its entries ([`FrameVisitor`]), so paint and hit read one index. It is built
+//! afresh at its first read after a layout, a scroll offset, a box's reach or
+//! visibility, an overlay's opening or placement, or the scene's structure moved,
+//! beside whether the covers moved since the platform last painted
+//! ([`Runtime::covers_moved`]). A run flowing in a paragraph has no entry: it lies in
+//! the pieces its paragraph's flow places it in, one per line it reaches, read from
+//! that one paragraph as a query asks ([`Runtime::run_rects`]), its rectangle their
+//! union and its origin its first piece's corner ([`Runtime::rect`],
+//! [`Runtime::origin`]). What shows of a node is its border box within its clip and the
+//! window, or of a run the first of its pieces of which anything shows
+//! ([`Runtime::shown`]).
 //!
 //! A point hits the topmost node over that index ([`Runtime::hit`]): each open overlay's
 //! layer from the last opened, nothing beneath the topmost modal, then the root's flow,

@@ -32,16 +32,16 @@ where the runtime places it: pinned and moved back in, anchored below or above w
 flip, or at one of seven window placements), walked in paint order by a platform's
 painter (`Frames::visit`: each entry entered with its index and what shows of it and of
 its content, left after what it holds, an invisible subtree passed over and each open
-overlay's layer announced before its entries), a run flowing in a paragraph placed in the pieces its flow lays it
-out in, what shows of a node within its clip and the window, where a test's user acts on
-it, the topmost node at a point hit over that index, the damage the next paint repaints
-as nodes and rectangles of the window (each damaged node's paint owner's cover at the
-last paint and now, every cover that moved, and what a destroyed node covered), which
-the platform collapses into its own granularity, and the environment the platform
-reports, behind the `Drawn` trait a drawn platform implements) and the text engine over
-Parley (`skene-parley`) on the foundation, the platforms on the foundation and, where
-they draw, on those two, each platform's realization a crate of its own
-(`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
+overlay's layer announced before its entries), a run flowing in a paragraph placed in
+the pieces its flow lays it out in, what shows of a node within its clip and the window,
+where a test's user acts on it, the topmost node at a point hit over that index, the
+damage the next paint repaints as nodes and rectangles of the window (each damaged
+node's paint owner's cover at the last paint and now, every cover that moved, and what a
+destroyed node covered), which the platform collapses into its own granularity, and the
+environment the platform reports, behind the `Drawn` trait a drawn platform implements)
+and the text engine over Parley (`skene-parley`) on the foundation, the platforms on the
+foundation and, where they draw, on those two, each platform's realization a crate of
+its own (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
 `skene-tui`), the Simple core (its palette, variants and sizes, naming no realization)
 on the foundation, each facade's Simple crate (its presets) on its facade, and the
 macros, the transport and the CLI beside them.

@@ -912,11 +912,11 @@ pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modi
 
   set_hover(x, y);
 
-  let target = records(|records| pointer_target(records, x, y));
+  let target = records(|records| {
+    pointer_target(records, x, y).filter(|(node, _)| records.runtime.contains(*node))
+  });
 
-  if let Some((handle, origin)) = target
-    && let Some(node) = records(|records| records.runtime.contains(handle).then_some(handle))
-  {
+  if let Some((node, origin)) = target {
     let _ = dispatch_pointer_move::<Terminal>(node, &pointer_event(x, y, origin, None, modifiers));
   }
 
@@ -1074,10 +1074,16 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   let entry_held_focus =
     entry.is_some_and(|entry| records(|records| records.focused() == Some(entry)));
 
-  let node = records(|records| records.runtime.contains(deepest).then_some(deepest));
-  let prevented = node.map_or(Prevented::default(), |node| {
-    dispatch_pointer_down::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers))
-  });
+  let live = records(|records| records.runtime.contains(deepest));
+  let prevented = if live {
+    dispatch_pointer_down::<Terminal>(
+      deepest,
+      &pointer_event(x, y, origin, Some(button), modifiers),
+    )
+  }
+  else {
+    Prevented::default()
+  };
 
   if button == PointerButton::Primary || entry.is_some() {
     set_focus(focus_target);
@@ -1097,7 +1103,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         count,
       });
 
-      Scene::<Terminal>::with(|scene| scene.set_pressed(node));
+      Scene::<Terminal>::with(|scene| scene.set_pressed(live.then_some(deepest)));
     }
   });
 
@@ -1118,12 +1124,12 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   // once the pointer leaves the cell.
   if button == PointerButton::Primary
     && !prevented.platform
-    && let Some(node) = node
-    && Scene::<Terminal>::read(|scene| scene.drag_source(node)).is_some()
+    && live
+    && Scene::<Terminal>::read(|scene| scene.drag_source(deepest)).is_some()
   {
     records(|records| {
       records.drag = Some(Drag::Item {
-        node,
+        node: deepest,
         from: (x, y),
         started: false,
       });
@@ -1131,11 +1137,9 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   }
 
   // The right press asks for the context menu once its default has placed the caret.
-  if button == PointerButton::Secondary
-    && let Some(node) = node
-  {
+  if button == PointerButton::Secondary && live {
     let _ = dispatch_context_menu::<Terminal>(
-      node,
+      deepest,
       &pointer_event(x, y, origin, Some(button), modifiers),
     );
   }
@@ -1242,11 +1246,10 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
       .and_then(|press| press.captured)
       .map(|captured| (captured, records.screen_origin(captured)))
       .or_else(|| pointer_target(records, x, y))
+      .filter(|(node, _)| records.runtime.contains(*node))
   });
 
-  if let Some((handle, origin)) = target
-    && let Some(node) = records(|records| records.runtime.contains(handle).then_some(handle))
-  {
+  if let Some((node, origin)) = target {
     let _ =
       dispatch_pointer_up::<Terminal>(node, &pointer_event(x, y, origin, Some(button), modifiers));
   }
@@ -1331,9 +1334,11 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
   }
 
   let over = records(|records| {
-    let (handle, _) = records.hit_test(x, y).last().copied()?;
-
-    records.runtime.contains(handle).then_some(handle)
+    records
+      .hit_test(x, y)
+      .last()
+      .map(|&(node, _)| node)
+      .filter(|node| records.runtime.contains(*node))
   });
   let _ = move_drag::<Terminal>(over);
 }
@@ -1451,9 +1456,11 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
   }
 
   let under = records(|records| {
-    let (handle, origin) = records.hit_test(x, y).last().copied()?;
-
-    records.runtime.contains(handle).then_some((handle, origin))
+    records
+      .hit_test(x, y)
+      .last()
+      .copied()
+      .filter(|(node, _)| records.runtime.contains(*node))
   });
 
   if let Some((node, origin)) = under {
@@ -1567,9 +1574,8 @@ pub(crate) fn key(event: &KeyEvent) {
       records.set_focus_visible(true);
     }
 
-    let handle = records.focused().unwrap_or(records.runtime.root());
-
-    records.runtime.contains(handle).then_some(handle)
+    Some(records.focused().unwrap_or(records.runtime.root()))
+      .filter(|node| records.runtime.contains(*node))
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_down::<Terminal>(node, event)
@@ -1589,9 +1595,8 @@ pub(crate) fn key(event: &KeyEvent) {
 /// prevented it, activates the activatable row whose `Space` it releases.
 pub(crate) fn key_up(event: &KeyEvent) {
   let target = records(|records| {
-    let handle = records.focused().unwrap_or(records.runtime.root());
-
-    records.runtime.contains(handle).then_some(handle)
+    Some(records.focused().unwrap_or(records.runtime.root()))
+      .filter(|node| records.runtime.contains(*node))
   });
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_up::<Terminal>(node, event)
@@ -1800,13 +1805,13 @@ fn cancel_press() {
 
   Scene::<Terminal>::with(|scene| scene.set_pressed(None));
 
-  if let Some(node) = records(|records| records.runtime.contains(reached).then_some(reached)) {
+  if records(|records| records.runtime.contains(reached)) {
     let event = PointerEvent {
       buttons: PointerButtons::new(),
       pressure: 0.,
       ..pointer_event(x, y, origin, None, Modifiers::NONE)
     };
-    let _ = dispatch_pointer_cancel::<Terminal>(node, &event);
+    let _ = dispatch_pointer_cancel::<Terminal>(reached, &event);
   }
 }
 

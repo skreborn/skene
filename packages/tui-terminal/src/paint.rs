@@ -1129,7 +1129,7 @@ fn paint_node(
     return;
   }
 
-  let frame = records.frame_of(handle);
+  let frame = records.frame(handle);
   let (x, y) = (
     offset_x + isize::try_from(frame.x).unwrap_or(0),
     offset_y + isize::try_from(frame.y).unwrap_or(0),

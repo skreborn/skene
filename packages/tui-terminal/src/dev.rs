@@ -221,12 +221,13 @@ pub(crate) fn swap(path: &Path) -> ! {
   std::process::exit(SWAP_EXIT)
 }
 
-/// The snapshot position of the node `handle` realizes.
+/// The snapshot position of the node `handle`, if it is live.
 fn position_of(handle: NodeId) -> Option<SnapshotPlace> {
-  let node =
-    crate::try_with_records(|records| records.runtime.contains(handle).then_some(handle))??;
+  if !crate::try_with_records(|records| records.runtime.contains(handle))? {
+    return None;
+  }
 
-  Scene::<Terminal>::with(|scene| scene.record(node).map(|record| record.position().clone()))
+  Scene::<Terminal>::with(|scene| scene.record(handle).map(|record| record.position().clone()))
 }
 
 /// The node at `position`, if it is live.

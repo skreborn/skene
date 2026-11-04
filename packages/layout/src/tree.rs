@@ -21,7 +21,7 @@ use self::engine::{Engine, Nodes, Slot, key};
 /// What a leaf of the layout carries: what measures it and places what flows inside it.
 ///
 /// A leaf's equality, which [`Tree::set_context`] judges a context by, leaves out the sizes
-/// its boxes were given, since they are the layout's output.
+/// its boxes were given.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a leaf of the layout",
   note = "a leaf's context measures the leaf and places the nodes flowing inside it"
@@ -196,10 +196,9 @@ impl<C: Leaf> Tree<C> {
   /// the held one takes in place ([`Leaf::repaint_as`]) without the node measured again,
   /// or where `node` is outside the tree.
   ///
-  /// A context made afresh with its boxes unsized is the same as the one held where
-  /// nothing else changed, since a leaf's equality leaves the sizes of its boxes out
-  /// ([`Leaf`]): the held context keeps its sized boxes, and one that replaces it is sized
-  /// by the next layout before it measures.
+  /// A context made afresh with its boxes unsized compares alike to the one held where
+  /// nothing else changed ([`Leaf`]): the held context keeps its sized boxes, and one that
+  /// replaces it is sized by the next layout before it measures.
   pub fn set_context(&mut self, node: NodeId, context: Option<C>) -> bool
   where
     C: PartialEq,

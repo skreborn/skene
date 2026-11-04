@@ -17,7 +17,7 @@ use crate::{
   interaction::scroll_to,
   layout::{border_edges, has_border},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
-  records::{Backdrop, BackdropKey, CellRect, Record, Records},
+  records::{Backdrop, BackdropKey, CellRect, PlainBox, Record, Records},
   with_records,
 };
 
@@ -286,20 +286,55 @@ fn render_backdrops(records: &mut Records) {
   }
 
   let cell_pixels = records.cell_pixels;
+  let ink = records.contrast().ink;
+  let changed: Vec<(NodeId, Option<BackdropKey>)> = records
+    .runtime
+    .records()
+    .filter_map(|(node, record)| {
+      let cache = record.kind.box_record()?.cache.as_ref()?;
+      let key = BackdropKey::of(&cache.style, records.node_size(node), cell_pixels, ink);
+      let held = record
+        .platform
+        .backdrop
+        .as_ref()
+        .map(|backdrop| &backdrop.key);
 
-  for handle in records.runtime.handles() {
-    let Some(record) = records.runtime.record(handle)
-    else {
-      continue;
-    };
-    let Some(cache) = record
-      .kind
-      .box_record()
-      .and_then(|inner| inner.cache.as_ref())
-    else {
-      continue;
-    };
-    let style = &cache.style;
+      (held != key.as_ref()).then_some((node, key))
+    })
+    .collect();
+
+  for (node, key) in changed {
+    let backdrop = key.map(|key| {
+      let pixels = render_backdrop(&key);
+
+      records.picture_generation += 1;
+
+      Backdrop {
+        image: Rc::new(Image {
+          generation: records.picture_generation,
+          width: key.columns.saturating_mul(cell_pixels.0),
+          height: key.rows.saturating_mul(cell_pixels.1),
+          pixels,
+        }),
+        key,
+      }
+    });
+
+    if let Some(cell) = records.cell_mut(node) {
+      cell.backdrop = backdrop;
+    }
+  }
+}
+
+impl BackdropKey {
+  /// The backdrop a box of `style` at `size` cells asks for, with a border of no color
+  /// in `ink`; `None` where the box is empty or its decoration is one cells draw.
+  fn of(
+    style: &PlainBox,
+    (width, height): (i64, i64),
+    cell_pixels: (u16, u16),
+    ink: (u8, u8, u8),
+  ) -> Option<Self> {
     let radius = style
       .ext
       .corner_radius
@@ -313,10 +348,14 @@ fn render_backdrops(records: &mut Records) {
     let border = has_border(style)
       .then(|| match style.border_color {
         Some(color) => terminal_rgb(color),
-        None => Some(records.contrast().ink),
+        None => Some(ink),
       })
       .flatten();
-    let (width, height) = records.node_size(handle);
+
+    if width <= 0 || height <= 0 || (radius <= 0. && border.is_none() && shadow.is_none()) {
+      return None;
+    }
+
     let band = if shadow.is_some() {
       ShadowPaint::band(style)
     }
@@ -324,7 +363,8 @@ fn render_backdrops(records: &mut Records) {
       0
     };
     let (shadow_offset, shadow_softening) = ShadowPaint::extent(style);
-    let key = BackdropKey {
+
+    Some(Self {
       columns: u16::try_from(width)
         .unwrap_or(u16::MAX)
         .saturating_add(band),
@@ -340,43 +380,7 @@ fn render_backdrops(records: &mut Records) {
       shadow,
       shadow_offset,
       shadow_softening,
-    };
-    let wanted = width > 0 && height > 0 && (radius > 0. || border.is_some() || shadow.is_some());
-
-    if !wanted {
-      if let Some(cell) = records.cell_mut(handle) {
-        cell.backdrop = None;
-      }
-
-      continue;
-    }
-
-    if record
-      .platform
-      .backdrop
-      .as_ref()
-      .is_some_and(|backdrop| backdrop.key == key)
-    {
-      continue;
-    }
-
-    let pixels = render_backdrop(&key);
-
-    records.picture_generation += 1;
-
-    let generation = records.picture_generation;
-
-    if let Some(cell) = records.cell_mut(handle) {
-      cell.backdrop = Some(Backdrop {
-        image: Rc::new(Image {
-          generation,
-          width: key.columns.saturating_mul(cell_pixels.0),
-          height: key.rows.saturating_mul(cell_pixels.1),
-          pixels,
-        }),
-        key,
-      });
-    }
+    })
   }
 }
 
@@ -572,6 +576,7 @@ fn report_sizes() -> bool {
     for (node, size) in changed {
       if let Some(record) = records.runtime.record_mut(node) {
         record.reported = Some(size);
+
         reports.extend(
           record
             .observers

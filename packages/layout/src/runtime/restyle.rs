@@ -129,7 +129,6 @@ impl<P: Drawn> Runtime<P> {
     }
 
     let reach = record.kind.box_style().map(P::reach);
-    // `None` exactly where the node is fresh, since it has a record.
     let resolved = if fresh { None } else { self.resolve(node) };
     let pass = Pass {
       generation,

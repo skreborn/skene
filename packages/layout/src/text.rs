@@ -1333,6 +1333,52 @@ mod tests {
     assert!(tree.is_dirty(text), "a change of size lays out again");
   }
 
+  /// A flow made afresh with its boxes unsized and a run's paint changed repaints the one
+  /// held in place, its sized boxes kept, without laying it out again.
+  #[test]
+  fn a_change_of_paint_beside_a_sized_box_repaints_without_laying_out_again() {
+    use skene_foundation::{Color, text::PaintStyle};
+
+    let (text, before, inline, view, after) = (node(), node(), node(), node(), node());
+    let mut page = Page::new(1024.);
+    let red = PaintStyle::new(Color::oklch(0.6, 0.2, 30.));
+    let mut repainted = TextFlow::new(engine(), style(), ParagraphStyle::default());
+
+    repainted.add_run(before, &[], "ab ", style_at(16.).with_paint(red));
+    repainted.add_box(inline, &[], Size::ZERO);
+    repainted.add_run(after, &[], " cd", style());
+
+    page.add(text, paragraph(&[(before, &[], "ab ", 16.)]), None);
+    page.add_box(text, inline, view, Size::new(20., 30.));
+    page
+      .tree
+      .context_mut(text)
+      .expect("the leaf's flow")
+      .add_run(after, &[], " cd", style());
+    page.lay_out();
+
+    let laid = page.tree.context(text).expect("a flow").leaf().laid(None);
+
+    assert!(
+      !page.tree.set_context(text, Some(repainted)),
+      "nothing it measures to changed"
+    );
+    assert!(!page.tree.is_dirty(text), "the leaf is not measured again");
+    assert_eq!(
+      laid.paint_at(0),
+      red,
+      "the layout handed out shows the paint"
+    );
+
+    let rects = page.lay_out();
+    let start = width("ab ");
+    let top = 30. - baseline(24., 16.);
+
+    assert_near(rects.rect(inline), rect(start, 0., 20., 30.));
+    assert_near(rects.rect(view), rect(start, 0., 20., 30.));
+    assert_near(rects.rect(after), rect(start + 20., top, width(" cd"), 24.));
+  }
+
   /// Sizing a flow's boxes gives each its own size, in order, the runs between them
   /// skipped, makes its text into a paragraph afresh only where a size differs, and leaves
   /// the flow alike to one whose boxes are unsized.

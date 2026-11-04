@@ -1489,8 +1489,8 @@ fn a_change_inside_a_box_lays_both_paragraphs_out_again() {
   assert_eq!(scene.unrounded(nested.outer).size, Size::new(14., 10.));
 }
 
-/// A paragraph's context made afresh with its boxes unsized is the one it holds, since a
-/// context's equality leaves its boxes' sizes out, and marks nothing.
+/// A paragraph's context made afresh with its boxes unsized is the one it holds, its boxes'
+/// sizes no part of its equality, and marks nothing.
 #[test]
 fn a_paragraph_made_afresh_with_unsized_boxes_marks_nothing() {
   let mut scene = Scene::new(true);
@@ -1560,6 +1560,7 @@ fn a_paragraphs_boxes_are_sized_in_order_once_per_pass() {
 
   sizings.borrow_mut().clear();
   measures.set(0);
+
   scene.tree.set_style(
     boxes[1],
     sized(7., 4.).taffy_style(
@@ -1570,6 +1571,7 @@ fn a_paragraphs_boxes_are_sized_in_order_once_per_pass() {
       },
     ),
   );
+
   scene.lay_out(root, 100., 100.);
 
   assert!(measures.get() > 0);

@@ -148,15 +148,14 @@ pub trait Drawn:
   /// The native extent of the text entry `node` holding the platform's state `own`, its
   /// content box's size, `None` where it is no entry.
   ///
-  /// It reads nothing the runtime holds but `own`, since the runtime is borrowed while it
-  /// runs.
+  /// It runs while the runtime is borrowed and reads nothing the runtime holds but `own`.
   fn entry_extent(node: NodeId, own: &Self::Node) -> Option<Size<f32>>;
 
   /// Whether the platform draws text at sizes other than its
   /// [`FONT_SIZE`](Realization::FONT_SIZE), as it last found; see
   /// [`ResolutionSource::sizes_text`](skene_foundation::ResolutionSource::sizes_text).
   ///
-  /// It reads nothing the runtime holds, since the runtime is borrowed while it runs.
+  /// It runs while the runtime is borrowed and reads nothing the runtime holds.
   fn sizes_text() -> bool;
 
   /// Fills in what the platform's own vocabulary takes of a box's `style` once every

@@ -43,7 +43,7 @@ impl CellFrame {
 impl Records {
   /// `node`'s frame in its layout parent, as the last layout rounded it; empty for a
   /// node outside the layout.
-  pub(crate) fn frame_of(&self, node: NodeId) -> CellFrame {
+  pub(crate) fn frame(&self, node: NodeId) -> CellFrame {
     self
       .runtime
       .tree()
@@ -51,7 +51,7 @@ impl Records {
       .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
 
-  /// `node`'s frame in its layout parent, as [`frame_of`](Self::frame_of), and the
+  /// `node`'s frame in its layout parent, as [`frame`](Self::frame), and the
   /// cells its laid-out content reaches from the frame's origin, left, top, right and
   /// bottom: its own box, or farther where its content overflows it.
   pub(crate) fn reach_of(&self, node: NodeId) -> (CellFrame, [f32; 4]) {
@@ -76,15 +76,6 @@ impl Records {
     )
   }
 
-  /// `handle`'s frame in its layout parent; empty for a stale handle.
-  pub(crate) fn frame(&self, handle: NodeId) -> CellFrame {
-    if !self.runtime.contains(handle) {
-      return CellFrame::default();
-    }
-
-    self.frame_of(handle)
-  }
-
   /// A node's laid-out size, in cells.
   pub(crate) fn node_size(&self, handle: NodeId) -> (i64, i64) {
     let frame = self.frame(handle);
@@ -98,9 +89,8 @@ impl Records {
   pub(crate) fn flow_width(&self, handle: NodeId) -> usize {
     let width = self
       .runtime
-      .contains(handle)
-      .then_some(handle)
-      .and_then(|node| self.runtime.tree().unrounded_layout(node))
+      .tree()
+      .unrounded_layout(handle)
       .map_or(0., |layout| {
         layout.rect.size.width
           - layout.border.start
@@ -124,10 +114,6 @@ impl Records {
   /// where the layout put them. `None` for a box with laid-out children, those inside
   /// an anchor or a scope among them, or one of no width.
   pub(crate) fn smooth_span(&self, handle: NodeId) -> Option<(isize, isize)> {
-    if !self.runtime.contains(handle) {
-      return None;
-    }
-
     let mut beneath = self.runtime.children(handle);
 
     while let Some(child) = beneath.pop() {

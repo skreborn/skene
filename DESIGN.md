@@ -31,10 +31,10 @@ is cut to, in paint order, each open overlay's subtree moved to where the runtim
 it: pinned and moved back in, anchored below or above with a flip, or at one of seven
 window placements), a run flowing in a paragraph placed in the pieces its flow lays it
 out in, what shows of a node within its clip and the window, where a test's user acts on
-it, the topmost node at a point hit over that index, the damage the next paint
-repaints as nodes and rectangles of the window (each damaged node's paint owner's cover
-at the last paint and now, every cover that moved, and what a destroyed node covered),
-which the platform collapses into its own granularity, and the environment the platform
+it, the topmost node at a point hit over that index, the damage the next paint repaints
+as nodes and rectangles of the window (each damaged node's paint owner's cover at the
+last paint and now, every cover that moved, and what a destroyed node covered), which
+the platform collapses into its own granularity, and the environment the platform
 reports, behind the `Drawn` trait a drawn platform implements) and the text engine over
 Parley (`skene-parley`) on the foundation, the platforms on the foundation and, where
 they draw, on those two, each platform's realization a crate of its own
@@ -2694,11 +2694,11 @@ sense apart where context does not.
 - **Record.** A drawn platform's record of a node (`skene_layout::runtime::Record`):
   what the drawn runtime (`runtime::Runtime`) keeps per `NodeId` beside the scene, its
   kind and the facts its creation carried, its kept and resolved style, its motion, its
-  text and slots, its scroll offsets, what its paint covered at the last paint, the
+  text and slots, its scroll offsets, what its paint covered at the last paint and the
   platform's own per-node state carried in it (`Drawn::Node`, the terminal's cell
-  state). A snapshot record: what a run writes for its
-  successor at a dev reload. A node's style record (`Record`): its box and run styles
-  and their motion as one erased list under Skene's property names (The style model).
+  state). A snapshot record: what a run writes for its successor at a dev reload. A
+  node's style record (`Record`): its box and run styles and their motion as one erased
+  list under Skene's property names (The style model).
 - **Realize.** A platform turning a scene node into its own representation: an element
   in the browser, an entry in the server's string tree, a record of the drawn runtime
   and a node of the runtime's layout tree in the terminal. `LowLevel::realize` mints a node a view realizes itself.

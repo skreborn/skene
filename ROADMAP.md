@@ -437,13 +437,14 @@ in a code comment.
     change hands every node its layout children afresh (`Runtime::write_children`),
     where each should reach only the subtree it touched (per-scope token and
     per-container query invalidation, `em` from the node's own font size);
-    the runtime's `Frames` is rebuilt whole at its first read after a layout, a scroll or
-    a reach moved, where the prototype's incremental reach (`REACH_ALONE`,
+    the runtime's `Frames` is rebuilt whole at its first read after a layout, a scroll
+    or a reach moved, where the prototype's incremental reach (`REACH_ALONE`,
     `spikes/linux/gui-linux/src/shell.rs:57, 1264-1278`; `layout.rs:780-848`) would
     rebuild what moved, a rebuild over the bench's 16k rows about 7.2M instructions,
-    which brought the resized frame to 235.6M against 234.7M, a keyed row's frame to
-    233.8M against 233.6M and the first mount to 1,928M against 1,925M, the unchanged
-    frame and the pointer move, which rebuild nothing, holding at 525k and 6.96M
+    paid back where the damage reads the covers in the same walk: against the runtime
+    before its `Frames` (`38acf28`) the resized frame costs 233.9M against 233.6M, a
+    keyed row's frame 231.9M against 232.7M and the first mount 1,925M against 1,924M,
+    the unchanged frame, which rebuilds nothing, holding at 526k against 525k
     (2026-11-04);
     a structure change, a destroyed node and an overlay's opening or placement still
     repaint the whole frame (`Runtime::paint_dirty`), where the runtime's damage already
@@ -455,7 +456,7 @@ in a code comment.
     subtree its reach or its clip misses but reading every row of a list, where an index
     by position would read only what lies at the point: a pointer move over 16k text
     rows costs 1.17M instructions against an unchanged frame's 526k, where the walk that
-    built an owned `Placed` for every child it read cost 6.91M (`cargo bench
+    built an owned `Placed` for every child it read cost 6.89M (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config
     "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`,
     2026-11-04); selection spans

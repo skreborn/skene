@@ -130,6 +130,7 @@ pub fn skene_layout::runtime::Flow<E>::add_box(&mut self, skene_foundation::spin
 pub fn skene_layout::runtime::Flow<E>::add_run(&mut self, skene_foundation::spine::node::NodeId, &[skene_foundation::spine::node::NodeId], &str, skene_foundation::text::model::TextStyle)
 pub const fn skene_layout::runtime::Flow<E>::flow(&self) -> &skene_layout::TextFlow<E>
 pub fn skene_layout::runtime::Flow<E>::laid(&self, skene_foundation::spine::values::rect::Rect<f32>) -> <<E as skene_foundation::text::engine::TextEngine>::Paragraph as skene_foundation::text::engine::Paragraph>::Laid
+pub fn skene_layout::runtime::Flow<E>::nearest(&self, skene_foundation::spine::values::rect::Rect<f32>, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_layout::RunHit<skene_foundation::spine::node::NodeId>>
 pub const fn skene_layout::runtime::Flow<E>::new(E, skene_foundation::text::model::TextStyle, skene_foundation::text::model::ParagraphStyle, bool, u64) -> Self
 pub fn skene_layout::runtime::Flow<E>::run_at(&self, skene_foundation::spine::values::rect::Rect<f32>, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_layout::RunHit<skene_foundation::spine::node::NodeId>>
 pub const fn skene_layout::runtime::Flow<E>::whole_width(f32) -> f32
@@ -202,23 +203,23 @@ pub skene_layout::runtime::Presented::style: S
 impl<S: core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Presented<S>
 pub fn skene_layout::runtime::Presented<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::Record<P: skene_layout::runtime::Drawn>
-pub skene_layout::runtime::Record::hidden: bool
-pub skene_layout::runtime::Record::in_motion: bool
-pub skene_layout::runtime::Record::kind: skene_layout::runtime::Kind<P>
 pub skene_layout::runtime::Record::observers: alloc::vec::Vec<skene_layout::runtime::Observer<P>>
-pub skene_layout::runtime::Record::painted: core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 pub skene_layout::runtime::Record::platform: <P as skene_layout::runtime::Drawn>::Node
 pub skene_layout::runtime::Record::reported: core::option::Option<skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>>
-pub skene_layout::runtime::Record::scroll: skene_foundation::spine::values::point::Point<f32>
-pub skene_layout::runtime::Record::slots: rustc_hash::FxHashMap<skene_foundation::spine::leaf::Slot, skene_layout::runtime::SlotLeaf<P>>
-pub skene_layout::runtime::Record::text: alloc::string::String
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Record<P>
 pub fn skene_layout::runtime::Record<P>::container(&self) -> core::option::Option<skene_foundation::spine::condition::ContainerName>
+pub const fn skene_layout::runtime::Record<P>::in_motion(&self) -> bool
+pub const fn skene_layout::runtime::Record<P>::is_hidden(&self) -> bool
 pub fn skene_layout::runtime::Record<P>::is_invisible(&self) -> bool
 pub const fn skene_layout::runtime::Record<P>::is_open_overlay(&self) -> bool
 pub const fn skene_layout::runtime::Record<P>::is_overlay(&self) -> bool
+pub const fn skene_layout::runtime::Record<P>::kind(&self) -> &skene_layout::runtime::Kind<P>
 pub fn skene_layout::runtime::Record<P>::layout(&self) -> core::option::Option<skene_foundation::spine::values::layout::Layout>
 pub fn skene_layout::runtime::Record<P>::new(skene_layout::runtime::Kind<P>, <P as skene_layout::runtime::Drawn>::Node) -> Self
+pub const fn skene_layout::runtime::Record<P>::painted(&self) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub const fn skene_layout::runtime::Record<P>::scroll(&self) -> skene_foundation::spine::values::point::Point<f32>
+pub const fn skene_layout::runtime::Record<P>::slots(&self) -> &rustc_hash::FxHashMap<skene_foundation::spine::leaf::Slot, skene_layout::runtime::SlotLeaf<P>>
+pub const fn skene_layout::runtime::Record<P>::text(&self) -> &str
 impl<P: skene_layout::runtime::Drawn + core::fmt::Debug> core::fmt::Debug for skene_layout::runtime::Record<P>
 pub fn skene_layout::runtime::Record<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_layout::runtime::RunCache<P: skene_layout::runtime::Drawn>
@@ -314,6 +315,7 @@ pub fn skene_layout::runtime::Runtime<P>::reveal_offsets(&self, skene_foundation
 pub fn skene_layout::runtime::Runtime<P>::scroll_by(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>) -> bool
 pub fn skene_layout::runtime::Runtime<P>::scroll_limits(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::runtime::Runtime<P>::scroll_offset(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::point::Point<f32>
+pub fn skene_layout::runtime::Runtime<P>::scroll_shift(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::point::Point<f32>
 pub fn skene_layout::runtime::Runtime<P>::scroll_to(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>)
 pub fn skene_layout::runtime::Runtime<P>::scrolled_by(&self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_foundation::spine::values::point::Point<f32>>
 pub const fn skene_layout::runtime::Runtime<P>::take_reveal(&mut self) -> core::option::Option<skene_foundation::spine::node::NodeId>

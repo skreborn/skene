@@ -38,7 +38,10 @@ supersedes there.
   runtime reads shared (its records, its tree, the scene) into a cell every writer of
   that state empties (`OnceCell::take` beside the write), and `frames` fills it on its
   first read, so no reader can see geometry older than the last write and the readers
-  keep their shared borrows. Revisit when building the index needs the platform's
+  keep their shared borrows. The runtime's writers are the only ones: what a record
+  holds of the runtime's state (its kind and style, its scroll offsets, its visibility
+  and its painted cover) is private to the runtime and read through accessors, so a
+  platform's `&mut Record` reaches only its own state (`platform`, the size reports). Revisit when building the index needs the platform's
   state mutably, or a profile shows the cell's check on a hot path.
 - **A text leaf's equality over its engine's state** (2026-11-03), each flow comparing
   the engine it lays out through (`Drawn::Engine: PartialEq`) or the engine state a

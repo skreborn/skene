@@ -204,8 +204,8 @@ fn name_facts(node: NodeId) -> NameFacts {
     let field = records.field(node);
     let entry = field.and_then(|_| records.entry(node));
     let access = || Scene::<Terminal>::read(|scene| scene.access(node));
-    let facts = match &record.kind {
-      Kind::Run { facts, .. } => NameFacts::of_run(facts, record.text.clone()),
+    let facts = match record.kind() {
+      Kind::Run { facts, .. } => NameFacts::of_run(facts, record.text().to_owned()),
       Kind::Box(inner) => NameFacts::of_box(inner.role, &inner.facts, access()),
       Kind::Overlay { inner, open, .. } => {
         NameFacts::of_box(inner.role, &inner.facts, access()).with_overlay(inner.role, *open)

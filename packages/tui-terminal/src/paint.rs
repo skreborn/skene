@@ -13,8 +13,11 @@ use skene_foundation::{
   Length,
   NativeElement,
   NodeId,
+  Point,
+  Rect,
   RunPlacement,
   Scene,
+  Size,
   TextDecoration,
   TextDecorationStyle,
   terminal::{BorderGlyphs, ScrollbarGlyphs},
@@ -25,7 +28,7 @@ use skene_layout::runtime::{Env, Source};
 use crate::{
   Terminal,
   cells::Cells,
-  engine::{DrawnCluster, drawn, whole},
+  engine::{DrawnCluster, drawn},
   layout::{border_edges, has_border},
   records::{Contrast, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
@@ -696,17 +699,14 @@ pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
   buffer.pictures.retain(|picture| {
     picture.layer < 0
       || !frames.layers().iter().any(|layer| {
-        let rect = frames.entries()[layer.start].rect;
-        let (left, top) = (f32::from(picture.column), f32::from(picture.row));
-        let (right, bottom) = (
-          f32::from(picture.column + picture.columns),
-          f32::from(picture.row + picture.rows),
+        let cells = Rect::new(
+          Point::new(f32::from(picture.column), f32::from(picture.row)),
+          Size::new(f32::from(picture.columns), f32::from(picture.rows)),
         );
 
-        left < rect.origin.x + rect.size.width
-          && right > rect.origin.x
-          && top < rect.origin.y + rect.size.height
-          && bottom > rect.origin.y
+        cells
+          .intersect(frames.entries()[layer.start].rect)
+          .has_extent()
       })
   });
 
@@ -720,8 +720,7 @@ pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
 /// computed origin.
 fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: NodeId) {
-  let Some(Kind::Overlay { backdrop, .. }) =
-    records.runtime.record(overlay).map(|record| &record.kind)
+  let Some(Kind::Overlay { backdrop, .. }) = records.runtime.record(overlay).map(Record::kind)
   else {
     return;
   };
@@ -831,7 +830,9 @@ struct ClusterPaint {
 /// What one node contributes to the frame.
 enum NodePaint {
   Paragraph {
-    /// Each cluster the paragraph's layout draws, in visual order.
+    /// The cell the paragraph's flow starts at from its corner, scrolled with its content.
+    origin: (isize, isize),
+    /// Each cluster the paragraph's layout draws, in visual order, from `origin`.
     clusters: Vec<ClusterPaint>,
     spans: Vec<SpanPaint>,
     links: Vec<String>,
@@ -844,7 +845,9 @@ enum NodePaint {
     shadow: Option<ShadowPaint>,
   },
   Text {
-    /// Each cluster the run's layout draws, in visual order.
+    /// The cell the run's flow starts at from its corner.
+    origin: (isize, isize),
+    /// Each cluster the run's layout draws, in visual order, from `origin`.
     clusters: Vec<ClusterPaint>,
     foreground: Option<(u8, u8, u8)>,
     bold: bool,
@@ -871,9 +874,11 @@ enum NodePaint {
   None,
 }
 
-/// Each cluster the text `node`, laid out across the cells its leaf placed it in,
-/// draws, at its cell from the corner of the node's border box, inside its border and
-/// padding as its leaf places its inline boxes, with its span (the index of its run among
+/// Where the text `node`, laid out across the cells its leaf placed it in, draws: the
+/// cell its flow starts at from the corner of the node's border box, inside its border
+/// and padding as its leaf places its inline boxes and scrolled with its content
+/// ([`Runtime::flow_content`](skene_layout::runtime::Runtime::flow_content)), and each
+/// cluster it draws at its cell from there, with its span (the index of its run among
 /// `source`'s), its run's scale and whether `selection`, a range of `source`'s clusters,
 /// holds it.
 fn cluster_paints(
@@ -881,36 +886,33 @@ fn cluster_paints(
   node: NodeId,
   source: &Source,
   selection: Option<(usize, usize)>,
-) -> Vec<ClusterPaint> {
+) -> ((isize, isize), Vec<ClusterPaint>) {
+  let content = records.runtime.flow_content(node);
+  let origin = (cells_at(content.origin.x), cells_at(content.origin.y));
   let Some(flow) = records.runtime.flow_of(node)
   else {
-    return Vec::new();
+    return (origin, Vec::new());
   };
-  let content = records.flow_content(node);
-  let (column, row) = (whole(content.origin.x), whole(content.origin.y));
   let laid = flow.laid(content);
   let text = flow.flow().text();
   let runs: Vec<NodeId> = source.runs().map(|(run, _)| run).collect();
   let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();
-
-  drawn(&laid, text, &TextIndex::new(text))
+  let clusters = drawn(&laid, text, &TextIndex::new(text))
     .into_iter()
     .filter_map(|drawn| {
       let (run, cluster) = source.at_flow(drawn.at)?;
       let span = runs.iter().position(|known| *known == run)?;
 
       Some(ClusterPaint {
-        drawn: DrawnCluster {
-          column: drawn.column + column,
-          top: drawn.top + row,
-          ..drawn
-        },
+        drawn,
         span: u16::try_from(span).unwrap_or(0),
         scale: scales[span],
         selected: selection.is_some_and(|(from, to)| cluster >= from && cluster < to),
       })
     })
-    .collect()
+    .collect();
+
+  (origin, clusters)
 }
 
 /// The border paint of a resolved box style: in its color, the terminal's own ink where
@@ -919,7 +921,7 @@ fn border_paint(records: &Records, node: NodeId) -> Option<BorderPaint> {
   let style = &records
     .runtime
     .record(node)?
-    .kind
+    .kind()
     .box_record()?
     .cache
     .as_ref()?
@@ -975,7 +977,7 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
     return NodePaint::None;
   };
 
-  match &record.kind {
+  match record.kind() {
     Kind::Box(_) if records.runtime.is_paragraph(node) => {
       let source = Source::of(&records.runtime, node);
       let mut destinations = Vec::new();
@@ -987,7 +989,7 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
             destination,
             cache,
             ..
-          }) = records.runtime.record(run).map(|record| &record.kind)
+          }) = records.runtime.record(run).map(Record::kind)
           else {
             unreachable!("paragraph runs are runs");
           };
@@ -1009,8 +1011,12 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
         })
         .collect();
 
+      let (origin, clusters) =
+        cluster_paints(records, node, &source, records.selection_range(node));
+
       NodePaint::Paragraph {
-        clusters: cluster_paints(records, node, &source, records.selection_range(node)),
+        origin,
+        clusters,
         spans,
         links: destinations,
         boxes: records.runtime.inline_boxes(node),
@@ -1087,14 +1093,16 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
         .selectable
         .then(|| records.selection_range(node))
         .flatten();
+      let (origin, clusters) = cluster_paints(
+        records,
+        node,
+        &Source::of(&records.runtime, node),
+        selection,
+      );
 
       NodePaint::Text {
-        clusters: cluster_paints(
-          records,
-          node,
-          &Source::of(&records.runtime, node),
-          selection,
-        ),
+        origin,
+        clusters,
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
         decoration: CellDecoration::of(style, facts.link),
@@ -1149,8 +1157,8 @@ fn paint_node(
     usize::try_from(frame.width).unwrap_or(0),
     usize::try_from(frame.height).unwrap_or(0),
   );
-  let run = matches!(record.kind, Kind::Run { .. });
-  let band = record.kind.box_style().map_or(0, |style| {
+  let run = matches!(record.kind(), Kind::Run { .. });
+  let band = record.kind().box_style().map_or(0, |style| {
     isize::try_from(ShadowPaint::band(style)).unwrap_or(0)
   });
   let (right, bottom) = (
@@ -1171,7 +1179,7 @@ fn paint_node(
   // A paragraph's inline boxes and an inline box's content paint wherever they reach,
   // past the frame they flow in, as overflow paints.
   let inline_box = matches!(
-    &record.kind,
+    record.kind(),
     Kind::Run { facts, .. } if facts.placement == RunPlacement::Embedded
   );
 
@@ -1215,6 +1223,7 @@ fn paint_node(
 
     match node_paint(records, node, focused) {
       NodePaint::Paragraph {
+        origin,
         clusters,
         spans,
         links,
@@ -1226,6 +1235,11 @@ fn paint_node(
           .runtime
           .flow_of(node)
           .map_or("", |flow| flow.flow().text());
+        let saved_clip = buffer.clip;
+
+        // A paragraph's runs and inline boxes are its content: clipped where it clips and
+        // scrolled with it, as a box's children are.
+        clip_content(records, buffer, node, (x, y), (width, height), border);
 
         for cluster in &clusters {
           let Some(paint) = spans.get(usize::from(cluster.span))
@@ -1241,8 +1255,8 @@ fn paint_node(
           } = cluster.drawn;
 
           buffer.put_advancing(
-            x + isize::try_from(column).expect("fits"),
-            y + isize::try_from(top).expect("fits"),
+            x + origin.0 + isize::try_from(column).expect("fits"),
+            y + origin.1 + isize::try_from(top).expect("fits"),
             &text[at..end],
             advance,
             cluster.scale,
@@ -1268,10 +1282,14 @@ fn paint_node(
           );
         }
 
+        let (content_x, content_y) = scrolled(records, node, (x, y));
+
         // An inline box paints its own layout, where it flows in the paragraph.
         for run in boxes {
-          paint_node(records, buffer, run, x, y);
+          paint_node(records, buffer, run, content_x, content_y);
         }
+
+        buffer.clip = saved_clip;
       }
       NodePaint::Box {
         background,
@@ -1339,6 +1357,7 @@ fn paint_node(
         }
       }
       NodePaint::Text {
+        origin,
         clusters,
         foreground,
         bold,
@@ -1363,8 +1382,8 @@ fn paint_node(
           } = cluster.drawn;
 
           buffer.put_advancing(
-            x + isize::try_from(column).expect("fits"),
-            y + isize::try_from(top).expect("fits"),
+            x + origin.0 + isize::try_from(column).expect("fits"),
+            y + origin.1 + isize::try_from(top).expect("fits"),
             &text[at..end],
             advance,
             cluster.scale,
@@ -1457,49 +1476,78 @@ fn paint_node(
     }
   }
 
-  if paragraph {
-    return;
-  }
+  if !paragraph {
+    let saved_clip = buffer.clip;
 
-  let saved_clip = buffer.clip;
+    clip_content(records, buffer, node, (x, y), (width, height), border);
 
-  if records.clips(node) {
-    let rect = (
-      x + border.0,
-      y + border.1,
-      x + isize::try_from(width).unwrap_or(isize::MAX) - border.2,
-      y + isize::try_from(height).unwrap_or(isize::MAX) - border.3,
-    );
+    let (child_x, child_y) = scrolled(records, node, (x, y));
 
-    buffer.clip = Some(match saved_clip {
-      Some(outer) => intersect(outer, rect),
-      None => rect,
-    });
-  }
+    for child in records.runtime.children(node) {
+      if records
+        .runtime
+        .record(child)
+        .is_some_and(Record::is_overlay)
+      {
+        continue;
+      }
 
-  let (scroll_x, scroll_y) = records.scroll_offset(node);
-  let (child_x, child_y) = (
-    x - isize::try_from(scroll_x).unwrap_or(0),
-    y - isize::try_from(scroll_y).unwrap_or(0),
-  );
-
-  for child in records.runtime.children(node) {
-    if records
-      .runtime
-      .record(child)
-      .is_some_and(Record::is_overlay)
-    {
-      continue;
+      paint_node(records, buffer, child, child_x, child_y);
     }
 
-    paint_node(records, buffer, child, child_x, child_y);
+    buffer.clip = saved_clip;
   }
-
-  buffer.clip = saved_clip;
 
   if records.is_scrollable(node) {
     draw_scrollbars(records, buffer, node, x, y, width, height, border);
   }
+}
+
+/// Cuts `buffer`'s clip to the padding box of `node`, at the cell `(x, y)` and `width` by
+/// `height` cells inside `border`, where it clips its content.
+fn clip_content(
+  records: &Records,
+  buffer: &mut Buffer,
+  node: NodeId,
+  (x, y): (isize, isize),
+  (width, height): (usize, usize),
+  border: (isize, isize, isize, isize),
+) {
+  if !records.clips(node) {
+    return;
+  }
+
+  let rect = (
+    x + border.0,
+    y + border.1,
+    x + isize::try_from(width).unwrap_or(isize::MAX) - border.2,
+    y + isize::try_from(height).unwrap_or(isize::MAX) - border.3,
+  );
+
+  buffer.clip = Some(match buffer.clip {
+    Some(outer) => intersect(outer, rect),
+    None => rect,
+  });
+}
+
+/// The cell the content of `node`, at the cell `(x, y)`, is laid out from: moved back by
+/// its scroll offsets.
+fn scrolled(records: &Records, node: NodeId, (x, y): (isize, isize)) -> (isize, isize) {
+  let (scroll_x, scroll_y) = records.scroll_offset(node);
+
+  (
+    x - isize::try_from(scroll_x).unwrap_or(0),
+    y - isize::try_from(scroll_y).unwrap_or(0),
+  )
+}
+
+/// The cell a length of `cells` from a frame's origin lands on.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "a length in cells stays far inside isize"
+)]
+const fn cells_at(cells: f32) -> isize {
+  cells.round() as isize
 }
 
 /// The cell a reach of `cells` before a frame's origin starts at.
@@ -1662,7 +1710,7 @@ fn draw_scrollbars(
   let style = records
     .runtime
     .record(node)
-    .and_then(|record| record.kind.box_style());
+    .and_then(|record| record.kind().box_style());
   let bar = BarStyle {
     glyphs: style
       .and_then(|style| style.ext.scrollbar_glyphs)
@@ -2095,7 +2143,7 @@ pub(crate) fn run_scale(records: &Records, node: NodeId) -> CellScale {
     return CellScale::ONE;
   }
 
-  match records.runtime.record(node).map(|record| &record.kind) {
+  match records.runtime.record(node).map(Record::kind) {
     Some(Kind::Run { cache, .. }) => {
       text::scale_of(cache.as_ref().and_then(|cache| cache.style.ext.size))
     }
@@ -2325,7 +2373,7 @@ pub(crate) fn changed_columns(
 
 /// Whether the control `node` is a text entry; `None` where it is no control.
 pub(crate) fn control_entry(records: &Records, node: NodeId) -> Option<bool> {
-  match records.runtime.record(node)?.kind {
+  match records.runtime.record(node)?.kind() {
     Kind::Control { native, .. } => Some(native.is_some_and(NativeElement::is_text_entry)),
     _ => None,
   }

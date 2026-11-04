@@ -160,7 +160,7 @@ impl Records {
     self.hovered().iter().find_map(|node| {
       let record = self.runtime.record(*node)?;
 
-      if let Some(style) = record.kind.box_style()
+      if let Some(style) = record.kind().box_style()
         && let Some(cursor) = style.cursor
       {
         return Some(cursor);

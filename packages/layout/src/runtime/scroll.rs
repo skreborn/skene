@@ -4,7 +4,7 @@
 //! notification their scroll handlers hear, and the node a frame scrolls into view with
 //! the offsets that reveal it.
 
-use skene_foundation::{Axes, NodeId, Overflow, Point, Rect, ScrollEvent, Size, notify_scroll};
+use skene_foundation::{Axes, Inset, NodeId, Overflow, Point, ScrollEvent, Size, notify_scroll};
 
 use super::{Drawn, Runtime};
 
@@ -52,6 +52,20 @@ impl<P: Drawn> Runtime<P> {
     let limits = self.scroll_limits(node);
 
     Point::new(offset.x.min(limits.width), offset.y.min(limits.height))
+  }
+
+  /// The offsets `node`'s content is drawn and hit shifted by: its scroll offsets
+  /// ([`scroll_offset`](Self::scroll_offset)), in whole units where the platform's layout
+  /// rounds ([`Drawn::ROUNDED`]).
+  pub fn scroll_shift(&self, node: NodeId) -> Point<f32> {
+    let offset = self.scroll_offset(node);
+
+    if P::ROUNDED {
+      Point::new(offset.x.round(), offset.y.round())
+    }
+    else {
+      offset
+    }
   }
 
   /// A node's maximum scroll offsets, from the last computed layout, in whole units where
@@ -191,61 +205,64 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// The scroll offsets each scrollable laid-out ancestor of `node` takes to show it,
-  /// nearest first, as the last layout placed them, holding only those that move. A run
-  /// flowing in a paragraph is shown as its paragraph.
+  /// nearest first, as the last layout and the index of window rectangles
+  /// ([`frames`](Self::frames)) place them, holding only those that move. A run flowing
+  /// in a paragraph is shown as its paragraph. The ancestors end at the open overlay
+  /// `node` lies in, which the window places, so nothing beneath an overlay scrolls to show
+  /// what it holds.
   ///
   /// Each ancestor scrolls by as little as shows the target between its near and its far
   /// border, within its padding box; a target larger than that shows from its start.
   pub fn reveal_offsets(&self, node: NodeId) -> Vec<(NodeId, Point<f32>)> {
-    let node = self.laid_owner(node);
-    let target = self
-      .tree
-      .layout(node)
-      .map_or_else(Rect::default, |layout| layout.rect);
-    let mut relative = target.origin;
+    let frames = self.frames();
+    let Some(frame) = frames.get(self.laid_owner(node))
+    else {
+      return Vec::new();
+    };
+    let mut target = frame.rect;
     let mut adjusted = Vec::new();
-    let mut current = self.layout_parent(node);
+    let mut current = frame.parent;
 
-    while let Some(ancestor) = current {
-      let (frame, border) = self
-        .tree
-        .layout(ancestor)
-        .map_or_else(Default::default, |layout| (layout.rect, layout.border));
-      let mut offset = self.scroll_offset(ancestor);
+    while let Some(index) = current {
+      let ancestor = &frames.entries()[index];
 
-      if self.is_scrollable(ancestor) {
-        let limits = self.scroll_limits(ancestor);
-        let next = Point::new(
-          fit_axis(
-            offset.x,
-            relative.x,
-            target.size.width,
-            frame.size.width,
-            (border.start, border.end),
-            limits.width,
-          ),
-          fit_axis(
-            offset.y,
-            relative.y,
-            target.size.height,
-            frame.size.height,
-            (border.top, border.bottom),
-            limits.height,
-          ),
-        );
+      current = ancestor.parent;
 
-        if next != offset {
-          adjusted.push((ancestor, next));
-        }
-
-        offset = next;
+      if !self.is_scrollable(ancestor.node) {
+        continue;
       }
 
-      relative = Point::new(
-        relative.x + frame.origin.x - offset.x,
-        relative.y + frame.origin.y - offset.y,
+      let border = self
+        .tree
+        .layout(ancestor.node)
+        .map_or(Inset::ZERO, |layout| layout.border);
+      let offset = self.scroll_offset(ancestor.node);
+      let shift = self.scroll_shift(ancestor.node);
+      let limits = self.scroll_limits(ancestor.node);
+      let corner = ancestor.rect.origin;
+      let next = Point::new(
+        fit_axis(
+          offset.x,
+          target.origin.x - corner.x + shift.x,
+          target.size.width,
+          ancestor.rect.size.width,
+          (border.start, border.end),
+          limits.width,
+        ),
+        fit_axis(
+          offset.y,
+          target.origin.y - corner.y + shift.y,
+          target.size.height,
+          ancestor.rect.size.height,
+          (border.top, border.bottom),
+          limits.height,
+        ),
       );
-      current = self.layout_parent(ancestor);
+
+      if next != offset {
+        adjusted.push((ancestor.node, next));
+        target = target.translate(Point::new(offset.x - next.x, offset.y - next.y));
+      }
     }
 
     adjusted

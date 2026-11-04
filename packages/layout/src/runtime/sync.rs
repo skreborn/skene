@@ -135,9 +135,10 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// The content box the text node `node` lays its flow out in, from the corner of its
-  /// border box: inside its border and padding as the last layout places them, as wide as
-  /// its content box before the layout rounds it, and of no height; empty at the corner
-  /// for a node outside the layout.
+  /// border box: inside its border and padding as the last layout places them, moved by
+  /// the offsets its content is scrolled by ([`scroll_shift`](Self::scroll_shift)), as
+  /// wide as its content box before the layout rounds it, and of no height; empty at the
+  /// corner for a node outside the layout.
   pub fn flow_content(&self, node: NodeId) -> Rect<f32> {
     let origin = self
       .tree
@@ -147,8 +148,12 @@ impl<P: Drawn> Runtime<P> {
       .tree
       .unrounded_layout(node)
       .map_or(0., |placed| placed.content_size().width);
+    let shift = self.scroll_shift(node);
 
-    Rect::new(origin, Size::new(width, 0.))
+    Rect::new(
+      Point::new(origin.x - shift.x, origin.y - shift.y),
+      Size::new(width, 0.),
+    )
   }
 
   /// The inline boxes of the paragraph `node`, in its flow's order, each a child of the

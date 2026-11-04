@@ -311,33 +311,22 @@ impl<P: Drawn> Kind<P> {
 }
 
 /// One realized node.
+///
+/// The runtime's state of the node is read through its accessors and written by the
+/// runtime alone; the platform's own state of it and its size reports are its fields.
 #[must_use]
 pub struct Record<P: Drawn> {
-  /// What the node is, with the facts it was created from, its resolution and its motion.
-  pub kind: Kind<P>,
-  /// A run's text, as last set.
-  pub text: String,
-  /// The node's slot values, as last written.
-  pub slots: FxHashMap<Slot, SlotLeaf<P>>,
+  pub(super) kind: Kind<P>,
+  pub(super) text: String,
+  pub(super) slots: FxHashMap<Slot, SlotLeaf<P>>,
+  pub(super) in_motion: bool,
+  pub(super) hidden: bool,
+  pub(super) scroll: Point<f32>,
+  pub(super) painted: Option<Rect<f32>>,
   /// The reports of the box's size.
   pub observers: Vec<Observer<P>>,
   /// The size last reported to the observers.
   pub reported: Option<Size<P::Scalar>>,
-  /// Whether a tween or an animation of the node was still running at the last
-  /// presentation ([`Runtime::write_styles`](super::Runtime::write_styles)), so the next one
-  /// presents it again.
-  pub in_motion: bool,
-  /// Whether the node was out of the display at the last presentation: inside a closed
-  /// overlay, or detached from the root.
-  pub hidden: bool,
-  /// The box's scroll offsets as last written, which a read clamps to what the last
-  /// layout allows ([`Runtime::scroll_offset`](super::Runtime::scroll_offset)); a text
-  /// entry's window is the platform's own ([`Drawn::entry_scroll`]).
-  pub scroll: Point<f32>,
-  /// What the node's paint covered in the window at the last paint that recorded the
-  /// covers ([`Runtime::take_damage`](super::Runtime::take_damage)); `None` where it
-  /// covered nothing.
-  pub painted: Option<Rect<f32>>,
   /// The platform's own state of the node ([`Drawn::Node`]).
   pub platform: P::Node,
 }
@@ -359,6 +348,60 @@ impl<P: Drawn> Record<P> {
       painted: None,
       platform,
     }
+  }
+
+  /// What the node is, with the facts it was created from, its resolution and its motion.
+  #[inline(always)]
+  pub const fn kind(&self) -> &Kind<P> {
+    &self.kind
+  }
+
+  /// A run's text, as last set.
+  #[inline(always)]
+  #[must_use]
+  pub const fn text(&self) -> &str {
+    self.text.as_str()
+  }
+
+  /// The node's slot values, as last written.
+  #[inline(always)]
+  #[must_use]
+  pub const fn slots(&self) -> &FxHashMap<Slot, SlotLeaf<P>> {
+    &self.slots
+  }
+
+  /// Whether a tween or an animation of the node was still running at the last
+  /// presentation ([`Runtime::write_styles`](super::Runtime::write_styles)), so the next one
+  /// presents it again.
+  #[inline(always)]
+  #[must_use]
+  pub const fn in_motion(&self) -> bool {
+    self.in_motion
+  }
+
+  /// Whether the node was out of the display at the last presentation: inside a closed
+  /// overlay, or detached from the root.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_hidden(&self) -> bool {
+    self.hidden
+  }
+
+  /// The box's scroll offsets as last written, which a read through the runtime clamps to
+  /// what the last layout allows ([`Runtime::scroll_offset`](super::Runtime::scroll_offset));
+  /// a text entry's window is the platform's own ([`Drawn::entry_scroll`]).
+  #[inline(always)]
+  pub const fn scroll(&self) -> Point<f32> {
+    self.scroll
+  }
+
+  /// What the node's paint covered in the window at the last paint that recorded the
+  /// covers ([`Runtime::take_damage`](super::Runtime::take_damage)); `None` where it
+  /// covered nothing.
+  #[inline(always)]
+  #[must_use]
+  pub const fn painted(&self) -> Option<Rect<f32>> {
+    self.painted
   }
 
   /// The layout mode of a box-like record.

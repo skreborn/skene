@@ -1967,9 +1967,19 @@ scroll handlers, an editor's window down its rows standing for its vertical offs
 through `Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's
 window along its clusters stays the terminal's. Focus reveals the node it moves to
 through the runtime (`Runtime::reveal`, `Runtime::reveal_offsets`), by both edges of
-each scroll box around it: the box scrolls by as little as shows the node between its
-near border and its far one, its padding box, the scrollport Chromium's `scrollIntoView`
-aligns to, so a node revealed toward an edge with no border lands against that edge.
+each scroll box around it as the index of window rectangles places them: the box scrolls
+by as little as shows the node between its near border and its far one, its padding box,
+the scrollport Chromium's `scrollIntoView` aligns to, so a node revealed toward an edge
+with no border lands against that edge; the boxes end at the open overlay the node lies
+in, which the window places, so a menu or a popup opened in a scrolled box takes focus
+without scrolling the box beneath it, as Chromium leaves the scrollers under a top-layer
+popover. A paragraph that scrolls or clips does so to its runs and its inline boxes
+together, as a box to its children: its flow is laid out in its content box moved by its
+offsets (`Runtime::flow_content`), and its paint, its hits and what shows of its runs
+are cut to its padding box where it clips. A record's runtime state (its kind and
+style, its scroll offsets, its visibility, its painted cover) is private to the runtime
+and read through accessors, so only the runtime's own writers change what the index is
+built from.
 Every on-screen rectangle the terminal reads, a node's origin, the cover a repaint
 damages, an open overlay's place and a pointer's position localized to a node, comes
 from the runtime's index of window rectangles (`Runtime::frames`), built afresh at its

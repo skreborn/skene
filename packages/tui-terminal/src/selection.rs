@@ -28,7 +28,7 @@ use skene_layout::runtime::Source;
 use crate::{
   Terminal,
   layout::cell_point,
-  records::{Drag, Kind, Records},
+  records::{Drag, Kind, Record, Records},
   text,
 };
 
@@ -80,14 +80,14 @@ impl Records {
       return None;
     }
 
-    match &record.kind {
-      Kind::Run { facts, .. } if facts.selectable && !record.text.is_empty() => {
-        Some(record.text.clone())
+    match record.kind() {
+      Kind::Run { facts, .. } if facts.selectable && !record.text().is_empty() => {
+        Some(record.text().to_owned())
       }
       Kind::Box(_) if self.runtime.is_paragraph(node) => {
         let selectable = self.runtime.paragraph_runs(node).iter().any(|run| {
           matches!(
-            self.runtime.record(*run).map(|record| &record.kind),
+            self.runtime.record(*run).map(Record::kind),
             Some(Kind::Run { facts, .. }) if facts.selectable
           )
         });
@@ -113,8 +113,7 @@ impl Records {
 
     Some(
       flow
-        .flow()
-        .nearest(self.flow_content(node), point)
+        .nearest(self.runtime.flow_content(node), point)
         .and_then(|hit| Source::of(&self.runtime, node).cluster_of(hit.node, hit.offset))
         .unwrap_or(0),
     )
@@ -126,7 +125,7 @@ impl Records {
     path.iter().rev().copied().find(|(node, _)| {
       self.runtime.is_paragraph(*node)
         || matches!(
-          self.runtime.record(*node).map(|record| &record.kind),
+          self.runtime.record(*node).map(Record::kind),
           Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Line
         )
     })
@@ -147,7 +146,7 @@ impl Records {
   pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(NodeId, String)> {
     let path = self.hit(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
-    let link_of = |run: NodeId| match &self.runtime.record(run)?.kind {
+    let link_of = |run: NodeId| match self.runtime.record(run)?.kind() {
       Kind::Run {
         facts, destination, ..
       } if facts.link => destination.clone().map(|url| (run, url)),
@@ -169,8 +168,7 @@ impl Records {
     self
       .runtime
       .flow_of(node)?
-      .flow()
-      .run_at(self.flow_content(node), cell_point(column, row))
+      .run_at(self.runtime.flow_content(node), cell_point(column, row))
       .and_then(|_| link_of(node))
   }
 
@@ -388,9 +386,9 @@ impl Records {
     while let Some(current) = stack.pop() {
       if let Some(record) = self.runtime.record(current)
         && current != node
-        && matches!(&record.kind, Kind::Run { facts, .. } if facts.placement != RunPlacement::Embedded)
+        && matches!(record.kind(), Kind::Run { facts, .. } if facts.placement != RunPlacement::Embedded)
       {
-        text.push_str(&record.text);
+        text.push_str(record.text());
       }
 
       stack.extend(self.runtime.children_reversed(current));

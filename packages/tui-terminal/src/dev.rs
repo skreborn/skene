@@ -243,7 +243,10 @@ fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
       .runtime
       .records()
       .filter_map(|(node, record)| {
-        let (x, y) = (whole_cells(record.scroll.x), whole_cells(record.scroll.y));
+        let (x, y) = (
+          whole_cells(record.scroll().x),
+          whole_cells(record.scroll().y),
+        );
 
         (x > 0 || y > 0).then_some((node, x, y))
       })

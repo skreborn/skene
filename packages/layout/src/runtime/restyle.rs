@@ -50,8 +50,6 @@ impl<P: Drawn> Runtime<P> {
       reduced: self.window().reported().reduced_motion,
     };
 
-    let moved = std::mem::take(&mut self.covers_moved);
-
     self.motion_active = false;
 
     nodes.retain(|node| {
@@ -62,12 +60,6 @@ impl<P: Drawn> Runtime<P> {
 
       self.present_one(*node, shown, generation, sample).is_some()
     });
-
-    if self.covers_moved {
-      self.invalidate_frames();
-    }
-
-    self.covers_moved |= moved;
 
     nodes
   }
@@ -148,7 +140,11 @@ impl<P: Drawn> Runtime<P> {
     let (repaint, active) = record.kind.present(resolved, &pass)?;
 
     record.in_motion = active;
-    self.covers_moved |= record.kind.box_style().map(Self::geometry_of) != geometry;
+
+    if record.kind.box_style().map(Self::geometry_of) != geometry {
+      self.move_geometry();
+    }
+
     self.motion_active |= active;
 
     if active {

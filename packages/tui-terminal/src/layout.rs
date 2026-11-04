@@ -6,7 +6,7 @@
 //! The runtime writes the layout tree from the scene and computes it; the terminal hands
 //! it only a text entry's native extent ([`Field::extent`](crate::records::Field::extent)).
 
-use skene_foundation::{Inset, Point, Rect, Size};
+use skene_foundation::{Inset, Point};
 
 use crate::records::PlainBox;
 
@@ -17,8 +17,12 @@ use crate::records::PlainBox;
 const INTO_CELL: f32 = 1. / 16.;
 
 /// The content box a text node lays its flow out in, `width` cells wide, from its origin.
-pub(crate) const fn content(width: usize) -> Rect<f32> {
-  Rect::new(Point::ZERO, Size::new(cells_of(width), 0.))
+#[cfg(test)]
+pub(crate) const fn content(width: usize) -> skene_foundation::Rect<f32> {
+  skene_foundation::Rect::new(
+    Point::ZERO,
+    skene_foundation::Size::new(cells_of(width), 0.),
+  )
 }
 
 /// The point standing for the cell (`column`, `row`) of a text node's flow.

@@ -1597,6 +1597,82 @@ fn a_padded_paragraph_paints_and_hits_its_text_inside_its_padding() {
   });
 }
 
+/// A third party's paragraph one row tall holding a line break and then a clickable
+/// inline box, its overflow `overflow`, counting the box's clicks into `clicks`.
+fn short_paragraph(overflow: Overflow, clicks: &Rc<Cell<u32>>) {
+  let counted = Rc::clone(clicks);
+
+  let _ = mount(move || {
+    let mut paragraph = LayoutBox::<PlainChild>::new(Layout::Document);
+
+    paragraph.style_mut().height = Some(Dimension::Length(1).into());
+    paragraph.style_mut().overflow = Some(overflow.into());
+
+    Column::new()
+      .add_child(
+        paragraph.add_child(Span::new("ab\n")).add_child(Span::view(
+          Container::new()
+            .handle_click(move || counted.set(counted.get() + 1))
+            .set_child(Text::new("X")),
+        )),
+      )
+      .into_any()
+      .build()
+  });
+}
+
+/// A paragraph that clips cuts its runs and inline boxes to its padding box, as a box
+/// clips its children: what overflows it paints nothing and takes no press.
+#[test]
+fn a_clipping_paragraph_clips_its_inline_boxes() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+
+    short_paragraph(Overflow::Clip, &clicks);
+
+    assert_eq!(testing::render_to_text(6, 3), "ab\n\n\n");
+
+    testing::trigger_mouse_click(0, 1);
+
+    assert_eq!(clicks.get(), 0, "the clipped box takes no press");
+  });
+}
+
+/// A paragraph that scrolls moves its runs and its inline boxes together, as a scrolled
+/// box moves its children: the box paints and takes a press where it is drawn.
+#[test]
+fn a_scrolled_paragraph_moves_its_inline_boxes_with_its_runs() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+
+    short_paragraph(Overflow::ScrollIfNeeded, &clicks);
+
+    let unscrolled = testing::render_to_text(6, 3);
+
+    assert!(unscrolled.starts_with("ab"), "{unscrolled:?}");
+    assert!(!unscrolled.contains('X'), "{unscrolled:?}");
+
+    testing::trigger_mouse_click(0, 0);
+
+    assert_eq!(clicks.get(), 0, "the run above the box is not the box");
+
+    testing::trigger_mouse_scroll(0, 0, 0, 1);
+
+    let scrolled = testing::render_to_text(6, 3);
+
+    assert!(scrolled.starts_with('X'), "{scrolled:?}");
+    assert!(!scrolled.contains("ab"), "{scrolled:?}");
+
+    testing::trigger_mouse_click(0, 1);
+
+    assert_eq!(clicks.get(), 0, "nothing is drawn below the paragraph");
+
+    testing::trigger_mouse_click(0, 0);
+
+    assert_eq!(clicks.get(), 1, "the box takes a press where it is drawn");
+  });
+}
+
 /// A frame reports a box's laid-out size to a handle measuring it, and again as the
 /// terminal resizes it.
 #[test]

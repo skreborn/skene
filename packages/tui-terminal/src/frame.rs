@@ -237,7 +237,7 @@ fn render_backdrops(records: &mut Records) {
     .runtime
     .records()
     .filter_map(|(node, record)| {
-      let cache = record.kind.box_record()?.cache.as_ref()?;
+      let cache = record.kind().box_record()?.cache.as_ref()?;
       let key = BackdropKey::of(&cache.style, records.node_size(node), cell_pixels, ink);
       let held = record
         .platform

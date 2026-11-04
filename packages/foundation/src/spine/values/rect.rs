@@ -38,6 +38,12 @@ impl Rect<f32> {
       && point.y < self.origin.y + self.size.height
   }
 
+  /// Whether the rectangle has extent: it is wider and taller than nothing.
+  #[must_use]
+  pub const fn has_extent(self) -> bool {
+    self.size.width > 0. && self.size.height > 0.
+  }
+
   /// The rectangle both `self` and `other` cover, of no extent where they do not meet.
   pub const fn intersect(self, other: Self) -> Self {
     let start = Point::new(
@@ -111,7 +117,8 @@ mod tests {
     Rect::new(Point::new(x, y), Size::new(width, height))
   }
 
-  /// Two rectangles intersect in what both cover, of no extent where they do not meet,
+  /// Two rectangles intersect in what both cover, of no extent where they do not meet or
+  /// only touch,
   /// unite in the least rectangle covering both, grow and shrink by an inset edge by edge,
   /// shrinking to no extent at most, and move by a point.
   #[test]
@@ -120,6 +127,7 @@ mod tests {
 
     assert_eq!(a.intersect(rect(2., 1., 4., 4.)), rect(2., 1., 2., 2.));
     assert_eq!(a.intersect(rect(6., 5., 1., 1.)).size, Size::ZERO);
+    assert!(a.has_extent() && !a.intersect(rect(4., 0., 1., 1.)).has_extent());
     assert_eq!(a.union(rect(2., -1., 4., 2.)), rect(0., -1., 6., 4.));
     assert_eq!(a.inflate(Inset::new(1, 2, 3, 4)), rect(-1., -2., 8., 9.));
     assert_eq!(a.deflate(Inset::new(1, 1, 1, 0)), rect(1., 1., 2., 2.));

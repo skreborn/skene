@@ -116,6 +116,14 @@ impl<E: TextEngine> Flow<E> {
     self.text.run_at(self.content(content), point)
   }
 
+  /// The run nearest `point` in the flow laid out in a content box at `content`, across
+  /// the width it measures and places at, and the byte a caret placed there stands
+  /// before ([`TextFlow::nearest`]).
+  #[must_use]
+  pub fn nearest(&self, content: Rect<f32>, point: Point<f32>) -> Option<RunHit<NodeId>> {
+    self.text.nearest(self.content(content), point)
+  }
+
   /// The flow laid out in a content box at `content`, across the width it measures and
   /// places at, its first line's top at the content box's top.
   pub fn laid(&self, content: Rect<f32>) -> <E::Paragraph as Paragraph>::Laid {

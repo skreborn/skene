@@ -259,7 +259,7 @@ mod tests {
         .runtime
         .record(node)
         .expect("a mounted node has a record")
-        .kind
+        .kind()
         .box_record()
         .map(|inner| inner.facts.decorated);
 

@@ -94,10 +94,9 @@ impl Records {
   )]
   pub(crate) fn field_inset(&self, node: NodeId) -> (i64, i64) {
     self.runtime.tree().layout(node).map_or((0, 0), |layout| {
-      (
-        (layout.border.start + layout.padding.start) as i64,
-        (layout.border.top + layout.padding.top) as i64,
-      )
+      let origin = layout.content_origin();
+
+      (origin.x as i64, origin.y as i64)
     })
   }
 

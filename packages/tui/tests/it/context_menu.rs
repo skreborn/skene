@@ -3,8 +3,9 @@
 //! items, an item's shortcut runs it from the served view, the menu key opens it at the
 //! focused node, a link flowing in a paragraph where its paragraph draws it, a standard
 //! item follows the clipboard the launch offers, the deepest menu along the path wins,
-//! `Escape` closes it before touching the selection, and the standard menu keeps an
-//! entry's selection while it acts on it.
+//! `Escape` closes it before touching the selection, the standard menu keeps an entry's
+//! selection while it acts on it, and a menu opened in a scrolled box leaves the box
+//! scrolled where it was.
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -527,6 +528,56 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
     assert!(
       !testing::render_to_text(30, 8).contains("one"),
       "Escape closes it"
+    );
+  });
+}
+
+/// A menu opened inside a scrolled box takes focus without scrolling the box beneath it:
+/// the window places the menu, so the view it opened on stays where it was scrolled to.
+#[test]
+fn a_menu_opened_in_a_scrolled_box_keeps_the_box_where_it_is() {
+  with_platform(|| {
+    let _ = mount(|| {
+      Container::new()
+        .set_height(4)
+        .set_overflow(Overflow::ScrollIfNeeded)
+        .set_child(
+          Column::new()
+            .set_children(
+              ["a", "b", "c", "d", "e", "f", "g", "h"]
+                .into_iter()
+                .map(|row| Text::new(format!("row {row}")).into_any())
+                .collect::<Vec<_>>(),
+            )
+            .add_child(
+              ContextMenu::new()
+                .set_items([MenuEntry::new("open")])
+                .set_child(BasicButton::new(Activate::new()).set_label("target")),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(30, 10);
+
+    testing::trigger_key("Tab");
+
+    let revealed = testing::render_to_text(30, 10);
+
+    assert!(
+      revealed.contains("target") && !revealed.contains("row a"),
+      "{revealed}"
+    );
+
+    testing::trigger_key("Shift+F10");
+
+    let opened = testing::render_to_text(30, 10);
+
+    assert_eq!(items().len(), 1, "the menu opened: {opened}");
+    assert_eq!(testing::focused_node(), items().first().copied());
+    assert!(
+      opened.contains("target") && !opened.contains("row a"),
+      "the box stays scrolled to the button: {opened}"
     );
   });
 }

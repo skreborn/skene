@@ -7514,6 +7514,7 @@ pub struct skene_foundation::Rect<T>
 pub skene_foundation::Rect::origin: skene_foundation::Point<T>
 pub skene_foundation::Rect::size: skene_foundation::Size<T>
 impl skene_foundation::Rect<f32>
+pub const fn skene_foundation::Rect<f32>::contains(self, skene_foundation::Point<f32>) -> bool
 pub const fn skene_foundation::Rect<f32>::inflate(self, skene_foundation::Inset<f32>) -> Self
 pub const fn skene_foundation::Rect<f32>::intersect(self, Self) -> Self
 pub const fn skene_foundation::Rect<f32>::translate(self, skene_foundation::Point<f32>) -> Self

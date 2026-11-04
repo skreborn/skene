@@ -1168,7 +1168,7 @@ fn paint_node(
   );
 
   if !(shown && repainted) && (paragraph || inline_box) {
-    let (_, [reach_left, reach_top, reach_right, reach_bottom]) = records.reach_of(node);
+    let [reach_left, reach_top, reach_right, reach_bottom] = records.reach_of(node);
     let (left, top, right, bottom) = (
       cells_before(reach_left).min(-band),
       cells_before(reach_top).min(-band),

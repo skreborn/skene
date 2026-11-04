@@ -17,7 +17,6 @@ pub(crate) use self::{
   environment::{Contrast, OwnColors},
   field::{EntryEditor, Field, Visible},
   frames::FRAME_INTERVAL,
-  geometry::CellFrame,
   input::{AUTOSCROLL_INTERVAL, CELL_CENTER, Drag, Press, SCROLL_GESTURE, ScrollLatch},
 };
 use crate::{Clipboard, Terminal, detect::Palette, paint::Buffer, selection::Selection};

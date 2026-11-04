@@ -1,8 +1,9 @@
 //! The drawn runtime's index of window rectangles: every laid-out node's border box in
 //! its window, the cover its paint damages, the reach a hit takes it at, the clip what
 //! shows of it is cut to and whether it takes hits, in paint order, each open overlay's
-//! subtree placed where the runtime places it; and the damage the next paint repaints,
-//! as nodes and the rectangles of the window they cover.
+//! subtree placed where the runtime places it; the topmost node at a point, hit over
+//! it; and the damage the next paint repaints, as nodes and the rectangles of the window
+//! they cover.
 
 use skene_foundation::{Inset, NodeId, NodeMap, Point, Rect, RunPlacement, Scene, Size};
 use smallvec::SmallVec;
@@ -24,8 +25,8 @@ pub struct Frame {
   /// reaches ([`Drawn::reach`]): what a repaint of it damages; `None` for a node of no
   /// extent.
   pub cover: Option<Rect<f32>>,
-  /// Where a hit may take it or what it holds in the window: its border box united with
-  /// its scrollable overflow.
+  /// Where a hit may take it or what it holds in the window: its border box, united with
+  /// its scrollable overflow where it does not clip it.
   pub reach: Rect<f32>,
   /// What shows of it in the window: the padding boxes of every laid-out node above it in
   /// its layer that clips, intersected; `None` where none does.
@@ -33,6 +34,9 @@ pub struct Frame {
   /// Whether it takes hits: neither it nor a laid-out node above it in its layer is
   /// invisible.
   pub hits: bool,
+  /// Whether it lays its runs out as one paragraph, a hit inside it resolved against its
+  /// flow rather than its entries ([`Frames::hit`]).
+  pub paragraph: bool,
   /// The index of its laid-out parent in its layer; `None` for the root and for an open
   /// overlay.
   pub parent: Option<usize>,
@@ -145,6 +149,104 @@ impl Frames {
     self.get(node)?.cover
   }
 
+  /// The topmost node at `point` in the window, `None` where the point hits nothing:
+  /// each open overlay's layer from the last opened, nothing beneath the topmost modal,
+  /// then the root's flow.
+  ///
+  /// Within its layer the node is the deepest of the topmost subtree, later children above
+  /// earlier ones and above their parent: an entry that takes hits and whose border box
+  /// holds the point within its clip, a box that does not clip passing hits on wherever
+  /// what it holds reaches. A paragraph's entry stands for its runs and inline boxes:
+  /// `within` answers the node the point hits inside it, topmost first, and the paragraph
+  /// takes the hit itself where `within` answers `None` and its border box holds the
+  /// point.
+  pub fn hit(
+    &self,
+    point: Point<f32>,
+    mut within: impl FnMut(&Frame) -> Option<NodeId>,
+  ) -> Option<NodeId> {
+    for layer in self.layers.iter().rev() {
+      if let Some(node) = self.scan(layer.start..layer.end, point, &mut within) {
+        return Some(node);
+      }
+
+      if layer.modal {
+        return None;
+      }
+    }
+
+    self.scan(0..self.flow_len(), point, &mut within)
+  }
+
+  /// The topmost node at `point` among `node` and the subtree beneath it, as
+  /// [`hit`](Self::hit) finds it in a layer; `None` where the point hits none of it or
+  /// `node` has no entry.
+  pub fn hit_subtree(
+    &self,
+    node: NodeId,
+    point: Point<f32>,
+    mut within: impl FnMut(&Frame) -> Option<NodeId>,
+  ) -> Option<NodeId> {
+    let Some(Slot::Entry(index)) = self.slots.get(node)
+    else {
+      return None;
+    };
+
+    self.scan(*index..self.entries[*index].end, point, &mut within)
+  }
+
+  /// The topmost node at `point` among the entries of `range`, a subtree or a run of
+  /// sibling subtrees: the last entry in paint order that takes the point, a subtree
+  /// passed over where its reach or its clip misses the point, and each paragraph after it
+  /// asked of `within`, the last first.
+  fn scan(
+    &self,
+    range: std::ops::Range<usize>,
+    point: Point<f32>,
+    within: &mut impl FnMut(&Frame) -> Option<NodeId>,
+  ) -> Option<NodeId> {
+    let mut topmost = None;
+    let mut paragraphs = SmallVec::<[usize; 4]>::new();
+    let mut index = range.start;
+
+    while index < range.end {
+      let frame = &self.entries[index];
+
+      if !frame.hits
+        || !frame.reach.contains(point)
+        || frame.clip.is_some_and(|clip| !clip.contains(point))
+      {
+        index = frame.end;
+
+        continue;
+      }
+
+      if frame.paragraph {
+        paragraphs.push(index);
+        index = frame.end;
+
+        continue;
+      }
+
+      if frame.rect.contains(point) {
+        topmost = Some(index);
+        paragraphs.clear();
+      }
+
+      index += 1;
+    }
+
+    paragraphs
+      .into_iter()
+      .rev()
+      .find_map(|index| {
+        let frame = &self.entries[index];
+
+        within(frame).or_else(|| frame.rect.contains(point).then_some(frame.node))
+      })
+      .or_else(|| topmost.map(|index| self.entries[index].node))
+  }
+
   /// The index of `source`'s window, built into `frames`' storage: the root's flow, then
   /// each open overlay's subtree in the order they opened, every overlay then placed
   /// against the entries already built, one whose anchor lies in a layer not yet placed
@@ -225,16 +327,16 @@ impl Frames {
         laid.placed.rect.size,
       );
       let hits = visit.hits && !laid.invisible;
+      let children = source.children(visit.node);
+      let paragraph = !children.is_empty() && source.is_paragraph(visit.node);
       let parent = if flowing {
         self.flows(visit, rect.origin);
 
         visit.parent
       }
       else {
-        Some(self.push(visit, &laid, rect, hits))
+        Some(self.push(visit, &laid, rect, (hits, paragraph)))
       };
-
-      let children = source.children(visit.node);
 
       if children.is_empty() {
         continue;
@@ -257,7 +359,7 @@ impl Frames {
       };
       let scroll = source.scroll(visit.node);
       let base = Point::new(rect.origin.x - scroll.x, rect.origin.y - scroll.y);
-      let flows = source.is_paragraph(visit.node) || (laid.inline != Inline::None && visit.flows);
+      let flows = paragraph || (laid.inline != Inline::None && visit.flows);
 
       pending.extend(children.into_iter().rev().map(|node| Visit {
         node,
@@ -298,9 +400,16 @@ impl Frames {
     }
   }
 
-  /// Pushes the entry of the node `visit` reaches, laid out as `laid` at `rect` and
-  /// taking hits where `hits` says, returning its index.
-  fn push(&mut self, visit: Visit, laid: &Laid, rect: Rect<f32>, hits: bool) -> usize {
+  /// Pushes the entry of the node `visit` reaches, laid out as `laid` at `rect`, taking
+  /// hits and laying its runs out as a paragraph where `hits` and `paragraph` say,
+  /// returning its index.
+  fn push(
+    &mut self,
+    visit: Visit,
+    laid: &Laid,
+    rect: Rect<f32>,
+    (hits, paragraph): (bool, bool),
+  ) -> usize {
     let index = self.entries.len();
     let extent = rect.size.width > 0. && rect.size.height > 0.;
     let overflow = laid.placed.overflow.translate(Point::new(
@@ -312,9 +421,15 @@ impl Frames {
       node: visit.node,
       rect,
       cover: extent.then(|| rect.inflate(laid.reach)),
-      reach: rect.union(overflow),
+      reach: if laid.clips {
+        rect
+      }
+      else {
+        rect.union(overflow)
+      },
       clip: visit.clip,
       hits,
+      paragraph,
       parent: visit.parent,
       end: index + 1,
     });
@@ -515,6 +630,79 @@ impl<P: Drawn> FrameSource for Runtime<P> {
 }
 
 impl<P: Drawn> Runtime<P> {
+  /// The path to the topmost node at `point` in the window ([`Frames::hit`]), each node
+  /// with its window origin ([`Frames::origin`]): the laid-out nodes from the root, or
+  /// from the open overlay the node lies in, as a top-layer element's chain ends at it,
+  /// down to the node; empty where the point hits nothing.
+  ///
+  /// A paragraph resolves the point to the run its flow draws there, else to the first of
+  /// its inline boxes whose border box holds it, else to what its inline boxes hold
+  /// wherever that reaches, the last box first; the groups around a run or a box join the
+  /// path, and a run or a group takes its paragraph's origin.
+  #[must_use]
+  pub fn hit(&self, point: Point<f32>) -> Vec<(NodeId, Point<f32>)> {
+    let frames = self.frames();
+    let Some(deepest) = frames.hit(point, |paragraph| {
+      self.hit_paragraph(frames, paragraph, point)
+    })
+    else {
+      return Vec::new();
+    };
+    let mut path = Vec::new();
+    let mut node = Some(deepest);
+
+    while let Some(current) = node {
+      path.push((current, frames.origin(current).unwrap_or(Point::ZERO)));
+      node = match frames.get(current) {
+        Some(frame) if !self.is_inline_box(current) => {
+          frame.parent.map(|parent| frames.entries()[parent].node)
+        }
+        _ => self.layout_parent(current),
+      };
+    }
+
+    path.reverse();
+
+    path
+  }
+
+  /// The node `point` hits inside the paragraph `paragraph` of `frames`, as
+  /// [`hit`](Self::hit) resolves it; `None` where it hits no run and nothing an inline
+  /// box holds.
+  fn hit_paragraph(&self, frames: &Frames, paragraph: &Frame, point: Point<f32>) -> Option<NodeId> {
+    let node = paragraph.node;
+    let flow = self.flow_of(node)?;
+    let boxes = self.inline_boxes(node);
+    let origin = paragraph.rect.origin;
+    let local = Point::new(point.x - origin.x, point.y - origin.y);
+    let inside = |boxed: NodeId| {
+      frames.hit_subtree(boxed, point, |inner| {
+        self.hit_paragraph(frames, inner, point)
+      })
+    };
+
+    if local.x >= 0. && local.y >= 0. {
+      let width = self
+        .tree
+        .unrounded_layout(node)
+        .map_or(0., |placed| placed.content_size().width);
+
+      if let Some(run) = flow.run_at(Rect::new(Point::ZERO, Size::new(width, 0.)), local) {
+        return Some(run.node);
+      }
+
+      if let Some(boxed) = boxes.iter().copied().find(|boxed| {
+        frames
+          .get(*boxed)
+          .is_some_and(|frame| frame.rect.contains(point))
+      }) {
+        return inside(boxed).or_else(|| self.layout_parent(boxed));
+      }
+    }
+
+    boxes.into_iter().rev().find_map(inside)
+  }
+
   /// The index of the window's rectangles ([`Frames`]) as the scene, the records and the
   /// last layout place them now: built afresh at the first read after a layout, a scroll
   /// offset, a box's reach or visibility, an overlay's opening or placement, or the
@@ -618,7 +806,7 @@ mod tests {
   use skene_foundation::{Inset, NodeId, Point, Rect, Size};
   use smallvec::SmallVec;
 
-  use super::{FrameSource, Frames, Inline, Laid};
+  use super::{Frame, FrameSource, Frames, Inline, Laid};
   use crate::Placed;
 
   /// Where a canned overlay is placed.
@@ -700,6 +888,22 @@ mod tests {
       self.add(parent, node, Some(laid));
       self.open.push((node, false));
       self.places.insert(node, place);
+    }
+
+    /// Makes the open overlay `node` modal.
+    fn make_modal(&mut self, node: NodeId) {
+      for (overlay, modal) in &mut self.open {
+        *modal |= *overlay == node;
+      }
+    }
+
+    /// The laid-out description of `node`, mutably.
+    fn laid_mut(&mut self, node: NodeId) -> &mut Laid {
+      self
+        .nodes
+        .get_mut(&node)
+        .and_then(|node| node.laid.as_mut())
+        .expect("a laid-out node")
     }
   }
 
@@ -938,5 +1142,349 @@ mod tests {
         .collect::<Vec<_>>(),
       [node(2), node(4)]
     );
+  }
+
+  /// The topmost node at `point` with no paragraph resolving anything.
+  fn hit(frames: &Frames, point: Point<f32>) -> Option<NodeId> {
+    frames.hit(point, |_| None)
+  }
+
+  /// The point `(x, y)`.
+  const fn at(x: f32, y: f32) -> Point<f32> {
+    Point::new(x, y)
+  }
+
+  /// Of two overlapping siblings the later takes the hit where they overlap, the earlier
+  /// where it shows alone, and the root where neither is.
+  #[test]
+  fn the_topmost_of_overlapping_siblings_takes_the_hit() {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 10., 5.)));
+    canned.add(ROOT, node(2), Some(laid(5., 2., 10., 5.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(hit(&frames, at(6.5, 3.5)), Some(node(2)));
+    assert_eq!(hit(&frames, at(1.5, 1.5)), Some(node(1)));
+    assert_eq!(hit(&frames, at(14.5, 6.5)), Some(node(2)));
+    assert_eq!(hit(&frames, at(30.5, 15.5)), Some(ROOT));
+    assert_eq!(hit(&frames, at(40.5, 15.5)), None);
+  }
+
+  /// A child takes the hit above its parent, and the parent where the child is not.
+  #[test]
+  fn a_child_takes_the_hit_above_its_parent() {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 10., 10.)));
+    canned.add(node(1), node(2), Some(laid(2., 2., 3., 3.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(hit(&frames, at(3.5, 3.5)), Some(node(2)));
+    assert_eq!(hit(&frames, at(8.5, 8.5)), Some(node(1)));
+  }
+
+  /// A clipping box clips what it holds at its padding box: a child is missed past it and
+  /// under its border, where the box itself takes the hit.
+  #[test]
+  fn a_clipped_child_is_missed_outside_the_clip() {
+    let mut canned = Canned::new();
+    let mut clipping = laid(0., 0., 10., 5.);
+
+    clipping.clips = true;
+    clipping.placed.border = Inset::all(1.);
+    canned.add(ROOT, node(1), Some(clipping));
+    canned.add(node(1), node(2), Some(laid(0., 0., 20., 3.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(hit(&frames, at(5.5, 1.5)), Some(node(2)));
+    assert_eq!(hit(&frames, at(0.5, 0.5)), Some(node(1)));
+    assert_eq!(hit(&frames, at(12.5, 1.5)), Some(ROOT));
+  }
+
+  /// What a box holds takes a hit wherever it reaches past a box that does not clip, and
+  /// nowhere past one that does.
+  #[test]
+  fn overflow_takes_a_hit_past_a_box_that_does_not_clip_it() {
+    for clips in [false, true] {
+      let mut canned = Canned::new();
+      let mut parent = laid(0., 0., 10., 5.);
+
+      parent.clips = clips;
+      parent.placed.overflow = rect(0., 0., 18., 5.);
+      canned.add(ROOT, node(1), Some(parent));
+      canned.add(node(1), node(2), Some(laid(8., 1., 10., 2.)));
+
+      let frames = Frames::build(&canned, Frames::default());
+      let expected = if clips { ROOT } else { node(2) };
+
+      assert_eq!(hit(&frames, at(15.5, 2.5)), Some(expected));
+      assert_eq!(hit(&frames, at(9.5, 2.5)), Some(node(2)));
+    }
+  }
+
+  /// An invisible box and everything beneath it are passed over for what lies under them.
+  #[test]
+  fn an_invisible_subtree_is_passed_over() {
+    let mut canned = Canned::new();
+    let mut hidden = laid(0., 0., 10., 10.);
+
+    hidden.invisible = true;
+    canned.add(ROOT, node(1), Some(laid(0., 0., 4., 4.)));
+    canned.add(ROOT, node(2), Some(hidden));
+    canned.add(node(2), node(3), Some(laid(1., 1., 5., 5.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(hit(&frames, at(2.5, 2.5)), Some(node(1)));
+    assert_eq!(hit(&frames, at(5.5, 5.5)), Some(ROOT));
+  }
+
+  /// Open overlays take hits above the flow, the last opened first.
+  #[test]
+  fn overlays_take_hits_topmost_first() {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 20., 10.)));
+    canned.add_open_overlay(
+      node(1),
+      node(2),
+      laid(0., 0., 6., 4.),
+      Place::At(at(2., 2.)),
+    );
+    canned.add_open_overlay(ROOT, node(3), laid(0., 0., 6., 4.), Place::At(at(5., 3.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(hit(&frames, at(6.5, 4.5)), Some(node(3)));
+    assert_eq!(hit(&frames, at(2.5, 2.5)), Some(node(2)));
+    assert_eq!(hit(&frames, at(15.5, 8.5)), Some(node(1)));
+  }
+
+  /// Nothing beneath the topmost modal takes a hit, the flow and the overlays opened before
+  /// it included, while the modal and an overlay opened above it still do.
+  #[test]
+  fn nothing_beneath_a_modal_takes_a_hit() {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 20., 10.)));
+    canned.add_open_overlay(ROOT, node(2), laid(0., 0., 4., 4.), Place::At(at(0., 0.)));
+    canned.add_open_overlay(ROOT, node(3), laid(0., 0., 6., 4.), Place::At(at(5., 3.)));
+    canned.add_open_overlay(ROOT, node(4), laid(0., 0., 3., 3.), Place::At(at(10., 6.)));
+    canned.make_modal(node(3));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(hit(&frames, at(6.5, 4.5)), Some(node(3)));
+    assert_eq!(hit(&frames, at(11.5, 7.5)), Some(node(4)));
+    assert_eq!(hit(&frames, at(1.5, 1.5)), None);
+    assert_eq!(hit(&frames, at(15.5, 1.5)), None);
+  }
+
+  /// A hit inside an overlay climbs its laid-out parents to the overlay and no farther,
+  /// and a subtree's hit looks in that subtree alone.
+  #[test]
+  fn the_path_is_cut_at_the_overlay() {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 20., 10.)));
+    canned.add_open_overlay(
+      node(1),
+      node(2),
+      laid(0., 0., 6., 4.),
+      Place::At(at(2., 2.)),
+    );
+    canned.add(node(2), node(3), Some(laid(1., 1., 2., 2.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+    let deepest = hit(&frames, at(3.5, 3.5)).expect("a hit");
+    let mut path = vec![deepest];
+
+    while let Some(parent) = frames
+      .get(path[path.len() - 1])
+      .and_then(|frame| frame.parent)
+    {
+      path.push(frames.entries()[parent].node);
+    }
+
+    assert_eq!(path, [node(3), node(2)]);
+    assert_eq!(
+      frames.hit_subtree(node(1), at(3.5, 3.5), |_| None),
+      Some(node(1))
+    );
+    assert_eq!(
+      frames.hit_subtree(node(2), at(3.5, 3.5), |_| None),
+      Some(node(3))
+    );
+  }
+
+  /// A paragraph's entry stands for what it holds: the scan enters none of it, the node
+  /// its flow resolves the point to takes the hit, else the paragraph where its box holds
+  /// the point, else what lies beneath it.
+  #[test]
+  fn a_paragraph_answers_through_its_flow() {
+    let mut canned = Canned::new();
+    let mut boxed = laid(2., 0., 3., 1.);
+    let mut paragraph = laid(0., 0., 10., 2.);
+
+    boxed.inline = Inline::Box;
+    paragraph.placed.overflow = rect(0., 0., 12., 2.);
+    canned.add(ROOT, node(1), Some(laid(0., 0., 20., 1.)));
+    canned.add(ROOT, node(2), Some(paragraph)).paragraph = true;
+    canned.add(node(2), node(3), Some(boxed));
+
+    let frames = Frames::build(&canned, Frames::default());
+    let resolved = |answer: Option<NodeId>, point| {
+      frames.hit(point, |frame| {
+        assert_eq!(frame.node, node(2));
+
+        answer
+      })
+    };
+
+    assert_eq!(resolved(Some(node(9)), at(3.5, 0.5)), Some(node(9)));
+    assert_eq!(resolved(None, at(3.5, 0.5)), Some(node(2)));
+    assert_eq!(resolved(None, at(11.5, 0.5)), Some(node(1)));
+    assert_eq!(resolved(Some(node(9)), at(11.5, 0.5)), Some(node(9)));
+  }
+
+  /// A source of pseudo-random numbers, the same from the same seed.
+  struct Lcg(u64);
+
+  impl Lcg {
+    /// The next number below `bound`.
+    fn below(&mut self, bound: u16) -> u16 {
+      self.0 = self
+        .0
+        .wrapping_mul(6_364_136_223_846_793_005)
+        .wrapping_add(1_442_695_040_888_963_407);
+
+      u16::try_from((self.0 >> 33) % u64::from(bound)).expect("below a u16")
+    }
+
+    /// Whether a one-in-`chance` draw comes up.
+    fn one_in(&mut self, chance: u16) -> bool {
+      self.below(chance) == 0
+    }
+  }
+
+  /// Adds a random subtree `depth` deep beneath `parent`, numbering its nodes from `next`,
+  /// each box's overflow reaching what it holds where it does not clip; the rectangle its
+  /// laid-out nodes reach from the corner of the laid-out box it sits in.
+  fn grow(
+    canned: &mut Canned,
+    random: &mut Lcg,
+    parent: NodeId,
+    next: &mut u32,
+    depth: u16,
+  ) -> Option<Rect<f32>> {
+    let id = node(*next);
+    let children = if depth > 0 { random.below(4) } else { 0 };
+
+    *next += 1;
+
+    if depth > 0 && random.one_in(8) {
+      canned.add(parent, id, None);
+
+      return (0..children)
+        .filter_map(|_| grow(canned, random, id, next, depth - 1))
+        .reduce(Rect::union);
+    }
+
+    let mut box_laid = laid(
+      f32::from(random.below(30)) - 5.,
+      f32::from(random.below(20)) - 5.,
+      f32::from(random.below(12) + 1),
+      f32::from(random.below(8) + 1),
+    );
+
+    box_laid.clips = random.one_in(4);
+    box_laid.invisible = random.one_in(10);
+
+    if box_laid.clips && random.one_in(2) {
+      box_laid.placed.border = Inset::all(1.);
+    }
+
+    let scroll = if box_laid.clips {
+      Point::new(f32::from(random.below(3)), f32::from(random.below(3)))
+    }
+    else {
+      Point::ZERO
+    };
+    let own = Rect::new(Point::ZERO, box_laid.placed.rect.size);
+    let location = box_laid.placed.rect.origin;
+
+    canned.add(parent, id, Some(box_laid)).scroll = scroll;
+
+    let held = (0..children)
+      .filter_map(|_| grow(canned, random, id, next, depth - 1))
+      .fold(own, Rect::union);
+    let reach = if box_laid.clips { own } else { held };
+    let border = box_laid.placed.border;
+
+    canned.laid_mut(id).placed.overflow = reach.translate(Point::new(-border.start, -border.top));
+
+    Some(reach.translate(location))
+  }
+
+  /// The topmost node at `point` found by looking at every entry: the last in paint order
+  /// that takes hits and whose border box holds the point within its clip.
+  fn unpruned(frames: &Frames, point: Point<f32>) -> Option<NodeId> {
+    let takes = |frame: &&Frame| {
+      frame.hits && frame.rect.contains(point) && frame.clip.is_none_or(|clip| clip.contains(point))
+    };
+
+    for layer in frames.layers().iter().rev() {
+      if let Some(frame) = frames.entries()[layer.start..layer.end]
+        .iter()
+        .rev()
+        .find(takes)
+      {
+        return Some(frame.node);
+      }
+
+      if layer.modal {
+        return None;
+      }
+    }
+
+    frames.entries()[..frames.flow_len()]
+      .iter()
+      .rev()
+      .find(takes)
+      .map(|frame| frame.node)
+  }
+
+  /// A hit that passes over every subtree its reach or its clip misses finds what looking
+  /// at every entry finds, at every point of random trees.
+  #[test]
+  fn a_pruned_hit_equals_an_unpruned_one() {
+    for seed in 0..64 {
+      let mut random = Lcg(seed);
+      let mut canned = Canned::new();
+      let mut next = 1;
+      let held = (0..4)
+        .filter_map(|_| grow(&mut canned, &mut random, ROOT, &mut next, 3))
+        .fold(rect(0., 0., 40., 20.), Rect::union);
+
+      canned.laid_mut(ROOT).placed.overflow = held;
+
+      let frames = Frames::build(&canned, Frames::default());
+
+      for y in -12_i16..60 {
+        for x in -12_i16..90 {
+          let point = at(f32::from(x) / 2. + 0.25, f32::from(y) / 2. + 0.25);
+
+          assert_eq!(
+            hit(&frames, point),
+            unpruned(&frames, point),
+            "seed {seed} at {point:?}"
+          );
+        }
+      }
+    }
   }
 }

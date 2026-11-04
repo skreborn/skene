@@ -29,15 +29,6 @@ impl CellFrame {
       height: rect.size.height.max(0.) as i64,
     }
   }
-
-  /// Whether the cell `point` lies inside the frame's size placed with its top left at the
-  /// cell `origin`, its location aside.
-  pub(crate) const fn covers(&self, origin: (i64, i64), point: (i64, i64)) -> bool {
-    point.0 >= origin.0
-      && point.0 < origin.0 + self.width
-      && point.1 >= origin.1
-      && point.1 < origin.1 + self.height
-  }
 }
 
 impl Records {
@@ -51,13 +42,12 @@ impl Records {
       .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
 
-  /// `node`'s frame in its layout parent, as [`frame`](Self::frame), and the
-  /// cells its laid-out content reaches from the frame's origin, left, top, right and
-  /// bottom: its own box, or farther where its content overflows it.
-  pub(crate) fn reach_of(&self, node: NodeId) -> (CellFrame, [f32; 4]) {
+  /// The cells `node`'s laid-out content reaches from its frame's origin, left, top, right
+  /// and bottom: its own box, or farther where its content overflows it.
+  pub(crate) fn reach_of(&self, node: NodeId) -> [f32; 4] {
     let Some(layout) = self.runtime.tree().layout(node)
     else {
-      return (CellFrame::default(), [0.; 4]);
+      return [0.; 4];
     };
     let size = layout.rect.size;
     let (left, top) = (
@@ -65,15 +55,12 @@ impl Records {
       layout.border.top + layout.overflow.origin.y,
     );
 
-    (
-      CellFrame::of(layout.rect),
-      [
-        left.min(0.),
-        top.min(0.),
-        (left + layout.overflow.size.width).max(size.width),
-        (top + layout.overflow.size.height).max(size.height),
-      ],
-    )
+    [
+      left.min(0.),
+      top.min(0.),
+      (left + layout.overflow.size.width).max(size.width),
+      (top + layout.overflow.size.height).max(size.height),
+    ]
   }
 
   /// A node's laid-out size, in cells.

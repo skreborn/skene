@@ -134,7 +134,7 @@ impl Records {
 
   /// The source position at the cell (`x`, `y`), when it lies on a selectable run.
   pub(crate) fn text_position_at(&self, x: u16, y: u16) -> Option<SelectionPoint> {
-    let path = self.hit_test(x, y);
+    let path = self.hit(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
     let offset = self.run_offset(node, i64::from(x) - origin_x, i64::from(y) - origin_y)?;
 
@@ -145,7 +145,7 @@ impl Records {
   /// the run's character—exact hits only, never clamped into a neighboring line; in a
   /// paragraph, the deepest run on the path that links, a group's link its spans'.
   pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(NodeId, String)> {
-    let path = self.hit_test(x, y);
+    let path = self.hit(x, y);
     let (node, (origin_x, origin_y)) = self.text_root(&path)?;
     let link_of = |run: NodeId| match &self.runtime.record(run)?.kind {
       Kind::Run {

@@ -4,13 +4,14 @@
 
 use skene_foundation::{
   NodeId,
+  Point,
   Rect,
   Size,
   text::{Paragraph, ParagraphStyle, TextEngine, TextStyle},
 };
 use taffy::prelude::AvailableSpace;
 
-use crate::{Leaf, TextFlow};
+use crate::{Leaf, RunHit, TextFlow};
 
 /// A text leaf of the drawn runtime: a paragraph's runs and inline boxes laid out as one
 /// text through the platform's engine `E`.
@@ -106,6 +107,13 @@ impl<E: TextEngine> Flow<E> {
   #[inline(always)]
   pub const fn flow(&self) -> &TextFlow<E> {
     &self.text
+  }
+
+  /// The run drawn at `point` in the flow laid out in a content box at `content`, across
+  /// the width it measures and places at ([`TextFlow::run_at`]).
+  #[must_use]
+  pub fn run_at(&self, content: Rect<f32>, point: Point<f32>) -> Option<RunHit<NodeId>> {
+    self.text.run_at(self.content(content), point)
   }
 
   /// The flow laid out in a content box at `content`, across the width it measures and

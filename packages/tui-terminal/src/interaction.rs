@@ -46,9 +46,9 @@ use skene_layout::runtime::Runtime;
 
 use crate::{
   Terminal,
-  layout::{cell_point, content},
+  layout::cell_point,
   paint::control_entry,
-  records::{CellFrame, Drag, Kind, Press, Record, Records, ScrollLatch},
+  records::{Drag, Press, Record, Records, ScrollLatch},
   with_records,
 };
 
@@ -105,278 +105,21 @@ impl Records {
   /// path hover and a press hold along.
   pub(crate) fn pointer_path(&self, x: u16, y: u16) -> Vec<NodeId> {
     self
-      .hit_test(x, y)
+      .hit(x, y)
       .last()
       .map(|(deepest, _)| self.runtime.ancestors(*deepest).into_iter().rev().collect())
       .unwrap_or_default()
   }
 
-  /// The path from the root to the deepest node containing the cell (`x`, `y`), each
-  /// with its absolute origin, against the last computed layout.
-  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(NodeId, (i64, i64))> {
-    let modal = self.topmost_modal();
-
-    // Overlays hit first, topmost first; below the topmost open modal nothing is
-    // hittable.
-    for overlay in self.runtime.open_overlays().iter().rev() {
-      let mut path = Vec::new();
-
-      if self.hit_overlay(*overlay, x, y, &mut path) {
-        return path;
-      }
-
-      if modal == Some(*overlay) {
-        return Vec::new();
-      }
-    }
-
-    let mut path = Vec::new();
-
-    self.hit_walk(
-      self.runtime.root(),
-      0,
-      0,
-      i64::from(x),
-      i64::from(y),
-      &mut path,
-    );
-
-    path
-  }
-
-  /// Descends into the deepest node drawn at the point, preferring later (topmost)
-  /// children, accumulating the path; `false` where neither the node nor anything
-  /// beneath it is.
-  fn hit_walk(
-    &self,
-    node: NodeId,
-    offset_x: i64,
-    offset_y: i64,
-    x: i64,
-    y: i64,
-    path: &mut Vec<(NodeId, (i64, i64))>,
-  ) -> bool {
-    let Some(record) = self.runtime.record(node)
-    else {
-      for child in self.runtime.children_reversed(node) {
-        if self.runtime.record(child).is_some_and(Record::is_overlay) {
-          continue;
-        }
-
-        if self.hit_walk(child, offset_x, offset_y, x, y, path) {
-          return true;
-        }
-      }
-
-      return false;
-    };
-
-    if record.is_invisible() {
-      return false;
-    }
-
-    let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(node);
-    let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
-    let contains = node == self.runtime.root() || frame.covers((origin_x, origin_y), (x, y));
-
-    // A box clipping its overflow keeps every hit beneath it inside it; any other's
-    // content takes a hit wherever it reaches, as a browser's does.
-    if !contains {
-      #[expect(
-        clippy::cast_precision_loss,
-        reason = "a cell offset stays far below the integers f32 holds exactly"
-      )]
-      let (cell_x, cell_y) = ((x - origin_x) as f32, (y - origin_y) as f32);
-      let reaches = cell_x >= reach_left
-        && cell_x < reach_right
-        && cell_y >= reach_top
-        && cell_y < reach_bottom;
-
-      if !reaches || self.clips(node) {
-        return false;
-      }
-    }
-
-    self.hit_reached(node, frame, (origin_x, origin_y), contains, x, y, path)
-  }
-
-  /// Descends into `node`, laid out to `frame` at `origin` and reached by the point,
-  /// `contains` where its frame holds it, accumulating the path; `false` where neither
-  /// its frame nor anything beneath it holds the point.
-  #[inline(never)]
-  #[expect(
-    clippy::too_many_arguments,
-    reason = "the walk's state, passed down as the walk itself takes it"
-  )]
-  fn hit_reached(
-    &self,
-    node: NodeId,
-    frame: CellFrame,
-    (origin_x, origin_y): (i64, i64),
-    contains: bool,
-    x: i64,
-    y: i64,
-    path: &mut Vec<(NodeId, (i64, i64))>,
-  ) -> bool {
-    let clips = self.clips(node);
-
-    path.push((node, (origin_x, origin_y)));
-
-    if self.runtime.is_paragraph(node) {
-      let hit = self.hit_paragraph(node, (origin_x, origin_y), x, y, path);
-
-      if !(contains || hit) {
-        path.pop();
-      }
-
-      return contains || hit;
-    }
-
-    let (left, top, right, bottom) = self.node_border(node);
-    let padding = CellFrame {
-      x: 0,
-      y: 0,
-      width: frame.width - left - right,
-      height: frame.height - top - bottom,
-    };
-
-    // A clipping box clips its children to its padding box, as it paints them.
-    if !clips || padding.covers((origin_x + left, origin_y + top), (x, y)) {
-      // A scrolled box shifts its children by its offsets.
-      let (scroll_x, scroll_y) = self.scroll_offset(node);
-      let (child_x, child_y) = (
-        origin_x - i64::from(scroll_x),
-        origin_y - i64::from(scroll_y),
-      );
-
-      // Later children paint on top, so they win the hit; overlays hit separately.
-      for child in self.runtime.children_reversed(node) {
-        if self.runtime.record(child).is_some_and(Record::is_overlay) {
-          continue;
-        }
-
-        if self.hit_walk(child, child_x, child_y, x, y, path) {
-          return true;
-        }
-      }
-    }
-
-    if !contains {
-      path.pop();
-    }
-
-    contains
-  }
-
-  /// Hits the runs of the paragraph `node`, at `origin`, under the point: the run drawn
-  /// there and the groups around it join the path from the outermost group to the leaf,
-  /// each at the paragraph's origin, and an inline box hits through its own layout, its
-  /// content wherever it reaches where no run or box is drawn at the point, as overflow
-  /// takes a hit; `true` where a run or a box's content was hit.
-  #[inline(never)]
-  fn hit_paragraph(
-    &self,
-    node: NodeId,
-    origin: (i64, i64),
-    x: i64,
-    y: i64,
-    path: &mut Vec<(NodeId, (i64, i64))>,
-  ) -> bool {
-    let Some(flow) = self.runtime.flow_of(node)
-    else {
-      return false;
-    };
-    let boxes = self.runtime.inline_boxes(node);
-    let drawn = match (usize::try_from(x - origin.0), usize::try_from(y - origin.1)) {
-      (Ok(column), Ok(row)) => flow
-        .flow()
-        .run_at(content(self.flow_width(node)), cell_point(column, row))
-        .map(|hit| hit.node)
-        .or_else(|| {
-          boxes.iter().copied().find(|run| {
-            self
-              .frame(*run)
-              .covers(self.node_location(*run), (x - origin.0, y - origin.1))
-          })
-        }),
-      _ => None,
-    };
-
-    if let Some(leaf) = drawn {
-      self.push_groups(node, leaf, origin, path);
-
-      if self.runtime.is_inline_box(leaf) {
-        self.hit_walk(leaf, origin.0, origin.1, x, y, path);
-      }
-      else {
-        path.push((leaf, origin));
-      }
-
-      return true;
-    }
-
-    // Beside every run and box, the topmost box whose content reaches the point.
-    for run in boxes.into_iter().rev() {
-      let mark = path.len();
-
-      self.push_groups(node, run, origin, path);
-
-      if self.hit_walk(run, origin.0, origin.1, x, y, path) {
-        return true;
-      }
-
-      path.truncate(mark);
-    }
-
-    false
-  }
-
-  /// Pushes the group runs between the paragraph `node` and its run `leaf` onto the
-  /// path, from the outermost, each at the paragraph's `origin`.
-  fn push_groups(
-    &self,
-    node: NodeId,
-    leaf: NodeId,
-    origin: (i64, i64),
-    path: &mut Vec<(NodeId, (i64, i64))>,
-  ) {
-    let mut chain: Vec<NodeId> = self
+  /// The path to the topmost node at the cell (`x`, `y`), each node with its on-screen
+  /// origin, as the runtime hits the point standing for the cell ([`Runtime::hit`]).
+  pub(crate) fn hit(&self, x: u16, y: u16) -> Vec<(NodeId, (i64, i64))> {
+    self
       .runtime
-      .ancestors(leaf)
+      .hit(cell_point(usize::from(x), usize::from(y)))
       .into_iter()
-      .skip(1)
-      .take_while(|ancestor| *ancestor != node)
-      .filter(|ancestor| {
-        matches!(
-          self.runtime.record(*ancestor).map(|record| &record.kind),
-          Some(Kind::Run { .. })
-        )
-      })
-      .collect();
-
-    chain.reverse();
-    path.extend(chain.into_iter().map(|run| (run, origin)));
-  }
-
-  /// Hits `overlay`'s subtree at its computed origin, accumulating the path.
-  pub(crate) fn hit_overlay(
-    &self,
-    overlay: NodeId,
-    x: u16,
-    y: u16,
-    path: &mut Vec<(NodeId, (i64, i64))>,
-  ) -> bool {
-    let (origin_x, origin_y) = self.screen_origin(overlay);
-    let (location_x, location_y) = self.node_location(overlay);
-
-    self.hit_walk(
-      overlay,
-      origin_x - location_x,
-      origin_y - location_y,
-      i64::from(x),
-      i64::from(y),
-      path,
-    )
+      .map(|(node, origin)| (node, screen_cell(origin)))
+      .collect()
   }
 
   /// A node's on-screen origin, as the runtime's index of window rectangles places it
@@ -507,7 +250,7 @@ impl Records {
     let (px, py) = (i64::from(x), i64::from(y));
     let (within_x, within_y) = self.pointer_within;
 
-    for (node, _) in self.hit_test(x, y).into_iter().rev() {
+    for (node, _) in self.hit(x, y).into_iter().rev() {
       if !self.is_scrollable(node) {
         continue;
       }
@@ -705,7 +448,7 @@ fn pointer_target(records: &Records, x: u16, y: u16) -> Option<(NodeId, (i64, i6
     return Some((captured, records.screen_origin(captured)));
   }
 
-  records.hit_test(x, y).last().copied()
+  records.hit(x, y).last().copied()
 }
 
 /// Dispatches a pointer move at (`x`, `y`), the terminal reporting `dragging` held: the
@@ -792,7 +535,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   }
 
   let (path, dismissed, modal_blocked) = records(|records| {
-    let path = records.hit_test(x, y);
+    let path = records.hit(x, y);
     let deepest = path
       .last()
       .map(|&(node, _)| node)
@@ -804,9 +547,10 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
       .filter(|&overlay| records.runtime.contains(overlay))
       .collect();
     let dismissed = Scene::<Terminal>::read(|scene| scene.dismissed_by_press(&overlays, deepest));
+    // The path starts at the overlay a press lands in.
     let inside_overlay = records
       .topmost_open_overlay()
-      .is_some_and(|(top, _)| records.hit_overlay(top, x, y, &mut Vec::new()));
+      .is_some_and(|(top, _)| path.first().is_some_and(|&(node, _)| node == top));
 
     // A press outside the topmost modal, and the overlays above it, reaches nothing.
     let blocked = records.topmost_modal().is_some() && path.is_empty();
@@ -1137,7 +881,7 @@ fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
 
   let over = records(|records| {
     records
-      .hit_test(x, y)
+      .hit(x, y)
       .last()
       .map(|&(node, _)| node)
       .filter(|node| records.runtime.contains(*node))
@@ -1256,7 +1000,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
 
   let under = records(|records| {
     records
-      .hit_test(x, y)
+      .hit(x, y)
       .last()
       .copied()
       .filter(|(node, _)| records.runtime.contains(*node))
@@ -1289,7 +1033,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
       _ => None,
     };
     let candidates: Vec<NodeId> = records
-      .hit_test(x, y)
+      .hit(x, y)
       .iter()
       .rev()
       .map(|(node, _)| *node)

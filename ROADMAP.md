@@ -24,15 +24,14 @@ in a code comment.
     itself, Linux and Windows need as well, since they too own their window; each
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
-    - What the terminal still keeps of its retained runtime (hit testing, focus,
-    capture, wheel latching, selection, the frames' placement of runs and inline boxes,
-    a paragraph's text content) moves into
-    the drawn runtime in `skene-layout`, beside the layout tree it already writes from
-    the scene and the restyle presenting into it, generic over the platform's scalar:
-    its frames hit through, clipped and scrolled as a browser's are, a paragraph's runs
-    and inline boxes placed for them by its flow, which the runtime already lays out,
-    and a paragraph's document selection and its text content kept once above the
-    engine, in the runtime, where each realization keeps them today. A drawn entry's key
+    - What the terminal still keeps of its retained runtime (focus, capture, wheel
+    latching, selection, the frames' placement of runs and inline boxes, a paragraph's
+    text content) moves into the drawn runtime in `skene-layout`, beside the layout
+    tree it already writes from the scene and the restyle presenting into it, generic
+    over the platform's scalar: a paragraph's runs and inline boxes placed for them by
+    its flow, which the runtime already lays out, and a paragraph's document selection
+    and its text content kept once above the engine, in the runtime, where each
+    realization keeps them today. A drawn entry's key
     default is written once there too, over the shared entry the scene keeps: the core's
     `Binding` table, run after the app's key handlers as a browser's `<input>` default
     runs (so never as a `TextEntry::on_key`, which would run before them), the
@@ -453,12 +452,15 @@ in a code comment.
     holds what a destroyed node covered and every cover that moved
     (`Runtime::take_damage`), so the rows they reach would do, but for an overlay's
     backdrop, which tints every row and is no node's cover;
-    a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
-    pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
+    a partial repaint still visits every child of a box, and a hit test, over the
+    runtime's `Frames` (`Runtime::hit`), every entry of its layer, passing over each
+    subtree its reach or its clip misses but reading every row of a list, where an index
+    by position would read only what lies at the point: a pointer move over 16k text
+    rows costs 1.17M instructions against an unchanged frame's 526k, where the walk that
+    built an owned `Placed` for every child it read cost 6.91M (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config
-    "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`),
-    each child a hit test reads building an owned `Placed`, scroll limits included,
-    about 22 instructions a row, 5% of the pointer move (2026-10-28); selection spans
+    "target.'cfg(all())'.rustflags = ['--cfg', 'skene_platform=\"terminal\"']"`,
+    2026-11-04); selection spans
     compute once per frame; clusters re-segment around an edit, and undo stores range
     diffs.
     - A paragraph of many inline boxes still costs the terminal a pass over the whole

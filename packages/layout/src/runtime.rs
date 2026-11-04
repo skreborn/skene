@@ -65,6 +65,14 @@
 //! visibility, an overlay's opening or placement, or the scene's structure moved, beside
 //! whether the covers moved since the platform last painted ([`Runtime::covers_moved`]).
 //!
+//! A point hits the topmost node over that index ([`Runtime::hit`]): each open overlay's
+//! layer from the last opened, nothing beneath the topmost modal, then the root's flow,
+//! later children above earlier ones, a box that does not clip passing hits on wherever
+//! what it holds reaches and one that clips cutting them at its padding box, and a
+//! paragraph resolving the point to the run its flow draws there or an inline box. The
+//! hit's path is the laid-out chain down to the node from the root, or from the overlay
+//! the node lies in.
+//!
 //! The runtime keeps what the next paint repaints as nodes and the rectangles of the
 //! window they cover: each node marked for repaint ([`Runtime::damage`]) and what each
 //! destroyed node covered at the last paint, every node's cover at the last paint kept in

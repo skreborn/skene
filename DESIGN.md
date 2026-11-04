@@ -29,16 +29,17 @@ window, `Frames`, the index of its window's rectangles (each laid-out node's bor
 the cover its paint damages, the reach a hit takes it at and the clip what shows of it
 is cut to, in paint order, each open overlay's subtree moved to where the runtime places
 it: pinned and moved back in, anchored below or above with a flip, or at one of seven
-window placements), the damage the next paint repaints as nodes and rectangles of the
-window (each damaged node's paint owner's cover at the last paint and now, every cover
-that moved, and what a destroyed node covered), which the platform collapses into its
-own granularity, and the environment the platform reports, behind the `Drawn` trait a
-drawn platform implements) and the text engine over Parley (`skene-parley`) on the
-foundation, the platforms on the foundation and, where they draw, on those two, each
-platform's realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with
-its facade over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants
-and sizes, naming no realization) on the foundation, each facade's Simple crate (its
-presets) on its facade, and the macros, the transport and the CLI beside them.
+window placements), the topmost node at a point hit over that index, the damage the next
+paint repaints as nodes and rectangles of the window (each damaged node's paint owner's
+cover at the last paint and now, every cover that moved, and what a destroyed node
+covered), which the platform collapses into its own granularity, and the environment the
+platform reports, behind the `Drawn` trait a drawn platform implements) and the text
+engine over Parley (`skene-parley`) on the foundation, the platforms on the foundation
+and, where they draw, on those two, each platform's realization a crate of its own
+(`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
+`skene-tui`), the Simple core (its palette, variants and sizes, naming no realization)
+on the foundation, each facade's Simple crate (its presets) on its facade, and the
+macros, the transport and the CLI beside them.
 
 **A facade per medium, one spine.** The web and the terminal are different media, not
 one medium with fallbacks: an app is written for each on purpose, and neither
@@ -2035,15 +2036,20 @@ device's.
 
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
 left click hits the topmost node drawn at its cell, content overflowing a box taking it
-unless the box clips its overflow, at its padding box, and runs its handlers through
-the spine's dispatch, a
-hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes a browser's
-pointer takes implied where none is set (the I-beam over selectable text and a text
-entry, the hand over a control or a link, the open hand over a slider and the closed
-one through a slider, scrollbar or caret drag), written once per change after the
-frame so that what changes under a still pointer changes the shape, and handed back to
-the terminal on exit—terminals without mouse reporting or pointer shapes degrade
-quietly. A pointer position is its cell's center
+unless the box clips its overflow, at its padding box, and runs its handlers through the
+spine's dispatch. The hit is the runtime's, over its frames (`Runtime::hit`, at the
+point standing for the cell): open overlays from the last opened, nothing beneath the
+topmost modal, later children above earlier ones, and a paragraph resolving the point to
+its run or inline box; its path is the laid-out chain from the root down to the node,
+stopping at the open overlay the node lies in as a top-layer element's chain stops at
+it, so a wheel over a popup never scrolls the boxes around its anchor, while hover holds
+along the scene's ancestors. A hovered node's `cursor` sets the pointer shape via OSC
+22, with the shapes a browser's pointer takes implied where none is set (the I-beam over
+selectable text and a text entry, the hand over a control or a link, the open hand over
+a slider and the closed one through a slider, scrollbar or caret drag), written once per
+change after the frame so that what changes under a still pointer changes the shape, and
+handed back to the terminal on exit—terminals without mouse reporting or pointer shapes
+degrade quietly. A pointer position is its cell's center
 unless the terminal reports pixels: where the platform reports the window's pixel size,
 the loop asks for SGR-Pixels (DECSET 1016) and queries the mode (a DECRPM reply the
 loop's parser reads for any mode), and from the reply that confirms it

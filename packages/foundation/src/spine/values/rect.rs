@@ -28,6 +28,16 @@ impl<T> Rect<T> {
 }
 
 impl Rect<f32> {
+  /// Whether `point` lies inside the rectangle: on or past its start edges, short of its
+  /// end edges.
+  #[must_use]
+  pub const fn contains(self, point: Point<f32>) -> bool {
+    point.x >= self.origin.x
+      && point.x < self.origin.x + self.size.width
+      && point.y >= self.origin.y
+      && point.y < self.origin.y + self.size.height
+  }
+
   /// The rectangle both `self` and `other` cover, of no extent where they do not meet.
   pub const fn intersect(self, other: Self) -> Self {
     let start = Point::new(
@@ -101,5 +111,19 @@ mod tests {
     assert_eq!(a.union(rect(2., -1., 4., 2.)), rect(0., -1., 6., 4.));
     assert_eq!(a.inflate(Inset::new(1, 2, 3, 4)), rect(-1., -2., 8., 9.));
     assert_eq!(a.translate(Point::new(-2., 5.)), rect(-2., 5., 4., 3.));
+  }
+
+  /// A rectangle holds a point on its start edges and short of its end edges, and none
+  /// where it has no extent.
+  #[test]
+  fn a_rectangle_holds_the_points_short_of_its_end_edges() {
+    let a = rect(1., 2., 3., 2.);
+
+    assert!(a.contains(Point::new(1., 2.)));
+    assert!(a.contains(Point::new(3.9, 3.9)));
+    assert!(!a.contains(Point::new(4., 3.)));
+    assert!(!a.contains(Point::new(2., 4.)));
+    assert!(!a.contains(Point::new(0.9, 2.)));
+    assert!(!rect(1., 1., 0., 2.).contains(Point::new(1., 1.5)));
   }
 }

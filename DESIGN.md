@@ -23,8 +23,9 @@ the web runs (`skene-layout`, whose `runtime` holds each node's record, the scen
 over them and the paragraph structure it reads, their style's resolution and its
 presentation over their motion on the frame clock, the layout tree it writes from the
 scene and computes, each node's taffy style and children synced there, the text leaf
-it lays a paragraph out as through the platform's engine, and the environment the
-platform reports, behind the `Drawn` trait a drawn platform implements) and the text
+it lays a paragraph out as through the platform's engine, each box's scroll offsets
+and the writes that move them, and the environment the platform reports, behind the
+`Drawn` trait a drawn platform implements) and the text
 engine over Parley (`skene-parley`) on the foundation, the platforms on the foundation
 and, where they draw, on those two, each platform's realization a crate of its own
 (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
@@ -1949,8 +1950,12 @@ and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) an
 are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by generic
 code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, whose
 records carry the terminal's per-node cell state (`Drawn::Node`, its `CellNode`, made
-from the node's spec with the record and dropped with it: a text entry's field, its
-scroll offsets, the cells it covers and what it paints beyond its style). Its
+from the node's spec with the record and dropped with it: a text entry's field, the
+cells it covers and what it paints beyond its style), beside each box's scroll offsets,
+which the runtime keeps, clamps and writes, notifying the box's scroll handlers, an
+editor's window down its rows standing for its vertical offset through
+`Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's window
+along its clusters stays the terminal's. Its
 `impl Realization` forwards to the runtime's adapter for everything that is no cell's: a
 node's record created and destroyed, its style, slots, control state and contents, a
 size observed, an overlay opened with the focus move it asks for, and a mount with the

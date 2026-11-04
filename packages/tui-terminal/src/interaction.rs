@@ -14,8 +14,8 @@ use skene_foundation::{
   MouseCursor,
   NamedKey,
   NodeId,
-  Overflow,
   Placement,
+  Point,
   PointerButton,
   PointerButtons,
   PointerEvent,
@@ -23,7 +23,6 @@ use skene_foundation::{
   PointerType,
   Prevented,
   Scene,
-  ScrollEvent,
   WheelUnit,
   dispatch_activation,
   dispatch_click,
@@ -42,9 +41,9 @@ use skene_foundation::{
   notify_dismiss,
   notify_focus_moved,
   notify_pointer_moved,
-  notify_scroll,
   start_drag,
 };
+use skene_layout::runtime::Runtime;
 
 use crate::{
   Terminal,
@@ -571,119 +570,32 @@ impl Records {
         .is_some_and(|target| self.drags_as_control(target))
   }
 
-  /// A node's overflow per axis as CSS computes it, `Visible` when unset or the node has
-  /// no box style.
-  fn overflow(&self, node: NodeId) -> Axes<Overflow> {
-    self
-      .runtime
-      .record(node)
-      .and_then(|record| record.kind.box_style())
-      .and_then(|style| style.overflow)
-      .map_or(Axes::all(Overflow::Visible), Axes::computed)
-  }
-
   /// Whether the node's content scrolls: a box overflowing by its style on either axis,
   /// or an editor windowing its wrapped rows.
   pub(crate) fn is_scrollable(&self, node: NodeId) -> bool {
-    self.is_editor(node) || self.overflow(node).scrolls()
+    self.runtime.is_scrollable(node)
   }
 
   /// Whether the node clips its children when painting.
   pub(crate) fn clips(&self, node: NodeId) -> bool {
-    self.overflow(node) != Axes::all(Overflow::Visible)
+    self.runtime.clips(node)
   }
 
-  /// A node's scroll offsets, clamped to what the last layout allows; an editor's is
-  /// its window down its rows.
+  /// A node's scroll offsets in cells, clamped to what the last layout allows; an
+  /// editor's is its window down its rows.
   pub(crate) fn scroll_offset(&self, node: NodeId) -> (u32, u32) {
-    if let Some(window) = self.editor_window(node) {
-      return (0, window);
-    }
+    let offset = self.runtime.scroll_offset(node);
 
-    let Some((x, y)) = self.cell(node).map(|cell| cell.scroll)
-    else {
-      return (0, 0);
-    };
-
-    if (x, y) == (0, 0) {
-      return (0, 0);
-    }
-
-    let (limit_x, limit_y) = self.scroll_limits(node);
-
-    (x.min(limit_x), y.min(limit_y))
+    (whole_cells(offset.x), whole_cells(offset.y))
   }
 
-  /// A node's maximum scroll offsets, from the last computed layout and zero on an axis
-  /// that does not scroll; an editor's is how far its window can scroll down its rows.
+  /// A node's maximum scroll offsets in cells, from the last computed layout and zero on
+  /// an axis that does not scroll; an editor's is how far its window can scroll down its
+  /// rows.
   pub(crate) fn scroll_limits(&self, node: NodeId) -> (u32, u32) {
-    if let Some(limit) = self.editor_window_limit(node) {
-      return (0, limit);
-    }
+    let limits = self.runtime.scroll_limits(node);
 
-    let overflow = self.overflow(node);
-
-    match self.runtime.tree().layout(node) {
-      #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a scroll extent is rounded and clamped non-negative, a cell count within u32"
-      )]
-      Some(layout) => (
-        if overflow.horizontal.scrolls() {
-          layout.scroll_limit.width.round().max(0.) as u32
-        }
-        else {
-          0
-        },
-        if overflow.vertical.scrolls() {
-          layout.scroll_limit.height.round().max(0.) as u32
-        }
-        else {
-          0
-        },
-      ),
-      None => (0, 0),
-    }
-  }
-
-  /// The offsets `node` would scroll to by a delta, clamped; `None` when it does not
-  /// scroll or cannot move further.
-  fn scrolled_by(&self, node: NodeId, delta_x: i64, delta_y: i64) -> Option<(u32, u32)> {
-    if !self.is_scrollable(node) {
-      return None;
-    }
-
-    let (limit_x, limit_y) = self.scroll_limits(node);
-    let (x, y) = self.scroll_offset(node);
-    let next = (
-      u32::try_from((i64::from(x) + delta_x).clamp(0, i64::from(limit_x))).expect("clamped"),
-      u32::try_from((i64::from(y) + delta_y).clamp(0, i64::from(limit_y))).expect("clamped"),
-    );
-
-    (next != (x, y)).then_some(next)
-  }
-
-  /// Stores a node's offsets and repaints; `true` where the caller notifies its scroll
-  /// handlers. An editor's window moves instead, notifying nothing.
-  fn write_scroll(&mut self, node: NodeId, offsets: (u32, u32)) -> bool {
-    self.runtime.damage(node);
-    self.runtime.geometry_stale = true;
-
-    if self.is_editor(node) {
-      self.set_editor_window(node, offsets.1);
-
-      return false;
-    }
-
-    let Some(cell) = self.cell_mut(node)
-    else {
-      return false;
-    };
-
-    cell.scroll = offsets;
-
-    true
+    (whole_cells(limits.width), whole_cells(limits.height))
   }
 
   /// A scrollable's track along `axis`: its absolute start, its length in cells, and
@@ -1406,23 +1318,10 @@ const fn cells(count: i64) -> f32 {
 
 /// Writes `offsets` into `node` and notifies its scroll handlers.
 pub(crate) fn scroll_to(node: NodeId, offsets: (u32, u32)) {
-  let written = records(|records| {
-    records.scroll_offset(node) != offsets && records.write_scroll(node, offsets)
-  });
-
-  if written {
-    #[expect(
-      clippy::cast_precision_loss,
-      reason = "a scroll offset in cells stays far below the integers f32 holds exactly"
-    )]
-    notify_scroll::<Terminal>(
-      node,
-      &ScrollEvent {
-        x: offsets.0 as f32,
-        y: offsets.1 as f32,
-      },
-    );
-  }
+  Runtime::<Terminal>::scroll_to(
+    node,
+    Point::new(cells(offsets.0.into()), cells(offsets.1.into())),
+  );
 }
 
 /// Scrolls `node` by a delta, clamped to its limits; `true` when it moved. A
@@ -1432,14 +1331,18 @@ pub(crate) fn scroll_by(node: NodeId, delta_x: i64, delta_y: i64) -> bool {
     return moved;
   }
 
-  let Some(offsets) = records(|records| records.scrolled_by(node, delta_x, delta_y))
-  else {
-    return false;
-  };
+  Runtime::<Terminal>::scroll_by(node, Point::new(cells(delta_x), cells(delta_y)))
+}
 
-  scroll_to(node, offsets);
-
-  true
+/// The whole cells a scroll offset or limit the runtime holds stands for: rounded to the
+/// cell the terminal's rounded layout and whole-cell writes keep it on, none below zero.
+#[expect(
+  clippy::cast_possible_truncation,
+  clippy::cast_sign_loss,
+  reason = "a scroll extent in cells is rounded and clamped non-negative, within u32"
+)]
+pub(crate) const fn whole_cells(extent: f32) -> u32 {
+  extent.round().max(0.) as u32
 }
 
 /// Turns the wheel over the cell (`x`, `y`) by rows and columns: the turn reaches the

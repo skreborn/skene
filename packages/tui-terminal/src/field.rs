@@ -14,6 +14,7 @@ use skene_foundation::{
   NamedKey,
   NodeId,
   Scene,
+  Size,
   TextSelection,
   text::{
     Direction,
@@ -54,28 +55,25 @@ pub(crate) struct Area {
   pub(crate) rows: usize,
 }
 
+impl Area {
+  /// The area of a content box of `size`, laid out in whole cells.
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a rounded layout's content box is whole cells, none below zero, far inside usize"
+  )]
+  pub(crate) const fn of(size: Size<f32>) -> Self {
+    Self {
+      columns: size.width.max(0.) as usize,
+      rows: size.height.max(0.) as usize,
+    }
+  }
+}
+
 impl Records {
   /// The cells an entry shows its value in: inside its border and padding.
   pub(crate) fn field_area(&self, node: NodeId) -> Area {
-    let (width, height) = self.node_size(node);
-    let border = self.node_border(node);
-    let padding = self
-      .runtime
-      .record(node)
-      .and_then(|record| record.kind.box_style())
-      .map(padding_cells)
-      .unwrap_or_default();
-
-    Area {
-      columns: usize::try_from(
-        width - border.0 - border.2 - i64::from(padding.start) - i64::from(padding.end),
-      )
-      .unwrap_or(0),
-      rows: usize::try_from(
-        height - border.1 - border.3 - i64::from(padding.top) - i64::from(padding.bottom),
-      )
-      .unwrap_or(0),
-    }
+    Area::of(self.runtime.content_size(node))
   }
 
   /// Whether the entry at `node` takes edits to its value: it is neither disabled nor
@@ -129,39 +127,6 @@ impl Records {
   /// Whether the node is an editor, whose window scrolls down its wrapped rows.
   pub(crate) fn is_editor(&self, node: NodeId) -> bool {
     self.field(node).is_some_and(Field::is_editor)
-  }
-
-  /// An editor's window as it shows in its laid-out area; `None` for any other node.
-  pub(crate) fn editor_window(&self, node: NodeId) -> Option<u32> {
-    let field = self.field(node).filter(|field| field.is_editor())?;
-    let entry = self.entry(node)?;
-
-    u32::try_from(field.visible_window(&entry, self.field_area(node))).ok()
-  }
-
-  /// How far an editor's window can scroll in its laid-out area; `None` for any other
-  /// node.
-  pub(crate) fn editor_window_limit(&self, node: NodeId) -> Option<u32> {
-    let field = self.field(node).filter(|field| field.is_editor())?;
-    let entry = self.entry(node)?;
-
-    u32::try_from(field.scroll_limit(&entry, self.field_area(node))).ok()
-  }
-
-  /// Moves an editor's window to `window`, clamped, in its laid-out area.
-  pub(crate) fn set_editor_window(&mut self, node: NodeId, window: u32) {
-    let area = self.field_area(node);
-    let Some(entry) = self.entry(node)
-    else {
-      return;
-    };
-
-    if let Some(field) = self.field_mut(node).filter(|field| field.is_editor()) {
-      let window = usize::try_from(window).unwrap_or(usize::MAX);
-
-      field.window = window.min(field.scroll_limit(&entry, area));
-      field.window_area = Some(area);
-    }
   }
 
   /// Scrolls the single-line field at `node` by `delta` cells in its laid-out area,

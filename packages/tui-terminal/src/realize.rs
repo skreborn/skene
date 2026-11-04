@@ -26,6 +26,7 @@ use skene_foundation::{
   Observation,
   Painting,
   Plain,
+  Point,
   PointerEvent,
   Realization,
   Resolver,
@@ -53,6 +54,7 @@ use crate::{
   Terminal,
   Unadoptable,
   cells::{CellPainter, Painter},
+  field::Area,
   interaction,
   paint::ShadowPaint,
   records::{CellNode, Field, PictureRecord, Records},
@@ -90,6 +92,15 @@ pub(crate) fn try_with_records<R>(operation: impl FnOnce(&mut Records) -> R) -> 
   STORE.with(|records| records.borrow_mut().as_mut().map(operation))
 }
 
+/// A count of an entry's rows as a scroll extent.
+#[expect(
+  clippy::cast_precision_loss,
+  reason = "an entry's rows stay far below the integers f32 holds exactly"
+)]
+const fn rows(count: usize) -> f32 {
+  count as f32
+}
+
 impl Drawn for Terminal {
   type Engine = CellEngine;
   type Node = CellNode;
@@ -121,6 +132,39 @@ impl Drawn for Terminal {
       .field
       .as_deref()
       .map(|field| field.extent(Scene::<Self>::entry_of(node).as_deref()))
+  }
+
+  /// An editor's window is its vertical scroll offset down its rows; a single-line
+  /// field's, indexed in clusters, is no offset.
+  fn entry_scroll(
+    node: NodeId,
+    own: &CellNode,
+    content: Size<f32>,
+  ) -> Option<(Point<f32>, Size<f32>)> {
+    let (window, limit) = own
+      .field
+      .as_deref()?
+      .editor_window(Scene::<Self>::entry_of(node).as_deref(), Area::of(content))?;
+
+    Some((Point::new(0., rows(window)), Size::new(0., rows(limit))))
+  }
+
+  fn scroll_entry(node: NodeId, own: &mut CellNode, content: Size<f32>, offset: Point<f32>) {
+    let Some(entry) = Scene::<Self>::entry_of(node)
+    else {
+      return;
+    };
+
+    if let Some(field) = own.field.as_deref_mut() {
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a written window is whole rows, none below zero, far inside usize"
+      )]
+      let row = offset.y.max(0.) as usize;
+
+      field.scroll_editor_to(&entry, Area::of(content), row);
+    }
   }
 
   fn sizes_text() -> bool {

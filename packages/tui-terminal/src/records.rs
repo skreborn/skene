@@ -50,8 +50,8 @@ pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Records {
-  /// The drawn runtime: a record per node carrying the terminal's own state of it (its
-  /// field, scroll offsets, the cells it covers and what it paints beyond its style), the
+  /// The drawn runtime: a record per node carrying its scroll offsets and the terminal's
+  /// own state of it (its field, the cells it covers and what it paints beyond its style), the
   /// root filling the screen, the overlays and entries in build order, the restyle with
   /// its presentation's counters, the layout tree, what the next frame lays out and
   /// repaints, the environment the terminal reports with the app's choice of scheme, and

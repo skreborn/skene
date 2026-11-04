@@ -296,11 +296,13 @@ pub const skene_tui_terminal::Terminal::BORDERS: skene_layout::Borders
 pub const skene_tui_terminal::Terminal::ROUNDED: bool
 pub fn skene_tui_terminal::Terminal::engine() -> skene_tui_terminal::CellEngine
 pub fn skene_tui_terminal::Terminal::entry_extent(skene_foundation::spine::node::NodeId, &skene_tui_terminal::records::cell::CellNode) -> core::option::Option<skene_foundation::spine::values::size::Size<f32>>
+pub fn skene_tui_terminal::Terminal::entry_scroll(skene_foundation::spine::node::NodeId, &skene_tui_terminal::records::cell::CellNode, skene_foundation::spine::values::size::Size<f32>) -> core::option::Option<(skene_foundation::spine::values::point::Point<f32>, skene_foundation::spine::values::size::Size<f32>)>
 pub fn skene_tui_terminal::Terminal::finish_box(&mut skene_foundation::spine::box_style::BoxStyle<i32, skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_tui_terminal::Terminal::finish_run(&mut skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>, &skene_foundation::spine::resolve::Resolver<'_, i32, skene_foundation::terminal::ext::TerminalStyle>)
 pub fn skene_tui_terminal::Terminal::node(&skene_foundation::spine::props::NodeSpec) -> skene_tui_terminal::records::cell::CellNode
 pub fn skene_tui_terminal::Terminal::paragraph_style() -> skene_foundation::text::model::ParagraphStyle
 pub fn skene_tui_terminal::Terminal::reach(&skene_foundation::spine::box_style::BoxStyle<i32, skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>) -> skene_foundation::spine::values::inset::Inset<f32>
+pub fn skene_tui_terminal::Terminal::scroll_entry(skene_foundation::spine::node::NodeId, &mut skene_tui_terminal::records::cell::CellNode, skene_foundation::spine::values::size::Size<f32>, skene_foundation::spine::values::point::Point<f32>)
 pub fn skene_tui_terminal::Terminal::sizes_text() -> bool
 pub fn skene_tui_terminal::Terminal::text_style(core::option::Option<&skene_foundation::spine::run_style::RunStyle<skene_foundation::spine::shape::Plain, skene_foundation::terminal::ext::TerminalStyle>>) -> skene_foundation::text::model::TextStyle
 pub fn skene_tui_terminal::Terminal::with_runtime<R>(impl core::ops::function::FnOnce(&mut skene_layout::runtime::Runtime<Self>) -> R) -> core::option::Option<R>

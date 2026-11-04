@@ -1,5 +1,5 @@
 //! What the terminal keeps per node in its record: a text entry's presentation, the
-//! scroll offsets, the cells the node covers, and what it paints beyond its style.
+//! cells the node covers, and what it paints beyond its style.
 
 use std::{fmt, rc::Rc};
 
@@ -14,8 +14,6 @@ use crate::{cells::Painter, paint::Image};
 pub struct CellNode {
   /// A text entry's presentation of its value; `None` for every other node.
   pub(crate) field: Option<Box<Field>>,
-  /// The scroll offsets, in cells.
-  pub(crate) scroll: (u32, u32),
   /// The screen rectangle the node covered at the last paint.
   pub(crate) painted: Option<CellRect>,
   /// The screen rectangle the node covers now, as the frame being painted measured it.
@@ -34,7 +32,6 @@ impl fmt::Debug for CellNode {
     formatter
       .debug_struct("CellNode")
       .field("field", &self.field.is_some())
-      .field("scroll", &self.scroll)
       .field("painted", &self.painted)
       .field("covers", &self.covers)
       .field("painter", &self.painter.is_some())

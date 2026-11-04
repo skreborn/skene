@@ -41,6 +41,14 @@
 //! and the environment's signals, and it calls the platform's fill-ins of its own
 //! vocabulary ([`Drawn::finish_box`], [`Drawn::finish_run`]).
 //!
+//! The runtime keeps what a box scrolls by: its overflow, its scroll offsets clamped at
+//! each read to the limits its last layout allows ([`Runtime::scroll_offset`],
+//! [`Runtime::scroll_limits`]), and the writes that move them, damaging the box, moving
+//! the geometry and notifying its scroll handlers once the runtime is released
+//! ([`Runtime::scroll_to`], [`Runtime::scroll_by`]). A text entry whose window the
+//! platform scrolls as an offset answers for itself through [`Drawn::entry_scroll`] and
+//! [`Drawn::scroll_entry`], its window moving with no notification.
+//!
 //! A drawn platform's realization forwards to the runtime for everything that is no
 //! cell's or pixel's: a node's record created ([`Runtime::create`]) and destroyed, its
 //! style, slots, state and contents applied ([`Runtime::write`]), its size observed, an
@@ -49,7 +57,8 @@
 //!
 //! A record carries the platform's own state of its node ([`Drawn::Node`]), made with
 //! the record from the node's spec ([`Drawn::node`]) and dropped with it, and a hook the
-//! runtime calls mid-pass is handed it ([`Drawn::entry_extent`]).
+//! runtime calls mid-pass is handed it ([`Drawn::entry_extent`], [`Drawn::entry_scroll`],
+//! [`Drawn::scroll_entry`]).
 
 mod adapter;
 mod environment;
@@ -59,6 +68,7 @@ mod paragraph;
 mod record;
 mod resolve;
 mod restyle;
+mod scroll;
 mod structure;
 mod sync;
 
@@ -74,6 +84,7 @@ use skene_foundation::{
   NodeMap,
   NodeSpec,
   Plain,
+  Point,
   Realization,
   Resolver,
   RunStyle,
@@ -150,6 +161,25 @@ pub trait Drawn:
   ///
   /// It runs while the runtime is borrowed and reads nothing the runtime holds but `own`.
   fn entry_extent(node: NodeId, own: &Self::Node) -> Option<Size<f32>>;
+
+  /// The window of the text entry `node` holding the platform's state `own`, laid out in
+  /// a content box of `content`, as a scroll offset and how far it can scroll: `None`
+  /// where it is no entry, or one whose window the platform does not scroll as an
+  /// offset.
+  ///
+  /// It runs while the runtime is borrowed and reads nothing the runtime holds but `own`.
+  fn entry_scroll(
+    node: NodeId,
+    own: &Self::Node,
+    content: Size<f32>,
+  ) -> Option<(Point<f32>, Size<f32>)>;
+
+  /// Moves the window of the text entry `node` holding the platform's state `own`, laid
+  /// out in a content box of `content`, to the scroll offset `offset`, clamped to how far
+  /// it can scroll; run only for an entry [`entry_scroll`](Self::entry_scroll) answers.
+  ///
+  /// It runs while the runtime is borrowed and reads nothing the runtime holds but `own`.
+  fn scroll_entry(node: NodeId, own: &mut Self::Node, content: Size<f32>, offset: Point<f32>);
 
   /// Whether the platform draws text at sizes other than its
   /// [`FONT_SIZE`](Realization::FONT_SIZE), as it last found; see

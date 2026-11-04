@@ -41,7 +41,7 @@ use skene_foundation::{
 };
 use skene_reactive::{Get, Set, Signal, SnapshotPlace};
 
-use crate::Terminal;
+use crate::{Terminal, interaction::whole_cells};
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
@@ -243,7 +243,7 @@ fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
       .runtime
       .records()
       .filter_map(|(node, record)| {
-        let (x, y) = record.platform.scroll;
+        let (x, y) = (whole_cells(record.scroll.x), whole_cells(record.scroll.y));
 
         (x > 0 || y > 0).then_some((node, x, y))
       })

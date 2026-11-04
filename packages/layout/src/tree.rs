@@ -417,4 +417,19 @@ impl Placed {
       scroll_limit: Size::new(layout.scroll_width(), layout.scroll_height()),
     }
   }
+
+  /// The size of its content box, inside its border and padding, none below zero.
+  pub const fn content_size(&self) -> Size<f32> {
+    let Self {
+      rect,
+      border,
+      padding,
+      ..
+    } = self;
+
+    Size::new(
+      (rect.size.width - border.start - border.end - padding.start - padding.end).max(0.),
+      (rect.size.height - border.top - border.bottom - padding.top - padding.bottom).max(0.),
+    )
+  }
 }

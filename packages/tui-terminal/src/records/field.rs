@@ -306,6 +306,36 @@ impl Field {
     true
   }
 
+  /// An editor's window down its rows as it shows the value `entry` holds in `area`, and
+  /// how far it can scroll; the window as last placed and no room to scroll while the
+  /// scene keeps no readable state for it. `None` for a single-line field, whose window
+  /// along its clusters is no scroll offset.
+  pub(crate) fn editor_window(
+    &self,
+    entry: Option<&EntryState>,
+    area: Area,
+  ) -> Option<(usize, usize)> {
+    if !self.is_editor() {
+      return None;
+    }
+
+    Some(entry.map_or((self.window, 0), |entry| {
+      (
+        self.visible_window(entry, area),
+        self.scroll_limit(entry, area),
+      )
+    }))
+  }
+
+  /// Moves an editor's window to its row `row`, clamped to how far the value `entry`
+  /// holds lets it scroll in `area`; a single-line field's stays.
+  pub(crate) fn scroll_editor_to(&mut self, entry: &EntryState, area: Area, row: usize) {
+    if self.is_editor() {
+      self.window = row.min(self.scroll_limit(entry, area));
+      self.window_area = Some(area);
+    }
+  }
+
   /// The layout position standing for the cell (`column`, `row`) of `area`, the value
   /// shown from `window`: clamped into the area, and a hair into the cell, so a press on
   /// a cluster's first cell lands before it and one on a wide cluster's second cell after

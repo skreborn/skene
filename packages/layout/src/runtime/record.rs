@@ -261,6 +261,18 @@ impl<P: Drawn> Kind<P> {
     }
   }
 
+  /// Whether the node is a control realized as a text entry, single-line or not.
+  #[inline(always)]
+  pub const fn is_text_entry(&self) -> bool {
+    match self {
+      Self::Control {
+        native: Some(native),
+        ..
+      } => native.is_text_entry(),
+      _ => false,
+    }
+  }
+
   /// The box record of a box, a control or an overlay.
   #[inline(always)]
   pub const fn box_record(&self) -> Option<&BoxRecord<P>> {
@@ -317,13 +329,17 @@ pub struct Record<P: Drawn> {
   /// Whether the node was out of the display at the last presentation: inside a closed
   /// overlay, or detached from the root.
   pub hidden: bool,
+  /// The box's scroll offsets as last written, which a read clamps to what the last
+  /// layout allows ([`Runtime::scroll_offset`](super::Runtime::scroll_offset)); a text
+  /// entry's window is the platform's own ([`Drawn::entry_scroll`]).
+  pub scroll: Point<f32>,
   /// The platform's own state of the node ([`Drawn::Node`]).
   pub platform: P::Node,
 }
 
 impl<P: Drawn> Record<P> {
   /// The record of a node realized as `kind`, the platform's own state of it `platform`:
-  /// no text, slot, observer or report yet, at rest and in the display.
+  /// no text, slot, observer or report yet, at rest, unscrolled and in the display.
   pub fn new(kind: Kind<P>, platform: P::Node) -> Self {
     Self {
       kind,
@@ -333,6 +349,7 @@ impl<P: Drawn> Record<P> {
       reported: None,
       in_motion: false,
       hidden: false,
+      scroll: Point::ZERO,
       platform,
     }
   }
@@ -383,6 +400,7 @@ impl<P: Drawn + fmt::Debug> fmt::Debug for Record<P> {
       .field("reported", &self.reported)
       .field("in_motion", &self.in_motion)
       .field("hidden", &self.hidden)
+      .field("scroll", &self.scroll)
       .field("platform", &self.platform)
       .finish()
   }

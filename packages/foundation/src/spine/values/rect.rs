@@ -78,3 +78,28 @@ impl Rect<f32> {
     )
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::Rect;
+  use crate::spine::{Inset, Point, Size};
+
+  /// A rectangle at `(x, y)`, `width` by `height`.
+  const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect<f32> {
+    Rect::new(Point::new(x, y), Size::new(width, height))
+  }
+
+  /// Two rectangles intersect in what both cover, of no extent where they do not meet,
+  /// unite in the least rectangle covering both, grow by an inset edge by edge and move
+  /// by a point.
+  #[test]
+  fn rectangles_intersect_unite_grow_and_move() {
+    let a = rect(0., 0., 4., 3.);
+
+    assert_eq!(a.intersect(rect(2., 1., 4., 4.)), rect(2., 1., 2., 2.));
+    assert_eq!(a.intersect(rect(6., 5., 1., 1.)).size, Size::ZERO);
+    assert_eq!(a.union(rect(2., -1., 4., 2.)), rect(0., -1., 6., 4.));
+    assert_eq!(a.inflate(Inset::new(1, 2, 3, 4)), rect(-1., -2., 8., 9.));
+    assert_eq!(a.translate(Point::new(-2., 5.)), rect(-2., 5., 4., 3.));
+  }
+}

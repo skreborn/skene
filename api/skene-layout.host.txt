@@ -163,7 +163,7 @@ pub struct skene_layout::runtime::Frames
 impl skene_layout::runtime::Frames
 pub fn skene_layout::runtime::Frames::cover(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 pub const fn skene_layout::runtime::Frames::entries(&self) -> &[skene_layout::runtime::Frame]
-pub fn skene_layout::runtime::Frames::flow_len(&self) -> usize
+pub const fn skene_layout::runtime::Frames::flow_len(&self) -> usize
 pub fn skene_layout::runtime::Frames::get(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Frame>
 pub const fn skene_layout::runtime::Frames::layers(&self) -> &[skene_layout::runtime::Layer]
 pub fn skene_layout::runtime::Frames::origin(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::point::Point<f32>>

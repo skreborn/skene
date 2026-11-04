@@ -98,11 +98,11 @@ impl Frames {
 
   /// How many of the entries, from the first, are the root's flow.
   #[must_use]
-  pub fn flow_len(&self) -> usize {
-    self
-      .layers
-      .first()
-      .map_or(self.entries.len(), |layer| layer.start)
+  pub const fn flow_len(&self) -> usize {
+    match self.layers.as_slice().first() {
+      Some(layer) => layer.start,
+      None => self.entries.len(),
+    }
   }
 
   /// `node`'s entry, where it has one.
@@ -148,7 +148,7 @@ impl Frames {
   /// each open overlay's subtree in the order they opened, every overlay then placed
   /// against the entries already built, one whose anchor lies in a layer not yet placed
   /// placing that layer first.
-  fn build(source: &impl Source, mut frames: Self) -> Self {
+  fn build(source: &impl FrameSource, mut frames: Self) -> Self {
     frames.entries.clear();
     frames.slots.clear();
     frames.layers.clear();
@@ -179,7 +179,7 @@ impl Frames {
   /// Indexes `top` and the subtree beneath it in the scene's child order, its location
   /// from the window's origin, overlays beneath it left out; `false` where `top` is no
   /// laid-out node.
-  fn walk(&mut self, source: &impl Source, top: NodeId) -> bool {
+  fn walk(&mut self, source: &impl FrameSource, top: NodeId) -> bool {
     let first = self.entries.len();
     let mut pending = std::mem::take(&mut self.pending);
 
@@ -326,7 +326,7 @@ impl Frames {
   /// Places the layer at `layer` where `source` places its overlay, against its anchor's
   /// rectangle, placing first the layer that anchor lies in where it is not yet placed,
   /// and moves its subtree there.
-  fn place(&mut self, source: &impl Source, layer: usize, placing: &mut [Placing]) {
+  fn place(&mut self, source: &impl FrameSource, layer: usize, placing: &mut [Placing]) {
     if placing[layer] != Placing::Pending {
       return;
     }
@@ -358,7 +358,7 @@ impl Frames {
   /// hold.
   fn anchor_rect(
     &mut self,
-    source: &impl Source,
+    source: &impl FrameSource,
     anchor: NodeId,
     placing: &mut [Placing],
   ) -> Rect<f32> {
@@ -422,7 +422,7 @@ struct Laid {
 }
 
 /// What [`Frames`] is built from: a window's scene, its records and its layout.
-trait Source {
+trait FrameSource {
   /// The node filling the window.
   fn root(&self) -> NodeId;
 
@@ -447,7 +447,7 @@ trait Source {
   fn place(&self, overlay: NodeId, anchor_rect: impl FnOnce(NodeId) -> Rect<f32>) -> Point<f32>;
 }
 
-impl<P: Drawn> Source for Runtime<P> {
+impl<P: Drawn> FrameSource for Runtime<P> {
   #[inline(always)]
   fn root(&self) -> NodeId {
     self.root
@@ -547,7 +547,7 @@ mod tests {
   use skene_foundation::{Inset, NodeId, Point, Rect, Size};
   use smallvec::SmallVec;
 
-  use super::{Frames, Inline, Laid, Source};
+  use super::{FrameSource, Frames, Inline, Laid};
   use crate::Placed;
 
   /// Where a canned overlay is placed.
@@ -632,7 +632,7 @@ mod tests {
     }
   }
 
-  impl Source for Canned {
+  impl FrameSource for Canned {
     fn root(&self) -> NodeId {
       ROOT
     }

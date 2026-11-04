@@ -708,19 +708,25 @@ in a code comment.
     Shift-Space, and Home and End scroll the focused scroll box, or the nearest one
     holding focus, where no control takes them; the terminal scrolls by the page keys
     alone.
-32. **A plain toggle draws its box on the web.** The reset's default chrome for an
+32. **Focus reveals a node as Chromium does.** The drawn runtime's reveal
+    (`Runtime::reveal_offsets`) scrolls each box by as little as shows the node on both
+    axes. Chromium's focus (`Element::UpdateFocusAppearanceWithOptions`) centers a node
+    that was wholly out of view, aligns one partly in view to its nearest edge, and never
+    scrolls horizontally for a node partly in view; the reveal takes those alignments,
+    and the terminal's tests of it (`focus_scrolls_into_view` and its kin) move with it.
+33. **A plain toggle draws its box on the web.** The reset's default chrome for an
     `<input type="checkbox">` or `"radio"` no Skene control builds (one a `NativeView`
     makes) has no border, so an unchecked one draws nothing; it takes a hairline in the
     inherited ink, as the reset's comment describes.
-33. **The server's opening focus passes over a box it knows is hidden.** The
+34. **The server's opening focus passes over a box it knows is hidden.** The
     browser leaf passes over a control set to autofocus inside a box its computed style
     hides, as the terminal does; the server computes no style and marks the first that
     asks. A box whose `hidden` is fixed, or derived and so known as the render settles,
     can be passed over there too, only a `hidden` under a condition left to the engine.
-34. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+35. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
     queued between reads of 10 ms; a wake pipe polled beside the socket would send at
     once and let an idle socket sleep.
-35. **Server rendering beyond the native binary.** The native server binary stays the
+36. **Server rendering beyond the native binary.** The native server binary stays the
     deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
     Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
     restored. Nearly all the demand for wasm rendering is on JavaScript isolates
@@ -738,7 +744,7 @@ in a code comment.
     - `skene-transport`'s web path calling the global `fetch` rather than
     `window().fetch`, which also serves Web Workers.
 
-36. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
+37. **Confirm docs.rs documents every platform's build.** `skene-gui`, `skene-gui-web`
     and `skene-simple-gui` name each target's leaf, and `skene-tui`,
     `skene-tui-terminal` and `skene-simple-tui` the terminal, through `cargo-args`
     setting `target.<triple>.rustflags` and `rustdocflags`, and cargo takes a target's
@@ -746,7 +752,7 @@ in a code comment.
     either docs.rs's own rustdoc flags or these may be dropped: check every target's
     pages, and move the cfgs to wherever docs.rs's flags merge with them if any is
     missing.
-37. **skrifa moves with Parley.** `skene-parley` draws glyph outlines through skrifa
+38. **skrifa moves with Parley.** `skene-parley` draws glyph outlines through skrifa
     0.44, the version the vendored Parley 0.12 (its newest release and tag) reads the
     same fonts through, and the one vello_cpu 0.3's `text` feature (glifo, which Skene
     leaves off) pins too; skrifa 0.49 is out and compiles against `skene-parley` as it

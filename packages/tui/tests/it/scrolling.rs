@@ -257,6 +257,27 @@ fn focus_reveals_a_row_above_a_far_border() {
   });
 }
 
+/// Focusing a row past the bottom of a scroll box bordered on every edge scrolls it in
+/// above the bottom border, the top border still drawn above the rows it shows.
+#[test]
+fn focus_reveals_a_row_between_borders_on_every_edge() {
+  with_platform(|| {
+    mount_bordered_buttons(Inset::all(1));
+
+    for _ in 0..5 {
+      testing::trigger_key("Tab");
+    }
+
+    let rows = frame_rows(12, 5);
+
+    assert!(!rows[0].contains("button"), "{rows:?}");
+    assert!(rows[1].contains("button 3"), "{rows:?}");
+    assert!(rows[2].contains("button 4"), "{rows:?}");
+    assert!(!rows[3].contains("button"), "{rows:?}");
+    assert!(!rows.iter().any(|row| row.contains("button 5")), "{rows:?}");
+  });
+}
+
 /// Six one-row buttons in a scroll box four rows tall whose border is `border`.
 fn mount_bordered_buttons(border: Inset) {
   let _ = mount(move || {

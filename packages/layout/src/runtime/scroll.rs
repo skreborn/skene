@@ -195,8 +195,7 @@ impl<P: Drawn> Runtime<P> {
   /// flowing in a paragraph is shown as its paragraph.
   ///
   /// Each ancestor scrolls by as little as shows the target between its near and its far
-  /// border, its padding box as Chromium's `scrollIntoView` aligns to the scrollport; a
-  /// target larger than that shows from its start.
+  /// border, within its padding box; a target larger than that shows from its start.
   pub fn reveal_offsets(&self, node: NodeId) -> Vec<(NodeId, Point<f32>)> {
     let node = self.laid_owner(node);
     let target = self

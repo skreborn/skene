@@ -24,7 +24,8 @@ over them and the paragraph structure it reads, their style's resolution and its
 presentation over their motion on the frame clock, the layout tree it writes from the
 scene and computes, each node's taffy style and children synced there, the text leaf it
 lays a paragraph out as through the platform's engine, each box's scroll offsets and the
-writes that move them, and the environment the platform reports, behind the `Drawn`
+writes that move them, the offsets that reveal a node, where an open overlay sits in its
+window, and the environment the platform reports, behind the `Drawn`
 trait a drawn platform implements) and the text engine over Parley (`skene-parley`) on
 the foundation, the platforms on the foundation and, where they draw, on those two, each
 platform's realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with
@@ -1958,7 +1959,12 @@ its clusters stays the terminal's. Focus reveals the node it moves to through th
 runtime (`Runtime::reveal`, `Runtime::reveal_offsets`), by both edges of each scroll box
 around it: the box scrolls by as little as shows the node between its near border and
 its far one, its padding box, the scrollport Chromium's `scrollIntoView` aligns to, so a
-node revealed toward an edge with no border lands against that edge. Its `impl
+node revealed toward an edge with no border lands against that edge. An open overlay
+sits where the runtime places it (`Runtime::overlay_origin`), against its anchor's
+on-screen rectangle as the terminal measures it: pinned at the cell its point falls in,
+moved back into the window, below or above its anchor with a flip where the preferred
+side runs out of room and the other fits, or at one of the window's seven placements, a
+centered origin truncated toward zero. Its `impl
 Realization` forwards to the runtime's adapter for everything that is no cell's: a
 node's record created and destroyed, its style, slots, control state and contents, a
 size observed, an overlay opened with the focus move it asks for, and a mount with the

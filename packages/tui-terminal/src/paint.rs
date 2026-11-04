@@ -16,17 +16,15 @@ use skene_foundation::{
   Point,
   Rect,
   RunPlacement,
-  Scene,
   Size,
   TextDecoration,
   TextDecorationStyle,
   terminal::{BorderGlyphs, ScrollbarGlyphs},
   text::TextIndex,
 };
-use skene_layout::runtime::{Env, Source};
+use skene_layout::runtime::{Env, Layer, Source};
 
 use crate::{
-  Terminal,
   cells::Cells,
   engine::{DrawnCluster, drawn},
   layout::{border_edges, has_border},
@@ -692,7 +690,7 @@ impl Buffer {
 /// wide glyphs a later paint broke into; a picture an open overlay covers in part is
 /// left out.
 pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
-  paint_node(records, buffer, records.runtime.root(), 0, 0);
+  paint_node(records, buffer, records.runtime.root());
 
   let frames = records.runtime.frames();
 
@@ -711,20 +709,20 @@ pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
   });
 
   for layer in frames.layers() {
-    paint_overlay(records, buffer, layer.overlay);
+    paint_overlay(records, buffer, layer);
   }
 
   buffer.mend_blocks();
 }
 
-/// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
-/// computed origin.
-fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: NodeId) {
+/// Paints one open overlay's layer over the frame: its backdrop scrim, then its subtree
+/// where the runtime places it.
+fn paint_overlay(records: &Records, buffer: &mut Buffer, layer: &Layer) {
+  let overlay = layer.overlay;
   let Some(Kind::Overlay { backdrop, .. }) = records.runtime.record(overlay).map(Record::kind)
   else {
     return;
   };
-  let modal = Scene::<Terminal>::read(|scene| scene.is_modal(overlay));
   let contrast = records.contrast();
 
   if let Some(color) = backdrop {
@@ -743,32 +741,23 @@ fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: NodeId) {
     }
   }
 
-  let (origin_x, origin_y) = records.screen_origin(overlay);
-
   // A modal makes everything beneath inert, taking the caret with it; a popup hides
   // the caret only when it covers the cell. Either way the overlay's own content may
   // set a fresh one while it paints.
   if let Some((caret_x, caret_y)) = buffer.caret {
-    let (overlay_width, overlay_height) = records.node_size(overlay);
-    let covered = i64::from(caret_x) >= origin_x
-      && i64::from(caret_x) < origin_x + overlay_width
-      && i64::from(caret_y) >= origin_y
-      && i64::from(caret_y) < origin_y + overlay_height;
+    let (left, top, right, bottom) = cells_of(records.runtime.frames().entries()[layer.start].rect);
+    let (caret_x, caret_y) = (
+      isize::try_from(caret_x).unwrap_or(isize::MAX),
+      isize::try_from(caret_y).unwrap_or(isize::MAX),
+    );
+    let covered = caret_x >= left && caret_x < right && caret_y >= top && caret_y < bottom;
 
-    if modal || covered {
+    if layer.modal || covered {
       buffer.caret = None;
     }
   }
 
-  let (location_x, location_y) = records.node_location(overlay);
-
-  paint_node(
-    records,
-    buffer,
-    overlay,
-    isize::try_from(origin_x - location_x).unwrap_or(0),
-    isize::try_from(origin_y - location_y).unwrap_or(0),
-  );
+  paint_node(records, buffer, overlay);
 }
 
 /// A selection's ink and highlight.
@@ -1114,19 +1103,14 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
   }
 }
 
-/// Paints `node` at its layout position offset by (`offset_x`, `offset_y`), then its
-/// children.
+/// Paints `node` at its rectangle in the runtime's index
+/// ([`Frames`](skene_layout::runtime::Frames)), inside what shows
+/// of it, then its children.
 #[expect(
   clippy::too_many_lines,
   reason = "a match dispatch over the paints; length is the kind count, not complexity"
 )]
-fn paint_node(
-  records: &Records,
-  buffer: &mut Buffer,
-  node: NodeId,
-  offset_x: isize,
-  offset_y: isize,
-) {
+fn paint_node(records: &Records, buffer: &mut Buffer, node: NodeId) {
   let Some(record) = records.runtime.record(node)
   else {
     for child in records.runtime.children(node) {
@@ -1138,9 +1122,20 @@ fn paint_node(
         continue;
       }
 
-      paint_node(records, buffer, child, offset_x, offset_y);
+      paint_node(records, buffer, child);
     }
 
+    return;
+  };
+  let frame = records.runtime.frames().get(node);
+
+  debug_assert!(
+    frame.is_some(),
+    "the runtime's index holds every record the paint reaches"
+  );
+
+  let Some(frame) = frame
+  else {
     return;
   };
 
@@ -1148,15 +1143,15 @@ fn paint_node(
     return;
   }
 
-  let frame = records.frame(node);
-  let (x, y) = (
-    offset_x + isize::try_from(frame.x).unwrap_or(0),
-    offset_y + isize::try_from(frame.y).unwrap_or(0),
-  );
+  let clip = frame.clip.map(cells_of);
+  let (x, y, end_x, end_y) = cells_of(frame.rect);
   let (width, height) = (
-    usize::try_from(frame.width).unwrap_or(0),
-    usize::try_from(frame.height).unwrap_or(0),
+    usize::try_from(end_x - x).unwrap_or(0),
+    usize::try_from(end_y - y).unwrap_or(0),
   );
+
+  buffer.clip = clip;
+
   let run = matches!(record.kind(), Kind::Run { .. });
   let band = record.kind().box_style().map_or(0, |style| {
     isize::try_from(ShadowPaint::band(style)).unwrap_or(0)
@@ -1184,18 +1179,20 @@ fn paint_node(
   );
 
   if !(shown && repainted) && (paragraph || inline_box) {
-    let [reach_left, reach_top, reach_right, reach_bottom] = records.reach_of(node);
+    let reach = frame
+      .cover
+      .map_or(frame.reach, |cover| frame.reach.union(cover));
     let (left, top, right, bottom) = (
-      cells_before(reach_left).min(-band),
-      cells_before(reach_top).min(-band),
-      cells_past(reach_right).max(right),
-      cells_past(reach_bottom).max(bottom),
+      cells_before(reach.origin.x),
+      cells_before(reach.origin.y),
+      cells_past(reach.origin.x + reach.size.width),
+      cells_past(reach.origin.y + reach.size.height),
     );
 
     shown = buffer
-      .visible(x + left, y + top, right - left, bottom - top)
+      .visible(left, top, right - left, bottom - top)
       .is_some();
-    repainted = !run || buffer.repaints(y + top, usize::try_from(bottom - top).unwrap_or(0));
+    repainted = !run || buffer.repaints(top, usize::try_from(bottom - top).unwrap_or(0));
   }
 
   if run && !(shown && repainted) {
@@ -1235,11 +1232,10 @@ fn paint_node(
           .runtime
           .flow_of(node)
           .map_or("", |flow| flow.flow().text());
-        let saved_clip = buffer.clip;
 
-        // A paragraph's runs and inline boxes are its content: clipped where it clips and
-        // scrolled with it, as a box's children are.
-        clip_content(records, buffer, node, (x, y), (width, height), border);
+        // A paragraph's runs are its content: clipped where it clips, as a box's children
+        // are.
+        buffer.clip = frame.content_clip.map(cells_of);
 
         for cluster in &clusters {
           let Some(paint) = spans.get(usize::from(cluster.span))
@@ -1282,14 +1278,12 @@ fn paint_node(
           );
         }
 
-        let (content_x, content_y) = scrolled(records, node, (x, y));
-
         // An inline box paints its own layout, where it flows in the paragraph.
         for run in boxes {
-          paint_node(records, buffer, run, content_x, content_y);
+          paint_node(records, buffer, run);
         }
 
-        buffer.clip = saved_clip;
+        buffer.clip = clip;
       }
       NodePaint::Box {
         background,
@@ -1311,7 +1305,9 @@ fn paint_node(
           // carrying its color beside what lies beneath.
           match records.smooth_span(node).filter(|_| border.is_none()) {
             Some((start, extent)) => {
-              draw_smooth(buffer, offset_x, y, height, start, extent, background);
+              let parent_x = x - isize::try_from(records.frame(node).x).unwrap_or(0);
+
+              draw_smooth(buffer, parent_x, y, height, start, extent, background);
             }
             None => fill(buffer, x, y, width, height, background),
           }
@@ -1477,12 +1473,6 @@ fn paint_node(
   }
 
   if !paragraph {
-    let saved_clip = buffer.clip;
-
-    clip_content(records, buffer, node, (x, y), (width, height), border);
-
-    let (child_x, child_y) = scrolled(records, node, (x, y));
-
     for child in records.runtime.children(node) {
       if records
         .runtime
@@ -1492,53 +1482,15 @@ fn paint_node(
         continue;
       }
 
-      paint_node(records, buffer, child, child_x, child_y);
+      paint_node(records, buffer, child);
     }
 
-    buffer.clip = saved_clip;
+    buffer.clip = clip;
   }
 
   if records.is_scrollable(node) {
     draw_scrollbars(records, buffer, node, x, y, width, height, border);
   }
-}
-
-/// Cuts `buffer`'s clip to the padding box of `node`, at the cell `(x, y)` and `width` by
-/// `height` cells inside `border`, where it clips its content.
-fn clip_content(
-  records: &Records,
-  buffer: &mut Buffer,
-  node: NodeId,
-  (x, y): (isize, isize),
-  (width, height): (usize, usize),
-  border: (isize, isize, isize, isize),
-) {
-  if !records.clips(node) {
-    return;
-  }
-
-  let rect = (
-    x + border.0,
-    y + border.1,
-    x + isize::try_from(width).unwrap_or(isize::MAX) - border.2,
-    y + isize::try_from(height).unwrap_or(isize::MAX) - border.3,
-  );
-
-  buffer.clip = Some(match buffer.clip {
-    Some(outer) => intersect(outer, rect),
-    None => rect,
-  });
-}
-
-/// The cell the content of `node`, at the cell `(x, y)`, is laid out from: moved back by
-/// its scroll offsets.
-fn scrolled(records: &Records, node: NodeId, (x, y): (isize, isize)) -> (isize, isize) {
-  let (scroll_x, scroll_y) = records.scroll_offset(node);
-
-  (
-    x - isize::try_from(scroll_x).unwrap_or(0),
-    y - isize::try_from(scroll_y).unwrap_or(0),
-  )
 }
 
 /// The cell a length of `cells` from a frame's origin lands on.
@@ -1548,6 +1500,22 @@ fn scrolled(records: &Records, node: NodeId, (x, y): (isize, isize)) -> (isize, 
 )]
 const fn cells_at(cells: f32) -> isize {
   cells.round() as isize
+}
+
+/// The cells `rect` covers, a rectangle of the window in whole cells as the runtime's
+/// index keeps every rectangle where the layout rounds: its start, inclusive, and its
+/// end, exclusive.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "a whole number of cells stays far inside isize, and converts exactly"
+)]
+const fn cells_of(rect: Rect<f32>) -> (isize, isize, isize, isize) {
+  (
+    rect.origin.x as isize,
+    rect.origin.y as isize,
+    (rect.origin.x + rect.size.width) as isize,
+    (rect.origin.y + rect.size.height) as isize,
+  )
 }
 
 /// The cell a reach of `cells` before a frame's origin starts at.

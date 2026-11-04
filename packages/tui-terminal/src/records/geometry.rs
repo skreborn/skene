@@ -40,27 +40,6 @@ impl Records {
       .map_or_else(CellFrame::default, |layout| CellFrame::of(layout.rect))
   }
 
-  /// The cells `node`'s laid-out content reaches from its frame's origin, left, top, right
-  /// and bottom: its own box, or farther where its content overflows it.
-  pub(crate) fn reach_of(&self, node: NodeId) -> [f32; 4] {
-    let Some(layout) = self.runtime.tree().layout(node)
-    else {
-      return [0.; 4];
-    };
-    let size = layout.rect.size;
-    let (left, top) = (
-      layout.border.start + layout.overflow.origin.x,
-      layout.border.top + layout.overflow.origin.y,
-    );
-
-    [
-      left.min(0.),
-      top.min(0.),
-      (left + layout.overflow.size.width).max(size.width),
-      (top + layout.overflow.size.height).max(size.height),
-    ]
-  }
-
   /// A node's laid-out size, in cells.
   pub(crate) fn node_size(&self, node: NodeId) -> (i64, i64) {
     let frame = self.frame(node);
@@ -96,13 +75,6 @@ impl Records {
     let extent = (rect.size.width.max(0.) * 8.).round() as isize;
 
     (extent > 0).then_some((start, extent))
-  }
-
-  /// A node's laid-out position within its layout parent, in cells.
-  pub(crate) fn node_location(&self, node: NodeId) -> (i64, i64) {
-    let frame = self.frame(node);
-
-    (frame.x, frame.y)
   }
 
   /// A node's border widths, in cells: left, top, right, bottom.

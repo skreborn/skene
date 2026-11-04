@@ -486,7 +486,7 @@ impl Frames {
 
       let scroll = source.scroll(visit.node);
       let base = Point::new(rect.origin.x - scroll.x, rect.origin.y - scroll.y);
-      let flows = paragraph || (laid.inline != Inline::None && visit.flows);
+      let flows = paragraph || flowing;
 
       pending.extend(children.into_iter().rev().map(|node| Visit {
         node,
@@ -1333,6 +1333,32 @@ mod tests {
     );
     assert_eq!(frames.rect(node(4)), Some(rect(5., 4., 2., 1.)));
     assert_eq!(frames.get(node(4)).and_then(|frame| frame.parent), Some(1));
+  }
+
+  /// A run beneath an inline box that lays nothing out as a paragraph is laid out in the
+  /// box with an entry of its own, flowing in no paragraph, while a group's runs flow in
+  /// the paragraph around the group.
+  #[test]
+  fn a_run_in_an_inline_box_has_an_entry_of_its_own() {
+    let mut canned = Canned::new();
+    let mut boxed = laid(3., 0., 5., 1.);
+    let mut run = laid(1., 0., 4., 1.);
+
+    boxed.inline = Inline::Box;
+    run.inline = Inline::Run;
+    canned
+      .add(ROOT, node(1), Some(laid(2., 4., 20., 2.)))
+      .paragraph = true;
+    canned.add(node(1), node(2), Some(boxed));
+    canned.add(node(2), node(3), Some(run));
+    canned.add(node(1), node(4), Some(run));
+    canned.add(node(4), node(5), Some(run));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(frames.rect(node(3)), Some(rect(6., 4., 4., 1.)));
+    assert_eq!(frames.get(node(3)).and_then(|frame| frame.parent), Some(2));
+    assert_eq!((frames.get(node(4)), frames.get(node(5))), (None, None));
   }
 
   /// An overlay anchored on a run flowing in a paragraph opens against the run's pieces,

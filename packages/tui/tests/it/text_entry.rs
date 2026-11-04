@@ -389,6 +389,55 @@ fn the_caret_reports_the_terminal_cursor_cell() {
   });
 }
 
+/// An open popup hides the caret only while it covers the caret's cell, wherever it is
+/// placed, the entry beneath keeping it otherwise.
+#[test]
+fn a_popup_hides_the_caret_only_over_its_cell() {
+  with_platform(|| {
+    let open = Signal::new(false);
+    let placement = Signal::new(Placement::BottomEnd);
+
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          BasicTextField::new(TextEntry::new()).into_any(),
+          Overlay::popup()
+            .bind_open(open)
+            .derive_placement(move || placement.get())
+            .set_child(Text::new("cover"))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("a");
+    testing::trigger_key("b");
+    open.set(true);
+
+    let frame = testing::render_to_text(20, 4);
+
+    assert_eq!(testing::locate(&frame, "cover"), (15, 3), "{frame}");
+    assert_eq!(
+      testing::render_to_caret(20, 4),
+      Some((2, 0)),
+      "a popup away from the caret keeps it"
+    );
+
+    placement.set(Placement::TopStart);
+
+    let frame = testing::render_to_text(20, 4);
+
+    assert_eq!(testing::locate(&frame, "cover"), (0, 0), "{frame}");
+    assert_eq!(
+      testing::render_to_caret(20, 4),
+      None,
+      "a popup over the caret's cell hides it"
+    );
+  });
+}
+
 /// An editor whose rows overflow its box shows a scrollbar down its last column, and
 /// dragging the thumb scrolls the window.
 #[test]

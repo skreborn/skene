@@ -745,12 +745,9 @@ fn paint_overlay(records: &Records, buffer: &mut Buffer, layer: &Layer) {
   // the caret only when it covers the cell. Either way the overlay's own content may
   // set a fresh one while it paints.
   if let Some((caret_x, caret_y)) = buffer.caret {
-    let (left, top, right, bottom) = cells_of(records.runtime.frames().entries()[layer.start].rect);
-    let (caret_x, caret_y) = (
-      isize::try_from(caret_x).unwrap_or(isize::MAX),
-      isize::try_from(caret_y).unwrap_or(isize::MAX),
-    );
-    let covered = caret_x >= left && caret_x < right && caret_y >= top && caret_y < bottom;
+    let covered = records.runtime.frames().entries()[layer.start]
+      .rect
+      .contains(Point::new(f32::from(caret_x), f32::from(caret_y)));
 
     if layer.modal || covered {
       buffer.caret = None;
@@ -1104,8 +1101,8 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
 }
 
 /// Paints `node` at its rectangle in the runtime's index
-/// ([`Frames`](skene_layout::runtime::Frames)), inside what shows
-/// of it, then its children.
+/// ([`Frames`](skene_layout::runtime::Frames)), inside what shows of it, then its
+/// children.
 #[expect(
   clippy::too_many_lines,
   reason = "a match dispatch over the paints; length is the kind count, not complexity"

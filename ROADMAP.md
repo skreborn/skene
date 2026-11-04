@@ -779,6 +779,12 @@ in a code comment.
     Move it with the next Parley release, rebasing `vendor/parley`'s and
     `vendor/parley_engine`'s patches (their `SKENE.md`) onto it, the text and
     guaranteed-core tests green.
+39. **A group inside an inline box lays its runs out.** `Span::view(Span::group(..))`
+    draws nothing: `Runtime::enclosing_paragraph` climbs through the inline box to the
+    paragraph around it, so the group is synced with no layout children, while that
+    paragraph's flow (`visit_runs`) stops at the inline box, so its runs flow nowhere. A
+    group's paragraph stops at an inline box, as the flow does, and the group lays out
+    in the box as a lone span there does.
 
 Watched, not scheduled:
 

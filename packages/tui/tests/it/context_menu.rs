@@ -1,9 +1,10 @@
 //! Context menus in cells: a menu wrapping a view opens at the right-pressed cell in
 //! place of the terminal's own, its first usable item focused, its keys walk the enabled
 //! items, an item's shortcut runs it from the served view, the menu key opens it at the
-//! focused node, a standard item follows the clipboard the launch offers, the deepest
-//! menu along the path wins, `Escape` closes it before touching the selection, and the
-//! standard menu keeps an entry's selection while it acts on it.
+//! focused node, a link flowing in a paragraph where its paragraph draws it, a standard
+//! item follows the clipboard the launch offers, the deepest menu along the path wins,
+//! `Escape` closes it before touching the selection, and the standard menu keeps an
+//! entry's selection while it acts on it.
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -527,6 +528,36 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
       !testing::render_to_text(30, 8).contains("one"),
       "Escape closes it"
     );
+  });
+}
+
+/// The menu key on a focused link flowing in a paragraph opens the menu at the link's
+/// bottom-start corner as its paragraph draws it, below the link's line at its start.
+#[test]
+fn the_menu_key_opens_below_a_focused_link_where_it_flows() {
+  with_platform(|| {
+    let _ = mount(|| {
+      Column::new()
+        .set_children((
+          Text::new("heading"),
+          ContextMenu::new()
+            .set_items([MenuEntry::new("one")])
+            .set_child(RichText::new().add_spans([
+              Span::new("see "),
+              Span::new("here").set_link("https://example.com"),
+            ])),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(30, 8);
+
+    testing::trigger_key("Tab");
+    testing::trigger_key("Shift+F10");
+
+    let frame = testing::render_to_text(30, 8);
+
+    assert_eq!(common::locate(&frame, "one"), (4, 2), "{frame}");
   });
 }
 

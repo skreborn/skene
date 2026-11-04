@@ -29,13 +29,14 @@ window, `Frames`, the index of its window's rectangles (each laid-out node's bor
 the cover its paint damages, the reach a hit takes it at and the clip what shows of it
 is cut to, in paint order, each open overlay's subtree moved to where the runtime places
 it: pinned and moved back in, anchored below or above with a flip, or at one of seven
-window placements), the topmost node at a point hit over that index, the damage the next
-paint repaints as nodes and rectangles of the window (each damaged node's paint owner's
-cover at the last paint and now, every cover that moved, and what a destroyed node
-covered), which the platform collapses into its own granularity, and the environment the
-platform reports, behind the `Drawn` trait a drawn platform implements) and the text
-engine over Parley (`skene-parley`) on the foundation, the platforms on the foundation
-and, where they draw, on those two, each platform's realization a crate of its own
+window placements), a run flowing in a paragraph placed in the pieces its flow lays it
+out in, the topmost node at a point hit over that index, the damage the next paint
+repaints as nodes and rectangles of the window (each damaged node's paint owner's cover
+at the last paint and now, every cover that moved, and what a destroyed node covered),
+which the platform collapses into its own granularity, and the environment the platform
+reports, behind the `Drawn` trait a drawn platform implements) and the text engine over
+Parley (`skene-parley`) on the foundation, the platforms on the foundation and, where
+they draw, on those two, each platform's realization a crate of its own
 (`skene-gui-web`, `skene-tui-terminal`) with its facade over it (`skene-gui`,
 `skene-tui`), the Simple core (its palette, variants and sizes, naming no realization)
 on the foundation, each facade's Simple crate (its presets) on its facade, and the

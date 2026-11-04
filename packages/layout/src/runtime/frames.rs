@@ -1,7 +1,8 @@
 //! The drawn runtime's index of window rectangles: every laid-out node's border box in
 //! its window, the cover its paint damages, the reach a hit takes it at, the clip what
 //! shows of it is cut to and whether it takes hits, in paint order, each open overlay's
-//! subtree placed where the runtime places it.
+//! subtree placed where the runtime places it; and the damage the next paint repaints,
+//! as nodes and the rectangles of the window they cover.
 
 use skene_foundation::{Inset, NodeId, NodeMap, Point, Rect, RunPlacement, Scene, Size};
 use smallvec::SmallVec;
@@ -538,6 +539,76 @@ impl<P: Drawn> Runtime<P> {
   pub(super) fn move_geometry(&mut self) {
     self.invalidate_frames();
     self.covers_moved = true;
+  }
+
+  /// Marks `node` for repaint: what its paint owner ([`paint_owner`](Self::paint_owner))
+  /// covered at the last paint and what it covers now are painted again at the next
+  /// frame.
+  #[inline(always)]
+  pub fn damage(&mut self, node: NodeId) {
+    self.damaged.push(node);
+  }
+
+  /// Whether anything is marked for repaint: a damaged node, or what a destroyed node
+  /// covered at the last paint.
+  #[inline(always)]
+  #[must_use]
+  pub const fn has_damage(&self) -> bool {
+    !self.damaged.is_empty() || !self.damaged_rects.is_empty()
+  }
+
+  /// The node whose paint covers `node`: the paragraph a run flows in or the inline box
+  /// whose content it is, through any groups around it; else `node` itself.
+  pub fn paint_owner(&self, node: NodeId) -> NodeId {
+    let mut owner = node;
+
+    while let Some(parent) = self.layout_parent(owner) {
+      if !(self.is_paragraph(parent) || self.is_inline_run(parent)) {
+        break;
+      }
+
+      owner = parent;
+    }
+
+    owner
+  }
+
+  /// Takes what the next paint repaints, as rectangles of the window: what each damaged
+  /// node's paint owner covered at the last paint and covers now, what every destroyed
+  /// node covered at the last paint, and, where the covers moved since
+  /// ([`covers_moved`](Self::covers_moved)), what each node whose cover changed covered
+  /// and covers now, every node's cover then recorded as the one it covered at this
+  /// paint ([`Record::painted`](super::Record::painted)).
+  pub fn take_damage(&mut self) -> Vec<Rect<f32>> {
+    let mut rects = std::mem::take(&mut self.damaged_rects);
+    let damaged = std::mem::take(&mut self.damaged);
+    let moved = std::mem::take(&mut self.covers_moved);
+    let frames = self
+      .frames
+      .get_or_init(|| Frames::build(self, self.spare_frames.take()));
+
+    for node in damaged {
+      let owner = self.paint_owner(node);
+
+      if let Some(record) = self.records.get(owner) {
+        rects.extend(record.painted);
+        rects.extend(frames.cover(owner));
+      }
+    }
+
+    if moved {
+      for (node, record) in self.records.iter_mut() {
+        let cover = frames.cover(node);
+
+        if record.painted != cover {
+          rects.extend(record.painted);
+          rects.extend(cover);
+          record.painted = cover;
+        }
+      }
+    }
+
+    rects
   }
 }
 

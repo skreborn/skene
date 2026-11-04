@@ -21,6 +21,7 @@ use skene_foundation::{
   Point,
   Realization,
   Record as StyleRecord,
+  Rect,
   Role,
   RunFacts,
   RunStyle,
@@ -333,13 +334,17 @@ pub struct Record<P: Drawn> {
   /// layout allows ([`Runtime::scroll_offset`](super::Runtime::scroll_offset)); a text
   /// entry's window is the platform's own ([`Drawn::entry_scroll`]).
   pub scroll: Point<f32>,
+  /// What the node's paint covered in the window at the last paint that recorded the
+  /// covers ([`Runtime::take_damage`](super::Runtime::take_damage)); `None` for none.
+  pub painted: Option<Rect<f32>>,
   /// The platform's own state of the node ([`Drawn::Node`]).
   pub platform: P::Node,
 }
 
 impl<P: Drawn> Record<P> {
   /// The record of a node realized as `kind`, the platform's own state of it `platform`:
-  /// no text, slot, observer or report yet, at rest, unscrolled and in the display.
+  /// no text, slot, observer or report yet, at rest, unscrolled, in the display and
+  /// unpainted.
   pub fn new(kind: Kind<P>, platform: P::Node) -> Self {
     Self {
       kind,
@@ -350,6 +355,7 @@ impl<P: Drawn> Record<P> {
       in_motion: false,
       hidden: false,
       scroll: Point::ZERO,
+      painted: None,
       platform,
     }
   }
@@ -401,6 +407,7 @@ impl<P: Drawn + fmt::Debug> fmt::Debug for Record<P> {
       .field("in_motion", &self.in_motion)
       .field("hidden", &self.hidden)
       .field("scroll", &self.scroll)
+      .field("painted", &self.painted)
       .field("platform", &self.platform)
       .finish()
   }

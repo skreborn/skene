@@ -12,6 +12,15 @@ supersedes there.
 
 ## Decided against
 
+- **A damage-collapse hook on `Drawn`** (2026-11-04), the runtime asking the platform
+  to fold each damaged rectangle into its own granularity (the terminal's rows, a
+  region, a tile band) as it takes the damage, so what it hands the paint is already
+  collapsed: no code of the runtime reads a collapsed form, so the hook would be a call
+  the runtime makes on the platform's behalf with nothing of its own to gain. The
+  runtime hands the paint rectangles of the window (`Runtime::take_damage`), and the
+  platform collapses them where it paints (the terminal's `damaged_rows`). Revisit when
+  the runtime itself must read collapsed damage, such as a frame paced by its damaged
+  area.
 - **Run and group pieces stored in `Frames`** (2026-11-04), the index of window
   rectangles holding, beside each laid-out node's entry, the rectangles each run and
   group of a paragraph is drawn across: storing them lays every paragraph's pieces out

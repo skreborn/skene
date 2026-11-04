@@ -24,9 +24,9 @@ in a code comment.
     itself, Linux and Windows need as well, since they too own their window; each
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
-    - What the terminal still keeps of its retained runtime (the damage and the
-    measured rectangles, hit testing, focus, capture, wheel latching, selection, the
-    frames' placement of runs and inline boxes, a paragraph's text content) moves into
+    - What the terminal still keeps of its retained runtime (hit testing, focus,
+    capture, wheel latching, selection, the frames' placement of runs and inline boxes,
+    a paragraph's text content) moves into
     the drawn runtime in `skene-layout`, beside the layout tree it already writes from
     the scene and the restyle presenting into it, generic over the platform's scalar:
     its frames hit through, clipped and scrolled as a browser's are, a paragraph's runs
@@ -448,6 +448,10 @@ in a code comment.
     233.8M against 233.6M and the first mount to 1,928M against 1,925M, the unchanged
     frame and the pointer move, which rebuild nothing, holding at 525k and 6.96M
     (2026-11-04);
+    a structure change, a destroyed node and an overlay's opening or placement still
+    repaint the whole frame (`Runtime::paint_dirty`), where the runtime's damage already
+    holds what a destroyed node covered and every cover that moved
+    (`Runtime::take_damage`), so the rows they reach would do;
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config

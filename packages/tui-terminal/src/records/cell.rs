@@ -1,11 +1,11 @@
-//! What the terminal keeps per node in its record: a text entry's presentation, the
-//! cells the node covered at the last paint, and what it paints beyond its style.
+//! What the terminal keeps per node in its record: a text entry's presentation and what
+//! it paints beyond its style.
 
 use std::{fmt, rc::Rc};
 
 use skene_foundation::Inset;
 
-use super::{CellRect, Field};
+use super::Field;
 use crate::{cells::Painter, paint::Image};
 
 /// The terminal's own state of one realized node, carried in its record
@@ -14,8 +14,6 @@ use crate::{cells::Painter, paint::Image};
 pub struct CellNode {
   /// A text entry's presentation of its value; `None` for every other node.
   pub(crate) field: Option<Box<Field>>,
-  /// The screen rectangle the node covered at the last paint.
-  pub(crate) painted: Option<CellRect>,
   /// The painter a low-level view runs inside the box on every repaint.
   pub(crate) painter: Option<Box<Painter>>,
   /// The picture a painted box draws through the terminal's graphics.
@@ -30,7 +28,6 @@ impl fmt::Debug for CellNode {
     formatter
       .debug_struct("CellNode")
       .field("field", &self.field.is_some())
-      .field("painted", &self.painted)
       .field("painter", &self.painter.is_some())
       .field("picture", &self.picture.is_some())
       .field("backdrop", &self.backdrop.is_some())

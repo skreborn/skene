@@ -29,7 +29,10 @@ window, `Frames`, the index of its window's rectangles (each laid-out node's bor
 the cover its paint damages, the reach a hit takes it at and the clip what shows of it
 is cut to, in paint order, each open overlay's subtree moved to where the runtime places
 it: pinned and moved back in, anchored below or above with a flip, or at one of seven
-window placements), and the environment the platform reports, behind the `Drawn` trait a
+window placements), the damage the next paint repaints as nodes and rectangles of the
+window (each damaged node's paint owner's cover at the last paint and now, every cover
+that moved, and what a destroyed node covered), which the platform collapses into its
+own granularity, and the environment the platform reports, behind the `Drawn` trait a
 drawn platform implements) and the text engine over Parley (`skene-parley`) on the
 foundation, the platforms on the foundation and, where they draw, on those two, each
 platform's realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with
@@ -1954,9 +1957,9 @@ and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) an
 are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by generic
 code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, whose
 records carry the terminal's per-node cell state (`Drawn::Node`, its `CellNode`, made
-from the node's spec with the record and dropped with it: a text entry's field, the
-cells it covered at the last paint and what it paints beyond its style), beside each
-box's scroll offsets, which the runtime keeps, clamps and writes, notifying the box's
+from the node's spec with the record and dropped with it: a text entry's field and
+what it paints beyond its style), beside what each node covered at the last paint and
+each box's scroll offsets, which the runtime keeps, clamps and writes, notifying the box's
 scroll handlers, an editor's window down its rows standing for its vertical offset
 through `Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's
 window along its clusters stays the terminal's. Focus reveals the node it moves to
@@ -2302,10 +2305,14 @@ Layout is taffy at `1.0 = 1 cell`, on `skene-layout`'s `Tree` with each decorate
 `Container`'s, a control's, an overlay's, the root) a container laid out by an engine of
 its own and each layout-only box and run by its nearest container's, the effective style
 cached per node and `set_style` called only on change, so a keystroke relays out the
-changed subtree and a hover change repaints without relayout. A frame
-paints over the previous one, rewriting only the rows the changed nodes covered and
-cover—a node whose resolution, text, caret, scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
-then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
+changed subtree and a hover change repaints without relayout. A frame paints over the
+previous one, rewriting only the rows the runtime's damage rectangles reach
+(`Runtime::take_damage`: what each changed node's paint owner, the paragraph a run flows
+in, covered at the last paint and covers now, a node whose resolution, text, caret,
+scroll or rectangle changed; where the covers moved, what each node whose cover changed
+covered and covers; and what a destroyed node covered), each taken at the whole cells it
+spans, and every row for a whole-frame change; the terminal loop then diffs rows again
+on output. A paragraph lays its inline runs out as one wrapped
 text through its `TextFlow`, and a view inside it flows as an inline box: the
 paragraph's child in the tree, laid out at its content's size within the paragraph's
 layout, standing in the text as a placeholder of its whole cells and rows, at least one
@@ -2673,8 +2680,9 @@ sense apart where context does not.
 - **Record.** A drawn platform's record of a node (`skene_layout::runtime::Record`):
   what the drawn runtime (`runtime::Runtime`) keeps per `NodeId` beside the scene, its
   kind and the facts its creation carried, its kept and resolved style, its motion, its
-  text and slots, the platform's own per-node state carried in it (`Drawn::Node`, the
-  terminal's cell state). A snapshot record: what a run writes for its
+  text and slots, its scroll offsets, what its paint covered at the last paint, the
+  platform's own per-node state carried in it (`Drawn::Node`, the terminal's cell
+  state). A snapshot record: what a run writes for its
   successor at a dev reload. A node's style record (`Record`): its box and run styles
   and their motion as one erased list under Skene's property names (The style model).
 - **Realize.** A platform turning a scene node into its own representation: an element

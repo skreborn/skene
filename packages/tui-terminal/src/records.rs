@@ -50,15 +50,13 @@ pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Records {
-  /// The drawn runtime: a record per node carrying its scroll offsets and the terminal's
-  /// own state of it (its field, the cells it covers and what it paints beyond its
-  /// style), the root filling the screen, the overlays and entries in build order, the
-  /// restyle with its presentation's counters, the layout tree, what the next frame lays
-  /// out and repaints, the environment the terminal reports with the app's choice of
-  /// scheme, and the frame clock.
+  /// The drawn runtime: a record per node carrying its scroll offsets, what it covered
+  /// at the last paint and the terminal's own state of it (its field and what it paints
+  /// beyond its style), the root filling the screen, the overlays and entries in build
+  /// order, the restyle with its presentation's counters, the layout tree, what the next
+  /// frame lays out and repaints, the environment the terminal reports with the app's
+  /// choice of scheme, and the frame clock.
   pub(crate) runtime: Runtime<Terminal>,
-  /// Screen rectangles to repaint that no live node covers any more.
-  damaged_rects: Vec<CellRect>,
   /// The last painted frame, which the next paints over where nothing changed.
   pub(crate) last_frame: Option<Buffer>,
   /// The rows the last paint rewrote.
@@ -140,7 +138,6 @@ impl Records {
   pub(crate) fn new(root: NodeId, mouse: bool) -> Self {
     Self {
       runtime: Runtime::new(root, Self::launch_environment(mouse), false),
-      damaged_rects: Vec::new(),
       last_frame: None,
       repainted: Vec::new(),
       drag: None,
@@ -208,13 +205,8 @@ impl Records {
 
   /// Releases the record of `node`, retiring the node and every reference to it.
   pub(crate) fn destroy(&mut self, node: NodeId) {
-    let Some(record) = self.runtime.destroy(node)
-    else {
+    if self.runtime.destroy(node).is_none() {
       return;
-    };
-
-    if let Some(rect) = record.platform.painted {
-      self.damaged_rects.push(rect);
     }
 
     if self

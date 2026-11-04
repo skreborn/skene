@@ -27,8 +27,9 @@ const SETTLE_ROUNDS: usize = 4;
 /// Lays the tree out at `width` x `height` cells and paints it, once the pending turn
 /// has ended and the caret drag's autoscroll has stepped.
 ///
-/// The layout settles as [`settle`] says. The paint rewrites the rows the changed nodes
-/// covered and cover, over the previous frame; a whole-frame change rewrites every row.
+/// The layout settles as [`settle`] says. The paint rewrites the rows the runtime's
+/// damage rectangles reach, over the previous frame; a whole-frame change rewrites every
+/// row.
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
   crate::realize::end_turn();
   resize(width, height);
@@ -88,12 +89,12 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
     let full = std::mem::take(&mut records.runtime.paint_dirty) || previous.is_none();
-    let moved = std::mem::take(&mut records.runtime.covers_moved) || full;
-    let (damaged, rects) = records.take_damage();
 
-    if let Some(previous) = previous.as_ref().filter(|_| !moved)
-      && damaged.is_empty()
-      && rects.is_empty()
+    records.runtime.covers_moved |= full;
+
+    if let Some(previous) = previous.as_ref()
+      && !records.runtime.covers_moved
+      && !records.runtime.has_damage()
     {
       records.repainted = Vec::new();
       records.last_frame = Some(previous.clone());
@@ -104,7 +105,7 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
     render_pictures(records);
     render_backdrops(records);
 
-    let rows = damaged_rows(records, height, damaged, rects, moved);
+    let rows = damaged_rows(height, records.runtime.take_damage());
     let mut buffer = match previous {
       Some(previous) if !full => previous.repainting(&rows),
       _ => Buffer::new(width, height),
@@ -119,52 +120,19 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
 
     paint::paint(records, &mut buffer);
 
-    if moved {
-      record_painted(records);
-    }
-
     records.last_frame = Some(buffer.clone());
 
     buffer
   })
 }
 
-/// The rows the next paint rewrites: those the `damaged` nodes covered at the last
-/// paint and cover now, the `rects` no node covers any more, and, where the covers
-/// `moved`, those of every node the layout or a scroll moved or resized.
-fn damaged_rows(
-  records: &Records,
-  height: usize,
-  damaged: Vec<NodeId>,
-  mut rects: Vec<CellRect>,
-  moved: bool,
-) -> Vec<bool> {
-  let frames = records.runtime.frames();
-  let cover = |node: NodeId| frames.cover(node).map(cell_rect);
-
-  for node in damaged {
-    let target = paint_owner(records, node);
-
-    if let Some(cell) = records.cell(target) {
-      rects.extend(cell.painted);
-      rects.extend(cover(target));
-    }
-  }
-
-  if moved {
-    for (node, record) in records.runtime.records() {
-      let (painted, covers) = (record.platform.painted, cover(node));
-
-      if painted != covers {
-        rects.extend(painted);
-        rects.extend(covers);
-      }
-    }
-  }
-
+/// The rows of a frame `height` rows tall that the damage `rects`, rectangles of the
+/// window the runtime hands the paint ([`Runtime::take_damage`]), reach, each taken at
+/// the cells it spans.
+fn damaged_rows(height: usize, rects: Vec<skene_foundation::Rect<f32>>) -> Vec<bool> {
   let mut rows = vec![false; height];
 
-  for (_, y, _, extent) in rects {
+  for (_, y, _, extent) in rects.into_iter().map(cell_rect) {
     let from = usize::try_from(y.max(0)).unwrap_or(0).min(height);
     let to = usize::try_from((y + extent).max(0))
       .unwrap_or(0)
@@ -176,28 +144,12 @@ fn damaged_rows(
   rows
 }
 
-/// The node whose paint covers `node`: the paragraph an inline run flows in, or an
-/// inline box's content, through any groups; else the node itself.
-fn paint_owner(records: &Records, node: NodeId) -> NodeId {
-  let mut owner = node;
-
-  while let Some(parent) = records.runtime.layout_parent(owner) {
-    if !(records.runtime.is_paragraph(parent) || records.runtime.is_inline_run(parent)) {
-      break;
-    }
-
-    owner = parent;
-  }
-
-  owner
-}
-
 /// The screen cells `rect`, a cover the terminal's layout places at whole cells, spans.
 #[expect(
   clippy::cast_possible_truncation,
   reason = "the terminal's layout places a box at whole cells, far inside i64"
 )]
-const fn cell_rect(rect: skene_foundation::Rect<f32>) -> CellRect {
+pub(crate) const fn cell_rect(rect: skene_foundation::Rect<f32>) -> CellRect {
   (
     rect.origin.x as i64,
     rect.origin.y as i64,
@@ -461,27 +413,6 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
   }
 
   canvas.pixels()
-}
-
-/// Records the rectangle every node covers as the one it covered at this paint.
-fn record_painted(records: &mut Records) {
-  let covers: Vec<(NodeId, CellRect)> = records
-    .runtime
-    .frames()
-    .entries()
-    .iter()
-    .filter_map(|frame| Some((frame.node, cell_rect(frame.cover?))))
-    .collect();
-
-  for (_, record) in records.runtime.records_mut() {
-    record.platform.painted = None;
-  }
-
-  for (node, cover) in covers {
-    if let Some(cell) = records.cell_mut(node) {
-      cell.painted = Some(cover);
-    }
-  }
 }
 
 /// Reports the terminal size, moving the viewport signal and every resolved style when

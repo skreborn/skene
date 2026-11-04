@@ -14,7 +14,7 @@ use super::{
   trigger_mouse_press,
   trigger_mouse_release,
 };
-use crate::with_records;
+use crate::{frame::cell_rect, with_records};
 
 /// The center cell of the rectangle `node` covered at the last paint.
 ///
@@ -22,7 +22,7 @@ use crate::with_records;
 ///
 /// Panics where `node` covered no cell.
 fn cell_of(node: NodeId) -> (u16, u16) {
-  let rect = with_records(|records| records.cell(node).and_then(|cell| cell.painted));
+  let rect = with_records(|records| records.runtime.record(node)?.painted.map(cell_rect));
   let center = rect
     .filter(|(_, _, width, height)| *width > 0 && *height > 0)
     .and_then(|(x, y, width, height)| {

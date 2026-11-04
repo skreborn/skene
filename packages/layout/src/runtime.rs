@@ -65,6 +65,15 @@
 //! visibility, an overlay's opening or placement, or the scene's structure moved, beside
 //! whether the covers moved since the platform last painted ([`Runtime::covers_moved`]).
 //!
+//! The runtime keeps what the next paint repaints as nodes and the rectangles of the
+//! window they cover: each node marked for repaint ([`Runtime::damage`]) and what each
+//! destroyed node covered at the last paint, every node's cover at the last paint kept in
+//! its record ([`Record::painted`]). The paint takes it as rectangles
+//! ([`Runtime::take_damage`]): what each damaged node's paint owner, the paragraph a run
+//! flows in ([`Runtime::paint_owner`]), covered then and covers now, and, where the
+//! covers moved, what each node whose cover changed covered and covers, every cover then
+//! recorded as painted. The platform collapses the rectangles into its own granularity.
+//!
 //! A drawn platform's realization forwards to the runtime for everything that is no
 //! cell's or pixel's: a node's record created ([`Runtime::create`]) and destroyed, its
 //! style, slots, state and contents applied ([`Runtime::write`]), its size observed, an
@@ -106,6 +115,7 @@ use skene_foundation::{
   Plain,
   Point,
   Realization,
+  Rect,
   Resolver,
   RunStyle,
   Size,
@@ -244,9 +254,9 @@ type LayoutTree<P> = Tree<Measured<<P as Drawn>::Engine>>;
 /// A [`Record`] per node, the root filling the window, the overlays and text entries in
 /// build order, what moved since the last restyle, the layout tree it writes from them,
 /// the index of window rectangles it builds from that tree ([`Frames`]), and what the
-/// next frame lays out and repaints, beside what it keeps of its window, the
-/// app's choice of scheme, the frame clock its motion samples against and the text
-/// generation its flows are made under.
+/// next frame lays out and repaints, its damage as nodes and rectangles, beside what it
+/// keeps of its window, the app's choice of scheme, the frame clock its motion samples
+/// against and the text generation its flows are made under.
 #[derive(Debug)]
 #[must_use]
 #[expect(
@@ -281,6 +291,7 @@ pub struct Runtime<P: Drawn> {
   text_generation: u64,
   tree: LayoutTree<P>,
   damaged: Vec<NodeId>,
+  damaged_rects: Vec<Rect<f32>>,
   clock: Clock,
   window: Window<P>,
   choice: Option<ColorScheme>,
@@ -322,6 +333,7 @@ impl<P: Drawn> Runtime<P> {
       text_generation: 0,
       tree: Tree::new(P::ROUNDED),
       damaged: Vec::new(),
+      damaged_rects: Vec::new(),
       clock: Clock::Manual(0.),
       window: Window::new(reported, painting),
       choice: None,
@@ -424,10 +436,13 @@ impl<P: Drawn> Runtime<P> {
 
   /// Releases the record of `node`, retiring it from the overlays, the entries, the
   /// restyle, the layout tree, the reveal queued and the index of window rectangles, its
-  /// structure moved and the frame repainting; the record removed, for the platform to clear its
-  /// own references, or `None` where `node` held none.
+  /// structure moved, what it covered at the last paint damaged and the frame
+  /// repainting; the record removed, for the platform to clear its own references, or
+  /// `None` where `node` held none.
   pub fn destroy(&mut self, node: NodeId) -> Option<Record<P>> {
     let record = self.records.remove(node)?;
+
+    self.damaged_rects.extend(record.painted);
 
     self.tree.remove(node);
     self.overlays.retain(|overlay| *overlay != node);
@@ -443,26 +458,6 @@ impl<P: Drawn> Runtime<P> {
     self.paint_dirty = true;
 
     Some(record)
-  }
-
-  /// Marks `node` for repaint: what it covered at the last paint and what it covers now
-  /// are painted again at the next frame.
-  #[inline(always)]
-  pub fn damage(&mut self, node: NodeId) {
-    self.damaged.push(node);
-  }
-
-  /// Whether a node is marked for repaint.
-  #[inline(always)]
-  #[must_use]
-  pub const fn has_damage(&self) -> bool {
-    !self.damaged.is_empty()
-  }
-
-  /// Takes the nodes marked for repaint.
-  #[inline(always)]
-  pub fn take_damage(&mut self) -> Vec<NodeId> {
-    std::mem::take(&mut self.damaged)
   }
 
   /// The frame clock's reading, in seconds.

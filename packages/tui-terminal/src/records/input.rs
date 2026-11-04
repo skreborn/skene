@@ -63,36 +63,36 @@ pub(crate) struct Press {
 }
 
 impl Records {
-  /// `handle`'s place in focus traversal, as the scene holds it.
+  /// `node`'s place in focus traversal, as the scene holds it.
   #[expect(
     clippy::unused_self,
     reason = "every reader holds the records, and focus is asked of it as of the rest"
   )]
-  pub(crate) fn focus_order(&self, handle: NodeId) -> Option<FocusOrder> {
-    Scene::<Terminal>::read(|scene| scene.focus_order(handle))
+  pub(crate) fn focus_order(&self, node: NodeId) -> Option<FocusOrder> {
+    Scene::<Terminal>::read(|scene| scene.focus_order(node))
   }
 
-  /// Whether `handle` takes focus at all: by traversal, by pointer, or programmatically.
-  pub(crate) fn is_focusable(&self, handle: NodeId) -> bool {
-    self.focus_order(handle).is_some()
+  /// Whether `node` takes focus at all: by traversal, by pointer, or programmatically.
+  pub(crate) fn is_focusable(&self, node: NodeId) -> bool {
+    self.focus_order(node).is_some()
   }
 
-  /// Whether a press's pointer drags `handle`: a box or a control declaring the axes it
+  /// Whether a press's pointer drags `node`: a box or a control declaring the axes it
   /// drags along, which keeps a press's pointer until the release.
-  pub(crate) fn drags(&self, handle: NodeId) -> bool {
+  pub(crate) fn drags(&self, node: NodeId) -> bool {
     self
       .runtime
-      .record(handle)
+      .record(node)
       .and_then(|record| record.kind.box_record())
       .is_some_and(|inner| inner.drag.is_some())
   }
 
-  /// Whether `handle` is a control a press's pointer drags.
-  pub(crate) fn drags_as_control(&self, handle: NodeId) -> bool {
+  /// Whether `node` is a control a press's pointer drags.
+  pub(crate) fn drags_as_control(&self, node: NodeId) -> bool {
     matches!(
-      self.runtime.record(handle).map(|record| &record.kind),
+      self.runtime.record(node).map(|record| &record.kind),
       Some(Kind::Control { .. })
-    ) && self.drags(handle)
+    ) && self.drags(node)
   }
 
   /// The focused link run's node and destination, while a link holds focus.
@@ -117,10 +117,10 @@ impl Records {
     Scene::<Terminal>::read(Scene::focused)
   }
 
-  /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
+  /// Whether `node` holds focus that shows: after a key, or as a text entry, and not
   /// since a pointer press.
-  pub(crate) fn focus_shows(&self, handle: NodeId) -> bool {
-    self.runtime.contains(handle) && Scene::<Terminal>::read(|scene| scene.focus_shows(handle))
+  pub(crate) fn focus_shows(&self, node: NodeId) -> bool {
+    self.runtime.contains(node) && Scene::<Terminal>::read(|scene| scene.focus_shows(node))
   }
 
   /// Records whether focus shows, repainting the focused node when that changes.
@@ -138,17 +138,17 @@ impl Records {
     }
   }
 
-  /// The node a press or focus on `handle` lands on: itself when focusable, else its
+  /// The node a press or focus on `node` lands on: itself when focusable, else its
   /// enclosing control when that is; `None` where neither takes focus, as for a disabled
   /// control.
-  pub(crate) fn focus_holder(&self, handle: NodeId) -> Option<NodeId> {
-    if self.is_focusable(handle) {
-      return Some(handle);
+  pub(crate) fn focus_holder(&self, node: NodeId) -> Option<NodeId> {
+    if self.is_focusable(node) {
+      return Some(node);
     }
 
     self
       .runtime
-      .enclosing_control(handle)
+      .enclosing_control(node)
       .filter(|control| self.is_focusable(*control))
   }
 

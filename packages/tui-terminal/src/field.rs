@@ -56,12 +56,12 @@ pub(crate) struct Area {
 
 impl Records {
   /// The cells an entry shows its value in: inside its border and padding.
-  pub(crate) fn field_area(&self, handle: NodeId) -> Area {
-    let (width, height) = self.node_size(handle);
-    let border = self.node_border(handle);
+  pub(crate) fn field_area(&self, node: NodeId) -> Area {
+    let (width, height) = self.node_size(node);
+    let border = self.node_border(node);
     let padding = self
       .runtime
-      .record(handle)
+      .record(node)
       .and_then(|record| record.kind.box_style())
       .map(padding_cells)
       .unwrap_or_default();
@@ -78,22 +78,22 @@ impl Records {
     }
   }
 
-  /// Whether the entry at `handle` takes edits to its value: it is neither disabled nor
+  /// Whether the entry at `node` takes edits to its value: it is neither disabled nor
   /// read-only.
   #[expect(
     clippy::unused_self,
     reason = "every reader holds the records, and an entry's editability is asked of it as of the rest"
   )]
-  pub(crate) fn is_editable(&self, handle: NodeId) -> bool {
-    Scene::<Terminal>::read(|scene| scene.is_editable(handle))
+  pub(crate) fn is_editable(&self, node: NodeId) -> bool {
+    Scene::<Terminal>::read(|scene| scene.is_editable(node))
   }
 
   /// The inset from an entry's edge to its value: border plus padding.
-  fn field_inset(&self, handle: NodeId) -> (i64, i64) {
-    let border = self.node_border(handle);
+  fn field_inset(&self, node: NodeId) -> (i64, i64) {
+    let border = self.node_border(node);
     let padding = self
       .runtime
-      .record(handle)
+      .record(node)
       .and_then(|record| record.kind.box_style())
       .map(padding_cells)
       .unwrap_or_default();
@@ -106,8 +106,8 @@ impl Records {
 
   /// An entry's local cell as a column and row of its value: past the inset, clamped
   /// at its start.
-  fn entry_cell(&self, handle: NodeId, local_x: i64, local_y: i64) -> (usize, usize) {
-    let (inset_x, inset_y) = self.field_inset(handle);
+  fn entry_cell(&self, node: NodeId, local_x: i64, local_y: i64) -> (usize, usize) {
+    let (inset_x, inset_y) = self.field_inset(node);
 
     (
       usize::try_from(local_x - inset_x).unwrap_or(0),
@@ -117,46 +117,46 @@ impl Records {
 
   /// The layout position an entry's local cell stands for in its value as it shows:
   /// mapped through the inset and the window, clamped into the visible area.
-  fn entry_point(&self, handle: NodeId, local_x: i64, local_y: i64) -> Option<(f32, f32)> {
-    let area = self.field_area(handle);
-    let (column, row) = self.entry_cell(handle, local_x, local_y);
-    let field = self.field(handle)?;
-    let entry = self.entry(handle)?;
+  fn entry_point(&self, node: NodeId, local_x: i64, local_y: i64) -> Option<(f32, f32)> {
+    let area = self.field_area(node);
+    let (column, row) = self.entry_cell(node, local_x, local_y);
+    let field = self.field(node)?;
+    let entry = self.entry(node)?;
 
     Some(field.point_at(field.visible_window(&entry, area), area, column, row))
   }
 
   /// Whether the node is an editor, whose window scrolls down its wrapped rows.
-  pub(crate) fn is_editor(&self, handle: NodeId) -> bool {
-    self.field(handle).is_some_and(Field::is_editor)
+  pub(crate) fn is_editor(&self, node: NodeId) -> bool {
+    self.field(node).is_some_and(Field::is_editor)
   }
 
   /// An editor's window as it shows in its laid-out area; `None` for any other node.
-  pub(crate) fn editor_window(&self, handle: NodeId) -> Option<u32> {
-    let field = self.field(handle).filter(|field| field.is_editor())?;
-    let entry = self.entry(handle)?;
+  pub(crate) fn editor_window(&self, node: NodeId) -> Option<u32> {
+    let field = self.field(node).filter(|field| field.is_editor())?;
+    let entry = self.entry(node)?;
 
-    u32::try_from(field.visible_window(&entry, self.field_area(handle))).ok()
+    u32::try_from(field.visible_window(&entry, self.field_area(node))).ok()
   }
 
   /// How far an editor's window can scroll in its laid-out area; `None` for any other
   /// node.
-  pub(crate) fn editor_window_limit(&self, handle: NodeId) -> Option<u32> {
-    let field = self.field(handle).filter(|field| field.is_editor())?;
-    let entry = self.entry(handle)?;
+  pub(crate) fn editor_window_limit(&self, node: NodeId) -> Option<u32> {
+    let field = self.field(node).filter(|field| field.is_editor())?;
+    let entry = self.entry(node)?;
 
-    u32::try_from(field.scroll_limit(&entry, self.field_area(handle))).ok()
+    u32::try_from(field.scroll_limit(&entry, self.field_area(node))).ok()
   }
 
   /// Moves an editor's window to `window`, clamped, in its laid-out area.
-  pub(crate) fn set_editor_window(&mut self, handle: NodeId, window: u32) {
-    let area = self.field_area(handle);
-    let Some(entry) = self.entry(handle)
+  pub(crate) fn set_editor_window(&mut self, node: NodeId, window: u32) {
+    let area = self.field_area(node);
+    let Some(entry) = self.entry(node)
     else {
       return;
     };
 
-    if let Some(field) = self.field_mut(handle).filter(|field| field.is_editor()) {
+    if let Some(field) = self.field_mut(node).filter(|field| field.is_editor()) {
       let window = usize::try_from(window).unwrap_or(usize::MAX);
 
       field.window = window.min(field.scroll_limit(&entry, area));
@@ -164,35 +164,35 @@ impl Records {
     }
   }
 
-  /// Scrolls the single-line field at `handle` by `delta` cells in its laid-out area,
+  /// Scrolls the single-line field at `node` by `delta` cells in its laid-out area,
   /// damaging it: `None` when the node is no field or `delta` is zero, else whether it
   /// moved.
-  pub(crate) fn scroll_field_by(&mut self, handle: NodeId, delta: i64) -> Option<bool> {
+  pub(crate) fn scroll_field_by(&mut self, node: NodeId, delta: i64) -> Option<bool> {
     if delta == 0 {
       return None;
     }
 
-    let area = self.field_area(handle);
-    let entry = self.entry(handle)?;
-    let field = self.field_mut(handle).filter(|field| !field.is_editor())?;
+    let area = self.field_area(node);
+    let entry = self.entry(node)?;
+    let field = self.field_mut(node).filter(|field| !field.is_editor())?;
     let moved = field.scroll_window(&entry, area, delta);
 
     if moved {
-      self.runtime.damage(handle);
+      self.runtime.damage(node);
     }
 
     Some(moved)
   }
 
   /// Settles an entry's window around its caret, in its laid-out area.
-  pub(crate) fn settle_entry(&mut self, handle: NodeId) {
-    let area = self.field_area(handle);
-    let Some(entry) = self.entry(handle)
+  pub(crate) fn settle_entry(&mut self, node: NodeId) {
+    let area = self.field_area(node);
+    let Some(entry) = self.entry(node)
     else {
       return;
     };
 
-    if let Some(field) = self.field_mut(handle) {
+    if let Some(field) = self.field_mut(node) {
       field.settle(&entry, area);
     }
   }
@@ -214,13 +214,13 @@ impl Records {
 
   /// Settles what an entry's editor changed: a changed value restyles and lays the entry
   /// out again, and a changed value or selection settles its window and repaints it.
-  pub(crate) fn settle_changes(&mut self, handle: NodeId) {
-    let area = self.field_area(handle);
-    let Some(entry) = self.entry(handle)
+  pub(crate) fn settle_changes(&mut self, node: NodeId) {
+    let area = self.field_area(node);
+    let Some(entry) = self.entry(node)
     else {
       return;
     };
-    let Some(field) = self.field_mut(handle)
+    let Some(field) = self.field_mut(node)
     else {
       return;
     };
@@ -231,22 +231,22 @@ impl Records {
     }
 
     field.settle(&entry, area);
-    self.runtime.damage(handle);
+    self.runtime.damage(node);
 
     if changed.text {
-      self.runtime.restyle.queue(handle);
+      self.runtime.restyle.queue(node);
       self.runtime.layout_dirty = true;
     }
   }
 
-  /// Runs `operation` on the editor of the entry at `handle` now, where no operation holds
+  /// Runs `operation` on the editor of the entry at `node` now, where no operation holds
   /// it, and settles what it changed; else once the operation holding it ends.
   pub(crate) fn with_entry(
     &mut self,
-    handle: NodeId,
+    node: NodeId,
     operation: impl FnOnce(&mut EntryEditor) + 'static,
   ) {
-    let Some(entry) = self.entry(handle)
+    let Some(entry) = self.entry(node)
     else {
       return;
     };
@@ -259,7 +259,7 @@ impl Records {
 
     operation(&mut editor);
     drop(editor);
-    self.settle_changes(handle);
+    self.settle_changes(node);
   }
 
   /// Collapses the selection inside `entry` at its caret.
@@ -361,18 +361,13 @@ impl Records {
   }
 
   /// Whether the caret position at an entry's local cell lies inside its selection.
-  pub(crate) fn entry_selection_contains(
-    &self,
-    handle: NodeId,
-    local_x: i64,
-    local_y: i64,
-  ) -> bool {
-    let Some((x, y)) = self.entry_point(handle, local_x, local_y)
+  pub(crate) fn entry_selection_contains(&self, node: NodeId, local_x: i64, local_y: i64) -> bool {
+    let Some((x, y)) = self.entry_point(node, local_x, local_y)
     else {
       return false;
     };
 
-    self.entry(handle).is_some_and(|entry| {
+    self.entry(node).is_some_and(|entry| {
       entry.editor().try_borrow().is_ok_and(|editor| {
         let selected = editor.selected();
         let at = editor.byte_at(x, y);
@@ -386,15 +381,15 @@ impl Records {
   /// held, in cells of a field and rows of an editor, negative before its start; `None`
   /// while the pointer is inside it or the window can scroll no further that way.
   fn caret_drag_overshoot(&self) -> Option<(NodeId, i64)> {
-    let Some(Drag::Caret(handle)) = self.drag
+    let Some(Drag::Caret(node)) = self.drag
     else {
       return None;
     };
-    let field = self.field(handle)?;
-    let entry = self.entry(handle)?;
-    let area = self.field_area(handle);
-    let (origin_x, origin_y) = self.screen_origin(handle);
-    let (inset_x, inset_y) = self.field_inset(handle);
+    let field = self.field(node)?;
+    let entry = self.entry(node)?;
+    let area = self.field_area(node);
+    let (origin_x, origin_y) = self.screen_origin(node);
+    let (inset_x, inset_y) = self.field_inset(node);
     let (x, y) = self.last_pointer;
     let (along, span) = if field.is_editor() {
       (i64::from(y) - origin_y - inset_y, area.rows.max(1))
@@ -420,7 +415,7 @@ impl Records {
       window < field.scroll_limit(&entry, area)
     };
 
-    room.then_some((handle, overshoot))
+    room.then_some((node, overshoot))
   }
 
   /// Whether a caret drag is held past its entry's edge with room to scroll.
@@ -432,7 +427,7 @@ impl Records {
   /// pointer is held past the entry's visible value, the window scrolls toward it by the
   /// overshoot; the entry and the point its caret follows to, at the edge, are returned.
   fn autoscroll_step(&mut self) -> Option<(NodeId, (f32, f32))> {
-    let Some((handle, overshoot)) = self.caret_drag_overshoot()
+    let Some((node, overshoot)) = self.caret_drag_overshoot()
     else {
       self.autoscroll_at = None;
 
@@ -454,12 +449,12 @@ impl Records {
 
     self.autoscroll_at = Some(at + steps * interval);
 
-    let area = self.field_area(handle);
-    let (origin_x, origin_y) = self.screen_origin(handle);
+    let area = self.field_area(node);
+    let (origin_x, origin_y) = self.screen_origin(node);
     let (x, y) = self.last_pointer;
-    let (column, row) = self.entry_cell(handle, i64::from(x) - origin_x, i64::from(y) - origin_y);
-    let entry = self.entry(handle)?;
-    let field = self.field_mut(handle)?;
+    let (column, row) = self.entry_cell(node, i64::from(x) - origin_x, i64::from(y) - origin_y);
+    let entry = self.entry(node)?;
+    let field = self.field_mut(node)?;
     #[expect(clippy::cast_possible_truncation, reason = "at least one whole step")]
     let delta = overshoot.saturating_mul(steps as i64);
 
@@ -467,9 +462,9 @@ impl Records {
 
     let point = field.point_at(field.window, area, column, row);
 
-    self.runtime.damage(handle);
+    self.runtime.damage(node);
 
-    Some((handle, point))
+    Some((node, point))
   }
 }
 

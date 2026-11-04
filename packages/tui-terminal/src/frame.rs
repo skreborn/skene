@@ -144,8 +144,8 @@ fn damaged_rows(
   mut rects: Vec<CellRect>,
   moved: bool,
 ) -> Vec<bool> {
-  for handle in damaged {
-    let target = paint_owner(records, handle);
+  for node in damaged {
+    let target = paint_owner(records, node);
 
     if let Some(cell) = records.cell(target) {
       rects.extend(cell.painted);
@@ -178,10 +178,10 @@ fn damaged_rows(
   rows
 }
 
-/// The node whose paint covers `handle`: the paragraph an inline run flows in, or an
+/// The node whose paint covers `node`: the paragraph an inline run flows in, or an
 /// inline box's content, through any groups; else the node itself.
-fn paint_owner(records: &Records, handle: NodeId) -> NodeId {
-  let mut owner = handle;
+fn paint_owner(records: &Records, node: NodeId) -> NodeId {
+  let mut owner = node;
 
   while let Some(parent) = records.runtime.layout_parent(owner) {
     if !(records.runtime.is_paragraph(parent) || records.runtime.is_inline_run(parent)) {
@@ -194,10 +194,10 @@ fn paint_owner(records: &Records, handle: NodeId) -> NodeId {
   owner
 }
 
-/// The screen rectangle `handle` paints at `origin`, grown by the cells its shadow
+/// The screen rectangle `node` paints at `origin`, grown by the cells its shadow
 /// reaches; `None` for a node without extent.
-fn rect_at(records: &Records, handle: NodeId, (x, y): (i64, i64)) -> Option<CellRect> {
-  let (width, height) = records.node_size(handle);
+fn rect_at(records: &Records, node: NodeId, (x, y): (i64, i64)) -> Option<CellRect> {
+  let (width, height) = records.node_size(node);
 
   if width <= 0 || height <= 0 {
     return None;
@@ -205,7 +205,7 @@ fn rect_at(records: &Records, handle: NodeId, (x, y): (i64, i64)) -> Option<Cell
 
   let band = records
     .runtime
-    .record(handle)
+    .record(node)
     .and_then(|record| record.kind.box_style())
     .map_or(0, |style| i64::from(ShadowPaint::band(style)));
 
@@ -228,12 +228,12 @@ fn render_pictures(records: &mut Records) {
     .map(|(node, _)| node)
     .collect();
 
-  for handle in pictured {
-    let Some(picture) = records.cell(handle).and_then(|cell| cell.picture.as_ref())
+  for node in pictured {
+    let Some(picture) = records.cell(node).and_then(|cell| cell.picture.as_ref())
     else {
       continue;
     };
-    let size = records.client_size(handle);
+    let size = records.client_size(node);
     let width = u16::try_from(size.width.saturating_mul(i32::from(cell_width))).unwrap_or(u16::MAX);
     let height =
       u16::try_from(size.height.saturating_mul(i32::from(cell_height))).unwrap_or(u16::MAX);
@@ -262,7 +262,7 @@ fn render_pictures(records: &mut Records) {
     let generation = records.picture_generation;
 
     if let Some(picture) = records
-      .cell_mut(handle)
+      .cell_mut(node)
       .and_then(|cell| cell.picture.as_mut())
     {
       picture.image = Some(Rc::new(Image {
@@ -475,14 +475,14 @@ fn measure_covers(records: &mut Records) {
   let mut covers = Vec::new();
   let mut pending = vec![(records.runtime.root(), (0, 0), None)];
 
-  while let Some((handle, (base_x, base_y), laid_out_parent)) = pending.pop() {
-    let record = records.runtime.record(handle);
+  while let Some((node, (base_x, base_y), laid_out_parent)) = pending.pop() {
+    let record = records.runtime.record(node);
     let laid_out = record.is_some();
     let origin = if record.is_some_and(Record::is_overlay) {
-      records.overlay_origin(handle)
+      records.overlay_origin(node)
     }
     else if laid_out {
-      let (x, y) = records.inline_location(handle);
+      let (x, y) = records.inline_location(node);
       let (scroll_x, scroll_y) =
         laid_out_parent.map_or((0, 0), |parent| records.scroll_offset(parent));
 
@@ -495,20 +495,20 @@ fn measure_covers(records: &mut Records) {
       (base_x, base_y)
     };
     let beneath = if laid_out {
-      Some(handle)
+      Some(node)
     }
     else {
       laid_out_parent
     };
 
     if laid_out {
-      covers.push((handle, rect_at(records, handle, origin)));
+      covers.push((node, rect_at(records, node, origin)));
     }
 
     pending.extend(
       records
         .runtime
-        .children(handle)
+        .children(node)
         .into_iter()
         .map(|child| (child, origin, beneath)),
     );
@@ -518,8 +518,8 @@ fn measure_covers(records: &mut Records) {
     record.platform.covers = None;
   }
 
-  for (handle, rect) in covers {
-    if let Some(cell) = records.cell_mut(handle) {
+  for (node, rect) in covers {
+    if let Some(cell) = records.cell_mut(node) {
       cell.covers = rect;
     }
   }
@@ -547,7 +547,7 @@ fn measure_containers() -> bool {
     records
       .runtime
       .records()
-      .filter_map(|(handle, record)| Some((record.container()?, records.client_size(handle))))
+      .filter_map(|(node, record)| Some((record.container()?, records.client_size(node))))
       .collect::<Vec<_>>()
   });
 
@@ -608,32 +608,29 @@ fn reveal() -> bool {
   .unwrap_or_default();
   let changed = !adjusted.is_empty();
 
-  for (handle, offsets) in adjusted {
-    scroll_to(handle, offsets);
+  for (node, offsets) in adjusted {
+    scroll_to(node, offsets);
   }
 
   changed
 }
 
-/// The nearest node at or above `handle` the tree lays out: `handle` itself, or the
+/// The nearest node at or above `node` the tree lays out: `node` itself, or the
 /// paragraph a text or group run flows in.
-fn laid_owner(records: &Records, handle: NodeId) -> NodeId {
-  if records.runtime.is_inline_run(handle) && !records.runtime.is_inline_box(handle) {
-    return records
-      .runtime
-      .enclosing_paragraph(handle)
-      .unwrap_or(handle);
+fn laid_owner(records: &Records, node: NodeId) -> NodeId {
+  if records.runtime.is_inline_run(node) && !records.runtime.is_inline_box(node) {
+    return records.runtime.enclosing_paragraph(node).unwrap_or(node);
   }
 
-  handle
+  node
 }
 
-/// The scroll offsets each scrollable ancestor of `handle` takes to show it.
-fn adjustments(records: &Records, handle: NodeId) -> Vec<(NodeId, (u32, u32))> {
+/// The scroll offsets each scrollable ancestor of `node` takes to show it.
+fn adjustments(records: &Records, node: NodeId) -> Vec<(NodeId, (u32, u32))> {
   let mut adjusted = Vec::new();
-  let (mut rel_x, mut rel_y) = records.node_location(handle);
-  let (width, height) = records.node_size(handle);
-  let mut current = records.runtime.layout_parent(handle);
+  let (mut rel_x, mut rel_y) = records.node_location(node);
+  let (width, height) = records.node_size(node);
+  let mut current = records.runtime.layout_parent(node);
 
   while let Some(ancestor) = current {
     let (mut offset_x, mut offset_y) = records.scroll_offset(ancestor);

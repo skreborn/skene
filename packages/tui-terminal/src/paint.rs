@@ -867,20 +867,20 @@ enum NodePaint {
   None,
 }
 
-/// Each cluster the text node `handle`, laid out across the cells its leaf placed it in,
+/// Each cluster the text `node`, laid out across the cells its leaf placed it in,
 /// draws, with its span (the index of its run among `source`'s), its run's scale and
 /// whether `selection`, a range of `source`'s clusters, holds it.
 fn cluster_paints(
   records: &Records,
-  handle: NodeId,
+  node: NodeId,
   source: &Source,
   selection: Option<(usize, usize)>,
 ) -> Vec<ClusterPaint> {
-  let Some(flow) = records.runtime.flow_of(handle)
+  let Some(flow) = records.runtime.flow_of(node)
   else {
     return Vec::new();
   };
-  let laid = flow.laid(content(records.flow_width(handle)));
+  let laid = flow.laid(content(records.flow_width(node)));
   let text = flow.flow().text();
   let runs: Vec<NodeId> = source.runs().map(|(run, _)| run).collect();
   let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();
@@ -903,10 +903,10 @@ fn cluster_paints(
 
 /// The border paint of a resolved box style: in its color, the terminal's own ink where
 /// it sets none, and unshown where its color is transparent.
-fn border_paint(records: &Records, handle: NodeId) -> Option<BorderPaint> {
+fn border_paint(records: &Records, node: NodeId) -> Option<BorderPaint> {
   let style = &records
     .runtime
-    .record(handle)?
+    .record(node)?
     .kind
     .box_record()?
     .cache
@@ -952,20 +952,20 @@ fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<Selecti
   }
 }
 
-/// What `handle` paints, from its resolved style.
+/// What `node` paints, from its resolved style.
 #[expect(
   clippy::too_many_lines,
   reason = "a match dispatch over the record kinds; length is the kind count, not complexity"
 )]
-fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
-  let Some(record) = records.runtime.record(handle)
+fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
+  let Some(record) = records.runtime.record(node)
   else {
     return NodePaint::None;
   };
 
   match &record.kind {
-    Kind::Box(_) if records.runtime.is_paragraph(handle) => {
-      let source = Source::of(&records.runtime, handle);
+    Kind::Box(_) if records.runtime.is_paragraph(node) => {
+      let source = Source::of(&records.runtime, node);
       let mut destinations = Vec::new();
       let spans: Vec<SpanPaint> = source
         .runs()
@@ -998,10 +998,10 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
         .collect();
 
       NodePaint::Paragraph {
-        clusters: cluster_paints(records, handle, &source, records.selection_range(handle)),
+        clusters: cluster_paints(records, node, &source, records.selection_range(node)),
         spans,
         links: destinations,
-        boxes: records.runtime.inline_boxes(handle),
+        boxes: records.runtime.inline_boxes(node),
       }
     }
     Kind::Box(inner) | Kind::Overlay { inner, .. } => {
@@ -1011,7 +1011,7 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
         background: style
           .and_then(|style| style.background)
           .and_then(terminal_rgb),
-        border: border_paint(records, handle),
+        border: border_paint(records, node),
         shadow: style.and_then(ShadowPaint::of),
       }
     }
@@ -1021,9 +1021,9 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
         .and_then(|style| style.background)
         .and_then(terminal_rgb);
       let shadow = style.and_then(ShadowPaint::of);
-      let border = border_paint(records, handle);
+      let border = border_paint(records, node);
 
-      let Some(field) = records.field(handle)
+      let Some(field) = records.field(node)
       else {
         return NodePaint::Box {
           background,
@@ -1037,8 +1037,8 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.start).unwrap_or(0),
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
-      let area = records.field_area(handle);
-      let Some(entry) = records.entry(handle)
+      let area = records.field_area(node);
+      let Some(entry) = records.entry(node)
       else {
         return NodePaint::Box {
           background,
@@ -1047,7 +1047,7 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
         };
       };
       let mut visible = field.visible(&entry, area, focused);
-      let run = Env::of(&records.runtime, handle).resolve_entry_run();
+      let run = Env::of(&records.runtime, node).resolve_entry_run();
 
       if !(focused && area.columns > 0) {
         visible.caret = None;
@@ -1064,7 +1064,7 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
         selection: selection_colors(&run),
       }
     }
-    Kind::Run { .. } if records.runtime.is_inline_box(handle) => NodePaint::None,
+    Kind::Run { .. } if records.runtime.is_inline_box(node) => NodePaint::None,
     Kind::Run {
       facts,
       destination,
@@ -1074,28 +1074,28 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
       let style = cache.as_ref().map(|cache| &cache.style);
       let selection = facts
         .selectable
-        .then(|| records.selection_range(handle))
+        .then(|| records.selection_range(node))
         .flatten();
 
       NodePaint::Text {
         clusters: cluster_paints(
           records,
-          handle,
-          &Source::of(&records.runtime, handle),
+          node,
+          &Source::of(&records.runtime, node),
           selection,
         ),
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
         decoration: CellDecoration::of(style, facts.link),
         link: destination.clone().filter(|_| facts.link),
-        focused: (facts.link && focused).then(|| link_focus_emphasis(records, handle)),
+        focused: (facts.link && focused).then(|| link_focus_emphasis(records, node)),
         selection: style.and_then(selection_colors),
       }
     }
   }
 }
 
-/// Paints `handle` at its layout position offset by (`offset_x`, `offset_y`), then its
+/// Paints `node` at its layout position offset by (`offset_x`, `offset_y`), then its
 /// children.
 #[expect(
   clippy::too_many_lines,
@@ -1104,13 +1104,13 @@ fn node_paint(records: &Records, handle: NodeId, focused: bool) -> NodePaint {
 fn paint_node(
   records: &Records,
   buffer: &mut Buffer,
-  handle: NodeId,
+  node: NodeId,
   offset_x: isize,
   offset_y: isize,
 ) {
-  let Some(record) = records.runtime.record(handle)
+  let Some(record) = records.runtime.record(node)
   else {
-    for child in records.runtime.children(handle) {
+    for child in records.runtime.children(node) {
       if records
         .runtime
         .record(child)
@@ -1129,7 +1129,7 @@ fn paint_node(
     return;
   }
 
-  let frame = records.frame(handle);
+  let frame = records.frame(node);
   let (x, y) = (
     offset_x + isize::try_from(frame.x).unwrap_or(0),
     offset_y + isize::try_from(frame.y).unwrap_or(0),
@@ -1151,11 +1151,11 @@ fn paint_node(
     .is_some();
   let mut repainted = !run || buffer.repaints(y, height);
 
-  if !(run || shown) && records.clips(handle) {
+  if !(run || shown) && records.clips(node) {
     return;
   }
 
-  let paragraph = !run && records.runtime.is_paragraph(handle);
+  let paragraph = !run && records.runtime.is_paragraph(node);
 
   // A paragraph's inline boxes and an inline box's content paint wherever they reach,
   // past the frame they flow in, as overflow paints.
@@ -1165,7 +1165,7 @@ fn paint_node(
   );
 
   if !(shown && repainted) && (paragraph || inline_box) {
-    let (_, [reach_left, reach_top, reach_right, reach_bottom]) = records.reach_of(handle);
+    let (_, [reach_left, reach_top, reach_right, reach_bottom]) = records.reach_of(node);
     let (left, top, right, bottom) = (
       cells_before(reach_left).min(-band),
       cells_before(reach_top).min(-band),
@@ -1187,7 +1187,7 @@ fn paint_node(
     (0, 0, 0, 0)
   }
   else {
-    let border = records.node_border(handle);
+    let border = records.node_border(node);
 
     (
       isize::try_from(border.0).unwrap_or(0),
@@ -1199,10 +1199,10 @@ fn paint_node(
   let edges = border;
 
   if shown && repainted {
-    let focused = records.focus_shows(handle);
+    let focused = records.focus_shows(node);
     let contrast = records.contrast();
 
-    match node_paint(records, handle, focused) {
+    match node_paint(records, node, focused) {
       NodePaint::Paragraph {
         clusters,
         spans,
@@ -1213,7 +1213,7 @@ fn paint_node(
         let links: Vec<u16> = links.iter().map(|link| buffer.link(link)).collect();
         let text = records
           .runtime
-          .flow_of(handle)
+          .flow_of(node)
           .map_or("", |flow| flow.flow().text());
 
         for cluster in &clusters {
@@ -1269,7 +1269,7 @@ fn paint_node(
       } => {
         // A backdrop carries the decoration as pixels beneath the cells, which stay
         // uncolored and unbordered so it shows through.
-        if place_backdrop(records, buffer, handle, (x, y), (width, height)) {
+        if place_backdrop(records, buffer, node, (x, y), (width, height)) {
           // Nothing in cells.
         }
         else {
@@ -1280,7 +1280,7 @@ fn paint_node(
           // A childless, borderless box paints from its parent's origin by eighths:
           // whole cells in its color, and a cell an edge crosses as a block glyph
           // carrying its color beside what lies beneath.
-          match records.smooth_span(handle).filter(|_| border.is_none()) {
+          match records.smooth_span(node).filter(|_| border.is_none()) {
             Some((start, extent)) => {
               draw_smooth(buffer, offset_x, y, height, start, extent, background);
             }
@@ -1316,7 +1316,7 @@ fn paint_node(
           place_image(
             records,
             buffer,
-            handle.index() + 1,
+            node.index() + 1,
             image,
             0,
             (x + edges.0, y + edges.1),
@@ -1339,7 +1339,7 @@ fn paint_node(
         let link = link.map(|url| buffer.link(&url));
         let text = records
           .runtime
-          .flow_of(handle)
+          .flow_of(node)
           .map_or("", |flow| flow.flow().text());
 
         for cluster in &clusters {
@@ -1390,7 +1390,7 @@ fn paint_node(
         inset,
         selection,
       } => {
-        if !place_backdrop(records, buffer, handle, (x, y), (width, height)) {
+        if !place_backdrop(records, buffer, node, (x, y), (width, height)) {
           if let Some(shadow) = shadow {
             draw_shadow(buffer, x, y, width, height, shadow, contrast);
           }
@@ -1452,7 +1452,7 @@ fn paint_node(
 
   let saved_clip = buffer.clip;
 
-  if records.clips(handle) {
+  if records.clips(node) {
     let rect = (
       x + border.0,
       y + border.1,
@@ -1466,13 +1466,13 @@ fn paint_node(
     });
   }
 
-  let (scroll_x, scroll_y) = records.scroll_offset(handle);
+  let (scroll_x, scroll_y) = records.scroll_offset(node);
   let (child_x, child_y) = (
     x - isize::try_from(scroll_x).unwrap_or(0),
     y - isize::try_from(scroll_y).unwrap_or(0),
   );
 
-  for child in records.runtime.children(handle) {
+  for child in records.runtime.children(node) {
     if records
       .runtime
       .record(child)
@@ -1486,8 +1486,8 @@ fn paint_node(
 
   buffer.clip = saved_clip;
 
-  if records.is_scrollable(handle) {
-    draw_scrollbars(records, buffer, handle, x, y, width, height, border);
+  if records.is_scrollable(node) {
+    draw_scrollbars(records, buffer, node, x, y, width, height, border);
   }
 }
 
@@ -1578,14 +1578,14 @@ fn place_image(
   });
 }
 
-/// Places the backdrop of the box `handle`, where it has one and the terminal shows
+/// Places the backdrop of the box `node`, where it has one and the terminal shows
 /// graphics, over the box at (`x`, `y`) of `width` by `height` cells and the shadow
 /// band beyond it, beneath every colored cell at the box's depth; `true` when placed,
 /// so the cells carry none of the decoration.
 fn place_backdrop(
   records: &Records,
   buffer: &mut Buffer,
-  handle: NodeId,
+  node: NodeId,
   (x, y): (isize, isize),
   (width, height): (usize, usize),
 ) -> bool {
@@ -1593,11 +1593,11 @@ fn place_backdrop(
     return false;
   }
 
-  let Some(backdrop) = records.cell(handle).and_then(|cell| cell.backdrop.as_ref())
+  let Some(backdrop) = records.cell(node).and_then(|cell| cell.backdrop.as_ref())
   else {
     return false;
   };
-  let ancestors = records.runtime.ancestors(handle);
+  let ancestors = records.runtime.ancestors(node);
   let depth = ancestors.len()
     + 512
       * usize::from(ancestors.iter().any(|ancestor| {
@@ -1612,7 +1612,7 @@ fn place_backdrop(
   place_image(
     records,
     buffer,
-    BACKDROP_ID + handle.index(),
+    BACKDROP_ID + node.index(),
     Rc::clone(&backdrop.image),
     layer,
     (x, y),
@@ -1634,15 +1634,15 @@ fn place_backdrop(
 fn draw_scrollbars(
   records: &Records,
   buffer: &mut Buffer,
-  handle: NodeId,
+  node: NodeId,
   x: isize,
   y: isize,
   width: usize,
   height: usize,
   border: (isize, isize, isize, isize),
 ) {
-  let (offset_x, offset_y) = records.scroll_offset(handle);
-  let (limit_x, limit_y) = records.scroll_limits(handle);
+  let (offset_x, offset_y) = records.scroll_offset(node);
+  let (limit_x, limit_y) = records.scroll_limits(node);
   let (width, height) = (
     isize::try_from(width).unwrap_or(0),
     isize::try_from(height).unwrap_or(0),
@@ -1650,7 +1650,7 @@ fn draw_scrollbars(
   let contrast = records.contrast();
   let style = records
     .runtime
-    .record(handle)
+    .record(node)
     .and_then(|record| record.kind.box_style());
   let bar = BarStyle {
     glyphs: style
@@ -2077,14 +2077,14 @@ const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
   }
 }
 
-/// The scale the run `handle` draws at: its resolved size where the terminal sizes
+/// The scale the run `node` draws at: its resolved size where the terminal sizes
 /// text, one cell elsewhere and for an inline box.
-pub(crate) fn run_scale(records: &Records, handle: NodeId) -> CellScale {
-  if records.runtime.is_inline_box(handle) {
+pub(crate) fn run_scale(records: &Records, node: NodeId) -> CellScale {
+  if records.runtime.is_inline_box(node) {
     return CellScale::ONE;
   }
 
-  match records.runtime.record(handle).map(|record| &record.kind) {
+  match records.runtime.record(node).map(|record| &record.kind) {
     Some(Kind::Run { cache, .. }) => {
       text::scale_of(cache.as_ref().and_then(|cache| cache.style.ext.size))
     }
@@ -2312,9 +2312,9 @@ pub(crate) fn changed_columns(
   Some(start..end)
 }
 
-/// Whether the control `handle` is a text entry; `None` where it is no control.
-pub(crate) fn control_entry(records: &Records, handle: NodeId) -> Option<bool> {
-  match records.runtime.record(handle)?.kind {
+/// Whether the control `node` is a text entry; `None` where it is no control.
+pub(crate) fn control_entry(records: &Records, node: NodeId) -> Option<bool> {
+  match records.runtime.record(node)?.kind {
     Kind::Control { native, .. } => Some(native.is_some_and(NativeElement::is_text_entry)),
     _ => None,
   }

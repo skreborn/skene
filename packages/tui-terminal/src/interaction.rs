@@ -58,10 +58,10 @@ use crate::{
 pub(crate) const WHEEL_STEP: i64 = 3;
 
 impl Records {
-  /// Whether `handle` sits inside an open overlay.
-  pub(crate) fn inside_open_overlay(&self, handle: Option<NodeId>) -> bool {
-    handle.is_some_and(|handle| {
-      let ancestors = self.runtime.ancestors(handle);
+  /// Whether `node` sits inside an open overlay.
+  pub(crate) fn inside_open_overlay(&self, node: Option<NodeId>) -> bool {
+    node.is_some_and(|node| {
+      let ancestors = self.runtime.ancestors(node);
 
       self
         .runtime
@@ -93,14 +93,14 @@ impl Records {
     Scene::<Terminal>::read(|scene| scene.topmost_modal(scene.open_overlays()))
   }
 
-  /// Whether `handle` is reachable while the topmost modal is open: inside it, or inside
+  /// Whether `node` is reachable while the topmost modal is open: inside it, or inside
   /// an overlay opened above it; everything is while no modal is open.
   #[expect(
     clippy::unused_self,
     reason = "every reader holds the records, and the overlays are asked of it as of the rest"
   )]
-  pub(crate) fn reachable_under_modal(&self, handle: NodeId) -> bool {
-    Scene::<Terminal>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), handle))
+  pub(crate) fn reachable_under_modal(&self, node: NodeId) -> bool {
+    Scene::<Terminal>::read(|scene| scene.reachable_under_modal(scene.open_overlays(), node))
   }
 
   /// The deepest node under the cell (`x`, `y`) and its ancestors, the root first: the
@@ -151,16 +151,16 @@ impl Records {
   /// beneath it is.
   fn hit_walk(
     &self,
-    handle: NodeId,
+    node: NodeId,
     offset_x: i64,
     offset_y: i64,
     x: i64,
     y: i64,
     path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
-    let Some(record) = self.runtime.record(handle)
+    let Some(record) = self.runtime.record(node)
     else {
-      for child in self.runtime.children_reversed(handle) {
+      for child in self.runtime.children_reversed(node) {
         if self.runtime.record(child).is_some_and(Record::is_overlay) {
           continue;
         }
@@ -177,9 +177,9 @@ impl Records {
       return false;
     }
 
-    let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(handle);
+    let (frame, [reach_left, reach_top, reach_right, reach_bottom]) = self.reach_of(node);
     let (origin_x, origin_y) = (offset_x + frame.x, offset_y + frame.y);
-    let contains = handle == self.runtime.root() || frame.covers((origin_x, origin_y), (x, y));
+    let contains = node == self.runtime.root() || frame.covers((origin_x, origin_y), (x, y));
 
     // A box clipping its overflow keeps every hit beneath it inside it; any other's
     // content takes a hit wherever it reaches, as a browser's does.
@@ -194,15 +194,15 @@ impl Records {
         && cell_y >= reach_top
         && cell_y < reach_bottom;
 
-      if !reaches || self.clips(handle) {
+      if !reaches || self.clips(node) {
         return false;
       }
     }
 
-    self.hit_reached(handle, frame, (origin_x, origin_y), contains, x, y, path)
+    self.hit_reached(node, frame, (origin_x, origin_y), contains, x, y, path)
   }
 
-  /// Descends into `handle`, laid out to `frame` at `origin` and reached by the point,
+  /// Descends into `node`, laid out to `frame` at `origin` and reached by the point,
   /// `contains` where its frame holds it, accumulating the path; `false` where neither
   /// its frame nor anything beneath it holds the point.
   #[inline(never)]
@@ -212,7 +212,7 @@ impl Records {
   )]
   fn hit_reached(
     &self,
-    handle: NodeId,
+    node: NodeId,
     frame: CellFrame,
     (origin_x, origin_y): (i64, i64),
     contains: bool,
@@ -220,12 +220,12 @@ impl Records {
     y: i64,
     path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
-    let clips = self.clips(handle);
+    let clips = self.clips(node);
 
-    path.push((handle, (origin_x, origin_y)));
+    path.push((node, (origin_x, origin_y)));
 
-    if self.runtime.is_paragraph(handle) {
-      let hit = self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
+    if self.runtime.is_paragraph(node) {
+      let hit = self.hit_paragraph(node, (origin_x, origin_y), x, y, path);
 
       if !(contains || hit) {
         path.pop();
@@ -234,7 +234,7 @@ impl Records {
       return contains || hit;
     }
 
-    let (left, top, right, bottom) = self.node_border(handle);
+    let (left, top, right, bottom) = self.node_border(node);
     let padding = CellFrame {
       x: 0,
       y: 0,
@@ -245,14 +245,14 @@ impl Records {
     // A clipping box clips its children to its padding box, as it paints them.
     if !clips || padding.covers((origin_x + left, origin_y + top), (x, y)) {
       // A scrolled box shifts its children by its offsets.
-      let (scroll_x, scroll_y) = self.scroll_offset(handle);
+      let (scroll_x, scroll_y) = self.scroll_offset(node);
       let (child_x, child_y) = (
         origin_x - i64::from(scroll_x),
         origin_y - i64::from(scroll_y),
       );
 
       // Later children paint on top, so they win the hit; overlays hit separately.
-      for child in self.runtime.children_reversed(handle) {
+      for child in self.runtime.children_reversed(node) {
         if self.runtime.record(child).is_some_and(Record::is_overlay) {
           continue;
         }
@@ -270,7 +270,7 @@ impl Records {
     contains
   }
 
-  /// Hits the runs of the paragraph `handle`, at `origin`, under the point: the run drawn
+  /// Hits the runs of the paragraph `node`, at `origin`, under the point: the run drawn
   /// there and the groups around it join the path from the outermost group to the leaf,
   /// each at the paragraph's origin, and an inline box hits through its own layout, its
   /// content wherever it reaches where no run or box is drawn at the point, as overflow
@@ -278,21 +278,21 @@ impl Records {
   #[inline(never)]
   fn hit_paragraph(
     &self,
-    handle: NodeId,
+    node: NodeId,
     origin: (i64, i64),
     x: i64,
     y: i64,
     path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
-    let Some(flow) = self.runtime.flow_of(handle)
+    let Some(flow) = self.runtime.flow_of(node)
     else {
       return false;
     };
-    let boxes = self.runtime.inline_boxes(handle);
+    let boxes = self.runtime.inline_boxes(node);
     let drawn = match (usize::try_from(x - origin.0), usize::try_from(y - origin.1)) {
       (Ok(column), Ok(row)) => flow
         .flow()
-        .run_at(content(self.flow_width(handle)), cell_point(column, row))
+        .run_at(content(self.flow_width(node)), cell_point(column, row))
         .map(|hit| hit.node)
         .or_else(|| {
           boxes.iter().copied().find(|run| {
@@ -305,7 +305,7 @@ impl Records {
     };
 
     if let Some(leaf) = drawn {
-      self.push_groups(handle, leaf, origin, path);
+      self.push_groups(node, leaf, origin, path);
 
       if self.runtime.is_inline_box(leaf) {
         self.hit_walk(leaf, origin.0, origin.1, x, y, path);
@@ -321,7 +321,7 @@ impl Records {
     for run in boxes.into_iter().rev() {
       let mark = path.len();
 
-      self.push_groups(handle, run, origin, path);
+      self.push_groups(node, run, origin, path);
 
       if self.hit_walk(run, origin.0, origin.1, x, y, path) {
         return true;
@@ -333,11 +333,11 @@ impl Records {
     false
   }
 
-  /// Pushes the group runs between the paragraph `handle` and its run `leaf` onto the
+  /// Pushes the group runs between the paragraph `node` and its run `leaf` onto the
   /// path, from the outermost, each at the paragraph's `origin`.
   fn push_groups(
     &self,
-    handle: NodeId,
+    node: NodeId,
     leaf: NodeId,
     origin: (i64, i64),
     path: &mut Vec<(NodeId, (i64, i64))>,
@@ -347,7 +347,7 @@ impl Records {
       .ancestors(leaf)
       .into_iter()
       .skip(1)
-      .take_while(|ancestor| *ancestor != handle)
+      .take_while(|ancestor| *ancestor != node)
       .filter(|ancestor| {
         matches!(
           self.runtime.record(*ancestor).map(|record| &record.kind),
@@ -384,25 +384,25 @@ impl Records {
   /// A node's position within its layout parent: its laid-out location, an inline box's
   /// in its paragraph through any groups, or the paragraph's origin for any other run
   /// flowing in one.
-  pub(crate) fn inline_location(&self, handle: NodeId) -> (i64, i64) {
-    let flows = self.runtime.is_inline_run(handle)
-      && !self.runtime.is_inline_box(handle)
-      && self.runtime.enclosing_paragraph(handle).is_some();
+  pub(crate) fn inline_location(&self, node: NodeId) -> (i64, i64) {
+    let flows = self.runtime.is_inline_run(node)
+      && !self.runtime.is_inline_box(node)
+      && self.runtime.enclosing_paragraph(node).is_some();
 
     if flows {
       (0, 0)
     }
     else {
-      self.node_location(handle)
+      self.node_location(node)
     }
   }
 
   /// A node's on-screen origin: its layout locations summed up the parent chain, each
   /// ancestor's scroll offsets subtracted, content inside an overlay positioned against
   /// the overlay's origin.
-  pub(crate) fn screen_origin(&self, handle: NodeId) -> (i64, i64) {
+  pub(crate) fn screen_origin(&self, node: NodeId) -> (i64, i64) {
     let (mut x, mut y) = (0, 0);
-    let mut current = Some(handle);
+    let mut current = Some(node);
 
     while let Some(visited) = current {
       let record = self.runtime.record(visited);
@@ -435,24 +435,24 @@ impl Records {
 
   /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
   /// anchor, everything else against the terminal.
-  pub(crate) fn overlay_origin(&self, handle: NodeId) -> (i64, i64) {
+  pub(crate) fn overlay_origin(&self, node: NodeId) -> (i64, i64) {
     let viewport = self.runtime.window().reported().viewport;
     let (columns, rows) = (i64::from(viewport.width), i64::from(viewport.height));
     let Some(Kind::Overlay {
       placement,
       position,
       ..
-    }) = self.runtime.record(handle).map(|record| &record.kind)
+    }) = self.runtime.record(node).map(|record| &record.kind)
     else {
       return (0, 0);
     };
     let (placement, position) = (*placement, *position);
     let anchor = Scene::<Terminal>::read(|scene| {
       scene
-        .overlay_anchor(handle)
+        .overlay_anchor(node)
         .and_then(|anchor| scene.placement(anchor))
     });
-    let (width, height) = self.node_size(handle);
+    let (width, height) = self.node_size(node);
 
     // A pinned overlay sits at the cell its point falls in, shifted back into the screen.
     if let Some(point) = position {
@@ -530,8 +530,8 @@ impl Records {
       return Some(MouseCursor::Click);
     }
 
-    self.hovered().iter().find_map(|handle| {
-      let record = self.runtime.record(*handle)?;
+    self.hovered().iter().find_map(|node| {
+      let record = self.runtime.record(*node)?;
 
       if let Some(style) = record.kind.box_style()
         && let Some(cursor) = style.cursor
@@ -539,22 +539,22 @@ impl Records {
         return Some(cursor);
       }
 
-      if self.drags_as_control(*handle) {
+      if self.drags_as_control(*node) {
         return Some(MouseCursor::Grab);
       }
 
-      match control_entry(self, *handle) {
+      match control_entry(self, *node) {
         Some(true) => return Some(MouseCursor::Text),
         Some(false) => return Some(MouseCursor::Click),
         None => {}
       }
 
-      if self.is_focusable(*handle) {
+      if self.is_focusable(*node) {
         return Some(MouseCursor::Click);
       }
 
       self
-        .selectable_text(*handle)
+        .selectable_text(*node)
         .is_some()
         .then_some(MouseCursor::Text)
     })
@@ -573,10 +573,10 @@ impl Records {
 
   /// A node's overflow per axis as CSS computes it, `Visible` when unset or the node has
   /// no box style.
-  fn overflow(&self, handle: NodeId) -> Axes<Overflow> {
+  fn overflow(&self, node: NodeId) -> Axes<Overflow> {
     self
       .runtime
-      .record(handle)
+      .record(node)
       .and_then(|record| record.kind.box_style())
       .and_then(|style| style.overflow)
       .map_or(Axes::all(Overflow::Visible), Axes::computed)
@@ -584,23 +584,23 @@ impl Records {
 
   /// Whether the node's content scrolls: a box overflowing by its style on either axis,
   /// or an editor windowing its wrapped rows.
-  pub(crate) fn is_scrollable(&self, handle: NodeId) -> bool {
-    self.is_editor(handle) || self.overflow(handle).scrolls()
+  pub(crate) fn is_scrollable(&self, node: NodeId) -> bool {
+    self.is_editor(node) || self.overflow(node).scrolls()
   }
 
   /// Whether the node clips its children when painting.
-  pub(crate) fn clips(&self, handle: NodeId) -> bool {
-    self.overflow(handle) != Axes::all(Overflow::Visible)
+  pub(crate) fn clips(&self, node: NodeId) -> bool {
+    self.overflow(node) != Axes::all(Overflow::Visible)
   }
 
   /// A node's scroll offsets, clamped to what the last layout allows; an editor's is
   /// its window down its rows.
-  pub(crate) fn scroll_offset(&self, handle: NodeId) -> (u32, u32) {
-    if let Some(window) = self.editor_window(handle) {
+  pub(crate) fn scroll_offset(&self, node: NodeId) -> (u32, u32) {
+    if let Some(window) = self.editor_window(node) {
       return (0, window);
     }
 
-    let Some((x, y)) = self.cell(handle).map(|cell| cell.scroll)
+    let Some((x, y)) = self.cell(node).map(|cell| cell.scroll)
     else {
       return (0, 0);
     };
@@ -609,21 +609,21 @@ impl Records {
       return (0, 0);
     }
 
-    let (limit_x, limit_y) = self.scroll_limits(handle);
+    let (limit_x, limit_y) = self.scroll_limits(node);
 
     (x.min(limit_x), y.min(limit_y))
   }
 
   /// A node's maximum scroll offsets, from the last computed layout and zero on an axis
   /// that does not scroll; an editor's is how far its window can scroll down its rows.
-  pub(crate) fn scroll_limits(&self, handle: NodeId) -> (u32, u32) {
-    if let Some(limit) = self.editor_window_limit(handle) {
+  pub(crate) fn scroll_limits(&self, node: NodeId) -> (u32, u32) {
+    if let Some(limit) = self.editor_window_limit(node) {
       return (0, limit);
     }
 
-    let overflow = self.overflow(handle);
+    let overflow = self.overflow(node);
 
-    match self.runtime.tree().layout(handle) {
+    match self.runtime.tree().layout(node) {
       #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -647,15 +647,15 @@ impl Records {
     }
   }
 
-  /// The offsets `handle` would scroll to by a delta, clamped; `None` when it does not
+  /// The offsets `node` would scroll to by a delta, clamped; `None` when it does not
   /// scroll or cannot move further.
-  fn scrolled_by(&self, handle: NodeId, delta_x: i64, delta_y: i64) -> Option<(u32, u32)> {
-    if !self.is_scrollable(handle) {
+  fn scrolled_by(&self, node: NodeId, delta_x: i64, delta_y: i64) -> Option<(u32, u32)> {
+    if !self.is_scrollable(node) {
       return None;
     }
 
-    let (limit_x, limit_y) = self.scroll_limits(handle);
-    let (x, y) = self.scroll_offset(handle);
+    let (limit_x, limit_y) = self.scroll_limits(node);
+    let (x, y) = self.scroll_offset(node);
     let next = (
       u32::try_from((i64::from(x) + delta_x).clamp(0, i64::from(limit_x))).expect("clamped"),
       u32::try_from((i64::from(y) + delta_y).clamp(0, i64::from(limit_y))).expect("clamped"),
@@ -664,30 +664,35 @@ impl Records {
     (next != (x, y)).then_some(next)
   }
 
-  /// Stores a node's offsets and repaints; the scroll notification is the caller's. An
-  /// editor's window moves instead, notifying nothing.
-  fn write_scroll(&mut self, handle: NodeId, offsets: (u32, u32)) -> Option<NodeId> {
-    self.runtime.damage(handle);
+  /// Stores a node's offsets and repaints; `true` where the caller notifies its scroll
+  /// handlers. An editor's window moves instead, notifying nothing.
+  fn write_scroll(&mut self, node: NodeId, offsets: (u32, u32)) -> bool {
+    self.runtime.damage(node);
     self.runtime.geometry_stale = true;
 
-    if self.is_editor(handle) {
-      self.set_editor_window(handle, offsets.1);
+    if self.is_editor(node) {
+      self.set_editor_window(node, offsets.1);
 
-      return None;
+      return false;
     }
 
-    self.cell_mut(handle)?.scroll = offsets;
+    let Some(cell) = self.cell_mut(node)
+    else {
+      return false;
+    };
 
-    Some(handle)
+    cell.scroll = offsets;
+
+    true
   }
 
   /// A scrollable's track along `axis`: its absolute start, its length in cells, and
   /// the scroll limit.
-  fn scroll_geometry(&self, handle: NodeId, axis: Axis) -> (i64, i64, u32) {
-    let (limit_x, limit_y) = self.scroll_limits(handle);
-    let (origin_x, origin_y) = self.screen_origin(handle);
-    let (width, height) = self.node_size(handle);
-    let border = self.node_border(handle);
+  fn scroll_geometry(&self, node: NodeId, axis: Axis) -> (i64, i64, u32) {
+    let (limit_x, limit_y) = self.scroll_limits(node);
+    let (origin_x, origin_y) = self.screen_origin(node);
+    let (width, height) = self.node_size(node);
+    let border = self.node_border(node);
 
     match axis {
       Axis::Vertical => (origin_y + border.1, height - border.1 - border.3, limit_y),
@@ -701,28 +706,28 @@ impl Records {
     let (px, py) = (i64::from(x), i64::from(y));
     let (within_x, within_y) = self.pointer_within;
 
-    for (handle, _) in self.hit_test(x, y).into_iter().rev() {
-      if !self.is_scrollable(handle) {
+    for (node, _) in self.hit_test(x, y).into_iter().rev() {
+      if !self.is_scrollable(node) {
         continue;
       }
 
-      let (limit_x, limit_y) = self.scroll_limits(handle);
-      let (origin_x, origin_y) = self.screen_origin(handle);
-      let (width, height) = self.node_size(handle);
+      let (limit_x, limit_y) = self.scroll_limits(node);
+      let (origin_x, origin_y) = self.screen_origin(node);
+      let (width, height) = self.node_size(node);
 
       if limit_y > 0 && px == origin_x + width - 1 {
-        let (track_start, track, _) = self.scroll_geometry(handle, Axis::Vertical);
+        let (track_start, track, _) = self.scroll_geometry(node, Axis::Vertical);
 
         if py >= track_start && py < track_start + track {
-          return Some((handle, Axis::Vertical, cells(py - track_start) + within_y));
+          return Some((node, Axis::Vertical, cells(py - track_start) + within_y));
         }
       }
 
       if limit_x > 0 && py == origin_y + height - 1 {
-        let (track_start, track, _) = self.scroll_geometry(handle, Axis::Horizontal);
+        let (track_start, track, _) = self.scroll_geometry(node, Axis::Horizontal);
 
         if px >= track_start && px < track_start + track {
-          return Some((handle, Axis::Horizontal, cells(px - track_start) + within_x));
+          return Some((node, Axis::Horizontal, cells(px - track_start) + within_x));
         }
       }
     }
@@ -740,7 +745,7 @@ impl Records {
   )]
   fn thumb_offsets(
     &self,
-    handle: NodeId,
+    node: NodeId,
     axis: Axis,
     track: i64,
     limit: u32,
@@ -750,7 +755,7 @@ impl Records {
     let room = cells(track - thumb as i64);
     let target_start = target_start.clamp(0., room.max(0.));
     let offset = (target_start * limit as f32 / room.max(1.)).round() as u32;
-    let (x, y) = self.scroll_offset(handle);
+    let (x, y) = self.scroll_offset(node);
 
     match axis {
       Axis::Horizontal => (offset, y),
@@ -759,8 +764,8 @@ impl Records {
   }
 
   /// Whether the node is a text entry.
-  pub(crate) fn is_field(&self, handle: NodeId) -> bool {
-    self.field(handle).is_some()
+  pub(crate) fn is_field(&self, node: NodeId) -> bool {
+    self.field(node).is_some()
   }
 }
 
@@ -854,7 +859,7 @@ pub(crate) fn set_hover(x: u16, y: u16) {
     next
       .last()
       .copied()
-      .filter(|&handle| records.runtime.contains(handle))
+      .filter(|&node| records.runtime.contains(node))
   });
 
   notify_pointer_moved::<Terminal>(deepest);
@@ -957,11 +962,11 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
       return None;
     }
 
-    let (handle, axis, position) = records.scrollbar_hit(x, y)?;
-    let (_, track, limit) = records.scroll_geometry(handle, axis);
+    let (node, axis, position) = records.scrollbar_hit(x, y)?;
+    let (_, track, limit) = records.scroll_geometry(node, axis);
     let offset = match axis {
-      Axis::Horizontal => records.scroll_offset(handle).0,
-      Axis::Vertical => records.scroll_offset(handle).1,
+      Axis::Horizontal => records.scroll_offset(node).0,
+      Axis::Vertical => records.scroll_offset(node).1,
     };
     let (start, thumb) =
       crate::paint::thumb_span(isize::try_from(track).unwrap_or(0), offset, limit);
@@ -972,19 +977,15 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     else {
       thumb / 2.
     };
-    let offsets = records.thumb_offsets(handle, axis, track, limit, position - grab);
+    let offsets = records.thumb_offsets(node, axis, track, limit, position - grab);
 
-    records.drag = Some(Drag::Scrollbar {
-      node: handle,
-      axis,
-      grab,
-    });
+    records.drag = Some(Drag::Scrollbar { node, axis, grab });
 
-    Some((handle, offsets))
+    Some((node, offsets))
   });
 
-  if let Some((handle, offsets)) = grabbed {
-    scroll_to(handle, offsets);
+  if let Some((node, offsets)) = grabbed {
+    scroll_to(node, offsets);
 
     return;
   }
@@ -993,8 +994,8 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     let path = records.hit_test(x, y);
     let deepest = path
       .last()
-      .map(|&(handle, _)| handle)
-      .filter(|&handle| records.runtime.contains(handle));
+      .map(|&(node, _)| node)
+      .filter(|&node| records.runtime.contains(node));
     let overlays: Vec<NodeId> = records
       .runtime
       .open_overlays()
@@ -1045,7 +1046,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         path
           .iter()
           .rev()
-          .find_map(|(handle, _)| records.focus_holder(*handle))
+          .find_map(|(node, _)| records.focus_holder(*node))
       })
       .or_else(|| {
         // A press inside an overlay with no focusable of its own keeps focus on the
@@ -1092,7 +1093,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   records(|records| {
     if button == PointerButton::Primary {
       let path = records.runtime.ancestors(deepest);
-      let captured = path.iter().copied().find(|handle| records.drags(*handle));
+      let captured = path.iter().copied().find(|node| records.drags(*node));
       let count = records.register_press(x, y);
 
       records.press = Some(Press {
@@ -1164,7 +1165,7 @@ fn press_default(
   let entry_local = entry.map(|entry| {
     let origin = path
       .iter()
-      .find(|(handle, _)| *handle == entry)
+      .find(|(node, _)| *node == entry)
       .map_or((0, 0), |(_, origin)| *origin);
 
     (entry, i64::from(x) - origin.0, i64::from(y) - origin.1)
@@ -1279,7 +1280,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     let pressed_link = records.pressed_link.take();
 
     (
-      common.filter(|&handle| records.runtime.contains(handle)),
+      common.filter(|&node| records.runtime.contains(node)),
       pressed_link,
       press.count,
     )
@@ -1383,8 +1384,8 @@ pub(crate) fn drag_to(x: u16, y: u16) {
     Some(Drag::Caret(_) | Drag::Item { .. }) | None => None,
   });
 
-  if let Some((handle, offsets)) = scrolled {
-    scroll_to(handle, offsets);
+  if let Some((node, offsets)) = scrolled {
+    scroll_to(node, offsets);
   }
 
   if let Some(Drag::Caret(entry)) = records(|records| records.drag) {
@@ -1403,17 +1404,13 @@ const fn cells(count: i64) -> f32 {
   count as f32
 }
 
-/// Writes `offsets` into `handle` and notifies its scroll handlers.
-pub(crate) fn scroll_to(handle: NodeId, offsets: (u32, u32)) {
-  let node = records(|records| {
-    if records.scroll_offset(handle) == offsets {
-      return None;
-    }
-
-    records.write_scroll(handle, offsets)
+/// Writes `offsets` into `node` and notifies its scroll handlers.
+pub(crate) fn scroll_to(node: NodeId, offsets: (u32, u32)) {
+  let written = records(|records| {
+    records.scroll_offset(node) != offsets && records.write_scroll(node, offsets)
   });
 
-  if let Some(node) = node {
+  if written {
     #[expect(
       clippy::cast_precision_loss,
       reason = "a scroll offset in cells stays far below the integers f32 holds exactly"
@@ -1428,19 +1425,19 @@ pub(crate) fn scroll_to(handle: NodeId, offsets: (u32, u32)) {
   }
 }
 
-/// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved. A
+/// Scrolls `node` by a delta, clamped to its limits; `true` when it moved. A
 /// single-line field scrolls its window along its value by the horizontal delta.
-pub(crate) fn scroll_by(handle: NodeId, delta_x: i64, delta_y: i64) -> bool {
-  if let Some(moved) = records(|records| records.scroll_field_by(handle, delta_x)) {
+pub(crate) fn scroll_by(node: NodeId, delta_x: i64, delta_y: i64) -> bool {
+  if let Some(moved) = records(|records| records.scroll_field_by(node, delta_x)) {
     return moved;
   }
 
-  let Some(offsets) = records(|records| records.scrolled_by(handle, delta_x, delta_y))
+  let Some(offsets) = records(|records| records.scrolled_by(node, delta_x, delta_y))
   else {
     return false;
   };
 
-  scroll_to(handle, offsets);
+  scroll_to(node, offsets);
 
   true
 }
@@ -1505,12 +1502,12 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modif
     return;
   }
 
-  for handle in candidates {
-    if scroll_by(handle, delta_x, delta_y) {
+  for candidate in candidates {
+    if scroll_by(candidate, delta_x, delta_y) {
       records(|records| {
         records.scroll_latch = Some(ScrollLatch {
           cell: (x, y),
-          target: handle,
+          target: candidate,
           last: now,
         });
       });
@@ -1560,8 +1557,8 @@ pub(crate) fn page_scroll(pages: i64) {
     Some((target, (rows - 1).max(1)))
   });
 
-  if let Some((handle, height)) = target {
-    let _ = scroll_by(handle, 0, pages * height);
+  if let Some((node, height)) = target {
+    let _ = scroll_by(node, 0, pages * height);
   }
 }
 
@@ -1737,17 +1734,17 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
 /// corner, the request naming no pointer.
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = records(|records| {
-    let handle = records.focused().unwrap_or(records.runtime.root());
+    let node = records.focused().unwrap_or(records.runtime.root());
 
-    if !records.runtime.contains(handle) {
+    if !records.runtime.contains(node) {
       return None;
     }
 
-    let (origin_x, origin_y) = records.screen_origin(handle);
-    let (_, height) = records.node_size(handle);
+    let (origin_x, origin_y) = records.screen_origin(node);
+    let (_, height) = records.node_size(node);
 
     Some((
-      handle,
+      node,
       (origin_x, origin_y),
       u16::try_from(origin_x.max(0)).unwrap_or(u16::MAX),
       u16::try_from((origin_y + height).max(0)).unwrap_or(u16::MAX),

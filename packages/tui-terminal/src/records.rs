@@ -178,18 +178,18 @@ impl Records {
     }
   }
 
-  /// The terminal's own state of `handle`, if it is live.
+  /// The terminal's own state of `node`, if it is live.
   #[inline(always)]
-  pub(crate) fn cell(&self, handle: NodeId) -> Option<&CellNode> {
-    self.runtime.record(handle).map(|record| &record.platform)
+  pub(crate) fn cell(&self, node: NodeId) -> Option<&CellNode> {
+    self.runtime.record(node).map(|record| &record.platform)
   }
 
-  /// The terminal's own state of `handle`, mutably, if it is live.
+  /// The terminal's own state of `node`, mutably, if it is live.
   #[inline(always)]
-  pub(crate) fn cell_mut(&mut self, handle: NodeId) -> Option<&mut CellNode> {
+  pub(crate) fn cell_mut(&mut self, node: NodeId) -> Option<&mut CellNode> {
     self
       .runtime
-      .record_mut(handle)
+      .record_mut(node)
       .map(|record| &mut record.platform)
   }
 
@@ -199,9 +199,9 @@ impl Records {
   pub(crate) fn remeasure(&mut self) {
     self.runtime.remeasure();
 
-    for &handle in &self.runtime.entries {
-      if self.cell(handle).is_some_and(|cell| cell.field.is_some())
-        && let Some(entry) = Scene::<Terminal>::entry_of(handle)
+    for &node in &self.runtime.entries {
+      if self.cell(node).is_some_and(|cell| cell.field.is_some())
+        && let Some(entry) = Scene::<Terminal>::entry_of(node)
         && let Ok(mut editor) = entry.editor().try_borrow_mut()
       {
         editor.relayout();
@@ -209,9 +209,9 @@ impl Records {
     }
   }
 
-  /// Releases the record of `handle`, retiring the handle and every reference to it.
-  pub(crate) fn destroy(&mut self, handle: NodeId) {
-    let Some(record) = self.runtime.destroy(handle)
+  /// Releases the record of `node`, retiring the node and every reference to it.
+  pub(crate) fn destroy(&mut self, node: NodeId) {
+    let Some(record) = self.runtime.destroy(node)
     else {
       return;
     };
@@ -220,14 +220,14 @@ impl Records {
       self.damaged_rects.push(rect);
     }
 
-    if self.reveal == Some(handle) {
+    if self.reveal == Some(node) {
       self.reveal = None;
     }
 
     if self
       .scroll_latch
       .as_ref()
-      .is_some_and(|latch| latch.target == handle)
+      .is_some_and(|latch| latch.target == node)
     {
       self.scroll_latch = None;
     }
@@ -235,12 +235,12 @@ impl Records {
     if self
       .press
       .as_ref()
-      .is_some_and(|press| press.pressed == handle || press.captured == Some(handle))
+      .is_some_and(|press| press.pressed == node || press.captured == Some(node))
     {
       self.press = None;
     }
 
-    self.invalidate_selection(handle);
+    self.invalidate_selection(node);
   }
 }
 

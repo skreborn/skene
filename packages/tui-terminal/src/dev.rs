@@ -180,7 +180,7 @@ fn read_control(fd: BorrowedFd<'_>, lines: &Mutex<Vec<String>>, wake: &(dyn Fn()
 
 /// Acts on one line the launcher wrote: a notice updates the modal, and a swap names
 /// the binary to become.
-pub(crate) fn handle(line: &str) -> Option<PathBuf> {
+pub(crate) fn node(line: &str) -> Option<PathBuf> {
   match Control::parse(line)? {
     Control::Swap(path) => Some(path),
     Control::Notice(notice) => {
@@ -221,17 +221,17 @@ pub(crate) fn swap(path: &Path) -> ! {
   std::process::exit(SWAP_EXIT)
 }
 
-/// The snapshot position of the node `handle`, if it is live.
-fn position_of(handle: NodeId) -> Option<SnapshotPlace> {
-  if !crate::try_with_records(|records| records.runtime.contains(handle))? {
+/// The snapshot position of `node`, if it is live.
+fn position_of(node: NodeId) -> Option<SnapshotPlace> {
+  if !crate::try_with_records(|records| records.runtime.contains(node))? {
     return None;
   }
 
-  Scene::<Terminal>::with(|scene| scene.record(handle).map(|record| record.position().clone()))
+  Scene::<Terminal>::with(|scene| scene.record(node).map(|record| record.position().clone()))
 }
 
 /// The node at `position`, if it is live.
-fn handle_at(position: &SnapshotPlace) -> Option<NodeId> {
+fn node_at(position: &SnapshotPlace) -> Option<NodeId> {
   Scene::<Terminal>::with(|scene| scene.node_at(position))
 }
 
@@ -242,10 +242,10 @@ fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
     records
       .runtime
       .records()
-      .filter_map(|(handle, record)| {
+      .filter_map(|(node, record)| {
         let (x, y) = record.platform.scroll;
 
-        (x > 0 || y > 0).then_some((handle, x, y))
+        (x > 0 || y > 0).then_some((node, x, y))
       })
       .collect()
   })?;
@@ -253,7 +253,7 @@ fn scroll_snapshot() -> Option<Vec<(SnapshotPlace, u32, u32)>> {
   Some(
     scrolled
       .into_iter()
-      .filter_map(|(handle, x, y)| Some((position_of(handle)?, x, y)))
+      .filter_map(|(node, x, y)| Some((position_of(node)?, x, y)))
       .collect(),
   )
 }
@@ -306,16 +306,16 @@ fn adopt_focus() {
   else {
     return;
   };
-  let Some(handle) = handle_at(&position)
+  let Some(node) = node_at(&position)
   else {
     return;
   };
 
-  crate::interaction::set_focus(Some(handle));
+  crate::interaction::set_focus(Some(node));
 
   if let Some((caret, anchor)) = caret {
     crate::with_records(|records| {
-      records.with_entry(handle, move |editor| {
+      records.with_entry(node, move |editor| {
         let _ = editor.set_selection(TextSelection::new(anchor.unwrap_or(caret), caret));
       });
     });
@@ -334,13 +334,13 @@ fn adopt_scroll() {
   };
   let restored: Vec<(NodeId, (u32, u32))> = entries
     .into_iter()
-    .filter_map(|(position, x, y)| Some((handle_at(&position)?, (x, y))))
+    .filter_map(|(position, x, y)| Some((node_at(&position)?, (x, y))))
     .collect();
 
   // The scroll handlers hear the restored offsets, so a lazy column rebuilds its
   // window at the resumed position.
-  for (handle, offsets) in restored {
-    crate::interaction::scroll_to(handle, offsets);
+  for (node, offsets) in restored {
+    crate::interaction::scroll_to(node, offsets);
   }
 }
 

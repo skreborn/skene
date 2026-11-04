@@ -433,24 +433,24 @@ impl Field {
 }
 
 impl Records {
-  /// The text entry at `handle`, if it is one.
-  pub(crate) fn field(&self, handle: NodeId) -> Option<&Field> {
-    self.cell(handle)?.field.as_deref()
+  /// The text entry at `node`, if it is one.
+  pub(crate) fn field(&self, node: NodeId) -> Option<&Field> {
+    self.cell(node)?.field.as_deref()
   }
 
-  /// The text entry at `handle`, if it is one, to change.
-  pub(crate) fn field_mut(&mut self, handle: NodeId) -> Option<&mut Field> {
-    self.cell_mut(handle)?.field.as_deref_mut()
+  /// The text entry at `node`, if it is one, to change.
+  pub(crate) fn field_mut(&mut self, node: NodeId) -> Option<&mut Field> {
+    self.cell_mut(node)?.field.as_deref_mut()
   }
 
-  /// The editing state the scene keeps for the entry at `handle`, where it is one and
+  /// The editing state the scene keeps for the entry at `node`, where it is one and
   /// the scene is free to read.
   #[expect(
     clippy::unused_self,
     reason = "every reader holds the records, and an entry's editing state is asked of it as its window is"
   )]
-  pub(crate) fn entry(&self, handle: NodeId) -> Option<Rc<EntryState>> {
-    Scene::<Terminal>::entry_of(handle)
+  pub(crate) fn entry(&self, node: NodeId) -> Option<Rc<EntryState>> {
+    Scene::<Terminal>::entry_of(node)
   }
 
   /// Every entry's editing state, in build order.

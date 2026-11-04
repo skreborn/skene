@@ -73,10 +73,10 @@ impl Records {
   /// outside every control and `Copy` is offered: text inside a control is never
   /// selectable, whatever it opts into, and without `Copy` nothing in the document is
   /// selectable.
-  pub(crate) fn selectable_text(&self, handle: NodeId) -> Option<String> {
-    let record = self.runtime.record(handle)?;
+  pub(crate) fn selectable_text(&self, node: NodeId) -> Option<String> {
+    let record = self.runtime.record(node)?;
 
-    if !self.offers(ClipboardAction::Copy) || self.runtime.enclosing_control(handle).is_some() {
+    if !self.offers(ClipboardAction::Copy) || self.runtime.enclosing_control(node).is_some() {
       return None;
     }
 
@@ -84,14 +84,14 @@ impl Records {
       Kind::Run { facts, .. } if facts.selectable && !record.text.is_empty() => {
         Some(record.text.clone())
       }
-      Kind::Box(_) if self.runtime.is_paragraph(handle) => {
-        let selectable = self.runtime.paragraph_runs(handle).iter().any(|run| {
+      Kind::Box(_) if self.runtime.is_paragraph(node) => {
+        let selectable = self.runtime.paragraph_runs(node).iter().any(|run| {
           matches!(
             self.runtime.record(*run).map(|record| &record.kind),
             Some(Kind::Run { facts, .. }) if facts.selectable
           )
         });
-        let text = self.runtime.paragraph_text(handle);
+        let text = self.runtime.paragraph_text(node);
 
         (selectable && !text.is_empty()).then_some(text)
       }
@@ -102,10 +102,10 @@ impl Records {
   /// The cluster offset within the node's source a caret at the node-local cell would
   /// take: the caret nearest it, clamped into the text's lines and their ends, against
   /// the last layout.
-  fn run_offset(&self, handle: NodeId, local_x: i64, local_y: i64) -> Option<usize> {
-    self.selectable_text(handle)?;
+  fn run_offset(&self, node: NodeId, local_x: i64, local_y: i64) -> Option<usize> {
+    self.selectable_text(node)?;
 
-    let flow = self.runtime.flow_of(handle)?;
+    let flow = self.runtime.flow_of(node)?;
     let point = cell_point(
       usize::try_from(local_x.max(0)).unwrap_or(0),
       usize::try_from(local_y.max(0)).unwrap_or(0),
@@ -114,8 +114,8 @@ impl Records {
     Some(
       flow
         .flow()
-        .nearest(content(self.flow_width(handle)), point)
-        .and_then(|hit| Source::of(&self.runtime, handle).cluster_of(hit.node, hit.offset))
+        .nearest(content(self.flow_width(node)), point)
+        .and_then(|hit| Source::of(&self.runtime, node).cluster_of(hit.node, hit.offset))
         .unwrap_or(0),
     )
   }
@@ -123,10 +123,10 @@ impl Records {
   /// The deepest text on `path`, with its origin: a paragraph, or a run that flows in
   /// none.
   fn text_root(&self, path: &[(NodeId, (i64, i64))]) -> Option<(NodeId, (i64, i64))> {
-    path.iter().rev().copied().find(|(handle, _)| {
-      self.runtime.is_paragraph(*handle)
+    path.iter().rev().copied().find(|(node, _)| {
+      self.runtime.is_paragraph(*node)
         || matches!(
-          self.runtime.record(*handle).map(|record| &record.kind),
+          self.runtime.record(*node).map(|record| &record.kind),
           Some(Kind::Run { facts, .. }) if facts.placement == RunPlacement::Line
         )
     })
@@ -155,7 +155,7 @@ impl Records {
     };
 
     if self.runtime.is_paragraph(node) {
-      let from = path.iter().position(|(handle, _)| *handle == node)?;
+      let from = path.iter().position(|(placed, _)| *placed == node)?;
 
       return path[from + 1..]
         .iter()
@@ -257,20 +257,15 @@ impl Records {
 
   /// The selected character range within the node's source, when the selection touches
   /// it; a range running past the node's end is `usize::MAX`, clamped by the caller.
-  pub(crate) fn selection_range(&self, handle: NodeId) -> Option<(usize, usize)> {
+  pub(crate) fn selection_range(&self, node: NodeId) -> Option<(usize, usize)> {
     let (start, end, runs) = self.selection_span()?;
 
-    if !runs.contains(&handle) {
+    if !runs.contains(&node) {
       return None;
     }
 
-    let from = if handle == start.node {
-      start.offset
-    }
-    else {
-      0
-    };
-    let to = if handle == end.node {
+    let from = if node == start.node { start.offset } else { 0 };
+    let to = if node == end.node {
       end.offset
     }
     else {
@@ -385,14 +380,14 @@ impl Records {
     selected
   }
 
-  /// The text of every run beneath `handle`, in order.
-  fn inner_text(&self, handle: NodeId) -> String {
+  /// The text of every run beneath `node`, in order.
+  fn inner_text(&self, node: NodeId) -> String {
     let mut text = String::new();
-    let mut stack = vec![handle];
+    let mut stack = vec![node];
 
     while let Some(current) = stack.pop() {
       if let Some(record) = self.runtime.record(current)
-        && current != handle
+        && current != node
         && matches!(&record.kind, Kind::Run { facts, .. } if facts.placement != RunPlacement::Embedded)
       {
         text.push_str(&record.text);
@@ -489,11 +484,11 @@ impl Records {
     }
   }
 
-  /// Drops the selection when one of its ends lives in `handle`, on the node's text
+  /// Drops the selection when one of its ends lives in `node`, on the node's text
   /// change or removal.
-  pub(crate) fn invalidate_selection(&mut self, handle: NodeId) {
+  pub(crate) fn invalidate_selection(&mut self, node: NodeId) {
     if let Some(selection) = self.selection
-      && (selection.anchor.node == handle || selection.focus.node == handle)
+      && (selection.anchor.node == node || selection.focus.node == node)
     {
       self.clear_selection();
     }

@@ -484,7 +484,7 @@ where
           interaction::paste(&text);
         }
         Event::Control(line) => {
-          if let Some(path) = crate::dev::handle(&line) {
+          if let Some(path) = crate::dev::node(&line) {
             finish(&mut terminal);
 
             let _ = terminal.restore_mode();

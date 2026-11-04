@@ -27,7 +27,7 @@ use skene_layout::runtime::Source;
 
 use crate::{
   Terminal,
-  layout::{cell_point, content},
+  layout::cell_point,
   records::{Drag, Kind, Records},
   text,
 };
@@ -114,7 +114,7 @@ impl Records {
     Some(
       flow
         .flow()
-        .nearest(content(self.flow_width(node)), point)
+        .nearest(self.flow_content(node), point)
         .and_then(|hit| Source::of(&self.runtime, node).cluster_of(hit.node, hit.offset))
         .unwrap_or(0),
     )
@@ -170,7 +170,7 @@ impl Records {
       .runtime
       .flow_of(node)?
       .flow()
-      .run_at(content(self.flow_width(node)), cell_point(column, row))
+      .run_at(self.flow_content(node), cell_point(column, row))
       .and_then(|_| link_of(node))
   }
 

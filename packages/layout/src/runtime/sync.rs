@@ -3,7 +3,7 @@
 //! laid-out node's children rebuilt over the scene walk, anchors and scopes flattened into
 //! their content, and the layout computed at the window's size.
 
-use skene_foundation::{Inset, Layout, NodeId, RunPlacement, Size};
+use skene_foundation::{Inset, Layout, NodeId, Point, Rect, RunPlacement, Size};
 use taffy::{
   prelude::{AvailableSpace, length},
   style::{Dimension, Display, FlexDirection, FlexWrap, LengthPercentageAuto, Position, Style},
@@ -132,6 +132,23 @@ impl<P: Drawn> Runtime<P> {
   #[must_use]
   pub fn flow_of(&self, node: NodeId) -> Option<&Flow<P::Engine>> {
     self.tree.context(node)?.flow()
+  }
+
+  /// The content box the text node `node` lays its flow out in, from the corner of its
+  /// border box: inside its border and padding as the last layout places them, as wide as
+  /// its content box before the layout rounds it, and of no height; empty at the corner
+  /// for a node outside the layout.
+  pub fn flow_content(&self, node: NodeId) -> Rect<f32> {
+    let origin = self
+      .tree
+      .layout(node)
+      .map_or(Point::ZERO, |placed| placed.content_origin());
+    let width = self
+      .tree
+      .unrounded_layout(node)
+      .map_or(0., |placed| placed.content_size().width);
+
+    Rect::new(origin, Size::new(width, 0.))
   }
 
   /// The inline boxes of the paragraph `node`, in its flow's order, each a child of the

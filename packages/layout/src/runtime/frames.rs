@@ -635,10 +635,11 @@ impl<P: Drawn> Runtime<P> {
   /// from the open overlay the node lies in, as a top-layer element's chain ends at it,
   /// down to the node; empty where the point hits nothing.
   ///
-  /// A paragraph resolves the point to the run its flow draws there, else to the first of
-  /// its inline boxes whose border box holds it, else to what its inline boxes hold
-  /// wherever that reaches, the last box first; the groups around a run or a box join the
-  /// path, and a run or a group takes its paragraph's origin.
+  /// A paragraph resolves the point to the run its flow draws there, laid out in its
+  /// content box ([`flow_content`](Self::flow_content)), else to the first of its inline
+  /// boxes whose border box holds it, else to what its inline boxes hold wherever that
+  /// reaches, the last box first; the groups around a run or a box join the path, and a
+  /// run or a group takes its paragraph's origin.
   #[must_use]
   pub fn hit(&self, point: Point<f32>) -> Vec<(NodeId, Point<f32>)> {
     let frames = self.frames();
@@ -682,12 +683,7 @@ impl<P: Drawn> Runtime<P> {
     };
 
     if local.x >= 0. && local.y >= 0. {
-      let width = self
-        .tree
-        .unrounded_layout(node)
-        .map_or(0., |placed| placed.content_size().width);
-
-      if let Some(run) = flow.run_at(Rect::new(Point::ZERO, Size::new(width, 0.)), local) {
+      if let Some(run) = flow.run_at(self.flow_content(node), local) {
         return Some(run.node);
       }
 

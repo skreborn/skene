@@ -4,7 +4,7 @@ use skene_foundation::{NodeId, Rect, Size};
 use skene_layout::runtime::Flow;
 
 use super::Records;
-use crate::CellEngine;
+use crate::{CellEngine, layout::content};
 
 /// Where a laid-out node sits in its layout parent and how large it is, in cells.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -74,26 +74,25 @@ impl Records {
   /// placed it: its content box's width before any rounding, floored to whole cells, at
   /// least one; one for a node outside the layout.
   pub(crate) fn flow_width(&self, node: NodeId) -> usize {
-    let width = self
-      .runtime
-      .tree()
-      .unrounded_layout(node)
-      .map_or(0., |layout| {
-        layout.rect.size.width
-          - layout.border.start
-          - layout.border.end
-          - layout.padding.start
-          - layout.padding.end
-      });
-
     #[expect(
       clippy::cast_possible_truncation,
       clippy::cast_sign_loss,
       reason = "a whole, positive count of cells, far inside usize"
     )]
-    let cells = Flow::<CellEngine>::whole_width(width) as usize;
+    let cells =
+      Flow::<CellEngine>::whole_width(self.runtime.flow_content(node).size.width) as usize;
 
     cells
+  }
+
+  /// The content box the text `node` lays its flow out in, from the corner of its border
+  /// box: inside its border and padding, across the cells
+  /// [`flow_width`](Self::flow_width) counts.
+  pub(crate) fn flow_content(&self, node: NodeId) -> Rect<f32> {
+    Rect::new(
+      self.runtime.flow_content(node).origin,
+      content(self.flow_width(node)).size,
+    )
   }
 
   /// A childless box's laid-out span in eighth cells from its parent's origin: where

@@ -418,6 +418,15 @@ impl Placed {
     }
   }
 
+  /// The corner of its content box from the corner of its border box: its border and its
+  /// padding at the start and at the top.
+  pub const fn content_origin(&self) -> Point<f32> {
+    Point::new(
+      self.border.start + self.padding.start,
+      self.border.top + self.padding.top,
+    )
+  }
+
   /// The size of its content box, inside its border and padding, none below zero.
   pub const fn content_size(&self) -> Size<f32> {
     let Self {

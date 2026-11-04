@@ -6,7 +6,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_foundation::{AnyKind, Children, FlexChild, Realization, Seal};
+use skene_foundation::{AnyKind, Children, FlexChild, PlainChild, Realization, Seal};
 use skene_tui::{
   Definition,
   Length,
@@ -1497,6 +1497,50 @@ fn a_fractional_paragraph_paints_and_hits_its_boxes_where_it_places_them() {
     assert_eq!(clicks.get(), 0, "nothing is drawn beside the text");
 
     testing::trigger_mouse_click(0, 1);
+
+    assert_eq!(clicks.get(), 1);
+  });
+}
+
+/// A paragraph lays its text out inside its padding, as it places its inline boxes: a
+/// third party's paragraph padded at its start and top paints its runs there, beside the
+/// box its flow places after them, and a press there hits the run drawn under it.
+#[test]
+fn a_padded_paragraph_paints_and_hits_its_text_inside_its_padding() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = mount(move || {
+      LayoutBox::<PlainChild>::new(Layout::Document)
+        .set_padding(Inset::new(2, 1, 0, 0))
+        .add_child(Span::new("ab "))
+        .add_child(Span::new("cd").handle_click(move || counted.set(counted.get() + 1)))
+        .add_child(Span::view(
+          Container::new()
+            .set_background(red())
+            .set_child(Text::new("X")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(10, 3);
+
+    assert_eq!(frame, "\n  ab cdX\n\n");
+    assert_eq!(colors_at(10, 3, 7, 1).1, Some(rgb(red())));
+    assert_eq!(colors_at(10, 3, 6, 1).1, None);
+
+    testing::trigger_mouse_click(3, 0);
+    testing::trigger_mouse_click(4, 1);
+
+    assert_eq!(
+      clicks.get(),
+      0,
+      "neither the padding nor the run before is the span"
+    );
+
+    testing::trigger_mouse_click(5, 1);
 
     assert_eq!(clicks.get(), 1);
   });

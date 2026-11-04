@@ -25,8 +25,8 @@ use skene_layout::runtime::{Env, Source};
 use crate::{
   Terminal,
   cells::Cells,
-  engine::{DrawnCluster, drawn},
-  layout::{border_edges, content, has_border},
+  engine::{DrawnCluster, drawn, whole},
+  layout::{border_edges, has_border},
   records::{Contrast, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
@@ -872,8 +872,10 @@ enum NodePaint {
 }
 
 /// Each cluster the text `node`, laid out across the cells its leaf placed it in,
-/// draws, with its span (the index of its run among `source`'s), its run's scale and
-/// whether `selection`, a range of `source`'s clusters, holds it.
+/// draws, at its cell from the corner of the node's border box, inside its border and
+/// padding as its leaf places its inline boxes, with its span (the index of its run among
+/// `source`'s), its run's scale and whether `selection`, a range of `source`'s clusters,
+/// holds it.
 fn cluster_paints(
   records: &Records,
   node: NodeId,
@@ -884,7 +886,9 @@ fn cluster_paints(
   else {
     return Vec::new();
   };
-  let laid = flow.laid(content(records.flow_width(node)));
+  let content = records.flow_content(node);
+  let (column, row) = (whole(content.origin.x), whole(content.origin.y));
+  let laid = flow.laid(content);
   let text = flow.flow().text();
   let runs: Vec<NodeId> = source.runs().map(|(run, _)| run).collect();
   let scales: Vec<CellScale> = runs.iter().map(|run| run_scale(records, *run)).collect();
@@ -896,7 +900,11 @@ fn cluster_paints(
       let span = runs.iter().position(|known| *known == run)?;
 
       Some(ClusterPaint {
-        drawn,
+        drawn: DrawnCluster {
+          column: drawn.column + column,
+          top: drawn.top + row,
+          ..drawn
+        },
         span: u16::try_from(span).unwrap_or(0),
         scale: scales[span],
         selected: selection.is_some_and(|(from, to)| cluster >= from && cluster < to),

@@ -2324,8 +2324,8 @@ the tree, laid out at its content's size within the paragraph's layout, standing
 text as a placeholder of its whole cells and rows, at least one of each, its layout its
 place in the paragraph, so a frame whose box changes size lays it and its paragraph out
 once and focus reveals a control inside it where it flowed; it is painted and hit at
-that place, the paragraph's text at the whole cells the paragraph was placed across, so
-text and boxes share one line layout, and what its content overflows counts in its
+that place, the paragraph's text in its content box, inside its border and padding, at
+the whole cells the paragraph was placed across, so text and boxes share one line layout, and what its content overflows counts in its
 paragraph's overflow, painted, hit and scrolled to wherever it reaches, as a browser's
 overflow is. An edge whose border width is zero takes no cells and draws none, and a
 border whose color is unset draws in the terminal's own ink, as CSS's `currentColor`

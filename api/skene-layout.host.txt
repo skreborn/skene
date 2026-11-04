@@ -319,6 +319,7 @@ pub fn skene_layout::runtime::Runtime<P>::scrolled_by(&self, skene_foundation::s
 pub const fn skene_layout::runtime::Runtime<P>::take_reveal(&mut self) -> core::option::Option<skene_foundation::spine::node::NodeId>
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::compute(&mut self, skene_foundation::spine::values::size::Size<f32>)
+pub fn skene_layout::runtime::Runtime<P>::flow_content(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::rect::Rect<f32>
 pub fn skene_layout::runtime::Runtime<P>::flow_of(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Flow<<P as skene_layout::runtime::Drawn>::Engine>>
 pub fn skene_layout::runtime::Runtime<P>::inline_boxes(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::runtime::Runtime<P>::write_children(&mut self)
@@ -446,6 +447,7 @@ pub skene_layout::Placed::padding: skene_foundation::spine::values::inset::Inset
 pub skene_layout::Placed::rect: skene_foundation::spine::values::rect::Rect<f32>
 pub skene_layout::Placed::scroll_limit: skene_foundation::spine::values::size::Size<f32>
 impl skene_layout::Placed
+pub const fn skene_layout::Placed::content_origin(&self) -> skene_foundation::spine::values::point::Point<f32>
 pub const fn skene_layout::Placed::content_size(&self) -> skene_foundation::spine::values::size::Size<f32>
 impl core::clone::Clone for skene_layout::Placed
 pub fn skene_layout::Placed::clone(&self) -> Self

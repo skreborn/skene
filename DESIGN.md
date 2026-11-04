@@ -1957,9 +1957,9 @@ and `WindowSize`), its cell values (`CellDecoration`, `Picture`, `CellScale`) an
 are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by generic
 code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, whose
 records carry the terminal's per-node cell state (`Drawn::Node`, its `CellNode`, made
-from the node's spec with the record and dropped with it: a text entry's field and
-what it paints beyond its style), beside what each node covered at the last paint and
-each box's scroll offsets, which the runtime keeps, clamps and writes, notifying the box's
+from the node's spec with the record and dropped with it: a text entry's field and what
+it paints beyond its style), beside what each node covered at the last paint and each
+box's scroll offsets, which the runtime keeps, clamps and writes, notifying the box's
 scroll handlers, an editor's window down its rows standing for its vertical offset
 through `Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's
 window along its clusters stays the terminal's. Focus reveals the node it moves to
@@ -2308,28 +2308,28 @@ cached per node and `set_style` called only on change, so a keystroke relays out
 changed subtree and a hover change repaints without relayout. A frame paints over the
 previous one, rewriting only the rows the runtime's damage rectangles reach
 (`Runtime::take_damage`: what each changed node's paint owner, the paragraph a run flows
-in, covered at the last paint and covers now, a node whose resolution, text, caret,
-scroll or rectangle changed; where the covers moved, what each node whose cover changed
-covered and covers; and what a destroyed node covered), each taken at the whole cells it
-spans, and every row for a whole-frame change; the terminal loop then diffs rows again
-on output. A paragraph lays its inline runs out as one wrapped
-text through its `TextFlow`, and a view inside it flows as an inline box: the
-paragraph's child in the tree, laid out at its content's size within the paragraph's
-layout, standing in the text as a placeholder of its whole cells and rows, at least one
-of each, its layout its place in the paragraph, so a frame whose box changes size lays
-it and its paragraph out once and focus reveals a control inside it where it flowed; it
-is painted and hit at that place, the paragraph's text at the whole cells the paragraph
-was placed across, so text and boxes share one line layout, and what its content overflows counts in
-its paragraph's overflow, painted, hit and scrolled to wherever it reaches, as a browser's
-overflow is. An
-edge whose border width is zero takes no cells and draws none, and a border whose color
-is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
-through `launch`, or to plain text
-through `testing::render_to_text` for in-process tests (`trigger_key`/`trigger_mouse_move`/
-`trigger_mouse_click`/`trigger_frame` in `testing` drive it without a terminal). Terminal detection is
-asynchronous; the loop starts immediately and the answers arrive as signal writes. The
-dev loop carries the snapshot across a swap through the launcher's control pipe. Terminal
-apps never cross-compile into the web.
+in, covered at the last paint and covers now, a changed node being one whose resolution,
+text, caret or scroll changed; where the covers moved, what each node whose cover
+changed covered and covers; and what a destroyed node covered), each taken at the whole
+cells it spans, and every row for a whole-frame change; the terminal loop then diffs
+rows again on output. A paragraph lays its inline runs out as one wrapped text through
+its `TextFlow`, and a view inside it flows as an inline box: the paragraph's child in
+the tree, laid out at its content's size within the paragraph's layout, standing in the
+text as a placeholder of its whole cells and rows, at least one of each, its layout its
+place in the paragraph, so a frame whose box changes size lays it and its paragraph out
+once and focus reveals a control inside it where it flowed; it is painted and hit at
+that place, the paragraph's text at the whole cells the paragraph was placed across, so
+text and boxes share one line layout, and what its content overflows counts in its
+paragraph's overflow, painted, hit and scrolled to wherever it reaches, as a browser's
+overflow is. An edge whose border width is zero takes no cells and draws none, and a
+border whose color is unset draws in the terminal's own ink, as CSS's `currentColor`
+does. Frames paint into a cell buffer—to the terminal through `launch`, or to plain text
+through `testing::render_to_text` for in-process tests
+(`trigger_key`/`trigger_mouse_move`/`trigger_mouse_click`/`trigger_frame` in `testing`
+drive it without a terminal). Terminal detection is asynchronous; the loop starts
+immediately and the answers arrive as signal writes. The dev loop carries the snapshot
+across a swap through the launcher's control pipe. Terminal apps never cross-compile
+into the web.
 
 ## Third parties and platforms
 

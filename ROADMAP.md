@@ -451,7 +451,8 @@ in a code comment.
     a structure change, a destroyed node and an overlay's opening or placement still
     repaint the whole frame (`Runtime::paint_dirty`), where the runtime's damage already
     holds what a destroyed node covered and every cover that moved
-    (`Runtime::take_damage`), so the rows they reach would do;
+    (`Runtime::take_damage`), so the rows they reach would do, but for an overlay's
+    backdrop, which tints every row and is no node's cover;
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config

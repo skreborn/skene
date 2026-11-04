@@ -335,7 +335,8 @@ pub struct Record<P: Drawn> {
   /// entry's window is the platform's own ([`Drawn::entry_scroll`]).
   pub scroll: Point<f32>,
   /// What the node's paint covered in the window at the last paint that recorded the
-  /// covers ([`Runtime::take_damage`](super::Runtime::take_damage)); `None` for none.
+  /// covers ([`Runtime::take_damage`](super::Runtime::take_damage)); `None` where it
+  /// covered nothing.
   pub painted: Option<Rect<f32>>,
   /// The platform's own state of the node ([`Drawn::Node`]).
   pub platform: P::Node,

@@ -344,6 +344,36 @@ fn a_hover_resolves_only_the_nodes_reading_it() {
   });
 }
 
+/// A span's change repaints the rows the paragraph it flows in covers, through the group
+/// around it, and no other row.
+#[test]
+fn a_spans_change_repaints_only_its_paragraphs_rows() {
+  with_platform(|| {
+    let ink = Signal::new(red());
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("top"),
+          RichText::new().add_spans([
+            Span::new("one "),
+            Span::group([Span::new("two").derive_color(move || ink.get())]),
+          ]),
+          Text::new("end"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(6, 5), "top\none\ntwo\nend\n\n");
+
+    ink.set(blue());
+
+    let _ = testing::render_to_text(6, 5);
+
+    assert_eq!(testing::repainted_rows(), vec![1, 2]);
+  });
+}
+
 /// A frame with nothing changed since the last one resolves nothing and repaints no
 /// row.
 #[test]

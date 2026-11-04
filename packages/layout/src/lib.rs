@@ -24,7 +24,8 @@
 //! to the limits its layout allows and the writes that move them with their notification
 //! ([`runtime::Runtime::scroll_offset`], [`runtime::Runtime::scroll_to`]), the offsets
 //! that reveal a node between each scroll box's near and far borders
-//! ([`runtime::Runtime::reveal_offsets`]), beside the adapter the platform's realization
+//! ([`runtime::Runtime::reveal_offsets`]), an open overlay's origin in its window
+//! ([`runtime::Runtime::overlay_origin`]), beside the adapter the platform's realization
 //! forwards to for everything that is no cell's or pixel's
 //! ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The web lays
 //! out through CSS and needs none of it.

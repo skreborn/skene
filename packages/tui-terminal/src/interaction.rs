@@ -14,7 +14,6 @@ use skene_foundation::{
   MouseCursor,
   NamedKey,
   NodeId,
-  Placement,
   Point,
   PointerButton,
   PointerButtons,
@@ -22,7 +21,9 @@ use skene_foundation::{
   PointerInfo,
   PointerType,
   Prevented,
+  Rect,
   Scene,
+  Size,
   WheelUnit,
   dispatch_activation,
   dispatch_click,
@@ -432,76 +433,28 @@ impl Records {
     (x, y)
   }
 
-  /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
-  /// anchor, everything else against the terminal.
+  /// An open overlay's absolute origin, as the runtime places it
+  /// ([`Runtime::overlay_origin`]) against its anchor's on-screen rectangle.
   pub(crate) fn overlay_origin(&self, node: NodeId) -> (i64, i64) {
-    let viewport = self.runtime.window().reported().viewport;
-    let (columns, rows) = (i64::from(viewport.width), i64::from(viewport.height));
-    let Some(Kind::Overlay {
-      placement,
-      position,
-      ..
-    }) = self.runtime.record(node).map(|record| &record.kind)
-    else {
-      return (0, 0);
-    };
-    let (placement, position) = (*placement, *position);
-    let anchor = Scene::<Terminal>::read(|scene| {
-      scene
-        .overlay_anchor(node)
-        .and_then(|anchor| scene.placement(anchor))
-    });
-    let (width, height) = self.node_size(node);
+    let origin = self.runtime.overlay_origin(node, |anchor| {
+      let (x, y) = self.screen_origin(anchor);
+      let (width, height) = self.node_size(anchor);
 
-    // A pinned overlay sits at the cell its point falls in, shifted back into the screen.
-    if let Some(point) = position {
       #[expect(
-        clippy::cast_possible_truncation,
-        reason = "a pointer's cell lies within the terminal, far inside i64"
+        clippy::cast_precision_loss,
+        reason = "an on-screen cell lies far inside an f32's exact integers"
       )]
-      let (x, y) = (point.x.floor() as i64, point.y.floor() as i64);
+      Rect::new(
+        Point::new(x as f32, y as f32),
+        Size::new(width as f32, height as f32),
+      )
+    });
 
-      return (x.min(columns - width).max(0), y.min(rows - height).max(0));
-    }
-
-    if let Some(anchor) = anchor.filter(|_| matches!(placement, Placement::Top | Placement::Bottom))
-    {
-      let (anchor_x, anchor_y) = self.screen_origin(anchor);
-      let (_, anchor_height) = self.node_size(anchor);
-      let x = anchor_x.min(columns - width).max(0);
-      let below = anchor_y + anchor_height;
-      let above = anchor_y - height;
-
-      // The preferred side flips when it runs out of room, as a browser popup does.
-      return match placement {
-        Placement::Top => {
-          if above < 0 && below + height <= rows {
-            (x, below)
-          }
-          else {
-            (x, above.max(0))
-          }
-        }
-        _ => {
-          if below + height > rows && above >= 0 {
-            (x, above)
-          }
-          else {
-            (x, below.min(rows - height).max(0))
-          }
-        }
-      };
-    }
-
-    match placement {
-      Placement::Center => ((columns - width) / 2, (rows - height) / 2),
-      Placement::Top => ((columns - width) / 2, 0),
-      Placement::TopStart => (0, 0),
-      Placement::TopEnd => (columns - width, 0),
-      Placement::Bottom => ((columns - width) / 2, rows - height),
-      Placement::BottomStart => (0, rows - height),
-      Placement::BottomEnd => (columns - width, rows - height),
-    }
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "the runtime places an overlay at whole cells, far inside i64"
+    )]
+    (origin.x as i64, origin.y as i64)
   }
 
   /// The pointer shape for the current hover path: the deepest hovered node with a

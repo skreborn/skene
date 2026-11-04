@@ -51,6 +51,11 @@
 //! scrolled into view ([`Runtime::reveal`]) is shown by the offsets each scroll box
 //! around it takes, between its near and its far border ([`Runtime::reveal_offsets`]).
 //!
+//! The runtime places an open overlay in its window ([`Runtime::overlay_origin`]):
+//! pinned at a point and moved back into the window, opening below or above its anchor
+//! with a flip where the preferred side runs out of room, or at one of the window's
+//! seven placements.
+//!
 //! A drawn platform's realization forwards to the runtime for everything that is no
 //! cell's or pixel's: a node's record created ([`Runtime::create`]) and destroyed, its
 //! style, slots, state and contents applied ([`Runtime::write`]), its size observed, an
@@ -66,6 +71,7 @@ mod adapter;
 mod environment;
 mod flow;
 mod motion;
+mod overlay;
 mod paragraph;
 mod record;
 mod resolve;

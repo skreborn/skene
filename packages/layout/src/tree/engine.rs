@@ -460,7 +460,7 @@ impl<'t, C: Leaf> Engine<'t, C> {
 
   /// Lays out each box flowing inside the leaf `id` at its max-content size, in the run
   /// mode of `inputs`, and gives their sizes, in order, to the leaf's context at once; the
-  /// boxes' outputs where the leaf is laid out in full, none otherwise.
+  /// boxes' outputs, in order.
   fn size_boxes(&mut self, id: taffy::NodeId, inputs: LayoutInput) -> Vec<LayoutOutput> {
     let count = self.nodes.slot(id).children.len();
     let mut sized = Vec::with_capacity(count);
@@ -486,12 +486,7 @@ impl<'t, C: Leaf> Engine<'t, C> {
       );
     }
 
-    if inputs.run_mode == RunMode::PerformLayout {
-      sized
-    }
-    else {
-      Vec::new()
-    }
+    sized
   }
 
   /// Places each box flowing inside the leaf `id`, laid out to `sized`, where the leaf's

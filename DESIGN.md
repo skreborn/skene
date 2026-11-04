@@ -1244,7 +1244,8 @@ Condition     = Media | State | And | Or
   each in flow): each at its max-content size before the leaf measures, given to it
   with its siblings, in order, through `Leaf::size_boxes`, and placed where the leaf
   places it in its content box, its layout set as taffy's parents set a child's, so a
-  change inside a box lays its leaf out again. The terminal's paragraphs lay their inline boxes out so.
+  change inside a box lays its leaf out again. The terminal's paragraphs lay their inline
+  boxes out so.
   The layout's own tests lay their text out through `skene-parley` in the pinned face
   the conformance suite draws in, Inter's regular, kept in `packages/parley/fonts`, its
   metrics unrounded (kerned, its letter spacing past each cluster, a line its font size

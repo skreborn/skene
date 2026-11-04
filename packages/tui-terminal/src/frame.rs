@@ -557,34 +557,27 @@ type Report = (Rc<dyn Fn(Size<i32>)>, Size<i32>);
 /// when any observer ran.
 fn report_sizes() -> bool {
   let reports: Vec<Report> = with_records(|records| {
-    let mut reports = Vec::new();
-    let observed: Vec<NodeId> = records
+    let changed: Vec<(NodeId, Size<i32>)> = records
       .runtime
       .records()
       .filter(|(_, record)| !record.observers.is_empty())
-      .map(|(node, _)| node)
+      .filter_map(|(node, record)| {
+        let size = records.client_size(node);
+
+        (record.reported != Some(size)).then_some((node, size))
+      })
       .collect();
+    let mut reports = Vec::new();
 
-    for handle in observed {
-      let Some(record) = records.runtime.record(handle)
-      else {
-        continue;
-      };
-      let size = records.client_size(handle);
-
-      if record.reported == Some(size) {
-        continue;
-      }
-
-      reports.extend(
-        record
-          .observers
-          .iter()
-          .map(|observer| (Rc::clone(observer), size)),
-      );
-
-      if let Some(record) = records.runtime.record_mut(handle) {
+    for (node, size) in changed {
+      if let Some(record) = records.runtime.record_mut(node) {
         record.reported = Some(size);
+        reports.extend(
+          record
+            .observers
+            .iter()
+            .map(|observer| (Rc::clone(observer), size)),
+        );
       }
     }
 

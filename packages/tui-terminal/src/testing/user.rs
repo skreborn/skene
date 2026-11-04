@@ -1,9 +1,9 @@
 //! A user's gestures on the terminal, each the input the terminal reports for it,
 //! through the `trigger_` seams.
 //!
-//! A pointer acts at the center cell of what shows of a node's border box, within its
-//! clip and the screen, a run flowing in a paragraph at the center of what shows of the
-//! first piece its flow places it in of which anything shows; a key acts where focus is.
+//! A pointer acts at the center cell of what shows of a node's border box within its
+//! clip and the screen, and of a run flowing in a paragraph, of the first piece its flow
+//! places it in that shows; a key acts where focus is.
 
 use skene_foundation::{Key, KeyEvent, NodeId};
 use unicode_segmentation::UnicodeSegmentation;
@@ -17,9 +17,9 @@ use super::{
 };
 use crate::{frame::cell_rect, with_records};
 
-/// The center cell of what shows of `node`'s border box on screen, within its clip
-/// ([`Runtime::shown`](skene_layout::runtime::Runtime::shown)), or of the first piece a
-/// run flowing in a paragraph takes of which anything shows.
+/// The center cell of what shows of `node`'s border box within its clip and the screen,
+/// or of a run flowing in a paragraph, of the first piece it takes that shows
+/// ([`Runtime::shown`](skene_layout::runtime::Runtime::shown)).
 ///
 /// # Panics
 ///

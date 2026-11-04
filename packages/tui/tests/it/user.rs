@@ -248,17 +248,22 @@ fn a_user_clicks_a_shadowed_row_on_its_own_cells() {
 }
 
 /// A box half scrolled out of its scroll box takes a click on what shows of it, inside
-/// the scroll box's clip.
+/// the scroll box's clip, never on what lies above the scroll box where the rest of it
+/// is scrolled.
 #[test]
 fn a_user_clicks_a_scrolled_box_where_it_shows() {
   with_platform(|| {
-    let clicks = Rc::new(Cell::new(0u32));
-    let counted = Rc::clone(&clicks);
+    let clicks = Rc::new(Cell::new((0u32, 0u32)));
+    let (above, counted) = (Rc::clone(&clicks), Rc::clone(&clicks));
     let tall = NodeHandle::new();
 
     let _ = mount(move || {
       Column::new()
         .set_children((
+          Container::new()
+            .set_height(2)
+            .handle_click(move || above.set((above.get().0 + 1, above.get().1)))
+            .set_child(Text::new("Above")),
           Container::new()
             .set_height(3)
             .set_overflow(Overflow::ScrollIfNeeded)
@@ -266,7 +271,7 @@ fn a_user_clicks_a_scrolled_box_where_it_shows() {
               Column::new().set_children((
                 Container::new()
                   .set_height(4)
-                  .handle_click(move || counted.set(counted.get() + 1))
+                  .handle_click(move || counted.set((counted.get().0, counted.get().1 + 1)))
                   .bind_handle(tall)
                   .set_child(Text::new("tall")),
                 Container::new().set_height(2).set_child(Text::new("short")),
@@ -278,49 +283,95 @@ fn a_user_clicks_a_scrolled_box_where_it_shows() {
         .build()
     });
 
-    let _ = testing::render_to_text(12, 5);
+    let _ = testing::render_to_text(12, 6);
 
-    testing::trigger_mouse_scroll(2, 1, 0, 3);
+    testing::trigger_mouse_scroll(2, 3, 0, 3);
 
-    let _ = testing::render_to_text(12, 5);
+    let _ = testing::render_to_text(12, 6);
 
     user::click(tall.node().expect("the tall box built"));
 
-    assert_eq!(clicks.get(), 1);
+    assert_eq!(clicks.get(), (0, 1));
   });
 }
 
 /// A span whose first line is scrolled out of its scroll box takes a click on the first
-/// of its lines that shows.
+/// of its lines that shows, never on what lies above the scroll box where its first line
+/// is scrolled.
 #[test]
 fn a_user_clicks_a_wrapped_span_on_a_line_that_shows() {
   with_platform(|| {
-    let clicks = Rc::new(Cell::new(0u32));
-    let counted = Rc::clone(&clicks);
+    let clicks = Rc::new(Cell::new((0u32, 0u32)));
+    let (above, counted) = (Rc::clone(&clicks), Rc::clone(&clicks));
 
     let _ = mount(move || {
-      Container::new()
-        .set_width(5)
-        .set_height(1)
-        .set_overflow(Overflow::ScrollIfNeeded)
-        .set_child(RichText::new().add_spans([
-          Span::new("ab "),
-          Span::new("cd ef").handle_click(move || counted.set(counted.get() + 1)),
-        ]))
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_height(1)
+            .handle_click(move || above.set((above.get().0 + 1, above.get().1)))
+            .set_child(Text::new("Above")),
+          Container::new()
+            .set_width(5)
+            .set_height(1)
+            .set_overflow(Overflow::ScrollIfNeeded)
+            .set_child(
+              RichText::new().add_spans([
+                Span::new("ab "),
+                Span::new("cd ef")
+                  .handle_click(move || counted.set((counted.get().0, counted.get().1 + 1))),
+              ]),
+            ),
+        ))
         .into_any()
         .build()
     });
 
     let _ = testing::render_to_text(8, 3);
 
-    testing::trigger_mouse_scroll(0, 0, 0, 1);
+    testing::trigger_mouse_scroll(0, 1, 0, 1);
 
     let shown = testing::render_to_text(8, 3);
 
-    assert!(shown.starts_with("ef"), "the second line shows: {shown:?}");
+    assert!(
+      shown
+        .lines()
+        .nth(1)
+        .is_some_and(|line| line.starts_with("ef")),
+      "the second line shows: {shown:?}"
+    );
 
     user::click(testing::find_by_text("cd ef").expect("the span"));
 
-    assert_eq!(clicks.get(), 1);
+    assert_eq!(clicks.get(), (0, 1));
+  });
+}
+
+/// A box laid out wholly below the screen shows no cell, so a user cannot click it.
+#[test]
+#[should_panic(expected = "shows no cell on screen")]
+fn a_user_cannot_click_a_box_below_the_screen() {
+  with_platform(|| {
+    let below = NodeHandle::new();
+
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .set_min_height(3)
+            .set_child(Text::new("Top")),
+          Container::new()
+            .set_min_height(2)
+            .handle_click(|| {})
+            .bind_handle(below)
+            .set_child(Text::new("Below")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = testing::render_to_text(6, 3);
+
+    user::click(below.node().expect("the box below built"));
   });
 }

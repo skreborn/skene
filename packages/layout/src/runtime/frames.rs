@@ -379,14 +379,7 @@ impl Frames {
         continue;
       }
 
-      let clip = if laid.clips {
-        let padding = rect.deflate(laid.placed.border);
-
-        Some(visit.clip.map_or(padding, |clip| clip.intersect(padding)))
-      }
-      else {
-        visit.clip
-      };
+      let clip = laid.children_clip(rect, visit.clip);
       let scroll = source.scroll(visit.node);
       let base = Point::new(rect.origin.x - scroll.x, rect.origin.y - scroll.y);
       let flows = paragraph || (laid.inline != Inline::None && visit.flows);
@@ -561,6 +554,20 @@ struct Laid {
   invisible: bool,
   overlay: bool,
   inline: Inline,
+}
+
+impl Laid {
+  /// What shows of the children of the node `self` reads, its border box at `rect` and
+  /// what shows of it `clip`: `clip` cut to its padding box where it clips.
+  fn children_clip(&self, rect: Rect<f32>, clip: Option<Rect<f32>>) -> Option<Rect<f32>> {
+    if !self.clips {
+      return clip;
+    }
+
+    let padding = rect.deflate(self.placed.border);
+
+    Some(clip.map_or(padding, |clip| clip.intersect(padding)))
+  }
 }
 
 /// What [`Frames`] is built from: a window's scene, its records and its layout.
@@ -808,19 +815,9 @@ impl<P: Drawn> Runtime<P> {
     }
 
     let paragraph = frames.paragraph_of(node)?;
-    let clip = if self.clips(paragraph.node) {
-      let border = self.tree.layout(paragraph.node).unwrap_or_default().border;
-      let padding = paragraph.rect.deflate(border);
-
-      Some(
-        paragraph
-          .clip
-          .map_or(padding, |clip| clip.intersect(padding)),
-      )
-    }
-    else {
-      paragraph.clip
-    };
+    let clip = self
+      .laid(paragraph.node)?
+      .children_clip(paragraph.rect, paragraph.clip);
 
     self
       .pieces(node, paragraph)

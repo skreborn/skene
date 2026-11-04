@@ -111,8 +111,6 @@ pub(crate) struct Records {
   pub(crate) palette: Palette,
   /// The scheduled actions, each due at a clock reading.
   pub(crate) timers: Timers<Box<dyn FnOnce()>>,
-  /// The node to scroll into view once the next layout is computed.
-  pub(crate) reveal: Option<NodeId>,
   /// The window title the document asks for.
   pub(crate) title: Option<String>,
   /// Whether the title changed since the terminal was last told it.
@@ -166,7 +164,6 @@ impl Records {
       detected_background: None,
       palette: Palette::DEFAULT,
       timers: Timers::new(),
-      reveal: None,
       title: None,
       title_dirty: false,
       quit: false,
@@ -218,10 +215,6 @@ impl Records {
 
     if let Some(rect) = record.platform.painted {
       self.damaged_rects.push(rect);
-    }
-
-    if self.reveal == Some(node) {
-      self.reveal = None;
     }
 
     if self

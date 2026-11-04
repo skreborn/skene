@@ -218,6 +218,72 @@ fn focus_scrolls_into_view() {
   });
 }
 
+/// Focusing a row past the bottom of a scroll box bordered on its top edge alone scrolls
+/// it to that box's bottom edge, its own border bounding what shows, with no row beyond
+/// it scrolled in beneath.
+#[test]
+fn focus_reveals_a_row_against_a_far_edge_with_no_border() {
+  with_platform(|| {
+    mount_bordered_buttons(Inset::new(0, 1, 0, 0));
+
+    for _ in 0..5 {
+      testing::trigger_key("Tab");
+    }
+
+    let rows = frame_rows(12, 5);
+
+    assert!(rows[1].contains("button 2"), "{rows:?}");
+    assert!(rows[3].contains("button 4"), "{rows:?}");
+    assert!(!rows.iter().any(|row| row.contains("button 5")), "{rows:?}");
+  });
+}
+
+/// Focusing a row past the bottom of a scroll box bordered on its bottom edge alone
+/// scrolls it in above that border, rather than beneath it.
+#[test]
+fn focus_reveals_a_row_above_a_far_border() {
+  with_platform(|| {
+    mount_bordered_buttons(Inset::new(0, 0, 0, 1));
+
+    for _ in 0..5 {
+      testing::trigger_key("Tab");
+    }
+
+    let rows = frame_rows(12, 5);
+
+    assert!(rows[0].contains("button 2"), "{rows:?}");
+    assert!(rows[2].contains("button 4"), "{rows:?}");
+    assert!(!rows.iter().any(|row| row.contains("button 5")), "{rows:?}");
+  });
+}
+
+/// Six one-row buttons in a scroll box four rows tall whose border is `border`.
+fn mount_bordered_buttons(border: Inset) {
+  let _ = mount(move || {
+    Container::new()
+      .set_child(
+        Container::new()
+          .set_height(4)
+          .set_border_width(border)
+          .set_overflow(Overflow::Scroll)
+          .set_child(
+            Column::new().set_children(
+              (0..6)
+                .map(|index| {
+                  BasicButton::new(Activate::new())
+                    .set_label(format!("button {index}"))
+                    .into_any()
+                })
+                .collect::<Vec<_>>(),
+            ),
+          ),
+      )
+      .into_any()
+      .build()
+  });
+  let _ = testing::render_to_text(12, 5);
+}
+
 /// Focusing a control inside an inline box below the fold scrolls it into view, at its
 /// place in its paragraph: its own line last in view, with lines still beneath it.
 #[test]

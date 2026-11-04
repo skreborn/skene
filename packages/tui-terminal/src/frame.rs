@@ -14,7 +14,6 @@ use skene_layout::runtime::Runtime;
 
 use crate::{
   Terminal,
-  interaction::scroll_to,
   layout::{border_edges, has_border},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
   records::{Backdrop, BackdropKey, CellRect, PlainBox, Record, Records},
@@ -601,106 +600,16 @@ fn report_sizes() -> bool {
 /// changed.
 fn reveal() -> bool {
   let adjusted = with_records(|records| {
-    let node = records.reveal.take()?;
+    let node = records.runtime.take_reveal()?;
 
-    Some(adjustments(records, laid_owner(records, node)))
+    Some(records.runtime.reveal_offsets(node))
   })
   .unwrap_or_default();
   let changed = !adjusted.is_empty();
 
-  for (node, offsets) in adjusted {
-    scroll_to(node, offsets);
+  for (node, offset) in adjusted {
+    Runtime::<Terminal>::scroll_to(node, offset);
   }
 
   changed
-}
-
-/// The nearest node at or above `node` the tree lays out: `node` itself, or the
-/// paragraph a text or group run flows in.
-fn laid_owner(records: &Records, node: NodeId) -> NodeId {
-  if records.runtime.is_inline_run(node) && !records.runtime.is_inline_box(node) {
-    return records.runtime.enclosing_paragraph(node).unwrap_or(node);
-  }
-
-  node
-}
-
-/// The scroll offsets each scrollable ancestor of `node` takes to show it.
-fn adjustments(records: &Records, node: NodeId) -> Vec<(NodeId, (u32, u32))> {
-  let mut adjusted = Vec::new();
-  let (mut rel_x, mut rel_y) = records.node_location(node);
-  let (width, height) = records.node_size(node);
-  let mut current = records.runtime.layout_parent(node);
-
-  while let Some(ancestor) = current {
-    let (mut offset_x, mut offset_y) = records.scroll_offset(ancestor);
-
-    if records.is_scrollable(ancestor) {
-      let (limit_x, limit_y) = records.scroll_limits(ancestor);
-      let (ancestor_width, ancestor_height) = records.node_size(ancestor);
-      let border = records.node_border(ancestor);
-      let next = (
-        fit_axis(
-          i64::from(offset_x),
-          rel_x,
-          width,
-          ancestor_width,
-          border.0,
-          i64::from(limit_x),
-        ),
-        fit_axis(
-          i64::from(offset_y),
-          rel_y,
-          height,
-          ancestor_height,
-          border.1,
-          i64::from(limit_y),
-        ),
-      );
-      let next = (
-        u32::try_from(next.0).unwrap_or(0),
-        u32::try_from(next.1).unwrap_or(0),
-      );
-
-      if next != (offset_x, offset_y) {
-        adjusted.push((ancestor, next));
-      }
-
-      (offset_x, offset_y) = next;
-    }
-
-    let (location_x, location_y) = records.node_location(ancestor);
-
-    rel_x += location_x - i64::from(offset_x);
-    rel_y += location_y - i64::from(offset_y);
-    current = records.runtime.layout_parent(ancestor);
-  }
-
-  adjusted
-}
-
-/// The nearest offset showing `[rel, rel + extent)` within a viewport of `size` behind
-/// a border, clamped to `[0, limit]`; an oversized target aligns to its start.
-const fn fit_axis(offset: i64, rel: i64, extent: i64, size: i64, border: i64, limit: i64) -> i64 {
-  let min_offset = rel + extent - size + border;
-  let max_offset = rel - border;
-  let next = if min_offset > max_offset || offset > max_offset {
-    max_offset
-  }
-  else if offset < min_offset {
-    min_offset
-  }
-  else {
-    offset
-  };
-
-  if next < 0 {
-    0
-  }
-  else if next > limit {
-    limit
-  }
-  else {
-    next
-  }
 }

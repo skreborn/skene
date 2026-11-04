@@ -724,7 +724,7 @@ fn focus_on(next: Option<NodeId>, restored: bool) {
 
       records.settle_entry(next);
       records.runtime.damage(next);
-      records.reveal = Some(next);
+      records.runtime.reveal(next);
     }
 
     Some(next.filter(|&next| records.runtime.contains(next)))

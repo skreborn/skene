@@ -263,11 +263,14 @@ pub fn skene_layout::runtime::Runtime<P>::clips(&self, skene_foundation::spine::
 pub fn skene_layout::runtime::Runtime<P>::content_size(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::runtime::Runtime<P>::is_scrollable(&self, skene_foundation::spine::node::NodeId) -> bool
 pub fn skene_layout::runtime::Runtime<P>::overflow(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::axis::Axes<skene_foundation::spine::values::overflow::Overflow>
+pub const fn skene_layout::runtime::Runtime<P>::reveal(&mut self, skene_foundation::spine::node::NodeId)
+pub fn skene_layout::runtime::Runtime<P>::reveal_offsets(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>)>
 pub fn skene_layout::runtime::Runtime<P>::scroll_by(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>) -> bool
 pub fn skene_layout::runtime::Runtime<P>::scroll_limits(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::size::Size<f32>
 pub fn skene_layout::runtime::Runtime<P>::scroll_offset(&self, skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::point::Point<f32>
 pub fn skene_layout::runtime::Runtime<P>::scroll_to(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>)
 pub fn skene_layout::runtime::Runtime<P>::scrolled_by(&self, skene_foundation::spine::node::NodeId, skene_foundation::spine::values::point::Point<f32>) -> core::option::Option<skene_foundation::spine::values::point::Point<f32>>
+pub const fn skene_layout::runtime::Runtime<P>::take_reveal(&mut self) -> core::option::Option<skene_foundation::spine::node::NodeId>
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::compute(&mut self, skene_foundation::spine::values::size::Size<f32>)
 pub fn skene_layout::runtime::Runtime<P>::flow_of(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Flow<<P as skene_layout::runtime::Drawn>::Engine>>

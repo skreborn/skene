@@ -47,7 +47,9 @@
 //! the geometry and notifying its scroll handlers once the runtime is released
 //! ([`Runtime::scroll_to`], [`Runtime::scroll_by`]). A text entry whose window the
 //! platform scrolls as an offset answers for itself through [`Drawn::entry_scroll`] and
-//! [`Drawn::scroll_entry`], its window moving with no notification.
+//! [`Drawn::scroll_entry`], its window moving with no notification. A node queued to be
+//! scrolled into view ([`Runtime::reveal`]) is shown by the offsets each scroll box
+//! around it takes, between its near and its far border ([`Runtime::reveal_offsets`]).
 //!
 //! A drawn platform's realization forwards to the runtime for everything that is no
 //! cell's or pixel's: a node's record created ([`Runtime::create`]) and destroyed, its
@@ -261,6 +263,7 @@ pub struct Runtime<P: Drawn> {
   clock: Clock,
   window: Window<P>,
   choice: Option<ColorScheme>,
+  reveal: Option<NodeId>,
 }
 
 impl<P: Drawn> Runtime<P> {
@@ -299,6 +302,7 @@ impl<P: Drawn> Runtime<P> {
       clock: Clock::Manual(0.),
       window: Window::new(reported, painting),
       choice: None,
+      reveal: None,
     };
 
     runtime.insert(
@@ -393,15 +397,20 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// Releases the record of `node`, retiring it from the overlays, the entries, the
-  /// restyle and the layout tree, its structure moved and the frame repainting; the
-  /// record removed, for the platform to clear its own references, or `None` where
-  /// `node` held none.
+  /// restyle, the layout tree and the reveal queued, its structure moved and the frame
+  /// repainting; the record removed, for the platform to clear its own references, or
+  /// `None` where `node` held none.
   pub fn destroy(&mut self, node: NodeId) -> Option<Record<P>> {
     let record = self.records.remove(node)?;
 
     self.tree.remove(node);
     self.overlays.retain(|overlay| *overlay != node);
     self.entries.retain(|entry| *entry != node);
+
+    if self.reveal == Some(node) {
+      self.reveal = None;
+    }
+
     self.restyle.read_interaction(node, false);
     self.restyle.move_structure();
     self.paint_dirty = true;

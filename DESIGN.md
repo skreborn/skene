@@ -1954,7 +1954,11 @@ cells it covers and what it paints beyond its style), beside each box's scroll o
 which the runtime keeps, clamps and writes, notifying the box's scroll handlers, an
 editor's window down its rows standing for its vertical offset through
 `Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's window along
-its clusters stays the terminal's. Its `impl Realization` forwards to the runtime's
+its clusters stays the terminal's. Focus reveals the node it moves to through the runtime
+(`Runtime::reveal`, `Runtime::reveal_offsets`), by both edges of each scroll box around
+it: the box scrolls by as little as shows the node between its near border and its far
+one, its padding box as Chromium's `scrollIntoView` aligns to the scrollport, so a node
+revealed toward an edge with no border lands against that edge. Its `impl Realization` forwards to the runtime's
 adapter for everything that is no cell's: a node's record created and destroyed, its
 style, slots, control state and contents, a size observed, an overlay opened with the
 focus move it asks for, and a mount with the window's autofocus. The runtime writes the

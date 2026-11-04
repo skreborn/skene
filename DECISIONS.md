@@ -30,6 +30,24 @@ supersedes there.
   paragraph a query touches. Revisit when a reader needs every run's pieces each frame
   (item 3's vello painter, accessibility bounds per line), then cached per paragraph
   under the layout generation.
+- **Pieces and scroll offsets handed by the paint walk** (2026-11-04), `Frames::visit`
+  handing each entry with its runs' pieces and the scroll offsets above it beside its
+  rectangle and clips: the pieces would be laid out for every paragraph at every paint,
+  for the reason the entry above stores none, while a painter that draws a paragraph
+  whole from its flow (the terminal's) reads none of them, and every rectangle the walk
+  hands is already scrolled, so the offsets would only serve the scrollbars, which read
+  `Runtime::scroll_offset` and `Runtime::scroll_limits`. A painter that needs a run's
+  pieces asks `Runtime::run_rects`. Revisit with the entry above, when a painter needs
+  every run's pieces each frame.
+- **The paint walk as an iterator of steps with a skip method** (2026-11-04), the
+  walkdir shape: `Frames` yielding an enter, a leave or a layer step, the caller passing
+  over a subtree by telling the iterator between steps. The visitor (`FrameVisitor`)
+  answers the skip where the entry is entered, as its return value, so a painter cannot
+  forget or misplace it, and names the three points a painter acts at as one trait
+  every drawn painter implements alike; neither shape allocates, the open entries being
+  the chain of parents from the deepest. Chosen by judgment, not by a measurement.
+  Revisit when a reader needs to stop a walk midway or interleave two walks, which a
+  visitor cannot.
 - **`Runtime::frames` taking `&mut self`, each reader refreshing the index first**
   (2026-11-04), the index rebuilt by a mutable read while a flag says it is stale and
   every reader holding the runtime shared reading it through a borrow refreshed at its

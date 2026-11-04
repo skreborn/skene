@@ -1,8 +1,9 @@
 //! The drawn runtime's index of window rectangles: every laid-out node's border box in
-//! its window, the cover its paint damages, the reach a hit takes it at, the clip what
-//! shows of it is cut to and whether it takes hits, in paint order, each open overlay's
-//! subtree placed where the runtime places it; the topmost node at a point, hit over
-//! it; and the damage the next paint repaints, as nodes and the rectangles of the window
+//! its window, the cover its paint damages, the reach a hit takes it at, the clips what
+//! shows of it and of its content are cut to and whether it takes hits, in paint order,
+//! each open overlay's subtree placed where the runtime places it; its walk in paint
+//! order, which a platform's painter visits; the topmost node at a point, hit over it;
+//! and the damage the next paint repaints, as nodes and the rectangles of the window
 //! they cover.
 
 use skene_foundation::{Inset, NodeId, NodeMap, Point, Rect, RunPlacement, Scalar, Scene, Size};
@@ -31,8 +32,11 @@ pub struct Frame {
   /// What shows of it in the window: the padding boxes of every laid-out node above it in
   /// its layer that clips, intersected; `None` where none does.
   pub clip: Option<Rect<f32>>,
-  /// Whether it takes hits: neither it nor a laid-out node above it in its layer is
-  /// invisible.
+  /// What shows of its content and of what it holds in the window: its `clip`, cut to its
+  /// padding box where it clips; `None` where neither cuts.
+  pub content_clip: Option<Rect<f32>>,
+  /// Whether it takes hits and paints: neither it nor a laid-out node above it in its
+  /// layer is invisible.
   pub hits: bool,
   /// Whether it lays its runs out as one paragraph, a hit inside it resolved against its
   /// flow rather than its entries ([`Frames::hit`]).
@@ -57,6 +61,38 @@ pub struct Layer {
   pub start: usize,
   /// The index past its subtree.
   pub end: usize,
+}
+
+/// Whether a walk of [`Frames`] goes on into what an entry it entered holds
+/// ([`FrameVisitor::enter`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub enum Descend {
+  /// Enter the entries beneath it, then leave it.
+  Into,
+  /// Pass over the entries beneath it, and do not leave it.
+  Skip,
+}
+
+/// What walks [`Frames`] in paint order ([`Frames::visit`]): each entry entered before
+/// what it holds and left after it, and each open overlay's layer announced before its
+/// entries.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` does not visit `Frames` in paint order",
+  label = "a painter walks `Frames` through `FrameVisitor`: entering each entry, leaving it after what it holds, and hearing each open overlay's layer before its entries"
+)]
+pub trait FrameVisitor {
+  /// Enters the entry at `index`, `frame`, before every entry beneath it, answering
+  /// whether the walk goes on into them.
+  fn enter(&mut self, index: usize, frame: &Frame) -> Descend;
+
+  /// Leaves the entry at `index`, `frame`, after every entry beneath it: one it entered
+  /// answering [`Descend::Into`].
+  fn leave(&mut self, index: usize, frame: &Frame);
+
+  /// Announces the open overlay's layer `layer`, after the root's flow and every layer
+  /// opened before it, before its entries.
+  fn layer(&mut self, layer: &Layer);
 }
 
 /// Where the index keeps a node.
@@ -184,6 +220,73 @@ impl Frames {
   #[must_use]
   pub fn cover(&self, node: NodeId) -> Option<Rect<f32>> {
     self.get(node)?.cover
+  }
+
+  /// Walks every entry in paint order through `visitor`: the root's flow, then each open
+  /// overlay's layer in the order they opened, announced before its entries
+  /// ([`FrameVisitor::layer`]).
+  ///
+  /// Each entry is entered with its index before the entries beneath it, a paragraph's
+  /// inline boxes after the paragraph, and left after them
+  /// ([`FrameVisitor::enter`], [`FrameVisitor::leave`]); one entered answering
+  /// [`Descend::Skip`] is left with none of them entered. An entry that takes no hits
+  /// ([`Frame::hits`]), an invisible node and everything beneath it, is passed over,
+  /// neither entered nor left. A run flowing in a paragraph has no entry, its paragraph
+  /// standing for it.
+  pub fn visit(&self, visitor: &mut impl FrameVisitor) {
+    self.visit_range(0..self.flow_len(), visitor);
+
+    for layer in &self.layers {
+      visitor.layer(layer);
+      self.visit_range(layer.start..layer.end, visitor);
+    }
+  }
+
+  /// Walks the entries of `range`, a run of whole subtrees topped by no entry outside it,
+  /// as [`visit`](Self::visit) walks them; the entries open are those down the parents
+  /// from the deepest, left as the walk passes their ends.
+  fn visit_range(&self, range: std::ops::Range<usize>, visitor: &mut impl FrameVisitor) {
+    let mut open = None;
+    let mut index = range.start;
+
+    while index < range.end {
+      self.leave_ended(&mut open, index, visitor);
+
+      let frame = &self.entries[index];
+
+      if !frame.hits {
+        index = frame.end;
+
+        continue;
+      }
+
+      debug_assert_eq!(open, frame.parent, "an entry is entered beneath its parent");
+
+      match visitor.enter(index, frame) {
+        Descend::Into => {
+          open = Some(index);
+          index += 1;
+        }
+        Descend::Skip => index = frame.end,
+      }
+    }
+
+    self.leave_ended(&mut open, range.end, visitor);
+  }
+
+  /// Leaves every open entry, from `open`, the deepest, up its parents, that ends at or
+  /// before `index`.
+  fn leave_ended(&self, open: &mut Option<usize>, index: usize, visitor: &mut impl FrameVisitor) {
+    while let Some(top) = *open {
+      let frame = &self.entries[top];
+
+      if frame.end > index {
+        break;
+      }
+
+      visitor.leave(top, frame);
+      *open = frame.parent;
+    }
   }
 
   /// The topmost node at `point` in the window, `None` where the point hits nothing:
@@ -367,20 +470,20 @@ impl Frames {
       let hits = visit.hits && !laid.invisible;
       let children = source.children(visit.node);
       let paragraph = !children.is_empty() && source.is_paragraph(visit.node);
+      let clip = laid.children_clip(rect, visit.clip);
       let parent = if flowing {
         self.flows(visit);
 
         visit.parent
       }
       else {
-        Some(self.push(visit, &laid, rect, (hits, paragraph)))
+        Some(self.push(visit, &laid, (rect, clip), (hits, paragraph)))
       };
 
       if children.is_empty() {
         continue;
       }
 
-      let clip = laid.children_clip(rect, visit.clip);
       let scroll = source.scroll(visit.node);
       let base = Point::new(rect.origin.x - scroll.x, rect.origin.y - scroll.y);
       let flows = paragraph || (laid.inline != Inline::None && visit.flows);
@@ -417,14 +520,14 @@ impl Frames {
     }
   }
 
-  /// Pushes the entry of the node `visit` reaches, laid out as `laid` at `rect`, taking
-  /// hits and laying its runs out as a paragraph where `hits` and `paragraph` say,
-  /// returning its index.
+  /// Pushes the entry of the node `visit` reaches, laid out as `laid` at `rect`, what
+  /// shows of its content `content_clip`, taking hits and laying its runs out as a
+  /// paragraph where `hits` and `paragraph` say, returning its index.
   fn push(
     &mut self,
     visit: Visit,
     laid: &Laid,
-    rect: Rect<f32>,
+    (rect, content_clip): (Rect<f32>, Option<Rect<f32>>),
     (hits, paragraph): (bool, bool),
   ) -> usize {
     let index = self.entries.len();
@@ -444,6 +547,7 @@ impl Frames {
         rect.union(overflow)
       },
       clip: visit.clip,
+      content_clip,
       hits,
       paragraph,
       parent: visit.parent,
@@ -480,6 +584,7 @@ impl Frames {
       entry.cover = entry.cover.map(|cover| cover.translate(by));
       entry.reach = entry.reach.translate(by);
       entry.clip = entry.clip.map(|clip| clip.translate(by));
+      entry.content_clip = entry.content_clip.map(|clip| clip.translate(by));
     }
 
     placing[layer] = Placing::Done;
@@ -730,9 +835,7 @@ impl<P: Drawn> Runtime<P> {
     let boxes = self.inline_boxes(node);
     let origin = paragraph.rect.origin;
     let local = Point::new(point.x - origin.x, point.y - origin.y);
-    let clip = self
-      .laid(node)?
-      .children_clip(paragraph.rect, paragraph.clip);
+    let clip = paragraph.content_clip;
     let inside = |boxed: NodeId| {
       frames.hit_subtree(boxed, point, |inner| {
         self.hit_paragraph(frames, inner, point)
@@ -819,14 +922,11 @@ impl<P: Drawn> Runtime<P> {
     }
 
     let paragraph = frames.paragraph_of(node)?;
-    let clip = self
-      .laid(paragraph.node)?
-      .children_clip(paragraph.rect, paragraph.clip);
 
     self
       .pieces(node, paragraph)
       .into_iter()
-      .find_map(|piece| showing(piece, clip))
+      .find_map(|piece| showing(piece, paragraph.content_clip))
   }
 
   /// The index of the window's rectangles ([`Frames`]) as the scene, the records and the
@@ -932,7 +1032,7 @@ mod tests {
   use skene_foundation::{Inset, NodeId, Point, Rect, Size};
   use smallvec::SmallVec;
 
-  use super::{Frame, FrameSource, Frames, Inline, Laid};
+  use super::{Descend, Frame, FrameSource, FrameVisitor, Frames, Inline, Laid, Layer};
   use crate::Placed;
 
   /// Where a canned overlay is placed.
@@ -1573,6 +1673,266 @@ mod tests {
 
     assert_eq!(frames.rect(node(1)), Some(rect(0., 2., 10., 2.)));
     assert_eq!(frames.rect(node(2)), Some(rect(3., 2., 2., 1.)));
+  }
+
+  /// One step of a walk, as a recording visitor hears it.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+  enum Step {
+    /// An entry entered, at its index.
+    Enter(usize, NodeId),
+    /// An entry left, at its index.
+    Leave(usize, NodeId),
+    /// An open overlay's layer announced.
+    Layer(NodeId),
+  }
+
+  /// A visitor recording each step it hears and each entry's frame as it is entered,
+  /// passing over what the nodes of `skip` hold.
+  #[derive(Default)]
+  struct Recorder {
+    skip: Vec<NodeId>,
+    steps: Vec<Step>,
+    entered: Vec<(usize, Frame)>,
+  }
+
+  impl FrameVisitor for Recorder {
+    fn enter(&mut self, index: usize, frame: &Frame) -> Descend {
+      self.steps.push(Step::Enter(index, frame.node));
+      self.entered.push((index, *frame));
+
+      if self.skip.contains(&frame.node) {
+        Descend::Skip
+      }
+      else {
+        Descend::Into
+      }
+    }
+
+    fn leave(&mut self, index: usize, frame: &Frame) {
+      self.steps.push(Step::Leave(index, frame.node));
+    }
+
+    fn layer(&mut self, layer: &Layer) {
+      self.steps.push(Step::Layer(layer.overlay));
+    }
+  }
+
+  impl Frames {
+    /// What a walk passing over what the nodes of `skip` hold hears, every entry's frame
+    /// held to the entry at the index it is handed with.
+    fn walked(&self, skip: &[NodeId]) -> Recorder {
+      let mut recorder = Recorder {
+        skip: skip.to_vec(),
+        ..Recorder::default()
+      };
+
+      self.visit(&mut recorder);
+
+      for (index, frame) in &recorder.entered {
+        assert_eq!(&self.entries()[*index], frame);
+      }
+
+      recorder
+    }
+  }
+
+  /// A canned window of nested boxes, an anchor among them: the root holding the box 1
+  /// and then the box 5, the box 1 holding the box 3 through the anchor 2 and then the
+  /// box 4.
+  fn nested() -> Canned {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 20., 10.)));
+    canned.add(node(1), node(2), None);
+    canned.add(node(2), node(3), Some(laid(1., 1., 4., 2.)));
+    canned.add(node(1), node(4), Some(laid(1., 4., 4., 2.)));
+    canned.add(ROOT, node(5), Some(laid(0., 12., 4., 2.)));
+
+    canned
+  }
+
+  /// The walk enters each entry before what it holds and leaves it after, in nesting
+  /// order, an anchor neither entered nor left and what it holds entered in its place.
+  #[test]
+  fn the_walk_leaves_an_entry_after_what_it_holds() {
+    let frames = Frames::build(&nested(), Frames::default());
+
+    assert_eq!(
+      frames.walked(&[]).steps,
+      [
+        Step::Enter(0, ROOT),
+        Step::Enter(1, node(1)),
+        Step::Enter(2, node(3)),
+        Step::Leave(2, node(3)),
+        Step::Enter(3, node(4)),
+        Step::Leave(3, node(4)),
+        Step::Leave(1, node(1)),
+        Step::Enter(4, node(5)),
+        Step::Leave(4, node(5)),
+        Step::Leave(0, ROOT),
+      ]
+    );
+  }
+
+  /// An entry entered answering `Skip` is neither left nor has anything beneath it
+  /// entered, and the walk goes on past it.
+  #[test]
+  fn a_skipped_entry_passes_over_its_subtree() {
+    let frames = Frames::build(&nested(), Frames::default());
+
+    assert_eq!(
+      frames.walked(&[node(1)]).steps,
+      [
+        Step::Enter(0, ROOT),
+        Step::Enter(1, node(1)),
+        Step::Enter(4, node(5)),
+        Step::Leave(4, node(5)),
+        Step::Leave(0, ROOT),
+      ]
+    );
+  }
+
+  /// An invisible box and everything beneath it are neither entered nor left.
+  #[test]
+  fn the_walk_never_enters_an_invisible_subtree() {
+    let mut canned = Canned::new();
+    let mut hidden = laid(0., 0., 10., 10.);
+
+    hidden.invisible = true;
+    canned.add(ROOT, node(1), Some(hidden));
+    canned.add(node(1), node(2), Some(laid(1., 1., 2., 2.)));
+    canned.add(ROOT, node(3), Some(laid(0., 12., 4., 2.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(
+      frames.walked(&[]).steps,
+      [
+        Step::Enter(0, ROOT),
+        Step::Enter(3, node(3)),
+        Step::Leave(3, node(3)),
+        Step::Leave(0, ROOT),
+      ]
+    );
+  }
+
+  /// Each open overlay's layer comes after the root's flow, in the order they opened,
+  /// announced before its entries and holding them alone, each entry handed at its index.
+  #[test]
+  fn layers_follow_the_flow_in_open_order() {
+    let mut canned = Canned::new();
+
+    canned.add(ROOT, node(1), Some(laid(0., 0., 20., 10.)));
+    canned.add_open_overlay(
+      node(1),
+      node(2),
+      laid(0., 0., 6., 4.),
+      Place::At(at(2., 2.)),
+    );
+    canned.add(node(2), node(3), Some(laid(1., 1., 2., 2.)));
+    canned.add_open_overlay(ROOT, node(4), laid(0., 0., 3., 3.), Place::At(at(9., 5.)));
+    canned.add(ROOT, node(5), Some(laid(0., 12., 4., 2.)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(
+      frames.walked(&[]).steps,
+      [
+        Step::Enter(0, ROOT),
+        Step::Enter(1, node(1)),
+        Step::Leave(1, node(1)),
+        Step::Enter(2, node(5)),
+        Step::Leave(2, node(5)),
+        Step::Leave(0, ROOT),
+        Step::Layer(node(2)),
+        Step::Enter(3, node(2)),
+        Step::Enter(4, node(3)),
+        Step::Leave(4, node(3)),
+        Step::Leave(3, node(2)),
+        Step::Layer(node(4)),
+        Step::Enter(5, node(4)),
+        Step::Leave(5, node(4)),
+      ]
+    );
+  }
+
+  /// A paragraph's inline boxes are entered after it and before it is left, a run flowing
+  /// in it having no entry, each box handed with what shows of the paragraph's content as
+  /// its clip.
+  #[test]
+  fn a_paragraphs_inline_boxes_are_entered_within_its_content_clip() {
+    let mut canned = Canned::new();
+    let mut paragraph = laid(0., 0., 12., 4.);
+    let mut run = laid(0., 0., 5., 1.);
+    let mut boxed = laid(6., 1., 5., 2.);
+
+    paragraph.clips = true;
+    paragraph.placed.border = Inset::new(1, 1, 2, 0);
+    run.inline = Inline::Run;
+    boxed.inline = Inline::Box;
+    canned.add(ROOT, node(1), Some(paragraph)).paragraph = true;
+    canned.add(node(1), node(2), Some(run));
+    canned.add(node(1), node(3), Some(boxed));
+
+    let frames = Frames::build(&canned, Frames::default());
+    let walked = frames.walked(&[]);
+    let content_clip = frames.get(node(1)).and_then(|frame| frame.content_clip);
+
+    assert_eq!(
+      walked.steps,
+      [
+        Step::Enter(0, ROOT),
+        Step::Enter(1, node(1)),
+        Step::Enter(2, node(3)),
+        Step::Leave(2, node(3)),
+        Step::Leave(1, node(1)),
+        Step::Leave(0, ROOT),
+      ]
+    );
+    assert_eq!(content_clip, Some(rect(1., 1., 9., 3.)));
+    assert_eq!(walked.entered[2].1.clip, content_clip);
+  }
+
+  /// What shows of a box's content is what shows of it where it does not clip, and that
+  /// cut to its padding box, inside borders of any widths, where it does.
+  #[test]
+  fn the_content_clip_cuts_at_a_clipping_padding_box() {
+    let mut canned = Canned::new();
+    let mut outer = laid(1., 1., 20., 10.);
+    let mut inner = laid(10., 1., 8., 6.);
+    let mut overflowing = laid(18., 7., 6., 6.);
+
+    outer.clips = true;
+    inner.clips = true;
+    inner.placed.border = Inset::new(1, 2, 3, 0);
+    overflowing.clips = true;
+    overflowing.placed.border = Inset::all(1.);
+    canned.add(ROOT, node(1), Some(outer));
+    canned.add(node(1), node(2), Some(laid(2., 2., 6., 4.)));
+    canned.add(node(1), node(3), Some(inner));
+    canned.add(node(1), node(4), Some(overflowing));
+
+    let frames = Frames::build(&canned, Frames::default());
+    let clips = |index| {
+      frames
+        .get(node(index))
+        .map(|frame| (frame.clip, frame.content_clip))
+    };
+
+    assert_eq!(clips(0), Some((None, None)));
+    assert_eq!(clips(1), Some((None, Some(rect(1., 1., 20., 10.)))));
+    assert_eq!(
+      clips(2),
+      Some((Some(rect(1., 1., 20., 10.)), Some(rect(1., 1., 20., 10.))))
+    );
+    assert_eq!(
+      clips(3),
+      Some((Some(rect(1., 1., 20., 10.)), Some(rect(12., 4., 4., 4.))))
+    );
+    assert_eq!(
+      clips(4),
+      Some((Some(rect(1., 1., 20., 10.)), Some(rect(20., 9., 1., 2.))))
+    );
   }
 
   /// The pruned hit held to looking at every entry, over random windows.

@@ -26,10 +26,13 @@ scene and computes, each node's taffy style and children synced there, the text 
 lays a paragraph out as through the platform's engine, each box's scroll offsets and the
 writes that move them, the offsets that reveal a node, where an open overlay sits in its
 window, `Frames`, the index of its window's rectangles (each laid-out node's border box,
-the cover its paint damages, the reach a hit takes it at and the clip what shows of it
-is cut to, in paint order, each open overlay's subtree moved to where the runtime places
-it: pinned and moved back in, anchored below or above with a flip, or at one of seven
-window placements), a run flowing in a paragraph placed in the pieces its flow lays it
+the cover its paint damages, the reach a hit takes it at and the clips what shows of it
+and of its content are cut to, in paint order, each open overlay's subtree moved to
+where the runtime places it: pinned and moved back in, anchored below or above with a
+flip, or at one of seven window placements), walked in paint order by a platform's
+painter (`Frames::visit`: each entry entered with its index and what shows of it and of
+its content, left after what it holds, an invisible subtree passed over and each open
+overlay's layer announced before its entries), a run flowing in a paragraph placed in the pieces its flow lays it
 out in, what shows of a node within its clip and the window, where a test's user acts on
 it, the topmost node at a point hit over that index, the damage the next paint repaints
 as nodes and rectangles of the window (each damaged node's paint owner's cover at the

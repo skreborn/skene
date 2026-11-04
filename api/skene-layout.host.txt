@@ -12,6 +12,18 @@ pub fn skene_layout::runtime::Clock::clone(&self) -> Self
 impl core::fmt::Debug for skene_layout::runtime::Clock
 pub fn skene_layout::runtime::Clock::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_layout::runtime::Clock
+pub enum skene_layout::runtime::Descend
+pub skene_layout::runtime::Descend::Into
+pub skene_layout::runtime::Descend::Skip
+impl core::clone::Clone for skene_layout::runtime::Descend
+pub fn skene_layout::runtime::Descend::clone(&self) -> Self
+impl core::cmp::Eq for skene_layout::runtime::Descend
+impl core::cmp::PartialEq for skene_layout::runtime::Descend
+pub fn skene_layout::runtime::Descend::eq(&self, &Self) -> bool
+impl core::fmt::Debug for skene_layout::runtime::Descend
+pub fn skene_layout::runtime::Descend::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::runtime::Descend
+impl core::marker::StructuralPartialEq for skene_layout::runtime::Descend
 pub enum skene_layout::runtime::Kind<P: skene_layout::runtime::Drawn>
 pub skene_layout::runtime::Kind::Box(skene_layout::runtime::BoxRecord<P>)
 pub skene_layout::runtime::Kind::Control
@@ -146,6 +158,7 @@ pub fn skene_layout::runtime::Flow<E>::repaint_as(&mut self, &Self) -> bool
 pub fn skene_layout::runtime::Flow<E>::size_boxes(&mut self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::spine::values::size::Size<f32>>)
 pub struct skene_layout::runtime::Frame
 pub skene_layout::runtime::Frame::clip: core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub skene_layout::runtime::Frame::content_clip: core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 pub skene_layout::runtime::Frame::cover: core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
 pub skene_layout::runtime::Frame::end: usize
 pub skene_layout::runtime::Frame::hits: bool
@@ -173,6 +186,7 @@ pub fn skene_layout::runtime::Frames::hit_subtree(&self, skene_foundation::spine
 pub const fn skene_layout::runtime::Frames::layers(&self) -> &[skene_layout::runtime::Layer]
 pub fn skene_layout::runtime::Frames::origin(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::point::Point<f32>>
 pub fn skene_layout::runtime::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub fn skene_layout::runtime::Frames::visit(&self, &mut impl skene_layout::runtime::FrameVisitor)
 impl core::default::Default for skene_layout::runtime::Frames
 pub fn skene_layout::runtime::Frames::default() -> Self
 impl core::fmt::Debug for skene_layout::runtime::Frames
@@ -403,6 +417,10 @@ pub fn skene_layout::runtime::Drawn::scroll_entry(skene_foundation::spine::node:
 pub fn skene_layout::runtime::Drawn::sizes_text() -> bool
 pub fn skene_layout::runtime::Drawn::text_style(core::option::Option<&skene_layout::runtime::PlainRun<Self>>) -> skene_foundation::text::model::TextStyle
 pub fn skene_layout::runtime::Drawn::with_runtime<R>(impl core::ops::function::FnOnce(&mut skene_layout::runtime::Runtime<Self>) -> R) -> core::option::Option<R>
+pub trait skene_layout::runtime::FrameVisitor
+pub fn skene_layout::runtime::FrameVisitor::enter(&mut self, usize, &skene_layout::runtime::Frame) -> skene_layout::runtime::Descend
+pub fn skene_layout::runtime::FrameVisitor::layer(&mut self, &skene_layout::runtime::Layer)
+pub fn skene_layout::runtime::FrameVisitor::leave(&mut self, usize, &skene_layout::runtime::Frame)
 pub type skene_layout::runtime::KeptStyle<P> = skene_foundation::spine::record::CompiledStyle<<P as skene_foundation::spine::realization::Realization>::Scalar, <P as skene_foundation::spine::realization::Realization>::StyleExt>
 pub type skene_layout::runtime::Observer<P> = alloc::rcs::rc::Rc<dyn core::ops::function::Fn(skene_foundation::spine::values::size::Size<<P as skene_foundation::spine::realization::Realization>::Scalar>)>
 pub type skene_layout::runtime::PlainBox<P> = skene_foundation::spine::box_style::BoxStyle<<P as skene_foundation::spine::realization::Realization>::Scalar, skene_foundation::spine::shape::Plain, <P as skene_foundation::spine::realization::Realization>::StyleExt>

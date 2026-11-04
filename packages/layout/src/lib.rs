@@ -23,10 +23,9 @@
 //! rounds ([`runtime::Flow`], [`runtime::Measured`]), each box's scroll offsets clamped
 //! to the limits its layout allows and the writes that move them with their notification
 //! ([`runtime::Runtime::scroll_offset`], [`runtime::Runtime::scroll_to`]), beside the
-//! adapter the
-//! platform's realization forwards to for everything that is no cell's or pixel's
-//! ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The web lays out
-//! through CSS and needs none of it.
+//! adapter the platform's realization forwards to for everything that is no cell's or
+//! pixel's ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The
+//! web lays out through CSS and needs none of it.
 
 mod restyle;
 pub mod runtime;

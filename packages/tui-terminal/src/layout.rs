@@ -1,7 +1,7 @@
 //! The terminal's cell geometry over the drawn runtime's layout, which is taffy with
 //! `1.0 = 1 cell`: a text node's content box and the point standing for one of its cells,
-//! counts of cells as the layout counts them, and the edges a box's border and padding
-//! take in cells.
+//! counts of cells as the layout counts them, and the edges a box's border takes in
+//! cells.
 //!
 //! The runtime writes the layout tree from the scene and computes it; the terminal hands
 //! it only a text entry's native extent ([`Field::extent`](crate::records::Field::extent)).
@@ -46,20 +46,6 @@ pub(crate) fn border_edges(style: &PlainBox) -> Inset<bool> {
     end: width.end > 0,
     bottom: width.bottom > 0,
     start: width.start > 0,
-  }
-}
-
-/// The cells the resolved style's padding takes on each edge, a negative edge none, as
-/// layout takes it.
-pub(crate) fn padding_cells(style: &PlainBox) -> Inset<u32> {
-  let padding = style.padding.unwrap_or_default();
-  let cells = |edge: i32| u32::try_from(edge).unwrap_or(0);
-
-  Inset {
-    top: cells(padding.top),
-    end: cells(padding.end),
-    bottom: cells(padding.bottom),
-    start: cells(padding.start),
   }
 }
 

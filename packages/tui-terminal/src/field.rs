@@ -25,7 +25,6 @@ use skene_foundation::{
 
 use crate::{
   Terminal,
-  layout::padding_cells,
   records::{AUTOSCROLL_INTERVAL, Drag, EntryEditor, Field, Records},
   with_records,
 };
@@ -86,20 +85,20 @@ impl Records {
     Scene::<Terminal>::read(|scene| scene.is_editable(node))
   }
 
-  /// The inset from an entry's edge to its value: border plus padding.
-  fn field_inset(&self, node: NodeId) -> (i64, i64) {
-    let border = self.node_border(node);
-    let padding = self
-      .runtime
-      .record(node)
-      .and_then(|record| record.kind.box_style())
-      .map(padding_cells)
-      .unwrap_or_default();
-
-    (
-      border.0 + i64::from(padding.start),
-      border.1 + i64::from(padding.top),
-    )
+  /// The cells from an entry's edge to its value along and down: its start and top
+  /// border and padding as the last layout placed them, where
+  /// [`field_area`](Self::field_area) begins.
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a rounded layout's border and padding are whole cells, far inside i64"
+  )]
+  pub(crate) fn field_inset(&self, node: NodeId) -> (i64, i64) {
+    self.runtime.tree().layout(node).map_or((0, 0), |layout| {
+      (
+        (layout.border.start + layout.padding.start) as i64,
+        (layout.border.top + layout.padding.top) as i64,
+      )
+    })
   }
 
   /// An entry's local cell as a column and row of its value: past the inset, clamped

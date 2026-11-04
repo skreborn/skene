@@ -697,8 +697,8 @@ in a code comment.
 29. **A terminal field centers its value in a taller box.** A browser draws a
     single-line `<input>`'s value in the middle of a box taller than its line; the
     terminal draws it on the box's first row, now that a row stretching its items
-    stretches the field to its height. The field's value row, its caret, a press's
-    mapping to its value (`field_inset`) and its paint's inset move together.
+    stretches the field to its height. The field's value row and its caret move with
+    its inset (`field_inset`), which a press's mapping to its value and its paint share.
 30. **A launched terminal app follows a reduced-motion preference.** Only
     `testing::trigger_reduced_motion` reports the preference to the runtime, so a
     launched app respects none, where reduced motion is respected by default; its source

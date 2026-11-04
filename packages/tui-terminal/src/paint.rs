@@ -26,7 +26,7 @@ use crate::{
   Terminal,
   cells::Cells,
   engine::{DrawnCluster, drawn},
-  layout::{border_edges, content, has_border, padding_cells},
+  layout::{border_edges, content, has_border},
   records::{Contrast, Kind, PlainBox, PlainRun, Record, Records, Visible},
   resolve::TerminalEnv,
   text::{self, CellScale, Glyph},
@@ -1031,11 +1031,10 @@ fn node_paint(records: &Records, node: NodeId, focused: bool) -> NodePaint {
           shadow,
         };
       };
-      let padding = style.map(padding_cells).unwrap_or_default();
-      let border_cells = usize::from(border.is_some());
+      let (inset_x, inset_y) = records.field_inset(node);
       let inset = (
-        isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.start).unwrap_or(0),
-        isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
+        isize::try_from(inset_x).unwrap_or(0),
+        isize::try_from(inset_y).unwrap_or(0),
       );
       let area = records.field_area(node);
       let Some(entry) = records.entry(node)

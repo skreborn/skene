@@ -51,11 +51,11 @@ pub(crate) type PlainRun = skene_layout::runtime::PlainRun<Terminal>;
 )]
 pub(crate) struct Records {
   /// The drawn runtime: a record per node carrying its scroll offsets and the terminal's
-  /// own state of it (its field, the cells it covers and what it paints beyond its style), the
-  /// root filling the screen, the overlays and entries in build order, the restyle with
-  /// its presentation's counters, the layout tree, what the next frame lays out and
-  /// repaints, the environment the terminal reports with the app's choice of scheme, and
-  /// the frame clock.
+  /// own state of it (its field, the cells it covers and what it paints beyond its
+  /// style), the root filling the screen, the overlays and entries in build order, the
+  /// restyle with its presentation's counters, the layout tree, what the next frame lays
+  /// out and repaints, the environment the terminal reports with the app's choice of
+  /// scheme, and the frame clock.
   pub(crate) runtime: Runtime<Terminal>,
   /// Screen rectangles to repaint that no live node covers any more.
   damaged_rects: Vec<CellRect>,

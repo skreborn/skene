@@ -1656,3 +1656,40 @@ fn a_text_editor_draws_three_lines_in_cells() {
     assert_eq!(notes.get_untracked(), "a\nb", "an editor takes a newline");
   });
 }
+
+/// A field bordered on one edge alone shows its value from its top start cell, where a
+/// press places the caret, the border drawn beneath it.
+#[test]
+fn a_field_bordered_on_one_edge_shows_its_value_beside_it() {
+  with_platform(|| {
+    let name = Signal::new("hi".to_owned());
+
+    let _ = mount(|| {
+      Column::new()
+        .add_child(
+          BasicTextField::new(TextEntry::new().bind_value(name))
+            .set_width(6)
+            .set_border_width(Inset::new(0, 0, 0, 1))
+            .set_border_color(white()),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = testing::render_to_text(8, 3);
+
+    assert!(
+      rows(&frame).starts_with("hi\n──────\n"),
+      "the value in the top start cell, the border beneath: {frame}"
+    );
+
+    testing::trigger_mouse_click(1, 0);
+    testing::trigger_key("x");
+
+    assert_eq!(
+      name.get_untracked(),
+      "hxi",
+      "a press placed the caret where it drew"
+    );
+  });
+}

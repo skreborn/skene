@@ -149,6 +149,8 @@ impl Drawn for Terminal {
     Some((Point::new(0., rows(window)), Size::new(0., rows(limit))))
   }
 
+  /// An editor's window moves to the row its vertical offset names; a single-line
+  /// field's stays.
   fn scroll_entry(node: NodeId, own: &mut CellNode, content: Size<f32>, offset: Point<f32>) {
     let Some(entry) = Scene::<Self>::entry_of(node)
     else {

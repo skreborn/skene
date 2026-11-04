@@ -64,6 +64,10 @@
 //! is built afresh at its first read after a layout, a scroll offset, a box's reach or
 //! visibility, an overlay's opening or placement, or the scene's structure moved, beside
 //! whether the covers moved since the platform last painted ([`Runtime::covers_moved`]).
+//! A run flowing in a paragraph has no entry: it lies in the pieces its paragraph's flow
+//! places it in, one per line it reaches, read from that one paragraph as a query asks
+//! ([`Runtime::run_rects`]), its rectangle their union and its origin its first piece's
+//! corner ([`Runtime::rect`], [`Runtime::origin`]).
 //!
 //! A point hits the topmost node over that index ([`Runtime::hit`]): each open overlay's
 //! layer from the last opened, nothing beneath the topmost modal, then the root's flow,

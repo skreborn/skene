@@ -2325,12 +2325,18 @@ text as a placeholder of its whole cells and rows, at least one of each, its lay
 place in the paragraph, so a frame whose box changes size lays it and its paragraph out
 once and focus reveals a control inside it where it flowed; it is painted and hit at
 that place, the paragraph's text in its content box, inside its border and padding, at
-the whole cells the paragraph was placed across, so text and boxes share one line layout, and what its content overflows counts in its
-paragraph's overflow, painted, hit and scrolled to wherever it reaches, as a browser's
-overflow is. An edge whose border width is zero takes no cells and draws none, and a
-border whose color is unset draws in the terminal's own ink, as CSS's `currentColor`
-does. Frames paint into a cell buffer—to the terminal through `launch`, or to plain text
-through `testing::render_to_text` for in-process tests
+the whole cells the paragraph was placed across, so text and boxes share one line
+layout, and what its content overflows counts in its paragraph's overflow, painted, hit
+and scrolled to wherever it reaches, as a browser's overflow is. A run is hit, localized
+and anchored where its flow places it, in the pieces it takes on each line
+(`Runtime::run_rects`, read from the one paragraph a query touches): a span's pointer
+handler hears a position from its first piece's corner, as an inline's offset is
+measured from its first fragment, and an overlay anchored on a span opens against the
+union of its pieces, as anchor positioning places against an inline's box. An edge whose
+border width is zero takes no cells and draws none, and a border whose color is unset
+draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell
+buffer—to the terminal through `launch`, or to plain text through
+`testing::render_to_text` for in-process tests
 (`trigger_key`/`trigger_mouse_move`/`trigger_mouse_click`/`trigger_frame` in `testing`
 drive it without a terminal). Terminal detection is asynchronous; the loop starts
 immediately and the answers arrive as signal writes. The dev loop carries the snapshot

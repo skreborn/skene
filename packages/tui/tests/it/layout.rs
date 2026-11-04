@@ -6,7 +6,17 @@ use std::{
   rc::Rc,
 };
 
-use skene_foundation::{AnyKind, Children, FlexChild, PlainChild, Realization, Seal};
+use skene_foundation::{
+  AnyKind,
+  Children,
+  FlexChild,
+  Handler,
+  PlainChild,
+  Prevent,
+  Realization,
+  Scene,
+  Seal,
+};
 use skene_tui::{
   Definition,
   Length,
@@ -1398,6 +1408,47 @@ fn a_span_is_hovered_and_clicked() {
     testing::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get(), 1);
+  });
+}
+
+/// A span's pointer handler hears where a press lands from the span's own start, as an
+/// inline's offset is measured from its first fragment: on the line the span starts on
+/// and on the line it wraps onto.
+#[test]
+fn a_span_hears_a_press_from_its_own_start() {
+  with_platform(|| {
+    let pressed = Rc::new(RefCell::new(Vec::new()));
+    let recorded = Rc::clone(&pressed);
+
+    let _ = mount(|| {
+      Container::new()
+        .set_width(8)
+        .set_child(RichText::new().add_spans([Span::new("ab "), Span::new("cdef ghij")]))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(testing::render_to_text(10, 2), "ab cdef\nghij\n");
+
+    let span = testing::find_by_text("cdef ghij").expect("the wrapped span");
+
+    Scene::<Terminal>::with(|scene| {
+      scene.handle(
+        span,
+        Handler::PointerDown(Rc::new(move |event| {
+          recorded.borrow_mut().push((event.local_x, event.local_y));
+
+          Prevent::None
+        })),
+      );
+    });
+
+    testing::trigger_mouse_press(4, 0);
+    testing::trigger_mouse_release(4, 0);
+    testing::trigger_mouse_press(1, 1);
+    testing::trigger_mouse_release(1, 1);
+
+    assert_eq!(*pressed.borrow(), [(1.5, 0.5), (-1.5, 1.5)]);
   });
 }
 

@@ -380,6 +380,42 @@ fn popup_anchors_below_and_light_dismisses() {
   });
 }
 
+/// A popup anchored on a span in the middle of a line opens against the span as its
+/// paragraph draws it: below the span's line, at the span's start.
+#[test]
+fn a_popup_anchored_on_a_span_opens_below_it() {
+  with_platform(|| {
+    let open = Signal::new(false);
+    let anchor = NodeHandle::new();
+
+    let _ = mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("top").into_any(),
+          RichText::new()
+            .add_spans([Span::new("see "), Span::new("here"), Span::new(" now")])
+            .into_any(),
+          Overlay::popup()
+            .bind_open(open)
+            .set_anchor(anchor)
+            .set_placement(Placement::Bottom)
+            .set_child(Text::new("menu"))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = testing::render_to_text(14, 4);
+
+    anchor.assign(testing::find_by_text("here").expect("the anchoring span"));
+    open.set(true);
+
+    let frame = testing::render_to_text(14, 4);
+
+    assert_eq!(frame.lines().nth(2), Some("    menu"), "{frame}");
+  });
+}
+
 /// A popup anchored inside another opens against where its anchor shows, the outer
 /// popup's placement included.
 #[test]

@@ -25,13 +25,11 @@ in a code comment.
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
     - What the terminal still keeps of its retained runtime (focus, capture, wheel
-    latching, selection, the frames' placement of runs and inline boxes, a paragraph's
-    text content) moves into the drawn runtime in `skene-layout`, beside the layout
-    tree it already writes from the scene and the restyle presenting into it, generic
-    over the platform's scalar: a paragraph's runs and inline boxes placed for them by
-    its flow, which the runtime already lays out, and a paragraph's document selection
-    and its text content kept once above the engine, in the runtime, where each
-    realization keeps them today. A drawn entry's key
+    latching, selection, a paragraph's text content) moves into the drawn runtime in
+    `skene-layout`, beside the layout tree it already writes from the scene and the
+    restyle presenting into it, generic over the platform's scalar: a paragraph's
+    document selection and its text content kept once above the engine, in the
+    runtime, where each realization keeps them today. A drawn entry's key
     default is written once there too, over the shared entry the scene keeps: the core's
     `Binding` table, run after the app's key handlers as a browser's `<input>` default
     runs (so never as a `TextEntry::on_key`, which would run before them), the

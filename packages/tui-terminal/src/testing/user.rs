@@ -1,7 +1,8 @@
 //! A user's gestures on the terminal, each the input the terminal reports for it,
 //! through the `trigger_` seams.
 //!
-//! A pointer acts at the center cell of the rectangle a node covered at the last paint;
+//! A pointer acts at the center cell of the rectangle a node covered at the last paint,
+//! a run flowing in a paragraph at the center of the first piece its flow places it in;
 //! a key acts where focus is.
 
 use skene_foundation::{Key, KeyEvent, NodeId};
@@ -16,13 +17,21 @@ use super::{
 };
 use crate::{frame::cell_rect, with_records};
 
-/// The center cell of the rectangle `node` covered at the last paint.
+/// The center cell of the rectangle `node` covered at the last paint, or of the first
+/// piece a run flowing in a paragraph takes
+/// ([`Runtime::run_rects`](skene_layout::runtime::Runtime::run_rects)).
 ///
 /// # Panics
 ///
 /// Panics where `node` covered no cell.
 fn cell_of(node: NodeId) -> (u16, u16) {
-  let rect = with_records(|records| records.runtime.record(node)?.painted.map(cell_rect));
+  let rect = with_records(|records| {
+    let piece = records.runtime.run_rects(node).first().copied();
+
+    piece
+      .or(records.runtime.record(node)?.painted)
+      .map(cell_rect)
+  });
   let center = rect
     .filter(|(_, _, width, height)| *width > 0 && *height > 0)
     .and_then(|(x, y, width, height)| {

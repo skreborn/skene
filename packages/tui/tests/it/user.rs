@@ -185,3 +185,31 @@ fn a_closed_overlay_hides_its_content_from_a_search() {
     assert!(testing::find_by_text("Inside").is_some());
   });
 }
+
+/// A span flowing in a paragraph takes a click on the cells its paragraph draws it in,
+/// and the span beside it takes none.
+#[test]
+fn a_user_clicks_a_span_where_it_flows() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new((0u32, 0u32)));
+    let (beside, counted) = (Rc::clone(&clicks), Rc::clone(&clicks));
+
+    let _ = mount(move || {
+      RichText::new()
+        .add_spans([
+          Span::new("plain ")
+            .handle_click(move || beside.set((beside.get().0 + 1, beside.get().1))),
+          Span::new("click")
+            .handle_click(move || counted.set((counted.get().0, counted.get().1 + 1))),
+        ])
+        .into_any()
+        .build()
+    });
+
+    let _ = testing::render_to_text(14, 1);
+
+    user::click(testing::find_by_text("click").expect("the span"));
+
+    assert_eq!(clicks.get(), (0, 1));
+  });
+}

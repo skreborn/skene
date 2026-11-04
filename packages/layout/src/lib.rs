@@ -27,13 +27,14 @@
 //! ([`runtime::Runtime::reveal_offsets`]), an open overlay's origin in its window
 //! ([`runtime::Runtime::overlay_origin`]), the index of the window's rectangles, covers,
 //! reaches and clips in paint order built from the layout, the scroll offsets and the
-//! overlays' placement ([`runtime::Frames`]), the topmost node at a point hit over that
-//! index, a paragraph resolving it to its run or inline box ([`runtime::Runtime::hit`]),
-//! and the damage the next paint repaints as nodes and the rectangles of the window they
-//! cover ([`runtime::Runtime::take_damage`]),
-//! beside the adapter the platform's realization forwards to for everything that is no
-//! cell's or pixel's ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and
-//! their kin). The web lays out through CSS and needs none of it.
+//! overlays' placement ([`runtime::Frames`]), a run flowing in a paragraph placed where
+//! its flow lays its pieces out ([`runtime::Runtime::run_rects`]), the topmost node at a
+//! point hit over that index, a paragraph resolving it to its run or inline box
+//! ([`runtime::Runtime::hit`]), and the damage the next paint repaints as nodes and the
+//! rectangles of the window they cover ([`runtime::Runtime::take_damage`]), beside the
+//! adapter the platform's realization forwards to for everything that is no cell's or
+//! pixel's ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The
+//! web lays out through CSS and needs none of it.
 
 mod restyle;
 pub mod runtime;

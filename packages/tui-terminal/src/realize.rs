@@ -338,8 +338,7 @@ impl Realization for Terminal {
   }
 
   fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent {
-    let origin =
-      with_records(|records| records.runtime.frames().origin(node)).unwrap_or(Point::ZERO);
+    let origin = with_records(|records| records.runtime.origin(node)).unwrap_or(Point::ZERO);
 
     PointerEvent {
       local_x: event.x - origin.x,

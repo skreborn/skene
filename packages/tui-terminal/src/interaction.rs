@@ -122,18 +122,14 @@ impl Records {
       .collect()
   }
 
-  /// A node's on-screen origin, as the runtime's index of window rectangles places it
-  /// ([`Runtime::frames`]): its layout locations summed down the laid-out nodes above
+  /// A node's on-screen origin, as the runtime places it in its window
+  /// ([`Runtime::origin`]): its layout locations summed down the laid-out nodes above
   /// it, each one's scroll offsets subtracted, content inside an open overlay placed
   /// against where the runtime places the overlay ([`Runtime::overlay_origin`]), and a
-  /// run flowing in a paragraph at the paragraph's; the screen's corner for a node the
-  /// index does not hold.
+  /// run flowing in a paragraph at its first piece's corner; the screen's corner for a
+  /// node the index does not hold.
   pub(crate) fn screen_origin(&self, node: NodeId) -> (i64, i64) {
-    self
-      .runtime
-      .frames()
-      .origin(node)
-      .map_or((0, 0), screen_cell)
+    self.runtime.origin(node).map_or((0, 0), screen_cell)
   }
 
   /// The pointer shape for the current hover path: the deepest hovered node with a
@@ -1277,7 +1273,8 @@ fn key_default(at: Option<NodeId>, event: &KeyEvent) {
 }
 
 /// Asks the focused node, or the root, for its context menu at the node's bottom-start
-/// corner, the request naming no pointer.
+/// corner, a run flowing in a paragraph at its first piece's, the request naming no
+/// pointer.
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = records(|records| {
     let node = records.focused().unwrap_or(records.runtime.root());
@@ -1287,13 +1284,22 @@ fn context_menu_from_keyboard(modifiers: Modifiers) {
     }
 
     let (origin_x, origin_y) = records.screen_origin(node);
-    let (_, height) = records.node_size(node);
+    let bottom = records.runtime.run_rects(node).first().map_or_else(
+      || origin_y + records.node_size(node).1,
+      |piece| {
+        screen_cell(Point::new(
+          piece.origin.x,
+          piece.origin.y + piece.size.height,
+        ))
+        .1
+      },
+    );
 
     Some((
       node,
       (origin_x, origin_y),
       u16::try_from(origin_x.max(0)).unwrap_or(u16::MAX),
-      u16::try_from((origin_y + height).max(0)).unwrap_or(u16::MAX),
+      u16::try_from(bottom.max(0)).unwrap_or(u16::MAX),
     ))
   })
   else {

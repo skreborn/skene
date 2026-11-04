@@ -9,7 +9,7 @@ use skene_foundation::{Inset, NodeId, NodeMap, Point, Rect, RunPlacement, Scene,
 use smallvec::SmallVec;
 
 use super::{Drawn, Kind, Runtime};
-use crate::Placed;
+use crate::{Leaf, Placed};
 
 /// One laid-out node's place in its window, as [`Frames`] indexes it.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,9 +64,9 @@ pub struct Layer {
 enum Slot {
   /// An entry, at its index.
   Entry(usize),
-  /// A run flowing in a paragraph, which has no entry: placed at `offset` from the entry
-  /// at `owner`, the laid-out node it flows under.
-  Run { owner: usize, offset: Point<f32> },
+  /// A run flowing in a paragraph, which has no entry: placed by the flow of the
+  /// paragraph whose entry is at `paragraph`.
+  Run { paragraph: usize },
 }
 
 /// The drawn runtime's index of one window's rectangles ([`Runtime::frames`]).
@@ -75,8 +75,9 @@ enum Slot {
 /// scene's child order, overlays left out of it, then each open overlay's subtree in the
 /// order they opened ([`Layer`]), with a lookup by node.
 ///
-/// A run flowing in a paragraph has no entry: it answers its paragraph's origin, with
-/// no size. A closed overlay and what it holds have none either.
+/// A run flowing in a paragraph has no entry: its paragraph's flow places it, in pieces
+/// read from the flow as a query asks ([`Runtime::run_rects`], [`Runtime::rect`]). A
+/// closed overlay and what it holds have no entry either.
 #[derive(Debug, Default)]
 #[must_use]
 pub struct Frames {
@@ -119,27 +120,63 @@ impl Frames {
     }
   }
 
-  /// `node`'s border box in the window: its entry's, or its paragraph's origin with no
-  /// size for a run flowing in one; `None` for a node the index does not hold.
+  /// `node`'s border box in the window, its entry's; `None` for a run flowing in a
+  /// paragraph, which [`Runtime::rect`] places, and for a node the index does not hold.
   #[must_use]
   pub fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
-    match *self.slots.get(node)? {
-      Slot::Entry(index) => Some(self.entries[index].rect),
-      Slot::Run { owner, offset } => {
-        let origin = self.entries[owner].rect.origin;
-
-        Some(Rect::new(
-          Point::new(origin.x + offset.x, origin.y + offset.y),
-          Size::ZERO,
-        ))
-      }
-    }
+    self.get(node).map(|frame| frame.rect)
   }
 
   /// `node`'s origin in the window, as [`rect`](Self::rect) places it.
   #[must_use]
   pub fn origin(&self, node: NodeId) -> Option<Point<f32>> {
     self.rect(node).map(|rect| rect.origin)
+  }
+
+  /// The entry of the paragraph the run `run` flows in; `None` for a node that is no run
+  /// flowing in a paragraph.
+  fn paragraph_of(&self, run: NodeId) -> Option<&Frame> {
+    match self.slots.get(run)? {
+      Slot::Run { paragraph } => self.entries.get(*paragraph),
+      Slot::Entry(_) => None,
+    }
+  }
+
+  /// Where `node` lies in the window, as its border box and its origin: an entry's own;
+  /// for a run flowing in a paragraph, the union of the pieces `pieces` places it in on
+  /// its paragraph's lines, given the paragraph's entry, and the top left of its first,
+  /// or the paragraph's origin with no size where it takes none; `None` for a node the
+  /// index does not hold.
+  fn locate(
+    &self,
+    node: NodeId,
+    pieces: impl FnOnce(&Frame) -> Vec<Rect<f32>>,
+  ) -> Option<(Rect<f32>, Point<f32>)> {
+    match *self.slots.get(node)? {
+      Slot::Entry(index) => {
+        let rect = self.entries[index].rect;
+
+        Some((rect, rect.origin))
+      }
+      Slot::Run { paragraph } => {
+        let paragraph = &self.entries[paragraph];
+        let pieces = pieces(paragraph);
+        let Some(first) = pieces.first()
+        else {
+          return Some((
+            Rect::new(paragraph.rect.origin, Size::ZERO),
+            paragraph.rect.origin,
+          ));
+        };
+
+        Some((
+          pieces[1..]
+            .iter()
+            .fold(*first, |union, piece| union.union(*piece)),
+          first.origin,
+        ))
+      }
+    }
   }
 
   /// What `node`'s paint covers in the window ([`Frame::cover`]); `None` for a node of no
@@ -330,7 +367,7 @@ impl Frames {
       let children = source.children(visit.node);
       let paragraph = !children.is_empty() && source.is_paragraph(visit.node);
       let parent = if flowing {
-        self.flows(visit, rect.origin);
+        self.flows(visit);
 
         visit.parent
       }
@@ -385,18 +422,11 @@ impl Frames {
     self.entries.len() > first
   }
 
-  /// Indexes the run `visit` reaches as flowing at `origin` under the entry it flows
+  /// Indexes the run `visit` reaches as flowing in the paragraph whose entry it flows
   /// beneath, with no entry of its own.
-  fn flows(&mut self, visit: Visit, origin: Point<f32>) {
-    if let Some(owner) = visit.parent {
-      let at = self.entries[owner].rect.origin;
-      let _replaced = self.slots.insert(
-        visit.node,
-        Slot::Run {
-          owner,
-          offset: Point::new(origin.x - at.x, origin.y - at.y),
-        },
-      );
+  fn flows(&mut self, visit: Visit) {
+    if let Some(paragraph) = visit.parent {
+      let _replaced = self.slots.insert(visit.node, Slot::Run { paragraph });
     }
   }
 
@@ -470,8 +500,9 @@ impl Frames {
   }
 
   /// The window rectangle of the anchor `anchor`, its layer placed first where it lies
-  /// in one not yet placed; empty at the window's origin for a node the index does not
-  /// hold.
+  /// in one not yet placed: its border box, or a run's pieces' union as its paragraph's
+  /// flow places them ([`locate`](Self::locate)); empty at the window's origin for a node
+  /// the index does not hold.
   fn anchor_rect(
     &mut self,
     source: &impl FrameSource,
@@ -480,7 +511,7 @@ impl Frames {
   ) -> Rect<f32> {
     let index = match self.slots.get(anchor) {
       Some(Slot::Entry(index)) => *index,
-      Some(Slot::Run { owner, .. }) => *owner,
+      Some(Slot::Run { paragraph }) => *paragraph,
       None => return Rect::ZERO,
     };
 
@@ -492,7 +523,9 @@ impl Frames {
       self.place(source, layer, placing);
     }
 
-    self.rect(anchor).unwrap_or(Rect::ZERO)
+    self
+      .locate(anchor, |paragraph| source.pieces(anchor, paragraph))
+      .map_or(Rect::ZERO, |(rect, _)| rect)
   }
 }
 
@@ -561,6 +594,11 @@ trait FrameSource {
   /// The window origin of the overlay `overlay`, against the window rectangle
   /// `anchor_rect` gives for the node it opens against, where it opens against one.
   fn place(&self, overlay: NodeId, anchor_rect: impl FnOnce(NodeId) -> Rect<f32>) -> Point<f32>;
+
+  /// The window rectangles of the pieces the run `run` takes on the lines of the
+  /// paragraph whose entry is `paragraph`, in the order its flow places them, laid out in
+  /// the paragraph's content box.
+  fn pieces(&self, run: NodeId, paragraph: &Frame) -> Vec<Rect<f32>>;
 }
 
 impl<P: Drawn> FrameSource for Runtime<P> {
@@ -627,6 +665,21 @@ impl<P: Drawn> FrameSource for Runtime<P> {
   fn place(&self, overlay: NodeId, anchor_rect: impl FnOnce(NodeId) -> Rect<f32>) -> Point<f32> {
     self.overlay_origin(overlay, anchor_rect)
   }
+
+  fn pieces(&self, run: NodeId, paragraph: &Frame) -> Vec<Rect<f32>> {
+    let Some(flow) = self.flow_of(paragraph.node)
+    else {
+      return Vec::new();
+    };
+    let content = self.flow_content(paragraph.node);
+    let origin = paragraph.rect.origin;
+
+    flow
+      .place(content.translate(origin))
+      .into_iter()
+      .filter_map(|(node, piece)| (node == run).then_some(piece))
+      .collect()
+  }
 }
 
 impl<P: Drawn> Runtime<P> {
@@ -639,7 +692,7 @@ impl<P: Drawn> Runtime<P> {
   /// content box ([`flow_content`](Self::flow_content)), else to the first of its inline
   /// boxes whose border box holds it, else to what its inline boxes hold wherever that
   /// reaches, the last box first; the groups around a run or a box join the path, and a
-  /// run or a group takes its paragraph's origin.
+  /// run or a group takes the origin its flow places it at ([`origin`](Self::origin)).
   #[must_use]
   pub fn hit(&self, point: Point<f32>) -> Vec<(NodeId, Point<f32>)> {
     let frames = self.frames();
@@ -653,7 +706,7 @@ impl<P: Drawn> Runtime<P> {
     let mut node = Some(deepest);
 
     while let Some(current) = node {
-      path.push((current, frames.origin(current).unwrap_or(Point::ZERO)));
+      path.push((current, self.origin(current).unwrap_or(Point::ZERO)));
       node = match frames.get(current) {
         Some(frame) if !self.is_inline_box(current) => {
           frame.parent.map(|parent| frames.entries()[parent].node)
@@ -697,6 +750,43 @@ impl<P: Drawn> Runtime<P> {
     }
 
     boxes.into_iter().rev().find_map(inside)
+  }
+
+  /// The window rectangles of the pieces the run `run` takes where it flows in a
+  /// paragraph, one per line it reaches, in the order the paragraph's flow places them,
+  /// laid out in the paragraph's content box ([`flow_content`](Self::flow_content)); a
+  /// group's are those of the runs and boxes it holds. Empty for a node that is no run
+  /// flowing in a paragraph.
+  #[must_use]
+  pub fn run_rects(&self, run: NodeId) -> Vec<Rect<f32>> {
+    self
+      .frames()
+      .paragraph_of(run)
+      .map_or_else(Vec::new, |paragraph| self.pieces(run, paragraph))
+  }
+
+  /// `node`'s border box in the window ([`Frames::rect`]); for a run flowing in a
+  /// paragraph, the union of the pieces it takes ([`run_rects`](Self::run_rects)), or its
+  /// paragraph's origin with no size where it takes none. `None` for a node the index
+  /// does not hold.
+  #[must_use]
+  pub fn rect(&self, node: NodeId) -> Option<Rect<f32>> {
+    self
+      .frames()
+      .locate(node, |paragraph| self.pieces(node, paragraph))
+      .map(|(rect, _)| rect)
+  }
+
+  /// `node`'s origin in the window: its border box's corner ([`Frames::origin`]); for a
+  /// run flowing in a paragraph, the top left of the first piece it takes, as an inline's
+  /// offset is measured from its first fragment, or its paragraph's origin where it takes
+  /// none. `None` for a node the index does not hold.
+  #[must_use]
+  pub fn origin(&self, node: NodeId) -> Option<Point<f32>> {
+    self
+      .frames()
+      .locate(node, |paragraph| self.pieces(node, paragraph))
+      .map(|(_, origin)| origin)
   }
 
   /// The index of the window's rectangles ([`Frames`]) as the scene, the records and the
@@ -823,12 +913,14 @@ mod tests {
     paragraph: bool,
   }
 
-  /// A canned window: its nodes, its open overlays in order and where each is placed.
+  /// A canned window: its nodes, its open overlays in order, where each is placed and the
+  /// pieces each flowing run takes from its paragraph's corner.
   #[derive(Default)]
   struct Canned {
     nodes: FxHashMap<NodeId, Node>,
     open: Vec<(NodeId, bool)>,
     places: FxHashMap<NodeId, Place>,
+    pieces: FxHashMap<NodeId, Vec<Rect<f32>>>,
   }
 
   /// The canned root, a 40 by 20 box at the window's origin.
@@ -945,6 +1037,22 @@ mod tests {
         Place::At(point) => point,
       }
     }
+
+    fn pieces(&self, run: NodeId, paragraph: &Frame) -> Vec<Rect<f32>> {
+      self.pieces.get(&run).map_or_else(Vec::new, |pieces| {
+        pieces
+          .iter()
+          .map(|piece| piece.translate(paragraph.rect.origin))
+          .collect()
+      })
+    }
+  }
+
+  impl Frames {
+    /// Where `node` lies as [`Frames::locate`] places it over `canned`'s pieces.
+    fn located(&self, canned: &Canned, node: NodeId) -> Option<(Rect<f32>, Point<f32>)> {
+      self.locate(node, |paragraph| canned.pieces(node, paragraph))
+    }
   }
 
   /// The node of the canned id `index`.
@@ -1058,10 +1166,12 @@ mod tests {
     assert!(frame(1).hits && !frame(3).hits && !frame(4).hits);
   }
 
-  /// A run flowing in a paragraph has no entry and answers its paragraph's origin with no
-  /// size, through any group around it; an inline box is placed in the paragraph.
+  /// A run flowing in a paragraph has no entry, through any group around it, and lies
+  /// where its paragraph's flow places its pieces: their union, from the first's corner,
+  /// or the paragraph's origin with no size where it takes none; an inline box is placed
+  /// in the paragraph.
   #[test]
-  fn a_flowing_run_answers_its_paragraphs_origin() {
+  fn a_flowing_run_lies_where_its_pieces_flow() {
     let mut canned = Canned::new();
     let mut run = laid(7., 0., 5., 1.);
     let mut boxed = laid(3., 0., 2., 1.);
@@ -1074,14 +1184,44 @@ mod tests {
     canned.add(node(1), node(2), Some(run));
     canned.add(node(2), node(3), Some(run));
     canned.add(node(2), node(4), Some(boxed));
+    canned.add(node(1), node(5), Some(run));
+    canned
+      .pieces
+      .insert(node(3), vec![rect(6., 0., 4., 1.), rect(0., 1., 2., 1.)]);
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(frames.get(node(3)), None);
-    assert_eq!(frames.rect(node(2)), Some(rect(2., 4., 0., 0.)));
-    assert_eq!(frames.rect(node(3)), Some(rect(2., 4., 0., 0.)));
+    assert_eq!((frames.get(node(3)), frames.rect(node(3))), (None, None));
+    assert_eq!(
+      frames.located(&canned, node(3)),
+      Some((rect(2., 4., 10., 2.), Point::new(8., 4.)))
+    );
+    assert_eq!(
+      frames.located(&canned, node(5)),
+      Some((rect(2., 4., 0., 0.), Point::new(2., 4.)))
+    );
     assert_eq!(frames.rect(node(4)), Some(rect(5., 4., 2., 1.)));
     assert_eq!(frames.get(node(4)).and_then(|frame| frame.parent), Some(1));
+  }
+
+  /// An overlay anchored on a run flowing in a paragraph opens against the run's pieces,
+  /// where its paragraph's flow places them, not against the paragraph.
+  #[test]
+  fn an_overlay_anchors_on_a_flowing_run_where_it_flows() {
+    let mut canned = Canned::new();
+    let mut run = laid(0., 0., 0., 0.);
+
+    run.inline = Inline::Run;
+    canned
+      .add(ROOT, node(1), Some(laid(1., 2., 20., 3.)))
+      .paragraph = true;
+    canned.add(node(1), node(2), Some(run));
+    canned.pieces.insert(node(2), vec![rect(5., 1., 3., 1.)]);
+    canned.add_open_overlay(ROOT, node(3), laid(0., 0., 4., 2.), Place::Below(node(2)));
+
+    let frames = Frames::build(&canned, Frames::default());
+
+    assert_eq!(frames.rect(node(3)), Some(rect(6., 4., 4., 2.)));
   }
 
   /// An open overlay's subtree is left out of the flow it sits in and indexed after it,

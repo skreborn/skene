@@ -1144,9 +1144,41 @@ mod tests {
     );
   }
 
-  /// The topmost node at `point` with no paragraph resolving anything.
-  fn hit(frames: &Frames, point: Point<f32>) -> Option<NodeId> {
-    frames.hit(point, |_| None)
+  impl Frames {
+    /// The topmost node at `point` with no paragraph resolving anything.
+    fn topmost(&self, point: Point<f32>) -> Option<NodeId> {
+      self.hit(point, |_| None)
+    }
+
+    /// The topmost node at `point` found by looking at every entry: the last in paint
+    /// order that takes hits and whose border box holds the point within its clip.
+    fn topmost_unpruned(&self, point: Point<f32>) -> Option<NodeId> {
+      let takes = |frame: &&Frame| {
+        frame.hits
+          && frame.rect.contains(point)
+          && frame.clip.is_none_or(|clip| clip.contains(point))
+      };
+
+      for layer in self.layers().iter().rev() {
+        if let Some(frame) = self.entries()[layer.start..layer.end]
+          .iter()
+          .rev()
+          .find(takes)
+        {
+          return Some(frame.node);
+        }
+
+        if layer.modal {
+          return None;
+        }
+      }
+
+      self.entries()[..self.flow_len()]
+        .iter()
+        .rev()
+        .find(takes)
+        .map(|frame| frame.node)
+    }
   }
 
   /// The point `(x, y)`.
@@ -1165,11 +1197,11 @@ mod tests {
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(hit(&frames, at(6.5, 3.5)), Some(node(2)));
-    assert_eq!(hit(&frames, at(1.5, 1.5)), Some(node(1)));
-    assert_eq!(hit(&frames, at(14.5, 6.5)), Some(node(2)));
-    assert_eq!(hit(&frames, at(30.5, 15.5)), Some(ROOT));
-    assert_eq!(hit(&frames, at(40.5, 15.5)), None);
+    assert_eq!(frames.topmost(at(6.5, 3.5)), Some(node(2)));
+    assert_eq!(frames.topmost(at(1.5, 1.5)), Some(node(1)));
+    assert_eq!(frames.topmost(at(14.5, 6.5)), Some(node(2)));
+    assert_eq!(frames.topmost(at(30.5, 15.5)), Some(ROOT));
+    assert_eq!(frames.topmost(at(40.5, 15.5)), None);
   }
 
   /// A child takes the hit above its parent, and the parent where the child is not.
@@ -1182,8 +1214,8 @@ mod tests {
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(hit(&frames, at(3.5, 3.5)), Some(node(2)));
-    assert_eq!(hit(&frames, at(8.5, 8.5)), Some(node(1)));
+    assert_eq!(frames.topmost(at(3.5, 3.5)), Some(node(2)));
+    assert_eq!(frames.topmost(at(8.5, 8.5)), Some(node(1)));
   }
 
   /// A clipping box clips what it holds at its padding box: a child is missed past it and
@@ -1200,9 +1232,9 @@ mod tests {
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(hit(&frames, at(5.5, 1.5)), Some(node(2)));
-    assert_eq!(hit(&frames, at(0.5, 0.5)), Some(node(1)));
-    assert_eq!(hit(&frames, at(12.5, 1.5)), Some(ROOT));
+    assert_eq!(frames.topmost(at(5.5, 1.5)), Some(node(2)));
+    assert_eq!(frames.topmost(at(0.5, 0.5)), Some(node(1)));
+    assert_eq!(frames.topmost(at(12.5, 1.5)), Some(ROOT));
   }
 
   /// What a box holds takes a hit wherever it reaches past a box that does not clip, and
@@ -1221,8 +1253,8 @@ mod tests {
       let frames = Frames::build(&canned, Frames::default());
       let expected = if clips { ROOT } else { node(2) };
 
-      assert_eq!(hit(&frames, at(15.5, 2.5)), Some(expected));
-      assert_eq!(hit(&frames, at(9.5, 2.5)), Some(node(2)));
+      assert_eq!(frames.topmost(at(15.5, 2.5)), Some(expected));
+      assert_eq!(frames.topmost(at(9.5, 2.5)), Some(node(2)));
     }
   }
 
@@ -1239,8 +1271,8 @@ mod tests {
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(hit(&frames, at(2.5, 2.5)), Some(node(1)));
-    assert_eq!(hit(&frames, at(5.5, 5.5)), Some(ROOT));
+    assert_eq!(frames.topmost(at(2.5, 2.5)), Some(node(1)));
+    assert_eq!(frames.topmost(at(5.5, 5.5)), Some(ROOT));
   }
 
   /// Open overlays take hits above the flow, the last opened first.
@@ -1259,9 +1291,9 @@ mod tests {
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(hit(&frames, at(6.5, 4.5)), Some(node(3)));
-    assert_eq!(hit(&frames, at(2.5, 2.5)), Some(node(2)));
-    assert_eq!(hit(&frames, at(15.5, 8.5)), Some(node(1)));
+    assert_eq!(frames.topmost(at(6.5, 4.5)), Some(node(3)));
+    assert_eq!(frames.topmost(at(2.5, 2.5)), Some(node(2)));
+    assert_eq!(frames.topmost(at(15.5, 8.5)), Some(node(1)));
   }
 
   /// Nothing beneath the topmost modal takes a hit, the flow and the overlays opened before
@@ -1278,10 +1310,10 @@ mod tests {
 
     let frames = Frames::build(&canned, Frames::default());
 
-    assert_eq!(hit(&frames, at(6.5, 4.5)), Some(node(3)));
-    assert_eq!(hit(&frames, at(11.5, 7.5)), Some(node(4)));
-    assert_eq!(hit(&frames, at(1.5, 1.5)), None);
-    assert_eq!(hit(&frames, at(15.5, 1.5)), None);
+    assert_eq!(frames.topmost(at(6.5, 4.5)), Some(node(3)));
+    assert_eq!(frames.topmost(at(11.5, 7.5)), Some(node(4)));
+    assert_eq!(frames.topmost(at(1.5, 1.5)), None);
+    assert_eq!(frames.topmost(at(15.5, 1.5)), None);
   }
 
   /// A hit inside an overlay climbs its laid-out parents to the overlay and no farther,
@@ -1300,7 +1332,7 @@ mod tests {
     canned.add(node(2), node(3), Some(laid(1., 1., 2., 2.)));
 
     let frames = Frames::build(&canned, Frames::default());
-    let deepest = hit(&frames, at(3.5, 3.5)).expect("a hit");
+    let deepest = frames.topmost(at(3.5, 3.5)).expect("a hit");
     let mut path = vec![deepest];
 
     while let Some(parent) = frames
@@ -1371,104 +1403,98 @@ mod tests {
     }
   }
 
-  /// Adds a random subtree `depth` deep beneath `parent`, numbering its nodes from `next`,
-  /// each box's overflow reaching what it holds where it does not clip; the rectangle its
-  /// laid-out nodes reach from the corner of the laid-out box it sits in.
-  fn grow(
-    canned: &mut Canned,
-    random: &mut Lcg,
-    parent: NodeId,
-    next: &mut u32,
-    depth: u16,
-  ) -> Option<Rect<f32>> {
-    let id = node(*next);
-    let children = if depth > 0 { random.below(4) } else { 0 };
+  impl Canned {
+    /// Adds a random subtree `depth` deep beneath `parent`, numbering its nodes from `next`,
+    /// each box's overflow reaching what it holds where it does not clip; the rectangle its
+    /// laid-out nodes reach from the corner of the laid-out box it sits in.
+    fn grow(
+      &mut self,
+      random: &mut Lcg,
+      parent: NodeId,
+      next: &mut u32,
+      depth: u16,
+    ) -> Option<Rect<f32>> {
+      let id = node(*next);
+      let children = if depth > 0 { random.below(4) } else { 0 };
 
-    *next += 1;
+      *next += 1;
 
-    if depth > 0 && random.one_in(8) {
-      canned.add(parent, id, None);
+      if depth > 0 && random.one_in(8) {
+        self.add(parent, id, None);
 
-      return (0..children)
-        .filter_map(|_| grow(canned, random, id, next, depth - 1))
-        .reduce(Rect::union);
-    }
-
-    let mut box_laid = laid(
-      f32::from(random.below(30)) - 5.,
-      f32::from(random.below(20)) - 5.,
-      f32::from(random.below(12) + 1),
-      f32::from(random.below(8) + 1),
-    );
-
-    box_laid.clips = random.one_in(4);
-    box_laid.invisible = random.one_in(10);
-
-    if box_laid.clips && random.one_in(2) {
-      box_laid.placed.border = Inset::all(1.);
-    }
-
-    let scroll = if box_laid.clips {
-      Point::new(f32::from(random.below(3)), f32::from(random.below(3)))
-    }
-    else {
-      Point::ZERO
-    };
-    let own = Rect::new(Point::ZERO, box_laid.placed.rect.size);
-    let location = box_laid.placed.rect.origin;
-
-    canned.add(parent, id, Some(box_laid)).scroll = scroll;
-
-    let held = (0..children)
-      .filter_map(|_| grow(canned, random, id, next, depth - 1))
-      .fold(own, Rect::union);
-    let reach = if box_laid.clips { own } else { held };
-    let border = box_laid.placed.border;
-
-    canned.laid_mut(id).placed.overflow = reach.translate(Point::new(-border.start, -border.top));
-
-    Some(reach.translate(location))
-  }
-
-  /// The topmost node at `point` found by looking at every entry: the last in paint order
-  /// that takes hits and whose border box holds the point within its clip.
-  fn unpruned(frames: &Frames, point: Point<f32>) -> Option<NodeId> {
-    let takes = |frame: &&Frame| {
-      frame.hits && frame.rect.contains(point) && frame.clip.is_none_or(|clip| clip.contains(point))
-    };
-
-    for layer in frames.layers().iter().rev() {
-      if let Some(frame) = frames.entries()[layer.start..layer.end]
-        .iter()
-        .rev()
-        .find(takes)
-      {
-        return Some(frame.node);
+        return (0..children)
+          .filter_map(|_| self.grow(random, id, next, depth - 1))
+          .reduce(Rect::union);
       }
 
-      if layer.modal {
-        return None;
-      }
-    }
+      let mut box_laid = laid(
+        f32::from(random.below(30)) - 5.,
+        f32::from(random.below(20)) - 5.,
+        f32::from(random.below(12) + 1),
+        f32::from(random.below(8) + 1),
+      );
 
-    frames.entries()[..frames.flow_len()]
-      .iter()
-      .rev()
-      .find(takes)
-      .map(|frame| frame.node)
+      box_laid.clips = random.one_in(4);
+      box_laid.invisible = random.one_in(10);
+
+      if box_laid.clips && random.one_in(2) {
+        box_laid.placed.border = Inset::all(1.);
+      }
+
+      let scroll = if box_laid.clips {
+        Point::new(f32::from(random.below(3)), f32::from(random.below(3)))
+      }
+      else {
+        Point::ZERO
+      };
+      let own = Rect::new(Point::ZERO, box_laid.placed.rect.size);
+      let location = box_laid.placed.rect.origin;
+
+      self.add(parent, id, Some(box_laid)).scroll = scroll;
+
+      let held = (0..children)
+        .filter_map(|_| self.grow(random, id, next, depth - 1))
+        .fold(own, Rect::union);
+      let reach = if box_laid.clips { own } else { held };
+      let border = box_laid.placed.border;
+
+      self.laid_mut(id).placed.overflow = reach.translate(Point::new(-border.start, -border.top));
+
+      Some(reach.translate(location))
+    }
   }
 
   /// A hit that passes over every subtree its reach or its clip misses finds what looking
-  /// at every entry finds, at every point of random trees.
+  /// at every entry finds, at every point of random trees, beneath random open overlays,
+  /// modal or not.
   #[test]
   fn a_pruned_hit_equals_an_unpruned_one() {
     for seed in 0..64 {
       let mut random = Lcg(seed);
       let mut canned = Canned::new();
       let mut next = 1;
-      let held = (0..4)
-        .filter_map(|_| grow(&mut canned, &mut random, ROOT, &mut next, 3))
+      let mut held = (0..4)
+        .filter_map(|_| canned.grow(&mut random, ROOT, &mut next, 3))
         .fold(rect(0., 0., 40., 20.), Rect::union);
+
+      for _ in 0..random.below(3) {
+        let overlay = node(next);
+
+        if let Some(reach) = canned.grow(&mut random, ROOT, &mut next, 2) {
+          held = held.union(reach);
+        }
+
+        if canned.nodes[&overlay].laid.is_none() {
+          continue;
+        }
+
+        canned.laid_mut(overlay).overlay = true;
+        canned.open.push((overlay, random.one_in(3)));
+        canned.places.insert(
+          overlay,
+          Place::At(at(f32::from(random.below(30)), f32::from(random.below(16)))),
+        );
+      }
 
       canned.laid_mut(ROOT).placed.overflow = held;
 
@@ -1479,8 +1505,8 @@ mod tests {
           let point = at(f32::from(x) / 2. + 0.25, f32::from(y) / 2. + 0.25);
 
           assert_eq!(
-            hit(&frames, point),
-            unpruned(&frames, point),
+            frames.topmost(point),
+            frames.topmost_unpruned(point),
             "seed {seed} at {point:?}"
           );
         }

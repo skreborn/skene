@@ -24,16 +24,20 @@ in a code comment.
     itself, Linux and Windows need as well, since they too own their window; each
     mechanism is written once, in `skene-layout`, or in the foundation where the web
     takes it too, the terminal its first client.
-    - What the terminal still keeps of its retained runtime (focus, capture, wheel
-    latching, selection, a paragraph's text content) moves into the drawn runtime in
-    `skene-layout`, beside the layout tree it already writes from the scene and the
-    restyle presenting into it, generic over the platform's scalar: a paragraph's
-    document selection and its text content kept once above the engine, in the
-    runtime, where each realization keeps them today. A drawn entry's key
-    default is written once there too, over the shared entry the scene keeps: the core's
-    `Binding` table, run after the app's key handlers as a browser's `<input>` default
-    runs (so never as a `TextEntry::on_key`, which would run before them), the
-    terminal's own key default consulting the table until then.
+    - What the terminal still keeps of its retained runtime (its paint's walk, focus,
+    capture, wheel latching, selection, a paragraph's text content) moves into the
+    drawn runtime in `skene-layout`, beside the layout tree it already writes from the
+    scene and the restyle presenting into it, generic over the platform's scalar: a
+    walk of the runtime's `Frames` in paint order handing each node the rectangle,
+    clip and scroll offsets hit testing reads, where the terminal's painter sums them
+    down the tree itself, so paint and hit agree by construction and a painter for
+    another medium walks the same index; a paragraph's document selection and its
+    text content kept once above the engine, in the runtime, where each realization
+    keeps them today. A drawn entry's key default is written once there too, over the
+    shared entry the scene keeps: the core's `Binding` table, run after the app's key
+    handlers as a browser's `<input>` default runs (so never as a `TextEntry::on_key`,
+    which would run before them), the terminal's own key default consulting the table
+    until then.
     - Layout: layout settles before a frame commits, the terminal's settle loop
     becoming the frame contract, and `Painted` resizes land with the layout commit.
     - Beside it: the frame clock's pacing, frames due at the platform's rate while

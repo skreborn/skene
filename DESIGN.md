@@ -1975,10 +1975,11 @@ damages, an open overlay's place and a pointer's position localized to a node, c
 from the runtime's index of window rectangles (`Runtime::frames`), built afresh at its
 first read after a layout, a scroll, a box's reach or visibility, an overlay or the
 scene's structure moved, so a reader between two frames sees the offsets a handler just
-wrote. An open overlay sits there where the runtime places it
-(`Runtime::overlay_origin`), against its anchor's rectangle in the index, an anchor
-inside a later overlay placing that overlay first: pinned at the cell its point falls
-in, moved back into the window, below or above its anchor with a flip where the
+wrote; its paint alone still sums each node's place, the scroll offsets above it and the
+clips around it down the tree itself. An open overlay sits there where the runtime
+places it (`Runtime::overlay_origin`), against its anchor's rectangle in the index, an
+anchor inside a later overlay placing that overlay first: pinned at the cell its point
+falls in, moved back into the window, below or above its anchor with a flip where the
 preferred side runs out of room and the other fits, or at one of the window's seven
 placements, a centered origin truncated toward zero. Its `impl Realization` forwards to
 the runtime's adapter for everything that is no cell's: a node's record created and

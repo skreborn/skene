@@ -56,6 +56,15 @@
 //! with a flip where the preferred side runs out of room, or at one of the window's
 //! seven placements.
 //!
+//! The runtime keeps one index of its window's rectangles ([`Runtime::frames`]): every
+//! laid-out node's border box in the window, the cover its paint damages, the reach a
+//! hit takes it at, the clip what shows of it is cut to and whether it takes hits
+//! ([`Frame`]), in paint order, the root's flow and then each open overlay's subtree in
+//! the order they opened ([`Layer`]), moved to where the runtime places the overlay. It
+//! is built afresh at its first read after a layout, a scroll offset, a box's reach or
+//! visibility, an overlay's opening or placement, or the scene's structure moved, beside
+//! whether the covers moved since the platform last painted ([`Runtime::covers_moved`]).
+//!
 //! A drawn platform's realization forwards to the runtime for everything that is no
 //! cell's or pixel's: a node's record created ([`Runtime::create`]) and destroyed, its
 //! style, slots, state and contents applied ([`Runtime::write`]), its size observed, an
@@ -70,6 +79,7 @@
 mod adapter;
 mod environment;
 mod flow;
+mod frames;
 mod motion;
 mod overlay;
 mod paragraph;
@@ -79,6 +89,8 @@ mod restyle;
 mod scroll;
 mod structure;
 mod sync;
+
+use std::cell::{OnceCell, RefCell};
 
 use skene_foundation::{
   Axis,
@@ -106,6 +118,7 @@ pub use self::{
   adapter::{INLINE_BOX, OverlayFocus},
   environment::{Facts, Pending, Window},
   flow::{Flow, Measured},
+  frames::{Frame, Frames, Layer},
   motion::{BoxMotion, Clock, Presented, RunMotion, Sample},
   paragraph::Source,
   record::{
@@ -230,7 +243,8 @@ type LayoutTree<P> = Tree<Measured<<P as Drawn>::Engine>>;
 ///
 /// A [`Record`] per node, the root filling the window, the overlays and text entries in
 /// build order, what moved since the last restyle, the layout tree it writes from them,
-/// and what the next frame lays out and repaints, beside what it keeps of its window, the
+/// the index of window rectangles it builds from that tree ([`Frames`]), and what the
+/// next frame lays out and repaints, beside what it keeps of its window, the
 /// app's choice of scheme, the frame clock its motion samples against and the text
 /// generation its flows are made under.
 #[derive(Debug)]
@@ -254,9 +268,10 @@ pub struct Runtime<P: Drawn> {
   pub layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub paint_dirty: bool,
-  /// Whether a node's rectangle on the window may have moved since the platform last
-  /// measured them: the layout, a scroll offset or a box's reach changed.
-  pub geometry_stale: bool,
+  /// Whether a node's cover on the window may have moved since the platform last
+  /// painted: the layout, a scroll offset, a box's reach or visibility, or an overlay's
+  /// opening or placement changed.
+  pub covers_moved: bool,
   /// Whether a tween or an animation was still running at the last presentation, so
   /// the next frame is due at the frame rate.
   pub motion_active: bool,
@@ -270,6 +285,8 @@ pub struct Runtime<P: Drawn> {
   window: Window<P>,
   choice: Option<ColorScheme>,
   reveal: Option<NodeId>,
+  frames: OnceCell<Frames>,
+  spare_frames: RefCell<Frames>,
 }
 
 impl<P: Drawn> Runtime<P> {
@@ -297,7 +314,7 @@ impl<P: Drawn> Runtime<P> {
       restyle: Restyle::new(),
       layout_dirty: true,
       paint_dirty: true,
-      geometry_stale: true,
+      covers_moved: true,
       motion_active: false,
       style_resolutions: 0,
       style_writes: 0,
@@ -309,6 +326,8 @@ impl<P: Drawn> Runtime<P> {
       window: Window::new(reported, painting),
       choice: None,
       reveal: None,
+      frames: OnceCell::new(),
+      spare_frames: RefCell::new(Frames::default()),
     };
 
     runtime.insert(
@@ -355,6 +374,7 @@ impl<P: Drawn> Runtime<P> {
   /// layout-only box or a run; its structure moved.
   fn insert(&mut self, node: NodeId, record: Record<P>) {
     self.restyle.move_structure();
+    self.invalidate_frames();
     self.tree.insert(node, record.kind.is_decorated());
 
     let _replaced = self.records.insert(node, record);
@@ -403,9 +423,9 @@ impl<P: Drawn> Runtime<P> {
   }
 
   /// Releases the record of `node`, retiring it from the overlays, the entries, the
-  /// restyle, the layout tree and the reveal queued, its structure moved and the frame
-  /// repainting; the record removed, for the platform to clear its own references, or
-  /// `None` where `node` held none.
+  /// restyle, the layout tree, the reveal queued and the index of window rectangles, its
+  /// structure moved and the frame repainting; the record removed, for the platform to clear its
+  /// own references, or `None` where `node` held none.
   pub fn destroy(&mut self, node: NodeId) -> Option<Record<P>> {
     let record = self.records.remove(node)?;
 
@@ -419,6 +439,7 @@ impl<P: Drawn> Runtime<P> {
 
     self.restyle.read_interaction(node, false);
     self.restyle.move_structure();
+    self.invalidate_frames();
     self.paint_dirty = true;
 
     Some(record)

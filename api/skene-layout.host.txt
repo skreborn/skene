@@ -142,6 +142,50 @@ pub fn skene_layout::runtime::Flow<E>::measure(&self, taffy::geometry::Size<core
 pub fn skene_layout::runtime::Flow<E>::place(&self, skene_foundation::spine::values::rect::Rect<f32>) -> alloc::vec::Vec<(skene_foundation::spine::node::NodeId, skene_foundation::spine::values::rect::Rect<f32>)>
 pub fn skene_layout::runtime::Flow<E>::repaint_as(&mut self, &Self) -> bool
 pub fn skene_layout::runtime::Flow<E>::size_boxes(&mut self, impl core::iter::traits::collect::IntoIterator<Item = skene_foundation::spine::values::size::Size<f32>>)
+pub struct skene_layout::runtime::Frame
+pub skene_layout::runtime::Frame::clip: core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub skene_layout::runtime::Frame::cover: core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub skene_layout::runtime::Frame::end: usize
+pub skene_layout::runtime::Frame::hits: bool
+pub skene_layout::runtime::Frame::node: skene_foundation::spine::node::NodeId
+pub skene_layout::runtime::Frame::parent: core::option::Option<usize>
+pub skene_layout::runtime::Frame::reach: skene_foundation::spine::values::rect::Rect<f32>
+pub skene_layout::runtime::Frame::rect: skene_foundation::spine::values::rect::Rect<f32>
+impl core::clone::Clone for skene_layout::runtime::Frame
+pub fn skene_layout::runtime::Frame::clone(&self) -> Self
+impl core::cmp::PartialEq for skene_layout::runtime::Frame
+pub fn skene_layout::runtime::Frame::eq(&self, &Self) -> bool
+impl core::fmt::Debug for skene_layout::runtime::Frame
+pub fn skene_layout::runtime::Frame::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::runtime::Frame
+impl core::marker::StructuralPartialEq for skene_layout::runtime::Frame
+pub struct skene_layout::runtime::Frames
+impl skene_layout::runtime::Frames
+pub fn skene_layout::runtime::Frames::cover(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+pub const fn skene_layout::runtime::Frames::entries(&self) -> &[skene_layout::runtime::Frame]
+pub fn skene_layout::runtime::Frames::flow_len(&self) -> usize
+pub fn skene_layout::runtime::Frames::get(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<&skene_layout::runtime::Frame>
+pub const fn skene_layout::runtime::Frames::layers(&self) -> &[skene_layout::runtime::Layer]
+pub fn skene_layout::runtime::Frames::origin(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::point::Point<f32>>
+pub fn skene_layout::runtime::Frames::rect(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::values::rect::Rect<f32>>
+impl core::default::Default for skene_layout::runtime::Frames
+pub fn skene_layout::runtime::Frames::default() -> Self
+impl core::fmt::Debug for skene_layout::runtime::Frames
+pub fn skene_layout::runtime::Frames::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_layout::runtime::Layer
+pub skene_layout::runtime::Layer::end: usize
+pub skene_layout::runtime::Layer::modal: bool
+pub skene_layout::runtime::Layer::overlay: skene_foundation::spine::node::NodeId
+pub skene_layout::runtime::Layer::start: usize
+impl core::clone::Clone for skene_layout::runtime::Layer
+pub fn skene_layout::runtime::Layer::clone(&self) -> Self
+impl core::cmp::Eq for skene_layout::runtime::Layer
+impl core::cmp::PartialEq for skene_layout::runtime::Layer
+pub fn skene_layout::runtime::Layer::eq(&self, &Self) -> bool
+impl core::fmt::Debug for skene_layout::runtime::Layer
+pub fn skene_layout::runtime::Layer::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_layout::runtime::Layer
+impl core::marker::StructuralPartialEq for skene_layout::runtime::Layer
 pub struct skene_layout::runtime::Pending<N: 'static>
 impl<N: skene_foundation::spine::scalar::Scalar> skene_layout::runtime::Pending<N>
 pub fn skene_layout::runtime::Pending<N>::moved(&self) -> bool
@@ -191,8 +235,8 @@ pub fn skene_layout::runtime::RunMotion<X>::fmt(&self, &mut core::fmt::Formatter
 impl<X: skene_foundation::spine::extension::StyleExtension> core::default::Default for skene_layout::runtime::RunMotion<X>
 pub fn skene_layout::runtime::RunMotion<X>::default() -> Self
 pub struct skene_layout::runtime::Runtime<P: skene_layout::runtime::Drawn>
+pub skene_layout::runtime::Runtime::covers_moved: bool
 pub skene_layout::runtime::Runtime::entries: alloc::vec::Vec<skene_foundation::spine::node::NodeId>
-pub skene_layout::runtime::Runtime::geometry_stale: bool
 pub skene_layout::runtime::Runtime::layout_dirty: bool
 pub skene_layout::runtime::Runtime::motion_active: bool
 pub skene_layout::runtime::Runtime::overlays: alloc::vec::Vec<skene_foundation::spine::node::NodeId>
@@ -233,7 +277,7 @@ pub fn skene_layout::runtime::Runtime<P>::enclosing_control(&self, skene_foundat
 pub fn skene_layout::runtime::Runtime<P>::is_reachable(&self, skene_foundation::spine::node::NodeId) -> bool
 pub fn skene_layout::runtime::Runtime<P>::layout_children(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::runtime::Runtime<P>::layout_parent(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
-pub const fn skene_layout::runtime::Runtime<P>::note_structure(&mut self)
+pub fn skene_layout::runtime::Runtime<P>::note_structure(&mut self)
 pub fn skene_layout::runtime::Runtime<P>::parent(&self, skene_foundation::spine::node::NodeId) -> core::option::Option<skene_foundation::spine::node::NodeId>
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::apply_slot(&mut self, skene_foundation::spine::node::NodeId, skene_foundation::spine::leaf::Slot, &skene_layout::runtime::SlotLeaf<P>)
@@ -285,6 +329,8 @@ pub fn skene_layout::runtime::Runtime<P>::is_paragraph(&self, skene_foundation::
 pub fn skene_layout::runtime::Runtime<P>::paragraph_runs(&self, skene_foundation::spine::node::NodeId) -> alloc::vec::Vec<skene_foundation::spine::node::NodeId>
 pub fn skene_layout::runtime::Runtime<P>::paragraph_text(&self, skene_foundation::spine::node::NodeId) -> alloc::string::String
 pub fn skene_layout::runtime::Runtime<P>::visit_runs(&self, skene_foundation::spine::node::NodeId, &mut alloc::vec::Vec<skene_foundation::spine::node::NodeId>, &mut impl core::ops::function::FnMut(skene_foundation::spine::node::NodeId, &[skene_foundation::spine::node::NodeId]))
+impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
+pub fn skene_layout::runtime::Runtime<P>::frames(&self) -> &skene_layout::runtime::Frames
 impl<P: skene_layout::runtime::Drawn> skene_layout::runtime::Runtime<P>
 pub fn skene_layout::runtime::Runtime<P>::overlay_origin(&self, skene_foundation::spine::node::NodeId, impl core::ops::function::FnOnce(skene_foundation::spine::node::NodeId) -> skene_foundation::spine::values::rect::Rect<f32>) -> skene_foundation::spine::values::point::Point<f32>
 impl<P: core::fmt::Debug + skene_layout::runtime::Drawn> core::fmt::Debug for skene_layout::runtime::Runtime<P>

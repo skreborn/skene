@@ -12,6 +12,25 @@ supersedes there.
 
 ## Decided against
 
+- **Run and group pieces stored in `Frames`** (2026-11-04), the index of window
+  rectangles holding, beside each laid-out node's entry, the rectangles each run and
+  group of a paragraph is drawn across: storing them lays every paragraph's pieces out
+  (`Leaf::place`, a range's rectangles per run) at each rebuild, which a wheel scroll of
+  a 16k-row list would pay for every row where the index's rebuild lays out no flow. A
+  run flowing in a paragraph has no entry, and its pieces are read on demand from the
+  paragraph a query touches. Revisit when a reader needs every run's pieces each frame
+  (item 3's vello painter, accessibility bounds per line), then cached per paragraph
+  under the layout generation.
+- **`Runtime::frames` taking `&mut self`, each reader refreshing the index first**
+  (2026-11-04), the index rebuilt by a mutable read while a flag says it is stale and
+  every reader holding the runtime shared reading it through a borrow refreshed at its
+  entry point: a reader reached after a write, before any refresh, reads a stale index,
+  and nothing but a debug assertion would catch it. The index is built from what the
+  runtime reads shared (its records, its tree, the scene) into a cell every writer of
+  that state empties (`OnceCell::take` beside the write), and `frames` fills it on its
+  first read, so no reader can see geometry older than the last write and the readers
+  keep their shared borrows. Revisit when building the index needs the platform's
+  state mutably, or a profile shows the cell's check on a hot path.
 - **A text leaf's equality over its engine's state** (2026-11-03), each flow comparing
   the engine it lays out through (`Drawn::Engine: PartialEq`) or the engine state a
   `Drawn` hook reports (the terminal's grapheme clustering), so a leaf made after the

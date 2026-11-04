@@ -164,6 +164,7 @@ impl<P: Drawn> Runtime<P> {
           *held = placement.placement;
           *position = placement.position;
           self.paint_dirty = true;
+          self.move_geometry();
         }
       }
       ContentValue::Edit(_)
@@ -225,6 +226,7 @@ impl<P: Drawn> Runtime<P> {
 
     self.layout_dirty = true;
     self.paint_dirty = true;
+    self.move_geometry();
 
     if !open || was_open || !Scene::<P>::read(|scene| scene.is_modal(node)) {
       return OverlayFocus::Held;

@@ -279,6 +279,7 @@ impl<P: Drawn> Runtime<P> {
 
       if before.0 != after.0 {
         runtime.invalidate_styles();
+        runtime.invalidate_frames();
       }
 
       if before.1 != after.1 {

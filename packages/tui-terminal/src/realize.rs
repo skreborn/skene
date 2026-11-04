@@ -338,15 +338,12 @@ impl Realization for Terminal {
   }
 
   fn localize_pointer(node: NodeId, event: &PointerEvent) -> PointerEvent {
-    let (x, y) = with_records(|records| records.screen_origin(node));
+    let origin =
+      with_records(|records| records.runtime.frames().origin(node)).unwrap_or(Point::ZERO);
 
-    #[expect(
-      clippy::cast_precision_loss,
-      reason = "a screen origin in cells stays far below the integers f32 holds exactly"
-    )]
     PointerEvent {
-      local_x: event.x - x as f32,
-      local_y: event.y - y as f32,
+      local_x: event.x - origin.x,
+      local_y: event.y - origin.y,
       ..*event
     }
   }

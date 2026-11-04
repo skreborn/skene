@@ -107,10 +107,11 @@ impl<P: Drawn> Runtime<P> {
     Scene::<P>::read(|scene| scene.enclosing_control(node))
   }
 
-  /// Notes that the structure the scene places changed: the layout follows it and the
-  /// frame repaints.
-  pub const fn note_structure(&mut self) {
+  /// Notes that the structure the scene places changed: the layout and the index of
+  /// window rectangles follow it and the frame repaints.
+  pub fn note_structure(&mut self) {
     self.restyle.move_structure();
+    self.invalidate_frames();
     self.paint_dirty = true;
   }
 

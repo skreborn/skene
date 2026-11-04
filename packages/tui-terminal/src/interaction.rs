@@ -21,9 +21,7 @@ use skene_foundation::{
   PointerInfo,
   PointerType,
   Prevented,
-  Rect,
   Scene,
-  Size,
   WheelUnit,
   dispatch_activation,
   dispatch_click,
@@ -368,7 +366,7 @@ impl Records {
     y: u16,
     path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
-    let (origin_x, origin_y) = self.overlay_origin(overlay);
+    let (origin_x, origin_y) = self.screen_origin(overlay);
     let (location_x, location_y) = self.node_location(overlay);
 
     self.hit_walk(
@@ -381,80 +379,18 @@ impl Records {
     )
   }
 
-  /// A node's position within its layout parent: its laid-out location, an inline box's
-  /// in its paragraph through any groups, or the paragraph's origin for any other run
-  /// flowing in one.
-  pub(crate) fn inline_location(&self, node: NodeId) -> (i64, i64) {
-    let flows = self.runtime.is_inline_run(node)
-      && !self.runtime.is_inline_box(node)
-      && self.runtime.enclosing_paragraph(node).is_some();
-
-    if flows {
-      (0, 0)
-    }
-    else {
-      self.node_location(node)
-    }
-  }
-
-  /// A node's on-screen origin: its layout locations summed up the parent chain, each
-  /// ancestor's scroll offsets subtracted, content inside an overlay positioned against
-  /// the overlay's origin.
+  /// A node's on-screen origin, as the runtime's index of window rectangles places it
+  /// ([`Runtime::frames`]): its layout locations summed down the laid-out nodes above
+  /// it, each one's scroll offsets subtracted, content inside an open overlay placed
+  /// against where the runtime places the overlay ([`Runtime::overlay_origin`]), and a
+  /// run flowing in a paragraph at the paragraph's; the screen's corner for a node the
+  /// index does not hold.
   pub(crate) fn screen_origin(&self, node: NodeId) -> (i64, i64) {
-    let (mut x, mut y) = (0, 0);
-    let mut current = Some(node);
-
-    while let Some(visited) = current {
-      let record = self.runtime.record(visited);
-
-      if record.is_some_and(Record::is_overlay) {
-        let (overlay_x, overlay_y) = self.overlay_origin(visited);
-
-        return (x + overlay_x, y + overlay_y);
-      }
-
-      if record.is_some() {
-        let (location_x, location_y) = self.inline_location(visited);
-
-        x += location_x;
-        y += location_y;
-
-        if let Some(parent) = self.runtime.layout_parent(visited) {
-          let (scroll_x, scroll_y) = self.scroll_offset(parent);
-
-          x -= i64::from(scroll_x);
-          y -= i64::from(scroll_y);
-        }
-      }
-
-      current = self.runtime.parent(visited);
-    }
-
-    (x, y)
-  }
-
-  /// An open overlay's absolute origin, as the runtime places it
-  /// ([`Runtime::overlay_origin`]) against its anchor's on-screen rectangle.
-  pub(crate) fn overlay_origin(&self, node: NodeId) -> (i64, i64) {
-    let origin = self.runtime.overlay_origin(node, |anchor| {
-      let (x, y) = self.screen_origin(anchor);
-      let (width, height) = self.node_size(anchor);
-
-      #[expect(
-        clippy::cast_precision_loss,
-        reason = "an on-screen cell lies far inside an f32's exact integers"
-      )]
-      Rect::new(
-        Point::new(x as f32, y as f32),
-        Size::new(width as f32, height as f32),
-      )
-    });
-
-    #[expect(
-      clippy::cast_possible_truncation,
-      reason = "the runtime places an overlay at whole cells, far inside i64"
-    )]
-    (origin.x as i64, origin.y as i64)
+    self
+      .runtime
+      .frames()
+      .origin(node)
+      .map_or((0, 0), screen_cell)
   }
 
   /// The pointer shape for the current hover path: the deepest hovered node with a
@@ -1258,6 +1194,16 @@ pub(crate) fn drag_to(x: u16, y: u16) {
   }
 
   crate::field::report_selections();
+}
+
+/// The screen cell at the window point `point`, a whole cell as the terminal's layout
+/// places every box.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "the terminal's layout places a box at whole cells, far inside i64"
+)]
+pub(crate) const fn screen_cell(point: Point<f32>) -> (i64, i64) {
+  (point.x as i64, point.y as i64)
 }
 
 /// A count of cells as a position along a track.

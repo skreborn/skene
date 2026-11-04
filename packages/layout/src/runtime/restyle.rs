@@ -3,7 +3,7 @@
 //! cached under what it resolved against.
 
 use rustc_hash::FxHashSet;
-use skene_foundation::{Animation, Interaction, NodeId, Scene};
+use skene_foundation::{Animation, Inset, Interaction, NodeId, Scene};
 
 use super::{
   BoxCache,
@@ -50,6 +50,8 @@ impl<P: Drawn> Runtime<P> {
       reduced: self.window().reported().reduced_motion,
     };
 
+    let moved = std::mem::take(&mut self.covers_moved);
+
     self.motion_active = false;
 
     nodes.retain(|node| {
@@ -60,6 +62,12 @@ impl<P: Drawn> Runtime<P> {
 
       self.present_one(*node, shown, generation, sample).is_some()
     });
+
+    if self.covers_moved {
+      self.invalidate_frames();
+    }
+
+    self.covers_moved |= moved;
 
     nodes
   }
@@ -128,7 +136,7 @@ impl<P: Drawn> Runtime<P> {
       return Some(());
     }
 
-    let reach = record.kind.box_style().map(P::reach);
+    let geometry = record.kind.box_style().map(Self::geometry_of);
     let resolved = if fresh { None } else { self.resolve(node) };
     let pass = Pass {
       generation,
@@ -140,7 +148,7 @@ impl<P: Drawn> Runtime<P> {
     let (repaint, active) = record.kind.present(resolved, &pass)?;
 
     record.in_motion = active;
-    self.geometry_stale |= record.kind.box_style().map(P::reach) != reach;
+    self.covers_moved |= record.kind.box_style().map(Self::geometry_of) != geometry;
     self.motion_active |= active;
 
     if active {
@@ -152,6 +160,12 @@ impl<P: Drawn> Runtime<P> {
     }
 
     Some(())
+  }
+
+  /// What the index of window rectangles reads of a box styled `style`: how far its
+  /// paint reaches and whether it is invisible.
+  fn geometry_of(style: &PlainBox<P>) -> (Inset<f32>, Option<bool>) {
+    (P::reach(style), style.hidden)
   }
 
   /// Resolves `node`'s targets and keyframes again, recording whether the resolution

@@ -691,23 +691,27 @@ impl Buffer {
 pub(crate) fn paint(records: &Records, buffer: &mut Buffer) {
   paint_node(records, buffer, records.runtime.root(), 0, 0);
 
-  let overlays = records.runtime.open_overlays();
+  let frames = records.runtime.frames();
 
   buffer.pictures.retain(|picture| {
     picture.layer < 0
-      || !overlays.iter().any(|overlay| {
-        let (origin_x, origin_y) = records.overlay_origin(*overlay);
-        let (width, height) = records.node_size(*overlay);
+      || !frames.layers().iter().any(|layer| {
+        let rect = frames.entries()[layer.start].rect;
+        let (left, top) = (f32::from(picture.column), f32::from(picture.row));
+        let (right, bottom) = (
+          f32::from(picture.column + picture.columns),
+          f32::from(picture.row + picture.rows),
+        );
 
-        i64::from(picture.column) < origin_x + width
-          && i64::from(picture.column + picture.columns) > origin_x
-          && i64::from(picture.row) < origin_y + height
-          && i64::from(picture.row + picture.rows) > origin_y
+        left < rect.origin.x + rect.size.width
+          && right > rect.origin.x
+          && top < rect.origin.y + rect.size.height
+          && bottom > rect.origin.y
       })
   });
 
-  for overlay in overlays {
-    paint_overlay(records, buffer, overlay);
+  for layer in frames.layers() {
+    paint_overlay(records, buffer, layer.overlay);
   }
 
   buffer.mend_blocks();
@@ -740,7 +744,7 @@ fn paint_overlay(records: &Records, buffer: &mut Buffer, overlay: NodeId) {
     }
   }
 
-  let (origin_x, origin_y) = records.overlay_origin(overlay);
+  let (origin_x, origin_y) = records.screen_origin(overlay);
 
   // A modal makes everything beneath inert, taking the caret with it; a popup hides
   // the caret only when it covers the cell. Either way the overlay's own content may

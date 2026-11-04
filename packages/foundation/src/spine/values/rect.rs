@@ -1,4 +1,4 @@
-use super::{Point, Size};
+use super::{Inset, Point, Size};
 use crate::spine::Scalar;
 
 /// A positioned, sized rectangle.
@@ -24,5 +24,57 @@ impl<T> Rect<T> {
   #[inline(always)]
   pub const fn new(origin: Point<T>, size: Size<T>) -> Self {
     Self { origin, size }
+  }
+}
+
+impl Rect<f32> {
+  /// The rectangle both `self` and `other` cover, of no extent where they do not meet.
+  pub const fn intersect(self, other: Self) -> Self {
+    let start = Point::new(
+      self.origin.x.max(other.origin.x),
+      self.origin.y.max(other.origin.y),
+    );
+    let end = Point::new(
+      (self.origin.x + self.size.width).min(other.origin.x + other.size.width),
+      (self.origin.y + self.size.height).min(other.origin.y + other.size.height),
+    );
+
+    Self::new(
+      start,
+      Size::new((end.x - start.x).max(0.), (end.y - start.y).max(0.)),
+    )
+  }
+
+  /// The smallest rectangle covering both `self` and `other`.
+  pub const fn union(self, other: Self) -> Self {
+    let start = Point::new(
+      self.origin.x.min(other.origin.x),
+      self.origin.y.min(other.origin.y),
+    );
+    let end = Point::new(
+      (self.origin.x + self.size.width).max(other.origin.x + other.size.width),
+      (self.origin.y + self.size.height).max(other.origin.y + other.size.height),
+    );
+
+    Self::new(start, Size::new(end.x - start.x, end.y - start.y))
+  }
+
+  /// The rectangle grown by `by` on each edge, its start edge the left.
+  pub const fn inflate(self, by: Inset<f32>) -> Self {
+    Self::new(
+      Point::new(self.origin.x - by.start, self.origin.y - by.top),
+      Size::new(
+        self.size.width + by.start + by.end,
+        self.size.height + by.top + by.bottom,
+      ),
+    )
+  }
+
+  /// The rectangle moved by `by`.
+  pub const fn translate(self, by: Point<f32>) -> Self {
+    Self::new(
+      Point::new(self.origin.x + by.x, self.origin.y + by.y),
+      self.size,
+    )
   }
 }

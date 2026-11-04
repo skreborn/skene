@@ -107,7 +107,7 @@ impl<P: Drawn> Runtime<P> {
   /// ([`Drawn::scroll_entry`]), notifying nothing.
   fn write_scroll(&mut self, node: NodeId, offset: Point<f32>) -> bool {
     self.damage(node);
-    self.geometry_stale = true;
+    self.move_geometry();
 
     let content = self.content_size(node);
     let Some(record) = self.records.get_mut(node)

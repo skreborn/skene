@@ -16,7 +16,7 @@ use crate::{
   Terminal,
   layout::{border_edges, has_border},
   paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
-  records::{Backdrop, BackdropKey, CellRect, PlainBox, Record, Records},
+  records::{Backdrop, BackdropKey, CellRect, PlainBox, Records},
   with_records,
 };
 
@@ -88,7 +88,7 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
       .take()
       .filter(|frame| frame.width == width && frame.height == height);
     let full = std::mem::take(&mut records.runtime.paint_dirty) || previous.is_none();
-    let moved = std::mem::take(&mut records.runtime.geometry_stale) || full;
+    let moved = std::mem::take(&mut records.runtime.covers_moved) || full;
     let (damaged, rects) = records.take_damage();
 
     if let Some(previous) = previous.as_ref().filter(|_| !moved)
@@ -103,10 +103,6 @@ fn paint_frame(width: u16, height: u16) -> Buffer {
 
     render_pictures(records);
     render_backdrops(records);
-
-    if moved {
-      measure_covers(records);
-    }
 
     let rows = damaged_rows(records, height, damaged, rects, moved);
     let mut buffer = match previous {
@@ -143,22 +139,25 @@ fn damaged_rows(
   mut rects: Vec<CellRect>,
   moved: bool,
 ) -> Vec<bool> {
+  let frames = records.runtime.frames();
+  let cover = |node: NodeId| frames.cover(node).map(cell_rect);
+
   for node in damaged {
     let target = paint_owner(records, node);
 
     if let Some(cell) = records.cell(target) {
       rects.extend(cell.painted);
-      rects.extend(cell.covers);
+      rects.extend(cover(target));
     }
   }
 
   if moved {
-    for (_, record) in records.runtime.records() {
-      let cell = &record.platform;
+    for (node, record) in records.runtime.records() {
+      let (painted, covers) = (record.platform.painted, cover(node));
 
-      if cell.painted != cell.covers {
-        rects.extend(cell.painted);
-        rects.extend(cell.covers);
+      if painted != covers {
+        rects.extend(painted);
+        rects.extend(covers);
       }
     }
   }
@@ -193,22 +192,18 @@ fn paint_owner(records: &Records, node: NodeId) -> NodeId {
   owner
 }
 
-/// The screen rectangle `node` paints at `origin`, grown by the cells its shadow
-/// reaches; `None` for a node without extent.
-fn rect_at(records: &Records, node: NodeId, (x, y): (i64, i64)) -> Option<CellRect> {
-  let (width, height) = records.node_size(node);
-
-  if width <= 0 || height <= 0 {
-    return None;
-  }
-
-  let band = records
-    .runtime
-    .record(node)
-    .and_then(|record| record.kind.box_style())
-    .map_or(0, |style| i64::from(ShadowPaint::band(style)));
-
-  Some((x, y, width + band, height + band))
+/// The screen cells `rect`, a cover the terminal's layout places at whole cells, spans.
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "the terminal's layout places a box at whole cells, far inside i64"
+)]
+const fn cell_rect(rect: skene_foundation::Rect<f32>) -> CellRect {
+  (
+    rect.origin.x as i64,
+    rect.origin.y as i64,
+    rect.size.width as i64,
+    rect.size.height as i64,
+  )
 }
 
 /// Renders every painted box's picture whose image is missing or of another size than
@@ -468,66 +463,24 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
   canvas.pixels()
 }
 
-/// Measures the rectangle every node under the root covers now, summing each origin
-/// down the tree once; a node outside it covers none.
-fn measure_covers(records: &mut Records) {
-  let mut covers = Vec::new();
-  let mut pending = vec![(records.runtime.root(), (0, 0), None)];
-
-  while let Some((node, (base_x, base_y), laid_out_parent)) = pending.pop() {
-    let record = records.runtime.record(node);
-    let laid_out = record.is_some();
-    let origin = if record.is_some_and(Record::is_overlay) {
-      records.overlay_origin(node)
-    }
-    else if laid_out {
-      let (x, y) = records.inline_location(node);
-      let (scroll_x, scroll_y) =
-        laid_out_parent.map_or((0, 0), |parent| records.scroll_offset(parent));
-
-      (
-        base_x + x - i64::from(scroll_x),
-        base_y + y - i64::from(scroll_y),
-      )
-    }
-    else {
-      (base_x, base_y)
-    };
-    let beneath = if laid_out {
-      Some(node)
-    }
-    else {
-      laid_out_parent
-    };
-
-    if laid_out {
-      covers.push((node, rect_at(records, node, origin)));
-    }
-
-    pending.extend(
-      records
-        .runtime
-        .children(node)
-        .into_iter()
-        .map(|child| (child, origin, beneath)),
-    );
-  }
-
-  for (_, record) in records.runtime.records_mut() {
-    record.platform.covers = None;
-  }
-
-  for (node, rect) in covers {
-    if let Some(cell) = records.cell_mut(node) {
-      cell.covers = rect;
-    }
-  }
-}
-
 /// Records the rectangle every node covers as the one it covered at this paint.
 fn record_painted(records: &mut Records) {
+  let covers: Vec<(NodeId, CellRect)> = records
+    .runtime
+    .frames()
+    .entries()
+    .iter()
+    .filter_map(|frame| Some((frame.node, cell_rect(frame.cover?))))
+    .collect();
+
   for (_, record) in records.runtime.records_mut() {
-    record.platform.painted = record.platform.covers;
+    record.platform.painted = None;
+  }
+
+  for (node, cover) in covers {
+    if let Some(cell) = records.cell_mut(node) {
+      cell.painted = Some(cover);
+    }
   }
 }
 

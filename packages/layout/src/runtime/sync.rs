@@ -29,7 +29,8 @@ impl<P: Drawn> Runtime<P> {
   /// paragraph it flows in. A revisited node resolves again where its resolution is
   /// stale, and presents over its motion where it resolved again or is in motion, all
   /// at one reading of the frame clock; one whose presentation changed is damaged, and
-  /// one whose reach changed moves the geometry ([`Runtime::geometry_stale`]). A node
+  /// one whose reach or visibility changed moves the covers ([`Runtime::covers_moved`])
+  /// and the index of window rectangles ([`Runtime::frames`]). A node
   /// out of the display runs no motion and forgets its presentation, so it shows afresh
   /// once displayed again.
   ///
@@ -124,7 +125,7 @@ impl<P: Drawn> Runtime<P> {
       },
     );
     self.layout_generation += 1;
-    self.geometry_stale = true;
+    self.move_geometry();
   }
 
   /// The flow the text node `node` lays out as, where it holds one.

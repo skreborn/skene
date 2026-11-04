@@ -25,7 +25,9 @@
 //! ([`runtime::Runtime::scroll_offset`], [`runtime::Runtime::scroll_to`]), the offsets
 //! that reveal a node between each scroll box's near and far borders
 //! ([`runtime::Runtime::reveal_offsets`]), an open overlay's origin in its window
-//! ([`runtime::Runtime::overlay_origin`]), beside the adapter the platform's realization
+//! ([`runtime::Runtime::overlay_origin`]), the index of the window's rectangles, covers,
+//! reaches and clips in paint order built from the layout, the scroll offsets and the
+//! overlays' placement ([`runtime::Frames`]), beside the adapter the platform's realization
 //! forwards to for everything that is no cell's or pixel's
 //! ([`runtime::Runtime::create`], [`runtime::Runtime::mount`] and their kin). The web lays
 //! out through CSS and needs none of it.

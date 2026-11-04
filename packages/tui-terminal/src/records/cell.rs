@@ -1,5 +1,5 @@
 //! What the terminal keeps per node in its record: a text entry's presentation, the
-//! cells the node covers, and what it paints beyond its style.
+//! cells the node covered at the last paint, and what it paints beyond its style.
 
 use std::{fmt, rc::Rc};
 
@@ -16,8 +16,6 @@ pub struct CellNode {
   pub(crate) field: Option<Box<Field>>,
   /// The screen rectangle the node covered at the last paint.
   pub(crate) painted: Option<CellRect>,
-  /// The screen rectangle the node covers now, as the frame being painted measured it.
-  pub(crate) covers: Option<CellRect>,
   /// The painter a low-level view runs inside the box on every repaint.
   pub(crate) painter: Option<Box<Painter>>,
   /// The picture a painted box draws through the terminal's graphics.
@@ -33,7 +31,6 @@ impl fmt::Debug for CellNode {
       .debug_struct("CellNode")
       .field("field", &self.field.is_some())
       .field("painted", &self.painted)
-      .field("covers", &self.covers)
       .field("painter", &self.painter.is_some())
       .field("picture", &self.picture.is_some())
       .field("backdrop", &self.backdrop.is_some())

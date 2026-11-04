@@ -440,6 +440,14 @@ in a code comment.
     change hands every node its layout children afresh (`Runtime::write_children`),
     where each should reach only the subtree it touched (per-scope token and
     per-container query invalidation, `em` from the node's own font size);
+    the runtime's `Frames` is rebuilt whole at its first read after a layout, a scroll or
+    a reach moved, where the prototype's incremental reach (`REACH_ALONE`,
+    `spikes/linux/gui-linux/src/shell.rs:57, 1264-1278`; `layout.rs:780-848`) would
+    rebuild what moved, a rebuild over the bench's 16k rows about 7.2M instructions,
+    which brought the resized frame to 235.6M against 234.7M, a keyed row's frame to
+    233.8M against 233.6M and the first mount to 1,928M against 1,925M, the unchanged
+    frame and the pointer move, which rebuild nothing, holding at 525k and 6.96M
+    (2026-11-04);
     a hit test and a partial repaint still visit every child of a box, 1.9 ms for a
     pointer move over 16k text rows where an unchanged frame costs 28 µs (`cargo bench
     -p skene-tui --bench frame --target host-tuple --config

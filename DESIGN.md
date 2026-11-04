@@ -25,9 +25,13 @@ presentation over their motion on the frame clock, the layout tree it writes fro
 scene and computes, each node's taffy style and children synced there, the text leaf it
 lays a paragraph out as through the platform's engine, each box's scroll offsets and the
 writes that move them, the offsets that reveal a node, where an open overlay sits in its
-window, and the environment the platform reports, behind the `Drawn`
-trait a drawn platform implements) and the text engine over Parley (`skene-parley`) on
-the foundation, the platforms on the foundation and, where they draw, on those two, each
+window, `Frames`, the index of its window's rectangles (each laid-out node's border box,
+the cover its paint damages, the reach a hit takes it at and the clip what shows of it
+is cut to, in paint order, each open overlay's subtree moved to where the runtime places
+it: pinned and moved back in, anchored below or above with a flip, or at one of seven
+window placements), and the environment the platform reports, behind the `Drawn` trait a
+drawn platform implements) and the text engine over Parley (`skene-parley`) on the
+foundation, the platforms on the foundation and, where they draw, on those two, each
 platform's realization a crate of its own (`skene-gui-web`, `skene-tui-terminal`) with
 its facade over it (`skene-gui`, `skene-tui`), the Simple core (its palette, variants
 and sizes, naming no realization) on the foundation, each facade's Simple crate (its
@@ -1951,36 +1955,41 @@ are `skene-layout`'s drawn runtime (`runtime::Runtime<Terminal>`, reached by gen
 code through `runtime::Drawn::with_runtime`) embedded in the terminal's state, whose
 records carry the terminal's per-node cell state (`Drawn::Node`, its `CellNode`, made
 from the node's spec with the record and dropped with it: a text entry's field, the
-cells it covers and what it paints beyond its style), beside each box's scroll offsets,
-which the runtime keeps, clamps and writes, notifying the box's scroll handlers, an
-editor's window down its rows standing for its vertical offset through
-`Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's window along
-its clusters stays the terminal's. Focus reveals the node it moves to through the
-runtime (`Runtime::reveal`, `Runtime::reveal_offsets`), by both edges of each scroll box
-around it: the box scrolls by as little as shows the node between its near border and
-its far one, its padding box, the scrollport Chromium's `scrollIntoView` aligns to, so a
-node revealed toward an edge with no border lands against that edge. An open overlay
-sits where the runtime places it (`Runtime::overlay_origin`), against its anchor's
-on-screen rectangle as the terminal measures it: pinned at the cell its point falls in,
-moved back into the window, below or above its anchor with a flip where the preferred
-side runs out of room and the other fits, or at one of the window's seven placements, a
-centered origin truncated toward zero. Its `impl
-Realization` forwards to the runtime's adapter for everything that is no cell's: a
-node's record created and destroyed, its style, slots, control state and contents, a
-size observed, an overlay opened with the focus move it asks for, and a mount with the
-window's autofocus. The runtime writes the layout tree from the scene and computes it,
-asking the terminal only for a text entry's native extent (`Drawn::entry_extent`, read
-from the field its record carries: its value's widest line or its placeholder's, and its
-lines, in cells), the terminal keeping the cell geometry it reads the layout through. It
-keeps as its own an entry's edit, placeholder, secure flag and keyboard, focus, pointer
-localization, timers, the clipboard, the window title and navigation. Beside the runtime
-sit the cell geometry, the cell engine, painting, the frame writer, the event loop and
-its interaction, the editing state of its drawn entries, the dev reload's restore and
-rebuild notice, and the `device`, `tty`, `parse` and `escape` modules. It names no
-facade: what it builds of its own, the rebuild notice, it builds from the foundation's
-views at `Terminal`, and the values it defines it spells in the foundation's generics at
-cells (`SystemColors<i32>`). Its build script generates the typeface its text is
-measured in.
+cells it covered at the last paint and what it paints beyond its style), beside each
+box's scroll offsets, which the runtime keeps, clamps and writes, notifying the box's
+scroll handlers, an editor's window down its rows standing for its vertical offset
+through `Drawn::entry_scroll` and `Drawn::scroll_entry` while a single-line field's
+window along its clusters stays the terminal's. Focus reveals the node it moves to
+through the runtime (`Runtime::reveal`, `Runtime::reveal_offsets`), by both edges of
+each scroll box around it: the box scrolls by as little as shows the node between its
+near border and its far one, its padding box, the scrollport Chromium's `scrollIntoView`
+aligns to, so a node revealed toward an edge with no border lands against that edge.
+Every on-screen rectangle the terminal reads, a node's origin, the cover a repaint
+damages, an open overlay's place and a pointer's position localized to a node, comes
+from the runtime's index of window rectangles (`Runtime::frames`), built afresh at its
+first read after a layout, a scroll, a box's reach or visibility, an overlay or the
+scene's structure moved, so a reader between two frames sees the offsets a handler just
+wrote. An open overlay sits there where the runtime places it
+(`Runtime::overlay_origin`), against its anchor's rectangle in the index, an anchor
+inside a later overlay placing that overlay first: pinned at the cell its point falls
+in, moved back into the window, below or above its anchor with a flip where the
+preferred side runs out of room and the other fits, or at one of the window's seven
+placements, a centered origin truncated toward zero. Its `impl Realization` forwards to
+the runtime's adapter for everything that is no cell's: a node's record created and
+destroyed, its style, slots, control state and contents, a size observed, an overlay
+opened with the focus move it asks for, and a mount with the window's autofocus. The
+runtime writes the layout tree from the scene and computes it, asking the terminal only
+for a text entry's native extent (`Drawn::entry_extent`, read from the field its record
+carries: its value's widest line or its placeholder's, and its lines, in cells), the
+terminal keeping the cell geometry it reads the layout through. It keeps as its own an
+entry's edit, placeholder, secure flag and keyboard, focus, timers, the clipboard, the
+window title and navigation. Beside the runtime sit the cell geometry, the cell engine,
+painting, the frame writer, the event loop and its interaction, the editing state of its
+drawn entries, the dev reload's restore and rebuild notice, and the `device`, `tty`,
+`parse` and `escape` modules. It names no facade: what it builds of its own, the rebuild
+notice, it builds from the foundation's views at `Terminal`, and the values it defines
+it spells in the foundation's generics at cells (`SystemColors<i32>`). Its build script
+generates the typeface its text is measured in.
 
 A facade in its own right, not a platform of the web's vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `i32` whole cells, an `f32` rounding to the
